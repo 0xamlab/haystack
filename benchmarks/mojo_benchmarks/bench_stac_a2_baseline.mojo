@@ -58,7 +58,7 @@ comptime CROSS_CORR: Float64 = 0.4
 comptime MASTER_SEED: UInt64 = 0x5A2C4A2
 
 
-fn _assets() -> List[HestonParams]:
+def _assets() -> List[HestonParams]:
     var s0 = [100.0, 95.0, 105.0, 110.0, 90.0]
     var v0 = [0.04, 0.05, 0.03, 0.06, 0.045]
     var kp = [1.5, 2.0, 1.2, 2.5, 1.8]
@@ -70,7 +70,7 @@ fn _assets() -> List[HestonParams]:
     return out^
 
 
-fn _corr() -> List[List[Float64]]:
+def _corr() -> List[List[Float64]]:
     var c = List[List[Float64]]()
     for i in range(N_ASSETS):
         var row = List[Float64]()
@@ -80,7 +80,7 @@ fn _corr() -> List[List[Float64]]:
     return c^
 
 
-fn _f(x: Float64, dp: Int) -> String:
+def _f(x: Float64, dp: Int) -> String:
     # nan and inf must print as themselves. Without this the Int() below saturates and a
     # broken run reports "922337203685477.5807", which a reader will read as a number.
     if x != x:
@@ -105,14 +105,14 @@ fn _f(x: Float64, dp: Int) -> String:
     return ("-" + s) if neg else s
 
 
-fn _lpad(s: String, n: Int) -> String:
+def _lpad(s: String, n: Int) -> String:
     var out = s
     while len(out) < n:
         out = " " + out
     return out
 
 
-fn _pad(s: String, n: Int) -> String:
+def _pad(s: String, n: Int) -> String:
     var out = s
     while len(out) < n:
         out += " "

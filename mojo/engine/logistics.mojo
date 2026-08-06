@@ -20,7 +20,7 @@ Public API:
 # ── vehicle_utilization ──────────────────────────────────────────────────────
 
 
-fn vehicle_utilization(loaded_km: Float64, total_km: Float64) -> Float64:
+def vehicle_utilization(loaded_km: Float64, total_km: Float64) -> Float64:
     """Vehicle utilization %: loaded / total * 100."""
     return (loaded_km / total_km) * 100.0
 
@@ -28,7 +28,7 @@ fn vehicle_utilization(loaded_km: Float64, total_km: Float64) -> Float64:
 # ── order_fill_rate ──────────────────────────────────────────────────────────
 
 
-fn order_fill_rate(filled_orders: Float64, total_orders: Float64) -> Float64:
+def order_fill_rate(filled_orders: Float64, total_orders: Float64) -> Float64:
     """Order fill rate %: filled / total * 100."""
     return (filled_orders / total_orders) * 100.0
 
@@ -36,7 +36,7 @@ fn order_fill_rate(filled_orders: Float64, total_orders: Float64) -> Float64:
 # ── perfect_order_rate ───────────────────────────────────────────────────────
 
 
-fn perfect_order_rate(perfect: Float64, total: Float64) -> Float64:
+def perfect_order_rate(perfect: Float64, total: Float64) -> Float64:
     """Perfect order rate %: perfect / total * 100."""
     return (perfect / total) * 100.0
 
@@ -44,7 +44,7 @@ fn perfect_order_rate(perfect: Float64, total: Float64) -> Float64:
 # ── inventory_turns ──────────────────────────────────────────────────────────
 
 
-fn inventory_turns(cogs: Float64, avg_inventory: Float64) -> Float64:
+def inventory_turns(cogs: Float64, avg_inventory: Float64) -> Float64:
     """Inventory turnover: COGS / average inventory."""
     return cogs / avg_inventory
 
@@ -52,7 +52,7 @@ fn inventory_turns(cogs: Float64, avg_inventory: Float64) -> Float64:
 # ── days_of_supply ───────────────────────────────────────────────────────────
 
 
-fn days_of_supply(avg_inventory: Float64, daily_demand: Float64) -> Float64:
+def days_of_supply(avg_inventory: Float64, daily_demand: Float64) -> Float64:
     """Days of supply: inventory / daily demand."""
     return avg_inventory / daily_demand
 
@@ -60,7 +60,7 @@ fn days_of_supply(avg_inventory: Float64, daily_demand: Float64) -> Float64:
 # ── warehouse_utilization ────────────────────────────────────────────────────
 
 
-fn warehouse_utilization(used_space: Float64, total_space: Float64) -> Float64:
+def warehouse_utilization(used_space: Float64, total_space: Float64) -> Float64:
     """Warehouse utilization %: used / total * 100."""
     return (used_space / total_space) * 100.0
 
@@ -68,7 +68,7 @@ fn warehouse_utilization(used_space: Float64, total_space: Float64) -> Float64:
 # ── cost_per_unit_shipped ────────────────────────────────────────────────────
 
 
-fn cost_per_unit_shipped(total_cost: Float64, units_shipped: Float64) -> Float64:
+def cost_per_unit_shipped(total_cost: Float64, units_shipped: Float64) -> Float64:
     """Cost per unit shipped: total cost / units."""
     return total_cost / units_shipped
 
@@ -76,7 +76,7 @@ fn cost_per_unit_shipped(total_cost: Float64, units_shipped: Float64) -> Float64
 # ── on_time_delivery_rate ────────────────────────────────────────────────────
 
 
-fn on_time_delivery_rate(on_time: Float64, total_deliveries: Float64) -> Float64:
+def on_time_delivery_rate(on_time: Float64, total_deliveries: Float64) -> Float64:
     """On-time delivery rate %: on-time / total * 100."""
     return (on_time / total_deliveries) * 100.0
 
@@ -84,7 +84,7 @@ fn on_time_delivery_rate(on_time: Float64, total_deliveries: Float64) -> Float64
 # ── dwell_time ───────────────────────────────────────────────────────────────
 
 
-fn dwell_time(arrival_time: Float64, departure_time: Float64) -> Float64:
+def dwell_time(arrival_time: Float64, departure_time: Float64) -> Float64:
     """Dwell time in hours: departure - arrival."""
     return departure_time - arrival_time
 
@@ -92,7 +92,7 @@ fn dwell_time(arrival_time: Float64, departure_time: Float64) -> Float64:
 # ── cross_dock_throughput ────────────────────────────────────────────────────
 
 
-fn cross_dock_throughput(items_processed: Float64, hours: Float64) -> Float64:
+def cross_dock_throughput(items_processed: Float64, hours: Float64) -> Float64:
     """Cross-dock throughput: items / hours."""
     return items_processed / hours
 
@@ -100,7 +100,7 @@ fn cross_dock_throughput(items_processed: Float64, hours: Float64) -> Float64:
 # ── route_efficiency ─────────────────────────────────────────────────────────
 
 
-fn route_efficiency(actual_distance: Float64, optimal_distance: Float64) -> Float64:
+def route_efficiency(actual_distance: Float64, optimal_distance: Float64) -> Float64:
     """Route efficiency %: optimal / actual * 100."""
     return (optimal_distance / actual_distance) * 100.0
 
@@ -108,7 +108,7 @@ fn route_efficiency(actual_distance: Float64, optimal_distance: Float64) -> Floa
 # ── carbon_per_tonne_km ─────────────────────────────────────────────────────
 
 
-fn carbon_per_tonne_km(
+def carbon_per_tonne_km(
     total_co2_kg: Float64, tonnes: Float64, km: Float64
 ) -> Float64:
     """Carbon intensity: CO2 / (tonnes * km)."""

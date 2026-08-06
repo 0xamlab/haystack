@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn tensor_layout_stride(
+def tensor_layout_stride(
     dim_size: Float64, element_size_bytes: Float64,
     outer_stride: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn tensor_layout_stride(
     return outer_stride * dim_size * element_size_bytes
 
 
-fn dtype_byte_width(dtype_code: Float64) -> Float64:
+def dtype_byte_width(dtype_code: Float64) -> Float64:
     """Bytes per element for standard dtype codes.
 
     Codes: 0=fp32(4), 1=fp16(2), 2=bf16(2), 3=int8(1), 4=int4(0.5), 5=fp64(8)
@@ -62,7 +62,7 @@ fn dtype_byte_width(dtype_code: Float64) -> Float64:
     return 4.0  # default fp32
 
 
-fn attention_head_dim(
+def attention_head_dim(
     model_dim: Float64, n_heads: Float64
 ) -> Float64:
     """Head dimension from model config.
@@ -81,7 +81,7 @@ fn attention_head_dim(
     return model_dim / n_heads
 
 
-fn rope_theta_scale(
+def rope_theta_scale(
     base_theta: Float64, original_context: Float64,
     target_context: Float64
 ) -> Float64:
@@ -105,7 +105,7 @@ fn rope_theta_scale(
     return base_theta * scale_ratio * scale_ratio
 
 
-fn weight_shard_offset(
+def weight_shard_offset(
     shard_index: Float64, shard_size_bytes: Float64,
     header_bytes: Float64
 ) -> Float64:
@@ -124,7 +124,7 @@ fn weight_shard_offset(
     return header_bytes + shard_index * shard_size_bytes
 
 
-fn activation_layout_index(
+def activation_layout_index(
     n: Float64, c: Float64, h: Float64, w: Float64,
     c_size: Float64, h_size: Float64, w_size: Float64,
     is_nhwc: Float64
@@ -149,7 +149,7 @@ fn activation_layout_index(
     return n * c_size * h_size * w_size + c * h_size * w_size + h * w_size + w
 
 
-fn model_config_head_count(
+def model_config_head_count(
     model_dim: Float64, head_dim: Float64
 ) -> Float64:
     """Number of attention heads from model config parameters.
@@ -166,7 +166,7 @@ fn model_config_head_count(
     return model_dim / head_dim
 
 
-fn kv_head_group_size(
+def kv_head_group_size(
     n_query_heads: Float64, n_kv_heads: Float64
 ) -> Float64:
     """GQA/MQA KV head grouping factor (query heads per KV head).
@@ -183,7 +183,7 @@ fn kv_head_group_size(
     return n_query_heads / n_kv_heads
 
 
-fn ffn_dim_from_model_dim(
+def ffn_dim_from_model_dim(
     model_dim: Float64, ffn_multiplier: Float64,
     round_to: Float64
 ) -> Float64:
@@ -205,7 +205,7 @@ fn ffn_dim_from_model_dim(
     return Float64(Int64(raw / round_to) + 1) * round_to
 
 
-fn abi_version_compatible(
+def abi_version_compatible(
     model_abi_version: Float64, runtime_abi_version: Float64,
     breaking_version_threshold: Float64
 ) -> Float64:

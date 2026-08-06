@@ -31,7 +31,7 @@ struct TreePath(Copyable, Movable):
     var variables_json: String     # merged variables as raw JSON array string
     var objective_function: String # leaf node's objective_function (or inherited)
 
-    fn __init__(out self, label: String, probability: Float64,
+    def __init__(out self, label: String, probability: Float64,
                 variables_json: String, objective_function: String):
         self.label = label
         self.probability = probability
@@ -50,7 +50,7 @@ struct _StackFrame(Copyable, Movable):
     var vars_json: String        # merged variables JSON array to this node
     var objective: String        # inherited objective_function
 
-    fn __init__(out self, node_json: String, label_so_far: String,
+    def __init__(out self, node_json: String, label_so_far: String,
                 prob_so_far: Float64, vars_json: String, objective: String):
         self.node_json = node_json
         self.label_so_far = label_so_far
@@ -62,7 +62,7 @@ struct _StackFrame(Copyable, Movable):
 # ── granularity_to_dt ─────────────────────────────────────────────────────
 
 
-fn granularity_to_dt(g: String) -> Float64:
+def granularity_to_dt(g: String) -> Float64:
     """Convert granularity string to dt (fraction of year per step).
 
     Replaces the GRANULARITY_TO_YEARS dict from python_engine/time_series.py.
@@ -90,7 +90,7 @@ fn granularity_to_dt(g: String) -> Float64:
 # ── merge_variables ───────────────────────────────────────────────────────
 
 
-fn merge_variables(base_json: String, override_json: String) -> String:
+def merge_variables(base_json: String, override_json: String) -> String:
     """Merge base variables with per-node overrides.
 
     Override variables replace base variables with the same name.
@@ -162,7 +162,7 @@ fn merge_variables(base_json: String, override_json: String) -> String:
 # ── flatten_decision_tree ─────────────────────────────────────────────────
 
 
-fn flatten_decision_tree(
+def flatten_decision_tree(
     nodes_json: String,
     base_variables_json: String,
     default_objective: String,

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from timeseries_stats import autocorrelation, autocorrelation_function, partial_autocorrelation, rolling_mean, rolling_std, exponential_smoothing, difference, adf_test_statistic, holt_linear
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

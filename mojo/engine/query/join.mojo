@@ -260,7 +260,7 @@ struct JoinResult(Copyable, Movable):
     var null_key_rows: Int
     var join_type: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var left_rows: List[Int],
         var right_rows: List[Int],
@@ -274,10 +274,10 @@ struct JoinResult(Copyable, Movable):
         self.null_key_rows = null_key_rows
         self.join_type = join_type
 
-    fn n_rows(self) -> Int:
+    def n_rows(self) -> Int:
         return len(self.left_rows)
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         """Lineage text. States the overlap between the two counters explicitly.
 
         The alternative — presenting `left_unmatched` and `null_key_rows` side by side —
@@ -301,7 +301,7 @@ struct JoinResult(Copyable, Movable):
         return out
 
 
-fn is_matchable_key(column: Float64Array, row: Int) -> Bool:
+def is_matchable_key(column: Float64Array, row: Int) -> Bool:
     """True when the cell at `row` can take part in an equality test at all.
 
     THE single definition of "usable join key" for both algorithms and both sides. Two
@@ -327,7 +327,7 @@ fn is_matchable_key(column: Float64Array, row: Int) -> Bool:
     return value == value
 
 
-fn _build_right_index(
+def _build_right_index(
     right_key: Float64Array,
     n_rows: Int,
     mut slot_of: HashIndex,
@@ -449,7 +449,7 @@ fn _build_right_index(
 # attempted here.
 
 
-fn _build_right_index_parallel(
+def _build_right_index_parallel(
     right_key: Float64Array,
     n_rows: Int,
     workers: Int,
@@ -501,7 +501,7 @@ fn _build_right_index_parallel(
     var np = w_nulls.unsafe_ptr()
 
     @parameter
-    fn count_worker(w: Int):
+    def count_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -544,7 +544,7 @@ fn _build_right_index_parallel(
     var up = cursors.unsafe_ptr()
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -597,7 +597,7 @@ fn _build_right_index_parallel(
     var nrp = next_row.unsafe_ptr()
 
     @parameter
-    fn partition_worker(p: Int):
+    def partition_worker(p: Int):
         var s0 = part_start[p]
         var s1 = part_start[p + 1]
         var last_row = List[Int]()
@@ -631,7 +631,7 @@ fn _build_right_index_parallel(
     return null_keys
 
 
-fn _hash_join_probe_serial_partitioned(
+def _hash_join_probe_serial_partitioned(
     left_key: Float64Array,
     n_rows: Int,
     tables: List[HashIndex],
@@ -681,7 +681,7 @@ fn _hash_join_probe_serial_partitioned(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _hash_join_probe_parallel_partitioned(
+def _hash_join_probe_parallel_partitioned(
     left_key: Float64Array,
     n_rows: Int,
     tables: List[HashIndex],
@@ -719,7 +719,7 @@ fn _hash_join_probe_parallel_partitioned(
     var fp = first_row.unsafe_ptr()
 
     @parameter
-    fn chain_worker(p: Int):
+    def chain_worker(p: Int):
         var base = sbp[p]
         for s in range(len(fp[p])):
             var r = fp[p][s]
@@ -742,7 +742,7 @@ fn _hash_join_probe_parallel_partitioned(
     var nlp = w_null.unsafe_ptr()
 
     @parameter
-    fn count_worker(w: Int):
+    def count_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -792,7 +792,7 @@ fn _hash_join_probe_parallel_partitioned(
     var curp = cursors.unsafe_ptr()
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -851,7 +851,7 @@ fn _hash_join_probe_parallel_partitioned(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _partition_left_rows_for_probe(
+def _partition_left_rows_for_probe(
     left_key: Float64Array,
     n_rows: Int,
     workers: Int,
@@ -891,7 +891,7 @@ fn _partition_left_rows_for_probe(
     var np = w_nulls.unsafe_ptr()
 
     @parameter
-    fn count_worker(w: Int):
+    def count_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -933,7 +933,7 @@ fn _partition_left_rows_for_probe(
     var up = cursors.unsafe_ptr()
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -971,7 +971,7 @@ fn _partition_left_rows_for_probe(
     return null_keys
 
 
-fn _clustered_count_matches(
+def _clustered_count_matches(
     left_key: Float64Array,
     prow: List[Int],
     phash: List[UInt64],
@@ -1011,7 +1011,7 @@ fn _clustered_count_matches(
     var ump = unmatched.unsafe_ptr()
 
     @parameter
-    fn partition_worker(p: Int):
+    def partition_worker(p: Int):
         var s0 = ps[p]
         var s1 = ps[p + 1]
         var local_unmatched = 0
@@ -1041,7 +1041,7 @@ fn _clustered_count_matches(
     return total_unmatched
 
 
-fn _clustered_emit_matches(
+def _clustered_emit_matches(
     left_key: Float64Array,
     prow: List[Int],
     phash: List[UInt64],
@@ -1078,7 +1078,7 @@ fn _clustered_emit_matches(
     var fp = first_row.unsafe_ptr()
 
     @parameter
-    fn partition_worker(p: Int):
+    def partition_worker(p: Int):
         var s0 = ps[p]
         var s1 = ps[p + 1]
         for s in range(s0, s1):
@@ -1110,7 +1110,7 @@ fn _clustered_emit_matches(
     )
 
 
-fn _hash_join_probe_parallel_clustered(
+def _hash_join_probe_parallel_clustered(
     left_key: Float64Array,
     n_rows: Int,
     tables: List[HashIndex],
@@ -1157,7 +1157,7 @@ fn _hash_join_probe_parallel_clustered(
         var mc0 = match_count.unsafe_ptr()
 
         @parameter
-        fn null_mark_worker(w: Int):
+        def null_mark_worker(w: Int):
             var lo = w * band
             var hi = lo + band
             if hi > n_rows:
@@ -1216,7 +1216,7 @@ fn _hash_join_probe_parallel_clustered(
         var rop0 = row_offset.unsafe_ptr()
 
         @parameter
-        fn null_emit_worker(w: Int):
+        def null_emit_worker(w: Int):
             var lo = w * band2
             var hi = lo + band2
             if hi > n_rows:
@@ -1233,7 +1233,7 @@ fn _hash_join_probe_parallel_clustered(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _build_direct_address_table(
+def _build_direct_address_table(
     right_key: Float64Array,
     n_rows: Int,
     workers: Int,
@@ -1339,7 +1339,7 @@ fn _build_direct_address_table(
     var band = (n_rows + workers - 1) // workers
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var wlo = w * band
         var whi = wlo + band
         if whi > n_rows:
@@ -1369,7 +1369,7 @@ fn _build_direct_address_table(
     return null_keys
 
 
-fn _hash_join_probe_serial_direct_address(
+def _hash_join_probe_serial_direct_address(
     left_key: Float64Array,
     n_rows: Int,
     table: List[Int],
@@ -1415,7 +1415,7 @@ fn _hash_join_probe_serial_direct_address(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _hash_join_probe_parallel_direct_address(
+def _hash_join_probe_parallel_direct_address(
     left_key: Float64Array,
     n_rows: Int,
     table: List[Int],
@@ -1446,7 +1446,7 @@ fn _hash_join_probe_parallel_direct_address(
     var nlp = w_null.unsafe_ptr()
 
     @parameter
-    fn count_worker(w: Int):
+    def count_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -1492,7 +1492,7 @@ fn _hash_join_probe_parallel_direct_address(
     var curp = cursors.unsafe_ptr()
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -1549,7 +1549,7 @@ fn _hash_join_probe_parallel_direct_address(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _hash_join_probe_partitioned(
+def _hash_join_probe_partitioned(
     left_key: Float64Array,
     n_rows: Int,
     tables: List[HashIndex],
@@ -1582,7 +1582,7 @@ fn _hash_join_probe_partitioned(
     )
 
 
-fn _hash_join_probe_serial(
+def _hash_join_probe_serial(
     left_key: Float64Array,
     n_rows: Int,
     slot_of: HashIndex,
@@ -1630,7 +1630,7 @@ fn _hash_join_probe_serial(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _hash_join_probe_parallel(
+def _hash_join_probe_parallel(
     left_key: Float64Array,
     n_rows: Int,
     slot_of: HashIndex,
@@ -1709,7 +1709,7 @@ fn _hash_join_probe_parallel(
     var nlp = w_null.unsafe_ptr()
 
     @parameter
-    fn count_worker(w: Int):
+    def count_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -1757,7 +1757,7 @@ fn _hash_join_probe_parallel(
     var curp = cursors.unsafe_ptr()
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -1813,7 +1813,7 @@ fn _hash_join_probe_parallel(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _hash_join_probe(
+def _hash_join_probe(
     left_key: Float64Array,
     n_rows: Int,
     slot_of: HashIndex,
@@ -1851,7 +1851,7 @@ fn _hash_join_probe(
     )
 
 
-fn hash_join_indices(
+def hash_join_indices(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,
@@ -1921,7 +1921,7 @@ fn hash_join_indices(
     )
 
 
-fn direct_address_join_indices(
+def direct_address_join_indices(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,
@@ -1994,7 +1994,7 @@ fn direct_address_join_indices(
     )
 
 
-fn is_sorted_ascending(batch: RecordBatch, key_column: Int) -> Bool:
+def is_sorted_ascending(batch: RecordBatch, key_column: Int) -> Bool:
     """True when the key ascends, with every unusable key (null or NaN) at the end.
 
     Nulls at the end because that is `query.executor.sort_indices(..., nulls_last=True)`
@@ -2031,7 +2031,7 @@ fn is_sorted_ascending(batch: RecordBatch, key_column: Int) -> Bool:
     return True
 
 
-fn merge_join_indices(
+def merge_join_indices(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,
@@ -2173,7 +2173,7 @@ fn merge_join_indices(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
-fn _take_column_join(source: Float64Array, indices: List[Int]) -> Float64Array:
+def _take_column_join(source: Float64Array, indices: List[Int]) -> Float64Array:
     """`take_column`'s answer, parallel over disjoint OUTPUT-row bands above
     `JOIN_GATHER_PARALLEL_MIN_ROWS`. Scoped to `materialize` rather than changing
     `take_column` itself, which `query.executor`'s filter and sort share and which
@@ -2221,7 +2221,7 @@ fn _take_column_join(source: Float64Array, indices: List[Int]) -> Float64Array:
     var band = (n + workers - 1) // workers
 
     @parameter
-    fn gather_worker(w: Int):
+    def gather_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n:
@@ -2247,7 +2247,7 @@ fn _take_column_join(source: Float64Array, indices: List[Int]) -> Float64Array:
     return float64_with_nulls(values^, mask)
 
 
-fn materialize(
+def materialize(
     left: RecordBatch,
     right: RecordBatch,
     result: JoinResult,
@@ -2284,7 +2284,7 @@ fn materialize(
     return RecordBatch(Schema(names^, dtypes^), columns^, result.n_rows())
 
 
-fn hash_join(
+def hash_join(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,
@@ -2300,7 +2300,7 @@ fn hash_join(
     )
 
 
-fn merge_join(
+def merge_join(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,
@@ -2316,7 +2316,7 @@ fn merge_join(
     )
 
 
-fn join_output_rows(
+def join_output_rows(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,
@@ -2381,7 +2381,7 @@ fn join_output_rows(
     return total
 
 
-fn semi_join_indices(
+def semi_join_indices(
     left: RecordBatch,
     left_key_column: Int,
     right: RecordBatch,

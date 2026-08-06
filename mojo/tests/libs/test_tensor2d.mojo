@@ -15,14 +15,14 @@ from tensor2d import (
 )
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d < 1e-12
 
 
-fn _vec_close(a: List[Float64], b: List[Float64]) -> Bool:
+def _vec_close(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -31,20 +31,20 @@ fn _vec_close(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _m2_close(a: Matrix2D, b: Matrix2D) -> Bool:
+def _m2_close(a: Matrix2D, b: Matrix2D) -> Bool:
     if a.rows != b.rows or a.cols != b.cols:
         return False
     return _vec_close(a.data, b.data)
 
 
-fn _flat(*vals: Float64) -> List[Float64]:
+def _flat(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ tensor2d::" + name)

@@ -41,12 +41,12 @@ from earth import (
 from std.math import abs as fabs, sqrt
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -54,7 +54,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Audio tests ──────────────────────────────────────────────────────────────
 
 
-fn test_audio() raises:
+def test_audio() raises:
     print("── Audio tests ──")
     var passed = 0
 
@@ -198,7 +198,7 @@ fn test_audio() raises:
 # ── Set operations tests ─────────────────────────────────────────────────────
 
 
-fn test_set_ops() raises:
+def test_set_ops() raises:
     print("── Set operations tests ──")
     var passed = 0
 
@@ -332,7 +332,7 @@ fn test_set_ops() raises:
 # ── Earth / Geospatial tests ─────────────────────────────────────────────────
 
 
-fn test_earth() raises:
+def test_earth() raises:
     print("── Earth tests ──")
     var passed = 0
 
@@ -456,7 +456,7 @@ fn test_earth() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 35 Tests: Audio, Set Ops, Earth ===")
     test_audio()
     test_set_ops()

@@ -32,7 +32,7 @@ comptime LOG_TWO_PI: Float64 = 1.8378770664093453
 # ── fit_normal ───────────────────────────────────────────────────────────────
 
 
-fn fit_normal(data: List[Float64]) -> List[Float64]:
+def fit_normal(data: List[Float64]) -> List[Float64]:
     """Fit normal distribution via MLE. Returns [mean, std]."""
     var n = len(data)
     # Empty data would divide by n == 0 and return NaN, which cannot cross
@@ -57,7 +57,7 @@ fn fit_normal(data: List[Float64]) -> List[Float64]:
 # ── fit_exponential ──────────────────────────────────────────────────────────
 
 
-fn fit_exponential(data: List[Float64]) -> Float64:
+def fit_exponential(data: List[Float64]) -> Float64:
     """Fit exponential distribution via MLE. Returns λ (rate = 1/mean)."""
     var n = len(data)
     if n == 0:
@@ -74,7 +74,7 @@ fn fit_exponential(data: List[Float64]) -> Float64:
 # ── fit_uniform ──────────────────────────────────────────────────────────────
 
 
-fn fit_uniform(data: List[Float64]) -> List[Float64]:
+def fit_uniform(data: List[Float64]) -> List[Float64]:
     """Fit uniform distribution via MLE. Returns [min, max]."""
     if len(data) == 0:
         return List[Float64]()
@@ -94,7 +94,7 @@ fn fit_uniform(data: List[Float64]) -> List[Float64]:
 # ── fit_weibull ──────────────────────────────────────────────────────────────
 
 
-fn fit_weibull(data: List[Float64]) -> List[Float64]:
+def fit_weibull(data: List[Float64]) -> List[Float64]:
     """Fit Weibull distribution via method of moments approximation.
     Returns [shape_beta, scale_eta].
     Uses iterative estimation: CV -> shape, then scale from mean.
@@ -129,7 +129,7 @@ fn fit_weibull(data: List[Float64]) -> List[Float64]:
     return result^
 
 
-fn _gamma_approx(x: Float64) -> Float64:
+def _gamma_approx(x: Float64) -> Float64:
     """Lanczos-style gamma approximation for x > 0."""
     # For x in [1,2], use simple polynomial approximation
     # Gamma(1) = 1, Gamma(1.5) ≈ 0.8862, Gamma(2) = 1
@@ -149,7 +149,7 @@ fn _gamma_approx(x: Float64) -> Float64:
 # ── log_likelihood_normal ────────────────────────────────────────────────────
 
 
-fn log_likelihood_normal(data: List[Float64], mean: Float64, std: Float64) -> Float64:
+def log_likelihood_normal(data: List[Float64], mean: Float64, std: Float64) -> Float64:
     """Log-likelihood for normal distribution."""
     var n = len(data)
     var s = std
@@ -166,7 +166,7 @@ fn log_likelihood_normal(data: List[Float64], mean: Float64, std: Float64) -> Fl
 # ── log_likelihood_exponential ───────────────────────────────────────────────
 
 
-fn log_likelihood_exponential(data: List[Float64], rate: Float64) -> Float64:
+def log_likelihood_exponential(data: List[Float64], rate: Float64) -> Float64:
     """Log-likelihood for exponential distribution."""
     var n = len(data)
     var r = rate
@@ -181,7 +181,7 @@ fn log_likelihood_exponential(data: List[Float64], rate: Float64) -> Float64:
 # ── aic ──────────────────────────────────────────────────────────────────────
 
 
-fn aic(log_likelihood: Float64, k: Int) -> Float64:
+def aic(log_likelihood: Float64, k: Int) -> Float64:
     """Akaike Information Criterion: 2k - 2*LL."""
     return 2.0 * Float64(k) - 2.0 * log_likelihood
 
@@ -189,7 +189,7 @@ fn aic(log_likelihood: Float64, k: Int) -> Float64:
 # ── bic ──────────────────────────────────────────────────────────────────────
 
 
-fn bic(log_likelihood: Float64, k: Int, n: Int) -> Float64:
+def bic(log_likelihood: Float64, k: Int, n: Int) -> Float64:
     """Bayesian Information Criterion: k*ln(n) - 2*LL."""
     return Float64(k) * log(Float64(n)) - 2.0 * log_likelihood
 
@@ -197,7 +197,7 @@ fn bic(log_likelihood: Float64, k: Int, n: Int) -> Float64:
 # ── _log_likelihood_uniform ──────────────────────────────────────────────────
 
 
-fn _log_likelihood_uniform(data: List[Float64], lo: Float64, hi: Float64) -> Float64:
+def _log_likelihood_uniform(data: List[Float64], lo: Float64, hi: Float64) -> Float64:
     """Log-likelihood for uniform distribution."""
     var n = len(data)
     var rng = hi - lo
@@ -212,7 +212,7 @@ fn _log_likelihood_uniform(data: List[Float64], lo: Float64, hi: Float64) -> Flo
 # ── best_fit ─────────────────────────────────────────────────────────────────
 
 
-fn best_fit(data: List[Float64]) -> Int:
+def best_fit(data: List[Float64]) -> Int:
     """Compare normal(0) vs exponential(1) vs uniform(2) by AIC.
     Returns index of best fit (lowest AIC).
     """
@@ -250,7 +250,7 @@ fn best_fit(data: List[Float64]) -> Int:
 # ── _erfinv_approx ──────────────────────────────────────────────────────────
 
 
-fn _erfinv_approx(p: Float64) -> Float64:
+def _erfinv_approx(p: Float64) -> Float64:
     """Approximate inverse error function using rational approximation."""
     # Clamp to avoid infinities
     var x = p
@@ -268,7 +268,7 @@ fn _erfinv_approx(p: Float64) -> Float64:
     return sgn * val
 
 
-fn _normal_quantile(p: Float64) -> Float64:
+def _normal_quantile(p: Float64) -> Float64:
     """Inverse normal CDF (quantile function) via inverse erf."""
     return sqrt(2.0) * _erfinv_approx(2.0 * p - 1.0)
 
@@ -276,7 +276,7 @@ fn _normal_quantile(p: Float64) -> Float64:
 # ── qq_residuals ─────────────────────────────────────────────────────────────
 
 
-fn qq_residuals(data: List[Float64], mean: Float64, std: Float64) -> List[Float64]:
+def qq_residuals(data: List[Float64], mean: Float64, std: Float64) -> List[Float64]:
     """QQ plot residuals: sorted data vs expected normal quantiles.
     residual[i] = sorted_data[i] - (mean + std * Phi^-1((i+0.5)/n))
     """

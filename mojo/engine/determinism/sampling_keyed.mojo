@@ -27,7 +27,7 @@ numbers valid across alternatives that consume different numbers of draws.
 from determinism.counter_rng import rng_uniform
 
 
-fn choice_keyed(
+def choice_keyed(
     weights: List[Float64],
     master_seed: UInt64,
     stream: UInt64,
@@ -61,7 +61,7 @@ fn choice_keyed(
     return -1
 
 
-fn permutation_keyed(
+def permutation_keyed(
     n: Int,
     master_seed: UInt64,
     stream: UInt64,
@@ -89,7 +89,7 @@ fn permutation_keyed(
     return out^
 
 
-fn shuffle_keyed(
+def shuffle_keyed(
     values: List[Float64],
     master_seed: UInt64,
     stream: UInt64,
@@ -103,7 +103,7 @@ fn shuffle_keyed(
     return out^
 
 
-fn sample_without_replacement_keyed(
+def sample_without_replacement_keyed(
     values: List[Float64],
     k: Int,
     master_seed: UInt64,
@@ -123,7 +123,7 @@ fn sample_without_replacement_keyed(
     return out^
 
 
-fn bootstrap_keyed(
+def bootstrap_keyed(
     values: List[Float64],
     n_draws: Int,
     master_seed: UInt64,
@@ -148,7 +148,7 @@ fn bootstrap_keyed(
     return out^
 
 
-fn uniform_int_keyed(
+def uniform_int_keyed(
     low: Int,
     high: Int,
     master_seed: UInt64,

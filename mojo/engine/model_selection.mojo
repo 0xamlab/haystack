@@ -23,11 +23,11 @@ struct SplitIndices(Copyable, Movable):
     var train: List[Int]
     var test: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.train = List[Int]()
         self.test = List[Int]()
 
-    fn __init__(out self, var train: List[Int], var test: List[Int]):
+    def __init__(out self, var train: List[Int], var test: List[Int]):
         self.train = train^
         self.test = test^
 
@@ -35,7 +35,7 @@ struct SplitIndices(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -43,7 +43,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -59,13 +59,13 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
 
 
-fn _shuffle_ints(mut arr: List[Int], mut state: UInt64):
+def _shuffle_ints(mut arr: List[Int], mut state: UInt64):
     """In-place Fisher-Yates shuffle driven by the caller's RNG state."""
     var n = len(arr)
     for i in range(n - 1, 0, -1):
@@ -78,7 +78,7 @@ fn _shuffle_ints(mut arr: List[Int], mut state: UInt64):
 # ── walk_forward_splits ──────────────────────────────────────────────────────
 
 
-fn walk_forward_splits(
+def walk_forward_splits(
     n: Int, n_splits: Int, min_train: Int, expanding: Bool
 ) -> List[SplitIndices]:
     """Walk-forward splits for ordered (time-series) data.
@@ -121,7 +121,7 @@ fn walk_forward_splits(
 # ── purged_walk_forward_splits ───────────────────────────────────────────────
 
 
-fn purged_walk_forward_splits(
+def purged_walk_forward_splits(
     n: Int, n_splits: Int, min_train: Int, purge_gap: Int, embargo: Int
 ) -> List[SplitIndices]:
     """Purged walk-forward splits (Lopez de Prado semantics, expanding window).
@@ -182,7 +182,7 @@ fn purged_walk_forward_splits(
 # ── kfold_splits ─────────────────────────────────────────────────────────────
 
 
-fn kfold_splits(n: Int, k: Int, seed: Int, shuffle: Bool) -> List[SplitIndices]:
+def kfold_splits(n: Int, k: Int, seed: Int, shuffle: Bool) -> List[SplitIndices]:
     """Standard k-fold splits over indices [0, n).
 
     shuffle=False: fold f tests the f-th contiguous block (first n % k folds
@@ -234,7 +234,7 @@ fn kfold_splits(n: Int, k: Int, seed: Int, shuffle: Bool) -> List[SplitIndices]:
 # ── stratified_kfold_splits ──────────────────────────────────────────────────
 
 
-fn stratified_kfold_splits(
+def stratified_kfold_splits(
     labels: List[Int], k: Int, seed: Int
 ) -> List[SplitIndices]:
     """Stratified k-fold: class proportions preserved per fold (within ±1).
@@ -293,7 +293,7 @@ fn stratified_kfold_splits(
 # ── train_test_split_temporal ────────────────────────────────────────────────
 
 
-fn train_test_split_temporal(n: Int, test_fraction: Float64) -> SplitIndices:
+def train_test_split_temporal(n: Int, test_fraction: Float64) -> SplitIndices:
     """Single ordered split: train = [0, n - n_test), test = [n - n_test, n).
 
     n_test = round(n * test_fraction) (half-up), clamped to [0, n];

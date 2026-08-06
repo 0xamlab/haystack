@@ -158,7 +158,7 @@ struct PowerReport(Copyable, Movable):
     var critical_value: Float64
 
 
-fn _power_failure(
+def _power_failure(
     code: Int, method: String, d: Float64, n: Int, alpha: Float64, one_sided: Bool
 ) -> PowerReport:
     return PowerReport(
@@ -166,7 +166,7 @@ fn _power_failure(
     )
 
 
-fn power_design_defect(effect_size: Float64, n_per_group: Int, alpha: Float64) -> Int:
+def power_design_defect(effect_size: Float64, n_per_group: Int, alpha: Float64) -> Int:
     """`INF_OK`, or the one status describing what is wrong with this design.
 
     PUBLIC and the SINGLE design validator for both lanes, so the normal and t lanes cannot
@@ -187,7 +187,7 @@ fn power_design_defect(effect_size: Float64, n_per_group: Int, alpha: Float64) -
     return INF_OK
 
 
-fn _checked_normal_quantile(p: Float64) -> Float64:
+def _checked_normal_quantile(p: Float64) -> Float64:
     """`math_ext.norm_ppf(p)` when the answer is a real quantile, else `-1e308` as a marker.
 
     `norm_ppf` returns the FINITE sentinel `+-1e300` for `p` at or past the ends of `(0, 1)`,
@@ -203,7 +203,7 @@ fn _checked_normal_quantile(p: Float64) -> Float64:
     return z
 
 
-fn power_two_means_flat(
+def power_two_means_flat(
     effect_size: Float64, n_per_group: Int, alpha: Float64, one_sided: Bool
 ) -> PowerReport:
     """Normal-approximation power for a two-sample comparison of means at `n` per group.
@@ -261,7 +261,7 @@ fn power_two_means_flat(
     )
 
 
-fn power_two_means_t_flat(
+def power_two_means_t_flat(
     effect_size: Float64, n_per_group: Int, alpha: Float64, one_sided: Bool
 ) -> PowerReport:
     """Central-t-shift power for a two-sample t test at `n` per group. An APPROXIMATION.
@@ -359,7 +359,7 @@ struct SampleSizeReport(Copyable, Movable):
     var minimal: Bool
 
 
-fn _size_failure(
+def _size_failure(
     code: Int, method: String, d: Float64, alpha: Float64,
     target: Float64, one_sided: Bool,
 ) -> SampleSizeReport:
@@ -368,7 +368,7 @@ fn _size_failure(
     )
 
 
-fn _power_at(n: Int, d: Float64, alpha: Float64, one_sided: Bool, use_t: Bool) -> Float64:
+def _power_at(n: Int, d: Float64, alpha: Float64, one_sided: Bool, use_t: Bool) -> Float64:
     """Power at `n` per group through whichever lane the caller asked for, or absent.
 
     One place routes the verification to the same function a caller would call, so a sample
@@ -387,7 +387,7 @@ fn _power_at(n: Int, d: Float64, alpha: Float64, one_sided: Bool, use_t: Bool) -
     return rn.power
 
 
-fn _sample_size(
+def _sample_size(
     effect_size: Float64, alpha: Float64, target_power: Float64,
     one_sided: Bool, use_t: Bool, method: String,
 ) -> SampleSizeReport:
@@ -490,7 +490,7 @@ fn _sample_size(
     )
 
 
-fn sample_size_two_means_flat(
+def sample_size_two_means_flat(
     effect_size: Float64, alpha: Float64, target_power: Float64, one_sided: Bool
 ) -> SampleSizeReport:
     """Per-group sample size for a target power, normal approximation, VERIFIED.
@@ -509,7 +509,7 @@ fn sample_size_two_means_flat(
     return _sample_size(effect_size, alpha, target_power, one_sided, False, method)
 
 
-fn sample_size_two_means_t_flat(
+def sample_size_two_means_t_flat(
     effect_size: Float64, alpha: Float64, target_power: Float64, one_sided: Bool
 ) -> SampleSizeReport:
     """Per-group sample size for a target power, central-t-shift lane, VERIFIED.

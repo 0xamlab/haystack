@@ -16,7 +16,7 @@ from std.math import abs as fabs, isnan, isinf
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _find_interval(x_data: List[Float64], x: Float64) -> Int:
+def _find_interval(x_data: List[Float64], x: Float64) -> Int:
     """Binary search for the interval index i such that x_data[i] <= x < x_data[i+1].
     Returns clamped index in [0, n-2]."""
     var n = len(x_data)
@@ -40,7 +40,7 @@ fn _find_interval(x_data: List[Float64], x: Float64) -> Int:
 # ── Linear interpolation ─────────────────────────────────────────────────────
 
 
-fn linear_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
+def linear_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
     """Linear interpolation. Clamps to boundary values if x is outside data range."""
     var n = len(x_data)
     if n == 0:
@@ -66,7 +66,7 @@ fn linear_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Fl
 # ── Nearest neighbor interpolation ───────────────────────────────────────────
 
 
-fn nearest_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
+def nearest_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
     """Nearest neighbor interpolation. Returns value of closest data point."""
     var n = len(x_data)
     if n == 0:
@@ -91,7 +91,7 @@ fn nearest_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> F
 # ── Natural cubic spline interpolation ───────────────────────────────────────
 
 
-fn cubic_spline_natural(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
+def cubic_spline_natural(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
     """Natural cubic spline interpolation (second derivatives = 0 at endpoints).
     Falls back to linear for n < 3."""
     var n = len(x_data)
@@ -187,7 +187,7 @@ fn cubic_spline_natural(x_data: List[Float64], y_data: List[Float64], x: Float64
 # ── Lagrange polynomial interpolation ────────────────────────────────────────
 
 
-fn lagrange_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
+def lagrange_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
     """Lagrange polynomial interpolation through all data points.
     Warning: high-degree polynomials may oscillate (Runge's phenomenon)."""
     var n = len(x_data)
@@ -214,7 +214,7 @@ fn lagrange_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> 
 # ── Interpolate array of points ──────────────────────────────────────────────
 
 
-fn interp_array(
+def interp_array(
     x_data: List[Float64],
     y_data: List[Float64],
     x_new: List[Float64],
@@ -241,7 +241,7 @@ fn interp_array(
 # ── Linear extrapolation ─────────────────────────────────────────────────────
 
 
-fn extrapolate_linear(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
+def extrapolate_linear(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Float64:
     """Linear extrapolation beyond data bounds.
     Uses slope from first two points (left) or last two points (right).
     Within data range, uses linear interpolation."""

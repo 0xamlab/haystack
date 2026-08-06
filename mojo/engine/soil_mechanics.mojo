@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, pow, log, exp
 
 
-fn bearing_capacity_terzaghi(
+def bearing_capacity_terzaghi(
     cohesion: Float64, unit_weight: Float64, depth: Float64,
     width: Float64, phi_rad: Float64
 ) -> Float64:
@@ -44,7 +44,7 @@ fn bearing_capacity_terzaghi(
     return cohesion * Nc + unit_weight * depth * Nq + 0.5 * unit_weight * width * Ng
 
 
-fn settlement_elastic(
+def settlement_elastic(
     pressure: Float64, width: Float64, modulus: Float64, poisson: Float64
 ) -> Float64:
     """Elastic settlement of a uniformly loaded flexible footing.
@@ -66,7 +66,7 @@ fn settlement_elastic(
     return pressure * width * (1.0 - poisson * poisson) * iw / modulus
 
 
-fn consolidation_degree(time_factor: Float64) -> Float64:
+def consolidation_degree(time_factor: Float64) -> Float64:
     """Average degree of consolidation from Terzaghi 1D theory.
 
     U = 1 - (8/π²)·exp(-π²·Tv/4)  (simplified, valid for Tv > 0.2)
@@ -86,7 +86,7 @@ fn consolidation_degree(time_factor: Float64) -> Float64:
     return 1.0 - (8.0 / (pi * pi)) * exp(-pi * pi * time_factor / 4.0)
 
 
-fn void_ratio(
+def void_ratio(
     specific_gravity: Float64, water_content: Float64, saturation: Float64
 ) -> Float64:
     """Void ratio: e = Gs·w / Sr.
@@ -104,7 +104,7 @@ fn void_ratio(
     return specific_gravity * water_content / saturation
 
 
-fn relative_density(
+def relative_density(
     void_ratio_e: Float64, e_max: Float64, e_min: Float64
 ) -> Float64:
     """Relative density: Dr = (e_max - e) / (e_max - e_min).
@@ -128,7 +128,7 @@ fn relative_density(
     return dr
 
 
-fn liquid_limit_plasticity(liquid_limit: Float64, plastic_limit: Float64) -> Float64:
+def liquid_limit_plasticity(liquid_limit: Float64, plastic_limit: Float64) -> Float64:
     """Plasticity index: PI = LL - PL.
 
     Args:
@@ -144,7 +144,7 @@ fn liquid_limit_plasticity(liquid_limit: Float64, plastic_limit: Float64) -> Flo
     return pi
 
 
-fn shear_strength_mohr_coulomb(
+def shear_strength_mohr_coulomb(
     cohesion: Float64, normal_stress: Float64, phi_rad: Float64
 ) -> Float64:
     """Shear strength from Mohr-Coulomb criterion: τ = c + σ·tan(φ).
@@ -161,7 +161,7 @@ fn shear_strength_mohr_coulomb(
     return cohesion + normal_stress * tan(phi_rad)
 
 
-fn lateral_earth_pressure_ka(phi_rad: Float64) -> Float64:
+def lateral_earth_pressure_ka(phi_rad: Float64) -> Float64:
     """Rankine active earth pressure coefficient: Ka = tan²(45° - φ/2).
 
     Args:
@@ -177,7 +177,7 @@ fn lateral_earth_pressure_ka(phi_rad: Float64) -> Float64:
     return t * t
 
 
-fn compression_index(liquid_limit: Float64) -> Float64:
+def compression_index(liquid_limit: Float64) -> Float64:
     """Compression index Cc from liquid limit (Skempton's correlation).
 
     Cc ≈ 0.009 · (LL - 10)
@@ -194,7 +194,7 @@ fn compression_index(liquid_limit: Float64) -> Float64:
     return cc
 
 
-fn hydraulic_conductivity_hazen(d10_mm: Float64) -> Float64:
+def hydraulic_conductivity_hazen(d10_mm: Float64) -> Float64:
     """Hydraulic conductivity from Hazen's empirical rule.
 
     k = C · D10²  (C ≈ 1.0 for cm/s with D10 in mm)

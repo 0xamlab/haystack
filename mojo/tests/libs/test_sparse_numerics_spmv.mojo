@@ -64,21 +64,21 @@ from tensor2d import m2_from_list, m2_matvec, m2_transpose
 # ── list builders (this dialect has no List literal) ───────────────────────────
 
 
-fn _ints(*values: Int) -> List[Int]:
+def _ints(*values: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(values)):
         out.append(values[i])
     return out^
 
 
-fn _floats(*values: Float64) -> List[Float64]:
+def _floats(*values: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(values)):
         out.append(values[i])
     return out^
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -87,14 +87,14 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d < 1e-9
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -108,7 +108,7 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
 # arrays are canonical, which is the state every matrix arriving over the wire is in.
 
 
-fn _a_3x4() -> CSRMatrix:
+def _a_3x4() -> CSRMatrix:
     """[[1,0,2,0], [0,3,0,0], [4,0,0,5]] — no duplicates, all indices in range."""
     return csr_from_arrays(
         _ints(0, 2, 3, 5),
@@ -119,13 +119,13 @@ fn _a_3x4() -> CSRMatrix:
     )
 
 
-fn _a_dense() -> List[Float64]:
+def _a_dense() -> List[Float64]:
     return _floats(
         1.0, 0.0, 2.0, 0.0, 0.0, 3.0, 0.0, 0.0, 4.0, 0.0, 0.0, 5.0
     )
 
 
-fn _b_4x2() -> CSRMatrix:
+def _b_4x2() -> CSRMatrix:
     """[[1,0], [0,2], [3,0], [0,4]]."""
     return csr_from_arrays(
         _ints(0, 1, 2, 3, 4),
@@ -136,11 +136,11 @@ fn _b_4x2() -> CSRMatrix:
     )
 
 
-fn _b_dense() -> List[Float64]:
+def _b_dense() -> List[Float64]:
     return _floats(1.0, 0.0, 0.0, 2.0, 3.0, 0.0, 0.0, 4.0)
 
 
-fn _dup_2x2() -> CSRMatrix:
+def _dup_2x2() -> CSRMatrix:
     """Row 0 stores 3 and 4 at column 0. A legal CSR; the matrix has 7 there."""
     return csr_from_arrays(
         _ints(0, 2, 2),
@@ -151,7 +151,7 @@ fn _dup_2x2() -> CSRMatrix:
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

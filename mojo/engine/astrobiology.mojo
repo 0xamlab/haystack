@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, exp, log, pow
 
 
-fn habitable_zone_inner(
+def habitable_zone_inner(
     stellar_luminosity_lsun: Float64
 ) -> Float64:
     """Inner edge of habitable zone (runaway greenhouse).
@@ -33,7 +33,7 @@ fn habitable_zone_inner(
     return sqrt(stellar_luminosity_lsun / 1.1)
 
 
-fn habitable_zone_outer(
+def habitable_zone_outer(
     stellar_luminosity_lsun: Float64
 ) -> Float64:
     """Outer edge of habitable zone (maximum greenhouse limit).
@@ -49,7 +49,7 @@ fn habitable_zone_outer(
     return sqrt(stellar_luminosity_lsun / 0.36)
 
 
-fn stellar_luminosity(
+def stellar_luminosity(
     radius_rsun: Float64, temperature_k: Float64
 ) -> Float64:
     """Stellar luminosity from Stefan-Boltzmann law.
@@ -67,7 +67,7 @@ fn stellar_luminosity(
     return radius_rsun * radius_rsun * pow(t_ratio, 4.0)
 
 
-fn planetary_equilibrium_temp(
+def planetary_equilibrium_temp(
     stellar_flux_w_m2: Float64, albedo: Float64
 ) -> Float64:
     """Planetary equilibrium temperature from energy balance.
@@ -88,7 +88,7 @@ fn planetary_equilibrium_temp(
     return pow(numerator, 0.25)
 
 
-fn water_activity(
+def water_activity(
     solute_molality: Float64, vant_hoff_factor: Float64
 ) -> Float64:
     """Water activity for extremophile habitability.
@@ -108,7 +108,7 @@ fn water_activity(
     return aw
 
 
-fn radiation_dose_rate(
+def radiation_dose_rate(
     particle_flux: Float64, particle_energy_mev: Float64, linear_energy_transfer: Float64
 ) -> Float64:
     """Absorbed radiation dose rate from particle flux.
@@ -126,7 +126,7 @@ fn radiation_dose_rate(
     return particle_flux * particle_energy_mev * linear_energy_transfer * 8.64e4 * 1e-3
 
 
-fn metabolism_rate_q10(
+def metabolism_rate_q10(
     rate_ref: Float64, temperature: Float64, temperature_ref: Float64, q10: Float64
 ) -> Float64:
     """Metabolic rate temperature scaling (Q10 rule).
@@ -145,7 +145,7 @@ fn metabolism_rate_q10(
     return rate_ref * pow(q10, (temperature - temperature_ref) / 10.0)
 
 
-fn pressure_tolerance_depth(
+def pressure_tolerance_depth(
     max_pressure_atm: Float64
 ) -> Float64:
     """Equivalent ocean depth for piezophile pressure tolerance.
@@ -161,7 +161,7 @@ fn pressure_tolerance_depth(
     return (max_pressure_atm - 1.0) * 10.0
 
 
-fn uv_penetration_depth(
+def uv_penetration_depth(
     surface_irradiance: Float64, attenuation_coefficient: Float64
 ) -> Float64:
     """Depth at which UV is reduced to 1% of surface value.
@@ -180,7 +180,7 @@ fn uv_penetration_depth(
     return log(100.0) / attenuation_coefficient
 
 
-fn panspermia_survival_fraction(
+def panspermia_survival_fraction(
     transit_time_yr: Float64, inactivation_rate: Float64
 ) -> Float64:
     """Fraction of spores surviving interplanetary transit.

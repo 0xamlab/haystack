@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from transform import log_transform, log1p_transform, box_cox, standardize, min_max_scale, robust_scale, quantile_transform, power_transform, clamp_values, rank_transform, abs_transform, reciprocal_transform
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

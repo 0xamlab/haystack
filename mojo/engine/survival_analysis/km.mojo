@@ -133,7 +133,7 @@ struct KMFit(Copyable, Movable):
     var median_strict_time: Float64
     var has_median_strict: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -157,7 +157,7 @@ struct KMFit(Copyable, Movable):
         self.has_median_strict = False
 
 
-fn _km_curve_points(time: List[Float64], survival: List[Float64], n_obs: Int) -> List[SurvivalPoint]:
+def _km_curve_points(time: List[Float64], survival: List[Float64], n_obs: Int) -> List[SurvivalPoint]:
     """Rebuild the frozen `List[SurvivalPoint]` shape, origin row included.
 
     The frozen `restricted_mean`, `survival_at_time` and `median_survival` all take that
@@ -179,7 +179,7 @@ fn _km_curve_points(time: List[Float64], survival: List[Float64], n_obs: Int) ->
     return out^
 
 
-fn km_fit(times: List[Float64], event: List[Int], conf_level: Float64) -> KMFit:
+def km_fit(times: List[Float64], event: List[Int], conf_level: Float64) -> KMFit:
     """Kaplan-Meier estimate with Greenwood standard errors and a log-log band.
 
     `event[i]` is 1 for an observed event at `times[i]` and 0 for a right-censored
@@ -282,7 +282,7 @@ fn km_fit(times: List[Float64], event: List[Int], conf_level: Float64) -> KMFit:
     return out^
 
 
-fn _pow_survival(s: Float64, power: Float64) -> Float64:
+def _pow_survival(s: Float64, power: Float64) -> Float64:
     """`s ** power` for `s` in (0, 1), via exp/log so a huge power underflows to 0.
 
     `std.math.pow` is fine here too; exp(power * log s) is used because `log s` is already
@@ -315,7 +315,7 @@ struct KMRmst(Copyable, Movable):
     var n_events: Int
     var max_observed_time: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.tau = 0.0
         self.rmst = 0.0
@@ -325,7 +325,7 @@ struct KMRmst(Copyable, Movable):
         self.max_observed_time = 0.0
 
 
-fn km_rmst(times: List[Float64], event: List[Int], tau: Float64) -> KMRmst:
+def km_rmst(times: List[Float64], event: List[Int], tau: Float64) -> KMRmst:
     """Area under the Kaplan-Meier curve on [0, tau], via the frozen `restricted_mean`.
 
     `tau` must be finite, strictly positive and no greater than the largest observed
@@ -383,7 +383,7 @@ struct KMLookup(Copyable, Movable):
     var survival: List[Float64]
     var has_value: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_queries = 0
         self.max_observed_time = 0.0
@@ -393,7 +393,7 @@ struct KMLookup(Copyable, Movable):
         self.has_value = List[Bool]()
 
 
-fn km_survival_at(times: List[Float64], event: List[Int], query: List[Float64]) -> KMLookup:
+def km_survival_at(times: List[Float64], event: List[Int], query: List[Float64]) -> KMLookup:
     """Step-function lookup of `S(t)` at each `query[q]`, via the frozen `survival_at_time`.
 
     Two bounds, because they are two different things. Memory is bounded by

@@ -28,17 +28,17 @@ struct Tally(Copyable, Movable):
     var checks: Int
     var failures: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.checks = 0
         self.failures = 0
 
-    fn ok(mut self, name: String, condition: Bool):
+    def ok(mut self, name: String, condition: Bool):
         self.checks += 1
         if not condition:
             self.failures += 1
             print("  FAIL " + name)
 
-    fn close(mut self, name: String, a: Float64, b: Float64, tol: Float64):
+    def close(mut self, name: String, a: Float64, b: Float64, tol: Float64):
         self.checks += 1
         var d = a - b
         if d < 0.0:
@@ -48,16 +48,16 @@ struct Tally(Copyable, Movable):
             print("  FAIL " + name + " a=" + String(a) + " b=" + String(b))
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _rand01(mut state: UInt64) -> Float64:
+def _rand01(mut state: UInt64) -> Float64:
     return Float64(Int(_lcg(state) >> 11)) / Float64(Int(UInt64(1) << 53))
 
 
-fn _batch2(k0: List[Float64], k1: List[Float64], x: List[Float64], y: List[Float64]) -> RecordBatch:
+def _batch2(k0: List[Float64], k1: List[Float64], x: List[Float64], y: List[Float64]) -> RecordBatch:
     var names = List[String]()
     names.append("k0")
     names.append("k1")
@@ -71,7 +71,7 @@ fn _batch2(k0: List[Float64], k1: List[Float64], x: List[Float64], y: List[Float
     return RecordBatch(schema_of(names^), cols^, len(k0))
 
 
-fn _reference_r2(x: List[Float64], y: List[Float64], mut r2: Float64, mut present: Bool):
+def _reference_r2(x: List[Float64], y: List[Float64], mut r2: Float64, mut present: Bool):
     """An INDEPENDENT r^2, deliberately not sharing a line with
     `comoments_packed._r2_from_moments`: two explicit passes (mean first,
     then centered sums of squares/cross-products), the textbook definition,
@@ -109,7 +109,7 @@ fn _reference_r2(x: List[Float64], y: List[Float64], mut r2: Float64, mut presen
     present = True
 
 
-fn block1_random_crosscheck(mut t: Tally):
+def block1_random_crosscheck(mut t: Tally):
     var state: UInt64 = 0x5EED
     var n = 3000
     var k = 10  # both key columns span [0, k) -> k*k slots
@@ -176,7 +176,7 @@ fn block1_random_crosscheck(mut t: Tally):
                 )
 
 
-fn block2_edge_cases(mut t: Tally):
+def block2_edge_cases(mut t: Tally):
     # group with 1 row: no correlation possible
     var k0 = List[Float64]()
     var k1 = List[Float64]()
@@ -259,7 +259,7 @@ fn block2_edge_cases(mut t: Tally):
     t.close("block2.perfect_neg.r2_is_1", r5.result.r2[0], 1.0, 1e-9)
 
 
-fn block3_nulls(mut t: Tally):
+def block3_nulls(mut t: Tally):
     var names = List[String]()
     names.append("k0")
     names.append("k1")
@@ -305,7 +305,7 @@ fn block3_nulls(mut t: Tally):
     t.ok("block3.group1_exists_but_no_moments", Int(res.result.count[1]) == 0)
 
 
-fn block4_refusals(mut t: Tally):
+def block4_refusals(mut t: Tally):
     var k0 = List[Float64]()
     var k1 = List[Float64]()
     var x = List[Float64]()
@@ -342,7 +342,7 @@ fn block4_refusals(mut t: Tally):
     t.ok("block4.status_vocab", GROUP_CODED_KEY_NOT_A_CODE != 0)
 
 
-fn block5_determinism(mut t: Tally):
+def block5_determinism(mut t: Tally):
     var state: UInt64 = 0x1234
     var n = 1500
     var k0 = List[Float64]()
@@ -377,7 +377,7 @@ fn block5_determinism(mut t: Tally):
     t.ok("block5.bit_identical_rerun", mism == 0)
 
 
-fn main():
+def main():
     print("=== test_query_comoments_packed ===")
     var t = Tally()
     block1_random_crosscheck(t)

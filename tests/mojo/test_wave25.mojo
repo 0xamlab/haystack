@@ -38,17 +38,17 @@ from nlp import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -56,7 +56,7 @@ fn _assert_eq(a: Int, b: Int, msg: String) raises:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _make_state() -> List[Int]:
+def _make_state() -> List[Int]:
     """Create a 16-byte test state: 0x00..0x0F."""
     var s = List[Int]()
     for i in range(16):
@@ -64,21 +64,21 @@ fn _make_state() -> List[Int]:
     return s^
 
 
-fn _f2(a: Float64, b: Float64) -> List[Float64]:
+def _f2(a: Float64, b: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
     return r^
 
 
-fn _s_list2(a: String, b: String) -> List[String]:
+def _s_list2(a: String, b: String) -> List[String]:
     var r = List[String]()
     r.append(a)
     r.append(b)
     return r^
 
 
-fn _s_list3(a: String, b: String, c: String) -> List[String]:
+def _s_list3(a: String, b: String, c: String) -> List[String]:
     var r = List[String]()
     r.append(a)
     r.append(b)
@@ -86,7 +86,7 @@ fn _s_list3(a: String, b: String, c: String) -> List[String]:
     return r^
 
 
-fn _int3(a: Int, b: Int, c: Int) -> List[Int]:
+def _int3(a: Int, b: Int, c: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a)
     r.append(b)
@@ -97,7 +97,7 @@ fn _int3(a: Int, b: Int, c: Int) -> List[Int]:
 # ── Bayesian Tests ───────────────────────────────────────────────────────────
 
 
-fn test_bayesian() raises:
+def test_bayesian() raises:
     print("── Bayesian tests ──")
 
     # 1. beta_posterior(1,1, 7,3) → [8, 4]
@@ -171,7 +171,7 @@ fn test_bayesian() raises:
 # ── AES S-Box Tests ──────────────────────────────────────────────────────────
 
 
-fn test_aes_sbox() raises:
+def test_aes_sbox() raises:
     print("── AES S-Box tests ──")
 
     # 16. aes_sbox(0x00) == 0x63
@@ -270,7 +270,7 @@ fn test_aes_sbox() raises:
 # ── NLP Tests ────────────────────────────────────────────────────────────────
 
 
-fn test_nlp() raises:
+def test_nlp() raises:
     print("── NLP tests ──")
 
     # 31. tokenize("Hello World!") → ["hello", "world"]
@@ -365,7 +365,7 @@ fn test_nlp() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 25 Tests ===")
     test_bayesian()
     test_aes_sbox()

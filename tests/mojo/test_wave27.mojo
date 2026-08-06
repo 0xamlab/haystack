@@ -41,17 +41,17 @@ from interval import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -59,7 +59,7 @@ fn _assert_eq(a: Int, b: Int, msg: String) raises:
 # ── Reservoir Tests ──────────────────────────────────────────────────────────
 
 
-fn test_reservoir() raises:
+def test_reservoir() raises:
     print("== Reservoir Tests ==")
     var passed = 0
 
@@ -239,7 +239,7 @@ fn test_reservoir() raises:
 # ── Sketch Tests ─────────────────────────────────────────────────────────────
 
 
-fn test_sketch() raises:
+def test_sketch() raises:
     print("== Sketch Tests ==")
     var passed = 0
 
@@ -330,7 +330,7 @@ fn test_sketch() raises:
 # ── Interval Tests ───────────────────────────────────────────────────────────
 
 
-fn test_interval() raises:
+def test_interval() raises:
     print("== Interval Tests ==")
     var passed = 0
 
@@ -482,7 +482,7 @@ fn test_interval() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 27 Tests ===")
     test_reservoir()
     test_sketch()

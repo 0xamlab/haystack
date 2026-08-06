@@ -25,7 +25,7 @@ struct Matrix(Copyable, Movable):
     var rows: Int
     var cols: Int
 
-    fn __init__(out self, rows: Int, cols: Int):
+    def __init__(out self, rows: Int, cols: Int):
         """Create a zero-initialized matrix of given dimensions."""
         self.rows = rows
         self.cols = cols
@@ -33,11 +33,11 @@ struct Matrix(Copyable, Movable):
         for i in range(rows * cols):
             self.data.append(0.0)
 
-    fn get(self, i: Int, j: Int) -> Float64:
+    def get(self, i: Int, j: Int) -> Float64:
         """Get element at row i, column j."""
         return self.data[i * self.cols + j]
 
-    fn set(mut self, i: Int, j: Int, val: Float64):
+    def set(mut self, i: Int, j: Int, val: Float64):
         """Set element at row i, column j."""
         self.data[i * self.cols + j] = val
 
@@ -45,12 +45,12 @@ struct Matrix(Copyable, Movable):
 # ── Factory functions ─────────────────────────────────────────────────────────
 
 
-fn mat_zeros(rows: Int, cols: Int) -> Matrix:
+def mat_zeros(rows: Int, cols: Int) -> Matrix:
     """Create a zero matrix."""
     return Matrix(rows, cols)
 
 
-fn mat_identity(n: Int) -> Matrix:
+def mat_identity(n: Int) -> Matrix:
     """Create an n×n identity matrix."""
     var m = Matrix(n, n)
     for i in range(n):
@@ -58,7 +58,7 @@ fn mat_identity(n: Int) -> Matrix:
     return m^
 
 
-fn mat_from_list(data: List[Float64], rows: Int, cols: Int) -> Matrix:
+def mat_from_list(data: List[Float64], rows: Int, cols: Int) -> Matrix:
     """Create matrix from row-major flat list."""
     var m = Matrix(rows, cols)
     var n = len(data)
@@ -72,7 +72,7 @@ fn mat_from_list(data: List[Float64], rows: Int, cols: Int) -> Matrix:
 # ── Element-wise operations ───────────────────────────────────────────────────
 
 
-fn mat_add(a: Matrix, b: Matrix) -> Matrix:
+def mat_add(a: Matrix, b: Matrix) -> Matrix:
     """Element-wise addition. Dimensions must match."""
     var r = a.rows
     var c = a.cols
@@ -82,7 +82,7 @@ fn mat_add(a: Matrix, b: Matrix) -> Matrix:
     return m^
 
 
-fn mat_sub(a: Matrix, b: Matrix) -> Matrix:
+def mat_sub(a: Matrix, b: Matrix) -> Matrix:
     """Element-wise subtraction. Dimensions must match."""
     var r = a.rows
     var c = a.cols
@@ -92,7 +92,7 @@ fn mat_sub(a: Matrix, b: Matrix) -> Matrix:
     return m^
 
 
-fn mat_scale(a: Matrix, s: Float64) -> Matrix:
+def mat_scale(a: Matrix, s: Float64) -> Matrix:
     """Scalar multiplication."""
     var m = Matrix(a.rows, a.cols)
     for i in range(a.rows * a.cols):
@@ -100,7 +100,7 @@ fn mat_scale(a: Matrix, s: Float64) -> Matrix:
     return m^
 
 
-fn mat_transpose(a: Matrix) -> Matrix:
+def mat_transpose(a: Matrix) -> Matrix:
     """Matrix transpose."""
     var m = Matrix(a.cols, a.rows)
     for i in range(a.rows):
@@ -112,7 +112,7 @@ fn mat_transpose(a: Matrix) -> Matrix:
 # ── Matrix multiplication ────────────────────────────────────────────────────
 
 
-fn mat_mul(a: Matrix, b: Matrix) -> Matrix:
+def mat_mul(a: Matrix, b: Matrix) -> Matrix:
     """Matrix multiplication: C = A × B.
     A is (m×k), B is (k×n), result is (m×n)."""
     var m = a.rows
@@ -133,7 +133,7 @@ fn mat_mul(a: Matrix, b: Matrix) -> Matrix:
 # ── Determinant ───────────────────────────────────────────────────────────────
 
 
-fn mat_det(a: Matrix) -> Float64:
+def mat_det(a: Matrix) -> Float64:
     """Determinant of a square matrix.
     Direct formulas for 1×1, 2×2, 3×3; LU-based for larger."""
     var n = a.rows
@@ -166,7 +166,7 @@ fn mat_det(a: Matrix) -> Float64:
     return _det_lu(a)
 
 
-fn _minor_3x3(a: Matrix, skip_row: Int, skip_col: Int) -> Float64:
+def _minor_3x3(a: Matrix, skip_row: Int, skip_col: Int) -> Float64:
     """Compute 3×3 minor determinant for a 4×4 matrix."""
     var m = List[Float64]()
     for i in range(4):
@@ -182,7 +182,7 @@ fn _minor_3x3(a: Matrix, skip_row: Int, skip_col: Int) -> Float64:
           + m[2] * (m[3] * m[7] - m[4] * m[6]))
 
 
-fn _det_lu(a: Matrix) -> Float64:
+def _det_lu(a: Matrix) -> Float64:
     """Determinant via LU decomposition with partial pivoting."""
     var n = a.rows
     # Copy matrix
@@ -230,7 +230,7 @@ fn _det_lu(a: Matrix) -> Float64:
 # ── Matrix inverse ────────────────────────────────────────────────────────────
 
 
-fn mat_inv(a: Matrix) -> Matrix:
+def mat_inv(a: Matrix) -> Matrix:
     """Matrix inverse using Gauss-Jordan elimination with partial pivoting.
     Returns zero matrix if singular."""
     var n = a.rows
@@ -290,7 +290,7 @@ fn mat_inv(a: Matrix) -> Matrix:
 # ── Linear system solver ──────────────────────────────────────────────────────
 
 
-fn mat_solve(a: Matrix, b: List[Float64]) -> List[Float64]:
+def mat_solve(a: Matrix, b: List[Float64]) -> List[Float64]:
     """Solve Ax = b using Gaussian elimination with partial pivoting.
     Returns solution vector x."""
     var n = a.rows
@@ -358,7 +358,7 @@ fn mat_solve(a: Matrix, b: List[Float64]) -> List[Float64]:
 # ── Vector operations ─────────────────────────────────────────────────────────
 
 
-fn vec_dot(a: List[Float64], b: List[Float64]) -> Float64:
+def vec_dot(a: List[Float64], b: List[Float64]) -> Float64:
     """Dot product of two vectors."""
     var n = len(a)
     if len(b) < n:
@@ -369,12 +369,12 @@ fn vec_dot(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn vec_norm(a: List[Float64]) -> Float64:
+def vec_norm(a: List[Float64]) -> Float64:
     """Euclidean (L2) norm of a vector."""
     return sqrt(vec_dot(a, a))
 
 
-fn vec_cross(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def vec_cross(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Cross product of two 3D vectors.
     Requires len(a) >= 3 and len(b) >= 3."""
     var result = List[Float64]()
@@ -399,13 +399,13 @@ struct LUResult(Copyable, Movable):
     var U: Matrix
     var pivots: List[Int]
 
-    fn __init__(out self, L: Matrix, U: Matrix, pivots: List[Int]):
+    def __init__(out self, L: Matrix, U: Matrix, pivots: List[Int]):
         self.L = L.copy()
         self.U = U.copy()
         self.pivots = pivots.copy()
 
 
-fn mat_lu(a: Matrix) -> LUResult:
+def mat_lu(a: Matrix) -> LUResult:
     """LU decomposition with partial pivoting.
     Returns LUResult(L, U, pivots) such that P*A = L*U
     where P is encoded by pivot_indices."""
@@ -468,12 +468,12 @@ struct EigResult2x2(Copyable, Movable):
     var lambda1: Float64
     var lambda2: Float64
 
-    fn __init__(out self, lambda1: Float64, lambda2: Float64):
+    def __init__(out self, lambda1: Float64, lambda2: Float64):
         self.lambda1 = lambda1
         self.lambda2 = lambda2
 
 
-fn mat_eigenvalues_2x2(a: Matrix) -> EigResult2x2:
+def mat_eigenvalues_2x2(a: Matrix) -> EigResult2x2:
     """Eigenvalues of a 2×2 matrix using the quadratic formula.
     For [[a, b], [c, d]]:
       λ = ((a+d) ± sqrt((a+d)² - 4(ad-bc))) / 2

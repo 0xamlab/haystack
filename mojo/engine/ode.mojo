@@ -26,7 +26,7 @@ struct ODEResult(Copyable, Movable):
     var t_values: List[Float64]
     var y_values: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.t_values = List[Float64]()
         self.y_values = List[Float64]()
 
@@ -34,7 +34,7 @@ struct ODEResult(Copyable, Movable):
 # ── Helper: evaluate polynomial ODE  f(t, y) = sum(coeffs[i] * y^i) ─────────
 
 
-fn _poly_eval(y: Float64, coeffs: List[Float64]) -> Float64:
+def _poly_eval(y: Float64, coeffs: List[Float64]) -> Float64:
     """Evaluate dy/dt = coeffs[0] + coeffs[1]*y + coeffs[2]*y^2 + ...
     For a simple linear ODE like dy/dt = -0.5*y, pass coeffs = [-0.5]
     which is interpreted as coeffs[0]*y^1 (i.e. first coefficient multiplies y).
@@ -59,7 +59,7 @@ fn _poly_eval(y: Float64, coeffs: List[Float64]) -> Float64:
     return result
 
 
-fn _poly_eval_system(y: List[Float64], coeffs: List[Float64]) -> List[Float64]:
+def _poly_eval_system(y: List[Float64], coeffs: List[Float64]) -> List[Float64]:
     """For a system of equations, evaluate dy_i/dt = coeffs[i] * y_i.
     This is a simple diagonal system where each variable evolves independently."""
     var n = len(y)
@@ -75,7 +75,7 @@ fn _poly_eval_system(y: List[Float64], coeffs: List[Float64]) -> List[Float64]:
 # ── Euler method ──────────────────────────────────────────────────────────────
 
 
-fn euler_step(y: List[Float64], dy: List[Float64], dt: Float64) -> List[Float64]:
+def euler_step(y: List[Float64], dy: List[Float64], dt: Float64) -> List[Float64]:
     """Single Euler step: y_new = y + dt * dy.
 
     Args:
@@ -96,7 +96,7 @@ fn euler_step(y: List[Float64], dy: List[Float64], dt: Float64) -> List[Float64]
     return y_new^
 
 
-fn euler_solve(
+def euler_solve(
     y0: List[Float64],
     dy_coeffs: List[Float64],
     t_span: Float64,
@@ -137,7 +137,7 @@ fn euler_solve(
 # ── Runge-Kutta 4th order ────────────────────────────────────────────────────
 
 
-fn rk4_step(y: Float64, k_coeffs: List[Float64], t: Float64, dt: Float64) -> Float64:
+def rk4_step(y: Float64, k_coeffs: List[Float64], t: Float64, dt: Float64) -> Float64:
     """Single RK4 step for dy/dt = f(t, y) where f is polynomial in y.
 
     The ODE is defined by k_coeffs:
@@ -160,7 +160,7 @@ fn rk4_step(y: Float64, k_coeffs: List[Float64], t: Float64, dt: Float64) -> Flo
     return y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
 
-fn rk4_solve(
+def rk4_solve(
     y0: Float64,
     k_coeffs: List[Float64],
     t_start: Float64,
@@ -202,7 +202,7 @@ fn rk4_solve(
 # ── Analytical solutions ─────────────────────────────────────────────────────
 
 
-fn exponential_decay(y0: Float64, rate: Float64, t: Float64) -> Float64:
+def exponential_decay(y0: Float64, rate: Float64, t: Float64) -> Float64:
     """Analytical solution for exponential decay: y(t) = y0 * exp(-rate * t).
 
     Solves dy/dt = -rate * y with y(0) = y0.
@@ -218,7 +218,7 @@ fn exponential_decay(y0: Float64, rate: Float64, t: Float64) -> Float64:
     return y0 * exp(-rate * t)
 
 
-fn logistic_growth(y0: Float64, K: Float64, r: Float64, t: Float64) -> Float64:
+def logistic_growth(y0: Float64, K: Float64, r: Float64, t: Float64) -> Float64:
     """Analytical solution for logistic growth:
     y(t) = K * y0 / (y0 + (K - y0) * exp(-r * t))
 
@@ -239,7 +239,7 @@ fn logistic_growth(y0: Float64, K: Float64, r: Float64, t: Float64) -> Float64:
 # ── RK4 for systems (bonus) ──────────────────────────────────────────────────
 
 
-fn rk4_step_system(
+def rk4_step_system(
     y: List[Float64], coeffs: List[Float64], t: Float64, dt: Float64
 ) -> List[Float64]:
     """Single RK4 step for a diagonal system dy_i/dt = coeffs[i]*y_i.
@@ -285,7 +285,7 @@ fn rk4_step_system(
     return y_new^
 
 
-fn rk4_solve_system(
+def rk4_solve_system(
     y0: List[Float64],
     coeffs: List[Float64],
     t_start: Float64,

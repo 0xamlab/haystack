@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from textile import tex_to_denier, denier_to_tex, yarn_count_ne, tex_from_diameter_density, twist_per_meter, twist_multiplier, fabric_gsm, fabric_cover_factor, pilling_resistance_score, moisture_regain, shrinkage_percentage, breaking_tenacity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

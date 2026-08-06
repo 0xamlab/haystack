@@ -55,11 +55,11 @@ from blockchain import (
 )
 
 
-fn _close(a: Float64, b: Float64, eps: Float64 = 1e-9) -> Bool:
+def _close(a: Float64, b: Float64, eps: Float64 = 1e-9) -> Bool:
     return abs(a - b) < eps
 
 
-fn test_encryption_modes() raises:
+def test_encryption_modes() raises:
     # ecb_block_count: ceil(100/16)=7, ceil(16/16)=1, ceil(17/16)=2
     assert_equal(ecb_block_count(100, 16), 7)
     assert_equal(ecb_block_count(16, 16), 1)
@@ -113,7 +113,7 @@ fn test_encryption_modes() raises:
     assert_equal(security_margin_bits(128, 0), 128)
 
 
-fn test_sustainability() raises:
+def test_sustainability() raises:
     # carbon_footprint_transport: 100 * 0.21 = 21.0
     assert_true(_close(carbon_footprint_transport(100.0, 0.21), 21.0))
 
@@ -156,7 +156,7 @@ fn test_sustainability() raises:
     assert_true(_close(esg_composite_score(60.0, 70.0, 80.0, 1.0, 1.0, 1.0), 70.0))
 
 
-fn test_blockchain() raises:
+def test_blockchain() raises:
     # block_reward_halving: 50 / 2^3 = 6.25
     assert_true(_close(block_reward_halving(50.0, 3), 6.25))
     assert_true(_close(block_reward_halving(50.0, 0), 50.0))
@@ -204,7 +204,7 @@ fn test_blockchain() raises:
     assert_true(_close(token_inflation_rate(1000000.0, 20000000.0), 5.0))
 
 
-fn main() raises:
+def main() raises:
     test_encryption_modes()
     test_sustainability()
     test_blockchain()

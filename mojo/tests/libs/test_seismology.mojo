@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from seismology import richter_magnitude, moment_magnitude, seismic_moment, energy_from_magnitude, peak_ground_acceleration, travel_time_p_wave, travel_time_s_wave, ts_tp_difference, epicenter_distance_from_ts_tp, intensity_mmi_from_pga, gutenberg_richter_rate, recurrence_interval
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

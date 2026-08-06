@@ -28,7 +28,7 @@ comptime MAX_PAGERANK_ITER: Int = 10000
 # ── degree ────────────────────────────────────────────────────────────────────
 
 
-fn degree(adj: List[List[Int]], node: Int) -> Int:
+def degree(adj: List[List[Int]], node: Int) -> Int:
     """Degree of a node (number of neighbors)."""
     # No such node: absent (-1), not a degree (uncatchable abort below).
     if node < 0 or node >= len(adj):
@@ -39,7 +39,7 @@ fn degree(adj: List[List[Int]], node: Int) -> Int:
 # ── degree_distribution ───────────────────────────────────────────────────────
 
 
-fn degree_distribution(adj: List[List[Int]]) -> List[Int]:
+def degree_distribution(adj: List[List[Int]]) -> List[Int]:
     """Degree of each node."""
     var result = List[Int]()
     for i in range(len(adj)):
@@ -50,7 +50,7 @@ fn degree_distribution(adj: List[List[Int]]) -> List[Int]:
 # ── density ───────────────────────────────────────────────────────────────────
 
 
-fn density(adj: List[List[Int]]) -> Float64:
+def density(adj: List[List[Int]]) -> Float64:
     """Graph density = 2E / (V*(V-1)) for undirected graphs."""
     var n = len(adj)
     if n <= 1:
@@ -66,7 +66,7 @@ fn density(adj: List[List[Int]]) -> Float64:
 # ── bfs_distances ─────────────────────────────────────────────────────────────
 
 
-fn bfs_distances(adj: List[List[Int]], start: Int) -> List[Int]:
+def bfs_distances(adj: List[List[Int]], start: Int) -> List[Int]:
     """BFS shortest path distances from start. -1 for unreachable."""
     var n = len(adj)
     var dist = List[Int]()
@@ -99,7 +99,7 @@ fn bfs_distances(adj: List[List[Int]], start: Int) -> List[Int]:
 # ── pagerank ──────────────────────────────────────────────────────────────────
 
 
-fn pagerank(
+def pagerank(
     adj: List[List[Int]],
     damping: Float64 = 0.85,
     max_iter: Int = 100,
@@ -149,7 +149,7 @@ fn pagerank(
 # ── degree_centrality ─────────────────────────────────────────────────────────
 
 
-fn degree_centrality(adj: List[List[Int]]) -> List[Float64]:
+def degree_centrality(adj: List[List[Int]]) -> List[Float64]:
     """Degree centrality: degree(v) / (n-1)."""
     var n = len(adj)
     var result = List[Float64]()
@@ -166,7 +166,7 @@ fn degree_centrality(adj: List[List[Int]]) -> List[Float64]:
 # ── closeness_centrality ─────────────────────────────────────────────────────
 
 
-fn closeness_centrality(adj: List[List[Int]]) -> List[Float64]:
+def closeness_centrality(adj: List[List[Int]]) -> List[Float64]:
     """Closeness centrality: (n-1) / sum(distances). 0 if disconnected."""
     var n = len(adj)
     var result = List[Float64]()
@@ -192,7 +192,7 @@ fn closeness_centrality(adj: List[List[Int]]) -> List[Float64]:
 # ── _has_edge (helper) ────────────────────────────────────────────────────────
 
 
-fn _has_edge(adj: List[List[Int]], u: Int, v: Int) -> Bool:
+def _has_edge(adj: List[List[Int]], u: Int, v: Int) -> Bool:
     """Check if edge (u, v) exists."""
     # Neighbor entries can name a node outside the graph (adj[u] would read
     # past its end — uncatchable abort); no such node, no such edge.
@@ -208,7 +208,7 @@ fn _has_edge(adj: List[List[Int]], u: Int, v: Int) -> Bool:
 # ── clustering_coefficient ────────────────────────────────────────────────────
 
 
-fn clustering_coefficient(adj: List[List[Int]], node: Int) -> Float64:
+def clustering_coefficient(adj: List[List[Int]], node: Int) -> Float64:
     """Local clustering coefficient: triangles / possible triangles."""
     # No such node: no neighbourhood to cluster (adj[node] would read past
     # its end — uncatchable abort).
@@ -229,7 +229,7 @@ fn clustering_coefficient(adj: List[List[Int]], node: Int) -> Float64:
 # ── avg_clustering_coefficient ────────────────────────────────────────────────
 
 
-fn avg_clustering_coefficient(adj: List[List[Int]]) -> Float64:
+def avg_clustering_coefficient(adj: List[List[Int]]) -> Float64:
     """Average clustering coefficient across all nodes."""
     var n = len(adj)
     if n == 0:
@@ -243,7 +243,7 @@ fn avg_clustering_coefficient(adj: List[List[Int]]) -> Float64:
 # ── is_connected ──────────────────────────────────────────────────────────────
 
 
-fn is_connected(adj: List[List[Int]]) -> Bool:
+def is_connected(adj: List[List[Int]]) -> Bool:
     """Check if graph is connected (BFS from node 0 reaches all)."""
     var n = len(adj)
     if n == 0:
@@ -258,7 +258,7 @@ fn is_connected(adj: List[List[Int]]) -> Bool:
 # ── connected_components ──────────────────────────────────────────────────────
 
 
-fn connected_components(adj: List[List[Int]]) -> List[List[Int]]:
+def connected_components(adj: List[List[Int]]) -> List[List[Int]]:
     """Find all connected components (list of node lists)."""
     var n = len(adj)
     var visited = List[Bool]()

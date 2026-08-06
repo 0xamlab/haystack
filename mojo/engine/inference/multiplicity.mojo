@@ -122,14 +122,14 @@ struct Correction(Copyable, Movable):
     var max_rejected_p: Float64
 
 
-fn _correction_failure(code: Int, method: String, alpha: Float64, n: Int) -> Correction:
+def _correction_failure(code: Int, method: String, alpha: Float64, n: Int) -> Correction:
     return Correction(
         code, method, alpha, n, 0, List[Float64](), List[Bool](),
         MULT_P_ABSENT, MULT_P_ABSENT,
     )
 
 
-fn multiplicity_input_defect(
+def multiplicity_input_defect(
     p_values: List[Float64], n: Int, alpha: Float64
 ) -> Int:
     """`INF_OK`, or the one status that describes what is wrong with this family.
@@ -167,7 +167,7 @@ fn multiplicity_input_defect(
     return INF_OK
 
 
-fn _ascending_order(p_values: List[Float64], n: Int) -> List[Int]:
+def _ascending_order(p_values: List[Float64], n: Int) -> List[Int]:
     """Positions of the first `n` p-values in ASCENDING order, ties by original position.
 
     The frozen `retrieval.score.retrieval_rank_order` orders by score DESCENDING with an
@@ -185,7 +185,7 @@ fn _ascending_order(p_values: List[Float64], n: Int) -> List[Int]:
     return retrieval_rank_order(scores, ordinals)
 
 
-fn _finish(
+def _finish(
     method: String, alpha: Float64, n: Int,
     adjusted: List[Float64], p_values: List[Float64],
 ) -> Correction:
@@ -216,7 +216,7 @@ fn _finish(
     )
 
 
-fn bonferroni_flat(
+def bonferroni_flat(
     p_values: List[Float64], n: Int, alpha: Float64
 ) -> Correction:
     """Bonferroni: `adjusted_i = min(1, n * p_i)`; controls the family-wise error rate.
@@ -243,7 +243,7 @@ fn bonferroni_flat(
     return _finish(METHOD_BONFERRONI, alpha, n, adjusted, p_values)
 
 
-fn holm_flat(
+def holm_flat(
     p_values: List[Float64], n: Int, alpha: Float64
 ) -> Correction:
     """Holm-Bonferroni step-down: `adjusted_(i) = max_{j<=i} min(1, (n-j) p_(j))`.
@@ -285,7 +285,7 @@ fn holm_flat(
     return _finish(METHOD_HOLM, alpha, n, adjusted, p_values)
 
 
-fn benjamini_hochberg_flat(
+def benjamini_hochberg_flat(
     p_values: List[Float64], n: Int, alpha: Float64
 ) -> Correction:
     """Benjamini-Hochberg step-up: `adjusted_(i) = min_{j>=i} min(1, n p_(j) / (j+1))`.
@@ -357,7 +357,7 @@ struct CorrectionAgreement(Copyable, Movable):
     var power_ordering_holds: Bool
 
 
-fn correction_agreement_flat(
+def correction_agreement_flat(
     p_values: List[Float64], n: Int, alpha: Float64
 ) -> CorrectionAgreement:
     """Run all three corrections on one family and report whether they cohere.

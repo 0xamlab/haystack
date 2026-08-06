@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn node_output_count(
+def node_output_count(
     current_count: Float64
 ) -> Float64:
     """Increment fan-out count for a computation graph node.
@@ -34,7 +34,7 @@ fn node_output_count(
     return current_count + 1.0
 
 
-fn grad_accumulate(
+def grad_accumulate(
     current_grad: Float64, incoming_grad: Float64
 ) -> Float64:
     """Accumulate incoming gradient into node gradient buffer.
@@ -52,7 +52,7 @@ fn grad_accumulate(
     return current_grad + incoming_grad
 
 
-fn checkpointing_cost(
+def checkpointing_cost(
     memory_saved_bytes: Float64, recompute_flops: Float64,
     flops_per_second: Float64, memory_bandwidth: Float64
 ) -> Float64:
@@ -79,7 +79,7 @@ fn checkpointing_cost(
     return recompute_time / memory_time
 
 
-fn topological_sort_key(
+def topological_sort_key(
     node_depth: Float64, node_id: Float64, n_nodes: Float64
 ) -> Float64:
     """Unique sort key for topological ordering of computation graph.
@@ -97,7 +97,7 @@ fn topological_sort_key(
     return node_depth * n_nodes + node_id
 
 
-fn grad_scale_loss(
+def grad_scale_loss(
     loss: Float64, scale_factor: Float64
 ) -> Float64:
     """Loss scaling for mixed-precision training.
@@ -114,7 +114,7 @@ fn grad_scale_loss(
     return loss * scale_factor
 
 
-fn memory_efficient_backward_step(
+def memory_efficient_backward_step(
     segment_memory_bytes: Float64,
     n_segments: Float64,
     total_activation_bytes: Float64
@@ -137,7 +137,7 @@ fn memory_efficient_backward_step(
     return stored / total_activation_bytes
 
 
-fn jacobian_vector_product(
+def jacobian_vector_product(
     jvp_tangent: Float64, local_jacobian: Float64
 ) -> Float64:
     """Forward-mode JVP: one element of J × v.
@@ -152,7 +152,7 @@ fn jacobian_vector_product(
     return local_jacobian * jvp_tangent
 
 
-fn vector_jacobian_product(
+def vector_jacobian_product(
     upstream_grad: Float64, local_jacobian: Float64
 ) -> Float64:
     """Reverse-mode VJP: one element of vᵀ × J.
@@ -167,7 +167,7 @@ fn vector_jacobian_product(
     return upstream_grad * local_jacobian
 
 
-fn dead_node_prune_score(
+def dead_node_prune_score(
     grad_magnitude: Float64, threshold: Float64
 ) -> Float64:
     """Score for pruning zero-gradient nodes from computation graph.
@@ -186,7 +186,7 @@ fn dead_node_prune_score(
     return 0.0
 
 
-fn gradient_norm_clip_scale(
+def gradient_norm_clip_scale(
     global_grad_norm: Float64, max_norm: Float64
 ) -> Float64:
     """Global gradient norm clipping scale factor.

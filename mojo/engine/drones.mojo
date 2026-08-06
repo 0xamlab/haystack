@@ -25,7 +25,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── thrust_to_weight_ratio ───────────────────────────────────────────────────
 
 
-fn thrust_to_weight_ratio(total_thrust: Float64, weight: Float64) -> Float64:
+def thrust_to_weight_ratio(total_thrust: Float64, weight: Float64) -> Float64:
     """Thrust-to-weight ratio: TWR = thrust / weight.
 
     Args:
@@ -43,7 +43,7 @@ fn thrust_to_weight_ratio(total_thrust: Float64, weight: Float64) -> Float64:
 # ── hover_power ──────────────────────────────────────────────────────────────
 
 
-fn hover_power(
+def hover_power(
     weight: Float64, disk_area: Float64, air_density: Float64
 ) -> Float64:
     """Induced hover power: P = W^1.5 / sqrt(2 * ρ * A).
@@ -64,7 +64,7 @@ fn hover_power(
 # ── flight_time_minutes ─────────────────────────────────────────────────────
 
 
-fn flight_time_minutes(battery_wh: Float64, avg_power_w: Float64) -> Float64:
+def flight_time_minutes(battery_wh: Float64, avg_power_w: Float64) -> Float64:
     """Estimated flight time: t = (battery_wh / avg_power_w) * 60.
 
     Args:
@@ -82,7 +82,7 @@ fn flight_time_minutes(battery_wh: Float64, avg_power_w: Float64) -> Float64:
 # ── max_range ────────────────────────────────────────────────────────────────
 
 
-fn max_range(speed: Float64, flight_time_min: Float64) -> Float64:
+def max_range(speed: Float64, flight_time_min: Float64) -> Float64:
     """Max range: R = speed * time / 60.
 
     Args:
@@ -98,7 +98,7 @@ fn max_range(speed: Float64, flight_time_min: Float64) -> Float64:
 # ── payload_capacity ─────────────────────────────────────────────────────────
 
 
-fn payload_capacity(
+def payload_capacity(
     max_takeoff_weight: Float64,
     empty_weight: Float64,
     battery_weight: Float64,
@@ -119,7 +119,7 @@ fn payload_capacity(
 # ── disk_loading ─────────────────────────────────────────────────────────────
 
 
-fn disk_loading(weight: Float64, disk_area: Float64) -> Float64:
+def disk_loading(weight: Float64, disk_area: Float64) -> Float64:
     """Disk loading: DL = W / A.
 
     Args:
@@ -137,7 +137,7 @@ fn disk_loading(weight: Float64, disk_area: Float64) -> Float64:
 # ── propeller_tip_speed ──────────────────────────────────────────────────────
 
 
-fn propeller_tip_speed(rpm: Float64, diameter: Float64) -> Float64:
+def propeller_tip_speed(rpm: Float64, diameter: Float64) -> Float64:
     """Propeller tip speed: v = π * D * RPM / 60.
 
     Args:
@@ -153,7 +153,7 @@ fn propeller_tip_speed(rpm: Float64, diameter: Float64) -> Float64:
 # ── advance_ratio ────────────────────────────────────────────────────────────
 
 
-fn advance_ratio(
+def advance_ratio(
     velocity: Float64, rpm: Float64, diameter: Float64
 ) -> Float64:
     """Advance ratio: J = V / (n * D), where n = RPM / 60.
@@ -175,7 +175,7 @@ fn advance_ratio(
 # ── battery_energy_density ───────────────────────────────────────────────────
 
 
-fn battery_energy_density(energy_wh: Float64, mass_kg: Float64) -> Float64:
+def battery_energy_density(energy_wh: Float64, mass_kg: Float64) -> Float64:
     """Battery energy density: ED = E / m.
 
     Args:
@@ -193,7 +193,7 @@ fn battery_energy_density(energy_wh: Float64, mass_kg: Float64) -> Float64:
 # ── communication_range_los ──────────────────────────────────────────────────
 
 
-fn communication_range_los(
+def communication_range_los(
     altitude: Float64, earth_radius: Float64
 ) -> Float64:
     """Line-of-sight range: R = sqrt(2*Re*h + h²).
@@ -213,7 +213,7 @@ fn communication_range_los(
 # ── gsd_from_altitude ────────────────────────────────────────────────────────
 
 
-fn gsd_from_altitude(
+def gsd_from_altitude(
     focal_length_mm: Float64,
     sensor_width_mm: Float64,
     image_width_px: Float64,
@@ -239,7 +239,7 @@ fn gsd_from_altitude(
 # ── endurance_factor ─────────────────────────────────────────────────────────
 
 
-fn endurance_factor(
+def endurance_factor(
     battery_capacity_ah: Float64,
     voltage: Float64,
     efficiency: Float64,

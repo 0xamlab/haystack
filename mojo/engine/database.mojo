@@ -29,17 +29,17 @@ struct Table(Copyable, Movable):
     var n_rows: Int
     var data: List[List[Float64]]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.columns = List[String]()
         self.n_rows = 0
         self.data = List[List[Float64]]()
 
-    fn __init__(out self, columns: List[String], n_rows: Int, data: List[List[Float64]]):
+    def __init__(out self, columns: List[String], n_rows: Int, data: List[List[Float64]]):
         self.columns = columns.copy()
         self.n_rows = n_rows
         self.data = data.copy()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.columns = copy.columns.copy()
         self.n_rows = copy.n_rows
         self.data = copy.data.copy()
@@ -48,7 +48,7 @@ struct Table(Copyable, Movable):
 # ── Table creation ────────────────────────────────────────────────────────────
 
 
-fn table_create(columns: List[String], n_rows: Int) -> Table:
+def table_create(columns: List[String], n_rows: Int) -> Table:
     """Create empty table with given column names and 0 rows."""
     var data = List[List[Float64]]()
     var n_cols = len(columns)
@@ -60,7 +60,7 @@ fn table_create(columns: List[String], n_rows: Int) -> Table:
 # ── Row insertion ─────────────────────────────────────────────────────────────
 
 
-fn table_insert_row(mut table: Table, row: List[Float64]):
+def table_insert_row(mut table: Table, row: List[Float64]):
     """Insert a row. row length must match number of columns."""
     var n_cols = len(table.columns)
     if len(row) != n_cols:
@@ -75,7 +75,7 @@ fn table_insert_row(mut table: Table, row: List[Float64]):
 # ── Column selection ──────────────────────────────────────────────────────────
 
 
-fn table_select_column(table: Table, col_idx: Int) -> List[Float64]:
+def table_select_column(table: Table, col_idx: Int) -> List[Float64]:
     """Get column data by index."""
     if col_idx < 0 or col_idx >= len(table.columns):
         return List[Float64]()
@@ -85,7 +85,7 @@ fn table_select_column(table: Table, col_idx: Int) -> List[Float64]:
 # ── Filtering ─────────────────────────────────────────────────────────────────
 
 
-fn table_where(table: Table, col_idx: Int, op: Int, value: Float64) -> List[Int]:
+def table_where(table: Table, col_idx: Int, op: Int, value: Float64) -> List[Int]:
     """Filter rows. op: 0=eq, 1=gt, 2=lt, 3=gte, 4=lte. Returns row indices."""
     var result = List[Int]()
     if col_idx < 0 or col_idx >= len(table.columns):
@@ -111,7 +111,7 @@ fn table_where(table: Table, col_idx: Int, op: Int, value: Float64) -> List[Int]
 # ── Aggregation ───────────────────────────────────────────────────────────────
 
 
-fn table_aggregate(table: Table, col_idx: Int, agg: Int) -> Float64:
+def table_aggregate(table: Table, col_idx: Int, agg: Int) -> Float64:
     """Aggregate: 0=sum, 1=mean, 2=min, 3=max, 4=count."""
     if col_idx < 0 or col_idx >= len(table.columns) or table.n_rows == 0:
         return 0.0
@@ -141,7 +141,7 @@ fn table_aggregate(table: Table, col_idx: Int, agg: Int) -> Float64:
 # ── Sorting ───────────────────────────────────────────────────────────────────
 
 
-fn table_sort_by(table: Table, col_idx: Int, ascending: Bool) -> List[Int]:
+def table_sort_by(table: Table, col_idx: Int, ascending: Bool) -> List[Int]:
     """Sort indices by column values (insertion sort)."""
     var indices = List[Int]()
     if col_idx < 0 or col_idx >= len(table.columns):
@@ -171,7 +171,7 @@ fn table_sort_by(table: Table, col_idx: Int, ascending: Bool) -> List[Int]:
 # ── Inner join ────────────────────────────────────────────────────────────────
 
 
-fn table_join_inner(t1: Table, col1: Int, t2: Table, col2: Int) -> List[List[Int]]:
+def table_join_inner(t1: Table, col1: Int, t2: Table, col2: Int) -> List[List[Int]]:
     """Inner join: returns [[t1_row, t2_row], ...] for matching values."""
     var result = List[List[Int]]()
     if col1 < 0 or col1 >= len(t1.columns) or col2 < 0 or col2 >= len(t2.columns):
@@ -191,7 +191,7 @@ fn table_join_inner(t1: Table, col1: Int, t2: Table, col2: Int) -> List[List[Int
 # ── Group-by aggregate ────────────────────────────────────────────────────────
 
 
-fn _find_group(groups: List[Float64], value: Float64) -> Int:
+def _find_group(groups: List[Float64], value: Float64) -> Int:
     """Find index of value in groups list, or -1."""
     for i in range(len(groups)):
         if groups[i] == value:
@@ -199,7 +199,7 @@ fn _find_group(groups: List[Float64], value: Float64) -> Int:
     return -1
 
 
-fn table_group_aggregate(
+def table_group_aggregate(
     table: Table, group_col: Int, agg_col: Int, agg: Int
 ) -> List[List[Float64]]:
     """Group by group_col, aggregate agg_col. Returns [[group_value, agg_result], ...]."""
@@ -263,6 +263,6 @@ fn table_group_aggregate(
 # ── Row count ─────────────────────────────────────────────────────────────────
 
 
-fn table_row_count(table: Table) -> Int:
+def table_row_count(table: Table) -> Int:
     """Number of rows."""
     return table.n_rows

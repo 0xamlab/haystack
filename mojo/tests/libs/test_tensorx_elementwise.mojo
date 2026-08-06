@@ -27,11 +27,11 @@ from tensorx.dtype import DT_BF16, DT_F32, DT_F64, DT_NF4
 from tensorx.elementwise import tx_ew_add, tx_ew_cast, tx_ew_div, tx_ew_mul, tx_ew_sub
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _vals6(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64, v5: Float64) -> List[Float64]:
+def _vals6(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64, v5: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(v0)
     out.append(v1)
@@ -42,14 +42,14 @@ fn _vals6(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64, v5: F
     return out^
 
 
-fn _dims2(a: Int, b: Int) -> List[Int]:
+def _dims2(a: Int, b: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _dims1(a: Int) -> List[Int]:
+def _dims1(a: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     return out^

@@ -192,35 +192,35 @@ from strategy.policy import (
 )
 
 
-fn _f0() -> List[Float64]:
+def _f0() -> List[Float64]:
     return List[Float64]()
 
 
-fn _f1(a: Float64) -> List[Float64]:
+def _f1(a: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a)
     return o^
 
 
-fn _f2(a: Float64, b: Float64) -> List[Float64]:
+def _f2(a: Float64, b: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a); o.append(b)
     return o^
 
 
-fn _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a); o.append(b); o.append(c)
     return o^
 
 
-fn _f4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def _f4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a); o.append(b); o.append(c); o.append(d)
     return o^
 
 
-fn _f6(
+def _f6(
     a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64
 ) -> List[Float64]:
     var o = List[Float64]()
@@ -228,7 +228,7 @@ fn _f6(
     return o^
 
 
-fn _f8(
+def _f8(
     a: Float64, b: Float64, c: Float64, d: Float64,
     e: Float64, f: Float64, g: Float64, h: Float64,
 ) -> List[Float64]:
@@ -238,20 +238,20 @@ fn _f8(
     return o^
 
 
-fn _i2(a: Int, b: Int) -> List[Int]:
+def _i2(a: Int, b: Int) -> List[Int]:
     var o = List[Int]()
     o.append(a); o.append(b)
     return o^
 
 
-fn _repeat_rows(n_rows: Int, a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _repeat_rows(n_rows: Int, a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var o = List[Float64]()
     for _ in range(n_rows):
         o.append(a); o.append(b); o.append(c)
     return o^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     var tol: Float64 = 1e-12

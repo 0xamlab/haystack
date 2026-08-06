@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt
 
 
-fn sphagnum_water_holding(
+def sphagnum_water_holding(
     dry_mass_g: Float64, saturated_mass_g: Float64
 ) -> Float64:
     """Water holding capacity of Sphagnum: WHC = (W_sat - W_dry) / W_dry.
@@ -33,7 +33,7 @@ fn sphagnum_water_holding(
     return (saturated_mass_g - dry_mass_g) / dry_mass_g
 
 
-fn moss_growth_rate(
+def moss_growth_rate(
     initial_mass_g: Float64, final_mass_g: Float64, days: Float64
 ) -> Float64:
     """Specific growth rate of moss: r = ln(m_f / m_i) / t.
@@ -51,7 +51,7 @@ fn moss_growth_rate(
     return log(final_mass_g / initial_mass_g) / days
 
 
-fn carbon_accumulation_peatland(
+def carbon_accumulation_peatland(
     npp_g_c_m2_yr: Float64, decomposition_g_c_m2_yr: Float64
 ) -> Float64:
     """Net carbon accumulation in peatland.
@@ -68,7 +68,7 @@ fn carbon_accumulation_peatland(
     return npp_g_c_m2_yr - decomposition_g_c_m2_yr
 
 
-fn bryophyte_desiccation_recovery(
+def bryophyte_desiccation_recovery(
     time_h: Float64, k_recovery: Float64, max_recovery: Float64
 ) -> Float64:
     """Photosynthetic recovery after rehydration (exponential).
@@ -86,7 +86,7 @@ fn bryophyte_desiccation_recovery(
     return max_recovery * (1.0 - exp(-k_recovery * time_h))
 
 
-fn nitrogen_deposition_effect(
+def nitrogen_deposition_effect(
     n_deposition_kg_ha_yr: Float64, optimal_n_kg_ha_yr: Float64
 ) -> Float64:
     """Sphagnum growth response to N deposition (hump-shaped simplified).
@@ -111,7 +111,7 @@ fn nitrogen_deposition_effect(
     return response
 
 
-fn moss_photosynthesis_rate(
+def moss_photosynthesis_rate(
     par_umol_m2_s: Float64, pmax: Float64, half_sat_par: Float64,
     water_potential_mpa: Float64
 ) -> Float64:
@@ -139,7 +139,7 @@ fn moss_photosynthesis_rate(
     return light_response * water_factor
 
 
-fn peat_accumulation_rate(
+def peat_accumulation_rate(
     productivity_mm_yr: Float64, humification_factor: Float64
 ) -> Float64:
     """Net peat accumulation rate considering humification.
@@ -156,7 +156,7 @@ fn peat_accumulation_rate(
     return productivity_mm_yr * (1.0 - humification_factor)
 
 
-fn sphagnum_acidity(
+def sphagnum_acidity(
     cation_exchange_capacity: Float64, base_saturation: Float64
 ) -> Float64:
     """Approximate pH from Sphagnum cation exchange characteristics.
@@ -173,7 +173,7 @@ fn sphagnum_acidity(
     return 3.0 + 2.0 * base_saturation / 100.0
 
 
-fn patch_colonisation_probability(
+def patch_colonisation_probability(
     spore_rain: Float64, substrate_suitability: Float64, moisture_factor: Float64
 ) -> Float64:
     """Probability of bryophyte patch colonisation.
@@ -194,7 +194,7 @@ fn patch_colonisation_probability(
     return p
 
 
-fn biomass_to_litter_ratio(
+def biomass_to_litter_ratio(
     standing_biomass_g_m2: Float64, annual_litter_g_m2_yr: Float64
 ) -> Float64:
     """Biomass-to-litter production ratio (inverse of turnover rate).

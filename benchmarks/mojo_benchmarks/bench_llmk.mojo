@@ -70,15 +70,15 @@ from llmk.generate import (
 from llmk.residual import residual_add_flat
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic values in roughly [-1, 1], so runs are comparable across machines."""
     var o = List[Float64](capacity=n)
     var s = seed
@@ -88,7 +88,7 @@ fn _pseudo(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
-fn _ref_argmax(v: List[Float64], n: Int) -> Int:
+def _ref_argmax(v: List[Float64], n: Int) -> Int:
     """Reference argmax: a bare linear scan, first-index-wins on a tie."""
     var best_i = 0
     var best_v = v[0]

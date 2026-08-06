@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn lbfgs_two_loop_scale(
+def lbfgs_two_loop_scale(
     s_dot_y: Float64, y_dot_y: Float64
 ) -> Float64:
     """L-BFGS initial Hessian scaling: H₀ = (sᵀy)/(yᵀy) × I.
@@ -34,7 +34,7 @@ fn lbfgs_two_loop_scale(
     return s_dot_y / y_dot_y
 
 
-fn adadelta_update(
+def adadelta_update(
     param: Float64, gradient: Float64,
     eg2: Float64, edx2: Float64,
     rho: Float64, eps: Float64
@@ -60,7 +60,7 @@ fn adadelta_update(
     return param + delta
 
 
-fn nadam_update(
+def nadam_update(
     param: Float64, m_hat: Float64, v_hat: Float64,
     gradient: Float64, beta1: Float64, lr: Float64, eps: Float64
 ) -> Float64:
@@ -84,7 +84,7 @@ fn nadam_update(
     return param - lr * nesterov_m / (sqrt(v_hat) + eps)
 
 
-fn sophia_hessian_clip(
+def sophia_hessian_clip(
     h_diag: Float64, rho: Float64
 ) -> Float64:
     """Sophia Hessian diagonal clipping.
@@ -103,7 +103,7 @@ fn sophia_hessian_clip(
     return h_diag
 
 
-fn sophia_update(
+def sophia_update(
     param: Float64, gradient: Float64, h_diag: Float64,
     lr: Float64, rho: Float64, weight_decay: Float64
 ) -> Float64:
@@ -126,7 +126,7 @@ fn sophia_update(
     return param - lr * gradient / h_clip - lr * weight_decay * param
 
 
-fn prodigy_d_estimate(
+def prodigy_d_estimate(
     s: Float64, g_sq_sum: Float64,
     d_prev: Float64, beta3: Float64
 ) -> Float64:
@@ -153,7 +153,7 @@ fn prodigy_d_estimate(
     return d_prev
 
 
-fn adan_update(
+def adan_update(
     param: Float64, m: Float64, v: Float64, n: Float64,
     gradient: Float64, prev_gradient: Float64,
     beta1: Float64, beta2: Float64, beta3: Float64,
@@ -189,7 +189,7 @@ fn adan_update(
     return param - lr * (new_m + (1.0 - beta2) * new_v) / (sqrt(new_n) + eps)
 
 
-fn schedule_free_update(
+def schedule_free_update(
     x: Float64, z: Float64, gradient: Float64,
     lr: Float64, beta: Float64, weight_decay: Float64
 ) -> Float64:
@@ -213,7 +213,7 @@ fn schedule_free_update(
     return (1.0 - beta) * z_new + beta * x
 
 
-fn muon_orthogonal_update(
+def muon_orthogonal_update(
     param: Float64, gradient: Float64, momentum: Float64,
     projection: Float64, lr: Float64, mu: Float64
 ) -> Float64:
@@ -238,7 +238,7 @@ fn muon_orthogonal_update(
     return param - lr * nesterov_g
 
 
-fn gradient_centralization(
+def gradient_centralization(
     gradient: Float64, gradient_mean: Float64
 ) -> Float64:
     """Gradient centralization: project gradient to have zero mean.

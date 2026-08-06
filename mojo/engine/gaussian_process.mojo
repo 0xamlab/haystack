@@ -30,7 +30,7 @@ alias _LOG_2PI = 1.8378770664093453
 # ── kernel functions ─────────────────────────────────────────────────────────
 
 
-fn kernel_rbf(r: Float64, lengthscale: Float64, signal_var: Float64) -> Float64:
+def kernel_rbf(r: Float64, lengthscale: Float64, signal_var: Float64) -> Float64:
     """RBF (squared-exponential) covariance at Euclidean distance r.
 
     k(r) = signal_var * exp(-r^2 / (2 * lengthscale^2)). Returns 0.0 when
@@ -42,7 +42,7 @@ fn kernel_rbf(r: Float64, lengthscale: Float64, signal_var: Float64) -> Float64:
     return signal_var * exp(-0.5 * z * z)
 
 
-fn kernel_matern32(
+def kernel_matern32(
     r: Float64, lengthscale: Float64, signal_var: Float64
 ) -> Float64:
     """Matern nu=3/2 covariance at Euclidean distance r.
@@ -56,7 +56,7 @@ fn kernel_matern32(
     return signal_var * (1.0 + z) * exp(-z)
 
 
-fn _kernel_from_r2(
+def _kernel_from_r2(
     r2: Float64, lengthscale: Float64, signal_var: Float64, kernel: Int
 ) -> Float64:
     """Dispatch on squared distance (avoids sqrt for RBF)."""
@@ -66,7 +66,7 @@ fn _kernel_from_r2(
     return kernel_matern32(sqrt(r2), lengthscale, signal_var)
 
 
-fn _sq_dist(
+def _sq_dist(
     a: List[Float64], ai: Int, b: List[Float64], bi: Int, dim: Int
 ) -> Float64:
     """Squared Euclidean distance between row ai of a and row bi of b."""
@@ -99,7 +99,7 @@ struct GPFit(Copyable, Movable):
     var jitter: Float64
     var ok: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.chol = List[Float64]()
         self.alpha = List[Float64]()
         self.n = 0
@@ -122,7 +122,7 @@ struct GPPrediction(Copyable, Movable):
     var variance: List[Float64]
     var ok: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.mean = List[Float64]()
         self.variance = List[Float64]()
         self.ok = False
@@ -131,7 +131,7 @@ struct GPPrediction(Copyable, Movable):
 # ── internal linear algebra ──────────────────────────────────────────────────
 
 
-fn _cholesky_lower(k_mat: List[Float64], n: Int, mut l_out: List[Float64]) -> Bool:
+def _cholesky_lower(k_mat: List[Float64], n: Int, mut l_out: List[Float64]) -> Bool:
     """Own Cholesky: K = L L^T for symmetric positive-definite K (row-major).
 
     Writes the lower factor into l_out (must be pre-sized n*n, zero-filled
@@ -151,7 +151,7 @@ fn _cholesky_lower(k_mat: List[Float64], n: Int, mut l_out: List[Float64]) -> Bo
     return True
 
 
-fn _forward_solve(l_mat: List[Float64], n: Int, b: List[Float64]) -> List[Float64]:
+def _forward_solve(l_mat: List[Float64], n: Int, b: List[Float64]) -> List[Float64]:
     """Solve L z = b for lower-triangular L (row-major n x n)."""
     var z = List[Float64](capacity=n)
     for i in range(n):
@@ -162,7 +162,7 @@ fn _forward_solve(l_mat: List[Float64], n: Int, b: List[Float64]) -> List[Float6
     return z^
 
 
-fn _backward_solve_t(l_mat: List[Float64], n: Int, b: List[Float64]) -> List[Float64]:
+def _backward_solve_t(l_mat: List[Float64], n: Int, b: List[Float64]) -> List[Float64]:
     """Solve L^T x = b for lower-triangular L (row-major n x n)."""
     var x = List[Float64](capacity=n)
     for _ in range(n):
@@ -178,7 +178,7 @@ fn _backward_solve_t(l_mat: List[Float64], n: Int, b: List[Float64]) -> List[Flo
 # ── gp_fit ───────────────────────────────────────────────────────────────────
 
 
-fn gp_fit(
+def gp_fit(
     x: List[Float64],
     y: List[Float64],
     dim: Int,
@@ -266,7 +266,7 @@ fn gp_fit(
 # ── gp_predict ───────────────────────────────────────────────────────────────
 
 
-fn gp_predict(
+def gp_predict(
     x_train: List[Float64], fit: GPFit, x_new: List[Float64]
 ) -> GPPrediction:
     """Posterior mean and variance at each row of x_new.
@@ -318,7 +318,7 @@ fn gp_predict(
 # ── gp_loglik ────────────────────────────────────────────────────────────────
 
 
-fn gp_loglik(fit: GPFit, y: List[Float64]) -> Float64:
+def gp_loglik(fit: GPFit, y: List[Float64]) -> Float64:
     """Log marginal likelihood of training targets y under the fitted GP.
 
     log p(y) = -1/2 y^T alpha - sum_i log L_ii - n/2 log(2 pi), evaluated

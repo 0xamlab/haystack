@@ -36,23 +36,23 @@ comptime _STATIC_FREEZE_MIN: Float64 = 0.85
 comptime _KEYFRAME_SCENE_RATE_MIN: Float64 = 0.20
 
 
-fn should_use_cached_video(is_duplicate_flag: Bool) -> Bool:
+def should_use_cached_video(is_duplicate_flag: Bool) -> Bool:
     return is_duplicate_flag
 
 
-fn needs_clearer_video(video_quality: Float64, flicker_score: Float64) -> Bool:
+def needs_clearer_video(video_quality: Float64, flicker_score: Float64) -> Bool:
     return video_quality < _VIDEO_QUALITY_MIN or flicker_score > _VIDEO_FLICKER_MAX
 
 
-fn quality_gate_passed_video(video_quality: Float64, flicker_score: Float64) -> Bool:
+def quality_gate_passed_video(video_quality: Float64, flicker_score: Float64) -> Bool:
     return not needs_clearer_video(video_quality, flicker_score)
 
 
-fn is_mostly_static_video(motion_score: Float64, freeze_ratio: Float64) -> Bool:
+def is_mostly_static_video(motion_score: Float64, freeze_ratio: Float64) -> Bool:
     return motion_score <= _STATIC_MOTION_MAX and freeze_ratio >= _STATIC_FREEZE_MIN
 
 
-fn should_extract_keyframes(scene_cut_rate: Float64, motion_score: Float64, intent_code: Int) -> Bool:
+def should_extract_keyframes(scene_cut_rate: Float64, motion_score: Float64, intent_code: Int) -> Bool:
     if intent_code == 1:
         return True
     if is_mostly_static_video(motion_score, 1.0):
@@ -60,7 +60,7 @@ fn should_extract_keyframes(scene_cut_rate: Float64, motion_score: Float64, inte
     return scene_cut_rate >= _KEYFRAME_SCENE_RATE_MIN
 
 
-fn route_video_request(
+def route_video_request(
     video_quality: Float64,
     motion_score: Float64,
     freeze_ratio: Float64,

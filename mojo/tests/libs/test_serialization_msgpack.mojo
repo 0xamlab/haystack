@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from serialization.msgpack import msgpack_encode_int, msgpack_encode_float, msgpack_encode_string, msgpack_encode_bool, msgpack_encode_nil, msgpack_encode_array_header, msgpack_encode_map_header
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

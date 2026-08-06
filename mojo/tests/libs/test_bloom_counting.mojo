@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bloom_counting import cb_create, cb_hash, cb_false_positive_rate, cb_optimal_hashes
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

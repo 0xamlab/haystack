@@ -60,7 +60,7 @@ comptime REF_PAST_END_M: Float64 = 10.44030650891055
 comptime REF_FOUR_DEG_M: Float64 = 444779.7065782349
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[geospatial.mapmatch]")

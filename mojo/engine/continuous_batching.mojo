@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn iteration_level_batch_size(
+def iteration_level_batch_size(
     available_kv_tokens: Float64, avg_seq_remaining: Float64
 ) -> Float64:
     """Maximum concurrent sequences in one decode iteration.
@@ -36,7 +36,7 @@ fn iteration_level_batch_size(
     return Float64(Int64(available_kv_tokens / avg_seq_remaining))
 
 
-fn preemption_score(
+def preemption_score(
     seq_priority: Float64, tokens_generated: Float64,
     kv_cache_tokens: Float64
 ) -> Float64:
@@ -60,7 +60,7 @@ fn preemption_score(
     return kv_cache_tokens / denom
 
 
-fn admission_control_accept(
+def admission_control_accept(
     request_kv_tokens: Float64, available_kv_tokens: Float64,
     safety_margin: Float64
 ) -> Float64:
@@ -80,7 +80,7 @@ fn admission_control_accept(
     return 0.0
 
 
-fn chunked_prefill_chunks(
+def chunked_prefill_chunks(
     prompt_len: Float64, chunk_size: Float64
 ) -> Float64:
     """Number of chunks for chunked prefill.
@@ -99,7 +99,7 @@ fn chunked_prefill_chunks(
     return Float64(Int64((prompt_len + chunk_size - 1.0) / chunk_size))
 
 
-fn decode_throughput_tokens(
+def decode_throughput_tokens(
     batch_size: Float64, decode_latency_ms: Float64
 ) -> Float64:
     """Decode-phase token throughput (tokens/sec).
@@ -118,7 +118,7 @@ fn decode_throughput_tokens(
     return batch_size / (decode_latency_ms / 1000.0)
 
 
-fn streaming_first_token_latency(
+def streaming_first_token_latency(
     prompt_len: Float64, prefill_throughput_tps: Float64
 ) -> Float64:
     """Time-to-first-token (TTFT) estimate.
@@ -137,7 +137,7 @@ fn streaming_first_token_latency(
     return prompt_len / prefill_throughput_tps
 
 
-fn sequence_completion_fraction(
+def sequence_completion_fraction(
     completed: Float64, total_running: Float64
 ) -> Float64:
     """Fraction of running sequences completed this iteration.
@@ -154,7 +154,7 @@ fn sequence_completion_fraction(
     return completed / total_running
 
 
-fn head_of_line_blocking_score(
+def head_of_line_blocking_score(
     longest_wait_ms: Float64, avg_wait_ms: Float64
 ) -> Float64:
     """Head-of-line blocking severity.
@@ -173,7 +173,7 @@ fn head_of_line_blocking_score(
     return longest_wait_ms / avg_wait_ms
 
 
-fn beam_memory_per_request(
+def beam_memory_per_request(
     beam_width: Float64, max_seq_len: Float64,
     n_layers: Float64, n_heads: Float64,
     head_dim: Float64, dtype_bytes: Float64
@@ -197,7 +197,7 @@ fn beam_memory_per_request(
     return beam_width * per_beam
 
 
-fn batching_efficiency(
+def batching_efficiency(
     actual_compute: Float64, theoretical_max_compute: Float64
 ) -> Float64:
     """Batch compute utilization: actual vs maximum possible.

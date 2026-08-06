@@ -92,7 +92,7 @@ comptime CSR_LAYOUT_COL: Int = 1
 comptime MAX_CSR_DIM: Int = 1 << 26
 
 
-fn dims_fit(rows: Int, cols: Int, length: Int) -> Bool:
+def dims_fit(rows: Int, cols: Int, length: Int) -> Bool:
     """True when `rows` and `cols` are a sane shape for exactly `length` dense cells.
 
     Written with a DIVISION rather than `rows * cols == length`, because that product is a
@@ -117,7 +117,7 @@ fn dims_fit(rows: Int, cols: Int, length: Int) -> Bool:
     return rows * cols == length
 
 
-fn csr_status_name(code: Int) -> String:
+def csr_status_name(code: Int) -> String:
     """Name for a status code, so an error surfaces the defect and not a bare number."""
     if code == CSR_OK:
         return "ok"
@@ -157,11 +157,11 @@ struct CSRMatrix(Copyable, Movable):
     var coalesced: Bool
     var sorted_indices: Bool
 
-    fn nnz(self) -> Int:
+    def nnz(self) -> Int:
         """Stored values, including duplicates and explicit zeros — as COO counts."""
         return len(self.values)
 
-    fn row_nnz(self, row: Int) -> Int:
+    def row_nnz(self, row: Int) -> Int:
         """Stored values in one row, or 0 for a row this matrix does not have.
 
         Returns 0 rather than a negative span for a non-monotonic `indptr`: callers use
@@ -174,7 +174,7 @@ struct CSRMatrix(Copyable, Movable):
             return 0
         return span
 
-    fn is_canonical(self) -> Bool:
+    def is_canonical(self) -> Bool:
         """Sorted within each row and free of duplicate coordinates."""
         return self.coalesced and self.sorted_indices
 
@@ -196,10 +196,10 @@ struct CSCMatrix(Copyable, Movable):
     var coalesced: Bool
     var sorted_indices: Bool
 
-    fn nnz(self) -> Int:
+    def nnz(self) -> Int:
         return len(self.values)
 
-    fn col_nnz(self, col: Int) -> Int:
+    def col_nnz(self, col: Int) -> Int:
         if col < 0 or col + 1 >= len(self.colptr):
             return 0
         var span = self.colptr[col + 1] - self.colptr[col]
@@ -208,7 +208,7 @@ struct CSCMatrix(Copyable, Movable):
         return span
 
 
-fn csr_empty(nrows: Int, ncols: Int) -> CSRMatrix:
+def csr_empty(nrows: Int, ncols: Int) -> CSRMatrix:
     """An all-zero CSR. Trivially sorted and coalesced: it stores nothing."""
     var rows = nrows
     if rows < 0:
@@ -224,7 +224,7 @@ fn csr_empty(nrows: Int, ncols: Int) -> CSRMatrix:
     )
 
 
-fn csc_empty(nrows: Int, ncols: Int) -> CSCMatrix:
+def csc_empty(nrows: Int, ncols: Int) -> CSCMatrix:
     var rows = nrows
     if rows < 0:
         rows = 0
@@ -297,7 +297,7 @@ struct CSRIntsResult(Copyable, Movable):
     var values: List[Int]
 
 
-fn _result_invalid(status: Int, layout: Int) -> CSRResult:
+def _result_invalid(status: Int, layout: Int) -> CSRResult:
     """No matrix. Zero shape, so an ignored status cannot be read as a real matrix."""
     return CSRResult(
         status,
@@ -314,7 +314,7 @@ fn _result_invalid(status: Int, layout: Int) -> CSRResult:
     )
 
 
-fn _result_from_csr(
+def _result_from_csr(
     m: CSRMatrix, status: Int, skipped: Int
 ) -> CSRResult:
     return CSRResult(
@@ -332,7 +332,7 @@ fn _result_from_csr(
     )
 
 
-fn _result_from_csc(c: CSCMatrix, status: Int) -> CSRResult:
+def _result_from_csc(c: CSCMatrix, status: Int) -> CSRResult:
     return CSRResult(
         status,
         CSR_LAYOUT_COL,
@@ -348,7 +348,7 @@ fn _result_from_csc(c: CSCMatrix, status: Int) -> CSRResult:
     )
 
 
-fn csr_from_arrays(
+def csr_from_arrays(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -374,7 +374,7 @@ fn csr_from_arrays(
     )
 
 
-fn csc_from_arrays(
+def csc_from_arrays(
     colptr: List[Int],
     row_indices: List[Int],
     values: List[Float64],
@@ -404,7 +404,7 @@ fn csc_from_arrays(
 # ── validation ────────────────────────────────────────────────────────────────
 
 
-fn csr_validate_flat(
+def csr_validate_flat(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -458,12 +458,12 @@ fn csr_validate_flat(
     return CSR_OK
 
 
-fn csr_validate(m: CSRMatrix) -> Int:
+def csr_validate(m: CSRMatrix) -> Int:
     """`CSR_OK` or the first defect's code. Flags are not checked: they are claims."""
     return csr_validate_flat(m.indptr, m.indices, m.values, m.nrows, m.ncols)
 
 
-fn csc_validate(c: CSCMatrix) -> Int:
+def csc_validate(c: CSCMatrix) -> Int:
     """CSC soundness. A valid CSC is exactly a valid CSR of the transpose, so the row
     checks are reused rather than restated — one implementation, one behaviour."""
     return csr_validate_flat(
@@ -474,7 +474,7 @@ fn csc_validate(c: CSCMatrix) -> Int:
 # ── transpose, and the sort it gives away ─────────────────────────────────────
 
 
-fn _transpose_unchecked(m: CSRMatrix) -> CSRMatrix:
+def _transpose_unchecked(m: CSRMatrix) -> CSRMatrix:
     """Transpose by counting sort. Caller must have validated `m`.
 
     Two passes over nnz and one over ncols; no comparison sort. Because source rows are
@@ -519,14 +519,14 @@ fn _transpose_unchecked(m: CSRMatrix) -> CSRMatrix:
     )
 
 
-fn csr_transpose(m: CSRMatrix) -> CSRMatrix:
+def csr_transpose(m: CSRMatrix) -> CSRMatrix:
     """A^T in CSR. An invalid matrix has no transpose: the 0x0 empty is returned."""
     if csr_validate(m) != CSR_OK:
         return csr_empty(0, 0)
     return _transpose_unchecked(m)
 
 
-fn csr_sort_indices(m: CSRMatrix) -> CSRMatrix:
+def csr_sort_indices(m: CSRMatrix) -> CSRMatrix:
     """Column indices ascending within each row, values moved with them.
 
     Implemented as two transposes rather than a per-row sort: the counting sort inside
@@ -542,7 +542,7 @@ fn csr_sort_indices(m: CSRMatrix) -> CSRMatrix:
     return _transpose_unchecked(_transpose_unchecked(m))
 
 
-fn csr_coalesce(m: CSRMatrix) -> CSRMatrix:
+def csr_coalesce(m: CSRMatrix) -> CSRMatrix:
     """Sort each row and sum duplicate coordinates. Idempotent.
 
     Idempotent by construction, not by luck: the output asserts both flags, and an input
@@ -585,7 +585,7 @@ fn csr_coalesce(m: CSRMatrix) -> CSRMatrix:
 # ── CSC ───────────────────────────────────────────────────────────────────────
 
 
-fn csc_from_csr(m: CSRMatrix) -> CSCMatrix:
+def csc_from_csr(m: CSRMatrix) -> CSCMatrix:
     """CSC of the same matrix, making column access O(1) per column.
 
     The arrays are those of A^T in CSR — that identity is what makes this O(nnz) — but
@@ -605,7 +605,7 @@ fn csc_from_csr(m: CSRMatrix) -> CSCMatrix:
     )
 
 
-fn csr_from_csc(c: CSCMatrix) -> CSRMatrix:
+def csr_from_csc(c: CSCMatrix) -> CSRMatrix:
     """CSR of the same matrix. Inverse of `csc_from_csr` for a valid input."""
     if csc_validate(c) != CSR_OK:
         return csr_empty(0, 0)
@@ -631,7 +631,7 @@ fn csr_from_csc(c: CSCMatrix) -> CSRMatrix:
 # the triplet driver from an SDK.
 
 
-fn csr_from_coo(mat: SparseMatrixCOO) -> CSRMatrix:
+def csr_from_coo(mat: SparseMatrixCOO) -> CSRMatrix:
     """CSR from the frozen COO builder. Duplicates sum; out-of-range entries drop.
 
     Summing duplicates is not a choice made here — it is `to_dense`'s `+=`, and this
@@ -680,7 +680,7 @@ fn csr_from_coo(mat: SparseMatrixCOO) -> CSRMatrix:
     return csr_coalesce(grouped)
 
 
-fn csr_to_coo(m: CSRMatrix) -> SparseMatrixCOO:
+def csr_to_coo(m: CSRMatrix) -> SparseMatrixCOO:
     """COO with one entry per stored value, row-major. Empty 0x0 if `m` is invalid.
 
     Built through the frozen `add_entry` so the entry list is assembled the one way the
@@ -695,7 +695,7 @@ fn csr_to_coo(m: CSRMatrix) -> SparseMatrixCOO:
     return out^
 
 
-fn csr_from_dense(
+def csr_from_dense(
     dense: List[Float64], rows: Int, cols: Int, tol: Float64 = 1e-15
 ) -> CSRMatrix:
     """CSR from a flat row-major dense matrix; `|v| < tol` is not stored.
@@ -727,7 +727,7 @@ fn csr_from_dense(
     return csr_from_coo(shaped)
 
 
-fn csr_to_dense(m: CSRMatrix) -> List[Float64]:
+def csr_to_dense(m: CSRMatrix) -> List[Float64]:
     """Flat row-major dense image, or an empty list if `m` is invalid.
 
     Routed through the frozen `to_dense` instead of scattering here, so that the
@@ -750,7 +750,7 @@ fn csr_to_dense(m: CSRMatrix) -> List[Float64]:
 # ── slicing and multiply ──────────────────────────────────────────────────────
 
 
-fn csr_row_slice(m: CSRMatrix, row: Int) -> SparseSlice:
+def csr_row_slice(m: CSRMatrix, row: Int) -> SparseSlice:
     """One row's (indices, values). O(row_nnz), which is why CSR exists."""
     if csr_validate(m) != CSR_OK:
         return SparseSlice(
@@ -769,7 +769,7 @@ fn csr_row_slice(m: CSRMatrix, row: Int) -> SparseSlice:
     return SparseSlice(CSR_OK, row, count, indices^, values^)
 
 
-fn csc_col_slice(c: CSCMatrix, col: Int) -> SparseSlice:
+def csc_col_slice(c: CSCMatrix, col: Int) -> SparseSlice:
     """One column's (row indices, values). O(col_nnz)."""
     if csc_validate(c) != CSR_OK:
         return SparseSlice(
@@ -788,7 +788,7 @@ fn csc_col_slice(c: CSCMatrix, col: Int) -> SparseSlice:
     return SparseSlice(CSR_OK, col, count, indices^, values^)
 
 
-fn csr_matvec(m: CSRMatrix, x: List[Float64]) -> CSRVectorResult:
+def csr_matvec(m: CSRMatrix, x: List[Float64]) -> CSRVectorResult:
     """A @ x, one contiguous pass per row.
 
     A vector of the wrong length has no product; returning the partial sums that fit
@@ -810,7 +810,7 @@ fn csr_matvec(m: CSRMatrix, x: List[Float64]) -> CSRVectorResult:
     return CSRVectorResult(CSR_OK, count, out^)
 
 
-fn csr_row_counts(m: CSRMatrix) -> List[Int]:
+def csr_row_counts(m: CSRMatrix) -> List[Int]:
     """Stored values per row, or an empty list if `m` is invalid."""
     if csr_validate(m) != CSR_OK:
         return List[Int]()
@@ -826,7 +826,7 @@ fn csr_row_counts(m: CSRMatrix) -> List[Int]:
 # type; see docs/mojo/new-kernel-package-rules.md rule 2.
 
 
-fn csr_build_from_triplets(
+def csr_build_from_triplets(
     rows: List[Int],
     cols: List[Int],
     vals: List[Float64],
@@ -862,7 +862,7 @@ fn csr_build_from_triplets(
     return _result_from_csr(csr_from_coo(coo), CSR_OK, skipped)
 
 
-fn csr_from_dense_driver(
+def csr_from_dense_driver(
     dense: List[Float64], rows: Int, cols: Int, tol: Float64
 ) -> CSRResult:
     """CSR from a flat row-major dense matrix, with a status for a shape mismatch.
@@ -878,7 +878,7 @@ fn csr_from_dense_driver(
     return _result_from_csr(csr_from_dense(dense, rows, cols, tol), CSR_OK, 0)
 
 
-fn csr_to_dense_driver(
+def csr_to_dense_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -907,7 +907,7 @@ fn csr_to_dense_driver(
     return CSRVectorResult(CSR_OK, count, dense^)
 
 
-fn csr_transpose_driver(
+def csr_transpose_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -930,7 +930,7 @@ fn csr_transpose_driver(
     return _result_from_csr(_transpose_unchecked(m), CSR_OK, 0)
 
 
-fn csr_coalesce_driver(
+def csr_coalesce_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -953,7 +953,7 @@ fn csr_coalesce_driver(
     return _result_from_csr(csr_coalesce(m), CSR_OK, 0)
 
 
-fn csr_sort_indices_driver(
+def csr_sort_indices_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -976,7 +976,7 @@ fn csr_sort_indices_driver(
     return _result_from_csr(csr_sort_indices(m), CSR_OK, 0)
 
 
-fn csc_from_csr_driver(
+def csc_from_csr_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -999,7 +999,7 @@ fn csc_from_csr_driver(
     return _result_from_csc(csc_from_csr(m), CSR_OK)
 
 
-fn csr_from_csc_driver(
+def csr_from_csc_driver(
     colptr: List[Int],
     row_indices: List[Int],
     values: List[Float64],
@@ -1022,7 +1022,7 @@ fn csr_from_csc_driver(
     return _result_from_csr(csr_from_csc(c), CSR_OK, 0)
 
 
-fn csr_row_slice_driver(
+def csr_row_slice_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1044,7 +1044,7 @@ fn csr_row_slice_driver(
     )
 
 
-fn csc_col_slice_driver(
+def csc_col_slice_driver(
     colptr: List[Int],
     row_indices: List[Int],
     values: List[Float64],
@@ -1066,7 +1066,7 @@ fn csc_col_slice_driver(
     )
 
 
-fn csr_matvec_driver(
+def csr_matvec_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1089,7 +1089,7 @@ fn csr_matvec_driver(
     )
 
 
-fn csr_row_counts_driver(
+def csr_row_counts_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],

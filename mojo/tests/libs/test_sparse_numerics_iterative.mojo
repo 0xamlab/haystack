@@ -69,7 +69,7 @@ from sparse_numerics.iterative import (
 # ── builders (List has no `+`, and List[Int](3) is not a one-element list) ─────
 
 
-fn _ints(a: Int, b: Int, c: Int) -> List[Int]:
+def _ints(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -77,14 +77,14 @@ fn _ints(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _ints2(a: Int, b: Int) -> List[Int]:
+def _ints2(a: Int, b: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _five_ints() -> List[Int]:
+def _five_ints() -> List[Int]:
     """The generated A-Z suite's sample List[Int]: 1..5. Not a valid indptr."""
     var out = List[Int]()
     for i in range(5):
@@ -92,7 +92,7 @@ fn _five_ints() -> List[Int]:
     return out^
 
 
-fn _five_floats() -> List[Float64]:
+def _five_floats() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.5)
     out.append(0.6)
@@ -102,28 +102,28 @@ fn _five_floats() -> List[Float64]:
     return out^
 
 
-fn _ones(n: Int) -> List[Float64]:
+def _ones(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(1.0)
     return out^
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _vec_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _vec_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -132,7 +132,7 @@ fn _vec_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     return True
 
 
-fn _laplacian(n: Int) -> CSRMatrix:
+def _laplacian(n: Int) -> CSRMatrix:
     """1D Dirichlet Laplacian: 2 on the diagonal, -1 either side. SPD for every n."""
     var indptr = List[Int]()
     var indices = List[Int]()
@@ -151,7 +151,7 @@ fn _laplacian(n: Int) -> CSRMatrix:
     return csr_from_arrays(indptr, indices, values, n, n)
 
 
-fn _laplacian_exact(n: Int) -> List[Float64]:
+def _laplacian_exact(n: Int) -> List[Float64]:
     """Solution of L x = 1: x_i = (i+1)(n-i)/2. For n=5: [2.5, 4, 4.5, 4, 2.5]."""
     var out = List[Float64]()
     for i in range(n):
@@ -159,14 +159,14 @@ fn _laplacian_exact(n: Int) -> List[Float64]:
     return out^
 
 
-fn _dense_solve(m: CSRMatrix, b: List[Float64]) -> List[Float64]:
+def _dense_solve(m: CSRMatrix, b: List[Float64]) -> List[Float64]:
     """The frozen dense oracle: Gaussian elimination on the dense image of m."""
     var dense = csr_to_dense(m)
     var a = mat_from_list(dense, m.nrows, m.ncols)
     return mat_solve(a, b)
 
 
-fn _nonsymmetric() -> CSRMatrix:
+def _nonsymmetric() -> CSRMatrix:
     """[[2,1,0],[0,3,1],[1,0,4]]. 2x+y=1, 3y+z=2, x+4z=3 -> x=[0.28,0.44,0.68]."""
     var dense = List[Float64]()
     dense.append(2.0)
@@ -181,7 +181,7 @@ fn _nonsymmetric() -> CSRMatrix:
     return csr_from_dense(dense, 3, 3)
 
 
-fn _indefinite() -> CSRMatrix:
+def _indefinite() -> CSRMatrix:
     """[[1,2],[2,1]] — symmetric, eigenvalues 3 and -1, so not positive definite."""
     var dense = List[Float64]()
     dense.append(1.0)
@@ -191,7 +191,7 @@ fn _indefinite() -> CSRMatrix:
     return csr_from_dense(dense, 2, 2)
 
 
-fn _design() -> CSRMatrix:
+def _design() -> CSRMatrix:
     """[[1,0],[1,1],[1,2]] — the design matrix of a straight-line fit, 3x2."""
     var dense = List[Float64]()
     dense.append(1.0)
@@ -203,7 +203,7 @@ fn _design() -> CSRMatrix:
     return csr_from_dense(dense, 3, 2)
 
 
-fn _sgs_operator_apply(
+def _sgs_operator_apply(
     m: CSRMatrix, z: List[Float64]
 ) -> List[Float64]:
     """M z for M = (D+L) D^-1 (D+U), from the dense image — the differential oracle.
@@ -233,21 +233,21 @@ fn _sgs_operator_apply(
     return out^
 
 
-fn _twos() -> List[Float64]:
+def _twos() -> List[Float64]:
     var out = List[Float64]()
     for _ in range(5):
         out.append(2.0)
     return out^
 
 
-fn _twos_2() -> List[Float64]:
+def _twos_2() -> List[Float64]:
     var out = List[Float64]()
     out.append(2.0)
     out.append(2.0)
     return out^
 
 
-fn _laplacian_zero_row() -> List[Float64]:
+def _laplacian_zero_row() -> List[Float64]:
     """Values for [[2, 0], [0, 3]] stored as (0,0)=2, (0,1)=0 explicitly, (1,1)=3.
 
     The explicit zero at (0,1) has no counterpart stored at (1,0), which is the
@@ -260,7 +260,7 @@ fn _laplacian_zero_row() -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

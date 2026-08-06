@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from generation_loop import temperature_logit_scale, top_k_accept, top_p_cumulative_accept, min_p_accept, repetition_penalty_logit, presence_penalty_logit, frequency_penalty_logit, eos_stop_score, eta_sampling_accept, typical_sampling_accept
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

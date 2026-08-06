@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from continuous_batching import iteration_level_batch_size, preemption_score, admission_control_accept, chunked_prefill_chunks, decode_throughput_tokens, streaming_first_token_latency, sequence_completion_fraction, head_of_line_blocking_score, beam_memory_per_request, batching_efficiency
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

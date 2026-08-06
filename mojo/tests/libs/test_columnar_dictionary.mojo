@@ -44,25 +44,25 @@ from columnar.dictionary import (
 )
 
 
-fn _strings(items: List[String]) -> List[String]:
+def _strings(items: List[String]) -> List[String]:
     return items.copy()
 
 
-fn _all_true(n: Int) -> List[Bool]:
+def _all_true(n: Int) -> List[Bool]:
     var mask = List[Bool]()
     for _ in range(n):
         mask.append(True)
     return mask^
 
 
-fn _is_nan_pattern(key: UInt64) -> Bool:
+def _is_nan_pattern(key: UInt64) -> Bool:
     """True when `key`'s bits are a NaN, i.e. `normalize_bits` will collapse them."""
     return (key & 0x7FF0000000000000) == 0x7FF0000000000000 and (
         key & 0x000FFFFFFFFFFFFF
     ) != 0
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

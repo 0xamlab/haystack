@@ -50,11 +50,11 @@ from algenta_runtime.session import ResidentDatasets
 from runtime_library_dispatch_generated import dispatch_runtime_library
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 
-fn _count_occurrences(haystack: String, needle: String) -> Int:
+def _count_occurrences(haystack: String, needle: String) -> Int:
     """Count non-overlapping occurrences by byte scan.
 
     `String` has no slice operator here and the byte-level scan is the idiom the tree already uses
@@ -82,7 +82,7 @@ fn _count_occurrences(haystack: String, needle: String) -> Int:
     return count
 
 
-fn _unary(mod_name: String, fn_name: String, arg_json: String) -> String:
+def _unary(mod_name: String, fn_name: String, arg_json: String) -> String:
     """One `library_execute`-shaped call, exactly as the unary path builds it."""
     return (
         String('{"module":"')
@@ -146,7 +146,7 @@ def main() raises:
     frame += '],"partial_ok":true}'
 
     var t1 = perf_counter_ns()
-    var batched = run_batch_execute[dispatch_runtime_library](frame, datasets)
+    var batched = run_batch_execute(dispatch_runtime_library, frame, datasets)
     var batch_ns = _ns_since(t1)
 
     print("")

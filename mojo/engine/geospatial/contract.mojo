@@ -205,7 +205,7 @@ comptime GEO_MAX_LON_DEG: Float64 = 180.0
 comptime GEO_BOUND_SLACK: Float64 = 1.0e-9
 
 
-fn geo_status_name(code: Int) -> String:
+def geo_status_name(code: Int) -> String:
     """The name of a status code, so a failure surfaces the defect and not a bare number.
 
     @capability geo_status_name
@@ -264,7 +264,7 @@ fn geo_status_name(code: Int) -> String:
     return "unknown_status"
 
 
-fn geo_frame_name(frame: Int) -> String:
+def geo_frame_name(frame: Int) -> String:
     """The name of a frame tag, including its axis order — the order IS the meaning.
 
     @capability geo_frame_name
@@ -281,7 +281,7 @@ fn geo_frame_name(frame: Int) -> String:
     return "unknown_frame"
 
 
-fn geo_metric_name(metric: Int) -> String:
+def geo_metric_name(metric: Int) -> String:
     """The name of a metric tag, and therefore of the frozen kernel it dispatches to.
 
     @capability geo_metric_name
@@ -298,7 +298,7 @@ fn geo_metric_name(metric: Int) -> String:
     return "unknown_metric"
 
 
-fn geo_finite(v: Float64) -> Bool:
+def geo_finite(v: Float64) -> Bool:
     """True for a value the dispatch can serialise. NaN and both infinities are not.
 
     @capability geo_finite
@@ -309,7 +309,7 @@ fn geo_finite(v: Float64) -> Bool:
     return not (isnan(v) or isinf(v))
 
 
-fn geo_finite_or_zero(v: Float64) -> Float64:
+def geo_finite_or_zero(v: Float64) -> Float64:
     """`v` when representable, else `0.0`.
 
     Called at EVERY struct construction site in this package. The dispatch refuses a
@@ -328,7 +328,7 @@ fn geo_finite_or_zero(v: Float64) -> Float64:
     return 0.0
 
 
-fn geo_is_degree_frame(frame: Int) -> Bool:
+def geo_is_degree_frame(frame: Int) -> Bool:
     """True for the two angular frames. `PLANE_M` is metric and shares no comparison.
 
     @capability geo_is_degree_frame
@@ -339,7 +339,7 @@ fn geo_is_degree_frame(frame: Int) -> Bool:
     return frame == GEO_FRAME_LONLAT_DEG or frame == GEO_FRAME_LATLON_DEG
 
 
-fn geo_frame_defect(frame: Int) -> Int:
+def geo_frame_defect(frame: Int) -> Int:
     """`GEO_OK` for a known frame tag, else `GEO_ERR_FRAME`.
 
     A frame tag is not defaulted anywhere in this package. Defaulting it would mean
@@ -355,7 +355,7 @@ fn geo_frame_defect(frame: Int) -> Int:
     return GEO_OK
 
 
-fn geo_metric_defect(frame: Int, metric: Int) -> Int:
+def geo_metric_defect(frame: Int, metric: Int) -> Int:
     """Whether `metric` is defined for coordinates in `frame`.
 
     This is where "refuse mixed units" is actually enforced. Handing degrees to a
@@ -383,7 +383,7 @@ fn geo_metric_defect(frame: Int, metric: Int) -> Int:
     return GEO_OK
 
 
-fn geo_lat_of(x: Float64, y: Float64, frame: Int) -> Float64:
+def geo_lat_of(x: Float64, y: Float64, frame: Int) -> Float64:
     """The LATITUDE of a pair, given the frame. Returns 0.0 for a projected pair.
 
     Every latitude read in this package goes through here rather than through a local
@@ -403,7 +403,7 @@ fn geo_lat_of(x: Float64, y: Float64, frame: Int) -> Float64:
     return 0.0
 
 
-fn geo_lon_of(x: Float64, y: Float64, frame: Int) -> Float64:
+def geo_lon_of(x: Float64, y: Float64, frame: Int) -> Float64:
     """The LONGITUDE of a pair, given the frame. Returns 0.0 for a projected pair.
 
     @capability geo_lon_of
@@ -418,7 +418,7 @@ fn geo_lon_of(x: Float64, y: Float64, frame: Int) -> Float64:
     return 0.0
 
 
-fn geo_pair_range_defect(x: Float64, y: Float64, frame: Int) -> Int:
+def geo_pair_range_defect(x: Float64, y: Float64, frame: Int) -> Int:
     """`GEO_OK` when both components are finite and inside their own slot's range.
 
     The range test is per-SLOT, not per-value: in `LONLAT_DEG` the legal band for `x` is
@@ -450,7 +450,7 @@ fn geo_pair_range_defect(x: Float64, y: Float64, frame: Int) -> Int:
     return GEO_ERR_FRAME
 
 
-fn geo_points_defect(
+def geo_points_defect(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int, ceiling: Int
 ) -> Int:
     """The single gate every driver in this package calls before it indexes anything.
@@ -496,7 +496,7 @@ fn geo_points_defect(
     return GEO_OK
 
 
-fn geo_normalise_lon(lon: Float64) -> Float64:
+def geo_normalise_lon(lon: Float64) -> Float64:
     """A longitude folded into [-180, 180]. Non-finite in, `0.0` out.
 
     Written as a bounded loop rather than `lon - 360 * floor((lon + 180) / 360)` because
@@ -523,7 +523,7 @@ fn geo_normalise_lon(lon: Float64) -> Float64:
     return out
 
 
-fn geo_lon_delta(from_lon: Float64, to_lon: Float64) -> Float64:
+def geo_lon_delta(from_lon: Float64, to_lon: Float64) -> Float64:
     """The SHORTEST signed longitude step from one meridian to another, in (-180, 180].
 
     A ring stored as raw longitudes cannot say whether 179 -> -179 is a 2-degree step east
@@ -540,7 +540,7 @@ fn geo_lon_delta(from_lon: Float64, to_lon: Float64) -> Float64:
     return geo_normalise_lon(to_lon - from_lon)
 
 
-fn geo_m_per_deg_lon_lower(lat_a_deg: Float64, lat_b_deg: Float64) -> Float64:
+def geo_m_per_deg_lon_lower(lat_a_deg: Float64, lat_b_deg: Float64) -> Float64:
     """A LOWER bound on metres per degree of longitude anywhere in [lat_a, lat_b].
 
     Metres per degree of longitude is `GEO_M_PER_DEG * cos(lat)`, which is largest at the
@@ -572,7 +572,7 @@ fn geo_m_per_deg_lon_lower(lat_a_deg: Float64, lat_b_deg: Float64) -> Float64:
     return GEO_M_PER_DEG * c
 
 
-fn geo_gap_lower_m(
+def geo_gap_lower_m(
     gap_coord: Float64, frame: Int, lat_a_deg: Float64, lat_b_deg: Float64
 ) -> Float64:
     """A RIGOROUS lower bound, in metres, on the distance between two points whose
@@ -654,7 +654,7 @@ fn geo_gap_lower_m(
     return out
 
 
-fn geo_degree_box_half(radius_m: Float64, lat_deg: Float64) -> Float64:
+def geo_degree_box_half(radius_m: Float64, lat_deg: Float64) -> Float64:
     """Half-width in DEGREES OF LONGITUDE that certainly covers `radius_m` at this latitude.
 
     The one definition in the package, called by `join` and by `mapmatch`, because a search
@@ -691,7 +691,7 @@ fn geo_degree_box_half(radius_m: Float64, lat_deg: Float64) -> Float64:
     return half
 
 
-fn geo_offsets_defect(offsets: List[Int], n_groups: Int, n_items: Int, ceiling: Int) -> Int:
+def geo_offsets_defect(offsets: List[Int], n_groups: Int, n_items: Int, ceiling: Int) -> Int:
     """Whether a CSR-style group-offsets array is sound: `n_groups + 1` monotone entries.
 
     Rings in a multipolygon and polylines in a network both arrive as one flat coordinate
@@ -729,7 +729,7 @@ fn geo_offsets_defect(offsets: List[Int], n_groups: Int, n_items: Int, ceiling: 
     return GEO_OK
 
 
-fn geo_cells_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
+def geo_cells_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
     """True when `rows * cols` is a sane cell count at or below `ceiling`.
 
     Written with a DIVISION, following `sparse_numerics.csr.dims_fit`, because

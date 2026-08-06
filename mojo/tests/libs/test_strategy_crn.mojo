@@ -172,7 +172,7 @@ comptime TIE_SIGMA_BAND: Float64 = 3.0
 comptime RATIO_FLOOR: Float64 = 100.0
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[strategy.crn] known-value suite")

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from rheology import shear_stress, shear_rate, dynamic_viscosity, power_law_viscosity, bingham_yield_stress, reynolds_number_non_newton, creep_compliance, stress_relaxation_modulus, viscosity_arrhenius, thixotropy_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

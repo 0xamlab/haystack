@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp, cos
 
 
-fn virtual_geomagnetic_pole_lat(inclination_deg: Float64) -> Float64:
+def virtual_geomagnetic_pole_lat(inclination_deg: Float64) -> Float64:
     """Paleolatitude from magnetic inclination: tan(I) = 2·tan(λ).
 
     Args:
@@ -32,17 +32,17 @@ fn virtual_geomagnetic_pole_lat(inclination_deg: Float64) -> Float64:
     return lambda_rad * 180.0 / pi
 
 
-fn sin_approx(x: Float64) -> Float64:
+def sin_approx(x: Float64) -> Float64:
     var x2 = x * x
     return x * (1.0 - x2 / 6.0 + x2 * x2 / 120.0)
 
 
-fn cos_approx(x: Float64) -> Float64:
+def cos_approx(x: Float64) -> Float64:
     var x2 = x * x
     return 1.0 - x2 / 2.0 + x2 * x2 / 24.0
 
 
-fn atan_approx(x: Float64) -> Float64:
+def atan_approx(x: Float64) -> Float64:
     if x < 0.0:
         return -atan_approx(-x)
     if x > 1.0:
@@ -52,7 +52,7 @@ fn atan_approx(x: Float64) -> Float64:
     return x * (1.0 - x2 / 3.0 + x2 * x2 / 5.0 - x2 * x2 * x2 / 7.0)
 
 
-fn paleolatitude(inclination_deg: Float64) -> Float64:
+def paleolatitude(inclination_deg: Float64) -> Float64:
     """Paleolatitude from paleomagnetic inclination (dipole formula).
 
     tan(I) = 2·tan(λ)  →  λ = atan(tan(I)/2)
@@ -69,7 +69,7 @@ fn paleolatitude(inclination_deg: Float64) -> Float64:
     return atan_approx(tan_i / 2.0) * 180.0 / pi
 
 
-fn geomagnetic_intensity(
+def geomagnetic_intensity(
     nrm: Float64, susceptibility: Float64
 ) -> Float64:
     """Relative paleointensity proxy: RPI = NRM / χ.
@@ -86,7 +86,7 @@ fn geomagnetic_intensity(
     return nrm / susceptibility
 
 
-fn declination_correction(
+def declination_correction(
     observed_dec: Float64, site_azimuth: Float64
 ) -> Float64:
     """Geographic declination corrected for sampling orientation.
@@ -101,7 +101,7 @@ fn declination_correction(
     return observed_dec - site_azimuth
 
 
-fn magnetic_reversal_rate(
+def magnetic_reversal_rate(
     n_reversals: Float64, timespan_myr: Float64
 ) -> Float64:
     """Geomagnetic reversal frequency over a geological interval.
@@ -120,7 +120,7 @@ fn magnetic_reversal_rate(
     return n_reversals / timespan_myr
 
 
-fn koenigsberger_ratio(
+def koenigsberger_ratio(
     nrm: Float64, field_strength: Float64, susceptibility: Float64
 ) -> Float64:
     """Koenigsberger ratio Q = NRM / (χ·H).
@@ -139,7 +139,7 @@ fn koenigsberger_ratio(
     return nrm / induced
 
 
-fn stability_index(
+def stability_index(
     nrm_before: Float64, nrm_after_heating: Float64
 ) -> Float64:
     """Thellier alteration check: alteration = |NRM_after - NRM_before| / NRM_before.
@@ -159,7 +159,7 @@ fn stability_index(
     return diff / nrm_before
 
 
-fn rock_magnetic_susceptibility(
+def rock_magnetic_susceptibility(
     measured_susceptibility: Float64, mass_g: Float64
 ) -> Float64:
     """Mass-normalised magnetic susceptibility χ_mass.
@@ -176,7 +176,7 @@ fn rock_magnetic_susceptibility(
     return measured_susceptibility / (mass_g * 1e-3) * 1e8
 
 
-fn anhysteretic_remanence(arm: Float64, bias_field_mt: Float64) -> Float64:
+def anhysteretic_remanence(arm: Float64, bias_field_mt: Float64) -> Float64:
     """ARM efficiency: normalised ARM susceptibility χARM.
 
     χARM = ARM / bias_field
@@ -193,7 +193,7 @@ fn anhysteretic_remanence(arm: Float64, bias_field_mt: Float64) -> Float64:
     return arm / bias_field_mt
 
 
-fn coercivity_spectrum_median(
+def coercivity_spectrum_median(
     h_upper: Float64, h_lower: Float64
 ) -> Float64:
     """Median destructive field from coercivity window bounds.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from paper_science import basis_weight, caliper_to_density, bulk, tearing_resistance_index, tensile_index, burst_index, freeness_csf, kappa_number_to_lignin, pulp_yield, moisture_content_paper, stiffness_index, recycled_fiber_content
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

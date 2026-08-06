@@ -141,7 +141,7 @@ comptime ORG_N_CANDIDATES: Int = 3
 comptime ORG_TIE_EPS: Float64 = 1.0e-12
 
 
-fn origin_schedule(n: Int, horizon: Int, max_origins: Int) -> List[Int]:
+def origin_schedule(n: Int, horizon: Int, max_origins: Int) -> List[Int]:
     """The rolling origins a series of length `n` affords, ascending. Pure arithmetic.
 
     Each origin `t` trains on `y[.. t)` and scores on `y[t .. t + horizon)`, so
@@ -223,7 +223,7 @@ struct OriginSelected(Copyable, Movable):
     var status_name: String
 
 
-fn _no_origin_selection(status: Int, horizon: Int, n_train: Int) -> OriginSelected:
+def _no_origin_selection(status: Int, horizon: Int, n_train: Int) -> OriginSelected:
     """A refusal: no path, no winner, every candidate marked absent, no matrix."""
     var maes = List[Float64]()
     var weights = List[Float64]()
@@ -251,7 +251,7 @@ struct _OriginMatrix(Copyable, Movable):
     var mean_maes: List[Float64]
 
 
-fn _paired_origin_maes(
+def _paired_origin_maes(
     y: List[Float64], horizon: Int, origins: List[Int]
 ) -> _OriginMatrix:
     """Refit every candidate at every origin and score the SAME h-step slice.
@@ -312,7 +312,7 @@ fn _paired_origin_maes(
     return _OriginMatrix(status^, ok^, maes^, mean_maes^)
 
 
-fn _tie_weights(mean_maes: List[Float64], in_tie: List[Bool]) -> List[Float64]:
+def _tie_weights(mean_maes: List[Float64], in_tie: List[Bool]) -> List[Float64]:
     """Inverse-MAE weights over the tied set, normalised to sum 1.
 
     The same exact-fit guard as `forecasting.select._selection_weights`: a member with
@@ -364,7 +364,7 @@ struct _GateInputs(Copyable, Movable):
     var best: Int
 
 
-fn _gate_inputs(y: List[Float64], horizon: Int, max_origins: Int) -> _GateInputs:
+def _gate_inputs(y: List[Float64], horizon: Int, max_origins: Int) -> _GateInputs:
     """Validate, schedule, run the paired matrix and the full-series refits, find the best.
 
     A candidate is ELIGIBLE only if it fitted at every origin AND on the full series —
@@ -422,7 +422,7 @@ fn _gate_inputs(y: List[Float64], horizon: Int, max_origins: Int) -> _GateInputs
     return _GateInputs(FC_OK, origins^, matrix^, full^, eligible^, comp^, best)
 
 
-fn crn_origin_select(
+def crn_origin_select(
     y: List[Float64], horizon: Int, max_origins: Int
 ) -> OriginSelected:
     """Select the single candidate with the smallest mean paired per-origin MAE.
@@ -461,7 +461,7 @@ fn crn_origin_select(
     )
 
 
-fn tournament_gated_select(
+def tournament_gated_select(
     y: List[Float64], horizon: Int, max_origins: Int, alpha: Float64
 ) -> OriginSelected:
     """Select the paired-origins winner only if it clearly wins; combine the tied set.

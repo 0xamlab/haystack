@@ -4,26 +4,26 @@ bitops.mojo — Bit manipulation utilities. Zero Python imports.
 Replaces Python's bitwise ops for performance-critical code.
 
 Public API:
-  fn popcount(x)         — count set bits
-  fn leading_zeros(x)    — count leading zeros
-  fn trailing_zeros(x)   — count trailing zeros
-  fn next_power_of_2(x)  — next power of 2 >= x
-  fn is_power_of_2(x)    — check if x is a power of 2
-  fn reverse_bits(x)     — reverse bits of a UInt32
-  fn rotate_left(x, n)   — rotate bits left
-  fn rotate_right(x, n)  — rotate bits right
-  fn bit_set(x, pos)     — set bit at position
-  fn bit_clear(x, pos)   — clear bit at position
-  fn bit_test(x, pos)    — test bit at position
-  fn bit_toggle(x, pos)  — toggle bit at position
-  fn fnv1a_hash(data)    — FNV-1a hash for strings
+  def popcount(x)         — count set bits
+  def leading_zeros(x)    — count leading zeros
+  def trailing_zeros(x)   — count trailing zeros
+  def next_power_of_2(x)  — next power of 2 >= x
+  def is_power_of_2(x)    — check if x is a power of 2
+  def reverse_bits(x)     — reverse bits of a UInt32
+  def rotate_left(x, n)   — rotate bits left
+  def rotate_right(x, n)  — rotate bits right
+  def bit_set(x, pos)     — set bit at position
+  def bit_clear(x, pos)   — clear bit at position
+  def bit_test(x, pos)    — test bit at position
+  def bit_toggle(x, pos)  — toggle bit at position
+  def fnv1a_hash(data)    — FNV-1a hash for strings
 """
 
 
 # ── popcount ──────────────────────────────────────────────────────────────────
 
 
-fn popcount(x: Int) -> Int:
+def popcount(x: Int) -> Int:
     """Count the number of set bits (1s) in x."""
     var n = x
     var count = 0
@@ -41,7 +41,7 @@ fn popcount(x: Int) -> Int:
 # ── leading_zeros ─────────────────────────────────────────────────────────────
 
 
-fn leading_zeros(x: Int) -> Int:
+def leading_zeros(x: Int) -> Int:
     """Count leading zero bits in a 64-bit integer. Returns 64 for x == 0."""
     if x == 0:
         return 64
@@ -60,7 +60,7 @@ fn leading_zeros(x: Int) -> Int:
 # ── trailing_zeros ────────────────────────────────────────────────────────────
 
 
-fn trailing_zeros(x: Int) -> Int:
+def trailing_zeros(x: Int) -> Int:
     """Count trailing zero bits. Returns 64 for x == 0."""
     if x == 0:
         return 64
@@ -75,7 +75,7 @@ fn trailing_zeros(x: Int) -> Int:
 # ── next_power_of_2 ──────────────────────────────────────────────────────────
 
 
-fn next_power_of_2(x: Int) -> Int:
+def next_power_of_2(x: Int) -> Int:
     """Return the smallest power of 2 >= x. Returns 1 for x <= 1."""
     if x <= 1:
         return 1
@@ -88,7 +88,7 @@ fn next_power_of_2(x: Int) -> Int:
 # ── is_power_of_2 ────────────────────────────────────────────────────────────
 
 
-fn is_power_of_2(x: Int) -> Bool:
+def is_power_of_2(x: Int) -> Bool:
     """Return True if x is a positive power of 2."""
     return x > 0 and (x & (x - 1)) == 0
 
@@ -96,7 +96,7 @@ fn is_power_of_2(x: Int) -> Bool:
 # ── reverse_bits ──────────────────────────────────────────────────────────────
 
 
-fn reverse_bits(x: UInt32) -> UInt32:
+def reverse_bits(x: UInt32) -> UInt32:
     """Reverse the bits of a 32-bit unsigned integer."""
     var n = x
     var result: UInt32 = 0
@@ -109,7 +109,7 @@ fn reverse_bits(x: UInt32) -> UInt32:
 # ── rotate_left ───────────────────────────────────────────────────────────────
 
 
-fn rotate_left(x: UInt32, n: Int) -> UInt32:
+def rotate_left(x: UInt32, n: Int) -> UInt32:
     """Rotate x left by n bits (32-bit)."""
     var shift = n % 32
     if shift == 0:
@@ -120,7 +120,7 @@ fn rotate_left(x: UInt32, n: Int) -> UInt32:
 # ── rotate_right ──────────────────────────────────────────────────────────────
 
 
-fn rotate_right(x: UInt32, n: Int) -> UInt32:
+def rotate_right(x: UInt32, n: Int) -> UInt32:
     """Rotate x right by n bits (32-bit)."""
     var shift = n % 32
     if shift == 0:
@@ -131,7 +131,7 @@ fn rotate_right(x: UInt32, n: Int) -> UInt32:
 # ── bit_set ───────────────────────────────────────────────────────────────────
 
 
-fn bit_set(x: Int, pos: Int) -> Int:
+def bit_set(x: Int, pos: Int) -> Int:
     """Set bit at position pos (0-indexed from LSB)."""
     return x | (1 << pos)
 
@@ -139,7 +139,7 @@ fn bit_set(x: Int, pos: Int) -> Int:
 # ── bit_clear ─────────────────────────────────────────────────────────────────
 
 
-fn bit_clear(x: Int, pos: Int) -> Int:
+def bit_clear(x: Int, pos: Int) -> Int:
     """Clear bit at position pos."""
     return x & ~(1 << pos)
 
@@ -147,7 +147,7 @@ fn bit_clear(x: Int, pos: Int) -> Int:
 # ── bit_test ──────────────────────────────────────────────────────────────────
 
 
-fn bit_test(x: Int, pos: Int) -> Bool:
+def bit_test(x: Int, pos: Int) -> Bool:
     """Test if bit at position pos is set."""
     return (x >> pos) & 1 == 1
 
@@ -155,7 +155,7 @@ fn bit_test(x: Int, pos: Int) -> Bool:
 # ── bit_toggle ────────────────────────────────────────────────────────────────
 
 
-fn bit_toggle(x: Int, pos: Int) -> Int:
+def bit_toggle(x: Int, pos: Int) -> Int:
     """Toggle bit at position pos."""
     return x ^ (1 << pos)
 
@@ -163,7 +163,7 @@ fn bit_toggle(x: Int, pos: Int) -> Int:
 # ── fnv1a_hash ────────────────────────────────────────────────────────────────
 
 
-fn fnv1a_hash(data: String) -> Int:
+def fnv1a_hash(data: String) -> Int:
     """FNV-1a hash for strings. Returns a non-negative Int.
 
     FNV-1a parameters (64-bit):

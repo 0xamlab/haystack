@@ -21,7 +21,7 @@ Public API:
 # ── elementary_rule ──────────────────────────────────────────────────────────
 
 
-fn elementary_rule(rule_number: Int, left: Int, center: Int, right: Int) -> Int:
+def elementary_rule(rule_number: Int, left: Int, center: Int, right: Int) -> Int:
     """Apply Wolfram elementary CA rule (0-255).
     left, center, right are 0 or 1. Returns 0 or 1."""
     var idx = (left << 2) | (center << 1) | right  # 0..7
@@ -31,7 +31,7 @@ fn elementary_rule(rule_number: Int, left: Int, center: Int, right: Int) -> Int:
 # ── rule_step_1d ─────────────────────────────────────────────────────────────
 
 
-fn rule_step_1d(cells: List[Int], n: Int, rule_number: Int) -> List[Int]:
+def rule_step_1d(cells: List[Int], n: Int, rule_number: Int) -> List[Int]:
     """Evolve 1D CA one step. Boundary wraps around. Returns new cell list."""
     var result = List[Int]()
     for i in range(n):
@@ -52,7 +52,7 @@ fn rule_step_1d(cells: List[Int], n: Int, rule_number: Int) -> List[Int]:
 # ── game_of_life_cell ────────────────────────────────────────────────────────
 
 
-fn game_of_life_cell(alive: Bool, neighbors: Int) -> Bool:
+def game_of_life_cell(alive: Bool, neighbors: Int) -> Bool:
     """Conway's Game of Life cell update rule.
     alive: current state; neighbors: count of live neighbors (0-8).
     Returns True if cell is alive next step."""
@@ -65,7 +65,7 @@ fn game_of_life_cell(alive: Bool, neighbors: Int) -> Bool:
 # ── game_of_life_step ────────────────────────────────────────────────────────
 
 
-fn game_of_life_step(grid: List[Int], rows: Int, cols: Int, i: Int, j: Int) -> Int:
+def game_of_life_step(grid: List[Int], rows: Int, cols: Int, i: Int, j: Int) -> Int:
     """Count live neighbors for GoL cell at (i,j) in row-major grid.
     Grid values: 0=dead, 1=alive. Returns neighbor count."""
     var count: Int = 0
@@ -83,7 +83,7 @@ fn game_of_life_step(grid: List[Int], rows: Int, cols: Int, i: Int, j: Int) -> I
 # ── totalistic_rule ──────────────────────────────────────────────────────────
 
 
-fn totalistic_rule(k: Int, rule_number: Int, total: Int) -> Int:
+def totalistic_rule(k: Int, rule_number: Int, total: Int) -> Int:
     """k-color totalistic CA rule. Given k colors, rule_number in base k,
     and total (sum of neighborhood), return the new cell state.
     Extracts digit at position 'total' from rule_number in base k."""
@@ -98,7 +98,7 @@ fn totalistic_rule(k: Int, rule_number: Int, total: Int) -> Int:
 # ── langtons_ant_step ────────────────────────────────────────────────────────
 
 
-fn langtons_ant_step(dir: Int, cell_color: Int) -> List[Int]:
+def langtons_ant_step(dir: Int, cell_color: Int) -> List[Int]:
     """Langton's Ant step. dir: 0=N,1=E,2=S,3=W. cell_color: 0=white,1=black.
     Returns [new_dir, new_color].
     On white: turn right, flip to black. On black: turn left, flip to white."""
@@ -121,7 +121,7 @@ fn langtons_ant_step(dir: Int, cell_color: Int) -> List[Int]:
 # ── wireworld_cell ───────────────────────────────────────────────────────────
 
 
-fn wireworld_cell(state: Int, copper_neighbors_excited: Int) -> Int:
+def wireworld_cell(state: Int, copper_neighbors_excited: Int) -> Int:
     """Wireworld CA rule.
     state: 0=empty, 1=electron_head, 2=electron_tail, 3=conductor.
     copper_neighbors_excited: count of neighbors that are electron heads.
@@ -142,7 +142,7 @@ fn wireworld_cell(state: Int, copper_neighbors_excited: Int) -> Int:
 # ── rule110_cell ─────────────────────────────────────────────────────────────
 
 
-fn rule110_cell(left: Int, center: Int, right: Int) -> Int:
+def rule110_cell(left: Int, center: Int, right: Int) -> Int:
     """Rule 110 CA cell (Turing complete). Same as elementary_rule(110, ...)."""
     return elementary_rule(110, left, center, right)
 
@@ -150,7 +150,7 @@ fn rule110_cell(left: Int, center: Int, right: Int) -> Int:
 # ── majority_rule ────────────────────────────────────────────────────────────
 
 
-fn majority_rule(neighbors_on: Int, total_neighbors: Int) -> Int:
+def majority_rule(neighbors_on: Int, total_neighbors: Int) -> Int:
     """Majority voting CA rule. Returns 1 if majority of neighbors are on,
     0 otherwise. Tie goes to 0."""
     if total_neighbors == 0:
@@ -163,6 +163,6 @@ fn majority_rule(neighbors_on: Int, total_neighbors: Int) -> Int:
 # ── parity_rule ──────────────────────────────────────────────────────────────
 
 
-fn parity_rule(neighbors_on: Int) -> Int:
+def parity_rule(neighbors_on: Int) -> Int:
     """XOR/parity CA rule. Returns 1 if odd number of neighbors are on."""
     return neighbors_on % 2

@@ -140,7 +140,7 @@ comptime HUBER_DEFAULT_TUNING: Float64 = 1.345
 comptime ROBUST_SCALE_ABSENT: Float64 = -1.0
 
 
-fn robust_scale_mad(residuals: List[Float64], n: Int) -> Float64:
+def robust_scale_mad(residuals: List[Float64], n: Int) -> Float64:
     """`1.4826 * median(|r_i - median(r)|)` — the MAD scale, or `ROBUST_SCALE_ABSENT`.
 
     The scale every Huber weight is measured against, exported because it is the number a
@@ -178,7 +178,7 @@ fn robust_scale_mad(residuals: List[Float64], n: Int) -> Float64:
     return MAD_TO_SIGMA * _median_of(deviations)
 
 
-fn _median_of(values: List[Float64]) -> Float64:
+def _median_of(values: List[Float64]) -> Float64:
     """The median of `values`, via `sorting.mergesort`. Even length averages the two middles.
 
     Byte-for-byte the same definition as `stats_bootstrap._median`, including the even-length
@@ -197,7 +197,7 @@ fn _median_of(values: List[Float64]) -> Float64:
     return (sorted_v[n // 2 - 1] + sorted_v[n // 2]) / 2.0
 
 
-fn huber_weight(residual: Float64, scale: Float64, tuning: Float64) -> Float64:
+def huber_weight(residual: Float64, scale: Float64, tuning: Float64) -> Float64:
     """Huber's weight `min(1, c*s/|r|)`, the IRLS form of his loss. Or -1.0 if undefined.
 
     Inside the quadratic region (`|r| <= c*s`) the weight is exactly 1.0, which is why a
@@ -260,7 +260,7 @@ struct RobustFit(Copyable, Movable):
     var objective: Float64
 
 
-fn _robust_failure(
+def _robust_failure(
     code: Int, n: Int, p: Int, tuning: Float64, iters: Int, max_iter: Int
 ) -> RobustFit:
     return RobustFit(
@@ -269,7 +269,7 @@ fn _robust_failure(
     )
 
 
-fn huber_fit_flat(
+def huber_fit_flat(
     x: List[Float64], y: List[Float64], n: Int, p: Int,
     tuning: Float64, max_iter: Int, tol: Float64,
 ) -> RobustFit:

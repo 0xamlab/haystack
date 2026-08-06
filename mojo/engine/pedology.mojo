@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt, pow
 
 
-fn soil_development_index(
+def soil_development_index(
     clay_content: Float64, base_saturation: Float64, organic_matter: Float64
 ) -> Float64:
     """Composite soil development index.
@@ -37,7 +37,7 @@ fn soil_development_index(
     return pow(product, 1.0 / 3.0)
 
 
-fn clay_illuviation_ratio(
+def clay_illuviation_ratio(
     bt_clay_pct: Float64, eluvial_clay_pct: Float64
 ) -> Float64:
     """Clay illuviation ratio Bt/E horizon.
@@ -56,7 +56,7 @@ fn clay_illuviation_ratio(
     return bt_clay_pct / eluvial_clay_pct
 
 
-fn rubification_index(
+def rubification_index(
     munsell_hue_number: Float64, chroma: Float64, value: Float64
 ) -> Float64:
     """Redness rating from Munsell colour components.
@@ -76,7 +76,7 @@ fn rubification_index(
     return (10.0 - munsell_hue_number) * chroma / value
 
 
-fn organic_horizon_depth(
+def organic_horizon_depth(
     litter_input_g_m2_yr: Float64, decomposition_rate: Float64
 ) -> Float64:
     """O-horizon depth from steady-state litter balance.
@@ -96,7 +96,7 @@ fn organic_horizon_depth(
     return mass / 100.0  # assume 100 g/m² per cm
 
 
-fn base_saturation_percent(
+def base_saturation_percent(
     sum_bases_cmol_kg: Float64, cec_cmol_kg: Float64
 ) -> Float64:
     """Base saturation as % of CEC.
@@ -115,7 +115,7 @@ fn base_saturation_percent(
     return sum_bases_cmol_kg / cec_cmol_kg * 100.0
 
 
-fn solum_thickness_estimate(
+def solum_thickness_estimate(
     precipitation_mm_yr: Float64, temperature_c: Float64, age_kyr: Float64
 ) -> Float64:
     """Approximate solum thickness from Jenny (1941) climate-age model.
@@ -135,7 +135,7 @@ fn solum_thickness_estimate(
     return 0.8 * (precipitation_mm_yr / temperature_c) * log(age_kyr + 1.0)
 
 
-fn profile_development_index(
+def profile_development_index(
     clay_increase: Float64, structure_grade: Float64,
     horizon_thickness_cm: Float64
 ) -> Float64:
@@ -154,7 +154,7 @@ fn profile_development_index(
     return clay_increase * structure_grade * horizon_thickness_cm
 
 
-fn biological_weathering_index(
+def biological_weathering_index(
     root_density_km_m3: Float64, lichen_cover_pct: Float64
 ) -> Float64:
     """Biological contribution to chemical weathering.
@@ -171,7 +171,7 @@ fn biological_weathering_index(
     return root_density_km_m3 * lichen_cover_pct / 100.0
 
 
-fn translocation_coefficient(
+def translocation_coefficient(
     element_subsoil: Float64, element_topsoil: Float64
 ) -> Float64:
     """Element translocation coefficient (leaching vs. accumulation).
@@ -190,7 +190,7 @@ fn translocation_coefficient(
     return element_subsoil / element_topsoil
 
 
-fn soil_age_from_pedogenesis(
+def soil_age_from_pedogenesis(
     observed_pdi: Float64, pdi_rate: Float64
 ) -> Float64:
     """Estimate soil age from profile development index and accumulation rate.

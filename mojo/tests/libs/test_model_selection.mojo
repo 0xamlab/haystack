@@ -9,14 +9,14 @@ from model_selection import (
 )
 
 
-fn _range_list(lo: Int, hi: Int) -> List[Int]:
+def _range_list(lo: Int, hi: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(lo, hi):
         out.append(i)
     return out^
 
 
-fn _lists_equal(a: List[Int], b: List[Int]) -> Bool:
+def _lists_equal(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -25,7 +25,7 @@ fn _lists_equal(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ model_selection::" + name)

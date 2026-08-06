@@ -153,7 +153,7 @@ comptime FACTOR_SYMMETRY_TOL: Float64 = 1e-10
 comptime FACTOR_RESIDUAL_ABSENT: Float64 = -1.0
 
 
-fn factor_status_name(code: Int) -> String:
+def factor_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a number."""
     if code == FACTOR_OK:
         return "ok"
@@ -174,7 +174,7 @@ fn factor_status_name(code: Int) -> String:
     return "unknown_status"
 
 
-fn factor_strategy_name(code: Int) -> String:
+def factor_strategy_name(code: Int) -> String:
     """Which solver produced the numbers."""
     if code == FACTOR_STRATEGY_SPARSE_LU:
         return "sparse_lu"
@@ -191,7 +191,7 @@ fn factor_strategy_name(code: Int) -> String:
     return "unknown_strategy"
 
 
-fn factor_fallback_reason_name(code: Int) -> String:
+def factor_fallback_reason_name(code: Int) -> String:
     """Why the dense path was taken. `none` means the strategy was the primary one."""
     if code == FACTOR_FALLBACK_NONE:
         return "none"
@@ -242,7 +242,7 @@ struct SparseLU(Copyable, Movable):
     var a_indices: List[Int]
     var a_values: List[Float64]
 
-    fn is_usable(self) -> Bool:
+    def is_usable(self) -> Bool:
         """True only if this factorisation can be substituted through.
 
         Checks the array lengths as well as the status: a `SparseLU` can arrive from the
@@ -294,11 +294,11 @@ struct FactorVector(Copyable, Movable):
     var values: List[Float64]
 
 
-fn _vector_absent(status: Int) -> FactorVector:
+def _vector_absent(status: Int) -> FactorVector:
     return FactorVector(status, 0, FACTOR_RESIDUAL_ABSENT, List[Float64]())
 
 
-fn _lu_absent(status: Int) -> SparseLU:
+def _lu_absent(status: Int) -> SparseLU:
     """No factorisation. `singular` stays False: it is a claim about a matrix, and a
     rejected input means we never examined one. `status` is the field that says there is
     nothing here."""
@@ -319,7 +319,7 @@ fn _lu_absent(status: Int) -> SparseLU:
     )
 
 
-fn _solve_absent(status: Int) -> SparseSolve:
+def _solve_absent(status: Int) -> SparseSolve:
     """No solution, and n = 0 so an ignored status cannot be read as a real answer."""
     return SparseSolve(
         status,
@@ -334,7 +334,7 @@ fn _solve_absent(status: Int) -> SparseSolve:
     )
 
 
-fn _solve_singular(n: Int, min_pivot: Float64, fill_nnz: Int) -> SparseSolve:
+def _solve_singular(n: Int, min_pivot: Float64, fill_nnz: Int) -> SparseSolve:
     """The matrix has no inverse. No vector, `singular` set, and the pivot that proves it.
 
     This is the whole point of the module: `mat_solve` would have returned n zeros here.
@@ -352,7 +352,7 @@ fn _solve_singular(n: Int, min_pivot: Float64, fill_nnz: Int) -> SparseSolve:
     )
 
 
-fn _solve_trivial() -> SparseSolve:
+def _solve_trivial() -> SparseSolve:
     """The 0x0 system. Its solution is the empty vector — a real answer, not an absence.
 
     `numeric/contract.mojo`'s rule: a count of nothing is 0, a mean of nothing does not
@@ -375,7 +375,7 @@ fn _solve_trivial() -> SparseSolve:
 # ── flat <-> nested adapters for the two frozen nested-list kernels ───────────
 
 
-fn _nested_from_flat(data: List[Float64], n: Int) -> List[List[Float64]]:
+def _nested_from_flat(data: List[Float64], n: Int) -> List[List[Float64]]:
     """n×n nested view of a flat row-major matrix, for `cholesky` and the substitutions.
 
     Reads out of range as 0.0 instead of indexing blindly. Every caller here has already
@@ -398,7 +398,7 @@ fn _nested_from_flat(data: List[Float64], n: Int) -> List[List[Float64]]:
     return out^
 
 
-fn _flatten_nested(nested: List[List[Float64]], n: Int) -> List[Float64]:
+def _flatten_nested(nested: List[List[Float64]], n: Int) -> List[Float64]:
     """Flat row-major n×n from a nested matrix; short rows read as 0.0."""
     var out = List[Float64]()
     if n <= 0:
@@ -412,7 +412,7 @@ fn _flatten_nested(nested: List[List[Float64]], n: Int) -> List[Float64]:
     return out^
 
 
-fn _min_diag_abs(data: List[Float64], n: Int) -> Float64:
+def _min_diag_abs(data: List[Float64], n: Int) -> Float64:
     """Smallest |diagonal| of a flat n×n matrix. 0.0 for n <= 0 — no diagonal exists,
     and every caller handles the empty system before asking."""
     if n <= 0 or len(data) < n * n:
@@ -425,7 +425,7 @@ fn _min_diag_abs(data: List[Float64], n: Int) -> Float64:
     return smallest
 
 
-fn _factor_nnz(lower: List[Float64], upper: List[Float64], n: Int) -> Int:
+def _factor_nnz(lower: List[Float64], upper: List[Float64], n: Int) -> Int:
     """Structurally present entries of L (strictly below) plus U (diagonal and above).
 
     L's unit diagonal is not counted: it is implied by the algorithm, not stored data,
@@ -446,7 +446,7 @@ fn _factor_nnz(lower: List[Float64], upper: List[Float64], n: Int) -> Int:
     return count
 
 
-fn _fill_from_counts(factor_nnz: Int, nnz_input: Int) -> Int:
+def _fill_from_counts(factor_nnz: Int, nnz_input: Int) -> Int:
     """Fill-in, floored at zero.
 
     Cancellation and explicitly stored zeros can leave the factor with fewer stored
@@ -459,7 +459,7 @@ fn _fill_from_counts(factor_nnz: Int, nnz_input: Int) -> Int:
     return fill
 
 
-fn _residual(m: CSRMatrix, x: List[Float64], b: List[Float64]) -> FactorVector:
+def _residual(m: CSRMatrix, x: List[Float64], b: List[Float64]) -> FactorVector:
     """Ax - b and its norm, through the frozen sparse multiply.
 
     `csr_matvec` validates the matrix and the vector length and refuses a mismatch, so a
@@ -479,7 +479,7 @@ fn _residual(m: CSRMatrix, x: List[Float64], b: List[Float64]) -> FactorVector:
 # ── triangular substitution ───────────────────────────────────────────────────
 
 
-fn tri_forward_solve(
+def tri_forward_solve(
     lower: List[Float64], n: Int, b: List[Float64]
 ) -> FactorVector:
     """Solve Lx = b for lower-triangular flat row-major n×n L.
@@ -505,7 +505,7 @@ fn tri_forward_solve(
     return FactorVector(FACTOR_OK, count, norm, x^)
 
 
-fn tri_back_solve(
+def tri_back_solve(
     upper: List[Float64], n: Int, b: List[Float64]
 ) -> FactorVector:
     """Solve Ux = b for upper-triangular flat row-major n×n U. See `tri_forward_solve`
@@ -529,7 +529,7 @@ fn tri_back_solve(
 # ── LU factorisation ──────────────────────────────────────────────────────────
 
 
-fn csr_lu_factor(
+def csr_lu_factor(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -623,7 +623,7 @@ fn csr_lu_factor(
     )
 
 
-fn csr_lu_solve(f: SparseLU, b: List[Float64]) -> SparseSolve:
+def csr_lu_solve(f: SparseLU, b: List[Float64]) -> SparseSolve:
     """Solve A x = b from an existing factorisation: two substitutions, no elimination.
 
     This is the reason to factor at all — a second right-hand side costs O(n²) here
@@ -684,7 +684,7 @@ fn csr_lu_solve(f: SparseLU, b: List[Float64]) -> SparseSolve:
 # ── one-shot drivers ──────────────────────────────────────────────────────────
 
 
-fn _dense_solve(
+def _dense_solve(
     m: CSRMatrix, b: List[Float64], n: Int, nnz_input: Int, reason: Int
 ) -> SparseSolve:
     """Answer through the frozen dense `mat_solve`, having first proved A is invertible.
@@ -731,7 +731,7 @@ fn _dense_solve(
     )
 
 
-fn csr_solve(
+def csr_solve(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -789,7 +789,7 @@ fn csr_solve(
     return csr_lu_solve(f, b)
 
 
-fn csr_solve_spd(
+def csr_solve_spd(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -868,7 +868,7 @@ fn csr_solve_spd(
     )
 
 
-fn _solve_lower_upper_pair(
+def _solve_lower_upper_pair(
     lower: List[Float64], n: Int, b: List[Float64]
 ) -> FactorVector:
     """Solve L Lᵀ x = b given L. The transpose comes from the frozen `mat_transpose`.
@@ -883,7 +883,7 @@ fn _solve_lower_upper_pair(
     return tri_back_solve(upper.data, n, y.values)
 
 
-fn csr_least_squares(
+def csr_least_squares(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -972,7 +972,7 @@ fn csr_least_squares(
     )
 
 
-fn csr_residual(
+def csr_residual(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],

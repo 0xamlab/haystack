@@ -223,7 +223,7 @@ struct ProjectedPoints(Copyable, Movable):
 # ── the package's single definition of "distance" ──────────────────────────────
 
 
-fn frame_metric_distance(
+def frame_metric_distance(
     x1: Float64, y1: Float64, x2: Float64, y2: Float64, frame: Int, metric: Int
 ) -> Float64:
     """Distance in METRES between two pairs in one frame under one metric.
@@ -267,7 +267,7 @@ fn frame_metric_distance(
     return geo_finite_or_zero(haversine_distance(lat1, lon1, lat2, lon2) * 1000.0)
 
 
-fn frame_metric_undefined(
+def frame_metric_undefined(
     distance_m: Float64, x1: Float64, y1: Float64, x2: Float64, y2: Float64,
     frame: Int, metric: Int,
 ) -> Bool:
@@ -330,7 +330,7 @@ fn frame_metric_undefined(
 # The parameter PACKING below is load-bearing, not style: `mojo_inventory` parses a signature
 # inside a TEN-LINE lookahead window and silently drops any function whose signature closes
 # later. Do not reflow.
-fn frame_distance_flat(
+def frame_distance_flat(
     x1: Float64, y1: Float64, frame_a: Int,
     x2: Float64, y2: Float64, frame_b: Int, metric: Int,
 ) -> GeoDistance:
@@ -378,7 +378,7 @@ fn frame_distance_flat(
 # ── census of an unordered batch ───────────────────────────────────────────────
 
 
-fn frame_census_flat(
+def frame_census_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int
 ) -> FrameCensus:
     """What this batch of coordinates is, before anything is computed from it.
@@ -481,7 +481,7 @@ fn frame_census_flat(
 # ── census of an ordered ring ─────────────────────────────────────────────────
 
 
-fn frame_ring_census_flat(
+def frame_ring_census_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int
 ) -> RingFrameCensus:
     """The seam and pole verdict for an ORDERED ring, and its extent.
@@ -574,7 +574,7 @@ fn frame_ring_census_flat(
 # ── path length ───────────────────────────────────────────────────────────────
 
 
-fn frame_path_length_flat(
+def frame_path_length_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int, metric: Int
 ) -> PathLength:
     """Length of an ordered polyline in metres, plus its shortest and longest segment.
@@ -638,7 +638,7 @@ fn frame_path_length_flat(
 
 
 # Packing is load-bearing — see the note above `frame_distance_flat`.
-fn frame_project_flat(
+def frame_project_flat(
     xs: List[Float64], ys: List[Float64], n: Int,
     frame: Int, ref_lat_deg: Float64, ref_lon_deg: Float64,
 ) -> ProjectedPoints:
@@ -732,7 +732,7 @@ fn frame_project_flat(
     )
 
 
-fn frame_pair_defect(frame_a: Int, frame_b: Int) -> Int:
+def frame_pair_defect(frame_a: Int, frame_b: Int) -> Int:
     """`GEO_OK` when two operands may be combined; the reason they may not otherwise.
 
     Exposed separately so a caller composing several calls can ask the question once,

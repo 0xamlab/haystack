@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hydrogeology import darcy_velocity, transmissivity, storativity, theis_drawdown, dupuit_discharge, hydraulic_gradient, specific_yield, capillary_rise_height, leakance_factor, groundwater_age_mixing
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

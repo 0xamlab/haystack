@@ -69,17 +69,17 @@ struct Vec64F32(Copyable, Movable):
     var data:     List[Float32]
     var norm_inv: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.data = List[Float32](capacity=VEC_DIM)
         for _ in range(VEC_DIM):
             self.data.append(Float32(0.0))
         self.norm_inv = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.data     = copy.data.copy()   # explicit — List not ImplicitlyCopyable
         self.norm_inv = copy.norm_inv
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.data     = take.data.copy()   # ^ on fields disallowed; runtime destroys take
         self.norm_inv = take.norm_inv
 
@@ -96,19 +96,19 @@ struct QueryFeatures(Copyable, Movable):
     var role_hint: String
     var source:    String
 
-    fn __init__(out self):
+    def __init__(out self):
         self.name      = ""
         self.vec       = Vec64F32()
         self.role_hint = ""
         self.source    = ""
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.name      = copy.name
         self.vec       = copy.vec.copy()   # explicit — Vec64F32 contains List
         self.role_hint = copy.role_hint
         self.source    = copy.source
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.name      = take.name
         self.vec       = take.vec.copy()   # ^ disallowed; use copy
         self.role_hint = take.role_hint
@@ -130,7 +130,7 @@ struct CandidateScore(Copyable, Movable):
     var type_boost:  Float32
     var prior_boost: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.source      = ""
         self.column      = ""
         self.score       = Float32(0.0)
@@ -139,7 +139,7 @@ struct CandidateScore(Copyable, Movable):
         self.type_boost  = Float32(0.0)
         self.prior_boost = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.source      = copy.source
         self.column      = copy.column
         self.score       = copy.score
@@ -148,7 +148,7 @@ struct CandidateScore(Copyable, Movable):
         self.type_boost  = copy.type_boost
         self.prior_boost = copy.prior_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.source      = take.source
         self.column      = take.column
         self.score       = take.score
@@ -177,19 +177,19 @@ struct TopKEntry(Copyable, Movable):
     var name_sim:   Float32
     var type_boost: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id  = 0
         self.score      = Float32(0.0)
         self.name_sim   = Float32(0.0)
         self.type_boost = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id  = copy.column_id
         self.score      = copy.score
         self.name_sim   = copy.name_sim
         self.type_boost = copy.type_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id  = take.column_id
         self.score      = take.score
         self.name_sim   = take.name_sim
@@ -218,7 +218,7 @@ struct RankResult(Copyable, Movable):
     var confidence_gap: Float32
     var entries:        List[TopKEntry]   # always exactly RANK_TOP_K slots
 
-    fn __init__(out self):
+    def __init__(out self):
         self.count          = 0
         self.ambiguous      = False
         self.confidence_gap = Float32(0.0)
@@ -226,13 +226,13 @@ struct RankResult(Copyable, Movable):
         for _ in range(RANK_TOP_K):
             self.entries.append(TopKEntry())
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.count          = copy.count
         self.ambiguous      = copy.ambiguous
         self.confidence_gap = copy.confidence_gap
         self.entries        = copy.entries.copy()   # explicit
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.count          = take.count
         self.ambiguous      = take.ambiguous
         self.confidence_gap = take.confidence_gap
@@ -259,21 +259,21 @@ struct RankRequest(Copyable, Movable):
     var query_norm_inv: Float32
     var query_vec:      Vec64F32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.source_id      = SOURCE_UNKNOWN
         self.role_id        = ROLE_OTHER
         self.top_k          = 5
         self.query_norm_inv = Float32(0.0)
         self.query_vec      = Vec64F32()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.source_id      = copy.source_id
         self.role_id        = copy.role_id
         self.top_k          = copy.top_k
         self.query_norm_inv = copy.query_norm_inv
         self.query_vec      = copy.query_vec.copy()  # explicit
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.source_id      = take.source_id
         self.role_id        = take.role_id
         self.top_k          = take.top_k
@@ -305,21 +305,21 @@ struct CandidateEntry(Copyable, Movable):
     var norm_inv:  Float32
     var vec:       Vec64F32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id = 0
         self.source_id = SOURCE_UNKNOWN
         self.role_id   = ROLE_OTHER
         self.norm_inv  = Float32(0.0)
         self.vec       = Vec64F32()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id = copy.column_id
         self.source_id = copy.source_id
         self.role_id   = copy.role_id
         self.norm_inv  = copy.norm_inv
         self.vec       = copy.vec.copy()   # explicit
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id = take.column_id
         self.source_id = take.source_id
         self.role_id   = take.role_id

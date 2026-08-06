@@ -120,7 +120,7 @@ struct Workbook(Copyable, Movable):
     var sheet_col_start: List[Int]
     var formula_cells: List[Int]  # indices with froot >= 0, load order
 
-    fn __init__(out self):
+    def __init__(out self):
         self.sheet_names = List[String]()
         self.name_folded = List[String]()
         self.name_scope = List[Int]()
@@ -148,10 +148,10 @@ struct Workbook(Copyable, Movable):
         self.sheet_col_start = List[Int]()
         self.formula_cells = List[Int]()
 
-    fn n_cells(self) -> Int:
+    def n_cells(self) -> Int:
         return len(self.c_coord)
 
-    fn find_cell(self, sheet: Int, row: Int, col: Int) -> Int:
+    def find_cell(self, sheet: Int, row: Int, col: Int) -> Int:
         """Cell index at (sheet, row, col); -1 when nothing is stored there.
         Binary search over the row-major permutation slice of `sheet`."""
         if sheet < 0 or sheet >= len(self.sheet_names):
@@ -172,7 +172,7 @@ struct Workbook(Copyable, Movable):
                 return self.perm_row[mid]
         return -1
 
-    fn used_extent(self, sheet: Int, mut max_row: Int, mut max_col: Int) -> Bool:
+    def used_extent(self, sheet: Int, mut max_row: Int, mut max_col: Int) -> Bool:
         """Last stored row and column of a sheet — its USED range. Excel never
         evaluates past it, and neither should array materialisation: without
         this, one `LOOKUP(2,1/(F:F<>""),F:F)` would materialise 1,048,576
@@ -193,7 +193,7 @@ struct Workbook(Copyable, Movable):
         max_col = self.c_coord[self.perm_col[cb - 1]] % MAX_COLS
         return True
 
-    fn row_slice_bounds(self, sheet: Int, coord_lo: Int, coord_hi: Int, mut lo: Int, mut hi: Int) -> Bool:
+    def row_slice_bounds(self, sheet: Int, coord_lo: Int, coord_hi: Int, mut lo: Int, mut hi: Int) -> Bool:
         """[lo, hi) into perm_row covering coords in [coord_lo, coord_hi]."""
         if sheet < 0 or sheet >= len(self.sheet_names):
             return False
@@ -221,7 +221,7 @@ struct Workbook(Copyable, Movable):
         hi = l
         return True
 
-    fn col_slice_bounds(self, sheet: Int, key_lo: Int, key_hi: Int, mut lo: Int, mut hi: Int) -> Bool:
+    def col_slice_bounds(self, sheet: Int, key_lo: Int, key_hi: Int, mut lo: Int, mut hi: Int) -> Bool:
         """[lo, hi) into perm_col covering col-major keys (col*MAX_ROWS+row)
         in [key_lo, key_hi]."""
         if sheet < 0 or sheet >= len(self.sheet_names):
@@ -252,7 +252,7 @@ struct Workbook(Copyable, Movable):
         hi = l
         return True
 
-    fn resolve_name(self, folded: String, sheet: Int) -> Int:
+    def resolve_name(self, folded: String, sheet: Int) -> Int:
         """Defined-name lookup: sheet scope wins over workbook scope. Returns
         the parsed refers-to root node, or -1 when the name does not exist."""
         var global_hit = -1
@@ -270,13 +270,13 @@ struct LoadResult(Copyable, Movable):
     var line_no: Int  # 1-based line of the refusal, 0 when ok
     var wb: Workbook
 
-    fn __init__(out self):
+    def __init__(out self):
         self.status = SHEET_OK
         self.line_no = 0
         self.wb = Workbook()
 
 
-fn _unescape(bs: Span[UInt8, _], start: Int, end: Int) -> String:
+def _unescape(bs: Span[UInt8, _], start: Int, end: Int) -> String:
     """Decode %XX escapes (the extractor emits %09 %0A %0D %25 only, but any
     hex pair decodes). A malformed escape passes through literally."""
     var buf = List[UInt8]()
@@ -295,7 +295,7 @@ fn _unescape(bs: Span[UInt8, _], start: Int, end: Int) -> String:
     return _bs_str(buf)
 
 
-fn _hex(b: Int) -> Int:
+def _hex(b: Int) -> Int:
     if b >= 48 and b <= 57:
         return b - 48
     if b >= 97 and b <= 102:
@@ -305,7 +305,7 @@ fn _hex(b: Int) -> Int:
     return -1
 
 
-fn _radix_sort_perm(keys: List[Int]) -> List[Int]:
+def _radix_sort_perm(keys: List[Int]) -> List[Int]:
     """Stable LSD radix sort (3 x 16-bit digits, keys < 2^45) returning the
     permutation. O(n) time, two n-length Int buffers."""
     var n = len(keys)
@@ -342,12 +342,12 @@ struct _Line(Copyable, Movable):
     var starts: List[Int]
     var ends: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.starts = List[Int]()
         self.ends = List[Int]()
 
 
-fn _field_eq(bs: Span[UInt8, _], start: Int, end: Int, lit: String) -> Bool:
+def _field_eq(bs: Span[UInt8, _], start: Int, end: Int, lit: String) -> Bool:
     var lb = lit.as_bytes()
     if end - start != len(lb):
         return False
@@ -357,7 +357,7 @@ fn _field_eq(bs: Span[UInt8, _], start: Int, end: Int, lit: String) -> Bool:
     return True
 
 
-fn _field_int(bs: Span[UInt8, _], start: Int, end: Int, mut val: Int) -> Bool:
+def _field_int(bs: Span[UInt8, _], start: Int, end: Int, mut val: Int) -> Bool:
     var i = start
     var neg = False
     if i < end and Int(bs[i]) == 45:
@@ -376,7 +376,7 @@ fn _field_int(bs: Span[UInt8, _], start: Int, end: Int, mut val: Int) -> Bool:
     return True
 
 
-fn load_workbook(text: String) -> LoadResult:
+def load_workbook(text: String) -> LoadResult:
     """Parse the extracted-workbook text format into a Workbook. Refuses with
     a named status and the offending 1-based line number; never crashes and
     never returns a half-loaded workbook as OK.
@@ -653,7 +653,7 @@ fn load_workbook(text: String) -> LoadResult:
     return res^
 
 
-fn _fold_name(s: String) -> String:
+def _fold_name(s: String) -> String:
     var bsx = s.as_bytes()
     var buf = List[UInt8]()
     for i in range(len(bsx)):
@@ -664,7 +664,7 @@ fn _fold_name(s: String) -> String:
     return _bs_str(buf)
 
 
-fn _store_const(
+def _store_const(
     mut wb: Workbook, ci: Int, bs: Span[UInt8, _], t_s: Int, t_e: Int, v_s: Int, v_e: Int
 ) -> Bool:
     if t_e - t_s != 1:
@@ -702,7 +702,7 @@ fn _store_const(
     return False
 
 
-fn _store_cached(
+def _store_cached(
     mut wb: Workbook, ci: Int, bs: Span[UInt8, _], t_s: Int, t_e: Int, v_s: Int, v_e: Int
 ) -> Bool:
     if t_e - t_s != 1:

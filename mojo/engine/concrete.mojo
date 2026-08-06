@@ -23,7 +23,7 @@ from std.math import exp, sqrt, abs as fabs
 # ── water_cement_ratio ───────────────────────────────────────────────────────
 
 
-fn water_cement_ratio(water_kg: Float64, cement_kg: Float64) -> Float64:
+def water_cement_ratio(water_kg: Float64, cement_kg: Float64) -> Float64:
     """Water-cement ratio: w/c = water / cement.
 
     Args:
@@ -41,7 +41,7 @@ fn water_cement_ratio(water_kg: Float64, cement_kg: Float64) -> Float64:
 # ── compressive_strength_abrams ──────────────────────────────────────────────
 
 
-fn compressive_strength_abrams(
+def compressive_strength_abrams(
     a: Float64, b: Float64, wc_ratio: Float64
 ) -> Float64:
     """Abrams' law (simplified): fc = a * exp(-b * wc).
@@ -60,7 +60,7 @@ fn compressive_strength_abrams(
 # ── cement_content ───────────────────────────────────────────────────────────
 
 
-fn cement_content(water: Float64, wc_ratio: Float64) -> Float64:
+def cement_content(water: Float64, wc_ratio: Float64) -> Float64:
     """Cement content: C = water / wc.
 
     Args:
@@ -78,7 +78,7 @@ fn cement_content(water: Float64, wc_ratio: Float64) -> Float64:
 # ── aggregate_volume ─────────────────────────────────────────────────────────
 
 
-fn aggregate_volume(
+def aggregate_volume(
     total_volume: Float64,
     cement_vol: Float64,
     water_vol: Float64,
@@ -101,7 +101,7 @@ fn aggregate_volume(
 # ── slump_estimate ───────────────────────────────────────────────────────────
 
 
-fn slump_estimate(wc_ratio: Float64) -> Float64:
+def slump_estimate(wc_ratio: Float64) -> Float64:
     """Slump estimate: slump_mm ≈ 300 * (wc - 0.3).
 
     Simplified linear model for w/c in 0.3–0.7 range.
@@ -121,7 +121,7 @@ fn slump_estimate(wc_ratio: Float64) -> Float64:
 # ── maturity_nurse_saul ──────────────────────────────────────────────────────
 
 
-fn maturity_nurse_saul(
+def maturity_nurse_saul(
     time_hours: Float64, temp: Float64, datum_temp: Float64
 ) -> Float64:
     """Nurse-Saul maturity: M = (T - T0) * Δt.
@@ -143,7 +143,7 @@ fn maturity_nurse_saul(
 # ── modulus_of_elasticity ────────────────────────────────────────────────────
 
 
-fn modulus_of_elasticity(fc_mpa: Float64) -> Float64:
+def modulus_of_elasticity(fc_mpa: Float64) -> Float64:
     """ACI modulus of elasticity: Ec = 4700 * sqrt(fc) (MPa).
 
     Args:
@@ -160,7 +160,7 @@ fn modulus_of_elasticity(fc_mpa: Float64) -> Float64:
 # ── splitting_tensile_strength ───────────────────────────────────────────────
 
 
-fn splitting_tensile_strength(fc_mpa: Float64) -> Float64:
+def splitting_tensile_strength(fc_mpa: Float64) -> Float64:
     """Splitting tensile strength: ft = 0.56 * sqrt(fc) (MPa).
 
     Args:
@@ -177,7 +177,7 @@ fn splitting_tensile_strength(fc_mpa: Float64) -> Float64:
 # ── drying_shrinkage_estimate ────────────────────────────────────────────────
 
 
-fn drying_shrinkage_estimate(
+def drying_shrinkage_estimate(
     wc_ratio: Float64, aggregate_pct: Float64
 ) -> Float64:
     """Drying shrinkage estimate: ε ≈ (wc - 0.2) * 0.001 * (1 - agg/100).
@@ -195,7 +195,7 @@ fn drying_shrinkage_estimate(
 # ── carbonation_depth ────────────────────────────────────────────────────────
 
 
-fn carbonation_depth(k: Float64, time_years: Float64) -> Float64:
+def carbonation_depth(k: Float64, time_years: Float64) -> Float64:
     """Carbonation depth: d = k * sqrt(t) (mm).
 
     Args:
@@ -213,7 +213,7 @@ fn carbonation_depth(k: Float64, time_years: Float64) -> Float64:
 # ── rebar_development_length ─────────────────────────────────────────────────
 
 
-fn rebar_development_length(
+def rebar_development_length(
     db: Float64, fy: Float64, fc: Float64
 ) -> Float64:
     """Rebar development length (simplified): Ld = db * fy / (4 * 0.56 * sqrt(fc)).
@@ -234,7 +234,7 @@ fn rebar_development_length(
 # ── concrete_density_estimate ────────────────────────────────────────────────
 
 
-fn concrete_density_estimate(
+def concrete_density_estimate(
     cement: Float64,
     water: Float64,
     aggregate: Float64,

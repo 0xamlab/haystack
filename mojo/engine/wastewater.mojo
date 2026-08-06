@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── bod_removal_efficiency ───────────────────────────────────────────────────
 
 
-fn bod_removal_efficiency(bod_in: Float64, bod_out: Float64) -> Float64:
+def bod_removal_efficiency(bod_in: Float64, bod_out: Float64) -> Float64:
     """η = (BOD_in - BOD_out) / BOD_in * 100  (percent removal)."""
     if bod_in == 0.0:
         return 0.0
@@ -35,7 +35,7 @@ fn bod_removal_efficiency(bod_in: Float64, bod_out: Float64) -> Float64:
 # ── hydraulic_retention_time ─────────────────────────────────────────────────
 
 
-fn hydraulic_retention_time(volume: Float64, flow_rate: Float64) -> Float64:
+def hydraulic_retention_time(volume: Float64, flow_rate: Float64) -> Float64:
     """HRT = V / Q  (hours, with consistent units)."""
     if flow_rate == 0.0:
         return 0.0
@@ -45,7 +45,7 @@ fn hydraulic_retention_time(volume: Float64, flow_rate: Float64) -> Float64:
 # ── solids_retention_time ────────────────────────────────────────────────────
 
 
-fn solids_retention_time(
+def solids_retention_time(
     volume: Float64,
     mlss: Float64,
     waste_flow: Float64,
@@ -63,7 +63,7 @@ fn solids_retention_time(
 # ── food_to_microorganism_ratio ──────────────────────────────────────────────
 
 
-fn food_to_microorganism_ratio(
+def food_to_microorganism_ratio(
     q: Float64, s0: Float64, v: Float64, x: Float64
 ) -> Float64:
     """F/M = Q*S0 / (V*X)  (day^-1)."""
@@ -76,7 +76,7 @@ fn food_to_microorganism_ratio(
 # ── sludge_volume_index ─────────────────────────────────────────────────────
 
 
-fn sludge_volume_index(
+def sludge_volume_index(
     settled_volume_ml: Float64, mlss_mg_l: Float64
 ) -> Float64:
     """SVI = (SV_mL/L * 1000) / MLSS_mg/L  (mL/g)."""
@@ -88,7 +88,7 @@ fn sludge_volume_index(
 # ── oxygen_demand ────────────────────────────────────────────────────────────
 
 
-fn oxygen_demand(
+def oxygen_demand(
     q: Float64, s0: Float64, se: Float64, f: Float64
 ) -> Float64:
     """O2 = Q * (S0 - Se) * f  (kg/day simplified)."""
@@ -98,7 +98,7 @@ fn oxygen_demand(
 # ── chlorine_demand ──────────────────────────────────────────────────────────
 
 
-fn chlorine_demand(dose: Float64, residual: Float64) -> Float64:
+def chlorine_demand(dose: Float64, residual: Float64) -> Float64:
     """Chlorine Demand = Dose - Residual  (mg/L)."""
     return dose - residual
 
@@ -106,7 +106,7 @@ fn chlorine_demand(dose: Float64, residual: Float64) -> Float64:
 # ── ct_value ─────────────────────────────────────────────────────────────────
 
 
-fn ct_value(concentration: Float64, contact_time: Float64) -> Float64:
+def ct_value(concentration: Float64, contact_time: Float64) -> Float64:
     """CT = C * T  (mg·min/L)."""
     return concentration * contact_time
 
@@ -114,7 +114,7 @@ fn ct_value(concentration: Float64, contact_time: Float64) -> Float64:
 # ── alkalinity_consumption ───────────────────────────────────────────────────
 
 
-fn alkalinity_consumption(ammonia_removed: Float64) -> Float64:
+def alkalinity_consumption(ammonia_removed: Float64) -> Float64:
     """Alkalinity consumed = 7.14 * NH4_removed  (mg/L as CaCO3)."""
     return 7.14 * ammonia_removed
 
@@ -122,7 +122,7 @@ fn alkalinity_consumption(ammonia_removed: Float64) -> Float64:
 # ── sludge_production ───────────────────────────────────────────────────────
 
 
-fn sludge_production(
+def sludge_production(
     yield_coeff: Float64,
     substrate_removed: Float64,
     decay_rate: Float64,
@@ -135,7 +135,7 @@ fn sludge_production(
 # ── trickling_filter_efficiency ──────────────────────────────────────────────
 
 
-fn trickling_filter_efficiency(
+def trickling_filter_efficiency(
     bod_in: Float64, recirculation_ratio: Float64
 ) -> Float64:
     """E = 1 / (1 + 0.4432 * sqrt(BOD_in / (1 + R)))  (simplified NRC).
@@ -149,7 +149,7 @@ fn trickling_filter_efficiency(
 # ── detention_time_settling ──────────────────────────────────────────────────
 
 
-fn detention_time_settling(
+def detention_time_settling(
     depth: Float64, overflow_rate: Float64
 ) -> Float64:
     """t = depth / overflow_rate  (hours)."""

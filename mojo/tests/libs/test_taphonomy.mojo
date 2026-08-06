@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from taphonomy import organic_decay_rate, bone_density_loss, fossil_completeness, permineralisation_rate, trampling_abrasion_index, hydraulic_sorting_index, time_averaged_assemblage, preservation_potential, diagenetic_alteration_index, carbon_nitrogen_ratio_bone
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

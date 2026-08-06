@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from video_color import frame_mean_rgb255, frame_mean_rgb_series, clip_mean_rgb255, dominant_clip_color_rgb255, clip_mean_saturation_rgb255, warm_frame_ratio_rgb255, color_drift_score_rgb255, preferred_text_contrast_for_video, preferred_text_color_for_video
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from operations_research import simplex_objective_value_2, simplex_objective_value_3, transportation_cost, total_transportation_cost_2x2, assignment_cost_3, eoq_quantity, eoq_total_cost, newsvendor_critical_ratio, little_law_l, little_law_w, utilization_factor, mm1_expected_queue_length, mm1_expected_wait_time
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

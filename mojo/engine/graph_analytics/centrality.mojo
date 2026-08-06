@@ -185,7 +185,7 @@ comptime CENTRALITY_MAX_ITERATION_CELLS: Int = 4294967296
 comptime CENTRALITY_MAX_EXACT_COUNT: Float64 = 9007199254740992.0
 
 
-fn centrality_status_name(code: Int) -> String:
+def centrality_status_name(code: Int) -> String:
     """Name for a status code, this module's own or an adjacency one it passed through."""
     if code == CENTRALITY_ERR_WORK_TOO_LARGE:
         return "work_too_large_use_sampling"
@@ -359,7 +359,7 @@ struct PageRankResult(Copyable, Movable):
 # ── shared guards ─────────────────────────────────────────────────────────────
 
 
-fn _weight_status(weights: List[Float64]) -> Int:
+def _weight_status(weights: List[Float64]) -> Int:
     """`GRAPH_OK`, or the code for the first weight a distance measure cannot use.
 
     NaN is tested before the sign, because `nan < 0.0` is False: a bare negativity check
@@ -374,7 +374,7 @@ fn _weight_status(weights: List[Float64]) -> Int:
     return GRAPH_OK
 
 
-fn _all_pairs_work_exceeds(n_nodes: Int, n_edges: Int) -> Bool:
+def _all_pairs_work_exceeds(n_nodes: Int, n_edges: Int) -> Bool:
     """True when one traversal per node would cost more than the declared ceiling.
 
     Compared in Float64 so the product itself cannot overflow into a small positive Int
@@ -386,7 +386,7 @@ fn _all_pairs_work_exceeds(n_nodes: Int, n_edges: Int) -> Bool:
     )
 
 
-fn _argmax(values: List[Float64]) -> Int:
+def _argmax(values: List[Float64]) -> Int:
     """Index of the largest value, -1 for an empty list. Ties go to the lowest index."""
     if len(values) == 0:
         return -1
@@ -397,7 +397,7 @@ fn _argmax(values: List[Float64]) -> Int:
     return best
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
@@ -407,7 +407,7 @@ fn _zeros(n: Int) -> List[Float64]:
 # ── Brandes: one source ───────────────────────────────────────────────────────
 
 
-fn _is_dag_edge(
+def _is_dag_edge(
     dist: List[Float64], u: Int, v: Int, cost: Float64
 ) -> Bool:
     """Is `(u, v)` on some shortest path from the source, given final distances.
@@ -423,7 +423,7 @@ fn _is_dag_edge(
     return dist[u] + cost == dist[v]
 
 
-fn _brandes_source(
+def _brandes_source(
     g: GraphCSR,
     source: Int,
     dist: List[Float64],
@@ -517,7 +517,7 @@ fn _brandes_source(
     return GRAPH_OK
 
 
-fn _no_betweenness(
+def _no_betweenness(
     status: Int, n_nodes: Int, weighted: Bool, normalized: Bool
 ) -> BetweennessResult:
     return BetweennessResult(
@@ -526,7 +526,7 @@ fn _no_betweenness(
     )
 
 
-fn _betweenness(
+def _betweenness(
     g: GraphCSR, weighted: Bool, normalized: Bool
 ) -> BetweennessResult:
     """Brandes over every source. O(V(V+E)) unweighted, O(VE log E) weighted."""
@@ -599,7 +599,7 @@ fn _betweenness(
     )
 
 
-fn graph_betweenness_unweighted(
+def graph_betweenness_unweighted(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -617,7 +617,7 @@ fn graph_betweenness_unweighted(
     )
 
 
-fn graph_betweenness_weighted(
+def graph_betweenness_weighted(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -635,7 +635,7 @@ fn graph_betweenness_weighted(
     )
 
 
-fn graph_betweenness_from_triplets(
+def graph_betweenness_from_triplets(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -658,14 +658,14 @@ fn graph_betweenness_from_triplets(
 # ── closeness ─────────────────────────────────────────────────────────────────
 
 
-fn _no_closeness(status: Int, n_nodes: Int, weighted: Bool) -> ClosenessResult:
+def _no_closeness(status: Int, n_nodes: Int, weighted: Bool) -> ClosenessResult:
     return ClosenessResult(
         status, n_nodes, weighted, 0, 0, List[Float64](), List[Float64](),
         List[Bool](), List[Int](), List[Float64](),
     )
 
 
-fn _closeness(g: GraphCSR, weighted: Bool) -> ClosenessResult:
+def _closeness(g: GraphCSR, weighted: Bool) -> ClosenessResult:
     """One traversal per node, keeping the reachable count next to every score."""
     var status = graph_csr_validate(g)
     if status != GRAPH_OK:
@@ -734,7 +734,7 @@ fn _closeness(g: GraphCSR, weighted: Bool) -> ClosenessResult:
     )
 
 
-fn graph_closeness_centrality(
+def graph_closeness_centrality(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -753,7 +753,7 @@ fn graph_closeness_centrality(
     )
 
 
-fn _no_harmonic(
+def _no_harmonic(
     status: Int, n_nodes: Int, weighted: Bool, normalized: Bool
 ) -> HarmonicResult:
     return HarmonicResult(
@@ -761,7 +761,7 @@ fn _no_harmonic(
     )
 
 
-fn _harmonic(g: GraphCSR, weighted: Bool, normalized: Bool) -> HarmonicResult:
+def _harmonic(g: GraphCSR, weighted: Bool, normalized: Bool) -> HarmonicResult:
     var status = graph_csr_validate(g)
     if status != GRAPH_OK:
         return _no_harmonic(status, 0, weighted, normalized)
@@ -817,7 +817,7 @@ fn _harmonic(g: GraphCSR, weighted: Bool, normalized: Bool) -> HarmonicResult:
     )
 
 
-fn graph_harmonic_centrality(
+def graph_harmonic_centrality(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -840,14 +840,14 @@ fn graph_harmonic_centrality(
 # ── degree ────────────────────────────────────────────────────────────────────
 
 
-fn _no_degree(status: Int, n_nodes: Int, normalized: Bool) -> DegreeCentralityResult:
+def _no_degree(status: Int, n_nodes: Int, normalized: Bool) -> DegreeCentralityResult:
     return DegreeCentralityResult(
         status, n_nodes, normalized, 0, 0, List[Float64](), List[Float64](),
         List[Float64](),
     )
 
 
-fn graph_degree_centrality(
+def graph_degree_centrality(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -908,14 +908,14 @@ fn graph_degree_centrality(
 # ── eigenvector centrality ────────────────────────────────────────────────────
 
 
-fn _no_eigenvector(status: Int, n_nodes: Int, max_iter: Int) -> EigenvectorResult:
+def _no_eigenvector(status: Int, n_nodes: Int, max_iter: Int) -> EigenvectorResult:
     return EigenvectorResult(
         status, n_nodes, max_iter, False, False, False, CENTRALITY_UNDEFINED,
         CENTRALITY_UNDEFINED, CENTRALITY_UNDEFINED, List[Float64](),
     )
 
 
-fn _strongly_connected(g: GraphCSR) -> Bool:
+def _strongly_connected(g: GraphCSR) -> Bool:
     """Does node 0 reach every node, and every node reach node 0.
 
     Two BFS passes, one on the graph and one on its reverse — the standard Kosaraju
@@ -929,7 +929,7 @@ fn _strongly_connected(g: GraphCSR) -> Bool:
     return backward.status == GRAPH_OK and backward.reached_count == g.n_nodes
 
 
-fn graph_eigenvector_centrality(
+def graph_eigenvector_centrality(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1045,7 +1045,7 @@ fn graph_eigenvector_centrality(
 # ── PageRank ──────────────────────────────────────────────────────────────────
 
 
-fn _no_pagerank(
+def _no_pagerank(
     status: Int, n_nodes: Int, damping: Float64, max_iter: Int, redistributed: Bool
 ) -> PageRankResult:
     return PageRankResult(
@@ -1054,7 +1054,7 @@ fn _no_pagerank(
     )
 
 
-fn graph_pagerank(
+def graph_pagerank(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],

@@ -29,7 +29,7 @@ struct Event(Copyable, Movable):
     var event_type: Int
     var entity_id: Int
 
-    fn __init__(out self, time: Float64, event_type: Int, entity_id: Int):
+    def __init__(out self, time: Float64, event_type: Int, entity_id: Int):
         self.time = time
         self.event_type = event_type
         self.entity_id = entity_id
@@ -51,7 +51,7 @@ struct SimState(Copyable, Movable):
     var comp_id: List[Int]
     var next_id: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.clock = 0.0
         self.ev_time = List[Float64]()
         self.ev_type = List[Int]()
@@ -65,7 +65,7 @@ struct SimState(Copyable, Movable):
 # ── create_sim ────────────────────────────────────────────────────────────────
 
 
-fn create_sim() -> SimState:
+def create_sim() -> SimState:
     """Initialize empty simulation state with clock=0."""
     return SimState()
 
@@ -73,7 +73,7 @@ fn create_sim() -> SimState:
 # ── schedule_event ────────────────────────────────────────────────────────────
 
 
-fn schedule_event(mut state: SimState, delay: Float64, event_type: Int) -> Int:
+def schedule_event(mut state: SimState, delay: Float64, event_type: Int) -> Int:
     """Schedule event at clock+delay. Returns entity_id. Insert sorted."""
     var eid = state.next_id
     state.next_id += 1
@@ -104,7 +104,7 @@ fn schedule_event(mut state: SimState, delay: Float64, event_type: Int) -> Int:
 # ── has_events ────────────────────────────────────────────────────────────────
 
 
-fn has_events(state: SimState) -> Bool:
+def has_events(state: SimState) -> Bool:
     """Check if event queue is non-empty."""
     return len(state.ev_time) > 0
 
@@ -112,7 +112,7 @@ fn has_events(state: SimState) -> Bool:
 # ── _remove_event_at (helper) ────────────────────────────────────────────────
 
 
-fn _remove_event_at(mut state: SimState, idx: Int):
+def _remove_event_at(mut state: SimState, idx: Int):
     """Remove event at given index by rebuilding lists."""
     var n = len(state.ev_time)
     var new_t = List[Float64]()
@@ -131,7 +131,7 @@ fn _remove_event_at(mut state: SimState, idx: Int):
 # ── next_event ────────────────────────────────────────────────────────────────
 
 
-fn next_event(mut state: SimState) raises -> Event:
+def next_event(mut state: SimState) raises -> Event:
     """Pop the next event (earliest time), advance clock, add to completed."""
     if len(state.ev_time) == 0:
         raise Error("No events in queue")
@@ -149,7 +149,7 @@ fn next_event(mut state: SimState) raises -> Event:
 # ── run_until ─────────────────────────────────────────────────────────────────
 
 
-fn run_until(mut state: SimState, end_time: Float64) raises -> List[Event]:
+def run_until(mut state: SimState, end_time: Float64) raises -> List[Event]:
     """Process all events until clock >= end_time. Returns processed list."""
     var proc_t = List[Float64]()
     var proc_ty = List[Int]()
@@ -171,7 +171,7 @@ fn run_until(mut state: SimState, end_time: Float64) raises -> List[Event]:
 # ── cancel_event ──────────────────────────────────────────────────────────────
 
 
-fn cancel_event(mut state: SimState, entity_id: Int) -> Bool:
+def cancel_event(mut state: SimState, entity_id: Int) -> Bool:
     """Remove event by entity_id. Returns True if found and removed."""
     var n = len(state.ev_time)
     for i in range(n):
@@ -184,7 +184,7 @@ fn cancel_event(mut state: SimState, entity_id: Int) -> Bool:
 # ── sim_stats ─────────────────────────────────────────────────────────────────
 
 
-fn sim_stats(state: SimState) -> List[Float64]:
+def sim_stats(state: SimState) -> List[Float64]:
     """Return [total_events_processed, current_clock, events_remaining]."""
     var result = List[Float64]()
     result.append(Float64(len(state.comp_time)))
@@ -196,12 +196,12 @@ fn sim_stats(state: SimState) -> List[Float64]:
 # ── _lcg_next (helper) ───────────────────────────────────────────────────────
 
 
-fn _lcg_next(seed: Int) -> Int:
+def _lcg_next(seed: Int) -> Int:
     """Simple LCG random number generator."""
     return (1103515245 * seed + 12345) & 0x7FFFFFFF
 
 
-fn _lcg_float(seed: Int) -> Float64:
+def _lcg_float(seed: Int) -> Float64:
     """Convert LCG state to float in (0, 1)."""
     var v = Float64(seed) / Float64(0x7FFFFFFF)
     if v <= 0.0:
@@ -214,7 +214,7 @@ fn _lcg_float(seed: Int) -> Float64:
 # ── mm1_simulate ──────────────────────────────────────────────────────────────
 
 
-fn mm1_simulate(
+def mm1_simulate(
     arrival_rate: Float64, service_rate: Float64, n_customers: Int
 ) -> List[Float64]:
     """Simulate M/M/1 queue. Returns [avg_wait, avg_system_time, utilization].

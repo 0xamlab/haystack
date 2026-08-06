@@ -12,7 +12,7 @@ from algenta_runtime.resources import (
 )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

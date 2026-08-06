@@ -29,7 +29,7 @@ comptime DEG2RAD: Float64 = 3.141592653589793 / 180.0
 # ── solar_irradiance_on_surface ──────────────────────────────────────────────
 
 
-fn solar_irradiance_on_surface(
+def solar_irradiance_on_surface(
     ghi: Float64, cos_incidence: Float64
 ) -> Float64:
     """Irradiance on surface: I = GHI * cos(θ).
@@ -47,7 +47,7 @@ fn solar_irradiance_on_surface(
 # ── panel_power_output ───────────────────────────────────────────────────────
 
 
-fn panel_power_output(
+def panel_power_output(
     area: Float64, efficiency: Float64, irradiance: Float64
 ) -> Float64:
     """Panel power: P = A * η * G.
@@ -66,7 +66,7 @@ fn panel_power_output(
 # ── temperature_derate ───────────────────────────────────────────────────────
 
 
-fn temperature_derate(
+def temperature_derate(
     pmax_stc: Float64,
     temp_coeff: Float64,
     cell_temp: Float64,
@@ -89,7 +89,7 @@ fn temperature_derate(
 # ── cell_temperature_noct ────────────────────────────────────────────────────
 
 
-fn cell_temperature_noct(
+def cell_temperature_noct(
     ambient: Float64, noct: Float64, irradiance: Float64
 ) -> Float64:
     """Cell temperature NOCT model: Tcell = Tamb + (NOCT-20)/800 * G.
@@ -108,7 +108,7 @@ fn cell_temperature_noct(
 # ── solar_declination ────────────────────────────────────────────────────────
 
 
-fn solar_declination(day_of_year: Float64) -> Float64:
+def solar_declination(day_of_year: Float64) -> Float64:
     """Solar declination: δ = 23.45 * sin(2π*(284+n)/365).
 
     Args:
@@ -123,7 +123,7 @@ fn solar_declination(day_of_year: Float64) -> Float64:
 # ── hour_angle ───────────────────────────────────────────────────────────────
 
 
-fn hour_angle(solar_time_hours: Float64) -> Float64:
+def hour_angle(solar_time_hours: Float64) -> Float64:
     """Hour angle: ω = 15 * (solar_time - 12).
 
     Args:
@@ -138,7 +138,7 @@ fn hour_angle(solar_time_hours: Float64) -> Float64:
 # ── solar_altitude ───────────────────────────────────────────────────────────
 
 
-fn solar_altitude(
+def solar_altitude(
     latitude: Float64, declination: Float64, hour_ang: Float64
 ) -> Float64:
     """Solar altitude angle: sin(α) = sin(lat)*sin(δ)+cos(lat)*cos(δ)*cos(ω).
@@ -196,7 +196,7 @@ fn solar_altitude(
 # ── capacity_factor_solar ────────────────────────────────────────────────────
 
 
-fn capacity_factor_solar(
+def capacity_factor_solar(
     annual_kwh: Float64, rated_kw: Float64, hours_year: Float64
 ) -> Float64:
     """Capacity factor: CF = kWh / (kW * hours).
@@ -218,7 +218,7 @@ fn capacity_factor_solar(
 # ── lcoe ─────────────────────────────────────────────────────────────────────
 
 
-fn lcoe(total_cost: Float64, total_energy: Float64) -> Float64:
+def lcoe(total_cost: Float64, total_energy: Float64) -> Float64:
     """Levelized cost of energy: LCOE = cost / energy ($/kWh).
 
     Args:
@@ -236,7 +236,7 @@ fn lcoe(total_cost: Float64, total_energy: Float64) -> Float64:
 # ── payback_period ───────────────────────────────────────────────────────────
 
 
-fn payback_period(system_cost: Float64, annual_savings: Float64) -> Float64:
+def payback_period(system_cost: Float64, annual_savings: Float64) -> Float64:
     """Simple payback period: PP = cost / savings.
 
     Args:
@@ -254,7 +254,7 @@ fn payback_period(system_cost: Float64, annual_savings: Float64) -> Float64:
 # ── inverter_efficiency ──────────────────────────────────────────────────────
 
 
-fn inverter_efficiency(ac_output: Float64, dc_input: Float64) -> Float64:
+def inverter_efficiency(ac_output: Float64, dc_input: Float64) -> Float64:
     """Inverter efficiency: η = Pac / Pdc.
 
     Args:
@@ -272,7 +272,7 @@ fn inverter_efficiency(ac_output: Float64, dc_input: Float64) -> Float64:
 # ── string_voltage ───────────────────────────────────────────────────────────
 
 
-fn string_voltage(modules_in_series: Float64, vmp: Float64) -> Float64:
+def string_voltage(modules_in_series: Float64, vmp: Float64) -> Float64:
     """String voltage: V = n * Vmp.
 
     Args:

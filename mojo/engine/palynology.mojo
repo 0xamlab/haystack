@@ -16,7 +16,7 @@ Public API:
 from std.math import log, sqrt, exp
 
 
-fn pollen_concentration(
+def pollen_concentration(
     pollen_counted: Float64, exotic_counted: Float64,
     exotic_added: Float64, sample_volume_cm3: Float64
 ) -> Float64:
@@ -38,7 +38,7 @@ fn pollen_concentration(
     return (pollen_counted * exotic_added) / (exotic_counted * sample_volume_cm3)
 
 
-fn pollen_accumulation_rate(
+def pollen_accumulation_rate(
     concentration: Float64, sedimentation_rate_cm_yr: Float64
 ) -> Float64:
     """Pollen accumulation rate.
@@ -55,7 +55,7 @@ fn pollen_accumulation_rate(
     return concentration * sedimentation_rate_cm_yr
 
 
-fn taxa_diversity_index(proportions: Float64, n_taxa: Float64) -> Float64:
+def taxa_diversity_index(proportions: Float64, n_taxa: Float64) -> Float64:
     """Simplified Shannon diversity (using mean proportion).
 
     H' = -Σ(pi × ln pi)  approximated from mean p for n taxa
@@ -72,7 +72,7 @@ fn taxa_diversity_index(proportions: Float64, n_taxa: Float64) -> Float64:
     return -n_taxa * proportions * log(proportions)
 
 
-fn relative_pollen_percentage(
+def relative_pollen_percentage(
     taxon_count: Float64, pollen_sum: Float64
 ) -> Float64:
     """Relative pollen percentage of a taxon.
@@ -91,7 +91,7 @@ fn relative_pollen_percentage(
     return taxon_count / pollen_sum * 100.0
 
 
-fn r_value_correction(
+def r_value_correction(
     relative_pollen_pct: Float64, r_value: Float64
 ) -> Float64:
     """Pollen representativeness correction using R-value.
@@ -110,7 +110,7 @@ fn r_value_correction(
     return relative_pollen_pct / r_value
 
 
-fn arboreal_non_arboreal_ratio(
+def arboreal_non_arboreal_ratio(
     arboreal_count: Float64, non_arboreal_count: Float64
 ) -> Float64:
     """Arboreal to non-arboreal pollen ratio.
@@ -130,7 +130,7 @@ fn arboreal_non_arboreal_ratio(
     return arboreal_count / total
 
 
-fn pollen_influx(
+def pollen_influx(
     par: Float64, bulk_density_g_cm3: Float64
 ) -> Float64:
     """Pollen influx converted using bulk sediment density.
@@ -149,7 +149,7 @@ fn pollen_influx(
     return par / bulk_density_g_cm3
 
 
-fn spore_germination_index(
+def spore_germination_index(
     temperature_sum: Float64, base_temperature: Float64
 ) -> Float64:
     """Growing degree-day index for spore germination probability.
@@ -172,7 +172,7 @@ fn spore_germination_index(
     return p
 
 
-fn pollen_productivity_estimate(
+def pollen_productivity_estimate(
     trap_count: Float64, vegetation_cover: Float64, distance_m: Float64
 ) -> Float64:
     """Relative pollen productivity from trap and vegetation data.
@@ -193,7 +193,7 @@ fn pollen_productivity_estimate(
     return trap_count / (vegetation_cover * decay + 1e-10)
 
 
-fn pollen_transport_distance(
+def pollen_transport_distance(
     settling_velocity_m_per_s: Float64, wind_speed_m_per_s: Float64,
     release_height_m: Float64
 ) -> Float64:

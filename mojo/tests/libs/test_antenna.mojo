@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from antenna import dipole_length, wavelength_from_freq, friis_path_loss, eirp, received_power, directivity_from_beamwidths, antenna_efficiency, effective_aperture, link_budget_margin, noise_figure_to_noise_temp, free_space_loss_db, beamwidth_from_aperture
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from document_vision import otsu_threshold_flat, binarize_otsu_flat, adaptive_mean_binarize_flat, horizontal_projection, vertical_projection, mask_content_bbox_flat, skew_angle_estimate_flat, horizontal_text_score_flat, document_scan_quality_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

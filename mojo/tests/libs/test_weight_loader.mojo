@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from weight_loader import shard_offset_bytes, safetensors_header_size, lazy_load_priority, gguf_quantized_block_size, checkpoint_resume_step, weight_diff_norm, partial_load_coverage, adapter_merge_ratio, hf_model_index_shards, weight_hash_verify
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

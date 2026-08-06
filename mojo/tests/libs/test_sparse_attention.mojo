@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sparse_attention import local_window_mask, longformer_global_score, bigbird_random_block_select, streaming_llm_sink_score, landmark_token_score, chunk_cross_attention_weight, linear_attention_kernel, recurrent_memory_update, block_sparse_density, hyper_attention_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -36,7 +36,7 @@ struct KVStore(Copyable, Movable):
     var values: List[Float64]
     var size: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.keys = List[Int]()
         self.values = List[Float64]()
         self.size = 0
@@ -45,7 +45,7 @@ struct KVStore(Copyable, Movable):
 # ── Helper: find index of key ────────────────────────────────────────────────
 
 
-fn _find_index(store: KVStore, key: Int) -> Int:
+def _find_index(store: KVStore, key: Int) -> Int:
     """Return index of key or -1 if not found."""
     for i in range(store.size):
         if store.keys[i] == key:
@@ -56,12 +56,12 @@ fn _find_index(store: KVStore, key: Int) -> Int:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-fn kv_create() -> KVStore:
+def kv_create() -> KVStore:
     """Create an empty key-value store."""
     return KVStore()
 
 
-fn kv_put(mut store: KVStore, key: Int, value: Float64):
+def kv_put(mut store: KVStore, key: Int, value: Float64):
     """Insert or update a key-value pair."""
     var idx = _find_index(store, key)
     if idx >= 0:
@@ -72,7 +72,7 @@ fn kv_put(mut store: KVStore, key: Int, value: Float64):
         store.size += 1
 
 
-fn kv_get(store: KVStore, key: Int) -> Float64:
+def kv_get(store: KVStore, key: Int) -> Float64:
     """Get value for key. Returns KV_MISS (-999999.0) on miss."""
     var idx = _find_index(store, key)
     if idx >= 0:
@@ -80,7 +80,7 @@ fn kv_get(store: KVStore, key: Int) -> Float64:
     return KV_MISS
 
 
-fn kv_delete(mut store: KVStore, key: Int) -> Bool:
+def kv_delete(mut store: KVStore, key: Int) -> Bool:
     """Delete key from store. Returns True if found and deleted."""
     var idx = _find_index(store, key)
     if idx < 0:
@@ -96,17 +96,17 @@ fn kv_delete(mut store: KVStore, key: Int) -> Bool:
     return True
 
 
-fn kv_contains(store: KVStore, key: Int) -> Bool:
+def kv_contains(store: KVStore, key: Int) -> Bool:
     """Check if key exists in store."""
     return _find_index(store, key) >= 0
 
 
-fn kv_size(store: KVStore) -> Int:
+def kv_size(store: KVStore) -> Int:
     """Return number of entries in store."""
     return store.size
 
 
-fn kv_keys(store: KVStore) -> List[Int]:
+def kv_keys(store: KVStore) -> List[Int]:
     """Return all keys."""
     var result = List[Int]()
     for i in range(store.size):
@@ -114,7 +114,7 @@ fn kv_keys(store: KVStore) -> List[Int]:
     return result^
 
 
-fn kv_values(store: KVStore) -> List[Float64]:
+def kv_values(store: KVStore) -> List[Float64]:
     """Return all values."""
     var result = List[Float64]()
     for i in range(store.size):
@@ -122,14 +122,14 @@ fn kv_values(store: KVStore) -> List[Float64]:
     return result^
 
 
-fn kv_clear(mut store: KVStore):
+def kv_clear(mut store: KVStore):
     """Remove all entries."""
     store.keys = List[Int]()
     store.values = List[Float64]()
     store.size = 0
 
 
-fn snapshot(store: KVStore) -> List[List[Float64]]:
+def snapshot(store: KVStore) -> List[List[Float64]]:
     """Serialize store to [[key_as_float, value], ...] for persistence."""
     var result = List[List[Float64]]()
     for i in range(store.size):
@@ -140,7 +140,7 @@ fn snapshot(store: KVStore) -> List[List[Float64]]:
     return result^
 
 
-fn restore(data: List[List[Float64]]) -> KVStore:
+def restore(data: List[List[Float64]]) -> KVStore:
     """Restore a KVStore from snapshot data."""
     var store = KVStore()
     for i in range(len(data)):

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from combinatorial import knapsack_01, knapsack_01_value, bin_packing_first_fit, bin_packing_first_fit_decreasing, max_subarray_sum, longest_increasing_subsequence, coin_change
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

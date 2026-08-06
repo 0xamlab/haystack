@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from rerank_eval import precision_at_k, recall_at_k, hit_rate_at_k, mrr_at_k, map_at_k, ndcg_at_k, pairwise_margin_accuracy, score_separation, latency_weighted_quality
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

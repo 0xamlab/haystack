@@ -32,7 +32,7 @@ from field_mapper import (
 from json.parser import json_get_string, json_get_object, json_get_float
 
 
-fn run_field_map(raw: String) raises -> String:
+def run_field_map(raw: String) raises -> String:
     """
     Map arbitrary data fields to simulation variables using FieldMapper.
 

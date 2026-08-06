@@ -101,7 +101,7 @@ from discrete_event.contract import (
 from discrete_event.warmup import WARMUP_MIN_BATCHES, warmup_bias_audit, warmup_mser_flat
 
 
-fn _step() -> List[Float64]:
+def _step() -> List[Float64]:
     var o = List[Float64]()
     for _ in range(4):
         o.append(100.0)
@@ -110,7 +110,7 @@ fn _step() -> List[Float64]:
     return o^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[discrete_event.warmup] known-value suite")

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from transportation import level_of_service_density, highway_capacity, travel_time, delay_at_signal, headway, stopping_distance, fuel_consumption_rate, passenger_car_equivalent, intersection_capacity, queue_length_estimate, vehicle_operating_cost, crash_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

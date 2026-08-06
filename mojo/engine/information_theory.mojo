@@ -24,7 +24,7 @@ from std.math import log2, log, abs as fabs
 # ── entropy ───────────────────────────────────────────────────────────────────
 
 
-fn entropy(probs: List[Float64]) -> Float64:
+def entropy(probs: List[Float64]) -> Float64:
     """Shannon entropy: -Σ p*log2(p). Skip p=0."""
     var h: Float64 = 0.0
     for i in range(len(probs)):
@@ -37,7 +37,7 @@ fn entropy(probs: List[Float64]) -> Float64:
 # ── joint_entropy ─────────────────────────────────────────────────────────────
 
 
-fn joint_entropy(joint_probs: List[List[Float64]]) -> Float64:
+def joint_entropy(joint_probs: List[List[Float64]]) -> Float64:
     """Joint entropy: -Σᵢⱼ p(i,j)*log2(p(i,j))."""
     var h: Float64 = 0.0
     for i in range(len(joint_probs)):
@@ -51,7 +51,7 @@ fn joint_entropy(joint_probs: List[List[Float64]]) -> Float64:
 # ── conditional_entropy ───────────────────────────────────────────────────────
 
 
-fn conditional_entropy(joint_probs: List[List[Float64]]) -> Float64:
+def conditional_entropy(joint_probs: List[List[Float64]]) -> Float64:
     """Conditional entropy H(Y|X) = H(X,Y) - H(X).
 
     X marginal is obtained by summing rows of the joint distribution.
@@ -71,7 +71,7 @@ fn conditional_entropy(joint_probs: List[List[Float64]]) -> Float64:
 # ── mutual_information ────────────────────────────────────────────────────────
 
 
-fn mutual_information(joint_probs: List[List[Float64]]) -> Float64:
+def mutual_information(joint_probs: List[List[Float64]]) -> Float64:
     """Mutual information I(X;Y) = H(X) + H(Y) - H(X,Y)."""
     var hxy = joint_entropy(joint_probs)
     # Marginal X (row sums)
@@ -104,7 +104,7 @@ fn mutual_information(joint_probs: List[List[Float64]]) -> Float64:
 # ── kl_divergence ─────────────────────────────────────────────────────────────
 
 
-fn kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
+def kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
     """KL divergence: Σ p*log2(p/q). Requires q[i]>0 where p[i]>0."""
     # A short q would be read past its end below (uncatchable abort).
     if len(q) < len(p):
@@ -119,7 +119,7 @@ fn kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
 # ── cross_entropy ─────────────────────────────────────────────────────────────
 
 
-fn cross_entropy(p: List[Float64], q: List[Float64]) -> Float64:
+def cross_entropy(p: List[Float64], q: List[Float64]) -> Float64:
     """Cross entropy: -Σ p*log2(q)."""
     # A short q would be read past its end below (uncatchable abort).
     if len(q) < len(p):
@@ -134,7 +134,7 @@ fn cross_entropy(p: List[Float64], q: List[Float64]) -> Float64:
 # ── binary_entropy ────────────────────────────────────────────────────────────
 
 
-fn binary_entropy(p: Float64) -> Float64:
+def binary_entropy(p: Float64) -> Float64:
     """Binary entropy: H(p) = -p*log2(p) - (1-p)*log2(1-p)."""
     if p <= 0.0 or p >= 1.0:
         return 0.0
@@ -144,7 +144,7 @@ fn binary_entropy(p: Float64) -> Float64:
 # ── channel_capacity_bsc ─────────────────────────────────────────────────────
 
 
-fn channel_capacity_bsc(error_prob: Float64) -> Float64:
+def channel_capacity_bsc(error_prob: Float64) -> Float64:
     """Binary symmetric channel capacity: C = 1 - H(p)."""
     return 1.0 - binary_entropy(error_prob)
 
@@ -152,7 +152,7 @@ fn channel_capacity_bsc(error_prob: Float64) -> Float64:
 # ── redundancy ────────────────────────────────────────────────────────────────
 
 
-fn redundancy(probs: List[Float64]) -> Float64:
+def redundancy(probs: List[Float64]) -> Float64:
     """Redundancy: R = log2(n) - H(probs). Max possible entropy minus actual."""
     var n = len(probs)
     if n <= 1:
@@ -163,7 +163,7 @@ fn redundancy(probs: List[Float64]) -> Float64:
 # ── normalized_entropy ────────────────────────────────────────────────────────
 
 
-fn normalized_entropy(probs: List[Float64]) -> Float64:
+def normalized_entropy(probs: List[Float64]) -> Float64:
     """Normalized entropy: H(probs) / log2(n). Range [0,1]."""
     var n = len(probs)
     if n <= 1:

@@ -73,14 +73,14 @@ alias, re-declared here rather than imported so this module has no
 dependency on `gemm`. 2 on 128-bit NEON (this host), 8 on AVX-512."""
 
 
-fn _min_len(a: List[Float64], b: List[Float64]) -> Int:
+def _min_len(a: List[Float64], b: List[Float64]) -> Int:
     var n = len(a)
     if len(b) < n:
         n = len(b)
     return n
 
 
-fn _cosine_similarity_with_query_mag(
+def _cosine_similarity_with_query_mag(
     query: List[Float64], candidate: List[Float64], query_mag: Float64
 ) -> Float64:
     if query_mag <= 0.0:
@@ -98,7 +98,7 @@ fn _cosine_similarity_with_query_mag(
     return dot / (query_mag * sqrt(cand_sq))
 
 
-fn _insert_topk(
+def _insert_topk(
     mut best_scores: List[Float64],
     mut best_indices: List[Int],
     candidate_score: Float64,
@@ -143,7 +143,7 @@ fn _insert_topk(
 # ── dot_product ──────────────────────────────────────────────────────────────
 
 
-fn dot_product(a: List[Float64], b: List[Float64]) -> Float64:
+def dot_product(a: List[Float64], b: List[Float64]) -> Float64:
     """Dot product of two vectors. SIMD-vectorized; see the module docstring."""
     var n = _min_len(a, b)
     var ap = a.unsafe_ptr()
@@ -160,7 +160,7 @@ fn dot_product(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn dot_product_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
+def dot_product_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
     """`dot_product`, but raises on a dimension mismatch instead of silently
     summing only over `min(len(a), len(b))`. See the module docstring.
     """
@@ -178,7 +178,7 @@ fn dot_product_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
 # ── vector_magnitude ─────────────────────────────────────────────────────────
 
 
-fn vector_magnitude(v: List[Float64]) -> Float64:
+def vector_magnitude(v: List[Float64]) -> Float64:
     """L2 norm (magnitude) of a vector. SIMD-vectorized; see the module
     docstring."""
     var n = len(v)
@@ -199,7 +199,7 @@ fn vector_magnitude(v: List[Float64]) -> Float64:
 # ── cosine_similarity ────────────────────────────────────────────────────────
 
 
-fn cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
+def cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
     """Cosine similarity between two vectors. SIMD-vectorized; see the module
     docstring."""
     var n = _min_len(a, b)
@@ -231,7 +231,7 @@ fn cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
     return dot / (sqrt(sq_a) * sqrt(sq_b))
 
 
-fn cosine_similarity_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
+def cosine_similarity_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
     """`cosine_similarity`, but raises on a dimension mismatch instead of
     silently comparing only over `min(len(a), len(b))`. See the module
     docstring.
@@ -250,7 +250,7 @@ fn cosine_similarity_strict(a: List[Float64], b: List[Float64]) raises -> Float6
 # ── euclidean_distance ───────────────────────────────────────────────────────
 
 
-fn euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
     """L2 (Euclidean) distance between two vectors. SIMD-vectorized; see the
     module docstring."""
     var n = _min_len(a, b)
@@ -270,7 +270,7 @@ fn euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
     return sqrt(s)
 
 
-fn euclidean_distance_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
+def euclidean_distance_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
     """`euclidean_distance`, but raises on a dimension mismatch instead of
     silently measuring only over `min(len(a), len(b))`. See the module
     docstring.
@@ -289,7 +289,7 @@ fn euclidean_distance_strict(a: List[Float64], b: List[Float64]) raises -> Float
 # ── manhattan_distance ───────────────────────────────────────────────────────
 
 
-fn manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
     """L1 (Manhattan) distance between two vectors. SIMD-vectorized; see the
     module docstring."""
     var n = _min_len(a, b)
@@ -310,7 +310,7 @@ fn manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn manhattan_distance_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
+def manhattan_distance_strict(a: List[Float64], b: List[Float64]) raises -> Float64:
     """`manhattan_distance`, but raises on a dimension mismatch instead of
     silently measuring only over `min(len(a), len(b))`. See the module
     docstring.
@@ -329,7 +329,7 @@ fn manhattan_distance_strict(a: List[Float64], b: List[Float64]) raises -> Float
 # ── normalize_vector ─────────────────────────────────────────────────────────
 
 
-fn normalize_vector(v: List[Float64]) -> List[Float64]:
+def normalize_vector(v: List[Float64]) -> List[Float64]:
     """L2 normalize to unit vector."""
     var n = len(v)
     var mag = vector_magnitude(v)
@@ -347,7 +347,7 @@ fn normalize_vector(v: List[Float64]) -> List[Float64]:
 # ── centroid ─────────────────────────────────────────────────────────────────
 
 
-fn centroid(vectors: List[List[Float64]]) raises -> List[Float64]:
+def centroid(vectors: List[List[Float64]]) raises -> List[Float64]:
     """Mean of vectors (centroid).
 
     Raises if any vector after the first has a different length than
@@ -388,7 +388,7 @@ fn centroid(vectors: List[List[Float64]]) raises -> List[Float64]:
 # ── nearest_neighbor ─────────────────────────────────────────────────────────
 
 
-fn nearest_neighbor(query: List[Float64], candidates: List[List[Float64]]) -> Int:
+def nearest_neighbor(query: List[Float64], candidates: List[List[Float64]]) -> Int:
     """Index of nearest candidate by cosine similarity (highest)."""
     var n_candidates = len(candidates)
     if n_candidates == 0:
@@ -404,7 +404,7 @@ fn nearest_neighbor(query: List[Float64], candidates: List[List[Float64]]) -> In
     return best_idx
 
 
-fn nearest_neighbor_strict(
+def nearest_neighbor_strict(
     query: List[Float64], candidates: List[List[Float64]]
 ) raises -> Int:
     """`nearest_neighbor`, but raises if any candidate's dimensionality
@@ -431,7 +431,7 @@ fn nearest_neighbor_strict(
 # ── k_nearest_neighbors ─────────────────────────────────────────────────────
 
 
-fn k_nearest_neighbors(
+def k_nearest_neighbors(
     query: List[Float64], candidates: List[List[Float64]], k: Int
 ) -> List[Int]:
     """Indices of k nearest candidates by cosine similarity."""
@@ -471,7 +471,7 @@ fn k_nearest_neighbors(
     return best_indices^
 
 
-fn k_nearest_neighbors_strict(
+def k_nearest_neighbors_strict(
     query: List[Float64], candidates: List[List[Float64]], k: Int
 ) raises -> List[Int]:
     """`k_nearest_neighbors`, but raises if any candidate's dimensionality
@@ -509,7 +509,7 @@ fn k_nearest_neighbors_strict(
 # ── cosine_similarity_matrix ─────────────────────────────────────────────────
 
 
-fn cosine_similarity_matrix(vectors: List[List[Float64]]) -> List[List[Float64]]:
+def cosine_similarity_matrix(vectors: List[List[Float64]]) -> List[List[Float64]]:
     """NxN cosine similarity matrix."""
     var n = len(vectors)
     var norms = List[Float64](capacity=n)
@@ -543,7 +543,7 @@ fn cosine_similarity_matrix(vectors: List[List[Float64]]) -> List[List[Float64]]
     return matrix^
 
 
-fn cosine_similarity_matrix_strict(
+def cosine_similarity_matrix_strict(
     vectors: List[List[Float64]],
 ) raises -> List[List[Float64]]:
     """`cosine_similarity_matrix`, but raises if any vector's dimensionality
@@ -572,7 +572,7 @@ fn cosine_similarity_matrix_strict(
 # ── vector_add ───────────────────────────────────────────────────────────────
 
 
-fn vector_add(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def vector_add(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Element-wise addition of two vectors."""
     var n = _min_len(a, b)
     var result = List[Float64](capacity=n)
@@ -581,7 +581,7 @@ fn vector_add(a: List[Float64], b: List[Float64]) -> List[Float64]:
     return result^
 
 
-fn vector_add_strict(a: List[Float64], b: List[Float64]) raises -> List[Float64]:
+def vector_add_strict(a: List[Float64], b: List[Float64]) raises -> List[Float64]:
     """`vector_add`, but raises on a dimension mismatch instead of silently
     adding only over `min(len(a), len(b))`. See the module docstring.
     """
@@ -599,7 +599,7 @@ fn vector_add_strict(a: List[Float64], b: List[Float64]) raises -> List[Float64]
 # ── vector_scale ─────────────────────────────────────────────────────────────
 
 
-fn vector_scale(v: List[Float64], s: Float64) -> List[Float64]:
+def vector_scale(v: List[Float64], s: Float64) -> List[Float64]:
     """Scalar multiplication of a vector."""
     var n = len(v)
     var result = List[Float64](capacity=n)

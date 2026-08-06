@@ -31,7 +31,7 @@ from numeric.reduce import (
 )
 
 
-fn _values(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _values(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
@@ -39,7 +39,7 @@ fn _values(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

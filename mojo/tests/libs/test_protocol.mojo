@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from protocol import encode_varint, decode_varint, zigzag_encode, zigzag_decode, encode_field, decode_field, encode_string_field, decode_string_field, decode_message
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

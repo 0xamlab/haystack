@@ -68,7 +68,7 @@ from query.join import (
 from columnar.hash_index import HashIndex
 
 
-fn _batch1(var name: String, var values: List[Float64], var mask: List[Bool]) -> RecordBatch:
+def _batch1(var name: String, var values: List[Float64], var mask: List[Bool]) -> RecordBatch:
     var n = len(values)
     var cols = List[Float64Array]()
     cols.append(float64_with_nulls(values^, mask))
@@ -77,14 +77,14 @@ fn _batch1(var name: String, var values: List[Float64], var mask: List[Bool]) ->
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _w2(a: Int, b: Int) -> List[Int]:
+def _w2(a: Int, b: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _w3(a: Int, b: Int, c: Int) -> List[Int]:
+def _w3(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -92,7 +92,7 @@ fn _w3(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _w4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _w4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -101,7 +101,7 @@ fn _w4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     return out^
 
 
-fn _xorshift_next(state: UInt64) -> UInt64:
+def _xorshift_next(state: UInt64) -> UInt64:
     var s = state
     s = s ^ (s << 13)
     s = s ^ (s >> 7)
@@ -109,7 +109,7 @@ fn _xorshift_next(state: UInt64) -> UInt64:
     return s
 
 
-fn _shuffle(mut arr: List[Int], seed: Int):
+def _shuffle(mut arr: List[Int], seed: Int):
     """Fisher-Yates, `_xorshift_next`-driven — the same shuffle shape
     `benchmarks/h2o_join/generate.py`'s `rng.shuffle` plays for `id3`, just without a
     numpy dependency here."""
@@ -123,7 +123,7 @@ fn _shuffle(mut arr: List[Int], seed: Int):
         arr[j] = tmp
 
 
-fn _shared_permutation(total: Int, seed: Int) -> List[Int]:
+def _shared_permutation(total: Int, seed: Int) -> List[Int]:
     """A permutation of `1..total` — the exact shape `benchmarks/h2o_join/generate.py`'s
     `split_xlr` draws `id3` from, which is what makes direct-addressing valid for it:
     every value in this range is distinct and present exactly once."""
@@ -134,7 +134,7 @@ fn _shared_permutation(total: Int, seed: Int) -> List[Int]:
     return perm^
 
 
-fn _dense_left_batch(perm: List[Int], n: Int, seed: Int) -> RecordBatch:
+def _dense_left_batch(perm: List[Int], n: Int, seed: Int) -> RecordBatch:
     """`lhs_pool` in `split_xlr`'s own naming: `perm[0:n]` (the "common" + "left-only"
     slices, concatenated), reshuffled — matching `sample_all`'s behavior when
     `len(pool) == size`: a pure shuffle, no padding."""
@@ -150,7 +150,7 @@ fn _dense_left_batch(perm: List[Int], n: Int, seed: Int) -> RecordBatch:
     return _batch1("k", values^, mask^)
 
 
-fn _dense_left_batch_with_hazards(
+def _dense_left_batch_with_hazards(
     perm: List[Int], n: Int, seed: Int, nan_every: Int, null_every: Int
 ) -> RecordBatch:
     """`_dense_left_batch` with periodic NaN/null rows spliced in — proves the
@@ -177,7 +177,7 @@ fn _dense_left_batch_with_hazards(
     return _batch1("k", values^, mask^)
 
 
-fn _dense_right_batch(perm: List[Int], n: Int, n_common: Int, total: Int, seed: Int) -> RecordBatch:
+def _dense_right_batch(perm: List[Int], n: Int, n_common: Int, total: Int, seed: Int) -> RecordBatch:
     """`rhs_pool` in `split_xlr`'s own naming: `perm[0:n_common]` ("common") concatenated
     with `perm[n:total]` ("right-only"), reshuffled — the build side that
     `_build_direct_address_table` must accept as a dense, unique-key span."""
@@ -195,7 +195,7 @@ fn _dense_right_batch(perm: List[Int], n: Int, n_common: Int, total: Int, seed: 
     return _batch1("k", values^, mask^)
 
 
-fn _sparse_range_right_batch(n_rows: Int) -> RecordBatch:
+def _sparse_range_right_batch(n_rows: Int) -> RecordBatch:
     """`n_rows - 1` contiguous keys plus one far outlier — a deliberately WIDE, SPARSE
     span (`JOIN_DIRECT_ADDRESS_MAX_DENSITY` must reject this) rather than a fixture
     that happens to be sparse by chance."""
@@ -209,7 +209,7 @@ fn _sparse_range_right_batch(n_rows: Int) -> RecordBatch:
     return _batch1("k", values^, mask^)
 
 
-fn _fractional_key_right_batch(n_rows: Int) -> RecordBatch:
+def _fractional_key_right_batch(n_rows: Int) -> RecordBatch:
     """`n_rows - 1` contiguous integer keys plus one fractional key —
     `_build_direct_address_table` must reject this, not round it to a slot."""
     var values = List[Float64]()
@@ -222,7 +222,7 @@ fn _fractional_key_right_batch(n_rows: Int) -> RecordBatch:
     return _batch1("k", values^, mask^)
 
 
-fn _left_batch(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed: Int) -> RecordBatch:
+def _left_batch(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed: Int) -> RecordBatch:
     """A left key column with real matches, misses, periodic NaN and periodic null.
 
     `nan_every`/`null_every` of 0 disables that hazard entirely (so a build-side
@@ -246,7 +246,7 @@ fn _left_batch(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed:
     return _batch1("k", values^, mask^)
 
 
-fn _right_batch(n_rows: Int, modulus: Int, seed: Int) -> RecordBatch:
+def _right_batch(n_rows: Int, modulus: Int, seed: Int) -> RecordBatch:
     """A right key column with no hazards — the build side, whose own docstring
     already forbids inserting an unmatchable key, so this fixture does not test
     that path (the known-value suite already does, at small scale)."""
@@ -260,7 +260,7 @@ fn _right_batch(n_rows: Int, modulus: Int, seed: Int) -> RecordBatch:
     return _batch1("k", values^, mask^)
 
 
-fn _right_batch_with_hazards(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed: Int) -> RecordBatch:
+def _right_batch_with_hazards(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed: Int) -> RecordBatch:
     """A right (build-side) key column WITH periodic NaN and null rows — unlike
     `_right_batch` above, this exercises the parallel build's own unmatchable-key
     handling (null_keys counting, and never inserting an unmatchable key into any
@@ -285,7 +285,7 @@ fn _right_batch_with_hazards(n_rows: Int, modulus: Int, nan_every: Int, null_eve
     return _batch1("k", values^, mask^)
 
 
-fn _results_equal(a_left: List[Int], a_right: List[Int], b_left: List[Int], b_right: List[Int]) -> Bool:
+def _results_equal(a_left: List[Int], a_right: List[Int], b_left: List[Int], b_right: List[Int]) -> Bool:
     if len(a_left) != len(b_left) or len(a_right) != len(b_right):
         return False
     for i in range(len(a_left)):
@@ -294,7 +294,7 @@ fn _results_equal(a_left: List[Int], a_right: List[Int], b_left: List[Int], b_ri
     return True
 
 
-fn _check_probe_matches_serial(
+def _check_probe_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
     join_type: Int,
@@ -349,7 +349,7 @@ fn _check_probe_matches_serial(
         )
 
 
-fn _check_build_matches_serial(
+def _check_build_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
     join_type: Int,
@@ -432,7 +432,7 @@ fn _check_build_matches_serial(
         )
 
 
-fn _check_clustered_probe_matches_serial(
+def _check_clustered_probe_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
     join_type: Int,
@@ -505,7 +505,7 @@ fn _check_clustered_probe_matches_serial(
         )
 
 
-fn _check_direct_address_matches_serial(
+def _check_direct_address_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
     join_type: Int,
@@ -583,7 +583,7 @@ fn _check_direct_address_matches_serial(
         )
 
 
-fn _check_direct_address_rejects_invalid_shape(
+def _check_direct_address_rejects_invalid_shape(
     right: RecordBatch,
     workers: Int,
     mut passed: Int,
@@ -610,7 +610,7 @@ fn _check_direct_address_rejects_invalid_shape(
         print("  ❌", label, "workers=" + String(workers), "should have rejected but ok=True")
 
 
-fn _check_end_to_end_matches_serial(
+def _check_end_to_end_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
     join_type: Int,
@@ -650,7 +650,7 @@ fn _check_end_to_end_matches_serial(
         )
 
 
-fn _check_gather_matches_serial(
+def _check_gather_matches_serial(
     source: Float64Array, indices: List[Int], mut passed: Int, mut failed: Int, label: String
 ):
     var serial = take_column(source, indices)
@@ -672,7 +672,7 @@ fn _check_gather_matches_serial(
         print("  ❌", label, "mismatch at scale", serial.length, "vs", parallel.length)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, pow
 
 
-fn basal_area(dbh_cm: Float64) -> Float64:
+def basal_area(dbh_cm: Float64) -> Float64:
     """Basal area of a single tree from diameter at breast height.
 
     BA = π·(DBH/2)²
@@ -34,7 +34,7 @@ fn basal_area(dbh_cm: Float64) -> Float64:
     return pi * r * r
 
 
-fn stand_basal_area(mean_dbh_cm: Float64, stems_per_ha: Float64) -> Float64:
+def stand_basal_area(mean_dbh_cm: Float64, stems_per_ha: Float64) -> Float64:
     """Stand-level basal area (m²/ha).
 
     Args:
@@ -51,7 +51,7 @@ fn stand_basal_area(mean_dbh_cm: Float64, stems_per_ha: Float64) -> Float64:
     return pi * r_m * r_m * stems_per_ha
 
 
-fn site_index(height_m: Float64, age_years: Float64, base_age: Float64) -> Float64:
+def site_index(height_m: Float64, age_years: Float64, base_age: Float64) -> Float64:
     """Site index: dominant height at base age.
 
     SI = H · (base_age / age)^b  where b = 0.5 (simplified).
@@ -69,7 +69,7 @@ fn site_index(height_m: Float64, age_years: Float64, base_age: Float64) -> Float
     return height_m * pow(base_age / age_years, 0.5)
 
 
-fn volume_scribner(small_end_diameter_in: Float64, log_length_ft: Float64) -> Float64:
+def volume_scribner(small_end_diameter_in: Float64, log_length_ft: Float64) -> Float64:
     """Log volume using Scribner Decimal C rule (approximate).
 
     V ≈ ((0.79 D² - 2D - 4) · L) / 16
@@ -87,7 +87,7 @@ fn volume_scribner(small_end_diameter_in: Float64, log_length_ft: Float64) -> Fl
     return (0.79 * d * d - 2.0 * d - 4.0) * log_length_ft / 16.0
 
 
-fn timber_yield_per_ha(
+def timber_yield_per_ha(
     stems_per_ha: Float64, mean_vol_m3_per_tree: Float64
 ) -> Float64:
     """Standing timber volume per hectare.
@@ -104,7 +104,7 @@ fn timber_yield_per_ha(
     return stems_per_ha * mean_vol_m3_per_tree
 
 
-fn relative_density_index(
+def relative_density_index(
     stems_per_ha: Float64, mean_dbh_cm: Float64
 ) -> Float64:
     """Relative Density Index (Curtis 1982): RDI = N / (25.4/DBH)^1.6.
@@ -121,7 +121,7 @@ fn relative_density_index(
     return stems_per_ha / pow(25.4 / mean_dbh_cm, 1.6)
 
 
-fn reineke_sdi(stems_per_ha: Float64, mean_dbh_cm: Float64) -> Float64:
+def reineke_sdi(stems_per_ha: Float64, mean_dbh_cm: Float64) -> Float64:
     """Reineke Stand Density Index.
 
     SDI = N · (25.4 / DBH)^1.605
@@ -138,7 +138,7 @@ fn reineke_sdi(stems_per_ha: Float64, mean_dbh_cm: Float64) -> Float64:
     return stems_per_ha * pow(25.4 / mean_dbh_cm, 1.605)
 
 
-fn mean_annual_increment(total_volume_m3: Float64, age_years: Float64) -> Float64:
+def mean_annual_increment(total_volume_m3: Float64, age_years: Float64) -> Float64:
     """Mean annual increment: MAI = total volume / age.
 
     Args:
@@ -153,7 +153,7 @@ fn mean_annual_increment(total_volume_m3: Float64, age_years: Float64) -> Float6
     return total_volume_m3 / age_years
 
 
-fn current_annual_increment(
+def current_annual_increment(
     vol_now: Float64, vol_past: Float64, years: Float64
 ) -> Float64:
     """Current annual increment over a measurement period.
@@ -173,7 +173,7 @@ fn current_annual_increment(
     return (vol_now - vol_past) / years
 
 
-fn thinning_ratio(
+def thinning_ratio(
     initial_stems: Float64, target_stems: Float64
 ) -> Float64:
     """Fraction of trees to remove in a thinning operation.

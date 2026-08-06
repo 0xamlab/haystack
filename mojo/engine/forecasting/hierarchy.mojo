@@ -194,7 +194,7 @@ struct CoherenceReport(Copyable, Movable):
     var status_name: String
 
 
-fn _no_reconciliation(
+def _no_reconciliation(
     status: Int, method_id: Int, n_nodes: Int, horizon: Int,
     residual: Float64, node: Int, step: Int
 ) -> Reconciliation:
@@ -205,7 +205,7 @@ fn _no_reconciliation(
     )
 
 
-fn _no_coherence(status: Int, n_nodes: Int, horizon: Int) -> CoherenceReport:
+def _no_coherence(status: Int, n_nodes: Int, horizon: Int) -> CoherenceReport:
     """A refusal: no residual matrix, and NOT a pass."""
     return CoherenceReport(
         status, n_nodes, horizon, 0, List[Float64](), False, False,
@@ -213,7 +213,7 @@ fn _no_coherence(status: Int, n_nodes: Int, horizon: Int) -> CoherenceReport:
     )
 
 
-fn hierarchy_shape_defect(
+def hierarchy_shape_defect(
     base: List[Float64], parent_of: List[Int], horizon: Int
 ) -> Int:
     """Validate a flat hierarchy: the mapping, the cell count and finiteness.
@@ -262,7 +262,7 @@ fn hierarchy_shape_defect(
     return FC_OK
 
 
-fn _child_census(parent_of: List[Int]) -> List[Int]:
+def _child_census(parent_of: List[Int]) -> List[Int]:
     """`child_count[i]`, one pass. A node with zero children is a leaf; the rest are internal."""
     var counts = List[Int]()
     for _ in range(len(parent_of)):
@@ -274,7 +274,7 @@ fn _child_census(parent_of: List[Int]) -> List[Int]:
     return counts^
 
 
-fn _audit(
+def _audit(
     values: List[Float64], parent_of: List[Int], horizon: Int, abs_tol: Float64
 ) -> CoherenceReport:
     """The coherence audit itself, shared by the reconcilers and the public auditor.
@@ -351,7 +351,7 @@ fn _audit(
     )
 
 
-fn hierarchy_coherence_flat(
+def hierarchy_coherence_flat(
     values: List[Float64], parent_of: List[Int], horizon: Int, abs_tol: Float64
 ) -> CoherenceReport:
     """Audit an EXISTING hierarchy: does every parent equal the sum of its children?
@@ -380,7 +380,7 @@ fn hierarchy_coherence_flat(
     return _audit(values, parent_of, horizon, abs_tol)
 
 
-fn reconcile_bottom_up_flat(
+def reconcile_bottom_up_flat(
     base: List[Float64], parent_of: List[Int], horizon: Int, abs_tol: Float64
 ) -> Reconciliation:
     """Bottom-up: keep the leaves, replace every internal node by its subtree total.
@@ -451,7 +451,7 @@ fn reconcile_bottom_up_flat(
     )
 
 
-fn reconcile_top_down_flat(
+def reconcile_top_down_flat(
     base: List[Float64], parent_of: List[Int], horizon: Int, abs_tol: Float64
 ) -> Reconciliation:
     """Top-down: keep the roots, split each parent by its children's own base proportions.
@@ -550,7 +550,7 @@ fn reconcile_top_down_flat(
     )
 
 
-fn reconcile_flat(
+def reconcile_flat(
     base: List[Float64], parent_of: List[Int], horizon: Int,
     method_id: Int, abs_tol: Float64
 ) -> Reconciliation:

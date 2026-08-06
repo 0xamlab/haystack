@@ -52,7 +52,7 @@ struct SVMModel(Copyable, Movable):
     var support_coef: List[Float64]
     var n_support: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.kernel_type = 0
         self.n_features = 0
         self.alphas = List[Float64]()
@@ -67,7 +67,7 @@ struct SVMModel(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -75,7 +75,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -91,7 +91,7 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
@@ -100,19 +100,19 @@ fn _rand_below(mut state: UInt64, bound: Int) -> Int:
 # ── small numeric helpers ────────────────────────────────────────────────────
 
 
-fn _fmax(a: Float64, b: Float64) -> Float64:
+def _fmax(a: Float64, b: Float64) -> Float64:
     if a > b:
         return a
     return b
 
 
-fn _fmin(a: Float64, b: Float64) -> Float64:
+def _fmin(a: Float64, b: Float64) -> Float64:
     if a < b:
         return a
     return b
 
 
-fn _kernel_ij(
+def _kernel_ij(
     X: List[Float64], i: Int, j: Int, d: Int, kernel_type: Int, gamma: Float64
 ) -> Float64:
     """Kernel between rows i and j of flat row-major X. 0=linear, 1=RBF."""
@@ -128,7 +128,7 @@ fn _kernel_ij(
     return exp(-gamma * sq)
 
 
-fn _decision_train(
+def _decision_train(
     X: List[Float64],
     y: List[Float64],
     alphas: List[Float64],
@@ -149,7 +149,7 @@ fn _decision_train(
 # ── _svm_fit (shared simplified-SMO core) ────────────────────────────────────
 
 
-fn _svm_fit(
+def _svm_fit(
     X: List[Float64],
     y: List[Float64],
     n_features: Int,
@@ -289,7 +289,7 @@ fn _svm_fit(
 # ── svm_fit_linear ───────────────────────────────────────────────────────────
 
 
-fn svm_fit_linear(
+def svm_fit_linear(
     X: List[Float64],
     y: List[Float64],
     n_features: Int,
@@ -312,7 +312,7 @@ fn svm_fit_linear(
 # ── svm_fit_rbf ──────────────────────────────────────────────────────────────
 
 
-fn svm_fit_rbf(
+def svm_fit_rbf(
     X: List[Float64],
     y: List[Float64],
     n_features: Int,
@@ -334,7 +334,7 @@ fn svm_fit_rbf(
 # ── svm_decision ─────────────────────────────────────────────────────────────
 
 
-fn svm_decision(model: SVMModel, x: List[Float64]) -> Float64:
+def svm_decision(model: SVMModel, x: List[Float64]) -> Float64:
     """Raw decision value f(x). Linear: w·x + b. RBF: Σ coef_s K(x_s, x) + b.
 
     Missing trailing features of x are treated as 0. Empty model -> 0.0.
@@ -366,7 +366,7 @@ fn svm_decision(model: SVMModel, x: List[Float64]) -> Float64:
 # ── svm_predict ──────────────────────────────────────────────────────────────
 
 
-fn svm_predict(model: SVMModel, x: List[Float64]) -> Float64:
+def svm_predict(model: SVMModel, x: List[Float64]) -> Float64:
     """Class label: +1.0 if svm_decision(model, x) >= 0 else -1.0."""
     if svm_decision(model, x) >= 0.0:
         return 1.0
@@ -376,7 +376,7 @@ fn svm_predict(model: SVMModel, x: List[Float64]) -> Float64:
 # ── svm_predict_batch ────────────────────────────────────────────────────────
 
 
-fn svm_predict_batch(model: SVMModel, X: List[Float64]) -> List[Float64]:
+def svm_predict_batch(model: SVMModel, X: List[Float64]) -> List[Float64]:
     """Labels for a flat row-major query matrix (n_rows * n_features).
 
     Returns one label in {-1.0, +1.0} per complete row; empty list if the

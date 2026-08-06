@@ -54,7 +54,7 @@ struct Budget(Copyable, Movable):
     var ops_used: Int
     var result_bytes_used: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.deadline_ns = 0
         self.max_ops = 0
         self.max_result_bytes = 0
@@ -62,15 +62,15 @@ struct Budget(Copyable, Movable):
         self.ops_used = 0
         self.result_bytes_used = 0
 
-    fn elapsed_ns(self) -> Int:
+    def elapsed_ns(self) -> Int:
         return Int(perf_counter_ns()) - self.started_ns
 
-    fn record(mut self, result_bytes: Int):
+    def record(mut self, result_bytes: Int):
         """Account for one completed operation."""
         self.ops_used += 1
         self.result_bytes_used += result_bytes
 
-    fn exceeded(self) -> String:
+    def exceeded(self) -> String:
         """Name of the exhausted dimension, or "" while the budget still holds.
 
         Checked *before* starting the next item, so a budget can never be blamed
@@ -84,7 +84,7 @@ struct Budget(Copyable, Movable):
             return "max_result_bytes"
         return ""
 
-    fn consumed_json(self) -> String:
+    def consumed_json(self) -> String:
         """What this budget actually spent, for the caller to inspect."""
         return (
             '{"elapsed_ms":'
@@ -97,7 +97,7 @@ struct Budget(Copyable, Movable):
         )
 
 
-fn parse_budget(raw: String) -> Budget:
+def parse_budget(raw: String) -> Budget:
     """Read a `budget` object from a coarse request. Absent means unlimited."""
     var budget = Budget()
     var spec = json_get_object(raw, "budget")
@@ -119,7 +119,7 @@ fn parse_budget(raw: String) -> Budget:
     return budget^
 
 
-fn budget_exceeded_json(
+def budget_exceeded_json(
     dimension: String,
     partial: String,
     consumed: String,

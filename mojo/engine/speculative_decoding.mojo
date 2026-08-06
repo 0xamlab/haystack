@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn speculative_accept_prob(
+def speculative_accept_prob(
     target_prob: Float64, draft_prob: Float64
 ) -> Float64:
     """Speculative decoding token acceptance probability.
@@ -39,7 +39,7 @@ fn speculative_accept_prob(
     return ratio
 
 
-fn speculative_expected_tokens(
+def speculative_expected_tokens(
     acceptance_rate: Float64, speculation_depth: Float64
 ) -> Float64:
     """Expected tokens accepted per speculative step.
@@ -62,7 +62,7 @@ fn speculative_expected_tokens(
     return numer / denom
 
 
-fn draft_model_speedup(
+def draft_model_speedup(
     expected_tokens: Float64, target_latency_ms: Float64,
     draft_latency_ms: Float64, speculation_depth: Float64
 ) -> Float64:
@@ -85,7 +85,7 @@ fn draft_model_speedup(
     return expected_tokens * target_latency_ms / total_time
 
 
-fn json_grammar_logit_mask(
+def json_grammar_logit_mask(
     token_id: Float64, is_valid_next: Float64
 ) -> Float64:
     """JSON grammar constraint: mask invalid next tokens.
@@ -102,7 +102,7 @@ fn json_grammar_logit_mask(
     return -1e9
 
 
-fn structured_repair_score(
+def structured_repair_score(
     output_validity: Float64, repair_attempts: Float64,
     max_repair_attempts: Float64
 ) -> Float64:
@@ -124,7 +124,7 @@ fn structured_repair_score(
     return output_validity * (1.0 - attempt_penalty)
 
 
-fn constrained_beam_score(
+def constrained_beam_score(
     beam_log_prob: Float64, grammar_valid: Float64,
     length: Float64, alpha: Float64
 ) -> Float64:
@@ -148,7 +148,7 @@ fn constrained_beam_score(
     return beam_log_prob / exp(alpha * log(length))
 
 
-fn token_healing_overlap(
+def token_healing_overlap(
     prefix_last_token: Float64, new_first_token: Float64,
     overlap_chars: Float64
 ) -> Float64:
@@ -167,7 +167,7 @@ fn token_healing_overlap(
     return overlap_chars
 
 
-fn watermark_green_list_bias(
+def watermark_green_list_bias(
     token_id: Float64, green_list_hash: Float64,
     bias_strength: Float64
 ) -> Float64:
@@ -190,7 +190,7 @@ fn watermark_green_list_bias(
     return 0.0
 
 
-fn contrastive_decode_score(
+def contrastive_decode_score(
     expert_log_prob: Float64, amateur_log_prob: Float64,
     alpha: Float64
 ) -> Float64:
@@ -210,7 +210,7 @@ fn contrastive_decode_score(
     return expert_log_prob - alpha * amateur_log_prob
 
 
-fn medusa_head_acceptance(
+def medusa_head_acceptance(
     medusa_prob: Float64, target_prob: Float64, head_id: Float64
 ) -> Float64:
     """Medusa multi-head acceptance probability for head_id lookahead.

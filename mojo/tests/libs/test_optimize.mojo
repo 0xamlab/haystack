@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from optimize import eval_poly, eval_poly_deriv, minimize_scalar_golden, minimize_brent, root_bisection, root_newton, gradient_descent_1d, linear_regression
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

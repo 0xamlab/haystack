@@ -34,7 +34,7 @@ comptime HISTOGRAM_MAX_BINS: Int = 65536
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _clamp(v: Float64, lo: Float64, hi: Float64) -> Float64:
+def _clamp(v: Float64, lo: Float64, hi: Float64) -> Float64:
     if v < lo:
         return lo
     if v > hi:
@@ -45,7 +45,7 @@ fn _clamp(v: Float64, lo: Float64, hi: Float64) -> Float64:
 # ── convolve_2d ───────────────────────────────────────────────────────────────
 
 
-fn convolve_2d(
+def convolve_2d(
     image: List[List[Float64]], kernel: List[List[Float64]]
 ) -> List[List[Float64]]:
     """2D convolution (valid mode). Output is (H-kh+1) x (W-kw+1)."""
@@ -81,7 +81,7 @@ fn convolve_2d(
 # ── Kernel factories ──────────────────────────────────────────────────────────
 
 
-fn sobel_x_kernel() -> List[List[Float64]]:
+def sobel_x_kernel() -> List[List[Float64]]:
     """Sobel X edge detection kernel [[-1,0,1],[-2,0,2],[-1,0,1]]."""
     var k = List[List[Float64]]()
     var r0 = List[Float64]()
@@ -94,7 +94,7 @@ fn sobel_x_kernel() -> List[List[Float64]]:
     return k^
 
 
-fn sobel_y_kernel() -> List[List[Float64]]:
+def sobel_y_kernel() -> List[List[Float64]]:
     """Sobel Y kernel [[-1,-2,-1],[0,0,0],[1,2,1]]."""
     var k = List[List[Float64]]()
     var r0 = List[Float64]()
@@ -107,7 +107,7 @@ fn sobel_y_kernel() -> List[List[Float64]]:
     return k^
 
 
-fn gaussian_kernel_3x3() -> List[List[Float64]]:
+def gaussian_kernel_3x3() -> List[List[Float64]]:
     """Normalized 3x3 Gaussian blur kernel."""
     var k = List[List[Float64]]()
     var r0 = List[Float64]()
@@ -120,7 +120,7 @@ fn gaussian_kernel_3x3() -> List[List[Float64]]:
     return k^
 
 
-fn sharpen_kernel() -> List[List[Float64]]:
+def sharpen_kernel() -> List[List[Float64]]:
     """Sharpening kernel [[0,-1,0],[-1,5,-1],[0,-1,0]]."""
     var k = List[List[Float64]]()
     var r0 = List[Float64]()
@@ -136,7 +136,7 @@ fn sharpen_kernel() -> List[List[Float64]]:
 # ── histogram ─────────────────────────────────────────────────────────────────
 
 
-fn histogram(image: List[List[Float64]], n_bins: Int) -> List[Int]:
+def histogram(image: List[List[Float64]], n_bins: Int) -> List[Int]:
     """Intensity histogram with n_bins bins spanning [0, 255]."""
     # n_bins <= 0 leaves no bins to index into; the clamp bounds the
     # wire-supplied allocation.
@@ -169,7 +169,7 @@ fn histogram(image: List[List[Float64]], n_bins: Int) -> List[Int]:
 # ── threshold ─────────────────────────────────────────────────────────────────
 
 
-fn threshold(
+def threshold(
     image: List[List[Float64]], thresh: Float64
 ) -> List[List[Float64]]:
     """Binary threshold: 255 if pixel > thresh, else 0."""
@@ -190,7 +190,7 @@ fn threshold(
 # ── invert ────────────────────────────────────────────────────────────────────
 
 
-fn invert(image: List[List[Float64]]) -> List[List[Float64]]:
+def invert(image: List[List[Float64]]) -> List[List[Float64]]:
     """Invert: 255 - pixel."""
     var result = List[List[Float64]]()
     var rows = len(image)
@@ -206,7 +206,7 @@ fn invert(image: List[List[Float64]]) -> List[List[Float64]]:
 # ── brightness ────────────────────────────────────────────────────────────────
 
 
-fn brightness(
+def brightness(
     image: List[List[Float64]], delta: Float64
 ) -> List[List[Float64]]:
     """Adjust brightness, clamp to [0, 255]."""
@@ -224,7 +224,7 @@ fn brightness(
 # ── contrast ──────────────────────────────────────────────────────────────────
 
 
-fn contrast(
+def contrast(
     image: List[List[Float64]], factor: Float64
 ) -> List[List[Float64]]:
     """Adjust contrast: (pixel - 128) * factor + 128, clamp to [0, 255]."""
@@ -243,7 +243,7 @@ fn contrast(
 # ── mean_pixel ────────────────────────────────────────────────────────────────
 
 
-fn mean_pixel(image: List[List[Float64]]) -> Float64:
+def mean_pixel(image: List[List[Float64]]) -> Float64:
     """Average pixel value."""
     var total: Float64 = 0.0
     var count = 0

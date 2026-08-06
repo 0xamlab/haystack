@@ -26,7 +26,7 @@ from std.math import exp, pow, floor, abs as fabs
 # ── round_currency ───────────────────────────────────────────────────────────
 
 
-fn round_currency(amount: Float64, decimals: Int = 2) -> Float64:
+def round_currency(amount: Float64, decimals: Int = 2) -> Float64:
     """Round to specified decimal places (banker's rounding)."""
     var mult: Float64 = 1.0
     for _ in range(decimals):
@@ -40,7 +40,7 @@ fn round_currency(amount: Float64, decimals: Int = 2) -> Float64:
 # ── compound_interest ────────────────────────────────────────────────────────
 
 
-fn compound_interest(principal: Float64, rate: Float64, periods: Int) -> Float64:
+def compound_interest(principal: Float64, rate: Float64, periods: Int) -> Float64:
     """FV = P * (1 + r)^n."""
     return principal * pow(1.0 + rate, Float64(periods))
 
@@ -48,7 +48,7 @@ fn compound_interest(principal: Float64, rate: Float64, periods: Int) -> Float64
 # ── continuous_compound ──────────────────────────────────────────────────────
 
 
-fn continuous_compound(principal: Float64, rate: Float64, time: Float64) -> Float64:
+def continuous_compound(principal: Float64, rate: Float64, time: Float64) -> Float64:
     """FV = P * e^(rt)."""
     return principal * exp(rate * time)
 
@@ -56,7 +56,7 @@ fn continuous_compound(principal: Float64, rate: Float64, time: Float64) -> Floa
 # ── amortization_payment ─────────────────────────────────────────────────────
 
 
-fn amortization_payment(principal: Float64, rate: Float64, periods: Int) -> Float64:
+def amortization_payment(principal: Float64, rate: Float64, periods: Int) -> Float64:
     """Monthly payment: P * r / (1 - (1+r)^-n).
     If rate is 0, returns principal / periods."""
     if rate == 0.0:
@@ -68,7 +68,7 @@ fn amortization_payment(principal: Float64, rate: Float64, periods: Int) -> Floa
 # ── amortization_schedule ────────────────────────────────────────────────────
 
 
-fn amortization_schedule(
+def amortization_schedule(
     principal: Float64, rate: Float64, periods: Int,
 ) -> List[List[Float64]]:
     """Full schedule: [[payment, interest, principal_portion, remaining], ...]."""
@@ -94,7 +94,7 @@ fn amortization_schedule(
 # ── present_value ────────────────────────────────────────────────────────────
 
 
-fn present_value(future_value: Float64, rate: Float64, periods: Int) -> Float64:
+def present_value(future_value: Float64, rate: Float64, periods: Int) -> Float64:
     """PV = FV / (1+r)^n."""
     return future_value / pow(1.0 + rate, Float64(periods))
 
@@ -102,7 +102,7 @@ fn present_value(future_value: Float64, rate: Float64, periods: Int) -> Float64:
 # ── present_value_annuity ────────────────────────────────────────────────────
 
 
-fn present_value_annuity(payment: Float64, rate: Float64, periods: Int) -> Float64:
+def present_value_annuity(payment: Float64, rate: Float64, periods: Int) -> Float64:
     """PV of annuity: PMT * (1 - (1+r)^-n) / r."""
     if rate == 0.0:
         return payment * Float64(periods)
@@ -113,7 +113,7 @@ fn present_value_annuity(payment: Float64, rate: Float64, periods: Int) -> Float
 # ── future_value_annuity ────────────────────────────────────────────────────
 
 
-fn future_value_annuity(payment: Float64, rate: Float64, periods: Int) -> Float64:
+def future_value_annuity(payment: Float64, rate: Float64, periods: Int) -> Float64:
     """FV of annuity: PMT * ((1+r)^n - 1) / r."""
     if rate == 0.0:
         return payment * Float64(periods)
@@ -124,7 +124,7 @@ fn future_value_annuity(payment: Float64, rate: Float64, periods: Int) -> Float6
 # ── effective_annual_rate ────────────────────────────────────────────────────
 
 
-fn effective_annual_rate(nominal_rate: Float64, compounding_periods: Int) -> Float64:
+def effective_annual_rate(nominal_rate: Float64, compounding_periods: Int) -> Float64:
     """EAR = (1 + r/n)^n - 1."""
     var n = Float64(compounding_periods)
     return pow(1.0 + nominal_rate / n, n) - 1.0
@@ -133,7 +133,7 @@ fn effective_annual_rate(nominal_rate: Float64, compounding_periods: Int) -> Flo
 # ── discount_factor ──────────────────────────────────────────────────────────
 
 
-fn discount_factor(rate: Float64, periods: Int) -> Float64:
+def discount_factor(rate: Float64, periods: Int) -> Float64:
     """DF = 1 / (1+r)^n."""
     return 1.0 / pow(1.0 + rate, Float64(periods))
 
@@ -141,7 +141,7 @@ fn discount_factor(rate: Float64, periods: Int) -> Float64:
 # ── rule_of_72 ───────────────────────────────────────────────────────────────
 
 
-fn rule_of_72(rate: Float64) -> Float64:
+def rule_of_72(rate: Float64) -> Float64:
     """Approximate doubling time: 72 / (rate * 100)."""
     if rate <= 0.0:
         return 1e30
@@ -151,7 +151,7 @@ fn rule_of_72(rate: Float64) -> Float64:
 # ── loan_balance_after ───────────────────────────────────────────────────────
 
 
-fn loan_balance_after(
+def loan_balance_after(
     principal: Float64, rate: Float64, periods: Int, payments_made: Int,
 ) -> Float64:
     """Remaining balance after k payments.

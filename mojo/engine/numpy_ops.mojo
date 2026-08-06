@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp, sin, cos
 
 
-fn np_clip(x: Float64, x_min: Float64, x_max: Float64) -> Float64:
+def np_clip(x: Float64, x_min: Float64, x_max: Float64) -> Float64:
     """Element-wise clip: min(max(x, x_min), x_max).
 
     Args:
@@ -35,7 +35,7 @@ fn np_clip(x: Float64, x_min: Float64, x_max: Float64) -> Float64:
     return x
 
 
-fn np_log1p(x: Float64) -> Float64:
+def np_log1p(x: Float64) -> Float64:
     """Numerically stable log(1 + x).
 
     For |x| < 1e-4 uses Taylor expansion: x - x²/2 + x³/3.
@@ -53,7 +53,7 @@ fn np_log1p(x: Float64) -> Float64:
     return log(1.0 + x)
 
 
-fn np_expm1(x: Float64) -> Float64:
+def np_expm1(x: Float64) -> Float64:
     """Numerically stable exp(x) - 1.
 
     For |x| < 1e-4 uses Taylor: x + x²/2 + x³/6.
@@ -69,7 +69,7 @@ fn np_expm1(x: Float64) -> Float64:
     return exp(x) - 1.0
 
 
-fn np_sign(x: Float64) -> Float64:
+def np_sign(x: Float64) -> Float64:
     """Sign function: -1, 0, or +1.
 
     Args:
@@ -85,7 +85,7 @@ fn np_sign(x: Float64) -> Float64:
     return 0.0
 
 
-fn np_heaviside(x: Float64, at_zero: Float64) -> Float64:
+def np_heaviside(x: Float64, at_zero: Float64) -> Float64:
     """Heaviside step function.
 
     H(x) = 0 if x < 0, at_zero if x == 0, 1 if x > 0.
@@ -104,7 +104,7 @@ fn np_heaviside(x: Float64, at_zero: Float64) -> Float64:
     return 1.0
 
 
-fn np_sinc(x: Float64) -> Float64:
+def np_sinc(x: Float64) -> Float64:
     """Normalised sinc: sin(πx) / (πx), with sinc(0) = 1.
 
     Args:
@@ -120,7 +120,7 @@ fn np_sinc(x: Float64) -> Float64:
     return sin(pix) / pix
 
 
-fn np_logaddexp(a: Float64, b: Float64) -> Float64:
+def np_logaddexp(a: Float64, b: Float64) -> Float64:
     """log(exp(a) + exp(b)) computed stably.
 
     log(exp(a) + exp(b)) = max(a,b) + log(1 + exp(-|a-b|))
@@ -138,7 +138,7 @@ fn np_logaddexp(a: Float64, b: Float64) -> Float64:
     return m + np_log1p(exp(-( (a - b) if a >= b else (b - a) )))
 
 
-fn np_hypot(a: Float64, b: Float64) -> Float64:
+def np_hypot(a: Float64, b: Float64) -> Float64:
     """Hypotenuse: sqrt(a² + b²).
 
     Args:
@@ -151,7 +151,7 @@ fn np_hypot(a: Float64, b: Float64) -> Float64:
     return sqrt(a * a + b * b)
 
 
-fn np_lerp(a: Float64, b: Float64, t: Float64) -> Float64:
+def np_lerp(a: Float64, b: Float64, t: Float64) -> Float64:
     """Linear interpolation: a + t × (b - a).
 
     Args:
@@ -165,7 +165,7 @@ fn np_lerp(a: Float64, b: Float64, t: Float64) -> Float64:
     return a + t * (b - a)
 
 
-fn np_digitize_bin(
+def np_digitize_bin(
     x: Float64, bin_edge_left: Float64, bin_edge_right: Float64
 ) -> Float64:
     """Check if x falls in [left, right) bin.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from geophysics import gravity_anomaly_bouguer, gravitational_acceleration, magnetic_inclination, seismic_p_wave_velocity, seismic_s_wave_velocity, depth_from_reflection, vp_vs_ratio, earth_radius_at_latitude, free_air_correction, isostasy_airy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

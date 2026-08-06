@@ -80,13 +80,13 @@ from graph_analytics.community import (
 from social_network import community_label_propagation
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     if isnan(a) or isnan(b):
         return False
     return fabs(a - b) <= tol
 
 
-fn _labels_equal(a: List[Int], b: List[Int]) -> Bool:
+def _labels_equal(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -107,22 +107,22 @@ struct _Undirected(Copyable, Movable):
     var a: List[Int]
     var b: List[Int]
 
-    fn __init__(out self, n: Int):
+    def __init__(out self, n: Int):
         self.n = n
         self.a = List[Int]()
         self.b = List[Int]()
 
-    fn add(mut self, u: Int, v: Int):
+    def add(mut self, u: Int, v: Int):
         self.a.append(u)
         self.b.append(v)
 
-    fn unit_weights(self) -> List[Float64]:
+    def unit_weights(self) -> List[Float64]:
         var w = List[Float64]()
         for _ in range(len(self.a)):
             w.append(1.0)
         return w^
 
-    fn both_row_ptr(self) -> List[Int]:
+    def both_row_ptr(self) -> List[Int]:
         var counts = List[Int]()
         for _ in range(self.n):
             counts.append(0)
@@ -137,7 +137,7 @@ struct _Undirected(Copyable, Movable):
         row_ptr.append(running)
         return row_ptr^
 
-    fn both_targets(self) -> List[Int]:
+    def both_targets(self) -> List[Int]:
         var adj = List[List[Int]]()
         for _ in range(self.n):
             adj.append(List[Int]())
@@ -150,13 +150,13 @@ struct _Undirected(Copyable, Movable):
                 out.append(adj[u][j])
         return out^
 
-    fn both_weights(self) -> List[Float64]:
+    def both_weights(self) -> List[Float64]:
         var out = List[Float64]()
         for _ in range(2 * len(self.a)):
             out.append(1.0)
         return out^
 
-    fn adjacency_lists(self) -> List[List[Int]]:
+    def adjacency_lists(self) -> List[List[Int]]:
         var adj = List[List[Int]]()
         for _ in range(self.n):
             adj.append(List[Int]())
@@ -165,7 +165,7 @@ struct _Undirected(Copyable, Movable):
             adj[self.b[i]].append(self.a[i])
         return adj^
 
-    fn component_count(self) -> Int:
+    def component_count(self) -> Int:
         """Number of connected components, from the frozen `graph.algorithms` kernel."""
         var g = graph_new(self.n)
         for i in range(len(self.a)):
@@ -179,7 +179,7 @@ struct _Undirected(Copyable, Movable):
         return highest + 1
 
 
-fn _two_triangles_bridged() -> _Undirected:
+def _two_triangles_bridged() -> _Undirected:
     """Triangles {0,1,2} and {3,4,5} joined by the single edge 2-3. One component."""
     var g = _Undirected(6)
     g.add(0, 1)
@@ -192,7 +192,7 @@ fn _two_triangles_bridged() -> _Undirected:
     return g^
 
 
-fn _complete_graph(n: Int) -> _Undirected:
+def _complete_graph(n: Int) -> _Undirected:
     var g = _Undirected(n)
     for i in range(n):
         for j in range(i + 1, n):
@@ -200,7 +200,7 @@ fn _complete_graph(n: Int) -> _Undirected:
     return g^
 
 
-fn _triangle_ring(triangles: Int) -> _Undirected:
+def _triangle_ring(triangles: Int) -> _Undirected:
     """`triangles` triangles in a cycle, each joined to the next by one edge.
 
     The textbook resolution-limit graph: single triangles are optimal for a short ring

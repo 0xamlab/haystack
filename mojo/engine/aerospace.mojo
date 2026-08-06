@@ -31,7 +31,7 @@ comptime G0: Float64 = 9.80665  # standard gravity m/s²
 # ── dynamic_pressure ─────────────────────────────────────────────────────────
 
 
-fn dynamic_pressure(density: Float64, velocity: Float64) -> Float64:
+def dynamic_pressure(density: Float64, velocity: Float64) -> Float64:
     """Dynamic pressure: q = 0.5 * ρ * v²."""
     return 0.5 * density * velocity * velocity
 
@@ -39,7 +39,7 @@ fn dynamic_pressure(density: Float64, velocity: Float64) -> Float64:
 # ── lift_force ───────────────────────────────────────────────────────────────
 
 
-fn lift_force(cl: Float64, q: Float64, wing_area: Float64) -> Float64:
+def lift_force(cl: Float64, q: Float64, wing_area: Float64) -> Float64:
     """Lift force: L = Cl * q * S."""
     return cl * q * wing_area
 
@@ -47,7 +47,7 @@ fn lift_force(cl: Float64, q: Float64, wing_area: Float64) -> Float64:
 # ── drag_force ───────────────────────────────────────────────────────────────
 
 
-fn drag_force(cd: Float64, q: Float64, wing_area: Float64) -> Float64:
+def drag_force(cd: Float64, q: Float64, wing_area: Float64) -> Float64:
     """Drag force: D = Cd * q * S."""
     return cd * q * wing_area
 
@@ -55,7 +55,7 @@ fn drag_force(cd: Float64, q: Float64, wing_area: Float64) -> Float64:
 # ── lift_to_drag_ratio ───────────────────────────────────────────────────────
 
 
-fn lift_to_drag_ratio(cl: Float64, cd: Float64) -> Float64:
+def lift_to_drag_ratio(cl: Float64, cd: Float64) -> Float64:
     """Lift-to-drag ratio: L/D = Cl / Cd."""
     if cd == 0.0:
         return 0.0
@@ -65,7 +65,7 @@ fn lift_to_drag_ratio(cl: Float64, cd: Float64) -> Float64:
 # ── thrust_required ──────────────────────────────────────────────────────────
 
 
-fn thrust_required(weight: Float64, ld_ratio: Float64) -> Float64:
+def thrust_required(weight: Float64, ld_ratio: Float64) -> Float64:
     """Thrust required for level flight: T = W / (L/D)."""
     if ld_ratio == 0.0:
         return 0.0
@@ -75,7 +75,7 @@ fn thrust_required(weight: Float64, ld_ratio: Float64) -> Float64:
 # ── specific_impulse ─────────────────────────────────────────────────────────
 
 
-fn specific_impulse(
+def specific_impulse(
     thrust: Float64, mass_flow_rate: Float64
 ) -> Float64:
     """Specific impulse: Isp = T / (m_dot * g0)."""
@@ -88,7 +88,7 @@ fn specific_impulse(
 # ── tsiolkovsky_delta_v ──────────────────────────────────────────────────────
 
 
-fn tsiolkovsky_delta_v(
+def tsiolkovsky_delta_v(
     isp: Float64, mass_initial: Float64, mass_final: Float64
 ) -> Float64:
     """Tsiolkovsky rocket equation: ΔV = Isp * g0 * ln(m0/mf)."""
@@ -100,7 +100,7 @@ fn tsiolkovsky_delta_v(
 # ── mach_number ──────────────────────────────────────────────────────────────
 
 
-fn mach_number(velocity: Float64, speed_of_sound_val: Float64) -> Float64:
+def mach_number(velocity: Float64, speed_of_sound_val: Float64) -> Float64:
     """Mach number: M = v / a."""
     if speed_of_sound_val == 0.0:
         return 0.0
@@ -110,7 +110,7 @@ fn mach_number(velocity: Float64, speed_of_sound_val: Float64) -> Float64:
 # ── speed_of_sound ───────────────────────────────────────────────────────────
 
 
-fn speed_of_sound(
+def speed_of_sound(
     gamma: Float64, gas_constant: Float64, temperature: Float64
 ) -> Float64:
     """Speed of sound in ideal gas: a = sqrt(γ * R * T)."""
@@ -120,7 +120,7 @@ fn speed_of_sound(
 # ── orbital_velocity ─────────────────────────────────────────────────────────
 
 
-fn orbital_velocity(mu: Float64, radius: Float64) -> Float64:
+def orbital_velocity(mu: Float64, radius: Float64) -> Float64:
     """Circular orbital velocity: v = sqrt(μ / r)."""
     if radius <= 0.0:
         return 0.0
@@ -130,7 +130,7 @@ fn orbital_velocity(mu: Float64, radius: Float64) -> Float64:
 # ── escape_velocity ──────────────────────────────────────────────────────────
 
 
-fn escape_velocity(mu: Float64, radius: Float64) -> Float64:
+def escape_velocity(mu: Float64, radius: Float64) -> Float64:
     """Escape velocity: v_esc = sqrt(2 * μ / r)."""
     if radius <= 0.0:
         return 0.0
@@ -140,7 +140,7 @@ fn escape_velocity(mu: Float64, radius: Float64) -> Float64:
 # ── hohmann_delta_v ──────────────────────────────────────────────────────────
 
 
-fn hohmann_delta_v(mu: Float64, r1: Float64, r2: Float64) -> Float64:
+def hohmann_delta_v(mu: Float64, r1: Float64, r2: Float64) -> Float64:
     """Total ΔV for Hohmann transfer orbit between two circular orbits.
 
     ΔV1 = sqrt(μ/r1) * (sqrt(2*r2/(r1+r2)) - 1)

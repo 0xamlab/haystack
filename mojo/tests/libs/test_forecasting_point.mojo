@@ -81,14 +81,14 @@ from forecasting.point import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same(a: List[Float64], b: List[Float64]) -> Bool:
+def _same(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Every comparison in this suite is against a value produced by the same
     frozen kernel or by dyadic arithmetic, so a tolerance would hide a real mis-accumulation."""
     if len(a) != len(b):
@@ -99,7 +99,7 @@ fn _same(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _refused(f: PointForecast) -> Bool:
+def _refused(f: PointForecast) -> Bool:
     """A refusal carries no path and no state at all — not a padded one, not a flat one."""
     return (
         f.status != FC_OK
@@ -112,7 +112,7 @@ fn _refused(f: PointForecast) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.point] known-value suite")

@@ -16,11 +16,11 @@ Public API:
 from std.math import cos, sqrt, log, pow
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
-fn acoustic_impedance(density: Float64, sound_speed: Float64) -> Float64:
+def acoustic_impedance(density: Float64, sound_speed: Float64) -> Float64:
     """Acoustic impedance: Z = ρ·c.
 
     Args:
@@ -33,7 +33,7 @@ fn acoustic_impedance(density: Float64, sound_speed: Float64) -> Float64:
     return density * sound_speed
 
 
-fn reflection_coefficient(z1: Float64, z2: Float64) -> Float64:
+def reflection_coefficient(z1: Float64, z2: Float64) -> Float64:
     """Intensity reflection coefficient at an interface.
 
     R = ((Z2 - Z1) / (Z2 + Z1))²
@@ -52,7 +52,7 @@ fn reflection_coefficient(z1: Float64, z2: Float64) -> Float64:
     return ratio * ratio
 
 
-fn attenuation_loss(
+def attenuation_loss(
     attenuation_coeff: Float64, frequency_mhz: Float64, distance_cm: Float64
 ) -> Float64:
     """Attenuation in soft tissue: loss = α·f·d (dB).
@@ -68,7 +68,7 @@ fn attenuation_loss(
     return attenuation_coeff * frequency_mhz * distance_cm
 
 
-fn doppler_frequency_shift(
+def doppler_frequency_shift(
     source_freq_mhz: Float64, velocity: Float64,
     angle_rad: Float64, sound_speed: Float64
 ) -> Float64:
@@ -86,7 +86,7 @@ fn doppler_frequency_shift(
     return 2.0 * source_freq_mhz * velocity * cos(angle_rad) / sound_speed
 
 
-fn pulse_repetition_frequency(max_depth_cm: Float64, sound_speed: Float64) -> Float64:
+def pulse_repetition_frequency(max_depth_cm: Float64, sound_speed: Float64) -> Float64:
     """Maximum PRF determined by imaging depth.
 
     PRF_max = c / (2 · d_max)
@@ -104,7 +104,7 @@ fn pulse_repetition_frequency(max_depth_cm: Float64, sound_speed: Float64) -> Fl
     return sound_speed / (2.0 * d_m)
 
 
-fn axial_resolution(sound_speed: Float64, bandwidth_hz: Float64) -> Float64:
+def axial_resolution(sound_speed: Float64, bandwidth_hz: Float64) -> Float64:
     """Axial (depth) resolution: res_ax = c / (2 · BW).
 
     Args:
@@ -119,7 +119,7 @@ fn axial_resolution(sound_speed: Float64, bandwidth_hz: Float64) -> Float64:
     return sound_speed / (2.0 * bandwidth_hz)
 
 
-fn lateral_resolution(
+def lateral_resolution(
     wavelength_m: Float64, focal_depth_m: Float64, aperture_m: Float64
 ) -> Float64:
     """Lateral resolution at focal depth.
@@ -139,7 +139,7 @@ fn lateral_resolution(
     return wavelength_m * focal_depth_m / aperture_m
 
 
-fn acoustic_pressure_spl(pressure_pa: Float64) -> Float64:
+def acoustic_pressure_spl(pressure_pa: Float64) -> Float64:
     """Sound pressure level in water.
 
     SPL = 20·log10(p / p_ref)  with p_ref = 1 μPa in water.
@@ -156,7 +156,7 @@ fn acoustic_pressure_spl(pressure_pa: Float64) -> Float64:
     return 20.0 * _log10(pressure_pa / p_ref)
 
 
-fn ultrasound_power(intensity: Float64, area: Float64) -> Float64:
+def ultrasound_power(intensity: Float64, area: Float64) -> Float64:
     """Acoustic power: P = I × A.
 
     Args:
@@ -169,7 +169,7 @@ fn ultrasound_power(intensity: Float64, area: Float64) -> Float64:
     return intensity * area
 
 
-fn thermal_index(
+def thermal_index(
     acoustic_power_w: Float64, frequency_mhz: Float64, attenuation_coeff: Float64
 ) -> Float64:
     """Soft-tissue Thermal Index (simplified, TIS).

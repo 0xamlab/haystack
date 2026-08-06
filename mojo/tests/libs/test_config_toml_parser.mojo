@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from config.toml_parser import toml_parse
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

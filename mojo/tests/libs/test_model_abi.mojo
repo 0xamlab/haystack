@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from model_abi import tensor_layout_stride, dtype_byte_width, attention_head_dim, rope_theta_scale, weight_shard_offset, activation_layout_index, model_config_head_count, kv_head_group_size, ffn_dim_from_model_dim, abi_version_compatible
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

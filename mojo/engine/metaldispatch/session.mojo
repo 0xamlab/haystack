@@ -57,7 +57,7 @@ The pipeline table is discovered by NAME, not by call order
 ----------------------------------------------------------------
 `metaldispatch.ffi._mb_open_session` extracts every embedded `.metallib` from this binary's own
 `__TEXT,__const` and builds one pipeline per blob, in the order the blobs happen to appear —
-measured to NOT match the order `compile_function_unchecked` was called in (the two were compared
+measured to NOT match the order `compile_function` was called in (the two were compared
 directly while building this package; they differ). So `_resolve_pipelines` below reads each
 pipeline's real Metal function name back from the shim and classifies it by substring against
 `residentk.kernels`' own function names, once, at session open.
@@ -176,11 +176,11 @@ comptime _ROLE_ARGMAX_REDUCE: Int = 7
 comptime _N_ROLES: Int = 8
 
 
-fn _ceil_div(a: Int, b: Int) -> Int:
+def _ceil_div(a: Int, b: Int) -> Int:
     return (a + b - 1) // b
 
 
-fn _classify_pipeline(name: String) -> Int:
+def _classify_pipeline(name: String) -> Int:
     """Which of the eight `residentk.kernels` functions a discovered pipeline's Metal function name
     belongs to, by substring match against the (possibly truncated) mangled name. Order matters:
     `norm_gemv2` is checked before the plain `norm_gemv` it would otherwise also match, and
@@ -274,7 +274,7 @@ knee. `_MBQwen3I8AllSimd3.step`'s own docstring has the re-measurement against t
 isolated-probe) kernel that confirms this threshold."""
 
 
-fn _classify_splitk_pipeline(name: String) -> Int:
+def _classify_splitk_pipeline(name: String) -> Int:
     """Which of the TWO occupancy-fix kernels (`_splitk_partial_kernel_simd` /
     `_splitk_merge_kernel_simd`) a discovered pipeline's name belongs to — `0` / `1` / `-1`
     (neither). A SEPARATE function from `_classify_pipeline` above, deliberately never folded into
@@ -390,7 +390,7 @@ struct _MBLayerBuf(Copyable, Movable):
     var cv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
 
 
-fn _narrow_into(
+def _narrow_into(
     dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], n: Int, dst_off: Int
 ) raises -> Int:
     """Narrow `n` Float64 elements into a raw Float32 device pointer at `dst_off`. Same one-time
@@ -405,7 +405,7 @@ fn _narrow_into(
     return MB_OK
 
 
-fn _narrow_transposed_into(
+def _narrow_transposed_into(
     dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
 ) raises -> Int:
     """Narrow and transpose `[k_in, n_out]` Float64 into `[n_out, k_in]` Float32 at row `row_off`.
@@ -434,7 +434,7 @@ fn _narrow_transposed_into(
     return MB_OK
 
 
-fn _narrow_into_f16(
+def _narrow_into_f16(
     dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], n: Int, dst_off: Int
 ) raises -> Int:
     """The fp16 twin of `_narrow_into`: Float64 -> Float16, no transpose. Same arithmetic as
@@ -449,7 +449,7 @@ fn _narrow_into_f16(
     return MB_OK
 
 
-fn _narrow_transposed_into_f16(
+def _narrow_transposed_into_f16(
     dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
 ) raises -> Int:
     """The fp16 twin of `_narrow_transposed_into`: Float64 -> Float16, WITH the same blocked
@@ -482,7 +482,7 @@ comptime _I8_MAX: Float64 = 127.0
 """Same symmetric-range choice as `residentk.session._I8_MAX` — see that constant's docstring."""
 
 
-fn _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
+def _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
     """Round-half-away-from-zero, clamp to `[-127, 127]`. Byte-identical arithmetic to
     `residentk.session._quantize_row_i8`, restated here rather than imported because that function
     is module-private to `residentk.session` and not re-exported (the same restraint
@@ -497,7 +497,7 @@ fn _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
     return Int8(r)
 
 
-fn _quantize_into_i8(
+def _quantize_into_i8(
     dst_w: UnsafePointer[UInt8, origin=MutAnyOrigin],
     dst_scale: UnsafePointer[UInt8, origin=MutAnyOrigin],
     src: List[Float64], n_rows: Int, width: Int, row_off: Int, scale_off: Int,
@@ -526,7 +526,7 @@ fn _quantize_into_i8(
     return MB_OK
 
 
-fn _quantize_transposed_into_i8(
+def _quantize_transposed_into_i8(
     dst_w: UnsafePointer[UInt8, origin=MutAnyOrigin],
     dst_scale: UnsafePointer[UInt8, origin=MutAnyOrigin],
     src: List[Float64], k_in: Int, n_out: Int, row_off: Int, scale_off: Int,
@@ -642,7 +642,7 @@ struct _MBQwen3(Movable):
     var pos_offsets: List[Int]    # one per layer, the qk_rope descriptor's `pos` arg
     var nkeys_offsets: List[Int]  # one per layer, the sdpa descriptor's `n_keys` arg
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -662,19 +662,19 @@ struct _MBQwen3(Movable):
         self.scale = Float32(scale)
 
         # ── force every kernel to be compiled + embedded in THIS binary's __TEXT,__const ──
-        # `compile_function_unchecked` forces codegen; the DeviceContext it needs exists only for
+        # `compile_function` forces codegen; the DeviceContext it needs exists only for
         # that side effect and is dropped immediately after — this package does not dispatch
         # through it, the shim does.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel]()
+        _ = cctx.compile_function[_norm_gemv_kernel]()
+        _ = cctx.compile_function[_gemv_accum_kernel]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -704,16 +704,16 @@ struct _MBQwen3(Movable):
 
         self.layers = List[_MBLayerBuf]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -739,10 +739,10 @@ struct _MBQwen3(Movable):
                 woa, wop, wgua, wgup, wdowna, wdownp, cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 4, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed)")
         if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
@@ -752,15 +752,15 @@ struct _MBQwen3(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -787,7 +787,7 @@ struct _MBQwen3(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Build every one of `n_descriptors` dispatch descriptors ONCE. `token_id`, `pos` and
         `n_keys` are written as placeholder `0`; `step()` patches only those slots per call — see
         the module docstring's pipeline-discovery note and `residentk.session.step`'s own dispatch
@@ -916,13 +916,13 @@ struct _MBQwen3(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -944,7 +944,7 @@ struct _MBQwen3(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -991,13 +991,13 @@ struct _MBQwen3(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         """No-op: Shared-storage buffers are CPU/GPU coherent as soon as they're written, unlike
         `residentk.session.seal`'s `ctx.synchronize()` drain of MAX's own upload queue. Kept as a
         function so the two sessions' driver code reads identically."""
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, dispatched as ONE call into the shim. Patches the small set of per-token-
         varying scalar argument slots (`token_id` once, `pos`/`n_keys` once per layer — the VALUES
         are the same across all layers of one step, only the identity of which descriptor holds
@@ -1042,7 +1042,7 @@ struct _MBQwen3F16(Movable):
     `_MBQwen3` in the same one — see the module docstring's "separate binary" section for why:
     compiling both a role's Float32 and Float16 kernel into the same binary makes the two
     pipelines' truncated Metal names collide, and `_classify_pipeline` has no way to tell them
-    apart. This struct's constructor therefore never calls `compile_function_unchecked` on
+    apart. This struct's constructor therefore never calls `compile_function` on
     `_norm_gemv_kernel`/`_gemv_accum_kernel`/`_norm_gemv2_swiglu_kernel`/`_lmhead_argmax_kernel`/
     `_embed_row_kernel` (the Float32 GEMV-shaped kernels) — only their `_f16` twins, plus the three
     shared kernels (`_qk_rope_write_kernel`, `_sdpa_kernel`, `_argmax_reduce_kernel`) that have no
@@ -1097,7 +1097,7 @@ struct _MBQwen3F16(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -1117,14 +1117,14 @@ struct _MBQwen3F16(Movable):
         # Deliberately NEVER the Float32 GEMV-shaped kernels — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_f16]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_f16]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_f16]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_f16]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_f16]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel_f16]()
+        _ = cctx.compile_function[_norm_gemv_kernel_f16]()
+        _ = cctx.compile_function[_gemv_accum_kernel_f16]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_f16]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_f16]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -1155,16 +1155,16 @@ struct _MBQwen3F16(Movable):
 
         self.layers = List[_MBLayerBuf]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -1190,10 +1190,10 @@ struct _MBQwen3F16(Movable):
                 woa, wop, wgua, wgup, wdowna, wdownp, cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 2, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed f16)")
         if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
@@ -1203,15 +1203,15 @@ struct _MBQwen3F16(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -1238,7 +1238,7 @@ struct _MBQwen3F16(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Byte-for-byte the same descriptor plan as `_MBQwen3._build_descriptors` — same roles,
         same grid/threadgroup shapes, same argument SLOTS. Only the buffer addresses bound at each
         pointer slot differ (the fp16-sized ones above); a kernel argument slot's tag is still
@@ -1368,13 +1368,13 @@ struct _MBQwen3F16(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, fp16 weights)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -1398,7 +1398,7 @@ struct _MBQwen3F16(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -1447,10 +1447,10 @@ struct _MBQwen3F16(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-for-byte `_MBQwen3.step`'s own body — see that function's docstring. Duplicated
         rather than shared because Mojo has no common base for two structs with different field
         sets to dispatch through; the STEPS taken are identical, only the resident buffers a few of
@@ -1498,7 +1498,7 @@ struct _MBQwen3I8(Movable):
     or `_MBQwen3F16` in the same one — see the module docstring's "separate binary" section: any
     two of a role's Float32/Float16/Int8 pipelines compiled into the same binary collide under the
     truncated-name classifier the same way the Float32/Float16 pair did. This struct's constructor
-    therefore never calls `compile_function_unchecked` on the Float32 or Float16 GEMV-shaped
+    therefore never calls `compile_function` on the Float32 or Float16 GEMV-shaped
     kernels — only the `_i8` twins, plus the three shared kernels
     (`_qk_rope_write_kernel`/`_sdpa_kernel`/`_argmax_reduce_kernel`) that have no per-dtype variant
     at all, exactly as `_MBQwen3F16` compiles them.
@@ -1554,7 +1554,7 @@ struct _MBQwen3I8(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -1575,14 +1575,14 @@ struct _MBQwen3I8(Movable):
         # docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -1614,20 +1614,20 @@ struct _MBQwen3I8(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -1665,11 +1665,11 @@ struct _MBQwen3I8(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -1681,15 +1681,15 @@ struct _MBQwen3I8(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -1716,7 +1716,7 @@ struct _MBQwen3I8(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3`/`_MBQwen3F16`'s own — same roles, same grid/
         threadgroup shapes, same per-step-varying slots — but every GEMV-shaped role's descriptor
         carries one more pointer argument: that matrix's per-output-row scale buffer, positioned
@@ -1852,13 +1852,13 @@ struct _MBQwen3I8(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -1882,7 +1882,7 @@ struct _MBQwen3I8(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -1941,10 +1941,10 @@ struct _MBQwen3I8(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-for-byte `_MBQwen3.step`'s/`_MBQwen3F16.step`'s own body — see `_MBQwen3.step`'s
         docstring."""
 
@@ -1990,7 +1990,7 @@ struct _MBQwen3I8SDPASimd(Movable):
     see the module docstring's "separate binary" section and `_MBQwen3I8`'s own docstring: two
     pipelines answering to the same `_classify_pipeline` substring ("sdpa") compiled into one binary
     collide under the truncated-name classifier with no way to tell them apart. This struct's
-    constructor therefore never calls `compile_function_unchecked` on `_sdpa_kernel` — only
+    constructor therefore never calls `compile_function` on `_sdpa_kernel` — only
     `_sdpa_kernel_simd`, exactly the same one-pipeline-per-role discipline `_MBQwen3I8`'s own
     constructor already follows for the GEMV-shaped roles across the Float32/Float16/Int8 arms.
     """
@@ -2045,7 +2045,7 @@ struct _MBQwen3I8SDPASimd(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -2079,14 +2079,14 @@ struct _MBQwen3I8SDPASimd(Movable):
         # docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -2118,20 +2118,20 @@ struct _MBQwen3I8SDPASimd(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -2169,11 +2169,11 @@ struct _MBQwen3I8SDPASimd(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -2185,15 +2185,15 @@ struct _MBQwen3I8SDPASimd(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -2220,7 +2220,7 @@ struct _MBQwen3I8SDPASimd(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3`/`_MBQwen3F16`'s own — same roles, same grid/
         threadgroup shapes, same per-step-varying slots — but every GEMV-shaped role's descriptor
         carries one more pointer argument: that matrix's per-output-row scale buffer, positioned
@@ -2356,13 +2356,13 @@ struct _MBQwen3I8SDPASimd(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA SIMD-shuffle reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -2386,7 +2386,7 @@ struct _MBQwen3I8SDPASimd(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -2445,10 +2445,10 @@ struct _MBQwen3I8SDPASimd(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-for-byte `_MBQwen3.step`'s/`_MBQwen3F16.step`'s own body — see `_MBQwen3.step`'s
         docstring."""
 
@@ -2503,7 +2503,7 @@ struct _MBQwen3I8AllSimd(Movable):
     `_MBQwen3I8`'s own docstring: `_classify_pipeline` matches by ROLE substring
     ("norm_gemv"/"gemv_accum"/"norm_gemv2"/"sdpa"), not by exact kernel variant, so two pipelines
     for the SAME role compiled into one binary would collide with no way to tell them apart. This
-    struct's constructor therefore never calls `compile_function_unchecked` on any of the four
+    struct's constructor therefore never calls `compile_function` on any of the four
     barrier-tree kernels it replaces — only their four `_simd` twins, exactly the same
     one-pipeline-per-role discipline `_MBQwen3I8SDPASimd`'s own constructor already follows.
     """
@@ -2558,7 +2558,7 @@ struct _MBQwen3I8AllSimd(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -2592,14 +2592,14 @@ struct _MBQwen3I8AllSimd(Movable):
         # docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -2631,20 +2631,20 @@ struct _MBQwen3I8AllSimd(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -2682,11 +2682,11 @@ struct _MBQwen3I8AllSimd(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -2698,15 +2698,15 @@ struct _MBQwen3I8AllSimd(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -2733,7 +2733,7 @@ struct _MBQwen3I8AllSimd(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3`/`_MBQwen3F16`'s own — same roles, same grid/
         threadgroup shapes, same per-step-varying slots — but every GEMV-shaped role's descriptor
         carries one more pointer argument: that matrix's per-output-row scale buffer, positioned
@@ -2869,13 +2869,13 @@ struct _MBQwen3I8AllSimd(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV SIMD-shuffle reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -2899,7 +2899,7 @@ struct _MBQwen3I8AllSimd(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -2958,10 +2958,10 @@ struct _MBQwen3I8AllSimd(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-for-byte `_MBQwen3.step`'s/`_MBQwen3F16.step`'s own body — see `_MBQwen3.step`'s
         docstring."""
 
@@ -3019,7 +3019,7 @@ struct _MBQwen3I8AllSimd2(Movable):
     documents: `_classify_pipeline` matches the `lmhead` role by substring, not by exact kernel
     variant, so two pipelines for the SAME role compiled into one binary would collide with no way
     to tell them apart. This struct's constructor therefore never calls
-    `compile_function_unchecked` on the barrier-tree `_lmhead_argmax_kernel_i8` — only its `_simd`
+    `compile_function` on the barrier-tree `_lmhead_argmax_kernel_i8` — only its `_simd`
     twin, exactly the same one-pipeline-per-role discipline every other struct in this file follows.
     """
 
@@ -3073,7 +3073,7 @@ struct _MBQwen3I8AllSimd2(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -3106,14 +3106,14 @@ struct _MBQwen3I8AllSimd2(Movable):
         # the barrier-tree `_lmhead_argmax_kernel_i8` — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -3143,20 +3143,20 @@ struct _MBQwen3I8AllSimd2(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -3194,11 +3194,11 @@ struct _MBQwen3I8AllSimd2(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -3210,15 +3210,15 @@ struct _MBQwen3I8AllSimd2(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -3245,7 +3245,7 @@ struct _MBQwen3I8AllSimd2(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd`'s own — same roles, same grid/threadgroup
         shapes, same per-step-varying slots; the lm_head role's descriptor is unaffected (it still
         carries the SAME 10 arguments, `_lmhead_argmax_kernel_i8` and `_lmhead_argmax_kernel_simd_i8`
@@ -3381,13 +3381,13 @@ struct _MBQwen3I8AllSimd2(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head SIMD-shuffle reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -3411,7 +3411,7 @@ struct _MBQwen3I8AllSimd2(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -3470,10 +3470,10 @@ struct _MBQwen3I8AllSimd2(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-for-byte `_MBQwen3I8AllSimd.step`'s own body — see that function's docstring."""
 
         @parameter
@@ -3535,7 +3535,7 @@ struct _MBQwen3I8AllSimd3(Movable):
     (`_argmax_reduce_kernel` and `_argmax_reduce_kernel_simd` both contain it), not by exact kernel
     variant, so two pipelines for the SAME role compiled into one binary would collide with no way
     to tell them apart. This struct's constructor therefore never calls
-    `compile_function_unchecked` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
+    `compile_function` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
     twin, exactly the same one-pipeline-per-role discipline every other struct in this file follows.
 
     A FIFTH addition, orthogonal to the four reduction-mechanism fixes above and landed later: this
@@ -3643,7 +3643,7 @@ struct _MBQwen3I8AllSimd3(Movable):
     `pos_offsets`/`nkeys_offsets` patching already relies on, just duplicated across two plans instead
     of one."""
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -3682,19 +3682,19 @@ struct _MBQwen3I8AllSimd3(Movable):
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
         # ── the deep-context occupancy fix's two kernels are DELIBERATELY NOT compiled here.
-        # `_ensure_deep_initialized` (below) calls `compile_function_unchecked` on both, lazily, the
+        # `_ensure_deep_initialized` (below) calls `compile_function` on both, lazily, the
         # first time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD` -- see that method's own
         # docstring for why. This does NOT remove either kernel from THIS binary: both are still
-        # referenced by a `compile_function_unchecked[...]` call reachable from this struct (just a
+        # referenced by a `compile_function[...]` call reachable from this struct (just a
         # later one), which is all the whole-program build needs to embed their `.metallib` blobs in
         # `__TEXT,__const` -- see this file's own module docstring ("The pipeline table is discovered
         # by NAME, not by call order") for why deferring WHEN this Mojo statement executes changes
@@ -3746,20 +3746,20 @@ struct _MBQwen3I8AllSimd3(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -3797,11 +3797,11 @@ struct _MBQwen3I8AllSimd3(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -3813,15 +3813,15 @@ struct _MBQwen3I8AllSimd3(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -3850,9 +3850,9 @@ struct _MBQwen3I8AllSimd3(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -3871,7 +3871,7 @@ struct _MBQwen3I8AllSimd3(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -3879,7 +3879,7 @@ struct _MBQwen3I8AllSimd3(Movable):
 
         self._build_descriptors(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Lazily finishes constructing the deep-context (split/merge) path — the two kernel
         compiles, the three scratch-buffer allocations, and building `self.descriptors_deep` — the
         FIRST time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD`, instead of unconditionally in
@@ -3889,11 +3889,11 @@ struct _MBQwen3I8AllSimd3(Movable):
 
         Why this is safe to defer, item by item (each is now measured, see the RootCause investigation
         this fix implements):
-          - `compile_function_unchecked[_splitk_partial_kernel_simd]`/`[_splitk_merge_kernel_simd]`:
+          - `compile_function[_splitk_partial_kernel_simd]`/`[_splitk_merge_kernel_simd]`:
             deferring WHEN this Mojo statement executes does not change WHICH pipelines
             `_mb_open_session` discovers in `__init__` (this file's own module docstring: pipeline
             discovery is driven by scanning this binary's embedded `.metallib` blobs by NAME, not by
-            `compile_function_unchecked` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
+            `compile_function` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
             are already resolved by `__init__`'s existing discovery loop before this method ever runs.
             What IS deferred is the real, measured ~71.5us cost of executing the two calls themselves.
           - The three `_mb_alloc_buffer` calls: real GPU buffer allocations (measured ~486us for these
@@ -3908,8 +3908,8 @@ struct _MBQwen3I8AllSimd3(Movable):
             return
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        _ = cctx.compile_function[_splitk_partial_kernel_simd]()
+        _ = cctx.compile_function[_splitk_merge_kernel_simd]()
 
         if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
@@ -3923,7 +3923,7 @@ struct _MBQwen3I8AllSimd3(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
         shapes, same per-step-varying slots; both the lm_head role's AND the argmax_reduce role's
         descriptors are unaffected (each still carries the SAME argument count and order —
@@ -4061,7 +4061,7 @@ struct _MBQwen3I8AllSimd3(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """The SECOND descriptor table `step()` submits when `n_keys >= _ATTN_SPLITK_THRESHOLD` —
         IDENTICAL per-layer plan to `_build_descriptors` above, roles and order both, with exactly
         ONE substitution: the single `_ROLE_SDPA` dispatch (`grid_x=h_q`) is replaced by TWO
@@ -4234,13 +4234,13 @@ struct _MBQwen3I8AllSimd3(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -4264,7 +4264,7 @@ struct _MBQwen3I8AllSimd3(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -4323,10 +4323,10 @@ struct _MBQwen3I8AllSimd3(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """`_MBQwen3I8AllSimd2.step`'s own body (which is itself `_MBQwen3I8AllSimd.step`'s), PLUS
         one gate: below `_ATTN_SPLITK_THRESHOLD`, this is BYTE-FOR-BYTE that body, patching and
         submitting `self.descriptors` exactly as every sibling struct's `step()` does — the published
@@ -4430,7 +4430,7 @@ struct _MBQwen3I8AllSimd4(Movable):
     (`_argmax_reduce_kernel` and `_argmax_reduce_kernel_simd` both contain it), not by exact kernel
     variant, so two pipelines for the SAME role compiled into one binary would collide with no way
     to tell them apart. This struct's constructor therefore never calls
-    `compile_function_unchecked` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
+    `compile_function` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
     twin, exactly the same one-pipeline-per-role discipline every other struct in this file follows.
 
     A FIFTH addition, orthogonal to the four reduction-mechanism fixes above and landed later: this
@@ -4565,7 +4565,7 @@ struct _MBQwen3I8AllSimd4(Movable):
     `pos_offsets`/`nkeys_offsets` patching already relies on, just duplicated across two plans instead
     of one."""
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -4605,19 +4605,19 @@ struct _MBQwen3I8AllSimd4(Movable):
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
         # ── the deep-context occupancy fix's two kernels are DELIBERATELY NOT compiled here.
-        # `_ensure_deep_initialized` (below) calls `compile_function_unchecked` on both, lazily, the
+        # `_ensure_deep_initialized` (below) calls `compile_function` on both, lazily, the
         # first time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD` -- see that method's own
         # docstring for why. This does NOT remove either kernel from THIS binary: both are still
-        # referenced by a `compile_function_unchecked[...]` call reachable from this struct (just a
+        # referenced by a `compile_function[...]` call reachable from this struct (just a
         # later one), which is all the whole-program build needs to embed their `.metallib` blobs in
         # `__TEXT,__const` -- see this file's own module docstring ("The pipeline table is discovered
         # by NAME, not by call order") for why deferring WHEN this Mojo statement executes changes
@@ -4669,20 +4669,20 @@ struct _MBQwen3I8AllSimd4(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -4720,11 +4720,11 @@ struct _MBQwen3I8AllSimd4(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -4736,15 +4736,15 @@ struct _MBQwen3I8AllSimd4(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -4773,9 +4773,9 @@ struct _MBQwen3I8AllSimd4(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -4794,7 +4794,7 @@ struct _MBQwen3I8AllSimd4(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -4802,7 +4802,7 @@ struct _MBQwen3I8AllSimd4(Movable):
 
         self._build_descriptors(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Lazily finishes constructing the deep-context (split/merge) path — the two kernel
         compiles, the three scratch-buffer allocations, and building `self.descriptors_deep` — the
         FIRST time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD`, instead of unconditionally in
@@ -4812,11 +4812,11 @@ struct _MBQwen3I8AllSimd4(Movable):
 
         Why this is safe to defer, item by item (each is now measured, see the RootCause investigation
         this fix implements):
-          - `compile_function_unchecked[_splitk_partial_kernel_simd_batched4]`/`[_splitk_merge_kernel_simd]`:
+          - `compile_function[_splitk_partial_kernel_simd_batched4]`/`[_splitk_merge_kernel_simd]`:
             deferring WHEN this Mojo statement executes does not change WHICH pipelines
             `_mb_open_session` discovers in `__init__` (this file's own module docstring: pipeline
             discovery is driven by scanning this binary's embedded `.metallib` blobs by NAME, not by
-            `compile_function_unchecked` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
+            `compile_function` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
             are already resolved by `__init__`'s existing discovery loop before this method ever runs.
             What IS deferred is the real, measured ~71.5us cost of executing the two calls themselves.
           - The three `_mb_alloc_buffer` calls: real GPU buffer allocations (measured ~486us for these
@@ -4831,8 +4831,8 @@ struct _MBQwen3I8AllSimd4(Movable):
             return
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_batched4]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        _ = cctx.compile_function[_splitk_partial_kernel_simd_batched4]()
+        _ = cctx.compile_function[_splitk_merge_kernel_simd]()
 
         if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
@@ -4846,7 +4846,7 @@ struct _MBQwen3I8AllSimd4(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
         shapes, same per-step-varying slots; both the lm_head role's AND the argmax_reduce role's
         descriptors are unaffected (each still carries the SAME argument count and order —
@@ -4984,7 +4984,7 @@ struct _MBQwen3I8AllSimd4(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """The SECOND descriptor table `step()` submits when `n_keys >= _ATTN_SPLITK_THRESHOLD` —
         IDENTICAL per-layer plan to `_build_descriptors` above, roles and order both, with exactly
         ONE substitution: the single `_ROLE_SDPA` dispatch (`grid_x=h_q`) is replaced by TWO
@@ -5159,13 +5159,13 @@ struct _MBQwen3I8AllSimd4(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction, deep split-K barrier-batched x4)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -5189,7 +5189,7 @@ struct _MBQwen3I8AllSimd4(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -5248,10 +5248,10 @@ struct _MBQwen3I8AllSimd4(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """`_MBQwen3I8AllSimd2.step`'s own body (which is itself `_MBQwen3I8AllSimd.step`'s), PLUS
         one gate: below `_ATTN_SPLITK_THRESHOLD`, this is BYTE-FOR-BYTE that body, patching and
         submitting `self.descriptors` exactly as every sibling struct's `step()` does — the published
@@ -5355,7 +5355,7 @@ struct _MBQwen3I8AllSimd5(Movable):
     (`_argmax_reduce_kernel` and `_argmax_reduce_kernel_simd` both contain it), not by exact kernel
     variant, so two pipelines for the SAME role compiled into one binary would collide with no way
     to tell them apart. This struct's constructor therefore never calls
-    `compile_function_unchecked` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
+    `compile_function` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
     twin, exactly the same one-pipeline-per-role discipline every other struct in this file follows.
 
     A FIFTH addition, orthogonal to the four reduction-mechanism fixes above and landed later: this
@@ -5507,7 +5507,7 @@ struct _MBQwen3I8AllSimd5(Movable):
     `pos_offsets`/`nkeys_offsets` patching already relies on, just duplicated across two plans instead
     of one."""
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -5548,19 +5548,19 @@ struct _MBQwen3I8AllSimd5(Movable):
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
         # ── the deep-context occupancy fix's two kernels are DELIBERATELY NOT compiled here.
-        # `_ensure_deep_initialized` (below) calls `compile_function_unchecked` on both, lazily, the
+        # `_ensure_deep_initialized` (below) calls `compile_function` on both, lazily, the
         # first time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD` -- see that method's own
         # docstring for why. This does NOT remove either kernel from THIS binary: both are still
-        # referenced by a `compile_function_unchecked[...]` call reachable from this struct (just a
+        # referenced by a `compile_function[...]` call reachable from this struct (just a
         # later one), which is all the whole-program build needs to embed their `.metallib` blobs in
         # `__TEXT,__const` -- see this file's own module docstring ("The pipeline table is discovered
         # by NAME, not by call order") for why deferring WHEN this Mojo statement executes changes
@@ -5612,20 +5612,20 @@ struct _MBQwen3I8AllSimd5(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -5663,11 +5663,11 @@ struct _MBQwen3I8AllSimd5(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -5679,15 +5679,15 @@ struct _MBQwen3I8AllSimd5(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -5716,9 +5716,9 @@ struct _MBQwen3I8AllSimd5(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -5737,7 +5737,7 @@ struct _MBQwen3I8AllSimd5(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -5745,7 +5745,7 @@ struct _MBQwen3I8AllSimd5(Movable):
 
         self._build_descriptors(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Lazily finishes constructing the deep-context (split/merge) path — the two kernel
         compiles, the three scratch-buffer allocations, and building `self.descriptors_deep` — the
         FIRST time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD`, instead of unconditionally in
@@ -5755,11 +5755,11 @@ struct _MBQwen3I8AllSimd5(Movable):
 
         Why this is safe to defer, item by item (each is now measured, see the RootCause investigation
         this fix implements):
-          - `compile_function_unchecked[_splitk_partial_kernel_simd_native]`/`[_splitk_merge_kernel_simd]`:
+          - `compile_function[_splitk_partial_kernel_simd_native]`/`[_splitk_merge_kernel_simd]`:
             deferring WHEN this Mojo statement executes does not change WHICH pipelines
             `_mb_open_session` discovers in `__init__` (this file's own module docstring: pipeline
             discovery is driven by scanning this binary's embedded `.metallib` blobs by NAME, not by
-            `compile_function_unchecked` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
+            `compile_function` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
             are already resolved by `__init__`'s existing discovery loop before this method ever runs.
             What IS deferred is the real, measured ~71.5us cost of executing the two calls themselves.
           - The three `_mb_alloc_buffer` calls: real GPU buffer allocations (measured ~486us for these
@@ -5774,8 +5774,8 @@ struct _MBQwen3I8AllSimd5(Movable):
             return
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
+        _ = cctx.compile_function[_splitk_merge_kernel_simd]()
 
         if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
@@ -5789,7 +5789,7 @@ struct _MBQwen3I8AllSimd5(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
         shapes, same per-step-varying slots; both the lm_head role's AND the argmax_reduce role's
         descriptors are unaffected (each still carries the SAME argument count and order —
@@ -5927,7 +5927,7 @@ struct _MBQwen3I8AllSimd5(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """The SECOND descriptor table `step()` submits when `n_keys >= _ATTN_SPLITK_THRESHOLD` —
         IDENTICAL per-layer plan to `_build_descriptors` above, roles and order both, with exactly
         ONE substitution: the single `_ROLE_SDPA` dispatch (`grid_x=h_q`) is replaced by TWO
@@ -6111,13 +6111,13 @@ struct _MBQwen3I8AllSimd5(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -6141,7 +6141,7 @@ struct _MBQwen3I8AllSimd5(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -6200,10 +6200,10 @@ struct _MBQwen3I8AllSimd5(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """`_MBQwen3I8AllSimd2.step`'s own body (which is itself `_MBQwen3I8AllSimd.step`'s), PLUS
         one gate: below `_ATTN_SPLITK_THRESHOLD`, this is BYTE-FOR-BYTE that body, patching and
         submitting `self.descriptors` exactly as every sibling struct's `step()` does — the published
@@ -6422,7 +6422,7 @@ struct _MBQwen3I8AllSimd6(Movable):
     `pos_offsets`/`nkeys_offsets` patching already relies on, just duplicated across two plans instead
     of one."""
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -6463,19 +6463,19 @@ struct _MBQwen3I8AllSimd6(Movable):
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
         # ── the deep-context occupancy fix's two kernels are DELIBERATELY NOT compiled here.
-        # `_ensure_deep_initialized` (below) calls `compile_function_unchecked` on both, lazily, the
+        # `_ensure_deep_initialized` (below) calls `compile_function` on both, lazily, the
         # first time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD` -- see that method's own
         # docstring for why. This does NOT remove either kernel from THIS binary: both are still
-        # referenced by a `compile_function_unchecked[...]` call reachable from this struct (just a
+        # referenced by a `compile_function[...]` call reachable from this struct (just a
         # later one), which is all the whole-program build needs to embed their `.metallib` blobs in
         # `__TEXT,__const` -- see this file's own module docstring ("The pipeline table is discovered
         # by NAME, not by call order") for why deferring WHEN this Mojo statement executes changes
@@ -6527,20 +6527,20 @@ struct _MBQwen3I8AllSimd6(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -6578,11 +6578,11 @@ struct _MBQwen3I8AllSimd6(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -6594,15 +6594,15 @@ struct _MBQwen3I8AllSimd6(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -6631,9 +6631,9 @@ struct _MBQwen3I8AllSimd6(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -6652,7 +6652,7 @@ struct _MBQwen3I8AllSimd6(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -6660,7 +6660,7 @@ struct _MBQwen3I8AllSimd6(Movable):
 
         self._build_descriptors(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Lazily finishes constructing the deep-context (split/merge) path — the two kernel
         compiles, the three scratch-buffer allocations, and building `self.descriptors_deep` — the
         FIRST time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD`, instead of unconditionally in
@@ -6670,11 +6670,11 @@ struct _MBQwen3I8AllSimd6(Movable):
 
         Why this is safe to defer, item by item (each is now measured, see the RootCause investigation
         this fix implements):
-          - `compile_function_unchecked[_splitk_partial_kernel_simd_native]`/`[_splitk_merge_kernel_simd]`:
+          - `compile_function[_splitk_partial_kernel_simd_native]`/`[_splitk_merge_kernel_simd]`:
             deferring WHEN this Mojo statement executes does not change WHICH pipelines
             `_mb_open_session` discovers in `__init__` (this file's own module docstring: pipeline
             discovery is driven by scanning this binary's embedded `.metallib` blobs by NAME, not by
-            `compile_function_unchecked` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
+            `compile_function` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
             are already resolved by `__init__`'s existing discovery loop before this method ever runs.
             What IS deferred is the real, measured ~71.5us cost of executing the two calls themselves.
           - The three `_mb_alloc_buffer` calls: real GPU buffer allocations (measured ~486us for these
@@ -6689,8 +6689,8 @@ struct _MBQwen3I8AllSimd6(Movable):
             return
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
+        _ = cctx.compile_function[_splitk_merge_kernel_simd]()
 
         if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS_NATIVE * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
@@ -6704,7 +6704,7 @@ struct _MBQwen3I8AllSimd6(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
         shapes, same per-step-varying slots; both the lm_head role's AND the argmax_reduce role's
         descriptors are unaffected (each still carries the SAME argument count and order —
@@ -6842,7 +6842,7 @@ struct _MBQwen3I8AllSimd6(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """The SECOND descriptor table `step()` submits when `n_keys >= _ATTN_SPLITK_THRESHOLD` —
         IDENTICAL per-layer plan to `_build_descriptors` above, roles and order both, with exactly
         ONE substitution: the single `_ROLE_SDPA` dispatch (`grid_x=h_q`) is replaced by TWO
@@ -7029,13 +7029,13 @@ struct _MBQwen3I8AllSimd6(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -7059,7 +7059,7 @@ struct _MBQwen3I8AllSimd6(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -7118,10 +7118,10 @@ struct _MBQwen3I8AllSimd6(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """`_MBQwen3I8AllSimd2.step`'s own body (which is itself `_MBQwen3I8AllSimd.step`'s), PLUS
         one gate: below `_ATTN_SPLITK_THRESHOLD`, this is BYTE-FOR-BYTE that body, patching and
         submitting `self.descriptors` exactly as every sibling struct's `step()` does — the published
@@ -7347,7 +7347,7 @@ struct _MBQwen3I8AllSimd7(Movable):
     discipline these fields (from `descriptors_deep` onward) implement — unchanged here except that
     the deep table's OWN `n_splits` is no longer fixed at construction; see `_apply_n_splits`."""
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -7375,14 +7375,14 @@ struct _MBQwen3I8AllSimd7(Movable):
         # `_ensure_deep_initialized`).
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -7435,20 +7435,20 @@ struct _MBQwen3I8AllSimd7(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -7486,11 +7486,11 @@ struct _MBQwen3I8AllSimd7(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -7502,15 +7502,15 @@ struct _MBQwen3I8AllSimd7(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -7534,9 +7534,9 @@ struct _MBQwen3I8AllSimd7(Movable):
         # ceiling), not the old comptime `_ATTN_SPLITK_N_SPLITS_NATIVE` -- see the struct docstring's
         # "BUFFER SIZING" paragraph. Still a null placeholder until `_ensure_deep_initialized`
         # allocates lazily, same discipline as `_MBQwen3I8AllSimd6`.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -7545,7 +7545,7 @@ struct _MBQwen3I8AllSimd7(Movable):
         self.nkeys_offsets = List[Int]()
 
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -7553,7 +7553,7 @@ struct _MBQwen3I8AllSimd7(Movable):
 
         self._build_descriptors(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Identical lazy-init discipline to `_MBQwen3I8AllSimd6._ensure_deep_initialized` — see
         that method's own docstring for the full account of why deferring each of these four costs
         (two kernel compiles, three buffer allocs, the descriptor build) to the first deep-branch
@@ -7564,8 +7564,8 @@ struct _MBQwen3I8AllSimd7(Movable):
             return
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
+        _ = cctx.compile_function[_splitk_merge_kernel_simd]()
 
         if _mb_alloc_buffer(self.h_q * self.n_splits_max * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
@@ -7579,7 +7579,7 @@ struct _MBQwen3I8AllSimd7(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Byte-identical plan to `_MBQwen3I8AllSimd6._build_descriptors` — see that method's own
         docstring."""
         var n_q = self.h_q * self.d_head
@@ -7712,7 +7712,7 @@ struct _MBQwen3I8AllSimd7(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """Byte-identical PLAN to `_MBQwen3I8AllSimd6._build_descriptors_deep` -- same roles, same
         order, same argument layout -- with exactly one difference: the split dispatch's initial grid
         width and both kernels' initial `n_splits` value arguments are seeded from `self.n_splits_max`
@@ -7872,7 +7872,7 @@ struct _MBQwen3I8AllSimd7(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _apply_n_splits(mut self, new_n_splits: Int) raises:
+    def _apply_n_splits(mut self, new_n_splits: Int) raises:
         """Re-patches the split dispatch's grid width and both kernels' `n_splits` value arguments
         for every layer, IN PLACE, to `new_n_splits` — the production twin of `_MBQwen3I8SplitKSweep.
         set_n_splits` (`benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_splitk_native_sweep.
@@ -7900,27 +7900,27 @@ struct _MBQwen3I8AllSimd7(Movable):
             _mb_set_arg_int(self.descriptors_deep, d_split, 7, new_n_splits)
             _mb_set_arg_int(self.descriptors_deep, d_merge, 4, new_n_splits)
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction, DYNAMIC per-step n_splits policy)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn n_cores_detected(self) -> Int:
+    def n_cores_detected(self) -> Int:
         """The GPU core count this session queried at open time (may be `<= 0` if the probe failed —
         see the `n_cores` field's own docstring). Exposed read-only for observability (probes/tests
         that want to print or assert on what this session actually detected), never mutated after
         `__init__`."""
         return self.n_cores
 
-    fn n_splits_currently_applied(self) -> Int:
+    def n_splits_currently_applied(self) -> Int:
         """The `n_splits` value currently patched into the deep descriptor table, or -1 if `step()`
         has never taken the deep branch yet this session. Exposed for the same observability reason
         as `n_cores_detected` — lets a probe log/assert which policy-computed configuration a given
         depth actually ran with, without re-deriving it independently."""
         return self.deep_last_n_splits
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -7944,7 +7944,7 @@ struct _MBQwen3I8AllSimd7(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -8003,10 +8003,10 @@ struct _MBQwen3I8AllSimd7(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """`_MBQwen3I8AllSimd6.step`'s own body, PLUS the dynamic policy: the branch gate is now
         `residentk_splitk_should_split(n_keys)` (32) instead of the fixed `_ATTN_SPLITK_THRESHOLD`
         (512), and the deep branch computes `n_splits = residentk_splitk_policy(n_keys, self.n_cores,
@@ -8091,7 +8091,7 @@ struct _MBQwen3I8KVF16(Movable):
     applies to the rope-write/sdpa roles here exactly as it does to the GEMV-shaped roles there:
     compiling both `_qk_rope_write_kernel` and `_qk_rope_write_kernel_kvf16` (or the `_sdpa_kernel`
     pair) into one binary would give two pipelines answering to the same role with no way to tell
-    them apart. This struct's constructor therefore never calls `compile_function_unchecked` on the
+    them apart. This struct's constructor therefore never calls `compile_function` on the
     Float32-cache `_qk_rope_write_kernel`/`_sdpa_kernel` — only their `_kvf16` twins, alongside the
     int8 GEMV-shaped kernels `_MBQwen3I8` already uses and the one role
     (`_argmax_reduce_kernel`) with no per-arm variant on either axis.
@@ -8147,7 +8147,7 @@ struct _MBQwen3I8KVF16(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -8169,14 +8169,14 @@ struct _MBQwen3I8KVF16(Movable):
         # NEVER the Float32/Float16 GEMV-shaped weight kernels — see the struct docstring.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel_kvf16]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_kvf16]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel_kvf16]()
+        _ = cctx.compile_function[_sdpa_kernel_kvf16]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -8208,20 +8208,20 @@ struct _MBQwen3I8KVF16(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -8259,11 +8259,11 @@ struct _MBQwen3I8KVF16(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -8275,15 +8275,15 @@ struct _MBQwen3I8KVF16(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -8310,7 +8310,7 @@ struct _MBQwen3I8KVF16(Movable):
         self.nkeys_offsets = List[Int]()
         self._build_descriptors(n_qkv)
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Byte-for-byte the same descriptor plan as `_MBQwen3I8._build_descriptors` — every
         argument slot, tag and count is identical; only the addresses bound at the `ck`/`cv`
         pointer slots point at half-sized (Float16) allocations, which changes nothing about the
@@ -8447,13 +8447,13 @@ struct _MBQwen3I8KVF16(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights + fp16 kv-cache)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -8480,7 +8480,7 @@ struct _MBQwen3I8KVF16(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -8540,10 +8540,10 @@ struct _MBQwen3I8KVF16(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-for-byte `_MBQwen3I8.step`'s own body — see `_MBQwen3.step`'s docstring."""
 
         @parameter
@@ -8572,7 +8572,7 @@ struct _MBQwen3I8KVF16(Movable):
             return _StepOut(tok, lg, self.n_descriptors, MB_OK)
 
 
-fn _mb_preflight(
+def _mb_preflight(
     d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
     n_layers: Int, n_prompt: Int, n_new: Int, max_ctx: Int, eps: Float64, scale: Float64,
 ) -> Int:

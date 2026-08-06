@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from contrastive_learning import infonce_loss, simclr_positive_score, simclr_temperature_scale, triplet_margin_loss, nt_xent_denominator_term, moco_momentum_update, byol_ema_update, vicreg_variance_loss, vicreg_covariance_term, barlow_twins_cross_corr
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

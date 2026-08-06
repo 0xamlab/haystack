@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from corrosion import corrosion_rate_mpy, corrosion_rate_mmpy, pitting_rate, pitting_factor, galvanic_potential_difference, nernst_potential, passivation_current_density, tafel_overpotential, metal_loss_from_rate, remaining_wall_thickness, cathodic_protection_current, service_life_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

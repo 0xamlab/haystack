@@ -12,7 +12,7 @@ from std.math import abs as fabs
 # ── GDP Growth ────────────────────────────────────────────────────────────────
 
 
-fn gdp_growth(gdp_current: Float64, gdp_previous: Float64) -> Float64:
+def gdp_growth(gdp_current: Float64, gdp_previous: Float64) -> Float64:
     """GDP growth rate = (current - previous) / previous."""
     if fabs(gdp_previous) < 1e-15:
         return 0.0
@@ -22,7 +22,7 @@ fn gdp_growth(gdp_current: Float64, gdp_previous: Float64) -> Float64:
 # ── Inflation Rate ────────────────────────────────────────────────────────────
 
 
-fn inflation_rate(cpi_current: Float64, cpi_previous: Float64) -> Float64:
+def inflation_rate(cpi_current: Float64, cpi_previous: Float64) -> Float64:
     """Inflation rate = (CPI_current - CPI_previous) / CPI_previous."""
     if fabs(cpi_previous) < 1e-15:
         return 0.0
@@ -32,7 +32,7 @@ fn inflation_rate(cpi_current: Float64, cpi_previous: Float64) -> Float64:
 # ── Unemployment Rate ─────────────────────────────────────────────────────────
 
 
-fn unemployment_rate(unemployed: Float64, labor_force: Float64) -> Float64:
+def unemployment_rate(unemployed: Float64, labor_force: Float64) -> Float64:
     """Unemployment rate = unemployed / labor_force."""
     if fabs(labor_force) < 1e-15:
         return 0.0
@@ -42,7 +42,7 @@ fn unemployment_rate(unemployed: Float64, labor_force: Float64) -> Float64:
 # ── Real GDP ──────────────────────────────────────────────────────────────────
 
 
-fn real_gdp(nominal_gdp: Float64, gdp_deflator: Float64) -> Float64:
+def real_gdp(nominal_gdp: Float64, gdp_deflator: Float64) -> Float64:
     """Real GDP = (nominal_gdp / gdp_deflator) * 100."""
     if fabs(gdp_deflator) < 1e-15:
         return 0.0
@@ -52,7 +52,7 @@ fn real_gdp(nominal_gdp: Float64, gdp_deflator: Float64) -> Float64:
 # ── Gini Coefficient ─────────────────────────────────────────────────────────
 
 
-fn gini_coefficient(incomes: List[Float64]) -> Float64:
+def gini_coefficient(incomes: List[Float64]) -> Float64:
     """Gini coefficient from income distribution.
     G = (Σ_i Σ_j |y_i - y_j|) / (2 * n * Σ y_i).
     Returns 0 for empty or all-zero incomes."""
@@ -93,7 +93,7 @@ fn gini_coefficient(incomes: List[Float64]) -> Float64:
 # ── Phillips Curve ────────────────────────────────────────────────────────────
 
 
-fn phillips_curve(
+def phillips_curve(
     unemployment: Float64, natural_rate: Float64, sensitivity: Float64
 ) -> Float64:
     """Phillips curve: inflation = sensitivity * (natural_rate - unemployment)."""
@@ -103,7 +103,7 @@ fn phillips_curve(
 # ── Okun's Law ────────────────────────────────────────────────────────────────
 
 
-fn okuns_law(
+def okuns_law(
     gdp_gap: Float64, okun_coefficient: Float64 = 2.0
 ) -> Float64:
     """Okun's law: unemployment_gap = gdp_gap / okun_coefficient."""
@@ -115,7 +115,7 @@ fn okuns_law(
 # ── Velocity of Money ─────────────────────────────────────────────────────────
 
 
-fn velocity_of_money(
+def velocity_of_money(
     nominal_gdp: Float64, money_supply: Float64
 ) -> Float64:
     """Velocity of money: V = GDP / M."""
@@ -127,7 +127,7 @@ fn velocity_of_money(
 # ── Fisher Equation ───────────────────────────────────────────────────────────
 
 
-fn fisher_equation(nominal_rate: Float64, inflation: Float64) -> Float64:
+def fisher_equation(nominal_rate: Float64, inflation: Float64) -> Float64:
     """Fisher equation: real_rate ≈ nominal_rate - inflation."""
     return nominal_rate - inflation
 
@@ -135,7 +135,7 @@ fn fisher_equation(nominal_rate: Float64, inflation: Float64) -> Float64:
 # ── Trade Balance ─────────────────────────────────────────────────────────────
 
 
-fn trade_balance(exports: Float64, imports: Float64) -> Float64:
+def trade_balance(exports: Float64, imports: Float64) -> Float64:
     """Trade balance = exports - imports."""
     return exports - imports
 
@@ -143,7 +143,7 @@ fn trade_balance(exports: Float64, imports: Float64) -> Float64:
 # ── GDP Per Capita ────────────────────────────────────────────────────────────
 
 
-fn gdp_per_capita(gdp: Float64, population: Float64) -> Float64:
+def gdp_per_capita(gdp: Float64, population: Float64) -> Float64:
     """GDP per capita = GDP / population."""
     if fabs(population) < 1e-15:
         return 0.0
@@ -153,7 +153,7 @@ fn gdp_per_capita(gdp: Float64, population: Float64) -> Float64:
 # ── Purchasing Power Parity ───────────────────────────────────────────────────
 
 
-fn purchasing_power_parity(
+def purchasing_power_parity(
     price_domestic: Float64, price_foreign: Float64
 ) -> Float64:
     """PPP exchange rate = P_domestic / P_foreign."""

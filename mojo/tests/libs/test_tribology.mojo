@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from tribology import coulomb_friction_force, kinetic_friction, static_friction_max, coefficient_of_friction, hertz_contact_pressure, archard_wear_volume, bearing_pressure, sommerfeld_number, stribeck_parameter, flash_temperature_rise, lubrication_film_thickness, friction_power_loss
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

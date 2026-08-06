@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn cosine_similarity(
+def cosine_similarity(
     dot: Float64, norm_a: Float64, norm_b: Float64
 ) -> Float64:
     """Cosine similarity: cos(θ) = a·b / (||a|| × ||b||).
@@ -35,7 +35,7 @@ fn cosine_similarity(
     return dot / denom
 
 
-fn dot_product(sum_products: Float64) -> Float64:
+def dot_product(sum_products: Float64) -> Float64:
     """Unnormalised dot product (pass sum of element products).
 
     Args:
@@ -47,7 +47,7 @@ fn dot_product(sum_products: Float64) -> Float64:
     return sum_products
 
 
-fn euclidean_distance(sum_sq_diff: Float64) -> Float64:
+def euclidean_distance(sum_sq_diff: Float64) -> Float64:
     """L2 (Euclidean) distance: sqrt(Σ(a_i - b_i)²).
 
     Args:
@@ -61,7 +61,7 @@ fn euclidean_distance(sum_sq_diff: Float64) -> Float64:
     return sqrt(sum_sq_diff)
 
 
-fn manhattan_distance(sum_abs_diff: Float64) -> Float64:
+def manhattan_distance(sum_abs_diff: Float64) -> Float64:
     """L1 (Manhattan) distance: Σ|a_i - b_i|.
 
     Args:
@@ -73,7 +73,7 @@ fn manhattan_distance(sum_abs_diff: Float64) -> Float64:
     return sum_abs_diff
 
 
-fn chebyshev_distance(max_abs_diff: Float64) -> Float64:
+def chebyshev_distance(max_abs_diff: Float64) -> Float64:
     """L∞ (Chebyshev) distance: max|a_i - b_i|.
 
     Args:
@@ -85,7 +85,7 @@ fn chebyshev_distance(max_abs_diff: Float64) -> Float64:
     return max_abs_diff
 
 
-fn hamming_distance_bits(
+def hamming_distance_bits(
     xor_popcount: Float64, n_bits: Float64
 ) -> Float64:
     """Normalised Hamming distance for binary vectors.
@@ -104,7 +104,7 @@ fn hamming_distance_bits(
     return xor_popcount / n_bits
 
 
-fn jaccard_similarity(
+def jaccard_similarity(
     intersection: Float64, union_size: Float64
 ) -> Float64:
     """Jaccard similarity: |A ∩ B| / |A ∪ B|.
@@ -121,7 +121,7 @@ fn jaccard_similarity(
     return intersection / union_size
 
 
-fn pearson_correlation(
+def pearson_correlation(
     n: Float64, sum_xy: Float64,
     sum_x: Float64, sum_y: Float64,
     sum_x2: Float64, sum_y2: Float64
@@ -148,7 +148,7 @@ fn pearson_correlation(
     return num / sqrt(denom_sq)
 
 
-fn minkowski_distance(
+def minkowski_distance(
     sum_abs_p: Float64, p: Float64
 ) -> Float64:
     """Minkowski distance: (Σ|a_i - b_i|^p)^(1/p).
@@ -165,7 +165,7 @@ fn minkowski_distance(
     return exp(log(sum_abs_p + 1e-300) / p)
 
 
-fn angular_distance(
+def angular_distance(
     dot: Float64, norm_a: Float64, norm_b: Float64
 ) -> Float64:
     """Angular distance: 1 - cos(θ) (in [0, 2]).

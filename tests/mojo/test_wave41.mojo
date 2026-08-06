@@ -40,17 +40,17 @@ from special_functions import (
 from std.math import abs as fabs, sqrt, exp
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -58,7 +58,7 @@ fn _assert_eq(a: Int, b: Int, msg: String) raises:
 # ── Trie tests ────────────────────────────────────────────────────────────────
 
 
-fn test_trie() raises:
+def test_trie() raises:
     print("── Trie tests ──")
     var n_pass: Int = 0
 
@@ -150,7 +150,7 @@ fn test_trie() raises:
 # ── Protocol tests ────────────────────────────────────────────────────────────
 
 
-fn test_protocol() raises:
+def test_protocol() raises:
     print("── Protocol Buffer tests ──")
     var n_pass: Int = 0
 
@@ -295,7 +295,7 @@ fn test_protocol() raises:
 # ── Special functions tests ───────────────────────────────────────────────────
 
 
-fn test_special_functions() raises:
+def test_special_functions() raises:
     print("── Special Functions tests ──")
     var n_pass: Int = 0
 
@@ -446,7 +446,7 @@ fn test_special_functions() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 41 Tests ===")
     test_trie()
     test_protocol()

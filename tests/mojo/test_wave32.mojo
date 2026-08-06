@@ -43,12 +43,12 @@ from inventory import (
 from std.math import abs as fabs, sqrt, log
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -56,7 +56,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Helper: build float lists ───────────────────────────────────────────────
 
 
-fn _make_normal_data() -> List[Float64]:
+def _make_normal_data() -> List[Float64]:
     """Create data that looks roughly normal: mean~5, std~1."""
     var d = List[Float64]()
     # Hand-crafted values centered around 5 with std ~1
@@ -67,7 +67,7 @@ fn _make_normal_data() -> List[Float64]:
     return d^
 
 
-fn _make_exp_data() -> List[Float64]:
+def _make_exp_data() -> List[Float64]:
     """Create data that looks exponential-like (all positive, right-skewed)."""
     var d = List[Float64]()
     d.append(0.1); d.append(0.2); d.append(0.3); d.append(0.5); d.append(0.7)
@@ -77,7 +77,7 @@ fn _make_exp_data() -> List[Float64]:
     return d^
 
 
-fn _make_uniform_data() -> List[Float64]:
+def _make_uniform_data() -> List[Float64]:
     """Create data that looks roughly uniform on [0, 1]."""
     var d = List[Float64]()
     d.append(0.05); d.append(0.10); d.append(0.15); d.append(0.20); d.append(0.25)
@@ -90,7 +90,7 @@ fn _make_uniform_data() -> List[Float64]:
 # ── Distribution Fitting Tests ──────────────────────────────────────────────
 
 
-fn test_distribution_fit() raises:
+def test_distribution_fit() raises:
     print("── Distribution Fitting Tests ──")
 
     # 1. fit_normal: mean close to 5
@@ -170,7 +170,7 @@ fn test_distribution_fit() raises:
 # ── Boolean Algebra Tests ───────────────────────────────────────────────────
 
 
-fn test_boolean_algebra() raises:
+def test_boolean_algebra() raises:
     print("── Boolean Algebra Tests ──")
 
     # 18. bool_and(True, True) == True
@@ -304,7 +304,7 @@ fn test_boolean_algebra() raises:
 # ── Inventory Optimization Tests ────────────────────────────────────────────
 
 
-fn test_inventory() raises:
+def test_inventory() raises:
     print("── Inventory Optimization Tests ──")
 
     # 53. eoq(1000, 50, 2) ≈ sqrt(50000) ≈ 223.607
@@ -402,7 +402,7 @@ fn test_inventory() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 32 Tests ===\n")
     test_distribution_fit()
     print()

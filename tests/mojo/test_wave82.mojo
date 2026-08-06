@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Printing & Publishing Tests ──────────────────────────────────────────────
 
 
-fn test_printing() raises:
+def test_printing() raises:
     # dpi_to_lpi: 300 DPI / 2 = 150 LPI
     assert_true(approx_eq(dpi_to_lpi(300.0, 2.0), 150.0), "dpi_to_lpi 300/2")
     assert_true(approx_eq(dpi_to_lpi(600.0, 2.0), 300.0), "dpi_to_lpi 600/2")
@@ -120,7 +120,7 @@ fn test_printing() raises:
 # ── Fire Safety Tests ────────────────────────────────────────────────────────
 
 
-fn test_fire_safety() raises:
+def test_fire_safety() raises:
     # fire_load_density: 500 MJ / 50 m² = 10 MJ/m²
     assert_true(approx_eq(fire_load_density(500.0, 50.0), 10.0), "fire_load_density")
     assert_true(approx_eq(fire_load_density(1000.0, 0.0), 0.0), "fld zero area")
@@ -179,7 +179,7 @@ fn test_fire_safety() raises:
 # ── Procurement Tests ────────────────────────────────────────────────────────
 
 
-fn test_procurement() raises:
+def test_procurement() raises:
     # total_cost_of_ownership: 10000+5000+3000+500 = 18500
     assert_true(approx_eq(total_cost_of_ownership(10000.0, 5000.0, 3000.0, 500.0), 18500.0), "tco")
 
@@ -230,7 +230,7 @@ fn test_procurement() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 82 tests: Printing, Fire Safety, Procurement")
     test_printing()
     test_fire_safety()

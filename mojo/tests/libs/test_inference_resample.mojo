@@ -66,14 +66,14 @@ from inference.resample import (
 from stats_bootstrap import _mean, _median, _std
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _sample20() -> List[Float64]:
+def _sample20() -> List[Float64]:
     """A fixed 20-point sample. Never regenerated, so every number quoted above stays valid."""
     return _floats(
         2.1, 3.4, 1.9, 4.2, 2.8, 3.1, 2.5, 3.9, 2.2, 3.6,
@@ -81,7 +81,7 @@ fn _sample20() -> List[Float64]:
     )
 
 
-fn _refused(c: BootstrapCI) -> Bool:
+def _refused(c: BootstrapCI) -> Bool:
     """A refusal carries no interval, and says so in a field rather than by a value of 0.0."""
     return (
         c.status != INF_OK
@@ -93,7 +93,7 @@ fn _refused(c: BootstrapCI) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

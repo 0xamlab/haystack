@@ -25,7 +25,7 @@ from std.math import exp
 # ── Hubble law ───────────────────────────────────────────────────────────────
 
 
-fn hubble_velocity(h0: Float64, distance_mpc: Float64) -> Float64:
+def hubble_velocity(h0: Float64, distance_mpc: Float64) -> Float64:
     """Recession velocity v = H0 * d  (km/s).
 
     h0 in km/s/Mpc, distance_mpc in Mpc.
@@ -33,7 +33,7 @@ fn hubble_velocity(h0: Float64, distance_mpc: Float64) -> Float64:
     return h0 * distance_mpc
 
 
-fn hubble_distance(h0: Float64, velocity: Float64) -> Float64:
+def hubble_distance(h0: Float64, velocity: Float64) -> Float64:
     """Hubble distance d = v / H0  (Mpc).
 
     h0 in km/s/Mpc, velocity in km/s.
@@ -44,7 +44,7 @@ fn hubble_distance(h0: Float64, velocity: Float64) -> Float64:
 # ── Lookback & comoving distance ─────────────────────────────────────────────
 
 
-fn lookback_time_approx(z: Float64, h0: Float64) -> Float64:
+def lookback_time_approx(z: Float64, h0: Float64) -> Float64:
     """Approximate lookback time: t ≈ z / (H0*(1+z)).
 
     h0 in km/s/Mpc.  Returns time in seconds; caller may convert to Gyr.
@@ -55,7 +55,7 @@ fn lookback_time_approx(z: Float64, h0: Float64) -> Float64:
     return z / (h0_per_sec * (1.0 + z))
 
 
-fn comoving_distance_approx(
+def comoving_distance_approx(
     z: Float64, c: Float64, h0: Float64
 ) -> Float64:
     """Approximate comoving distance for small z: d_c ≈ c*z / H0.
@@ -68,14 +68,14 @@ fn comoving_distance_approx(
 # ── Distance measures ────────────────────────────────────────────────────────
 
 
-fn luminosity_distance(
+def luminosity_distance(
     comoving_dist: Float64, z: Float64
 ) -> Float64:
     """Luminosity distance: d_L = d_c * (1 + z)."""
     return comoving_dist * (1.0 + z)
 
 
-fn angular_diameter_distance(
+def angular_diameter_distance(
     comoving_dist: Float64, z: Float64
 ) -> Float64:
     """Angular diameter distance: d_A = d_c / (1 + z)."""
@@ -85,14 +85,14 @@ fn angular_diameter_distance(
 # ── Redshift utilities ───────────────────────────────────────────────────────
 
 
-fn redshift_from_wavelength(
+def redshift_from_wavelength(
     observed: Float64, emitted: Float64
 ) -> Float64:
     """Cosmological redshift: z = (λ_obs - λ_em) / λ_em."""
     return (observed - emitted) / emitted
 
 
-fn cosmic_scale_factor(z: Float64) -> Float64:
+def cosmic_scale_factor(z: Float64) -> Float64:
     """Cosmic scale factor: a = 1 / (1 + z)."""
     return 1.0 / (1.0 + z)
 
@@ -100,7 +100,7 @@ fn cosmic_scale_factor(z: Float64) -> Float64:
 # ── Density & radii ─────────────────────────────────────────────────────────
 
 
-fn critical_density(h0: Float64) -> Float64:
+def critical_density(h0: Float64) -> Float64:
     """Critical density of the universe: ρ_c = 3*H0² / (8*π*G).
 
     h0 in km/s/Mpc.  Returns kg/m³.
@@ -113,7 +113,7 @@ fn critical_density(h0: Float64) -> Float64:
     return 3.0 * h0_si * h0_si / (8.0 * pi * G)
 
 
-fn schwarzschild_radius(mass: Float64) -> Float64:
+def schwarzschild_radius(mass: Float64) -> Float64:
     """Schwarzschild radius: r_s = 2*G*M / c².
 
     mass in kg.  Returns metres.
@@ -127,7 +127,7 @@ fn schwarzschild_radius(mass: Float64) -> Float64:
 # ── Radiation laws ───────────────────────────────────────────────────────────
 
 
-fn stefan_boltzmann_luminosity(
+def stefan_boltzmann_luminosity(
     radius: Float64, temperature: Float64
 ) -> Float64:
     """Stefan-Boltzmann luminosity: L = 4*π*R²*σ*T⁴.
@@ -142,7 +142,7 @@ fn stefan_boltzmann_luminosity(
     return 4.0 * pi * radius * radius * sigma * t4
 
 
-fn wien_peak_wavelength(temperature: Float64) -> Float64:
+def wien_peak_wavelength(temperature: Float64) -> Float64:
     """Wien's displacement law: λ_max = b / T.
 
     b = 2.897771955e-3 m·K.  Returns wavelength in metres.

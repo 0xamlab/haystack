@@ -42,29 +42,29 @@ from std.math import abs as fabs
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _flist2(a: Float64, b: Float64) -> List[Float64]:
+def _flist2(a: Float64, b: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a); v.append(b)
     return v^
 
 
-fn _flist3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _flist3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a); v.append(b); v.append(c)
     return v^
 
 
-fn _contains(lst: List[Int], val: Int) -> Bool:
+def _contains(lst: List[Int], val: Int) -> Bool:
     for i in range(len(lst)):
         if lst[i] == val:
             return True
@@ -74,7 +74,7 @@ fn _contains(lst: List[Int], val: Int) -> Bool:
 # ── Feature Selection Tests ──────────────────────────────────────────────────
 
 
-fn test_column_mean() raises:
+def test_column_mean() raises:
     var data = List[List[Float64]]()
     data.append(_flist2(1.0, 2.0))
     data.append(_flist2(3.0, 4.0))
@@ -87,7 +87,7 @@ fn test_column_mean() raises:
     print("  ✓ column_mean")
 
 
-fn test_column_variance() raises:
+def test_column_variance() raises:
     var data = List[List[Float64]]()
     for i in range(5):
         data.append(_flist2(3.0, Float64(i + 1)))
@@ -99,7 +99,7 @@ fn test_column_variance() raises:
     print("  ✓ column_variance")
 
 
-fn test_variance_threshold() raises:
+def test_variance_threshold() raises:
     var data = List[List[Float64]]()
     for i in range(5):
         data.append(_flist2(5.0, Float64(i) * 10.0))
@@ -113,7 +113,7 @@ fn test_variance_threshold() raises:
     print("  ✓ variance_threshold")
 
 
-fn test_correlation_filter() raises:
+def test_correlation_filter() raises:
     # Col 0 and Col 1 identical (corr=1.0), Col 2 alternating (low corr)
     var data = List[List[Float64]]()
     for i in range(10):
@@ -131,7 +131,7 @@ fn test_correlation_filter() raises:
     print("  ✓ correlation_filter")
 
 
-fn test_f_test_scores() raises:
+def test_f_test_scores() raises:
     var X = List[List[Float64]]()
     var y = List[Float64]()
     for i in range(20):
@@ -147,7 +147,7 @@ fn test_f_test_scores() raises:
     print("  ✓ f_test_scores")
 
 
-fn test_select_k_best() raises:
+def test_select_k_best() raises:
     var scores = List[Float64]()
     scores.append(10.0); scores.append(50.0); scores.append(30.0); scores.append(5.0)
 
@@ -162,7 +162,7 @@ fn test_select_k_best() raises:
     print("  ✓ select_k_best")
 
 
-fn test_forward_selection_greedy() raises:
+def test_forward_selection_greedy() raises:
     var X = List[List[Float64]]()
     var y = List[Float64]()
     for i in range(20):
@@ -176,7 +176,7 @@ fn test_forward_selection_greedy() raises:
     print("  ✓ forward_selection_greedy")
 
 
-fn test_information_gain() raises:
+def test_information_gain() raises:
     var feat_informative = List[Float64]()
     var feat_noise = List[Float64]()
     var target = List[Float64]()
@@ -193,7 +193,7 @@ fn test_information_gain() raises:
     print("  ✓ information_gain")
 
 
-fn test_feature_importance_permutation() raises:
+def test_feature_importance_permutation() raises:
     var X = List[List[Float64]]()
     var y = List[Float64]()
     for i in range(20):
@@ -211,7 +211,7 @@ fn test_feature_importance_permutation() raises:
 # ── ChaCha20 Tests ───────────────────────────────────────────────────────────
 
 
-fn test_rotl32() raises:
+def test_rotl32() raises:
     _assert(rotl32(1, 1) == 2, "rotl32(1,1)==2")                          # 30
     _assert(rotl32(1, 31) == (1 << 31), "rotl32(1,31)==2^31")             # 31
     _assert(rotl32(0xFF, 8) == 0xFF00, "rotl32(0xFF,8)==0xFF00")          # 32
@@ -219,7 +219,7 @@ fn test_rotl32() raises:
     print("  ✓ rotl32")
 
 
-fn test_quarter_round() raises:
+def test_quarter_round() raises:
     var state = List[Int]()
     for i in range(16):
         state.append(i)
@@ -232,7 +232,7 @@ fn test_quarter_round() raises:
     print("  ✓ quarter_round")
 
 
-fn test_chacha20_init_state() raises:
+def test_chacha20_init_state() raises:
     var key = List[Int]()
     for i in range(8):
         key.append(i + 1)
@@ -250,7 +250,7 @@ fn test_chacha20_init_state() raises:
     print("  ✓ chacha20_init_state")
 
 
-fn test_chacha20_block() raises:
+def test_chacha20_block() raises:
     var key = List[Int]()
     for i in range(8):
         key.append(i + 1)
@@ -269,7 +269,7 @@ fn test_chacha20_block() raises:
     print("  ✓ chacha20_block")
 
 
-fn test_add_xor_states() raises:
+def test_add_xor_states() raises:
     var a = List[Int]()
     a.append(1); a.append(2); a.append(3)
     var b = List[Int]()
@@ -285,7 +285,7 @@ fn test_add_xor_states() raises:
     print("  ✓ add_states / xor_states")
 
 
-fn test_chacha20_roundtrip() raises:
+def test_chacha20_roundtrip() raises:
     var key = List[Int]()
     for i in range(8):
         key.append((i + 1) * 0x01010101)
@@ -322,7 +322,7 @@ fn test_chacha20_roundtrip() raises:
     print("  ✓ chacha20 encrypt/decrypt roundtrip")
 
 
-fn test_chacha20_different_nonces() raises:
+def test_chacha20_different_nonces() raises:
     var key = List[Int]()
     for i in range(8):
         key.append(i * 111)
@@ -350,21 +350,21 @@ fn test_chacha20_different_nonces() raises:
 # ── Supply Chain Tests ───────────────────────────────────────────────────────
 
 
-fn test_lead_time_demand() raises:
+def test_lead_time_demand() raises:
     _assert_close(lead_time_demand(10.0, 5.0), 50.0, 1e-9, "LTD=50")     # 54
     _assert_close(lead_time_demand(0.0, 5.0), 0.0, 1e-9, "LTD=0")        # 55
     _assert_close(lead_time_demand(100.0, 0.5), 50.0, 1e-9, "LTD=50 v2") # 56
     print("  ✓ lead_time_demand")
 
 
-fn test_bullwhip_effect() raises:
+def test_bullwhip_effect() raises:
     _assert_close(bullwhip_effect(10.0, 20.0), 2.0, 1e-9, "bullwhip=2.0")  # 57
     _assert_close(bullwhip_effect(10.0, 10.0), 1.0, 1e-9, "bullwhip=1.0")  # 58
     _assert_close(bullwhip_effect(10.0, 5.0), 0.5, 1e-9, "bullwhip=0.5")   # 59
     print("  ✓ bullwhip_effect")
 
 
-fn test_forecast_error_mae() raises:
+def test_forecast_error_mae() raises:
     var actual = List[Float64]()
     actual.append(10.0); actual.append(20.0); actual.append(30.0)
     var forecast = List[Float64]()
@@ -376,7 +376,7 @@ fn test_forecast_error_mae() raises:
     print("  ✓ forecast_error_mae")
 
 
-fn test_forecast_error_mape() raises:
+def test_forecast_error_mape() raises:
     var actual = List[Float64]()
     actual.append(100.0); actual.append(200.0)
     var forecast = List[Float64]()
@@ -388,7 +388,7 @@ fn test_forecast_error_mape() raises:
     print("  ✓ forecast_error_mape")
 
 
-fn test_forecast_bias() raises:
+def test_forecast_bias() raises:
     var actual = List[Float64]()
     actual.append(10.0); actual.append(20.0); actual.append(30.0)
     var forecast = List[Float64]()
@@ -400,7 +400,7 @@ fn test_forecast_bias() raises:
     print("  ✓ forecast_bias")
 
 
-fn test_tracking_signal() raises:
+def test_tracking_signal() raises:
     var actual = List[Float64]()
     actual.append(100.0); actual.append(100.0); actual.append(100.0)
     var forecast = List[Float64]()
@@ -412,14 +412,14 @@ fn test_tracking_signal() raises:
     print("  ✓ tracking_signal")
 
 
-fn test_economic_production_qty() raises:
+def test_economic_production_qty() raises:
     var epq = economic_production_qty(1000.0, 100.0, 2.0, 5000.0)
     _assert(epq > 0.0, "EPQ positive")                                     # 68
     _assert(epq > 300.0 and epq < 400.0, "EPQ approx 353.55")             # 69
     print("  ✓ economic_production_qty")
 
 
-fn test_total_cost_of_ownership() raises:
+def test_total_cost_of_ownership() raises:
     var tco = total_cost_of_ownership(100.0, 20.0, 10.0, 5.0)
     _assert_close(tco, 135.0, 1e-9, "TCO = 135")                          # 70
     var tco2 = total_cost_of_ownership(0.0, 0.0, 0.0, 0.0)
@@ -427,21 +427,21 @@ fn test_total_cost_of_ownership() raises:
     print("  ✓ total_cost_of_ownership")
 
 
-fn test_service_level_type1() raises:
+def test_service_level_type1() raises:
     _assert_close(service_level_type1(0.05), 0.95, 1e-9, "SL = 0.95")     # 72
     _assert_close(service_level_type1(0.0), 1.0, 1e-9, "SL = 1.0")       # 73
     _assert_close(service_level_type1(1.0), 0.0, 1e-9, "SL = 0.0")       # 74
     print("  ✓ service_level_type1")
 
 
-fn test_fill_rate_type2() raises:
+def test_fill_rate_type2() raises:
     _assert_close(fill_rate_type2(5.0, 100.0), 0.95, 1e-9, "FR = 0.95")   # 75
     _assert_close(fill_rate_type2(0.0, 100.0), 1.0, 1e-9, "FR = 1.0")    # 76
     _assert_close(fill_rate_type2(50.0, 100.0), 0.5, 1e-9, "FR = 0.5")   # 77
     print("  ✓ fill_rate_type2")
 
 
-fn test_moving_average_forecast() raises:
+def test_moving_average_forecast() raises:
     var data = List[Float64]()
     data.append(10.0); data.append(20.0); data.append(30.0); data.append(40.0)
 
@@ -454,7 +454,7 @@ fn test_moving_average_forecast() raises:
     print("  ✓ moving_average_forecast")
 
 
-fn test_exponential_smoothing_forecast() raises:
+def test_exponential_smoothing_forecast() raises:
     var data = List[Float64]()
     data.append(10.0); data.append(20.0); data.append(30.0)
 
@@ -471,7 +471,7 @@ fn test_exponential_smoothing_forecast() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 44 Tests ===")
 
     print("\n-- Feature Selection --")

@@ -157,7 +157,7 @@ struct ResourceRun(Copyable, Movable):
     var depart: List[Float64]
 
 
-fn _run_refusal(code: Int) -> ResourceRun:
+def _run_refusal(code: Int) -> ResourceRun:
     """A refusal carries no numbers and no per-job arrays.
 
     A partially-filled run would be indistinguishable from a short simulation, and every
@@ -172,7 +172,7 @@ fn _run_refusal(code: Int) -> ResourceRun:
     )
 
 
-fn resource_work_charge(n_jobs: Int) -> Int:
+def resource_work_charge(n_jobs: Int) -> Int:
     """Charged operations for a run of `n_jobs`, or -1 when it does not fit `DE_MAX_WORK`.
 
     Two heaps are charged, not one. The calendar sees exactly `2 * n_jobs` entries (one arrival
@@ -201,7 +201,7 @@ fn resource_work_charge(n_jobs: Int) -> Int:
     return calendar + waiting
 
 
-fn resource_serve_flat(
+def resource_serve_flat(
     arrival: List[Float64], service: List[Float64], priority: List[Int],
     n_jobs: Int, capacity: Int, warmup_jobs: Int,
 ) -> ResourceRun:

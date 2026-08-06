@@ -98,7 +98,7 @@ comptime CROSS_CORR: Float64 = 0.4
 comptime MASTER_SEED: UInt64 = 0x5A2C4A2
 
 
-fn _assets() -> List[HestonParams]:
+def _assets() -> List[HestonParams]:
     var s0 = [100.0, 95.0, 105.0, 110.0, 90.0]
     var v0 = [0.04, 0.05, 0.03, 0.06, 0.045]
     var kp = [1.5, 2.0, 1.2, 2.5, 1.8]
@@ -110,7 +110,7 @@ fn _assets() -> List[HestonParams]:
     return out^
 
 
-fn _corr() -> List[List[Float64]]:
+def _corr() -> List[List[Float64]]:
     var c = List[List[Float64]]()
     for i in range(N_ASSETS):
         var row = List[Float64]()
@@ -120,7 +120,7 @@ fn _corr() -> List[List[Float64]]:
     return c^
 
 
-fn _f(x: Float64, dp: Int) -> String:
+def _f(x: Float64, dp: Int) -> String:
     """Fixed-point formatting so the columns line up and a reader can compare rows by eye."""
     # nan and inf must print as themselves. Without this the Int() below saturates and a
     # broken run reports "922337203685477.5807", which a reader will read as a number.
@@ -146,14 +146,14 @@ fn _f(x: Float64, dp: Int) -> String:
     return ("-" + s) if neg else s
 
 
-fn _pad(s: String, n: Int) -> String:
+def _pad(s: String, n: Int) -> String:
     var out = s
     while len(out) < n:
         out += " "
     return out
 
 
-fn _lpad(s: String, n: Int) -> String:
+def _lpad(s: String, n: Int) -> String:
     var out = s
     while len(out) < n:
         out = " " + out
@@ -163,7 +163,7 @@ fn _lpad(s: String, n: Int) -> String:
 # ── 1. The generator identity gate ────────────────────────────────────────────
 
 
-fn _sec_rng_identity() -> Int:
+def _sec_rng_identity() -> Int:
     print("1. GENERATOR IDENTITY — the one-block Philox path vs the frozen counter_rng")
     print("   heston.mojo computes one Philox4x64-10 counter block and reads two words out of")
     print("   it, where counter_rng.rng_normal runs all ten rounds twice for the same two words.")
@@ -183,7 +183,7 @@ fn _sec_rng_identity() -> Int:
 # ── 2. The regression identity gate ───────────────────────────────────────────
 
 
-fn _sec_regression_identity() -> Int:
+def _sec_regression_identity() -> Int:
     print("2. REGRESSION IDENTITY — the LSM in-place normal equations vs frozen ols_multiple")
     print("   The LSM continuation fit accumulates X'X and X'y in place instead of calling")
     print("   regression.ols_multiple, which would materialise an n x p List[List[Float64]] once")
@@ -210,7 +210,7 @@ fn _sec_regression_identity() -> Int:
 # ── 3. The Black-Scholes degeneracy anchor ────────────────────────────────────
 
 
-fn _sec_degeneracy(workers: Int) -> Int:
+def _sec_degeneracy(workers: Int) -> Int:
     print("3. BLACK-SCHOLES DEGENERACY — at vol-of-vol = 0 and rho = 0, Heston IS Black-Scholes")
     print("   With xi = 0 and v0 = theta the CIR variance is constant, so the Monte Carlo price")
     print("   must converge to option_pricing.black_scholes_call. This holds for ANY scheme, any")
@@ -269,7 +269,7 @@ fn _sec_degeneracy(workers: Int) -> Int:
 # ── 4. OPTIONPV.ERR — the full model against the Fourier closed form ──────────
 
 
-fn _sec_optionpv(workers: Int) -> Int:
+def _sec_optionpv(workers: Int) -> Int:
     print("4. FULL-MODEL ANCHOR — Monte Carlo vs the Heston closed form (STAC calls this")
     print("   OPTIONPV.ERR: worst-case relative error of five single-asset European options")
     print("   against the Heston closed form; this reproduces their check, unaudited)")
@@ -403,7 +403,7 @@ fn _sec_optionpv(workers: Int) -> Int:
 # ── 5. CORRAND.CORR — realised cross-asset correlation ────────────────────────
 
 
-fn _sec_corrand() -> Int:
+def _sec_corrand() -> Int:
     print("5. CROSS-ASSET CORRELATION — realised vs input (STAC calls this CORRAND.CORR, whose")
     print("   ideal is 0; this reproduces their check, unaudited)")
     print("   RMS error of the realised correlation of the mapped normals Z = L W against the")
@@ -436,7 +436,7 @@ fn _sec_corrand() -> Int:
 # ── 6. EARLYEX.ERR — Longstaff-Schwartz against a binomial ────────────────────
 
 
-fn _sec_earlyex(workers: Int) -> Int:
+def _sec_earlyex(workers: Int) -> Int:
     print("6. EARLY EXERCISE — Longstaff-Schwartz vs a Black-Scholes binomial (STAC calls this")
     print("   EARLYEX.ERR and defines it exactly this way; this reproduces their check, unaudited)")
     print("   Run in the degenerate xi = 0, rho = 0 corner, because that is the ONLY corner where")
@@ -477,7 +477,7 @@ fn _sec_earlyex(workers: Int) -> Int:
 # ── 7. Worker invariance ──────────────────────────────────────────────────────
 
 
-fn _sec_worker_invariance(workers: Int) -> Int:
+def _sec_worker_invariance(workers: Int) -> Int:
     print("7. WORKER INVARIANCE — the band-parallel result is BIT-IDENTICAL to the serial one")
     print("   Not 'close'. Every draw is addressed by its own path index, so a band split cannot")
     print("   change a value, and a tolerance would hide exactly the bug class that band")
@@ -502,7 +502,7 @@ fn _sec_worker_invariance(workers: Int) -> Int:
 # ── 8. Greeks convergence ─────────────────────────────────────────────────────
 
 
-fn _sec_greeks_convergence(workers: Int) -> Int:
+def _sec_greeks_convergence(workers: Int) -> Int:
     print("8. GREEKS CONVERGENCE — the Greeks must settle as the path count grows")
     print("   Asset-0 Delta and Gamma from CRN-paired central differences, at four path counts.")
     print("   Reported as the successive change, because a Greek that is still moving by more")
@@ -557,7 +557,7 @@ fn _sec_greeks_convergence(workers: Int) -> Int:
 # ── 9. The CRN replication study — the headline result ────────────────────────
 
 
-fn _sec_crn(workers: Int) -> Int:
+def _sec_crn(workers: Int) -> Int:
     print("9. COMMON RANDOM NUMBERS — paired vs unpaired, and what each design COSTS")
     print("   The estimator is the central difference (V(S0+h) - V(S0-h)) / 2h for asset 0.")
     print("")
@@ -638,7 +638,7 @@ fn _sec_crn(workers: Int) -> Int:
 # ── 10. Timing ────────────────────────────────────────────────────────────────
 
 
-fn _time_greeks(
+def _time_greeks(
     ps: List[HestonParams], c: List[List[Float64]], n_paths: Int, workers: Int,
     mut prices_out: Int,
 ) -> Float64:
@@ -652,7 +652,7 @@ fn _time_greeks(
     return Float64(t1 - t0) / 1.0e6
 
 
-fn _sec_timing(workers: Int, mut cold_out: Float64, mut warm_out: Float64,
+def _sec_timing(workers: Int, mut cold_out: Float64, mut warm_out: Float64,
                mut hot_out: Float64, mut spread_out: Float64) -> Int:
     print("10. TIMING — the full Greeks set, cold / warm / hot")
     print("   Configuration: " + String(N_ASSETS) + " assets, " + String(TIER_PATHS)

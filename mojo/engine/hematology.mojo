@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, pow, log
 
 
-fn hematocrit(rbc_volume: Float64, total_blood_volume: Float64) -> Float64:
+def hematocrit(rbc_volume: Float64, total_blood_volume: Float64) -> Float64:
     """Hematocrit (packed cell volume): HCT = V_RBC / V_total.
 
     Args:
@@ -31,7 +31,7 @@ fn hematocrit(rbc_volume: Float64, total_blood_volume: Float64) -> Float64:
     return rbc_volume / total_blood_volume
 
 
-fn mean_corpuscular_volume(
+def mean_corpuscular_volume(
     hematocrit_fraction: Float64, rbc_count_millions: Float64
 ) -> Float64:
     """Mean corpuscular volume: MCV = HCT / RBC_count × 10.
@@ -48,7 +48,7 @@ fn mean_corpuscular_volume(
     return hematocrit_fraction * 10.0 / rbc_count_millions * 1000.0
 
 
-fn mean_corpuscular_hemoglobin(
+def mean_corpuscular_hemoglobin(
     hemoglobin_g_dl: Float64, rbc_count_millions: Float64
 ) -> Float64:
     """Mean corpuscular haemoglobin: MCH = Hgb / RBC × 10.
@@ -65,7 +65,7 @@ fn mean_corpuscular_hemoglobin(
     return hemoglobin_g_dl / rbc_count_millions * 10.0
 
 
-fn mchc(hemoglobin_g_dl: Float64, hematocrit_fraction: Float64) -> Float64:
+def mchc(hemoglobin_g_dl: Float64, hematocrit_fraction: Float64) -> Float64:
     """Mean corpuscular haemoglobin concentration: MCHC = Hgb / HCT.
 
     Args:
@@ -80,7 +80,7 @@ fn mchc(hemoglobin_g_dl: Float64, hematocrit_fraction: Float64) -> Float64:
     return hemoglobin_g_dl / hematocrit_fraction
 
 
-fn red_cell_distribution_width(
+def red_cell_distribution_width(
     std_mcv: Float64, mean_mcv: Float64
 ) -> Float64:
     """RDW-CV: coefficient of variation of MCV.
@@ -99,7 +99,7 @@ fn red_cell_distribution_width(
     return (std_mcv / mean_mcv) * 100.0
 
 
-fn oxygen_carrying_capacity(hemoglobin_g_dl: Float64) -> Float64:
+def oxygen_carrying_capacity(hemoglobin_g_dl: Float64) -> Float64:
     """Oxygen carrying capacity from haemoglobin.
 
     O2_cap = 1.34 × Hgb  (mL O2 / dL blood, Huffner's constant)
@@ -113,7 +113,7 @@ fn oxygen_carrying_capacity(hemoglobin_g_dl: Float64) -> Float64:
     return 1.34 * hemoglobin_g_dl
 
 
-fn coagulation_inr(
+def coagulation_inr(
     patient_pt: Float64, mean_normal_pt: Float64, isi: Float64
 ) -> Float64:
     """International Normalised Ratio for coagulation monitoring.
@@ -133,7 +133,7 @@ fn coagulation_inr(
     return pow(patient_pt / mean_normal_pt, isi)
 
 
-fn platelet_count_index(
+def platelet_count_index(
     mean_platelet_volume: Float64, platelet_count_k: Float64
 ) -> Float64:
     """Platelet large cell ratio index.
@@ -150,7 +150,7 @@ fn platelet_count_index(
     return mean_platelet_volume * platelet_count_k / 100.0
 
 
-fn blood_viscosity_relative(hematocrit_fraction: Float64) -> Float64:
+def blood_viscosity_relative(hematocrit_fraction: Float64) -> Float64:
     """Relative blood viscosity from hematocrit (Charm-Kurland).
 
     η_rel ≈ (1 - HCT)^(-2.5)
@@ -166,7 +166,7 @@ fn blood_viscosity_relative(hematocrit_fraction: Float64) -> Float64:
     return pow(1.0 - hematocrit_fraction, -2.5)
 
 
-fn erythrocyte_sedimentation(
+def erythrocyte_sedimentation(
     fibrinogen_g_l: Float64, age: Float64, sex_factor: Float64
 ) -> Float64:
     """Estimated ESR from fibrinogen and demographics.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cryology import permafrost_thickness, active_layer_depth, ground_ice_content, freeze_thaw_cycles, thermal_conductivity_frozen, ice_wedge_volume, thermokarst_subsidence, permafrost_carbon_release, sea_ice_extent_anomaly, snow_ice_albedo_feedback
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

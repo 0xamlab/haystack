@@ -112,34 +112,34 @@ struct Tally(Copyable, Movable):
     exact number it is allowed to consume, and that number is 0 everywhere
     except the block that exists to exercise it."""
 
-    fn __init__(out self):
+    def __init__(out self):
         self.checks = 0
         self.failures = 0
         self.nan_exempt = 0
 
-    fn ok(mut self, name: String, condition: Bool):
+    def ok(mut self, name: String, condition: Bool):
         self.checks += 1
         if not condition:
             self.failures += 1
             print("  FAIL " + name)
 
 
-fn _bits(x: Float64) -> UInt64:
+def _bits(x: Float64) -> UInt64:
     """The bit pattern, so NaN compares equal to NaN and -0.0 does not compare
     equal to +0.0 — the two distinctions a `==` identity check cannot make."""
     return bitcast[DType.uint64](x)
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _rand01(mut state: UInt64) -> Float64:
+def _rand01(mut state: UInt64) -> Float64:
     return Float64(Int(_lcg(state) >> 11)) / Float64(Int(UInt64(1) << 53))
 
 
-fn _same(mut t: Tally, name: String, a: ManyGroupedResult, b: ManyGroupedResult):
+def _same(mut t: Tally, name: String, a: ManyGroupedResult, b: ManyGroupedResult):
     """Every field of two results, bitwise. One helper so no call site can
     accidentally check fewer fields than another."""
     t.ok(name + ".n_groups", a.n_groups() == b.n_groups())
@@ -178,7 +178,7 @@ fn _same(mut t: Tally, name: String, a: ManyGroupedResult, b: ManyGroupedResult)
     t.ok(name + ".counts_bitwise", cnt_bad == 0)
 
 
-fn _batch1(keys: List[Float64], v: List[Float64]) -> RecordBatch:
+def _batch1(keys: List[Float64], v: List[Float64]) -> RecordBatch:
     var names = List[String]()
     names.append("k")
     names.append("v0")
@@ -188,7 +188,7 @@ fn _batch1(keys: List[Float64], v: List[Float64]) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, len(keys))
 
 
-fn _batch3(
+def _batch3(
     key_col: Float64Array,
     a: Float64Array,
     b: Float64Array,
@@ -208,13 +208,13 @@ fn _batch3(
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _ints(a: Int) -> List[Int]:
+def _ints(a: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     return out^
 
 
-fn _ints3(a: Int, b: Int, c: Int) -> List[Int]:
+def _ints3(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -222,13 +222,13 @@ fn _ints3(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _pad8(n: Int) -> Int:
+def _pad8(n: Int) -> Int:
     """The suite's own copy of the cache-line rounding, so `dense_state_bytes`
     is checked against arithmetic written here rather than against itself."""
     return ((n + 7) // 8) * 8
 
 
-fn _worker_counts() -> List[Int]:
+def _worker_counts() -> List[Int]:
     var w = List[Int]()
     w.append(1)
     w.append(2)
@@ -239,7 +239,7 @@ fn _worker_counts() -> List[Int]:
     return w^
 
 
-fn _compare_all_workers(
+def _compare_all_workers(
     mut t: Tally,
     label: String,
     batch: RecordBatch,
@@ -268,7 +268,7 @@ fn _compare_all_workers(
         _same(t, tag, ref_r.result, dense.result)
 
 
-fn block1_identity_random(mut t: Tally):
+def block1_identity_random(mut t: Tally):
     print("block 1: identity vs group_by_coded_parallel, random data")
     var state = UInt64(0x2026_0801_C0DE)
     var n = 5000
@@ -326,7 +326,7 @@ fn block1_identity_random(mut t: Tally):
     _compare_all_workers(t, "onerow_min", _batch1(one_k, one_v), 3, _ints(1), _ints(AGG_MIN))
 
 
-fn block2_nan_policy(mut t: Tally):
+def block2_nan_policy(mut t: Tally):
     print("block 2: the NaN policy, ONE payload, strict bit identity")
     var nan = bitcast[DType.float64](CANONICAL_NAN_BITS)
     var keys = List[Float64]()
@@ -390,7 +390,7 @@ fn block2_nan_policy(mut t: Tally):
     t.ok("nan.allnan_group_exists_once", found == 1)
 
 
-fn block2b_nan_payload(mut t: Tally):
+def block2b_nan_payload(mut t: Tally):
     print("block 2b: several NaN PAYLOADS in one group — where identity stops")
     # A fact about this machine, not about either engine: the payload an `fadd`
     # propagates when BOTH operands are NaN depends on operand order, and
@@ -460,7 +460,7 @@ fn block2b_nan_payload(mut t: Tally):
     t.ok("payload.cells_examined", both_nan_cells >= 18)
 
 
-fn block3_nulls(mut t: Tally):
+def block3_nulls(mut t: Tally):
     print("block 3: nulls, both layouts")
     var n = 600
     var K = 11
@@ -526,7 +526,7 @@ fn block3_nulls(mut t: Tally):
     t.ok("allkeysnull.tallied", d.result.null_key_rows == n)
 
 
-fn block4_adversarial_values(mut t: Tally):
+def block4_adversarial_values(mut t: Tally):
     print("block 4: signed zero, infinities, ulp-sensitive means")
     var keys = List[Float64]()
     var vals = List[Float64]()
@@ -589,7 +589,7 @@ fn block4_adversarial_values(mut t: Tally):
     _same(t, "zero.w8", r.result, d.result)
 
 
-fn block5_refusals(mut t: Tally):
+def block5_refusals(mut t: Tally):
     print("block 5: refusals are statuses, not aborts")
     # A key PAST the cardinality. An unguarded dense store here is an
     # uncatchable abort, so this block finishing at all is the proof.
@@ -729,7 +729,7 @@ fn block5_refusals(mut t: Tally):
     t.ok("entry.group_by_coded_dense_ok", group_by_coded_dense(clean, 0, 4, _ints(1), _ints(AGG_SUM)).ok())
 
 
-fn block6b_apply_arms(mut t: Tally):
+def block6b_apply_arms(mut t: Tally):
     print("block 6b: every _apply arm == the frozen primitive it claims to be")
     # Pinned DIRECTLY, not only through a scan, because which scan reaches which
     # arm is a routing decision: `AGG_AVG` is reached from the vector scan on a
@@ -792,7 +792,7 @@ fn block6b_apply_arms(mut t: Tally):
     t.ok("apply.cases_ran", cases >= 300)
 
 
-fn block6_fold_equivalence(mut t: Tally):
+def block6_fold_equivalence(mut t: Tally):
     print("block 6: _dense_min_fold / _dense_max_fold == the frozen-primitive reference")
     var nan = bitcast[DType.float64](CANONICAL_NAN_BITS)
     var other_nan = bitcast[DType.float64](UInt64(0x7FF8_0000_0000_0001))
@@ -848,7 +848,7 @@ fn block6_fold_equivalence(mut t: Tally):
     t.ok("fold.max_tie_keeps_first", _bits(_dense_max_fold(-0.0, 0.0)) == _bits(Float64(-0.0)))
 
 
-fn block7_budget_table(mut t: Tally):
+def block7_budget_table(mut t: Tally):
     print("block 7: state-byte arithmetic and the route table")
     # The record stride is what the scan, the merge and the byte budget all
     # index with, so it is pinned rather than inferred from any one of them.
@@ -904,7 +904,7 @@ fn block7_budget_table(mut t: Tally):
     )
 
 
-fn main():
+def main():
     print("=== test_query_coded_dense ===")
     var t = Tally()
     block1_identity_random(t)

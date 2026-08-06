@@ -26,25 +26,25 @@ from scheduler import Task, CriticalPathResult, Scheduler
 from std.math import abs as fabs
 
 
-fn assert_true(cond: Bool, msg: String) raises:
+def assert_true(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("ASSERTION FAILED: " + msg)
 
 
-fn _int_list1(v0: Int) -> List[Int]:
+def _int_list1(v0: Int) -> List[Int]:
     var l = List[Int]()
     l.append(v0)
     return l^
 
 
-fn _int_list2(v0: Int, v1: Int) -> List[Int]:
+def _int_list2(v0: Int, v1: Int) -> List[Int]:
     var l = List[Int]()
     l.append(v0)
     l.append(v1)
     return l^
 
 
-fn _int_list3(v0: Int, v1: Int, v2: Int) -> List[Int]:
+def _int_list3(v0: Int, v1: Int, v2: Int) -> List[Int]:
     var l = List[Int]()
     l.append(v0)
     l.append(v1)
@@ -52,14 +52,14 @@ fn _int_list3(v0: Int, v1: Int, v2: Int) -> List[Int]:
     return l^
 
 
-fn _float_list2(v0: Float64, v1: Float64) -> List[Float64]:
+def _float_list2(v0: Float64, v1: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
     return l^
 
 
-fn _float_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
+def _float_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
@@ -67,7 +67,7 @@ fn _float_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     return l^
 
 
-fn _bool_list2(v0: Bool, v1: Bool) -> List[Bool]:
+def _bool_list2(v0: Bool, v1: Bool) -> List[Bool]:
     var l = List[Bool]()
     l.append(v0)
     l.append(v1)

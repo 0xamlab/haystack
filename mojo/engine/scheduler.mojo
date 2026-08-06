@@ -38,7 +38,7 @@ struct Task(Copyable, Movable):
     var dependencies: List[Int]
     var completed: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         id: Int,
         name: String,
@@ -68,7 +68,7 @@ struct CriticalPathResult(Copyable, Movable):
     var path: List[Int]
     var total_time: Int
 
-    fn __init__(out self, path: List[Int], total_time: Int):
+    def __init__(out self, path: List[Int], total_time: Int):
         self.path = path.copy()
         self.total_time = total_time
 
@@ -86,12 +86,12 @@ struct Scheduler(Copyable, Movable):
     var tasks: List[Task]
     var execution_order: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         """Create an empty scheduler."""
         self.tasks = List[Task]()
         self.execution_order = List[Int]()
 
-    fn add_task(
+    def add_task(
         mut self, name: String, priority: Int, est_ms: Int, deps: List[Int]
     ):
         """Add a new task to the scheduler.
@@ -109,7 +109,7 @@ struct Scheduler(Copyable, Movable):
             Task(task_id, name, priority, est_ms, deps)
         )
 
-    fn schedule(mut self) -> List[Int]:
+    def schedule(mut self) -> List[Int]:
         """Schedule tasks using topological sort, breaking ties by priority.
 
         Uses Kahn's algorithm (BFS-based topological sort).
@@ -178,7 +178,7 @@ struct Scheduler(Copyable, Movable):
         self.execution_order = order.copy()
         return order^
 
-    fn critical_path(self) -> CriticalPathResult:
+    def critical_path(self) -> CriticalPathResult:
         """Find the critical path — longest path through the dependency graph.
 
         Uses dynamic programming: for each task (processed in topological order),
@@ -266,7 +266,7 @@ struct Scheduler(Copyable, Movable):
 
         return CriticalPathResult(reversed_path^, max_dist)
 
-    fn can_run(self, task_id: Int) -> Bool:
+    def can_run(self, task_id: Int) -> Bool:
         """Check if a task can run (all dependencies completed).
 
         Args:
@@ -285,7 +285,7 @@ struct Scheduler(Copyable, Movable):
                     return False
         return True
 
-    fn mark_complete(mut self, task_id: Int):
+    def mark_complete(mut self, task_id: Int):
         """Mark a task as completed.
 
         Args:
@@ -294,7 +294,7 @@ struct Scheduler(Copyable, Movable):
         if task_id >= 0 and task_id < len(self.tasks):
             self.tasks[task_id].completed = True
 
-    fn get_ready_tasks(self) -> List[Int]:
+    def get_ready_tasks(self) -> List[Int]:
         """Get all tasks that are ready to run.
 
         A task is ready if:
@@ -310,7 +310,7 @@ struct Scheduler(Copyable, Movable):
                 ready.append(i)
         return ready^
 
-    fn total_estimated_time(self) -> Int:
+    def total_estimated_time(self) -> Int:
         """Sum of all task estimated_ms.
 
         Returns:

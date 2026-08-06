@@ -73,14 +73,14 @@ from forecasting.interval import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _no_band(b: IntervalBand) -> Bool:
+def _no_band(b: IntervalBand) -> Bool:
     """A refusal carries no band at all — no padded lists, no per-step flags."""
     return (
         b.status != FC_OK
@@ -93,7 +93,7 @@ fn _no_band(b: IntervalBand) -> Bool:
     )
 
 
-fn _same_band(a: IntervalBand, b: IntervalBand) -> Bool:
+def _same_band(a: IntervalBand, b: IntervalBand) -> Bool:
     """Bit equality of every number in two bands — the determinism assertion."""
     if len(a.lower) != len(b.lower) or len(a.upper) != len(b.upper):
         return False
@@ -105,7 +105,7 @@ fn _same_band(a: IntervalBand, b: IntervalBand) -> Bool:
     return True
 
 
-fn _band_differs(a: IntervalBand, b: IntervalBand) -> Bool:
+def _band_differs(a: IntervalBand, b: IntervalBand) -> Bool:
     """At least one number differs. A single quantile can coincide under two seeds, so the
     whole band is compared rather than one endpoint."""
     if len(a.lower) != len(b.lower):
@@ -116,7 +116,7 @@ fn _band_differs(a: IntervalBand, b: IntervalBand) -> Bool:
     return False
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.interval] known-value suite")

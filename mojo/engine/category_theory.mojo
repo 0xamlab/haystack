@@ -12,7 +12,7 @@ from std.math import abs as fabs
 # ── Functor Map ───────────────────────────────────────────────────────────────
 
 
-fn _apply_op(x: Float64, op: Int) -> Float64:
+def _apply_op(x: Float64, op: Int) -> Float64:
     """Apply a unary op: 0=double, 1=square, 2=negate, 3=increment, 4=abs."""
     if op == 0:
         return x * 2.0
@@ -27,7 +27,7 @@ fn _apply_op(x: Float64, op: Int) -> Float64:
     return x
 
 
-fn map_list_fn(data: List[Float64], op: Int) -> List[Float64]:
+def map_list_fn(data: List[Float64], op: Int) -> List[Float64]:
     """Functor map: apply op to each element.
     op: 0=double, 1=square, 2=negate, 3=increment, 4=abs."""
     var out = List[Float64]()
@@ -39,7 +39,7 @@ fn map_list_fn(data: List[Float64], op: Int) -> List[Float64]:
 # ── Filter ────────────────────────────────────────────────────────────────────
 
 
-fn _pred_holds(x: Float64, pred: Int, threshold: Float64) -> Bool:
+def _pred_holds(x: Float64, pred: Int, threshold: Float64) -> Bool:
     """Evaluate predicate: 0=greater, 1=less, 2=equal(tol), 3=nonzero."""
     if pred == 0:
         return x > threshold
@@ -52,7 +52,7 @@ fn _pred_holds(x: Float64, pred: Int, threshold: Float64) -> Bool:
     return True
 
 
-fn filter_fn(
+def filter_fn(
     data: List[Float64], pred: Int, threshold: Float64
 ) -> List[Float64]:
     """Filter elements by predicate.
@@ -67,7 +67,7 @@ fn filter_fn(
 # ── Binary Op for folds ──────────────────────────────────────────────────────
 
 
-fn _bin_op(a: Float64, b: Float64, op: Int) -> Float64:
+def _bin_op(a: Float64, b: Float64, op: Int) -> Float64:
     """Binary operation: 0=add, 1=multiply, 2=max, 3=min."""
     if op == 0:
         return a + b
@@ -87,7 +87,7 @@ fn _bin_op(a: Float64, b: Float64, op: Int) -> Float64:
 # ── Fold Left ─────────────────────────────────────────────────────────────────
 
 
-fn fold_left(data: List[Float64], init: Float64, op: Int) -> Float64:
+def fold_left(data: List[Float64], init: Float64, op: Int) -> Float64:
     """Left fold: accumulate from the left.
     op: 0=add, 1=multiply, 2=max, 3=min."""
     var acc = init
@@ -99,7 +99,7 @@ fn fold_left(data: List[Float64], init: Float64, op: Int) -> Float64:
 # ── Fold Right ────────────────────────────────────────────────────────────────
 
 
-fn fold_right(data: List[Float64], init: Float64, op: Int) -> Float64:
+def fold_right(data: List[Float64], init: Float64, op: Int) -> Float64:
     """Right fold: accumulate from the right.
     op: 0=add, 1=multiply, 2=max, 3=min."""
     var acc = init
@@ -112,7 +112,7 @@ fn fold_right(data: List[Float64], init: Float64, op: Int) -> Float64:
 # ── Compose ───────────────────────────────────────────────────────────────────
 
 
-fn compose(data: List[Float64], op1: Int, op2: Int) -> List[Float64]:
+def compose(data: List[Float64], op1: Int, op2: Int) -> List[Float64]:
     """Function composition: apply op1 then op2 to each element."""
     var out = List[Float64]()
     for i in range(len(data)):
@@ -124,7 +124,7 @@ fn compose(data: List[Float64], op1: Int, op2: Int) -> List[Float64]:
 # ── Zip With ──────────────────────────────────────────────────────────────────
 
 
-fn zip_with(
+def zip_with(
     a: List[Float64], b: List[Float64], op: Int
 ) -> List[Float64]:
     """Zip two lists with a binary operation.
@@ -141,7 +141,7 @@ fn zip_with(
 # ── Scan Left ─────────────────────────────────────────────────────────────────
 
 
-fn scan_left(
+def scan_left(
     data: List[Float64], init: Float64, op: Int
 ) -> List[Float64]:
     """Running accumulation (prefix scan).
@@ -158,7 +158,7 @@ fn scan_left(
 # ── Take While ────────────────────────────────────────────────────────────────
 
 
-fn take_while(
+def take_while(
     data: List[Float64], pred: Int, threshold: Float64
 ) -> List[Float64]:
     """Take elements from the front while predicate holds."""
@@ -173,7 +173,7 @@ fn take_while(
 # ── Drop While ────────────────────────────────────────────────────────────────
 
 
-fn drop_while(
+def drop_while(
     data: List[Float64], pred: Int, threshold: Float64
 ) -> List[Float64]:
     """Drop elements from the front while predicate holds."""
@@ -190,7 +190,7 @@ fn drop_while(
 # ── Flat Map ──────────────────────────────────────────────────────────────────
 
 
-fn flat_map(data: List[Float64], op: Int) -> List[Float64]:
+def flat_map(data: List[Float64], op: Int) -> List[Float64]:
     """Map then flatten.
     op=0: x → [x, -x]
     op=1: x → [x, x*x]."""

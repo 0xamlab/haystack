@@ -112,20 +112,20 @@ comptime MAX_SPREAD: Float64 = 2.0
 comptime W: Int = 8
 
 
-fn _gb_per_s(bytes_moved: Int, elapsed_ns: Float64) -> Float64:
+def _gb_per_s(bytes_moved: Int, elapsed_ns: Float64) -> Float64:
     if elapsed_ns <= 0.0:
         return 0.0
     return (Float64(bytes_moved) / 1.0e9) / (elapsed_ns / 1.0e9)
 
 
-fn _filled(n: Int, value: Float64) -> List[Float64]:
+def _filled(n: Int, value: Float64) -> List[Float64]:
     var out = List[Float64](capacity=n)
     for _ in range(n):
         out.append(value)
     return out^
 
 
-fn main() raises:
+def main() raises:
     print("== STREAM: memory bandwidth ceiling ==")
     print("  N =", N, "Float64 per array;", 3 * N * 8 // (1024 * 1024), "MB working set")
     print("  bytes counted per element: copy 16, scale 16, add 24, triad 24 (STREAM convention)")
@@ -238,7 +238,7 @@ fn main() raises:
         var hot_worst = 0.0
 
         @parameter
-        fn run_band(w: Int):
+        def run_band(w: Int):
             var lo = w * band
             var hi = lo + band
             if hi > N:

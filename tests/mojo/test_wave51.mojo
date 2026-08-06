@@ -39,12 +39,12 @@ from epidemiology import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -54,7 +54,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Helper: build a ratings matrix ───────────────────────────────────────────
 
 
-fn _make_ratings() -> List[List[Float64]]:
+def _make_ratings() -> List[List[Float64]]:
     """3 users, 4 items."""
     var r = List[List[Float64]]()
     # User 0: rated items 0,1,2
@@ -73,7 +73,7 @@ fn _make_ratings() -> List[List[Float64]]:
 # ── Helper: build a small image ──────────────────────────────────────────────
 
 
-fn _make_image() -> List[List[Float64]]:
+def _make_image() -> List[List[Float64]]:
     """4x4 grayscale image."""
     var img = List[List[Float64]]()
     var r0 = List[Float64]()
@@ -91,7 +91,7 @@ fn _make_image() -> List[List[Float64]]:
 # ── Recommender Tests ─────────────────────────────────────────────────────────
 
 
-fn test_mean_rating_per_item() raises:
+def test_mean_rating_per_item() raises:
     print("  Testing mean_rating_per_item...")
     var r = _make_ratings()
     var m = mean_rating_per_item(r)
@@ -106,7 +106,7 @@ fn test_mean_rating_per_item() raises:
     _assert_close(m[3], 4.0, 1e-10, "item 3 avg == 4.0")                 # 5
 
 
-fn test_mean_rating_per_user() raises:
+def test_mean_rating_per_user() raises:
     print("  Testing mean_rating_per_user...")
     var r = _make_ratings()
     var m = mean_rating_per_user(r)
@@ -117,7 +117,7 @@ fn test_mean_rating_per_user() raises:
     _assert_close(m[1], 11.0 / 3.0, 1e-10, "user 1 avg")                 # 8
 
 
-fn test_popularity_ranking() raises:
+def test_popularity_ranking() raises:
     print("  Testing popularity_ranking...")
     var r = _make_ratings()
     var ranked = popularity_ranking(r)
@@ -128,14 +128,14 @@ fn test_popularity_ranking() raises:
     _assert(first == 0 or first == 1, "most popular is item 0 or 1")     # 10
 
 
-fn test_cosine_sim_identical() raises:
+def test_cosine_sim_identical() raises:
     print("  Testing cosine_sim_users identical...")
     var r = _make_ratings()
     var sim = cosine_sim_users(r, 0, 0)
     _assert_close(sim, 1.0, 1e-10, "self-similarity == 1.0")             # 11
 
 
-fn test_cosine_sim_range() raises:
+def test_cosine_sim_range() raises:
     print("  Testing cosine_sim_users range...")
     var r = _make_ratings()
     var sim01 = cosine_sim_users(r, 0, 1)
@@ -146,7 +146,7 @@ fn test_cosine_sim_range() raises:
     _assert(sim02 <= 1.0, "cosine_sim 0,2 <= 1")                         # 15
 
 
-fn test_item_overlap() raises:
+def test_item_overlap() raises:
     print("  Testing item_overlap...")
     var r = _make_ratings()
     # Users 0 and 1 co-rated items 0,1 → 2
@@ -160,7 +160,7 @@ fn test_item_overlap() raises:
     _assert(ov12 == 3, "overlap(1,2) == 3")                              # 18
 
 
-fn test_predict_rating() raises:
+def test_predict_rating() raises:
     print("  Testing predict_rating...")
     var r = _make_ratings()
     # User 0 has not rated item 3; predict it
@@ -169,7 +169,7 @@ fn test_predict_rating() raises:
     _assert(pred <= 5.0, "predicted rating <= 5")                        # 20
 
 
-fn test_top_n_items() raises:
+def test_top_n_items() raises:
     print("  Testing top_n_items...")
     var scores = List[Float64]()
     scores.append(2.0); scores.append(5.0); scores.append(1.0); scores.append(4.0)
@@ -179,7 +179,7 @@ fn test_top_n_items() raises:
     _assert(top2[1] == 3, "second item index == 3")                      # 23
 
 
-fn test_cold_start_recommend() raises:
+def test_cold_start_recommend() raises:
     print("  Testing cold_start_recommend...")
     var r = _make_ratings()
     var recs = cold_start_recommend(r, 3)
@@ -189,7 +189,7 @@ fn test_cold_start_recommend() raises:
         _assert(recs[i] >= 0 and recs[i] < 4, "cold_start idx valid")   # 25,26,27
 
 
-fn test_rmse_ratings() raises:
+def test_rmse_ratings() raises:
     print("  Testing rmse_ratings...")
     var pred = List[Float64]()
     pred.append(3.0); pred.append(4.0); pred.append(0.0)
@@ -202,7 +202,7 @@ fn test_rmse_ratings() raises:
 # ── Image Tests ───────────────────────────────────────────────────────────────
 
 
-fn test_sobel_x_kernel() raises:
+def test_sobel_x_kernel() raises:
     print("  Testing sobel_x_kernel...")
     var k = sobel_x_kernel()
     _assert(len(k) == 3, "sobel_x 3 rows")                              # 29
@@ -212,7 +212,7 @@ fn test_sobel_x_kernel() raises:
     _assert_close(k[0][2], 1.0, 1e-10, "sobel_x[0][2] == 1")           # 33
 
 
-fn test_gaussian_kernel_sums_to_one() raises:
+def test_gaussian_kernel_sums_to_one() raises:
     print("  Testing gaussian_kernel_3x3 sum...")
     var k = gaussian_kernel_3x3()
     var s: Float64 = 0.0
@@ -222,7 +222,7 @@ fn test_gaussian_kernel_sums_to_one() raises:
     _assert_close(s, 1.0, 1e-10, "gaussian kernel sums to 1.0")         # 34
 
 
-fn test_convolve_identity() raises:
+def test_convolve_identity() raises:
     print("  Testing convolve_2d identity kernel...")
     var img = _make_image()
     # Identity kernel [[0,0,0],[0,1,0],[0,0,0]]
@@ -239,7 +239,7 @@ fn test_convolve_identity() raises:
     _assert_close(out[0][1], 180.0, 1e-10, "identity conv center2")     # 38
 
 
-fn test_threshold() raises:
+def test_threshold() raises:
     print("  Testing threshold...")
     var img = _make_image()
     var t = threshold(img, 100.0)
@@ -253,7 +253,7 @@ fn test_threshold() raises:
             )                                                            # 40-55 (16 checks)
 
 
-fn test_invert_double() raises:
+def test_invert_double() raises:
     print("  Testing invert(invert(x)) ≈ x...")
     var img = _make_image()
     var inv2 = invert(invert(img))
@@ -264,7 +264,7 @@ fn test_invert_double() raises:
             )
 
 
-fn test_brightness_clamp() raises:
+def test_brightness_clamp() raises:
     print("  Testing brightness clamp...")
     var img = _make_image()
     var bright = brightness(img, 300.0)
@@ -278,7 +278,7 @@ fn test_brightness_clamp() raises:
             _assert(dark[r][c] == 0.0, "dark brightness == 0")
 
 
-fn test_histogram_sum() raises:
+def test_histogram_sum() raises:
     print("  Testing histogram sum...")
     var img = _make_image()
     var h = histogram(img, 8)
@@ -288,7 +288,7 @@ fn test_histogram_sum() raises:
     _assert(total == 16, "histogram sum == 16 pixels")
 
 
-fn test_mean_pixel() raises:
+def test_mean_pixel() raises:
     print("  Testing mean_pixel...")
     var img = _make_image()
     var m = mean_pixel(img)
@@ -297,7 +297,7 @@ fn test_mean_pixel() raises:
     _assert_close(m, 93.75, 1e-10, "mean_pixel == 93.75")
 
 
-fn test_contrast() raises:
+def test_contrast() raises:
     print("  Testing contrast...")
     var img = _make_image()
     var c = contrast(img, 1.0)
@@ -309,7 +309,7 @@ fn test_contrast() raises:
             )
 
 
-fn test_sharpen_kernel() raises:
+def test_sharpen_kernel() raises:
     print("  Testing sharpen_kernel...")
     var k = sharpen_kernel()
     _assert_close(k[1][1], 5.0, 1e-10, "sharpen center == 5")
@@ -319,19 +319,19 @@ fn test_sharpen_kernel() raises:
 # ── Epidemiology Tests ────────────────────────────────────────────────────────
 
 
-fn test_basic_reproduction_number() raises:
+def test_basic_reproduction_number() raises:
     print("  Testing basic_reproduction_number...")
     var r0 = basic_reproduction_number(0.4, 0.1)
     _assert_close(r0, 4.0, 1e-10, "R0(0.4, 0.1) == 4.0")
 
 
-fn test_herd_immunity_threshold() raises:
+def test_herd_immunity_threshold() raises:
     print("  Testing herd_immunity_threshold...")
     var hit = herd_immunity_threshold(4.0)
     _assert_close(hit, 0.75, 1e-10, "HIT(4.0) ≈ 0.75")
 
 
-fn test_sir_step_conservation() raises:
+def test_sir_step_conservation() raises:
     print("  Testing sir_step conservation...")
     var S: Float64 = 990.0
     var I: Float64 = 10.0
@@ -342,13 +342,13 @@ fn test_sir_step_conservation() raises:
     _assert_close(N1, N0, 1e-10, "SIR conserves population")
 
 
-fn test_sir_simulate_length() raises:
+def test_sir_simulate_length() raises:
     print("  Testing sir_simulate length...")
     var sim = sir_simulate(990.0, 10.0, 0.0, 0.4, 0.1, 0.1, 50)
     _assert(len(sim) == 51, "sir_simulate length == n_steps + 1")
 
 
-fn test_sir_simulate_initial() raises:
+def test_sir_simulate_initial() raises:
     print("  Testing sir_simulate initial values...")
     var sim = sir_simulate(990.0, 10.0, 0.0, 0.4, 0.1, 0.1, 10)
     _assert_close(sim[0][0], 990.0, 1e-10, "sir_simulate S0")
@@ -356,7 +356,7 @@ fn test_sir_simulate_initial() raises:
     _assert_close(sim[0][2], 0.0, 1e-10, "sir_simulate R0")
 
 
-fn test_seir_step_conservation() raises:
+def test_seir_step_conservation() raises:
     print("  Testing seir_step conservation...")
     var S: Float64 = 980.0
     var E: Float64 = 10.0
@@ -368,20 +368,20 @@ fn test_seir_step_conservation() raises:
     _assert_close(N1, N0, 1e-10, "SEIR conserves population")
 
 
-fn test_effective_reproduction() raises:
+def test_effective_reproduction() raises:
     print("  Testing effective_reproduction...")
     var re = effective_reproduction(4.0, 0.75)
     _assert_close(re, 1.0, 1e-10, "Re(4.0, 0.75) ≈ 1.0")
 
 
-fn test_doubling_time() raises:
+def test_doubling_time() raises:
     print("  Testing doubling_time...")
     # ln(2) ≈ 0.693147
     var dt = doubling_time(0.693147180559945)
     _assert_close(dt, 1.0, 1e-6, "doubling_time(ln2) ≈ 1.0")
 
 
-fn test_attack_rate() raises:
+def test_attack_rate() raises:
     print("  Testing attack_rate...")
     var ar = attack_rate(2.0)
     _assert(ar > 0.0, "attack_rate(2.0) > 0")
@@ -390,19 +390,19 @@ fn test_attack_rate() raises:
     _assert_close(ar, 0.7968, 0.01, "attack_rate(2.0) ≈ 0.797")
 
 
-fn test_attack_rate_subcritical() raises:
+def test_attack_rate_subcritical() raises:
     print("  Testing attack_rate subcritical...")
     var ar = attack_rate(0.5)
     _assert_close(ar, 0.0, 1e-10, "attack_rate(0.5) == 0 (subcritical)")
 
 
-fn test_case_fatality_rate() raises:
+def test_case_fatality_rate() raises:
     print("  Testing case_fatality_rate...")
     var cfr = case_fatality_rate(10, 100)
     _assert_close(cfr, 0.1, 1e-10, "CFR(10, 100) == 0.1")
 
 
-fn test_incidence_rate() raises:
+def test_incidence_rate() raises:
     print("  Testing incidence_rate...")
     var ir = incidence_rate(50, 10000, 1.0)
     _assert_close(ir, 0.005, 1e-10, "incidence_rate(50, 10000, 1.0)")
@@ -411,7 +411,7 @@ fn test_incidence_rate() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 51 Tests ===")
 
     # Recommender

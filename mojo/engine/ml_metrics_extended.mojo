@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn auc_trapezoid(
+def auc_trapezoid(
     fpr1: Float64, fpr2: Float64, tpr1: Float64, tpr2: Float64
 ) -> Float64:
     """Trapezoidal rule AUC for one ROC segment.
@@ -36,7 +36,7 @@ fn auc_trapezoid(
     return (fpr2 - fpr1) * (tpr1 + tpr2) / 2.0
 
 
-fn average_precision_term(
+def average_precision_term(
     precision: Float64, recall_delta: Float64
 ) -> Float64:
     """One term in Average Precision sum: P(r) × ΔR.
@@ -51,7 +51,7 @@ fn average_precision_term(
     return precision * recall_delta
 
 
-fn ndcg_gain(relevance: Float64) -> Float64:
+def ndcg_gain(relevance: Float64) -> Float64:
     """DCG gain: 2^rel - 1.
 
     Args:
@@ -63,7 +63,7 @@ fn ndcg_gain(relevance: Float64) -> Float64:
     return exp(relevance * 0.6931471805599453) - 1.0
 
 
-fn ndcg_discount(rank: Float64) -> Float64:
+def ndcg_discount(rank: Float64) -> Float64:
     """DCG discount: 1 / log2(rank + 1).
 
     Args:
@@ -77,7 +77,7 @@ fn ndcg_discount(rank: Float64) -> Float64:
     return 1.0 / (log(rank + 1.0) / 0.6931471805599453)
 
 
-fn map_term(precision_at_k: Float64, is_relevant: Float64) -> Float64:
+def map_term(precision_at_k: Float64, is_relevant: Float64) -> Float64:
     """One term in Mean Average Precision: P@k × rel(k).
 
     Args:
@@ -90,7 +90,7 @@ fn map_term(precision_at_k: Float64, is_relevant: Float64) -> Float64:
     return precision_at_k * is_relevant
 
 
-fn f_beta_score(
+def f_beta_score(
     precision: Float64, recall: Float64, beta: Float64
 ) -> Float64:
     """Fβ score: (1+β²) × P × R / (β²P + R).
@@ -110,7 +110,7 @@ fn f_beta_score(
     return (1.0 + b2) * precision * recall / denom
 
 
-fn matthews_corr_coeff(
+def matthews_corr_coeff(
     tp: Float64, tn: Float64, fp: Float64, fn_val: Float64
 ) -> Float64:
     """Matthews Correlation Coefficient.
@@ -133,7 +133,7 @@ fn matthews_corr_coeff(
     return num / sqrt(denom_sq)
 
 
-fn cohen_kappa(
+def cohen_kappa(
     observed_agreement: Float64, expected_agreement: Float64
 ) -> Float64:
     """Cohen's kappa: (p_o - p_e) / (1 - p_e).
@@ -151,7 +151,7 @@ fn cohen_kappa(
     return (observed_agreement - expected_agreement) / denom
 
 
-fn calibration_ece_term(
+def calibration_ece_term(
     bin_confidence: Float64, bin_accuracy: Float64,
     bin_count: Float64, total_count: Float64
 ) -> Float64:
@@ -176,7 +176,7 @@ fn calibration_ece_term(
     return diff * bin_count / total_count
 
 
-fn brier_score_term(prob: Float64, outcome: Float64) -> Float64:
+def brier_score_term(prob: Float64, outcome: Float64) -> Float64:
     """Brier score term: (p - y)² for one sample.
 
     Args:

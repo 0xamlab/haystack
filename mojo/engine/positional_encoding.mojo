@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp, cos, sin
 
 
-fn sinusoidal_pe(pos: Float64, dim: Float64, d_model: Float64) -> Float64:
+def sinusoidal_pe(pos: Float64, dim: Float64, d_model: Float64) -> Float64:
     """Sinusoidal positional encoding (Vaswani et al. 2017).
 
     PE(pos, 2i)   = sin(pos / 10000^(2i/d_model))
@@ -43,7 +43,7 @@ fn sinusoidal_pe(pos: Float64, dim: Float64, d_model: Float64) -> Float64:
     return cos(angle)
 
 
-fn rope_cos_component(pos: Float64, dim: Float64, base: Float64) -> Float64:
+def rope_cos_component(pos: Float64, dim: Float64, base: Float64) -> Float64:
     """RoPE cosine component for dimension dim at position pos.
 
     theta_i = pos / base^(2i/d)
@@ -61,7 +61,7 @@ fn rope_cos_component(pos: Float64, dim: Float64, base: Float64) -> Float64:
     return cos(theta)
 
 
-fn rope_sin_component(pos: Float64, dim: Float64, base: Float64) -> Float64:
+def rope_sin_component(pos: Float64, dim: Float64, base: Float64) -> Float64:
     """RoPE sine component for dimension dim at position pos.
 
     Args:
@@ -77,7 +77,7 @@ fn rope_sin_component(pos: Float64, dim: Float64, base: Float64) -> Float64:
     return sin(theta)
 
 
-fn rope_apply_cos(x: Float64, cos_val: Float64) -> Float64:
+def rope_apply_cos(x: Float64, cos_val: Float64) -> Float64:
     """Apply RoPE cosine rotation to even dimension: x × cos.
 
     Args:
@@ -90,7 +90,7 @@ fn rope_apply_cos(x: Float64, cos_val: Float64) -> Float64:
     return x * cos_val
 
 
-fn rope_apply_sin(
+def rope_apply_sin(
     x: Float64, x_pair: Float64, sin_val: Float64, is_even: Float64
 ) -> Float64:
     """Apply RoPE sine rotation using paired dimension.
@@ -114,7 +114,7 @@ fn rope_apply_sin(
     return x_pair * sin_val
 
 
-fn alibi_slope(head: Float64, n_heads: Float64) -> Float64:
+def alibi_slope(head: Float64, n_heads: Float64) -> Float64:
     """ALiBi attention slope for head h (Press et al. 2022).
 
     slope_h = 2^(-8h/n_heads)
@@ -131,7 +131,7 @@ fn alibi_slope(head: Float64, n_heads: Float64) -> Float64:
     return exp(-8.0 * head / n_heads * 0.6931471805599453)
 
 
-fn alibi_bias(
+def alibi_bias(
     query_pos: Float64, key_pos: Float64, slope: Float64
 ) -> Float64:
     """ALiBi position bias: -slope × |query_pos - key_pos|.
@@ -150,7 +150,7 @@ fn alibi_bias(
     return -slope * dist
 
 
-fn learned_pe_init(d_model: Float64) -> Float64:
+def learned_pe_init(d_model: Float64) -> Float64:
     """Xavier uniform init scale for learned positional embeddings.
 
     scale = sqrt(6 / d_model)
@@ -166,7 +166,7 @@ fn learned_pe_init(d_model: Float64) -> Float64:
     return sqrt(6.0 / d_model)
 
 
-fn relative_pe_bucket(
+def relative_pe_bucket(
     relative_pos: Float64, num_buckets: Float64, max_distance: Float64
 ) -> Float64:
     """T5 relative position bucket index.
@@ -195,7 +195,7 @@ fn relative_pe_bucket(
     return ret + bucket
 
 
-fn xpos_scale(
+def xpos_scale(
     pos: Float64, dim: Float64, base: Float64, scale: Float64
 ) -> Float64:
     """xPos position-dependent scale factor (Sun et al. 2022).

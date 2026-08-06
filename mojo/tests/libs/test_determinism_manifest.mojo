@@ -54,14 +54,14 @@ from determinism.reduce_det import reduction_shape_id
 from determinism.streams import stream_id
 
 
-fn two_streams() -> List[String]:
+def two_streams() -> List[String]:
     var s = List[String]()
     s.append(String("weather"))
     s.append(String("tyre_wear"))
     return s^
 
 
-fn shape_3x4() -> List[Int]:
+def shape_3x4() -> List[Int]:
     var s = List[Int]()
     s.append(3)
     s.append(4)

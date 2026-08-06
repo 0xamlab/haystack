@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn model_provenance_hash(
+def model_provenance_hash(
     weight_hash: Float64, config_hash: Float64,
     dataset_hash: Float64, step: Float64
 ) -> Float64:
@@ -39,7 +39,7 @@ fn model_provenance_hash(
     return weight_hash * p1 + config_hash * p2 + dataset_hash + step
 
 
-fn prompt_policy_score(
+def prompt_policy_score(
     toxicity_signal: Float64, jailbreak_signal: Float64,
     pii_signal: Float64
 ) -> Float64:
@@ -61,7 +61,7 @@ fn prompt_policy_score(
     return score
 
 
-fn output_safety_score(
+def output_safety_score(
     toxicity: Float64, hallucination_risk: Float64,
     factual_consistency: Float64
 ) -> Float64:
@@ -85,7 +85,7 @@ fn output_safety_score(
     return score
 
 
-fn tenant_quota_remaining(
+def tenant_quota_remaining(
     quota_tokens: Float64, used_tokens: Float64,
     quota_period_ms: Float64, elapsed_ms: Float64
 ) -> Float64:
@@ -106,7 +106,7 @@ fn tenant_quota_remaining(
     return remaining
 
 
-fn audit_log_hash(
+def audit_log_hash(
     prev_hash: Float64, event_type: Float64,
     timestamp: Float64, tenant_id: Float64
 ) -> Float64:
@@ -127,7 +127,7 @@ fn audit_log_hash(
     return prev_hash * prime + event_type * 997.0 + timestamp + tenant_id
 
 
-fn pii_sensitivity_score(
+def pii_sensitivity_score(
     n_email_matches: Float64, n_phone_matches: Float64,
     n_ssn_matches: Float64, n_credit_card_matches: Float64
 ) -> Float64:
@@ -151,7 +151,7 @@ fn pii_sensitivity_score(
     return score
 
 
-fn differential_privacy_noise(
+def differential_privacy_noise(
     sensitivity: Float64, epsilon: Float64, delta: Float64
 ) -> Float64:
     """Gaussian DP noise standard deviation.
@@ -171,7 +171,7 @@ fn differential_privacy_noise(
     return sensitivity * sqrt(2.0 * log(1.25 / delta)) / epsilon
 
 
-fn permission_access_check(
+def permission_access_check(
     user_role_level: Float64, resource_required_level: Float64,
     time_based_restriction: Float64
 ) -> Float64:
@@ -192,7 +192,7 @@ fn permission_access_check(
     return 0.0
 
 
-fn data_retention_decay(
+def data_retention_decay(
     data_age_days: Float64, retention_days: Float64
 ) -> Float64:
     """Data retention score: 1.0 = retain, 0.0 = should delete.
@@ -214,7 +214,7 @@ fn data_retention_decay(
     return 1.0 - ratio
 
 
-fn governance_compliance_score(
+def governance_compliance_score(
     data_lineage_coverage: Float64, audit_completeness: Float64,
     policy_adherence: Float64, privacy_budget_remaining: Float64
 ) -> Float64:

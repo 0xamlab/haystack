@@ -157,7 +157,7 @@ comptime MAX_RETRIEVAL_DIM: Int = 1 << 22
 comptime MAX_DOC_ORDINAL: Int = 1 << 52
 
 
-fn retrieval_status_name(code: Int) -> String:
+def retrieval_status_name(code: Int) -> String:
     """Name for a status code, so an error surfaces the defect and not a bare number."""
     if code == RETR_OK:
         return "ok"
@@ -190,7 +190,7 @@ fn retrieval_status_name(code: Int) -> String:
     return "unknown"
 
 
-fn retrieval_finite(v: Float64) -> Bool:
+def retrieval_finite(v: Float64) -> Bool:
     """True for a real number: neither NaN nor +-inf.
 
     PUBLIC on purpose, and the SINGLE definition of "finite" for this package —
@@ -202,7 +202,7 @@ fn retrieval_finite(v: Float64) -> Bool:
     return not (isnan(v) or isinf(v))
 
 
-fn _precedes(a_score: Float64, a_ord: Int, b_score: Float64, b_ord: Int) -> Bool:
+def _precedes(a_score: Float64, a_ord: Int, b_score: Float64, b_ord: Int) -> Bool:
     """True when `a` must be ranked before `b`: higher score, ascending ordinal on a tie.
 
     Assumes both scores are finite, which every public driver validates before ordering
@@ -214,7 +214,7 @@ fn _precedes(a_score: Float64, a_ord: Int, b_score: Float64, b_ord: Int) -> Bool
     return a_ord < b_ord
 
 
-fn retrieval_rank_order(
+def retrieval_rank_order(
     scores: List[Float64], ordinals: List[Int]
 ) -> List[Int]:
     """Positions of `scores` in ranked order: score DESCENDING, ordinal ASCENDING on a tie.
@@ -297,7 +297,7 @@ fn retrieval_rank_order(
     return order^
 
 
-fn retrieval_truncation(n_available: Int, top_k: Int) -> Int:
+def retrieval_truncation(n_available: Int, top_k: Int) -> Int:
     """How many items a `top_k` request actually yields.
 
     `top_k == 0` means no truncation across every driver in this package — one convention,
@@ -365,7 +365,7 @@ struct HybridRanking(Copyable, Movable):
     var dominant_lane: List[Int]
 
 
-fn _no_hybrid(status: Int) -> HybridRanking:
+def _no_hybrid(status: Int) -> HybridRanking:
     """A rejection: every list empty, every number flagged absent."""
     return HybridRanking(
         status,
@@ -383,7 +383,7 @@ fn _no_hybrid(status: Int) -> HybridRanking:
     )
 
 
-fn _flat_lane(values: List[Float64], n: Int) -> Bool:
+def _flat_lane(values: List[Float64], n: Int) -> Bool:
     """True when every one of the first `n` values is identical and `n >= 2`.
 
     Caller has already bounded `n` against `len(values)`.
@@ -397,7 +397,7 @@ fn _flat_lane(values: List[Float64], n: Int) -> Bool:
     return True
 
 
-fn hybrid_rank_flat(
+def hybrid_rank_flat(
     dense: List[Float64], sparse: List[Float64],
     n: Int, alpha: Float64, top_k: Int,
 ) -> HybridRanking:
@@ -522,7 +522,7 @@ struct MMRSelection(Copyable, Movable):
     var max_sim_known: List[Bool]
 
 
-fn _no_mmr(status: Int) -> MMRSelection:
+def _no_mmr(status: Int) -> MMRSelection:
     """A rejection: every list empty, every number flagged absent."""
     return MMRSelection(
         status,
@@ -537,7 +537,7 @@ fn _no_mmr(status: Int) -> MMRSelection:
     )
 
 
-fn mmr_select_flat(
+def mmr_select_flat(
     relevance: List[Float64], similarity: List[Float64],
     n: Int, k: Int, lambda_mmr: Float64,
 ) -> MMRSelection:
@@ -668,7 +668,7 @@ struct RetrievalQuality(Copyable, Movable):
     var n_query_terms: Int
 
 
-fn retrieval_quality_flat(
+def retrieval_quality_flat(
     relevant_retrieved: Int, cited_chunks: Int, total_retrieved: Int,
     query_terms_in_context: Int, total_query_terms: Int,
 ) -> RetrievalQuality:
@@ -719,7 +719,7 @@ fn retrieval_quality_flat(
     )
 
 
-fn retrieval_ceiling_report() -> List[Int]:
+def retrieval_ceiling_report() -> List[Int]:
     """The ceilings this package enforces, so a caller can size a request before sending it.
 
     `[MAX_RETRIEVAL_CELLS, MAX_RETRIEVAL_DIM, MAX_DOC_ORDINAL, MAX_CSR_DIM]`. Reading them

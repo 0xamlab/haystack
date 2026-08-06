@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from compression.lz77 import bytes_to_ints, ints_to_string, find_longest_match, lz77_encode, compression_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

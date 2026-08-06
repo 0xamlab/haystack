@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from transformer_blocks import multi_head_split_head, feedforward_layer1, feedforward_layer2, residual_connection, pre_norm, post_norm, causal_mask_logit, attention_head_output, gated_feedforward, dropout_scale
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

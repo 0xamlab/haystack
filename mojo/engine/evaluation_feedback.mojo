@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn accuracy_rolling_update(
+def accuracy_rolling_update(
     current_acc: Float64, new_correct: Float64,
     alpha: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn accuracy_rolling_update(
     return alpha * new_correct + (1.0 - alpha) * current_acc
 
 
-fn model_drift_ks_stat(
+def model_drift_ks_stat(
     cdf_reference: Float64, cdf_current: Float64
 ) -> Float64:
     """KS test statistic contribution: |F_ref(x) - F_cur(x)|.
@@ -56,7 +56,7 @@ fn model_drift_ks_stat(
     return diff
 
 
-fn population_stability_index(
+def population_stability_index(
     p_current: Float64, p_reference: Float64
 ) -> Float64:
     """PSI term: (p_cur - p_ref) × log(p_cur / p_ref).
@@ -75,7 +75,7 @@ fn population_stability_index(
     return (p_current - p_reference) * log(p_current / p_reference)
 
 
-fn prediction_shift_score(
+def prediction_shift_score(
     mean_pred_new: Float64, mean_pred_ref: Float64,
     std_pred_ref: Float64
 ) -> Float64:
@@ -99,7 +99,7 @@ fn prediction_shift_score(
     return diff / std_pred_ref
 
 
-fn feedback_reward_signal(
+def feedback_reward_signal(
     human_rating: Float64, baseline_rating: Float64,
     reward_scale: Float64
 ) -> Float64:
@@ -118,7 +118,7 @@ fn feedback_reward_signal(
     return (human_rating - baseline_rating) * reward_scale
 
 
-fn label_noise_rate_estimate(
+def label_noise_rate_estimate(
     agreement_rate: Float64, n_annotators: Float64
 ) -> Float64:
     """Label noise estimate from inter-annotator disagreement.
@@ -143,7 +143,7 @@ fn label_noise_rate_estimate(
     return noise
 
 
-fn online_auc_update(
+def online_auc_update(
     current_auc: Float64, new_pos_rank: Float64,
     n_positive: Float64, n_negative: Float64
 ) -> Float64:
@@ -166,7 +166,7 @@ fn online_auc_update(
     return current_auc + new_contribution
 
 
-fn calibration_drift_score(
+def calibration_drift_score(
     current_ece: Float64, baseline_ece: Float64
 ) -> Float64:
     """Calibration drift: change in ECE from baseline.
@@ -181,7 +181,7 @@ fn calibration_drift_score(
     return current_ece - baseline_ece
 
 
-fn shadow_model_divergence(
+def shadow_model_divergence(
     prod_prediction: Float64, shadow_prediction: Float64
 ) -> Float64:
     """Divergence between production and shadow model predictions.
@@ -201,7 +201,7 @@ fn shadow_model_divergence(
     return diff
 
 
-fn evaluation_sample_efficiency(
+def evaluation_sample_efficiency(
     target_std_error: Float64, metric_std: Float64
 ) -> Float64:
     """Minimum evaluation samples for target standard error.

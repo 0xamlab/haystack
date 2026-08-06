@@ -209,7 +209,7 @@ is the "or better, just the argmax" half of the resident design, and it is why t
 never crosses the bus during decode."""
 
 
-fn residentk_status_name(code: Int) -> String:
+def residentk_status_name(code: Int) -> String:
     """Human name for a status code. Every code above appears here exactly once.
 
     @capability residentk_status_name
@@ -239,7 +239,7 @@ fn residentk_status_name(code: Int) -> String:
     return String("resident_code_out_of_range")
 
 
-fn residentk_dims_check(d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int) -> Int:
+def residentk_dims_check(d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int) -> Int:
     """Is this a model shape the resident session can actually hold and run?
 
     Checks the three things the kernels genuinely require and nothing else: every dimension positive
@@ -280,7 +280,7 @@ fn residentk_dims_check(d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: In
     return RESIDENT_OK
 
 
-fn residentk_context_check(n_prompt: Int, n_new: Int, max_ctx: Int) -> Int:
+def residentk_context_check(n_prompt: Int, n_new: Int, max_ctx: Int) -> Int:
     """Does a whole run — prompt plus every generated token — fit the session's OWN fixed-capacity
     KV cache, and is the requested capacity itself sane?
 
@@ -312,7 +312,7 @@ fn residentk_context_check(n_prompt: Int, n_new: Int, max_ctx: Int) -> Int:
     return RESIDENT_OK
 
 
-fn residentk_cache_elements(n_layers: Int, h_kv: Int, d_head: Int, max_ctx: Int) -> Int:
+def residentk_cache_elements(n_layers: Int, h_kv: Int, d_head: Int, max_ctx: Int) -> Int:
     """Float32 elements the KV cache holds for a session opened at `max_ctx` positions, or 0 if any
     dimension is unsupported. `n_layers * 2 * max_ctx * h_kv * d_head` — one `ck` and one `cv`
     buffer per layer, each `max_ctx * h_kv * d_head` elements, exactly what
@@ -341,7 +341,7 @@ fn residentk_cache_elements(n_layers: Int, h_kv: Int, d_head: Int, max_ctx: Int)
     return n_layers * 2 * max_ctx * h_kv * d_head
 
 
-fn residentk_dispatch_budget(n_layers: Int) -> Int:
+def residentk_dispatch_budget(n_layers: Int) -> Int:
     """GPU dispatches ONE decode token costs: `n_layers * 6 + 3`. Zero or less on a bad layer count.
 
     Exported so a test asserts the count the session actually issues against the count this design
@@ -360,7 +360,7 @@ fn residentk_dispatch_budget(n_layers: Int) -> Int:
     return n_layers * RESIDENT_DISPATCH_PER_LAYER + RESIDENT_DISPATCH_FIXED
 
 
-fn residentk_dispatch_budget_deep(n_layers: Int) -> Int:
+def residentk_dispatch_budget_deep(n_layers: Int) -> Int:
     """GPU dispatches ONE token costs once `residentk_splitk_should_split(n_keys)` is true for that
     token's `n_keys` — the SDPA role becomes a partial-plus-merge dispatch PAIR instead of one
     dispatch, so this is `residentk_dispatch_budget(n_layers)` plus exactly one extra dispatch per
@@ -383,7 +383,7 @@ fn residentk_dispatch_budget_deep(n_layers: Int) -> Int:
     return 1 + n_layers * 7 + 2
 
 
-fn residentk_weight_elems(
+def residentk_weight_elems(
     d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int, vocab: Int,
     max_ctx: Int = RESIDENT_DEFAULT_CONTEXT,
 ) -> Int:
@@ -432,7 +432,7 @@ fn residentk_weight_elems(
     return n_layers * per_layer + cache + vocab * d_model + d_model
 
 
-fn residentk_scalars_ok(eps: Float64, scale: Float64) -> Bool:
+def residentk_scalars_ok(eps: Float64, scale: Float64) -> Bool:
     """Both attention/normalization scalars finite and positive.
 
     Separate from the dimension check because a NaN defeats an unvalidated threshold silently: a NaN
@@ -537,7 +537,7 @@ good, race-verified fixed behavior, never to an invented number that could be wo
 shipped."""
 
 
-fn _residentk_log2(x: Float64) -> Float64:
+def _residentk_log2(x: Float64) -> Float64:
     """log base 2 via natural log — same one-line helper `audio`/`blockchain`/`ergonomics` each
     already carry their own private copy of, rather than a new cross-package dependency for one
     multiply."""
@@ -545,7 +545,7 @@ fn _residentk_log2(x: Float64) -> Float64:
     return log(x) * _LOG2_E
 
 
-fn residentk_splitk_should_split(n_keys: Int) -> Bool:
+def residentk_splitk_should_split(n_keys: Int) -> Bool:
     """Is `n_keys` deep enough that splitting the SDPA dispatch is worth its own fixed overhead
     (a second kernel launch, plus the merge kernel) at all?
 
@@ -556,7 +556,7 @@ fn residentk_splitk_should_split(n_keys: Int) -> Bool:
     return n_keys >= RESIDENT_SPLITK_NO_SPLIT_MAX_KEYS
 
 
-fn residentk_splitk_max_n_splits(n_cores: Int, h_q: Int) -> Int:
+def residentk_splitk_max_n_splits(n_cores: Int, h_q: Int) -> Int:
     """The largest `n_splits` `residentk_splitk_policy` could EVER return for this `(n_cores, h_q)`
     pair — the occupancy ceiling, `round(RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE * n_cores / h_q)`.
 
@@ -585,7 +585,7 @@ fn residentk_splitk_max_n_splits(n_cores: Int, h_q: Int) -> Int:
     return n_splits
 
 
-fn residentk_splitk_policy(n_keys: Int, n_cores: Int, h_q: Int) -> Int:
+def residentk_splitk_policy(n_keys: Int, n_cores: Int, h_q: Int) -> Int:
     """The split count to use for THIS decode step's `n_keys`, on a GPU with `n_cores` compute cores
     running `h_q` query heads — see the module-level comment above this block for the full
     calibration/re-verification account and the formula's derivation.

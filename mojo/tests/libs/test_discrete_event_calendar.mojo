@@ -67,19 +67,19 @@ from discrete_event.contract import (
 )
 
 
-fn _f4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def _f4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a); o.append(b); o.append(c); o.append(d)
     return o^
 
 
-fn _i4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _i4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var o = List[Int]()
     o.append(a); o.append(b); o.append(c); o.append(d)
     return o^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[discrete_event.calendar] known-value suite")

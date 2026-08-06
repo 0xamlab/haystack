@@ -313,7 +313,7 @@ comptime SCHED_MAX_TENURE: Int = 1 << 12
 comptime SCHED_NEGATIVE_SEED_BIT: UInt64 = 1 << 63
 
 
-fn sched_status_name(code: Int) -> String:
+def sched_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number.
 
     Falls through to `model_status_name` for the shared codes this module reuses
@@ -343,7 +343,7 @@ fn sched_status_name(code: Int) -> String:
     return model_status_name(code)
 
 
-fn sched_violation_name(kind: Int) -> String:
+def sched_violation_name(kind: Int) -> String:
     """Name for a violation kind. A separate vocabulary from the status codes on purpose."""
     if kind == SCHED_VIOL_NONE:
         return "none"
@@ -363,7 +363,7 @@ fn sched_violation_name(kind: Int) -> String:
 # ── numeric helpers ───────────────────────────────────────────────────────────
 
 
-fn _rel_slop(scale: Float64, terms: Int) -> Float64:
+def _rel_slop(scale: Float64, terms: Int) -> Float64:
     """Rounding allowance for a comparison at magnitude `scale` after `terms` additions.
 
     `scale` must be the magnitude of the quantities being compared (never a sum over the
@@ -395,7 +395,7 @@ fn _rel_slop(scale: Float64, terms: Int) -> Float64:
     return (SCHED_ULP_BUDGET + t) * SCHED_DBL_EPSILON * s
 
 
-fn _scale2(a: Float64, b: Float64) -> Float64:
+def _scale2(a: Float64, b: Float64) -> Float64:
     """max(|a|, |b|) — the magnitude a comparison between `a` and `b` lives at.
 
     No 1.0 floor: see `_rel_slop`. Two quantities of magnitude 1e-13 live at 1e-13, and a
@@ -410,7 +410,7 @@ fn _scale2(a: Float64, b: Float64) -> Float64:
     return s
 
 
-fn _seed_key(seed: Int) -> UInt64:
+def _seed_key(seed: Int) -> UInt64:
     """The `master_seed` coordinate for a caller's `seed`, total over every `Int`.
 
     A negative seed is folded with `~seed` (never `-seed`, which overflows at `Int.MIN`) and
@@ -421,7 +421,7 @@ fn _seed_key(seed: Int) -> UInt64:
     return UInt64(~seed) | SCHED_NEGATIVE_SEED_BIT
 
 
-fn _op_key(key: UInt64, stream: UInt64, restart: Int, op: Int) -> Float64:
+def _op_key(key: UInt64, stream: UInt64, restart: Int, op: Int) -> Float64:
     """Keyed priority of one unit — the last tie-break of every construction here.
 
     A pure function of `(seed, restart, op)`: `rng_uniform` at `master_seed = key`,
@@ -764,7 +764,7 @@ struct _Sgs(Copyable, Movable):
 # ── shape and value validation ────────────────────────────────────────────────
 
 
-fn _jssp_defect(
+def _jssp_defect(
     duration: List[Float64], machine_of: List[Int],
     n_jobs: Int, n_ops: Int, n_machines: Int
 ) -> Int:
@@ -802,7 +802,7 @@ fn _jssp_defect(
     return MODEL_OK
 
 
-fn _rcpsp_defect(
+def _rcpsp_defect(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int
 ) -> Int:
@@ -853,7 +853,7 @@ fn _rcpsp_defect(
     return MODEL_OK
 
 
-fn _first_over_capacity(
+def _first_over_capacity(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     n_acts: Int, n_res: Int
 ) -> Int:
@@ -890,7 +890,7 @@ fn _first_over_capacity(
 # ── machine buckets ───────────────────────────────────────────────────────────
 
 
-fn _machine_buckets(machine_of: List[Int], n: Int, n_machines: Int) -> _Buckets:
+def _machine_buckets(machine_of: List[Int], n: Int, n_machines: Int) -> _Buckets:
     """Operations grouped by machine, ascending operation id inside each block.
 
     A counting pass then a fill pass — the same shape `graph_analytics.adjacency` uses for a
@@ -917,7 +917,7 @@ fn _machine_buckets(machine_of: List[Int], n: Int, n_machines: Int) -> _Buckets:
     return _Buckets(offs^, items^)
 
 
-fn _mach_pred_of(seq: List[Int], offs: List[Int], n: Int, n_machines: Int) -> List[Int]:
+def _mach_pred_of(seq: List[Int], offs: List[Int], n: Int, n_machines: Int) -> List[Int]:
     """`mach_pred[o]` = the operation immediately before `o` on its machine, or -1.
 
     The `>= 0` guard is not redundant with the constructions that fill `seq`. An unfilled slot
@@ -938,7 +938,7 @@ fn _mach_pred_of(seq: List[Int], offs: List[Int], n: Int, n_machines: Int) -> Li
 # ── the disjunctive graph, its cycle check and its longest path ───────────────
 
 
-fn _schedule_of(
+def _schedule_of(
     duration: List[Float64], n_ops: Int, mach_pred: List[Int]
 ) -> _Sched:
     """Earliest-start schedule of one orientation, via the FROZEN topological sort.
@@ -1010,7 +1010,7 @@ fn _schedule_of(
     return _Sched(True, n, -1, span, last, start^, crit^)
 
 
-fn _critical_ops(sched: _Sched, n: Int) -> List[Int]:
+def _critical_ops(sched: _Sched, n: Int) -> List[Int]:
     """The chain that produced the makespan, in order, from the `crit_pred` walk.
 
     Bounded at `n` steps. A DAG's walk cannot revisit a node, so exceeding that is a defect
@@ -1038,7 +1038,7 @@ fn _critical_ops(sched: _Sched, n: Int) -> List[Int]:
 # ── job-shop verification ─────────────────────────────────────────────────────
 
 
-fn _jssp_audit(
+def _jssp_audit(
     duration: List[Float64], machine_of: List[Int], n_jobs: Int, n_ops: Int,
     n_machines: Int, start: List[Float64]
 ) -> JobShopAudit:
@@ -1190,7 +1190,7 @@ fn _jssp_audit(
 # ── job-shop bounds ───────────────────────────────────────────────────────────
 
 
-fn _jssp_bound(
+def _jssp_bound(
     duration: List[Float64], machine_of: List[Int], n_jobs: Int, n_ops: Int,
     n_machines: Int
 ) -> JobShopBound:
@@ -1232,7 +1232,7 @@ fn _jssp_bound(
 # ── job-shop construction ─────────────────────────────────────────────────────
 
 
-fn _dispatch(
+def _dispatch(
     duration: List[Float64], machine_of: List[Int], n_jobs: Int, n_ops: Int,
     n_machines: Int, offs: List[Int], key: UInt64, stream: UInt64, restart: Int
 ) -> List[Int]:
@@ -1318,7 +1318,7 @@ fn _dispatch(
     return seq^
 
 
-fn _ranks_of(seq: List[Int], offs: List[Int], n: Int, n_machines: Int) -> List[Int]:
+def _ranks_of(seq: List[Int], offs: List[Int], n: Int, n_machines: Int) -> List[Int]:
     """0-based position of each operation inside its machine's block.
 
     The `>= 0` guard is the same one `_mach_pred_of` carries and for the same reason: an
@@ -1335,7 +1335,7 @@ fn _ranks_of(seq: List[Int], offs: List[Int], n: Int, n_machines: Int) -> List[I
     return rank^
 
 
-fn _pos_of(seq: List[Int], n: Int) -> List[Int]:
+def _pos_of(seq: List[Int], n: Int) -> List[Int]:
     """Index of each operation inside `seq`."""
     var at = List[Int]()
     for _ in range(n):
@@ -1346,7 +1346,7 @@ fn _pos_of(seq: List[Int], n: Int) -> List[Int]:
     return at^
 
 
-fn _seq_from_ranks(
+def _seq_from_ranks(
     machine_of: List[Int], rank: List[Int], n: Int, n_machines: Int
 ) -> List[Int]:
     """Machine sequences from caller-supplied ranks: ascending `rank`, ties by operation id.
@@ -1380,7 +1380,7 @@ fn _seq_from_ranks(
 # ── public: job shop ──────────────────────────────────────────────────────────
 
 
-fn jobshop_bound_flat(
+def jobshop_bound_flat(
     duration: List[Float64], machine_of: List[Int],
     n_jobs: Int, n_ops: Int, n_machines: Int
 ) -> JobShopBound:
@@ -1394,7 +1394,7 @@ fn jobshop_bound_flat(
     return _jssp_bound(duration, machine_of, n_jobs, n_ops, n_machines)
 
 
-fn jobshop_verify_flat(
+def jobshop_verify_flat(
     duration: List[Float64], machine_of: List[Int],
     n_jobs: Int, n_ops: Int, n_machines: Int, start: List[Float64]
 ) -> JobShopAudit:
@@ -1407,7 +1407,7 @@ fn jobshop_verify_flat(
     return _jssp_audit(duration, machine_of, n_jobs, n_ops, n_machines, start)
 
 
-fn jobshop_schedule_from_ranks_flat(
+def jobshop_schedule_from_ranks_flat(
     duration: List[Float64], machine_of: List[Int],
     n_jobs: Int, n_ops: Int, n_machines: Int, rank: List[Int]
 ) -> JobShopSchedule:
@@ -1476,7 +1476,7 @@ fn jobshop_schedule_from_ranks_flat(
     )
 
 
-fn _no_schedule(status: Int, cycle_op: Int, n_ordered: Int, n: Int) -> JobShopSchedule:
+def _no_schedule(status: Int, cycle_op: Int, n_ordered: Int, n: Int) -> JobShopSchedule:
     """A `JobShopSchedule` carrying no numbers — every list empty, every flag False."""
     return JobShopSchedule(
         status, False, False, False, SCHED_ABSENT, False, SCHED_ABSENT, False,
@@ -1485,7 +1485,7 @@ fn _no_schedule(status: Int, cycle_op: Int, n_ordered: Int, n: Int) -> JobShopSc
     )
 
 
-fn _no_result(status: Int, n: Int) -> JobShopResult:
+def _no_result(status: Int, n: Int) -> JobShopResult:
     """A `JobShopResult` carrying no numbers. A rejected request has no schedule at all."""
     return JobShopResult(
         status, False, False, False, SCHED_ABSENT, False, SCHED_ABSENT, False,
@@ -1494,7 +1494,7 @@ fn _no_result(status: Int, n: Int) -> JobShopResult:
     )
 
 
-fn jobshop_tabu_solve_flat(
+def jobshop_tabu_solve_flat(
     duration: List[Float64], machine_of: List[Int],
     n_jobs: Int, n_ops: Int, n_machines: Int,
     seed: Int, max_iters: Int, tabu_tenure: Int, stall_limit: Int
@@ -1803,7 +1803,7 @@ struct _Prec(Copyable, Movable):
     var succ_items: List[Int]
 
 
-fn _prec_of(pred_from: List[Int], pred_to: List[Int], n_acts: Int) -> _Prec:
+def _prec_of(pred_from: List[Int], pred_to: List[Int], n_acts: Int) -> _Prec:
     """Predecessor and successor adjacency, and the frozen topological order.
 
     `topological_sort` returning fewer than `n_acts` nodes IS the cycle certificate, and it
@@ -1856,7 +1856,7 @@ fn _prec_of(pred_from: List[Int], pred_to: List[Int], n_acts: Int) -> _Prec:
     return _Prec(True, -1, order^, pred_count^, pitems^, succ_count^, sitems^)
 
 
-fn _cp_forward(duration: List[Float64], prec: _Prec) -> List[Float64]:
+def _cp_forward(duration: List[Float64], prec: _Prec) -> List[Float64]:
     """Earliest start of every activity from the precedences alone — a longest-path DP."""
     var n = len(duration)
     var es = List[Float64]()
@@ -1874,7 +1874,7 @@ fn _cp_forward(duration: List[Float64], prec: _Prec) -> List[Float64]:
     return es^
 
 
-fn _cp_tail(duration: List[Float64], prec: _Prec) -> List[Float64]:
+def _cp_tail(duration: List[Float64], prec: _Prec) -> List[Float64]:
     """Longest path from each activity to the end, inclusive of its own duration.
 
     Computed over the REVERSE of the frozen topological order, which is a valid reverse
@@ -1895,7 +1895,7 @@ fn _cp_tail(duration: List[Float64], prec: _Prec) -> List[Float64]:
     return tail^
 
 
-fn _rcpsp_bound(
+def _rcpsp_bound(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int
 ) -> RcpspBound:
@@ -2032,7 +2032,7 @@ fn _rcpsp_bound(
 # ── RCPSP: the resource profile ───────────────────────────────────────────────
 
 
-fn _usage_at(
+def _usage_at(
     duration: List[Float64], demand: List[Float64], n_acts: Int, n_res: Int,
     start: List[Float64], placed: List[Bool], t: Float64, r: Int, skip: Int
 ) -> Float64:
@@ -2058,7 +2058,7 @@ fn _usage_at(
     return total
 
 
-fn _fits_at(
+def _fits_at(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     n_acts: Int, n_res: Int, start: List[Float64], placed: List[Bool], act: Int,
     t: Float64, mut work: Int
@@ -2102,7 +2102,7 @@ fn _fits_at(
     return True
 
 
-fn _rcpsp_sgs(
+def _rcpsp_sgs(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     n_acts: Int, n_res: Int, prec: _Prec, order: List[Int], mut work: Int
 ) -> _Sgs:
@@ -2171,7 +2171,7 @@ fn _rcpsp_sgs(
     return _Sgs(True, False, start^)
 
 
-fn _rcpsp_audit(
+def _rcpsp_audit(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int,
     start: List[Float64]
@@ -2281,7 +2281,7 @@ fn _rcpsp_audit(
 # ── public: RCPSP ─────────────────────────────────────────────────────────────
 
 
-fn rcpsp_bound_flat(
+def rcpsp_bound_flat(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int
 ) -> RcpspBound:
@@ -2295,7 +2295,7 @@ fn rcpsp_bound_flat(
     return _rcpsp_bound(duration, demand, capacity, pred_from, pred_to, n_acts, n_res)
 
 
-fn rcpsp_verify_flat(
+def rcpsp_verify_flat(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int,
     start: List[Float64]
@@ -2310,7 +2310,7 @@ fn rcpsp_verify_flat(
     )
 
 
-fn rcpsp_peak_usage_flat(
+def rcpsp_peak_usage_flat(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     n_acts: Int, n_res: Int, start: List[Float64]
 ) -> RcpspPeak:
@@ -2410,7 +2410,7 @@ fn rcpsp_peak_usage_flat(
     return RcpspPeak(MODEL_OK, n_res, n_over, True, span, peak^, when^, over^)
 
 
-fn _no_rcpsp(
+def _no_rcpsp(
     status: Int, cycle_act: Int, bad_act: Int, bad_res: Int, n_acts: Int
 ) -> RcpspResult:
     """An `RcpspResult` carrying no numbers — no schedule, no bound, no gap.
@@ -2427,7 +2427,7 @@ fn _no_rcpsp(
     )
 
 
-fn rcpsp_sgs_solve_flat(
+def rcpsp_sgs_solve_flat(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int,
     seed: Int, max_restarts: Int

@@ -58,7 +58,7 @@ comptime ERR_NUM: Int = 6  # #NUM!
 comptime ERR_NA: Int = 7  # #N/A
 
 
-fn error_name(code: Int) -> String:
+def error_name(code: Int) -> String:
     """The literal Excel spelling for an error code.
 
     @capability error_name
@@ -83,7 +83,7 @@ fn error_name(code: Int) -> String:
     return String("#UNKNOWN_ERR!")
 
 
-fn error_code_of(text: String) -> Int:
+def error_code_of(text: String) -> Int:
     """Parse an error literal to its code; 0 when `text` is not an error literal.
 
     @capability error_code_of
@@ -131,7 +131,7 @@ struct CellValue(Copyable, Movable):
     var d: Int
     var e: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.kind = VK_EMPTY
         self.num = 0.0
         self.text = String("")
@@ -143,59 +143,59 @@ struct CellValue(Copyable, Movable):
         self.e = 0
 
 
-fn cv_empty() -> CellValue:
+def cv_empty() -> CellValue:
     return CellValue()
 
 
-fn cv_num(x: Float64) -> CellValue:
+def cv_num(x: Float64) -> CellValue:
     var v = CellValue()
     v.kind = VK_NUM
     v.num = x
     return v^
 
 
-fn cv_text(s: String) -> CellValue:
+def cv_text(s: String) -> CellValue:
     var v = CellValue()
     v.kind = VK_TEXT
     v.text = s
     return v^
 
 
-fn cv_bool(b: Bool) -> CellValue:
+def cv_bool(b: Bool) -> CellValue:
     var v = CellValue()
     v.kind = VK_BOOL
     v.num = 1.0 if b else 0.0
     return v^
 
 
-fn cv_err(code: Int) -> CellValue:
+def cv_err(code: Int) -> CellValue:
     var v = CellValue()
     v.kind = VK_ERR
     v.err = code
     return v^
 
 
-fn cv_unsup(reason: String) -> CellValue:
+def cv_unsup(reason: String) -> CellValue:
     var v = CellValue()
     v.kind = VK_UNSUP
     v.text = reason
     return v^
 
 
-fn cv_pending(cell_index: Int) -> CellValue:
+def cv_pending(cell_index: Int) -> CellValue:
     var v = CellValue()
     v.kind = VK_PENDING
     v.a = cell_index
     return v^
 
 
-fn cv_cycle() -> CellValue:
+def cv_cycle() -> CellValue:
     var v = CellValue()
     v.kind = VK_CYCLE
     return v^
 
 
-fn cv_range(sheet: Int, r0: Int, c0: Int, r1: Int, c1: Int) -> CellValue:
+def cv_range(sheet: Int, r0: Int, c0: Int, r1: Int, c1: Int) -> CellValue:
     var v = CellValue()
     v.kind = VK_RANGE
     v.a = sheet
@@ -206,7 +206,7 @@ fn cv_range(sheet: Int, r0: Int, c0: Int, r1: Int, c1: Int) -> CellValue:
     return v^
 
 
-fn is_taint(v: CellValue) -> Bool:
+def is_taint(v: CellValue) -> Bool:
     """True when `v` must dominate any computation it touches (in priority
     order PENDING > UNSUP > CYCLE; plain errors are NOT taints — they are
     answers)."""
@@ -214,7 +214,7 @@ fn is_taint(v: CellValue) -> Bool:
 
 
 # ── ASCII case folding (Excel text comparisons are case-insensitive) ─────────
-fn fold_ascii(s: String) -> String:
+def fold_ascii(s: String) -> String:
     """Lower-case ASCII letters; other bytes pass through untouched."""
     var bs = s.as_bytes()
     var buf = List[UInt8]()
@@ -226,7 +226,7 @@ fn fold_ascii(s: String) -> String:
     return _bs_str(buf)
 
 
-fn text_equal_ci(a: String, b: String) -> Bool:
+def text_equal_ci(a: String, b: String) -> Bool:
     """Case-insensitive (ASCII) equality, Excel's `=` on text."""
     var ab = a.as_bytes()
     var bb = b.as_bytes()
@@ -244,7 +244,7 @@ fn text_equal_ci(a: String, b: String) -> Bool:
     return True
 
 
-fn text_cmp_ci(a: String, b: String) -> Int:
+def text_cmp_ci(a: String, b: String) -> Int:
     """Case-insensitive (ASCII) ordering: -1, 0, 1."""
     var ab = a.as_bytes()
     var bb = b.as_bytes()
@@ -268,7 +268,7 @@ fn text_cmp_ci(a: String, b: String) -> Int:
 
 
 # ── Wildcard match (COUNTIF/VLOOKUP-exact/MATCH text criteria) ────────────────
-fn wildcard_match(pattern: String, candidate: String) -> Bool:
+def wildcard_match(pattern: String, candidate: String) -> Bool:
     """Excel wildcard semantics: `*` any run, `?` one char, `~` escapes the
     next wildcard. Case-insensitive. Iterative two-pointer algorithm with
     backtracking on the last `*` — no recursion, O(len(p)*len(c)) worst case.
@@ -311,7 +311,7 @@ fn wildcard_match(pattern: String, candidate: String) -> Bool:
     return pi == np
 
 
-fn has_wildcard(s: String) -> Bool:
+def has_wildcard(s: String) -> Bool:
     var bs = s.as_bytes()
     for i in range(len(bs)):
         var b = Int(bs[i])
@@ -321,7 +321,7 @@ fn has_wildcard(s: String) -> Bool:
 
 
 # ── Number → text, Excel &-conversion ─────────────────────────────────────────
-fn _round_digits_15(mut digits: List[Int], mut exp10: Int):
+def _round_digits_15(mut digits: List[Int], mut exp10: Int):
     """Round a decimal digit string (value = 0.d0 d1 ... * 10^exp10) to 15
     significant digits in place, string-level, propagating carries."""
     if len(digits) <= 15:
@@ -351,7 +351,7 @@ fn _round_digits_15(mut digits: List[Int], mut exp10: Int):
     digits = out^
 
 
-fn _digits_of_shortest(x: Float64, mut digits: List[Int], mut exp10: Int) -> Bool:
+def _digits_of_shortest(x: Float64, mut digits: List[Int], mut exp10: Int) -> Bool:
     """Extract the decimal digits of String(x) — Mojo's shortest round-trip
     formatting (verified exact in hostio/wire_json.mojo) — normalised so that
     value = 0.digits * 10^exp10 with digits[0] != 0. False on any byte the
@@ -417,7 +417,7 @@ fn _digits_of_shortest(x: Float64, mut digits: List[Int], mut exp10: Int) -> Boo
     return True
 
 
-fn num_to_text(x: Float64) -> String:
+def num_to_text(x: Float64) -> String:
     """Excel's number-to-text conversion (the `&` operator, General-style):
     round to 15 significant digits, plain notation for 1e-4 <= |x| < 1e21,
     otherwise scientific `mE+NN`. -0.0 renders as "0".
@@ -484,7 +484,7 @@ fn num_to_text(x: Float64) -> String:
     return out^
 
 
-fn value_to_display(v: CellValue) -> String:
+def value_to_display(v: CellValue) -> String:
     """Human-readable form for reports and cycle/mismatch messages."""
     if v.kind == VK_EMPTY:
         return String("<empty>")

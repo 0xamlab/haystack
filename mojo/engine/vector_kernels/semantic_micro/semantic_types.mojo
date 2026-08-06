@@ -82,15 +82,15 @@ struct EmbeddingTable(Copyable, Movable):
     var values:     UnsafePointer[Float32]
     var vocab_size: UInt32
 
-    fn __init__(out self):
-        self.values     = UnsafePointer[Float32]()
+    def __init__(out self):
+        self.values     = UnsafePointer[Float32](unsafe_from_address=0)
         self.vocab_size = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.values     = copy.values
         self.vocab_size = copy.vocab_size
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.values     = take.values
         self.vocab_size = take.vocab_size
 
@@ -108,19 +108,19 @@ struct LinearLayer(Copyable, Movable):
     var in_dim:  UInt16
     var out_dim: UInt16
 
-    fn __init__(out self):
-        self.weight  = UnsafePointer[Float32]()
-        self.bias    = UnsafePointer[Float32]()
+    def __init__(out self):
+        self.weight  = UnsafePointer[Float32](unsafe_from_address=0)
+        self.bias    = UnsafePointer[Float32](unsafe_from_address=0)
         self.in_dim  = 0
         self.out_dim = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.weight  = copy.weight
         self.bias    = copy.bias
         self.in_dim  = copy.in_dim
         self.out_dim = copy.out_dim
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.weight  = take.weight
         self.bias    = take.bias
         self.in_dim  = take.in_dim
@@ -157,7 +157,7 @@ struct SemanticModel(Movable):
     var nn_token_ids: UnsafePointer[UInt32]   # [vocab_size × NN_K]
     var nn_scores:    UnsafePointer[Float32]  # [vocab_size × NN_K]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.embeddings   = EmbeddingTable()
         self.intent_fc1   = LinearLayer()
         self.intent_fc2   = LinearLayer()
@@ -165,10 +165,10 @@ struct SemanticModel(Movable):
         self.agg_fc2      = LinearLayer()
         self.family_fc1   = LinearLayer()
         self.family_fc2   = LinearLayer()
-        self.nn_token_ids = UnsafePointer[UInt32]()
-        self.nn_scores    = UnsafePointer[Float32]()
+        self.nn_token_ids = UnsafePointer[UInt32](unsafe_from_address=0)
+        self.nn_scores    = UnsafePointer[Float32](unsafe_from_address=0)
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.embeddings   = take.embeddings
         self.intent_fc1   = take.intent_fc1
         self.intent_fc2   = take.intent_fc2
@@ -192,19 +192,19 @@ struct SemanticQuery(Copyable, Movable):
     var source_id:   UInt16   # resolver SOURCE_* constant (hint, not binding)
     var role_id:     UInt8    # resolver ROLE_* constant
 
-    fn __init__(out self):
-        self.token_ids   = UnsafePointer[UInt32]()
+    def __init__(out self):
+        self.token_ids   = UnsafePointer[UInt32](unsafe_from_address=0)
         self.token_count = 0
         self.source_id   = 0
         self.role_id     = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.token_ids   = copy.token_ids
         self.token_count = copy.token_count
         self.source_id   = copy.source_id
         self.role_id     = copy.role_id
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.token_ids   = take.token_ids
         self.token_count = take.token_count
         self.source_id   = take.source_id
@@ -231,7 +231,7 @@ struct SemanticHints(Copyable, Movable):
     var family_class: UInt8
     var family_conf:  Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.intent_class = HINT_NONE
         self.intent_conf  = Float32(0.0)
         self.agg_class    = HINT_NONE
@@ -239,7 +239,7 @@ struct SemanticHints(Copyable, Movable):
         self.family_class = HINT_NONE
         self.family_conf  = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.intent_class = copy.intent_class
         self.intent_conf  = copy.intent_conf
         self.agg_class    = copy.agg_class
@@ -247,7 +247,7 @@ struct SemanticHints(Copyable, Movable):
         self.family_class = copy.family_class
         self.family_conf  = copy.family_conf
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.intent_class = take.intent_class
         self.intent_conf  = take.intent_conf
         self.agg_class    = take.agg_class
@@ -256,13 +256,13 @@ struct SemanticHints(Copyable, Movable):
         self.family_conf  = take.family_conf
 
     @always_inline
-    fn has_intent(self) -> Bool:
+    def has_intent(self) -> Bool:
         return self.intent_class != HINT_NONE
 
     @always_inline
-    fn has_agg(self) -> Bool:
+    def has_agg(self) -> Bool:
         return self.agg_class != HINT_NONE
 
     @always_inline
-    fn has_family(self) -> Bool:
+    def has_family(self) -> Bool:
         return self.family_class != HINT_NONE

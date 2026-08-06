@@ -240,12 +240,12 @@ struct _Parsed(Copyable, Movable):
     var s: Int
 
 
-fn float_text_version() -> String:
+def float_text_version() -> String:
     """Identity of this spelling. Bump only alongside a deliberate text change."""
     return FLOAT_TEXT_VERSION
 
 
-fn _limbs_from_u64(value: UInt64) -> List[UInt64]:
+def _limbs_from_u64(value: UInt64) -> List[UInt64]:
     var out = List[UInt64]()
     var v = value
     if v == 0:
@@ -257,7 +257,7 @@ fn _limbs_from_u64(value: UInt64) -> List[UInt64]:
     return out^
 
 
-fn _mul_small(mut limbs: List[UInt64], k: UInt64):
+def _mul_small(mut limbs: List[UInt64], k: UInt64):
     """`limbs *= k` for k < 2^30 (or 1e9). No wrap: see the base-1e9 note above."""
     var carry: UInt64 = 0
     for i in range(len(limbs)):
@@ -269,7 +269,7 @@ fn _mul_small(mut limbs: List[UInt64], k: UInt64):
         carry = carry // LIMB_BASE
 
 
-fn _add_small(mut limbs: List[UInt64], k: UInt64):
+def _add_small(mut limbs: List[UInt64], k: UInt64):
     """`limbs += k` for k < 1e9."""
     var carry = k
     var i = 0
@@ -284,7 +284,7 @@ fn _add_small(mut limbs: List[UInt64], k: UInt64):
         i += 1
 
 
-fn _mul_pow2(mut limbs: List[UInt64], e: Int):
+def _mul_pow2(mut limbs: List[UInt64], e: Int):
     """`limbs *= 2^e`, e >= 0. Callers derive e from a Float64 exponent, so e <= 971."""
     var remaining = e
     while remaining >= CHUNK_POW2:
@@ -297,7 +297,7 @@ fn _mul_pow2(mut limbs: List[UInt64], e: Int):
         _mul_small(limbs, k)
 
 
-fn _mul_pow5(mut limbs: List[UInt64], e: Int):
+def _mul_pow5(mut limbs: List[UInt64], e: Int):
     """`limbs *= 5^e`, e >= 0. Bounded by the same exponent field: e <= 1076."""
     var remaining = e
     while remaining >= CHUNK_POW5:
@@ -310,7 +310,7 @@ fn _mul_pow5(mut limbs: List[UInt64], e: Int):
         _mul_small(limbs, k)
 
 
-fn _mul_pow10(mut limbs: List[UInt64], e: Int):
+def _mul_pow10(mut limbs: List[UInt64], e: Int):
     """`limbs *= 10^e`, e >= 0. Whole limbs shift; the remainder is one small multiply."""
     if e <= 0:
         return
@@ -330,14 +330,14 @@ fn _mul_pow10(mut limbs: List[UInt64], e: Int):
         _mul_small(limbs, k)
 
 
-fn _is_zero(limbs: List[UInt64]) -> Bool:
+def _is_zero(limbs: List[UInt64]) -> Bool:
     for i in range(len(limbs)):
         if limbs[i] != 0:
             return False
     return True
 
 
-fn _digit_count(limbs: List[UInt64]) -> Int:
+def _digit_count(limbs: List[UInt64]) -> Int:
     """Decimal digits in `limbs`; 1 for zero."""
     var top = len(limbs) - 1
     while top > 0 and limbs[top] == 0:
@@ -353,7 +353,7 @@ fn _digit_count(limbs: List[UInt64]) -> Int:
     return top * LIMB_DIGITS + head_digits
 
 
-fn _cmp_limbs(a: List[UInt64], b: List[UInt64]) -> Int:
+def _cmp_limbs(a: List[UInt64], b: List[UInt64]) -> Int:
     var ta = len(a) - 1
     while ta > 0 and a[ta] == 0:
         ta -= 1
@@ -377,7 +377,7 @@ fn _cmp_limbs(a: List[UInt64], b: List[UInt64]) -> Int:
     return 0
 
 
-fn _cmp_dec(a: _Dec, b: _Dec) -> Int:
+def _cmp_dec(a: _Dec, b: _Dec) -> Int:
     """Exact three-way compare of two non-negative decimals. No rounding anywhere.
 
     The magnitude shortcut is what BOUNDS the scaling: a nonzero integer with `d`
@@ -412,7 +412,7 @@ fn _cmp_dec(a: _Dec, b: _Dec) -> Int:
     return _cmp_limbs(a.limbs, bl)
 
 
-fn _add_limbs(mut acc: List[UInt64], other: List[UInt64]):
+def _add_limbs(mut acc: List[UInt64], other: List[UInt64]):
     """`acc += other`. Both are base-1e9, so a sum of two limbs plus carry cannot wrap."""
     var carry: UInt64 = 0
     var n = len(other) if len(other) > len(acc) else len(acc)
@@ -431,7 +431,7 @@ fn _add_limbs(mut acc: List[UInt64], other: List[UInt64]):
         carry = carry // LIMB_BASE
 
 
-fn _mul_u64(base: List[UInt64], factor: UInt64) -> List[UInt64]:
+def _mul_u64(base: List[UInt64], factor: UInt64) -> List[UInt64]:
     """`base * factor` for factor < 1e18, as two limb-wide multiplies and one add.
 
     `_mul_small` alone cannot do this: its factor must stay under ~2^30 or `limb * k`
@@ -455,7 +455,7 @@ fn _mul_u64(base: List[UInt64], factor: UInt64) -> List[UInt64]:
     return out^
 
 
-fn _common_power(e2: Int) -> _Dec:
+def _common_power(e2: Int) -> _Dec:
     """`2^e2` as an exact decimal, for e2 in [-1078, 971].
 
     For e2 >= 0 that is the integer `2^e2`. For e2 < 0 it is `5^(-e2) * 10^(e2)`, exact
@@ -476,13 +476,13 @@ fn _common_power(e2: Int) -> _Dec:
     return _Dec(limbs^, e2)
 
 
-fn _exact_dec(m: UInt64, e2: Int) -> _Dec:
+def _exact_dec(m: UInt64, e2: Int) -> _Dec:
     """`m * 2^e2` as an exact decimal, for m < 1e18 and e2 in [-1078, 971]."""
     var power = _common_power(e2)
     return _Dec(_mul_u64(power.limbs, m), power.s)
 
 
-fn _append_limb_digits(mut out: List[UInt8], value: UInt64, pad: Bool):
+def _append_limb_digits(mut out: List[UInt8], value: UInt64, pad: Bool):
     var divisor: UInt64 = 100000000
     var started = pad
     for _ in range(LIMB_DIGITS):
@@ -496,7 +496,7 @@ fn _append_limb_digits(mut out: List[UInt8], value: UInt64, pad: Bool):
         out.append(0)
 
 
-fn _digits_msb(limbs: List[UInt64]) -> List[UInt8]:
+def _digits_msb(limbs: List[UInt64]) -> List[UInt8]:
     """Decimal digits of `limbs`, most significant first, no leading zeros."""
     var out = List[UInt8]()
     if len(limbs) == 0:
@@ -513,7 +513,7 @@ fn _digits_msb(limbs: List[UInt64]) -> List[UInt8]:
     return out^
 
 
-fn _limbs_from_digits(digits: List[UInt8]) -> List[UInt64]:
+def _limbs_from_digits(digits: List[UInt8]) -> List[UInt64]:
     """Digits (MSB first) to limbs, nine at a time so the cost is per limb not per digit."""
     var limbs = List[UInt64]()
     limbs.append(0)
@@ -533,7 +533,7 @@ fn _limbs_from_digits(digits: List[UInt8]) -> List[UInt64]:
     return limbs^
 
 
-fn _decompose(value: Float64) -> _Bits:
+def _decompose(value: Float64) -> _Bits:
     """|value| = m * 2^e2 for a finite `value`. m == 0 exactly for +-0.0."""
     var bits = bitcast[DType.uint64](value)
     var neg = (bits >> 63) != 0
@@ -544,7 +544,7 @@ fn _decompose(value: Float64) -> _Bits:
     return _Bits(neg, frac | (UInt64(1) << 52), be - 1075, be)
 
 
-fn _bracket(bits: _Bits) -> _Bracket:
+def _bracket(bits: _Bits) -> _Bracket:
     """|value| and the two exact halfway points around it. Requires m > 0.
 
     All three are expressed over the SAME power, `2^(e2-2)`, so one expansion serves them
@@ -573,11 +573,11 @@ fn _bracket(bits: _Bits) -> _Bracket:
     )
 
 
-fn _cand_dec(cand: _Cand) -> _Dec:
+def _cand_dec(cand: _Cand) -> _Dec:
     return _Dec(_limbs_from_digits(cand.digits), cand.decexp - len(cand.digits))
 
 
-fn _names_value(cand: _Cand, lo: _Dec, hi: _Dec, tie_wins: Bool) -> Bool:
+def _names_value(cand: _Cand, lo: _Dec, hi: _Dec, tie_wins: Bool) -> Bool:
     """True when a correctly-rounded parser maps `cand` to the value `lo`/`hi` bound.
 
     Inside the interval is the easy part. The boundary is the part worth writing down: a
@@ -609,7 +609,7 @@ fn _names_value(cand: _Cand, lo: _Dec, hi: _Dec, tie_wins: Bool) -> Bool:
     return True
 
 
-fn _names_shortest_at(
+def _names_shortest_at(
     digits: List[UInt8], decexp: Int, p: Int, lo: _Dec, hi: _Dec, tie_wins: Bool
 ) -> _Cand:
     """The `p`-digit decimal that names the value, or `valid = False` if none does.
@@ -633,7 +633,7 @@ fn _names_shortest_at(
     return _Cand(List[UInt8](), 0, False)
 
 
-fn _truncate(digits: List[UInt8], decexp: Int, p: Int) -> _Cand:
+def _truncate(digits: List[UInt8], decexp: Int, p: Int) -> _Cand:
     var out = List[UInt8]()
     var take = p if p < len(digits) else len(digits)
     for i in range(take):
@@ -641,7 +641,7 @@ fn _truncate(digits: List[UInt8], decexp: Int, p: Int) -> _Cand:
     return _Cand(out^, decexp, True)
 
 
-fn _incremented(cand: _Cand) -> _Cand:
+def _incremented(cand: _Cand) -> _Cand:
     """`cand` plus one in its last place, keeping the digit count."""
     var out = List[UInt8]()
     for i in range(len(cand.digits)):
@@ -665,7 +665,7 @@ fn _incremented(cand: _Cand) -> _Cand:
     return _Cand(rolled^, cand.decexp + 1, True)
 
 
-fn _wants_round_up(digits: List[UInt8], p: Int, last: UInt8) -> Bool:
+def _wants_round_up(digits: List[UInt8], p: Int, last: UInt8) -> Bool:
     """Round-half-even on the EXACT tail, so no tie is decided by a truncated remainder."""
     if p >= len(digits):
         return False
@@ -679,7 +679,7 @@ fn _wants_round_up(digits: List[UInt8], p: Int, last: UInt8) -> Bool:
     return (last % 2) == 1
 
 
-fn _format(neg: Bool, digits: List[UInt8], decexp: Int) -> String:
+def _format(neg: Bool, digits: List[UInt8], decexp: Int) -> String:
     """The frozen spelling of `0.digits * 10^decexp`.
 
     Trailing zeros are stripped first. That does not change the decimal's value, so it
@@ -731,7 +731,7 @@ fn _format(neg: Bool, digits: List[UInt8], decexp: Int) -> String:
     return out
 
 
-fn float_class(value: Float64) -> Int:
+def float_class(value: Float64) -> Int:
     """One of FLOAT_FINITE / FLOAT_NAN / FLOAT_POS_INF / FLOAT_NEG_INF."""
     if isnan(value):
         return FLOAT_NAN
@@ -740,7 +740,7 @@ fn float_class(value: Float64) -> Int:
     return FLOAT_FINITE
 
 
-fn float_class_name(code: Int) -> String:
+def float_class_name(code: Int) -> String:
     """Name for a class code; `unknown` for anything outside canonical's 700-709."""
     if code == FLOAT_FINITE:
         return "finite"
@@ -753,7 +753,7 @@ fn float_class_name(code: Int) -> String:
     return "unknown"
 
 
-fn float_text(value: Float64) -> FloatText:
+def float_text(value: Float64) -> FloatText:
     """Full report: the frozen text, plus what it is and is not claiming.
 
     For a finite value the text is the shortest decimal that provably round-trips, and
@@ -831,7 +831,7 @@ fn float_text(value: Float64) -> FloatText:
     )
 
 
-fn canonical_float(value: Float64) -> String:
+def canonical_float(value: Float64) -> String:
     """The one frozen text for `value`. Always a valid JSON value.
 
     Finite: the shortest round-tripping decimal, `1.0` not `1`, `-0.0` sign kept.
@@ -848,7 +848,7 @@ fn canonical_float(value: Float64) -> String:
     return float_text(value).text
 
 
-fn hash_aligned_float(value: Float64) -> String:
+def hash_aligned_float(value: Float64) -> String:
     """Text whose equality classes match `canonical.encode.write_float`, not the bits.
 
     `write_float` normalises `-0.0` to `+0.0` (they compare equal, so they must hash
@@ -873,7 +873,7 @@ fn hash_aligned_float(value: Float64) -> String:
     return float_text(value).text
 
 
-fn canonical_float_texts(values: List[Float64]) -> List[String]:
+def canonical_float_texts(values: List[Float64]) -> List[String]:
     """`canonical_float` over a whole list. No count argument, so no count to get wrong.
 
     @capability canonical_float_texts
@@ -887,7 +887,7 @@ fn canonical_float_texts(values: List[Float64]) -> List[String]:
     return out^
 
 
-fn canonical_float_array(values: List[Float64]) -> String:
+def canonical_float_array(values: List[Float64]) -> String:
     """The list as one JSON array, e.g. `[1.0,-0.0,null]`. Parseable by construction.
 
     @capability canonical_float_array
@@ -904,7 +904,7 @@ fn canonical_float_array(values: List[Float64]) -> String:
     return out
 
 
-fn _parse_decimal(text: String) -> _Parsed:
+def _parse_decimal(text: String) -> _Parsed:
     """Scan text into an exact decimal. Rejects rather than salvages.
 
     Failing open is the trap here: a scanner that reads `1.0garbage` as 1.0 would let
@@ -982,7 +982,7 @@ fn _parse_decimal(text: String) -> _Parsed:
     return _Parsed(True, neg, _limbs_from_digits(digits), exponent - frac_digits)
 
 
-fn round_trips(value: Float64, text: String) -> Bool:
+def round_trips(value: Float64, text: String) -> Bool:
     """True when EVERY correctly-rounded parser maps `text` to `value`, bit for bit.
 
     This is the property that distinguishes shortest-round-trip from merely-close, and it

@@ -23,7 +23,7 @@ from std.random import random_float64
 # ── Grid utilities ─────────────────────────────────────────────────────────────
 
 
-fn grid_create(rows: Int, cols: Int) -> List[List[Int]]:
+def grid_create(rows: Int, cols: Int) -> List[List[Int]]:
     """Create an empty (all-zero) grid of rows × cols."""
     var grid = List[List[Int]]()
     for _ in range(rows):
@@ -34,7 +34,7 @@ fn grid_create(rows: Int, cols: Int) -> List[List[Int]]:
     return grid^
 
 
-fn grid_randomize(
+def grid_randomize(
     rows: Int, cols: Int, density: Float64
 ) -> List[List[Int]]:
     """Random grid with given density of alive cells.
@@ -53,7 +53,7 @@ fn grid_randomize(
     return grid^
 
 
-fn count_alive(grid: List[List[Int]]) -> Int:
+def count_alive(grid: List[List[Int]]) -> Int:
     """Count living cells in 2D grid."""
     var total: Int = 0
     for i in range(len(grid)):
@@ -63,7 +63,7 @@ fn count_alive(grid: List[List[Int]]) -> Int:
     return total
 
 
-fn grid_to_density(grid: List[List[Int]]) -> Float64:
+def grid_to_density(grid: List[List[Int]]) -> Float64:
     """Fraction of alive cells in the grid."""
     var rows = len(grid)
     if rows == 0:
@@ -79,7 +79,7 @@ fn grid_to_density(grid: List[List[Int]]) -> Float64:
 # ── Neighbor counting ─────────────────────────────────────────────────────────
 
 
-fn count_neighbors(
+def count_neighbors(
     grid: List[List[Int]],
     row: Int,
     col: Int,
@@ -113,7 +113,7 @@ fn count_neighbors(
 # ── Game of Life ───────────────────────────────────────────────────────────────
 
 
-fn game_of_life_step(
+def game_of_life_step(
     grid: List[List[Int]], rows: Int, cols: Int
 ) -> List[List[Int]]:
     """One step of Conway's Game of Life.
@@ -148,7 +148,7 @@ fn game_of_life_step(
 # ── Still life detection ──────────────────────────────────────────────────────
 
 
-fn is_still_life(
+def is_still_life(
     grid: List[List[Int]], rows: Int, cols: Int
 ) -> Bool:
     """Check if grid is a still life (doesn't change after one step)."""
@@ -168,7 +168,7 @@ fn is_still_life(
 # ── Population history ────────────────────────────────────────────────────────
 
 
-fn population_history(
+def population_history(
     initial: List[List[Int]], rows: Int, cols: Int, steps: Int
 ) -> List[Int]:
     """Track population count over generations.
@@ -203,7 +203,7 @@ fn population_history(
 # ── Elementary cellular automata ───────────────────────────────────────────────
 
 
-fn rule_lookup(left: Int, center: Int, right: Int, rule: Int) -> Int:
+def rule_lookup(left: Int, center: Int, right: Int, rule: Int) -> Int:
     """Look up next state from Wolfram rule number.
 
     The neighborhood (left, center, right) forms a 3-bit number.
@@ -214,7 +214,7 @@ fn rule_lookup(left: Int, center: Int, right: Int, rule: Int) -> Int:
     return (rule >> idx) & 1
 
 
-fn elementary_ca_step(state: List[Int], rule: Int) -> List[Int]:
+def elementary_ca_step(state: List[Int], rule: Int) -> List[Int]:
     """One step of 1D elementary cellular automaton (Wolfram rule).
 
     Boundaries are treated as 0.
@@ -235,7 +235,7 @@ fn elementary_ca_step(state: List[Int], rule: Int) -> List[Int]:
     return new_state^
 
 
-fn run_elementary_ca(
+def run_elementary_ca(
     initial: List[Int], rule: Int, steps: Int
 ) -> List[List[Int]]:
     """Run 1D CA for multiple steps. Returns all states including initial.

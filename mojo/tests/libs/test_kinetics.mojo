@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from kinetics import reaction_rate_first_order, reaction_rate_second_order, arrhenius_rate_constant, half_life_first_order, half_life_second_order, concentration_first_order, activation_energy, collision_frequency, michaelis_menten_rate, turnover_number
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

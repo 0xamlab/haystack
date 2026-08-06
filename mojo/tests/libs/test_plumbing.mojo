@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from plumbing import pipe_flow_velocity, reynolds_number, friction_factor_laminar, head_loss_darcy, head_loss_minor, total_dynamic_head, pump_power, water_demand_fixture_units, pipe_sizing_velocity_method, thermal_expansion_pipe, water_hammer_pressure, drainage_slope_minimum
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

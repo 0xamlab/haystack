@@ -24,7 +24,7 @@ from std.math import abs as fabs, pow, log
 # ── melt_value ───────────────────────────────────────────────────────────────
 
 
-fn melt_value(
+def melt_value(
     metal_weight_oz: Float64, metal_price_per_oz: Float64
 ) -> Float64:
     """Melt value: MV = weight * price.
@@ -42,7 +42,7 @@ fn melt_value(
 # ── premium_over_melt ────────────────────────────────────────────────────────
 
 
-fn premium_over_melt(
+def premium_over_melt(
     market_price: Float64, melt_val: Float64
 ) -> Float64:
     """Premium over melt: Premium = (market - melt) / melt * 100 (%).
@@ -62,7 +62,7 @@ fn premium_over_melt(
 # ── grade_numeric_to_scale ───────────────────────────────────────────────────
 
 
-fn grade_numeric_to_scale(sheldon_grade: Float64) -> Float64:
+def grade_numeric_to_scale(sheldon_grade: Float64) -> Float64:
     """Return Sheldon grade directly (0–70 scale).
 
     Args:
@@ -81,7 +81,7 @@ fn grade_numeric_to_scale(sheldon_grade: Float64) -> Float64:
 # ── population_scarcity ──────────────────────────────────────────────────────
 
 
-fn population_scarcity(
+def population_scarcity(
     certified_count: Float64, total_mintage: Float64
 ) -> Float64:
     """Population scarcity: Scarcity = certified / mintage * 100 (%).
@@ -101,7 +101,7 @@ fn population_scarcity(
 # ── annual_return ────────────────────────────────────────────────────────────
 
 
-fn annual_return(
+def annual_return(
     purchase_price: Float64, current_price: Float64, years: Float64
 ) -> Float64:
     """Annualized return: R = ((current/purchase)^(1/years) - 1) * 100.
@@ -125,7 +125,7 @@ fn annual_return(
 # ── insurance_value ──────────────────────────────────────────────────────────
 
 
-fn insurance_value(
+def insurance_value(
     market_price: Float64, coverage_factor: Float64
 ) -> Float64:
     """Insurance value: IV = price * factor.
@@ -143,7 +143,7 @@ fn insurance_value(
 # ── mintage_per_capita ───────────────────────────────────────────────────────
 
 
-fn mintage_per_capita(
+def mintage_per_capita(
     mintage: Float64, population: Float64
 ) -> Float64:
     """Mintage per capita: MPC = mintage / population.
@@ -163,7 +163,7 @@ fn mintage_per_capita(
 # ── survival_rate_estimate ───────────────────────────────────────────────────
 
 
-fn survival_rate_estimate(
+def survival_rate_estimate(
     surviving: Float64, original_mintage: Float64
 ) -> Float64:
     """Survival rate: SR = surviving / original * 100 (%).
@@ -183,7 +183,7 @@ fn survival_rate_estimate(
 # ── price_trend ──────────────────────────────────────────────────────────────
 
 
-fn price_trend(
+def price_trend(
     prices_avg_old: Float64, prices_avg_new: Float64
 ) -> Float64:
     """Price trend: Trend = (new - old) / old * 100 (%).
@@ -203,7 +203,7 @@ fn price_trend(
 # ── auction_fee ──────────────────────────────────────────────────────────────
 
 
-fn auction_fee(
+def auction_fee(
     hammer_price: Float64, buyer_premium_pct: Float64
 ) -> Float64:
     """Auction buyer's premium: Fee = hammer * premium / 100.
@@ -221,7 +221,7 @@ fn auction_fee(
 # ── total_cost_acquisition ───────────────────────────────────────────────────
 
 
-fn total_cost_acquisition(
+def total_cost_acquisition(
     hammer: Float64, premium: Float64, tax_rate: Float64
 ) -> Float64:
     """Total acquisition cost: Total = hammer*(1+premium/100)*(1+tax/100).
@@ -240,7 +240,7 @@ fn total_cost_acquisition(
 # ── bullion_content_troy_oz ──────────────────────────────────────────────────
 
 
-fn bullion_content_troy_oz(
+def bullion_content_troy_oz(
     weight_grams: Float64, purity: Float64
 ) -> Float64:
     """Bullion content in troy ounces: Content = weight * purity / 31.1035.

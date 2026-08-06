@@ -36,7 +36,7 @@ from columnar.dictionary import (
 )
 
 
-fn build_column(n_rows: Int, n_distinct: Int, label_bytes: Int) -> List[String]:
+def build_column(n_rows: Int, n_distinct: Int, label_bytes: Int) -> List[String]:
     """`n_rows` rows drawn round-robin from `n_distinct` labels of `label_bytes` bytes.
 
     Round-robin rather than random so the column, the dictionary and therefore every
@@ -54,7 +54,7 @@ fn build_column(n_rows: Int, n_distinct: Int, label_bytes: Int) -> List[String]:
     return out^
 
 
-fn build_mask(n_rows: Int) -> List[Bool]:
+def build_mask(n_rows: Int) -> List[Bool]:
     """Every seventh row absent, so nulls are exercised at every size."""
     var mask = List[Bool]()
     for i in range(n_rows):
@@ -62,7 +62,7 @@ fn build_mask(n_rows: Int) -> List[Bool]:
     return mask^
 
 
-fn expected_distinct(n_rows: Int, n_distinct: Int, mask: List[Bool]) -> Int:
+def expected_distinct(n_rows: Int, n_distinct: Int, mask: List[Bool]) -> Int:
     """Labels that appear in at least one PRESENT row.
 
     Not `n_distinct`. An absent row contributes nothing to the dictionary, so when the
@@ -84,7 +84,7 @@ fn expected_distinct(n_rows: Int, n_distinct: Int, mask: List[Bool]) -> Int:
     return total
 
 
-fn main():
+def main():
     print("measure_columnar_dictionary — footprint sweep and throughput, compiled")
     print("")
 

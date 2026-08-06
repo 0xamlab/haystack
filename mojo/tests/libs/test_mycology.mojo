@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from mycology import spore_dispersal_distance, mycelial_growth_rate, fungal_biomass, sporulation_index, infection_efficiency, latent_period, epidemic_progress_rate, spore_germination_prob, colony_diameter, competitive_exclusion_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -53,38 +53,38 @@ from survival_analysis.base import (
 )
 
 
-fn _f(*v: Float64) -> List[Float64]:
+def _f(*v: Float64) -> List[Float64]:
     var o = List[Float64]()
     for i in range(len(v)):
         o.append(v[i])
     return o^
 
 
-fn _i(*v: Int) -> List[Int]:
+def _i(*v: Int) -> List[Int]:
     var o = List[Int]()
     for i in range(len(v)):
         o.append(v[i])
     return o^
 
 
-fn _close(got: Float64, want: Float64, ulps: Float64) -> Bool:
+def _close(got: Float64, want: Float64, ulps: Float64) -> Bool:
     var slop = ulps * SA_DBL_EPSILON * fabs(want)
     if slop < ulps * SA_DBL_EPSILON:
         slop = ulps * SA_DBL_EPSILON
     return fabs(got - want) <= slop
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var z: Float64 = 0.0
     return z / z
 
 
-fn _inf() -> Float64:
+def _inf() -> Float64:
     var z: Float64 = 0.0
     return 1.0 / z
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[survival_analysis.base] hand-written known values")

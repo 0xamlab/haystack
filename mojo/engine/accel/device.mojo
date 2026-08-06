@@ -110,7 +110,7 @@ struct DeviceProbe(Copyable, Movable):
     var status: Int
 
 
-fn accel_has_device() -> Bool:
+def accel_has_device() -> Bool:
     """True when the toolchain reports an accelerator on this host.
 
     Says nothing about whether a kernel can RUN on it — see the three states in the module docstring.
@@ -132,7 +132,7 @@ fn accel_has_device() -> Bool:
         return has_accelerator()
 
 
-fn accel_device_name_len() -> Int:
+def accel_device_name_len() -> Int:
     """Length of the accelerator's name, or 0 when there is none.
 
     The LENGTH rather than the name. A `String` return would be fine for the contract, but the name
@@ -163,7 +163,7 @@ fn accel_device_name_len() -> Int:
             return 0
 
 
-fn accel_device_probe() -> DeviceProbe:
+def accel_device_probe() -> DeviceProbe:
     """The full capability answer, without compiling a shader.
 
     @capability accel_device_probe

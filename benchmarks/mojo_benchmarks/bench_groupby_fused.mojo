@@ -59,11 +59,11 @@ comptime REPS: Int = 2
 comptime N_ROWS: Int = 10_000_000
 
 
-fn _lcg_next(state: UInt64) -> UInt64:
+def _lcg_next(state: UInt64) -> UInt64:
     return state * 6364136223846793005 + 1442695040888963407
 
 
-fn _batch(n_rows: Int, n_groups: Int) -> RecordBatch:
+def _batch(n_rows: Int, n_groups: Int) -> RecordBatch:
     """k in 0..n_groups-1; v1/v2/v3 integer-valued so sums compare exactly."""
     var state: UInt64 = 0x9E3779B97F4A7C15
     var k = List[Float64](capacity=n_rows)
@@ -92,7 +92,7 @@ fn _batch(n_rows: Int, n_groups: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _rekey(batch: RecordBatch, n_groups: Int) -> RecordBatch:
+def _rekey(batch: RecordBatch, n_groups: Int) -> RecordBatch:
     """The same value columns under a fresh key of different cardinality."""
     var state: UInt64 = 0xBADC0FFEE0DDF00D
     var k = List[Float64](capacity=batch.n_rows)
@@ -112,7 +112,7 @@ fn _rekey(batch: RecordBatch, n_groups: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, batch.n_rows)
 
 
-fn _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResult) -> Bool:
+def _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResult) -> Bool:
     if many.n_groups() != single.n_groups() or many.key_width != 1:
         return False
     if many.null_key_rows != single.null_key_rows:
@@ -127,7 +127,7 @@ fn _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResul
     return True
 
 
-fn _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
+def _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
     if a.n_groups() != b.n_groups() or a.key_width != b.key_width:
         return False
     if a.n_aggs != b.n_aggs or a.null_key_rows != b.null_key_rows:
@@ -143,7 +143,7 @@ fn _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
     return True
 
 
-fn main() raises:
+def main() raises:
     var cores = info.num_physical_cores()
     var failures_fused = 0
     var failures_radix = 0

@@ -66,14 +66,14 @@ from regression import ols_multiple
 from stats_bootstrap import _median
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _no_fit(r: RobustFit) -> Bool:
+def _no_fit(r: RobustFit) -> Bool:
     """A refusal carries no coefficients, no weights and no scale."""
     return (
         r.status != INF_OK
@@ -85,7 +85,7 @@ fn _no_fit(r: RobustFit) -> Bool:
     )
 
 
-fn _offsets() -> List[Float64]:
+def _offsets() -> List[Float64]:
     """Ten DISTINCT offsets, so the MAD scale is well defined on this design.
 
     Distinctness is load-bearing: with only two distinct offsets more than half the residuals
@@ -95,7 +95,7 @@ fn _offsets() -> List[Float64]:
     return _floats(0.4, -0.3, 0.15, -0.5, 0.25, -0.1, 0.35, -0.45, 0.05, -0.2)
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

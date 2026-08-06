@@ -50,7 +50,7 @@ from determinism.reduce_det import (
 from numeric.contract import AGG_SUM
 
 
-fn big_then_ones(n_ones: Int) -> List[Float64]:
+def big_then_ones(n_ones: Int) -> List[Float64]:
     """`[1e16] + n_ones x 1.0` — the classic case where a sequential sum loses every 1.0.
 
     1e16 lies in [2^53, 2^54) so its ulp is 2.0, and `1e16 + 1.0` rounds to 1e16. A
@@ -64,7 +64,7 @@ fn big_then_ones(n_ones: Int) -> List[Float64]:
     return out^
 
 
-fn cancelling() -> List[Float64]:
+def cancelling() -> List[Float64]:
     """`[1.0, 1e100, 1.0, -1e100]` — exact sum 2.0. Kahan's known limit."""
     var out = List[Float64]()
     out.append(1.0)

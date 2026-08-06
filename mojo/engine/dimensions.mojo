@@ -67,7 +67,7 @@ comptime DIM_INVALID    : Int = -1  # dimensionally inconsistent
 # ── infer_from_samples ────────────────────────────────────────────────────────
 
 
-fn infer_from_samples(samples: List[Float64]) -> Int:
+def infer_from_samples(samples: List[Float64]) -> Int:
     """
     Initial dimension guess from a numeric sample (up to 200 values).
 
@@ -121,7 +121,7 @@ fn infer_from_samples(samples: List[Float64]) -> Int:
 # ── propagate ─────────────────────────────────────────────────────────────────
 
 
-fn propagate(op: String, dim_a: Int, dim_b: Int) -> Int:
+def propagate(op: String, dim_a: Int, dim_b: Int) -> Int:
     """
     Return the result dimension of (dim_a  op  dim_b).
 
@@ -177,7 +177,7 @@ fn propagate(op: String, dim_a: Int, dim_b: Int) -> Int:
 # ── propagate_is_valid ────────────────────────────────────────────────────────
 
 
-fn propagate_is_valid(op: String, dim_a: Int, dim_b: Int) -> Bool:
+def propagate_is_valid(op: String, dim_a: Int, dim_b: Int) -> Bool:
     """True if (dim_a op dim_b) does NOT produce DIM_INVALID."""
     return propagate(op, dim_a, dim_b) != DIM_INVALID
 
@@ -185,7 +185,7 @@ fn propagate_is_valid(op: String, dim_a: Int, dim_b: Int) -> Bool:
 # ── validate_formula ──────────────────────────────────────────────────────────
 
 
-fn validate_formula(op: String, dim_a: Int, dim_b: Int, dim_c: Int) -> Bool:
+def validate_formula(op: String, dim_a: Int, dim_b: Int, dim_c: Int) -> Bool:
     """
     True if C = A op B is dimensionally consistent.
 
@@ -208,7 +208,7 @@ fn validate_formula(op: String, dim_a: Int, dim_b: Int, dim_c: Int) -> Bool:
 # ── Aggregation validity ──────────────────────────────────────────────────────
 
 
-fn can_sum(dim: Int) -> Bool:
+def can_sum(dim: Int) -> Bool:
     """
     True if SUM(col) produces a meaningful result.
     Valid for Count and Currency only.
@@ -217,13 +217,13 @@ fn can_sum(dim: Int) -> Bool:
     return dim == DIM_COUNT or dim == DIM_CURRENCY
 
 
-fn can_avg(dim: Int) -> Bool:
+def can_avg(dim: Int) -> Bool:
     """True if AVG(col) produces a meaningful result."""
     return (dim == DIM_COUNT or dim == DIM_CURRENCY
             or dim == DIM_RATE or dim == DIM_RATIO)
 
 
-fn aggregation_valid(agg: String, dim: Int) -> Bool:
+def aggregation_valid(agg: String, dim: Int) -> Bool:
     """True if the given aggregation is dimensionally valid for the dimension."""
     if dim == DIM_IDENTIFIER:
         return False
@@ -239,7 +239,7 @@ fn aggregation_valid(agg: String, dim: Int) -> Bool:
 # ── Metadata helpers ──────────────────────────────────────────────────────────
 
 
-fn role_for_dimension(dim: Int) -> String:
+def role_for_dimension(dim: Int) -> String:
     """Map dimension → canonical role string used in schema metadata."""
     if dim == DIM_COUNT:
         return String("base_measure")
@@ -255,7 +255,7 @@ fn role_for_dimension(dim: Int) -> String:
     return String("metric")
 
 
-fn dimension_name(dim: Int) -> String:
+def dimension_name(dim: Int) -> String:
     """Human-readable name for a dimension constant."""
     if dim == DIM_COUNT:
         return String("Count [unit]")
@@ -272,7 +272,7 @@ fn dimension_name(dim: Int) -> String:
     return String("Unknown")
 
 
-fn dimension_from_role(role: String) -> Int:
+def dimension_from_role(role: String) -> Int:
     """Reverse map: schema role string → dimension constant."""
     if role == "base_measure":
         return DIM_COUNT

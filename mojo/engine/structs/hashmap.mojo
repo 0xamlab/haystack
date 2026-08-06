@@ -5,21 +5,21 @@ Replaces Python's dict for numeric lookups. Open addressing with linear probing.
 
 Public API:
   struct HashMap(Copyable, Movable)
-    fn __init__(out self, initial_capacity: Int = 64)
-    fn put(mut self, key: String, value: Float64)
-    fn get(self, key: String, default: Float64 = 0.0) -> Float64
-    fn contains(self, key: String) -> Bool
-    fn remove(mut self, key: String) -> Bool
-    fn size(self) -> Int
-    fn all_keys(self) -> List[String]
-    fn all_values(self) -> List[Float64]
+    def __init__(out self, initial_capacity: Int = 64)
+    def put(mut self, key: String, value: Float64)
+    def get(self, key: String, default: Float64 = 0.0) -> Float64
+    def contains(self, key: String) -> Bool
+    def remove(mut self, key: String) -> Bool
+    def size(self) -> Int
+    def all_keys(self) -> List[String]
+    def all_values(self) -> List[Float64]
 """
 
 
 # ── FNV-1a hash (inlined to avoid circular dependency) ───────────────────────
 
 
-fn _fnv1a(data: String) -> Int:
+def _fnv1a(data: String) -> Int:
     """FNV-1a 64-bit hash. Returns non-negative Int."""
     var hash_val: Int = -3750763034362895579  # 0xcbf29ce484222325 as signed
     var prime: Int = 1099511628211
@@ -52,7 +52,7 @@ struct HashMap(Copyable, Movable):
     var _occupied: List[Int]  # 0=empty, 1=occupied, 2=tombstone
     var _load_factor: Float64
 
-    fn __init__(out self, initial_capacity: Int = 64):
+    def __init__(out self, initial_capacity: Int = 64):
         """Create a new HashMap with the given initial capacity."""
         self._capacity = initial_capacity
         self._size = 0
@@ -65,7 +65,7 @@ struct HashMap(Copyable, Movable):
             self._values.append(0.0)
             self._occupied.append(0)
 
-    fn _find_slot(self, key: String) -> Int:
+    def _find_slot(self, key: String) -> Int:
         """Find the slot for a key. Returns the index where the key is or
         should be inserted. Uses linear probing."""
         var hash_val = _fnv1a(key)
@@ -95,11 +95,11 @@ struct HashMap(Copyable, Movable):
             return first_tombstone
         return 0
 
-    fn _should_resize(self) -> Bool:
+    def _should_resize(self) -> Bool:
         """Check if we need to resize based on load factor."""
         return Float64(self._size + 1) / Float64(self._capacity) > self._load_factor
 
-    fn _resize(mut self):
+    def _resize(mut self):
         """Double the capacity and rehash all entries."""
         var old_capacity = self._capacity
         var old_keys = self._keys.copy()
@@ -123,7 +123,7 @@ struct HashMap(Copyable, Movable):
             if old_occupied[i] == 1:
                 self.put(old_keys[i], old_values[i])
 
-    fn put(mut self, key: String, value: Float64):
+    def put(mut self, key: String, value: Float64):
         """Insert or update a key-value pair."""
         if self._should_resize():
             self._resize()
@@ -139,7 +139,7 @@ struct HashMap(Copyable, Movable):
             self._occupied[idx] = 1
             self._size += 1
 
-    fn get(self, key: String, default: Float64 = 0.0) -> Float64:
+    def get(self, key: String, default: Float64 = 0.0) -> Float64:
         """Retrieve value for key, or return default if not found."""
         var hash_val = _fnv1a(key)
         var idx = hash_val % self._capacity
@@ -154,7 +154,7 @@ struct HashMap(Copyable, Movable):
 
         return default
 
-    fn contains(self, key: String) -> Bool:
+    def contains(self, key: String) -> Bool:
         """Check if key exists in the map."""
         var hash_val = _fnv1a(key)
         var idx = hash_val % self._capacity
@@ -169,7 +169,7 @@ struct HashMap(Copyable, Movable):
 
         return False
 
-    fn remove(mut self, key: String) -> Bool:
+    def remove(mut self, key: String) -> Bool:
         """Remove a key from the map. Returns True if the key was found."""
         var hash_val = _fnv1a(key)
         var idx = hash_val % self._capacity
@@ -187,11 +187,11 @@ struct HashMap(Copyable, Movable):
 
         return False
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         """Return the number of entries in the map."""
         return self._size
 
-    fn all_keys(self) -> List[String]:
+    def all_keys(self) -> List[String]:
         """Return all keys in the map."""
         var result = List[String]()
         for i in range(self._capacity):
@@ -199,7 +199,7 @@ struct HashMap(Copyable, Movable):
                 result.append(self._keys[i])
         return result^
 
-    fn all_values(self) -> List[Float64]:
+    def all_values(self) -> List[Float64]:
         """Return all values in the map."""
         var result = List[Float64]()
         for i in range(self._capacity):

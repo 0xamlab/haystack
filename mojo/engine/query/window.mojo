@@ -106,15 +106,15 @@ struct Partitions(Copyable, Movable):
     var starts: List[Int]
     var lengths: List[Int]
 
-    fn __init__(out self, var groups: List[Int], var starts: List[Int], var lengths: List[Int]):
+    def __init__(out self, var groups: List[Int], var starts: List[Int], var lengths: List[Int]):
         self.groups = groups^
         self.starts = starts^
         self.lengths = lengths^
 
-    fn count(self) -> Int:
+    def count(self) -> Int:
         return len(self.starts)
 
-    fn row_at(self, partition: Int, position: Int) -> Int:
+    def row_at(self, partition: Int, position: Int) -> Int:
         """Row index at `position` within `partition`, or NO_ROW past its edge.
 
         The single place a partition boundary is enforced. Every frame and offset
@@ -126,7 +126,7 @@ struct Partitions(Copyable, Movable):
             return NO_ROW
         return self.groups[self.starts[partition] + position]
 
-    fn partition_of(self, row: Int) -> Int:
+    def partition_of(self, row: Int) -> Int:
         """Which partition a row belongs to, or -1. Linear; for tests and lineage."""
         for p in range(len(self.starts)):
             for i in range(self.lengths[p]):
@@ -135,7 +135,7 @@ struct Partitions(Copyable, Movable):
         return -1
 
 
-fn keys_equal_at(column: Float64Array, left_row: Int, right_row: Int) -> Bool:
+def keys_equal_at(column: Float64Array, left_row: Int, right_row: Int) -> Bool:
     """Whether two rows carry the same key value, by `columnar.hash_index`'s definition.
 
     The ONE definition of key equality in this file, so `partition_rows` and
@@ -158,7 +158,7 @@ fn keys_equal_at(column: Float64Array, left_row: Int, right_row: Int) -> Bool:
     )
 
 
-fn partition_rows(
+def partition_rows(
     batch: RecordBatch,
     partition_columns: List[Int],
     order_columns: List[Int],
@@ -268,7 +268,7 @@ fn partition_rows(
     return Partitions(groups^, starts^, lengths^)
 
 
-fn row_number(batch: RecordBatch, partitions: Partitions) -> Float64Array:
+def row_number(batch: RecordBatch, partitions: Partitions) -> Float64Array:
     """1-based position within the partition. Never null, never tied."""
     var values = List[Float64]()
     var mask = List[Bool]()
@@ -283,7 +283,7 @@ fn row_number(batch: RecordBatch, partitions: Partitions) -> Float64Array:
     return float64_with_nulls(values^, mask)
 
 
-fn _rank_column(
+def _rank_column(
     batch: RecordBatch,
     partitions: Partitions,
     order_column: Int,
@@ -328,19 +328,19 @@ fn _rank_column(
     return float64_with_nulls(values^, mask)
 
 
-fn rank(batch: RecordBatch, partitions: Partitions, order_column: Int) -> Float64Array:
+def rank(batch: RecordBatch, partitions: Partitions, order_column: Int) -> Float64Array:
     """Competition rank: 10,20,20,30 -> 1,2,2,4. Gaps after a tie."""
     return _rank_column(batch, partitions, order_column, False)
 
 
-fn dense_rank(
+def dense_rank(
     batch: RecordBatch, partitions: Partitions, order_column: Int
 ) -> Float64Array:
     """Dense rank: 10,20,20,30 -> 1,2,2,3. No gaps."""
     return _rank_column(batch, partitions, order_column, True)
 
 
-fn lag_lead(
+def lag_lead(
     batch: RecordBatch,
     partitions: Partitions,
     value_column: Int,
@@ -372,7 +372,7 @@ fn lag_lead(
     return float64_with_nulls(values^, mask)
 
 
-fn framed_aggregate(
+def framed_aggregate(
     batch: RecordBatch,
     partitions: Partitions,
     value_column: Int,
@@ -451,7 +451,7 @@ fn framed_aggregate(
     return float64_with_nulls(values^, mask)
 
 
-fn cumulative(
+def cumulative(
     batch: RecordBatch,
     partitions: Partitions,
     value_column: Int,
@@ -463,7 +463,7 @@ fn cumulative(
     )
 
 
-fn partition_total(
+def partition_total(
     batch: RecordBatch,
     partitions: Partitions,
     value_column: Int,
@@ -533,7 +533,7 @@ fn partition_total(
     return float64_with_nulls(values^, mask)
 
 
-fn describe_partitions(partitions: Partitions) -> String:
+def describe_partitions(partitions: Partitions) -> String:
     """Partition count and the largest partition size, for lineage."""
     var largest = 0
     for p in range(partitions.count()):

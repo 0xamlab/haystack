@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log
 
 
-fn retention_factor(retention_time: Float64, dead_time: Float64) -> Float64:
+def retention_factor(retention_time: Float64, dead_time: Float64) -> Float64:
     """Capacity (retention) factor: k = (tR - t0) / t0.
 
     Args:
@@ -31,7 +31,7 @@ fn retention_factor(retention_time: Float64, dead_time: Float64) -> Float64:
     return (retention_time - dead_time) / dead_time
 
 
-fn selectivity_factor(k2: Float64, k1: Float64) -> Float64:
+def selectivity_factor(k2: Float64, k1: Float64) -> Float64:
     """Selectivity factor: α = k2/k1 (k2 > k1).
 
     Args:
@@ -46,7 +46,7 @@ fn selectivity_factor(k2: Float64, k1: Float64) -> Float64:
     return k2 / k1
 
 
-fn plate_count(retention_time: Float64, peak_width: Float64) -> Float64:
+def plate_count(retention_time: Float64, peak_width: Float64) -> Float64:
     """Theoretical plate count: N = 16·(tR/w)².
 
     Args:
@@ -62,7 +62,7 @@ fn plate_count(retention_time: Float64, peak_width: Float64) -> Float64:
     return 16.0 * ratio * ratio
 
 
-fn plate_height(column_length: Float64, n_plates: Float64) -> Float64:
+def plate_height(column_length: Float64, n_plates: Float64) -> Float64:
     """Height equivalent to a theoretical plate: H = L/N.
 
     Args:
@@ -77,7 +77,7 @@ fn plate_height(column_length: Float64, n_plates: Float64) -> Float64:
     return column_length / n_plates
 
 
-fn resolution(
+def resolution(
     tr2: Float64, tr1: Float64, w1: Float64, w2: Float64
 ) -> Float64:
     """Chromatographic resolution: Rs = 2·(tR2 - tR1)/(w1 + w2).
@@ -97,7 +97,7 @@ fn resolution(
     return 2.0 * (tr2 - tr1) / w_sum
 
 
-fn van_deemter_h(
+def van_deemter_h(
     a_term: Float64, b_term: Float64, c_term: Float64, velocity: Float64
 ) -> Float64:
     """Van Deemter equation: H = A + B/u + C·u.
@@ -116,7 +116,7 @@ fn van_deemter_h(
     return a_term + b_term / velocity + c_term * velocity
 
 
-fn peak_capacity(
+def peak_capacity(
     n_plates: Float64, tr_last: Float64, tr_first: Float64
 ) -> Float64:
     """Peak capacity: n_c = 1 + (√N/4)·ln(tR_last/tR_first).
@@ -134,7 +134,7 @@ fn peak_capacity(
     return 1.0 + sqrt(n_plates) / 4.0 * log(tr_last / tr_first)
 
 
-fn separation_number(
+def separation_number(
     tr_n: Float64, tr_n1: Float64, w_n: Float64, w_n1: Float64
 ) -> Float64:
     """Separation number (Trennzahl): TZ = (tR2 - tR1)/(w1+w2)/2 - 1.
@@ -154,7 +154,7 @@ fn separation_number(
     return (tr_n1 - tr_n) / (w_sum / 2.0) - 1.0
 
 
-fn retention_index_kovats(
+def retention_index_kovats(
     tr_x: Float64, tr_n: Float64, tr_n1: Float64, n: Float64
 ) -> Float64:
     """Kovats retention index for isothermal GC.
@@ -175,7 +175,7 @@ fn retention_index_kovats(
     return 100.0 * (n + log(tr_x / tr_n) / log(tr_n1 / tr_n))
 
 
-fn mobile_phase_velocity(column_length: Float64, dead_time: Float64) -> Float64:
+def mobile_phase_velocity(column_length: Float64, dead_time: Float64) -> Float64:
     """Linear mobile phase velocity: u = L/t0.
 
     Args:

@@ -90,11 +90,11 @@ struct ProgExecResult(Copyable, Movable):
     var status: Int
 
 
-fn _absent(status: Int) -> ProgExecResult:
+def _absent(status: Int) -> ProgExecResult:
     return ProgExecResult(0.0, False, False, False, status)
 
 
-fn _resolve_operand(
+def _resolve_operand(
     kind: Int,
     num: Float64,
     step_index: Int,
@@ -121,7 +121,7 @@ fn _resolve_operand(
     return False
 
 
-fn progexec_run_flat(
+def progexec_run_flat(
     ops: List[Int],
     arg1_kind: List[Int],
     arg1_num: List[Float64],

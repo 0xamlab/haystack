@@ -136,7 +136,7 @@ from strategy.tournament import (
 )
 
 
-fn _closed_p_df4(t: Float64) -> Float64:
+def _closed_p_df4(t: Float64) -> Float64:
     """Exact two-sided Student-t tail on 4 df: `1 - 1.5 s + 0.5 s^3`, `s = t / sqrt(t^2 + 4)`.
 
     Derived by hand from the density, and deliberately not a call into the engine: a suite that
@@ -146,12 +146,12 @@ fn _closed_p_df4(t: Float64) -> Float64:
     return 1.0 - 1.5 * s + 0.5 * s * s * s
 
 
-fn _closed_p_df2(t: Float64) -> Float64:
+def _closed_p_df2(t: Float64) -> Float64:
     """Exact two-sided Student-t tail on 2 df: `1 - t / sqrt(t^2 + 2)`. Same derivation."""
     return 1.0 - t / sqrt(t * t + 2.0)
 
 
-fn _hand_matrix() -> List[Float64]:
+def _hand_matrix() -> List[Float64]:
     """S0 = 10..14, S1 = 9..13, S2 = 9 constant, strategy-major."""
     var o = List[Float64]()
     for i in range(5):
@@ -163,7 +163,7 @@ fn _hand_matrix() -> List[Float64]:
     return o^
 
 
-fn _payoff(
+def _payoff(
     seed: Int, family: Int, scenario: Int, horizon: Int, factor: Int,
     threshold: Float64, gamma: Float64, stream: Int,
 ) -> Float64:
@@ -191,7 +191,7 @@ fn _payoff(
     return total
 
 
-fn _tape(
+def _tape(
     seed: Int, family: Int, scenario: Int, horizon: Int, factor: Int, stream: Int
 ) -> List[Float64]:
     """Every draw one strategy reads at one scenario, in order, for the digest comparison."""
@@ -206,7 +206,7 @@ fn _tape(
     return out^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[strategy.tournament] known-value suite")

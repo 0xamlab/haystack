@@ -4,7 +4,7 @@ from std.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 
-fn _gemv_kernel(
+def _gemv_kernel(
     y_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     x_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     w_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],

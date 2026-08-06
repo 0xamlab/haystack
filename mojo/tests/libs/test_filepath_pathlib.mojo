@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from filepath.pathlib import path_basename, path_dirname, path_extension, path_stem, path_is_absolute, path_split, path_normalize
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

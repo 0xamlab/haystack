@@ -17,7 +17,7 @@ Public API:
 from std.math import log, sqrt, exp
 
 
-fn metabolite_fold_change(
+def metabolite_fold_change(
     condition_conc: Float64, control_conc: Float64
 ) -> Float64:
     """Log2 fold change of metabolite abundance.
@@ -36,7 +36,7 @@ fn metabolite_fold_change(
     return log(condition_conc / control_conc) / log(2.0)
 
 
-fn pathway_enrichment_score(
+def pathway_enrichment_score(
     observed_hits: Float64, pathway_size: Float64,
     total_detected: Float64, total_metabolome: Float64
 ) -> Float64:
@@ -59,7 +59,7 @@ fn pathway_enrichment_score(
     return observed_hits / expected
 
 
-fn chemical_similarity_index(
+def chemical_similarity_index(
     common_bits: Float64, bits_a: Float64, bits_b: Float64
 ) -> Float64:
     """Tanimoto similarity coefficient between two fingerprints.
@@ -80,7 +80,7 @@ fn chemical_similarity_index(
     return common_bits / denom
 
 
-fn metabolic_flux_ratio(
+def metabolic_flux_ratio(
     branch_flux: Float64, total_flux: Float64
 ) -> Float64:
     """Flux partitioning ratio at a metabolic branch point.
@@ -99,7 +99,7 @@ fn metabolic_flux_ratio(
     return branch_flux / total_flux
 
 
-fn isotope_label_fraction(
+def isotope_label_fraction(
     labelled_signal: Float64, total_signal: Float64
 ) -> Float64:
     """Isotope enrichment from ¹³C or ²H tracer experiments.
@@ -118,7 +118,7 @@ fn isotope_label_fraction(
     return labelled_signal / total_signal
 
 
-fn metabolite_half_life(turnover_rate: Float64) -> Float64:
+def metabolite_half_life(turnover_rate: Float64) -> Float64:
     """Metabolite pool half-life from first-order turnover.
 
     t½ = ln2 / k
@@ -134,7 +134,7 @@ fn metabolite_half_life(turnover_rate: Float64) -> Float64:
     return log(2.0) / turnover_rate
 
 
-fn normalization_zscore(
+def normalization_zscore(
     value: Float64, mean: Float64, std_dev: Float64
 ) -> Float64:
     """Z-score normalisation of metabolite abundance.
@@ -154,7 +154,7 @@ fn normalization_zscore(
     return (value - mean) / std_dev
 
 
-fn principal_component_variance(
+def principal_component_variance(
     eigenvalue: Float64, total_variance: Float64
 ) -> Float64:
     """Fraction of total variance explained by a principal component.
@@ -171,7 +171,7 @@ fn principal_component_variance(
     return eigenvalue / total_variance
 
 
-fn vip_score(
+def vip_score(
     weights_sq: Float64, q2: Float64, p_vars: Float64
 ) -> Float64:
     """Variable Importance in Projection (PLS-DA, simplified).
@@ -191,7 +191,7 @@ fn vip_score(
     return sqrt(p_vars * weights_sq / q2)
 
 
-fn metabolic_distance(
+def metabolic_distance(
     n_features: Float64, sum_sq_diff: Float64
 ) -> Float64:
     """Euclidean distance in metabolomics feature space.

@@ -13,7 +13,7 @@ from std.math import sqrt, abs as fabs, pow, log
 # ── Net Present Value ─────────────────────────────────────────────────────────
 
 
-fn npv(rate: Float64, cashflows: List[Float64]) -> Float64:
+def npv(rate: Float64, cashflows: List[Float64]) -> Float64:
     """Net Present Value: sum of cashflows[t] / (1+rate)^t for t=0..n-1."""
     var total: Float64 = 0.0
     var n = len(cashflows)
@@ -26,7 +26,7 @@ fn npv(rate: Float64, cashflows: List[Float64]) -> Float64:
 # ── Internal Rate of Return ───────────────────────────────────────────────────
 
 
-fn _npv_derivative(rate: Float64, cashflows: List[Float64]) -> Float64:
+def _npv_derivative(rate: Float64, cashflows: List[Float64]) -> Float64:
     """Derivative of NPV w.r.t. rate: sum of -t * cashflows[t] / (1+rate)^(t+1)."""
     var total: Float64 = 0.0
     var n = len(cashflows)
@@ -36,7 +36,7 @@ fn _npv_derivative(rate: Float64, cashflows: List[Float64]) -> Float64:
     return total
 
 
-fn irr(
+def irr(
     cashflows: List[Float64],
     guess: Float64 = 0.1,
     tol: Float64 = 1e-6,
@@ -60,7 +60,7 @@ fn irr(
 # ── Payback Period ────────────────────────────────────────────────────────────
 
 
-fn payback_period(cashflows: List[Float64]) -> Float64:
+def payback_period(cashflows: List[Float64]) -> Float64:
     """Time (in periods) to recover the initial investment.
     Returns -1.0 if investment is never recovered.
     Uses linear interpolation within the recovery period."""
@@ -81,7 +81,7 @@ fn payback_period(cashflows: List[Float64]) -> Float64:
 # ── Return on Investment ──────────────────────────────────────────────────────
 
 
-fn roi(gain: Float64, cost: Float64) -> Float64:
+def roi(gain: Float64, cost: Float64) -> Float64:
     """Return on Investment: (gain - cost) / cost."""
     if fabs(cost) < 1e-15:
         return 0.0
@@ -91,7 +91,7 @@ fn roi(gain: Float64, cost: Float64) -> Float64:
 # ── Compound Interest ─────────────────────────────────────────────────────────
 
 
-fn compound_interest(principal: Float64, rate: Float64, periods: Int) -> Float64:
+def compound_interest(principal: Float64, rate: Float64, periods: Int) -> Float64:
     """Future value with compound interest: P * (1 + r)^n."""
     return principal * pow(1.0 + rate, Float64(periods))
 
@@ -99,7 +99,7 @@ fn compound_interest(principal: Float64, rate: Float64, periods: Int) -> Float64
 # ── Present Value ─────────────────────────────────────────────────────────────
 
 
-fn present_value(future_value: Float64, rate: Float64, periods: Int) -> Float64:
+def present_value(future_value: Float64, rate: Float64, periods: Int) -> Float64:
     """Present value of a future amount: FV / (1 + r)^n."""
     return future_value / pow(1.0 + rate, Float64(periods))
 
@@ -107,7 +107,7 @@ fn present_value(future_value: Float64, rate: Float64, periods: Int) -> Float64:
 # ── Future Value ──────────────────────────────────────────────────────────────
 
 
-fn future_value(present_val: Float64, rate: Float64, periods: Int) -> Float64:
+def future_value(present_val: Float64, rate: Float64, periods: Int) -> Float64:
     """Future value of a present amount: PV * (1 + r)^n."""
     return present_val * pow(1.0 + rate, Float64(periods))
 
@@ -115,7 +115,7 @@ fn future_value(present_val: Float64, rate: Float64, periods: Int) -> Float64:
 # ── Annuity Payment (PMT) ────────────────────────────────────────────────────
 
 
-fn annuity_payment(principal: Float64, rate: Float64, periods: Int) -> Float64:
+def annuity_payment(principal: Float64, rate: Float64, periods: Int) -> Float64:
     """PMT — periodic payment for an ordinary annuity.
     PMT = P * r / (1 - (1+r)^-n).
     If rate is 0, returns P / n."""
@@ -130,7 +130,7 @@ fn annuity_payment(principal: Float64, rate: Float64, periods: Int) -> Float64:
 # ── Sharpe Ratio ──────────────────────────────────────────────────────────────
 
 
-fn sharpe_ratio(returns: List[Float64], risk_free_rate: Float64) -> Float64:
+def sharpe_ratio(returns: List[Float64], risk_free_rate: Float64) -> Float64:
     """Sharpe ratio: (mean_return - risk_free_rate) / std_dev(returns).
     Returns 0.0 if there are fewer than 2 returns or zero std dev."""
     var n = len(returns)
@@ -155,7 +155,7 @@ fn sharpe_ratio(returns: List[Float64], risk_free_rate: Float64) -> Float64:
 # ── Max Drawdown ──────────────────────────────────────────────────────────────
 
 
-fn max_drawdown(values: List[Float64]) -> Float64:
+def max_drawdown(values: List[Float64]) -> Float64:
     """Maximum drawdown: largest peak-to-trough decline as a fraction.
     Returns 0.0 if fewer than 2 values or no decline."""
     var n = len(values)
@@ -175,7 +175,7 @@ fn max_drawdown(values: List[Float64]) -> Float64:
 # ── CAGR (Compound Annual Growth Rate) ───────────────────────────────────────
 
 
-fn cagr(start_value: Float64, end_value: Float64, years: Float64) -> Float64:
+def cagr(start_value: Float64, end_value: Float64, years: Float64) -> Float64:
     """Compound Annual Growth Rate: (end/start)^(1/years) - 1.
     Returns 0.0 if start_value is zero or years is zero."""
     if fabs(start_value) < 1e-15 or fabs(years) < 1e-15:
@@ -186,7 +186,7 @@ fn cagr(start_value: Float64, end_value: Float64, years: Float64) -> Float64:
 # ── WACC (Weighted Average Cost of Capital) ───────────────────────────────────
 
 
-fn wacc(
+def wacc(
     equity: Float64,
     debt: Float64,
     cost_equity: Float64,

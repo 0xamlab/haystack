@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from radiometry import planck_spectral_radiance, stefan_boltzmann_radiance, photon_energy, photon_flux, solid_angle_cone, lambertian_irradiance, radiant_exitance_blackbody, luminous_efficacy, absorptance_from_reflectance, noise_equivalent_power
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

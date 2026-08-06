@@ -84,28 +84,28 @@ from optimization.model import (
 )
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -114,7 +114,7 @@ fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     return True
 
 
-fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
+def _exact(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Used only where every value is a small integer or a dyadic
     fraction, so a tolerance would hide a genuine mis-accumulation."""
     if len(a) != len(b):
@@ -138,23 +138,23 @@ fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
 # everywhere, as a maximisation at optimality requires, and zero on the two basic columns.
 
 
-fn _c3() -> List[Float64]:
+def _c3() -> List[Float64]:
     return _floats(5.0, 4.0, 3.0)
 
 
-fn _a3() -> List[Float64]:
+def _a3() -> List[Float64]:
     return _floats(2.0, 3.0, 1.0, 4.0, 1.0, 2.0, 3.0, 4.0, 2.0)
 
 
-fn _b3() -> List[Float64]:
+def _b3() -> List[Float64]:
     return _floats(5.0, 11.0, 8.0)
 
 
-fn _le3() -> List[Int]:
+def _le3() -> List[Int]:
     return _ints(SENSE_LE, SENSE_LE, SENSE_LE)
 
 
-fn _ranges_resolve(
+def _ranges_resolve(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool, ranges: RhsSensitivity,
 ) -> Bool:
@@ -181,14 +181,14 @@ fn _ranges_resolve(
     return True
 
 
-fn _arena_var(idx: Int) -> LinearForm:
+def _arena_var(idx: Int) -> LinearForm:
     """A one-node arena holding `x_idx`, extracted. Used to keep the small cases readable."""
     return linear_extract_flat(
         _ints(1), _floats(0.0), _ints(idx), _ints(-1), _ints(-1), _ints(-1), 0, idx + 1
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

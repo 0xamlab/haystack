@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, pow
 
 
-fn phenolic_content_folin(
+def phenolic_content_folin(
     absorbance: Float64, slope: Float64, intercept: Float64, dilution: Float64
 ) -> Float64:
     """Total phenolic content by Folin-Ciocalteu: TPC = (A - b) / m × dilution.
@@ -35,7 +35,7 @@ fn phenolic_content_folin(
     return (absorbance - intercept) / slope * dilution
 
 
-fn flavonoid_content(
+def flavonoid_content(
     absorbance: Float64, slope: Float64, intercept: Float64, dilution: Float64
 ) -> Float64:
     """Total flavonoid content (AlCl3 method).
@@ -54,7 +54,7 @@ fn flavonoid_content(
     return (absorbance - intercept) / slope * dilution
 
 
-fn anthocyanin_concentration(
+def anthocyanin_concentration(
     abs_ph1: Float64, abs_ph45: Float64,
     epsilon: Float64, mw: Float64, path_cm: Float64, dilution: Float64
 ) -> Float64:
@@ -77,7 +77,7 @@ fn anthocyanin_concentration(
     return delta_a * mw / (epsilon * path_cm) * dilution * 1000.0
 
 
-fn tannin_content(
+def tannin_content(
     total_phenolics: Float64, non_tannin_phenolics: Float64
 ) -> Float64:
     """Condensed tannin content by difference method.
@@ -95,7 +95,7 @@ fn tannin_content(
     return t
 
 
-fn essential_oil_yield(
+def essential_oil_yield(
     oil_volume_ml: Float64, plant_mass_g: Float64
 ) -> Float64:
     """Essential oil yield by hydrodistillation.
@@ -112,7 +112,7 @@ fn essential_oil_yield(
     return oil_volume_ml / plant_mass_g * 100.0
 
 
-fn alkaloid_gravimetric(
+def alkaloid_gravimetric(
     alkaloid_mass_mg: Float64, extract_mass_mg: Float64
 ) -> Float64:
     """Total alkaloid content by gravimetric method.
@@ -129,7 +129,7 @@ fn alkaloid_gravimetric(
     return alkaloid_mass_mg / extract_mass_mg * 100.0
 
 
-fn chlorophyll_a(abs_663: Float64, abs_646: Float64) -> Float64:
+def chlorophyll_a(abs_663: Float64, abs_646: Float64) -> Float64:
     """Chlorophyll a concentration (Lichtenthaler 1987).
 
     Chl a = 12.21·A663 - 2.81·A646  (μg/mL in 80% acetone)
@@ -144,7 +144,7 @@ fn chlorophyll_a(abs_663: Float64, abs_646: Float64) -> Float64:
     return 12.21 * abs_663 - 2.81 * abs_646
 
 
-fn chlorophyll_b(abs_663: Float64, abs_646: Float64) -> Float64:
+def chlorophyll_b(abs_663: Float64, abs_646: Float64) -> Float64:
     """Chlorophyll b concentration (Lichtenthaler 1987).
 
     Chl b = 20.13·A646 - 5.03·A663
@@ -159,7 +159,7 @@ fn chlorophyll_b(abs_663: Float64, abs_646: Float64) -> Float64:
     return 20.13 * abs_646 - 5.03 * abs_663
 
 
-fn carotenoid_content(abs_470: Float64, chl_a: Float64, chl_b: Float64) -> Float64:
+def carotenoid_content(abs_470: Float64, chl_a: Float64, chl_b: Float64) -> Float64:
     """Total carotenoids (Lichtenthaler 1987).
 
     Cx+c = (1000·A470 - 3.27·Chl_a - 104·Chl_b) / 229
@@ -178,7 +178,7 @@ fn carotenoid_content(abs_470: Float64, chl_a: Float64, chl_b: Float64) -> Float
     return cx
 
 
-fn dpph_radical_scavenging(
+def dpph_radical_scavenging(
     abs_control: Float64, abs_sample: Float64
 ) -> Float64:
     """DPPH radical scavenging activity.

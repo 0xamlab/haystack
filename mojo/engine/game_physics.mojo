@@ -25,7 +25,7 @@ from std.math import sin, abs as fabs
 # ── position_update ──────────────────────────────────────────────────────────
 
 
-fn position_update(
+def position_update(
     x: Float64, v: Float64, a: Float64, dt: Float64,
 ) -> Float64:
     """Euler position update: x_new = x + v*dt + 0.5*a*dt².
@@ -45,7 +45,7 @@ fn position_update(
 # ── velocity_update ──────────────────────────────────────────────────────────
 
 
-fn velocity_update(v: Float64, a: Float64, dt: Float64) -> Float64:
+def velocity_update(v: Float64, a: Float64, dt: Float64) -> Float64:
     """Euler velocity update: v_new = v + a*dt.
 
     Args:
@@ -62,7 +62,7 @@ fn velocity_update(v: Float64, a: Float64, dt: Float64) -> Float64:
 # ── verlet_position ──────────────────────────────────────────────────────────
 
 
-fn verlet_position(
+def verlet_position(
     x: Float64, x_prev: Float64, a: Float64, dt: Float64,
 ) -> Float64:
     """Störmer-Verlet position: x_new = 2*x - x_prev + a*dt².
@@ -82,7 +82,7 @@ fn verlet_position(
 # ── elastic_collision_1d ─────────────────────────────────────────────────────
 
 
-fn elastic_collision_1d(
+def elastic_collision_1d(
     m1: Float64, v1: Float64, m2: Float64, v2: Float64,
 ) -> Float64:
     """1-D elastic collision — post-collision velocity of object 1.
@@ -107,7 +107,7 @@ fn elastic_collision_1d(
 # ── coefficient_of_restitution ───────────────────────────────────────────────
 
 
-fn coefficient_of_restitution(
+def coefficient_of_restitution(
     v_sep: Float64, v_approach: Float64,
 ) -> Float64:
     """Coefficient of restitution: e = v_sep / v_approach.
@@ -127,7 +127,7 @@ fn coefficient_of_restitution(
 # ── kinetic_energy ───────────────────────────────────────────────────────────
 
 
-fn kinetic_energy(mass: Float64, velocity: Float64) -> Float64:
+def kinetic_energy(mass: Float64, velocity: Float64) -> Float64:
     """Kinetic energy: KE = 0.5 * m * v².
 
     Args:
@@ -143,7 +143,7 @@ fn kinetic_energy(mass: Float64, velocity: Float64) -> Float64:
 # ── gravitational_force ──────────────────────────────────────────────────────
 
 
-fn gravitational_force(
+def gravitational_force(
     m1: Float64, m2: Float64, r: Float64, g: Float64,
 ) -> Float64:
     """Gravitational force: F = G*m1*m2/r².
@@ -165,7 +165,7 @@ fn gravitational_force(
 # ── projectile_range ─────────────────────────────────────────────────────────
 
 
-fn projectile_range(
+def projectile_range(
     v0: Float64, angle: Float64, g: Float64,
 ) -> Float64:
     """Projectile range on flat ground: R = v0² * sin(2θ) / g.
@@ -186,7 +186,7 @@ fn projectile_range(
 # ── drag_force_quadratic ─────────────────────────────────────────────────────
 
 
-fn drag_force_quadratic(
+def drag_force_quadratic(
     cd: Float64, rho: Float64, a: Float64, v: Float64,
 ) -> Float64:
     """Quadratic drag force: F_d = 0.5 * Cd * ρ * A * v².
@@ -206,7 +206,7 @@ fn drag_force_quadratic(
 # ── spring_force ─────────────────────────────────────────────────────────────
 
 
-fn spring_force(k: Float64, displacement: Float64) -> Float64:
+def spring_force(k: Float64, displacement: Float64) -> Float64:
     """Spring force magnitude: |F| = k * |x|.
 
     Args:
@@ -222,7 +222,7 @@ fn spring_force(k: Float64, displacement: Float64) -> Float64:
 # ── angular_velocity_from_linear ─────────────────────────────────────────────
 
 
-fn angular_velocity_from_linear(v: Float64, r: Float64) -> Float64:
+def angular_velocity_from_linear(v: Float64, r: Float64) -> Float64:
     """Angular velocity: ω = v / r.
 
     Args:
@@ -240,7 +240,7 @@ fn angular_velocity_from_linear(v: Float64, r: Float64) -> Float64:
 # ── moment_of_inertia_sphere ────────────────────────────────────────────────
 
 
-fn moment_of_inertia_sphere(mass: Float64, radius: Float64) -> Float64:
+def moment_of_inertia_sphere(mass: Float64, radius: Float64) -> Float64:
     """Moment of inertia of a solid sphere: I = (2/5) * m * r².
 
     Args:

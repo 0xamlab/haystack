@@ -143,7 +143,7 @@ struct QuantError(Copyable, Movable):
     var status: Int
 
 
-fn nf4_levels() -> List[Float64]:
+def nf4_levels() -> List[Float64]:
     """The 16 canonical NF4 quantiles, ascending, index 0..15.
 
     Exported rather than kept private so a caller can verify our dequantization against theirs
@@ -170,7 +170,7 @@ fn nf4_levels() -> List[Float64]:
     return levels^
 
 
-fn _grid_limits(n_bits: Int) -> Int:
+def _grid_limits(n_bits: Int) -> Int:
     """Positive limit of a symmetric signed grid: 7 for 4-bit, 127 for 8-bit. 0 if unsupported."""
     if n_bits == 4:
         return 7
@@ -179,7 +179,7 @@ fn _grid_limits(n_bits: Int) -> Int:
     return 0
 
 
-fn _quantize_code(x: Float64, scale: Float64, limit: Int) -> Int:
+def _quantize_code(x: Float64, scale: Float64, limit: Int) -> Int:
     """Round `x / scale` onto a symmetric integer grid bounded by `limit`.
 
     The additive driver the frozen kernels do not provide: `quantization.quantize_symmetric` is
@@ -203,7 +203,7 @@ fn _quantize_code(x: Float64, scale: Float64, limit: Int) -> Int:
     return Int(Int64(q - 0.5))
 
 
-fn _nearest_nf4(v: Float64, levels: List[Float64]) -> Int:
+def _nearest_nf4(v: Float64, levels: List[Float64]) -> Int:
     """Index of the closest NF4 level to `v`. Linear over 16 entries — a binary search here would be
     more code than the scan it replaces, and the scan is branch-predictable."""
     var best = 0
@@ -218,7 +218,7 @@ fn _nearest_nf4(v: Float64, levels: List[Float64]) -> Int:
     return best
 
 
-fn calibrate_absmax(x: List[Float64], n: Int) -> Float64:
+def calibrate_absmax(x: List[Float64], n: Int) -> Float64:
     """Largest absolute value in the first `n` entries. 0.0 on a bad count or an all-zero input.
 
     @capability calibrate_absmax
@@ -239,7 +239,7 @@ fn calibrate_absmax(x: List[Float64], n: Int) -> Float64:
     return m
 
 
-fn calibrate_percentile(x: List[Float64], n: Int, p: Float64) -> Float64:
+def calibrate_percentile(x: List[Float64], n: Int, p: Float64) -> Float64:
     """The `p`-th percentile of |x| over the first `n` entries, as a clipping threshold.
 
     Sorts with the frozen `sorting.insertion_sort` rather than a new sort (rule 3's table names it
@@ -272,7 +272,7 @@ fn calibrate_percentile(x: List[Float64], n: Int, p: Float64) -> Float64:
     return sorted_mags[idx]
 
 
-fn quantize_blockwise(
+def quantize_blockwise(
     x: List[Float64], n: Int, block: Int, n_bits: Int
 ) -> BlockQuant:
     """Quantize the first `n` values onto a symmetric `n_bits` grid, one absmax scale per `block`.
@@ -326,7 +326,7 @@ fn quantize_blockwise(
     return BlockQuant(codes^, scales^, n_blocks, block, TX_OK)
 
 
-fn dequantize_blockwise(
+def dequantize_blockwise(
     codes: List[Int], scales: List[Float64], n: Int, block: Int, n_bits: Int
 ) -> List[Float64]:
     """Reconstruct values from codes and per-block scales. Empty list on any shape disagreement.
@@ -355,7 +355,7 @@ fn dequantize_blockwise(
     return out^
 
 
-fn quantize_nf4(x: List[Float64], n: Int, block: Int) -> BlockQuant:
+def quantize_nf4(x: List[Float64], n: Int, block: Int) -> BlockQuant:
     """Quantize onto the NF4 codebook: per-block absmax scale, then nearest of 16 levels.
 
     Normalising by absmax before the codebook lookup is what makes NF4 work — the levels are fixed
@@ -401,7 +401,7 @@ fn quantize_nf4(x: List[Float64], n: Int, block: Int) -> BlockQuant:
     return BlockQuant(codes^, scales^, n_blocks, block, TX_OK)
 
 
-fn dequantize_nf4(
+def dequantize_nf4(
     codes: List[Int], scales: List[Float64], n: Int, block: Int
 ) -> List[Float64]:
     """Reconstruct from NF4 codes. Empty list on shape disagreement or an out-of-range code.
@@ -433,7 +433,7 @@ fn dequantize_nf4(
     return out^
 
 
-fn pack_int4(codes: List[Int], n: Int) -> PackedNibbles:
+def pack_int4(codes: List[Int], n: Int) -> PackedNibbles:
     """Pack `n` signed 4-bit codes two per byte, low nibble first.
 
     Codes are offset by +8 into 0..15 before packing, so -8..7 maps onto an unsigned nibble without a
@@ -462,7 +462,7 @@ fn pack_int4(codes: List[Int], n: Int) -> PackedNibbles:
     return PackedNibbles(out^, n, TX_OK)
 
 
-fn unpack_int4(packed: List[Int], n_values: Int) -> List[Int]:
+def unpack_int4(packed: List[Int], n_values: Int) -> List[Int]:
     """Unpack `n_values` signed 4-bit codes. Empty list if `packed` is too short to hold them.
 
     @capability unpack_int4
@@ -484,7 +484,7 @@ fn unpack_int4(packed: List[Int], n_values: Int) -> List[Int]:
     return out^
 
 
-fn double_quant_scales(
+def double_quant_scales(
     scales: List[Float64], n_blocks: Int, outer_block: Int
 ) -> DoubleQuant:
     """Quantize the per-block scales themselves against an outer block of scales.
@@ -532,7 +532,7 @@ fn double_quant_scales(
     return DoubleQuant(codes^, outer^, n_outer, outer_block, TX_OK)
 
 
-fn quant_error_report(
+def quant_error_report(
     x: List[Float64], recon: List[Float64], n: Int
 ) -> QuantError:
     """Compare an original against its reconstruction over the first `n` entries.
@@ -573,7 +573,7 @@ fn quant_error_report(
     return QuantError(max_e, mean_e, rmse, counted, TX_OK)
 
 
-fn int4_error_vs_frozen(x: Float64, scale: Float64) -> Float64:
+def int4_error_vs_frozen(x: Float64, scale: Float64) -> Float64:
     """This module's 4-bit round-trip error minus the frozen `quantization.int4_pack_error`.
 
     The same visibility contract `dtx_bf16_frozen_delta` provides for bf16: rather than assert the two

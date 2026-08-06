@@ -21,12 +21,12 @@ Public API:
 # ── _is_alpha_byte ────────────────────────────────────────────────────────────
 
 
-fn _is_alpha_byte(c: UInt8) -> Bool:
+def _is_alpha_byte(c: UInt8) -> Bool:
     """Check if a byte is alphabetic ASCII."""
     return (c >= 97 and c <= 122) or (c >= 65 and c <= 90)
 
 
-fn _to_lower_byte(c: UInt8) -> UInt8:
+def _to_lower_byte(c: UInt8) -> UInt8:
     """Convert uppercase ASCII byte to lowercase."""
     if c >= 65 and c <= 90:
         return c + 32
@@ -36,7 +36,7 @@ fn _to_lower_byte(c: UInt8) -> UInt8:
 # ── tokenize_lower ───────────────────────────────────────────────────────────
 
 
-fn tokenize_lower(text: String) -> List[String]:
+def tokenize_lower(text: String) -> List[String]:
     """Lowercase tokenization: split on spaces, strip basic punctuation."""
     var bs = text.as_bytes()
     var n = len(text)
@@ -73,7 +73,7 @@ fn tokenize_lower(text: String) -> List[String]:
 # We use parallel lists for word and score since Mojo lacks dict literals.
 
 
-fn _lexicon_words() -> List[String]:
+def _lexicon_words() -> List[String]:
     """Return list of lexicon words."""
     var w = List[String]()
     # Positive words
@@ -141,7 +141,7 @@ fn _lexicon_words() -> List[String]:
     return w^
 
 
-fn _lexicon_scores() -> List[Float64]:
+def _lexicon_scores() -> List[Float64]:
     """Return list of scores corresponding to _lexicon_words()."""
     var s = List[Float64]()
     # Positive
@@ -212,7 +212,7 @@ fn _lexicon_scores() -> List[Float64]:
 # ── word_sentiment ───────────────────────────────────────────────────────────
 
 
-fn word_sentiment(word: String) -> Float64:
+def word_sentiment(word: String) -> Float64:
     """Lookup single word in lexicon. Returns score or 0 for unknown."""
     var lower = word.lower()
     var words = _lexicon_words()
@@ -226,7 +226,7 @@ fn word_sentiment(word: String) -> Float64:
 # ── sentiment_score ──────────────────────────────────────────────────────────
 
 
-fn sentiment_score(text: String) -> Float64:
+def sentiment_score(text: String) -> Float64:
     """Score from -1 (negative) to +1 (positive) using built-in lexicon.
     Average of known word scores; 0 if no words found."""
     var tokens = tokenize_lower(text)
@@ -245,7 +245,7 @@ fn sentiment_score(text: String) -> Float64:
 # ── polarity ─────────────────────────────────────────────────────────────────
 
 
-fn polarity(text: String) -> Float64:
+def polarity(text: String) -> Float64:
     """Same as sentiment_score (alias)."""
     return sentiment_score(text)
 
@@ -253,7 +253,7 @@ fn polarity(text: String) -> Float64:
 # ── sentiment_label ──────────────────────────────────────────────────────────
 
 
-fn sentiment_label(score: Float64) -> String:
+def sentiment_label(score: Float64) -> String:
     """"positive" if score > 0.05, "negative" if < -0.05, else "neutral"."""
     if score > 0.05:
         return "positive"
@@ -265,7 +265,7 @@ fn sentiment_label(score: Float64) -> String:
 # ── subjectivity ─────────────────────────────────────────────────────────────
 
 
-fn subjectivity(text: String) -> Float64:
+def subjectivity(text: String) -> Float64:
     """Proportion of words found in lexicon (subjective words)."""
     var tokens = tokenize_lower(text)
     var total = len(tokens)
@@ -281,7 +281,7 @@ fn subjectivity(text: String) -> Float64:
 # ── count_positive_words ─────────────────────────────────────────────────────
 
 
-fn count_positive_words(text: String) -> Int:
+def count_positive_words(text: String) -> Int:
     """Count words with positive sentiment."""
     var tokens = tokenize_lower(text)
     var count: Int = 0
@@ -294,7 +294,7 @@ fn count_positive_words(text: String) -> Int:
 # ── count_negative_words ─────────────────────────────────────────────────────
 
 
-fn count_negative_words(text: String) -> Int:
+def count_negative_words(text: String) -> Int:
     """Count words with negative sentiment."""
     var tokens = tokenize_lower(text)
     var count: Int = 0
@@ -307,7 +307,7 @@ fn count_negative_words(text: String) -> Int:
 # ── most_positive_word ───────────────────────────────────────────────────────
 
 
-fn most_positive_word(text: String) -> String:
+def most_positive_word(text: String) -> String:
     """Word with highest sentiment score."""
     var tokens = tokenize_lower(text)
     var best_word = String("")
@@ -323,7 +323,7 @@ fn most_positive_word(text: String) -> String:
 # ── most_negative_word ───────────────────────────────────────────────────────
 
 
-fn most_negative_word(text: String) -> String:
+def most_negative_word(text: String) -> String:
     """Word with lowest sentiment score."""
     var tokens = tokenize_lower(text)
     var worst_word = String("")

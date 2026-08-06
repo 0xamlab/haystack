@@ -8,7 +8,7 @@ Public API:
 """
 
 
-fn _finite(v: Float64) -> Bool:
+def _finite(v: Float64) -> Bool:
     """True when v is neither NaN nor infinite (v - v == 0.0 only for finite v)."""
     return v - v == 0.0
 
@@ -16,7 +16,7 @@ fn _finite(v: Float64) -> Bool:
 # ── Forward Difference ────────────────────────────────────────────────────────
 
 
-fn derivative_forward(y: List[Float64], dx: Float64) -> List[Float64]:
+def derivative_forward(y: List[Float64], dx: Float64) -> List[Float64]:
     """Forward difference: dy[i] = (y[i+1] - y[i]) / dx.
     Returns a list of length n-1."""
     var n = len(y)
@@ -31,7 +31,7 @@ fn derivative_forward(y: List[Float64], dx: Float64) -> List[Float64]:
 # ── Central Difference ────────────────────────────────────────────────────────
 
 
-fn derivative_central(y: List[Float64], dx: Float64) -> List[Float64]:
+def derivative_central(y: List[Float64], dx: Float64) -> List[Float64]:
     """Central difference: dy[i] = (y[i+1] - y[i-1]) / (2*dx).
     For endpoints uses forward/backward difference.
     Returns a list of length n."""
@@ -55,7 +55,7 @@ fn derivative_central(y: List[Float64], dx: Float64) -> List[Float64]:
 # ── Backward Difference ──────────────────────────────────────────────────────
 
 
-fn derivative_backward(y: List[Float64], dx: Float64) -> List[Float64]:
+def derivative_backward(y: List[Float64], dx: Float64) -> List[Float64]:
     """Backward difference: dy[i] = (y[i] - y[i-1]) / dx.
     Returns a list of length n-1 (starting from index 1)."""
     var n = len(y)
@@ -70,7 +70,7 @@ fn derivative_backward(y: List[Float64], dx: Float64) -> List[Float64]:
 # ── Second Derivative ─────────────────────────────────────────────────────────
 
 
-fn second_derivative(y: List[Float64], dx: Float64) -> List[Float64]:
+def second_derivative(y: List[Float64], dx: Float64) -> List[Float64]:
     """Second derivative via central difference:
     d2y[i] = (y[i+1] - 2*y[i] + y[i-1]) / dx^2.
     Returns a list of length n-2 (interior points only)."""
@@ -87,7 +87,7 @@ fn second_derivative(y: List[Float64], dx: Float64) -> List[Float64]:
 # ── Gradient (non-uniform spacing) ───────────────────────────────────────────
 
 
-fn gradient(y: List[Float64], x: List[Float64]) -> List[Float64]:
+def gradient(y: List[Float64], x: List[Float64]) -> List[Float64]:
     """Numerical gradient for non-uniformly spaced data.
     Uses central differences for interior, forward/backward at ends.
     x and y must have the same length. Returns list of length n."""
@@ -143,7 +143,7 @@ fn gradient(y: List[Float64], x: List[Float64]) -> List[Float64]:
 # ── Polynomial Derivative Coefficients ────────────────────────────────────────
 
 
-fn poly_derivative_coeffs(coeffs: List[Float64]) -> List[Float64]:
+def poly_derivative_coeffs(coeffs: List[Float64]) -> List[Float64]:
     """Analytical derivative of polynomial given as coefficients.
     Input: coeffs[0] + coeffs[1]*x + coeffs[2]*x^2 + ...
     Output: coeffs[1] + 2*coeffs[2]*x + 3*coeffs[3]*x^2 + ...

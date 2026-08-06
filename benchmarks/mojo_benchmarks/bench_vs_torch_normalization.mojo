@@ -120,7 +120,7 @@ any reasonable time. The check verifies the MATH, which does not depend on the s
 shape sweep verifies the kernel at scale."""
 
 
-fn _splitmix(i: UInt64) -> Float64:
+def _splitmix(i: UInt64) -> Float64:
     """splitmix64 of an index, mapped to [-0.5, 0.5) with no rounding.
 
     The driver runs the identical recurrence in NumPy uint64 arithmetic. Indexing by position rather
@@ -134,14 +134,14 @@ fn _splitmix(i: UInt64) -> Float64:
     return Float64(Int(z >> 40)) / 16777216.0 - 0.5
 
 
-fn _fill(count: Int, salt: UInt64) -> List[Float64]:
+def _fill(count: Int, salt: UInt64) -> List[Float64]:
     var out = List[Float64](capacity=count if count > 0 else 1)
     for i in range(count):
         out.append(_splitmix(UInt64(i) + salt))
     return out^
 
 
-fn _fill_gamma(count: Int, salt: UInt64) -> List[Float64]:
+def _fill_gamma(count: Int, salt: UInt64) -> List[Float64]:
     """gamma centred on 1.0 rather than 0.0 — a scale parameter that averages zero would make the
     normalized output a rounding-noise field and every relative error meaningless. `1.0 + s` for
     `s` in [-0.5, 0.5) is exact in Float64, so the two sides still agree bit for bit."""
@@ -151,7 +151,7 @@ fn _fill_gamma(count: Int, salt: UInt64) -> List[Float64]:
     return out^
 
 
-fn _dump(path: String, data: List[Float64], count: Int) -> Int:
+def _dump(path: String, data: List[Float64], count: Int) -> Int:
     """Write `count` Float64 little-endian to `path`. Returns bytes written, or -1."""
     if count <= 0 or count > len(data):
         return -1
@@ -163,14 +163,14 @@ fn _dump(path: String, data: List[Float64], count: Int) -> Int:
         return -1
 
 
-fn _gbs(bytes_moved: Float64, ns: Float64) -> Float64:
+def _gbs(bytes_moved: Float64, ns: Float64) -> Float64:
     """Bytes per nanosecond IS gigabytes per second (1e9 B / 1e9 ns). No unit fudge factor."""
     if ns <= 0.0:
         return 0.0
     return bytes_moved / ns
 
 
-fn _env_int(name: String, fallback: Int) -> Int:
+def _env_int(name: String, fallback: Int) -> Int:
     var raw = getenv(name)
     if raw.byte_length() == 0:
         return fallback
@@ -180,12 +180,12 @@ fn _env_int(name: String, fallback: Int) -> Int:
         return fallback
 
 
-fn _env_str(name: String, fallback: String) -> String:
+def _env_str(name: String, fallback: String) -> String:
     var raw = getenv(name)
     return fallback if raw.byte_length() == 0 else raw
 
 
-fn _workers_used_inferred(rows: Int, cols: Int) -> Int:
+def _workers_used_inferred(rows: Int, cols: Int) -> Int:
     """The worker count `rmsnorm_fwd_flat` / `layernorm_fwd_flat` would pick for this shape, by the
     same rule they use internally. NOT read back from the kernel — neither result struct reports it
     — so this is an inference, not a measurement, and every caller of this function is a print
@@ -195,7 +195,7 @@ fn _workers_used_inferred(rows: Int, cols: Int) -> Int:
     return info.num_physical_cores()
 
 
-fn _bytes_moved(rows: Int, cols: Int, is_fwd: Bool) -> Float64:
+def _bytes_moved(rows: Int, cols: Int, is_fwd: Bool) -> Float64:
     """16 B/element forward (read x, write y), 24 B/element backward (read x, read dy, write dx).
     `gamma`/`beta` and the accumulator are cache-resident and excluded, matching the convention the
     original measurement used."""
@@ -203,7 +203,7 @@ fn _bytes_moved(rows: Int, cols: Int, is_fwd: Bool) -> Float64:
     return per_elem * Float64(rows) * Float64(cols)
 
 
-fn _self_mode() raises:
+def _self_mode() raises:
     var rows = _env_int("NORM_BENCH_ROWS", 1024)
     var cols = _env_int("NORM_BENCH_COLS", 4096)
     var kind = _env_str("NORM_BENCH_KIND", String("LN"))
@@ -392,7 +392,7 @@ fn _self_mode() raises:
     print("BENCH_GATE normk_self PASS")
 
 
-fn _serve() raises:
+def _serve() raises:
     """One command per line on stdin, one reply per line on stdout.
 
     GEN rows cols          build x, gamma, beta, dy from splitmix64 indices
@@ -510,7 +510,7 @@ fn _serve() raises:
             print("ERR unknown " + cmd)
 
 
-fn main() raises:
+def main() raises:
     var av = argv()
     if len(av) > 1 and String(av[1]) == "SERVE":
         _serve()

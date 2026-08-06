@@ -27,10 +27,10 @@ rival's tyre inventory, team orders or crew availability. Stated rather than pap
 therefore a decision-support contrast against a fixed opponent plan, not a game solution.
 """
 
-from math import exp, log, sqrt
+from std.math import exp, log, sqrt
 from std.algorithm import parallelize
 from std.sys import info
-from memory import UnsafePointer
+from std.memory import UnsafePointer
 
 from counter_rng import (
     philox_word,
@@ -49,7 +49,7 @@ from counter_rng import (
 from degradation_state import wear_clamp
 
 
-fn wear_penalty(
+def wear_penalty(
     deg: Float64, age: Float64, cliff_age: Float64, cliff_slope: Float64
 ) -> Float64:
     """Linear wear plus the cliff — ONE definition, so the oracle and the board price tyres alike.
@@ -147,7 +147,7 @@ struct StrategyBoard(Copyable, Movable):
     var n_replications: Int
     var crn_variance_ratio: Float64
 
-    fn __init__(
+    def __init__(
         out self,
         var p_ahead: List[Float64],
         var delta_vs_stay: List[Float64],
@@ -174,7 +174,7 @@ struct StrategyBoard(Copyable, Movable):
         self.crn_variance_ratio = crn_variance_ratio
 
 
-fn default_contest_params() -> List[Float64]:
+def default_contest_params() -> List[Float64]:
     """Reference defaults. Deterministic, zero-argument — also the probe for this module."""
     var p = List[Float64]()
     for _ in range(N_PARAMS):
@@ -221,7 +221,7 @@ fn default_contest_params() -> List[Float64]:
     return p^
 
 
-fn option_service_round(option: Int) -> Int:
+def option_service_round(option: Int) -> Int:
     """Lap offset from now at which the focal car boxes. -1 means it does not."""
     if option == OPT_BOX_NOW:
         return 0
@@ -232,7 +232,7 @@ fn option_service_round(option: Int) -> Int:
     return -1
 
 
-fn option_board(
+def option_board(
     car_pace: List[Float64], car_deg: List[Float64], car_elapsed: List[Float64],
     car_age: List[Float64], car_active: List[Float64],
     focal: Int, rival: Int, laps_remaining: Int,
@@ -316,7 +316,7 @@ fn option_board(
     var basepen_p = base_pen.unsafe_ptr()
 
     @parameter
-    fn _worker(wid: Int):
+    def _worker(wid: Int):
         var lo = wid * chunk
         var hi = lo + chunk
         if hi > n_reps:
@@ -821,7 +821,7 @@ struct OracleBoard(Copyable, Movable):
     car-races, so this is the direct check that the simulated field churns as much as real races do. A
     model that treats its pace prior as near-certain scores far below it."""
 
-    fn __init__(
+    def __init__(
         out self, var p_win: List[Float64], var p_podium: List[Float64],
         var p_points: List[Float64], var expected_position: List[Float64],
         modal_winner: Int, n_replications: Int, mean_displacement: Float64,
@@ -835,7 +835,7 @@ struct OracleBoard(Copyable, Movable):
         self.mean_displacement = mean_displacement
 
 
-fn outcome_distribution(
+def outcome_distribution(
     car_pace: List[Float64], car_deg: List[Float64], car_form_sigma: List[Float64],
     car_elapsed: List[Float64], car_age: List[Float64], car_active: List[Float64],
     car_stops: List[Float64], laps_remaining: Int, params: List[Float64],
@@ -959,7 +959,7 @@ fn outcome_distribution(
     var basepen_p = base_pen.unsafe_ptr()
 
     @parameter
-    fn _oracle_worker(wid: Int):
+    def _oracle_worker(wid: Int):
         var lo = wid * chunk
         var hi = lo + chunk
         if hi > n_reps:
@@ -1335,7 +1335,7 @@ fn outcome_distribution(
     return OracleBoard(p_win^, p_pod^, p_pts^, e_pos^, best, n_reps, disp / Float64(n_cars))
 
 
-fn contest_worker_count() -> Int:
+def contest_worker_count() -> Int:
     """Cores the parallel path will actually use. Deterministic, zero-argument.
 
     Exists because the compiled binary ran ~8.7x slower than JIT, and the first thing to rule out was
@@ -1347,6 +1347,6 @@ fn contest_worker_count() -> Int:
     return n
 
 
-fn contest_strategy_version() -> String:
+def contest_strategy_version() -> String:
     """Contract identifier. Deterministic, zero-argument."""
     return String("contest-strategy-crn/v1")

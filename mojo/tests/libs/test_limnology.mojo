@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from limnology import lake_volume_ellipsoid, hydraulic_retention_time, thermal_stratification_index, secchi_depth_estimate, trophic_state_index, phosphorus_loading, oxygen_saturation, attenuation_coefficient, lake_flushing_rate, nitrogen_fixation_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

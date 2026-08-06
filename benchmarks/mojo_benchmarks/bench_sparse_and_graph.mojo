@@ -53,14 +53,14 @@ from sparse_numerics.spmv import csr_matvec
 comptime WARMUP: Int = 3
 
 
-fn _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
+def _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     if work <= 0 or reps <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(work * reps)
 
 
-fn _tridiagonal(n: Int) -> List[List[Float64]]:
+def _tridiagonal(n: Int) -> List[List[Float64]]:
     """A 1D Laplacian as (rows, cols, vals): SPD, ~3n non-zeros, exact solution known.
 
     Returned as three parallel Float64 lists so one helper serves both the CSR builder and
@@ -88,14 +88,14 @@ fn _tridiagonal(n: Int) -> List[List[Float64]]:
     return out^
 
 
-fn _to_int(values: List[Float64]) -> List[Int]:
+def _to_int(values: List[Float64]) -> List[Int]:
     var out = List[Int]()
     for i in range(len(values)):
         out.append(Int(values[i]))
     return out^
 
 
-fn _coo(rows: List[Float64], cols: List[Float64], vals: List[Float64], n: Int) -> SparseMatrixCOO:
+def _coo(rows: List[Float64], cols: List[Float64], vals: List[Float64], n: Int) -> SparseMatrixCOO:
     """The frozen COO form of the same matrix, for the differential comparison."""
     var m = SparseMatrixCOO(n, n)
     for k in range(len(vals)):
@@ -103,7 +103,7 @@ fn _coo(rows: List[Float64], cols: List[Float64], vals: List[Float64], n: Int) -
     return m^
 
 
-fn _ring_edges(n: Int, extra_stride: Int) -> List[List[Int]]:
+def _ring_edges(n: Int, extra_stride: Int) -> List[List[Int]]:
     """A ring plus one chord per node — connected, ~2n edges, no isolated vertices."""
     var src = List[Int]()
     var dst = List[Int]()
@@ -118,7 +118,7 @@ fn _ring_edges(n: Int, extra_stride: Int) -> List[List[Int]]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
 
     # ── 1. SpMV cost tracks nnz, not n^2 ─────────────────────────────────────

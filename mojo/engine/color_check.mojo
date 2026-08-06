@@ -33,7 +33,7 @@ from color import RGB, hex_to_rgb, rgb_to_hex
 from color_science import contrast_ratio, rgb_to_luminance
 
 
-fn _clamp_rgb255(v: Float64) -> Float64:
+def _clamp_rgb255(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 255.0:
@@ -41,11 +41,11 @@ fn _clamp_rgb255(v: Float64) -> Float64:
     return v
 
 
-fn _rgb255_to_rgb01(r: Float64, g: Float64, b: Float64) -> RGB:
+def _rgb255_to_rgb01(r: Float64, g: Float64, b: Float64) -> RGB:
     return RGB(_clamp_rgb255(r) / 255.0, _clamp_rgb255(g) / 255.0, _clamp_rgb255(b) / 255.0)
 
 
-fn _is_hex_digit(b: UInt8) -> Bool:
+def _is_hex_digit(b: UInt8) -> Bool:
     var code = Int(b)
     return (
         (code >= 48 and code <= 57)
@@ -54,7 +54,7 @@ fn _is_hex_digit(b: UInt8) -> Bool:
     )
 
 
-fn _validated_hex_to_rgb(hex: String) raises -> RGB:
+def _validated_hex_to_rgb(hex: String) raises -> RGB:
     var bytes = hex.as_bytes()
     var offset = 0
     if len(hex) > 0 and Int(bytes[0]) == 35:
@@ -71,7 +71,7 @@ fn _validated_hex_to_rgb(hex: String) raises -> RGB:
     return hex_to_rgb(hex)
 
 
-fn _channel_bin(v: Float64, bins: Int, bin_w: Float64) -> Int:
+def _channel_bin(v: Float64, bins: Int, bin_w: Float64) -> Int:
     var bucket = Int(_clamp_rgb255(v) / bin_w)
     if bucket < 0:
         return 0
@@ -80,14 +80,14 @@ fn _channel_bin(v: Float64, bins: Int, bin_w: Float64) -> Int:
     return bucket
 
 
-fn _dominant_bin_index(r: Float64, g: Float64, b: Float64, bins: Int, bin_w: Float64) -> Int:
+def _dominant_bin_index(r: Float64, g: Float64, b: Float64, bins: Int, bin_w: Float64) -> Int:
     var rb = _channel_bin(r, bins, bin_w)
     var gb = _channel_bin(g, bins, bin_w)
     var bb = _channel_bin(b, bins, bin_w)
     return (rb * bins + gb) * bins + bb
 
 
-fn _dominant_background_stats(
+def _dominant_background_stats(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int
 ) -> List[Float64]:
     var bins = levels
@@ -156,29 +156,29 @@ fn _dominant_background_stats(
     return out^
 
 
-fn _preferred_contrast_against_rgb255(bg_r: Float64, bg_g: Float64, bg_b: Float64) -> Float64:
+def _preferred_contrast_against_rgb255(bg_r: Float64, bg_g: Float64, bg_b: Float64) -> Float64:
     var black = wcag_contrast_ratio_rgb255(0.0, 0.0, 0.0, bg_r, bg_g, bg_b)
     var white = wcag_contrast_ratio_rgb255(255.0, 255.0, 255.0, bg_r, bg_g, bg_b)
     return black if black >= white else white
 
 
-fn wcag_relative_luminance_rgb255(r: Float64, g: Float64, b: Float64) -> Float64:
+def wcag_relative_luminance_rgb255(r: Float64, g: Float64, b: Float64) -> Float64:
     var c = _rgb255_to_rgb01(r, g, b)
     return rgb_to_luminance(c.r, c.g, c.b)
 
 
-fn wcag_relative_luminance_hex(hex: String) raises -> Float64:
+def wcag_relative_luminance_hex(hex: String) raises -> Float64:
     var c = _validated_hex_to_rgb(hex)
     return rgb_to_luminance(c.r, c.g, c.b)
 
 
-fn wcag_aa_required_contrast(font_size_pt: Float64, is_bold: Bool) -> Float64:
+def wcag_aa_required_contrast(font_size_pt: Float64, is_bold: Bool) -> Float64:
     if font_size_pt >= 18.0 or (is_bold and font_size_pt >= 14.0):
         return 3.0
     return 4.5
 
 
-fn wcag_contrast_ratio_rgb255(
+def wcag_contrast_ratio_rgb255(
     fg_r: Float64, fg_g: Float64, fg_b: Float64,
     bg_r: Float64, bg_g: Float64, bg_b: Float64,
 ) -> Float64:
@@ -188,14 +188,14 @@ fn wcag_contrast_ratio_rgb255(
     )
 
 
-fn wcag_contrast_ratio_hex(fg_hex: String, bg_hex: String) raises -> Float64:
+def wcag_contrast_ratio_hex(fg_hex: String, bg_hex: String) raises -> Float64:
     return contrast_ratio(
         wcag_relative_luminance_hex(fg_hex),
         wcag_relative_luminance_hex(bg_hex),
     )
 
 
-fn wcag_text_pass_rgb255(
+def wcag_text_pass_rgb255(
     fg_r: Float64, fg_g: Float64, fg_b: Float64,
     bg_r: Float64, bg_g: Float64, bg_b: Float64,
     font_size_pt: Float64, is_bold: Bool,
@@ -206,7 +206,7 @@ fn wcag_text_pass_rgb255(
     )
 
 
-fn wcag_text_pass_hex(
+def wcag_text_pass_hex(
     fg_hex: String, bg_hex: String, font_size_pt: Float64, is_bold: Bool,
 ) raises -> Bool:
     return (
@@ -215,29 +215,29 @@ fn wcag_text_pass_hex(
     )
 
 
-fn preferred_text_color_rgb255(bg_r: Float64, bg_g: Float64, bg_b: Float64) -> String:
+def preferred_text_color_rgb255(bg_r: Float64, bg_g: Float64, bg_b: Float64) -> String:
     var black = wcag_contrast_ratio_rgb255(0.0, 0.0, 0.0, bg_r, bg_g, bg_b)
     var white = wcag_contrast_ratio_rgb255(255.0, 255.0, 255.0, bg_r, bg_g, bg_b)
     return "#000000" if black >= white else "#FFFFFF"
 
 
-fn preferred_text_color_hex(bg_hex: String) raises -> String:
+def preferred_text_color_hex(bg_hex: String) raises -> String:
     var c = _validated_hex_to_rgb(bg_hex)
     return preferred_text_color_rgb255(c.r * 255.0, c.g * 255.0, c.b * 255.0)
 
 
-fn dominant_background_rgb255(
+def dominant_background_rgb255(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int
 ) -> List[Float64]:
     return _dominant_background_stats(flat_rgb, width, height, levels)
 
 
-fn dominant_background_hex(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> String:
+def dominant_background_hex(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> String:
     var bg = dominant_background_rgb255(flat_rgb, width, height, levels)
     return rgb_to_hex(_rgb255_to_rgb01(bg[0], bg[1], bg[2]))
 
 
-fn dominant_background_contrast_ratio_hex(
+def dominant_background_contrast_ratio_hex(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int, text_hex: String,
 ) raises -> Float64:
     var bg = dominant_background_rgb255(flat_rgb, width, height, levels)
@@ -252,7 +252,7 @@ fn dominant_background_contrast_ratio_hex(
     )
 
 
-fn dominant_background_wcag_pass_hex(
+def dominant_background_wcag_pass_hex(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int,
     text_hex: String, font_size_pt: Float64, is_bold: Bool,
 ) raises -> Bool:
@@ -262,21 +262,21 @@ fn dominant_background_wcag_pass_hex(
     )
 
 
-fn preferred_text_color_for_image(
+def preferred_text_color_for_image(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int,
 ) -> String:
     var bg = dominant_background_rgb255(flat_rgb, width, height, levels)
     return preferred_text_color_rgb255(bg[0], bg[1], bg[2])
 
 
-fn preferred_text_contrast_for_image(
+def preferred_text_contrast_for_image(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int,
 ) -> Float64:
     var bg = dominant_background_rgb255(flat_rgb, width, height, levels)
     return _preferred_contrast_against_rgb255(bg[0], bg[1], bg[2])
 
 
-fn preferred_text_pass_for_image(
+def preferred_text_pass_for_image(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int,
     font_size_pt: Float64, is_bold: Bool,
 ) -> Bool:

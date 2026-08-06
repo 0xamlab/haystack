@@ -32,7 +32,7 @@ comptime G_CONST: Float64 = 6.674e-11
 # ── _deg_to_rad ──────────────────────────────────────────────────────────────
 
 
-fn _deg_to_rad(deg: Float64) -> Float64:
+def _deg_to_rad(deg: Float64) -> Float64:
     """Convert degrees to radians."""
     return deg * PI / 180.0
 
@@ -40,7 +40,7 @@ fn _deg_to_rad(deg: Float64) -> Float64:
 # ── kinematic_distance ───────────────────────────────────────────────────────
 
 
-fn kinematic_distance(v0: Float64, a: Float64, t: Float64) -> Float64:
+def kinematic_distance(v0: Float64, a: Float64, t: Float64) -> Float64:
     """Distance under constant acceleration: d = v0*t + 0.5*a*t²."""
     return v0 * t + 0.5 * a * t * t
 
@@ -48,7 +48,7 @@ fn kinematic_distance(v0: Float64, a: Float64, t: Float64) -> Float64:
 # ── kinematic_velocity ───────────────────────────────────────────────────────
 
 
-fn kinematic_velocity(v0: Float64, a: Float64, t: Float64) -> Float64:
+def kinematic_velocity(v0: Float64, a: Float64, t: Float64) -> Float64:
     """Velocity under constant acceleration: v = v0 + a*t."""
     return v0 + a * t
 
@@ -56,7 +56,7 @@ fn kinematic_velocity(v0: Float64, a: Float64, t: Float64) -> Float64:
 # ── kinetic_energy ───────────────────────────────────────────────────────────
 
 
-fn kinetic_energy(mass: Float64, velocity: Float64) -> Float64:
+def kinetic_energy(mass: Float64, velocity: Float64) -> Float64:
     """Kinetic energy: KE = 0.5*m*v²."""
     return 0.5 * mass * velocity * velocity
 
@@ -64,7 +64,7 @@ fn kinetic_energy(mass: Float64, velocity: Float64) -> Float64:
 # ── potential_energy ─────────────────────────────────────────────────────────
 
 
-fn potential_energy(mass: Float64, height: Float64, g: Float64 = 9.81) -> Float64:
+def potential_energy(mass: Float64, height: Float64, g: Float64 = 9.81) -> Float64:
     """Gravitational potential energy: PE = m*g*h."""
     return mass * g * height
 
@@ -72,7 +72,7 @@ fn potential_energy(mass: Float64, height: Float64, g: Float64 = 9.81) -> Float6
 # ── momentum ─────────────────────────────────────────────────────────────────
 
 
-fn momentum(mass: Float64, velocity: Float64) -> Float64:
+def momentum(mass: Float64, velocity: Float64) -> Float64:
     """Linear momentum: p = m*v."""
     return mass * velocity
 
@@ -80,7 +80,7 @@ fn momentum(mass: Float64, velocity: Float64) -> Float64:
 # ── gravitational_force ──────────────────────────────────────────────────────
 
 
-fn gravitational_force(m1: Float64, m2: Float64, r: Float64) -> Float64:
+def gravitational_force(m1: Float64, m2: Float64, r: Float64) -> Float64:
     """Newton's law of gravitation: F = G*m1*m2/r²."""
     return G_CONST * m1 * m2 / (r * r)
 
@@ -88,7 +88,7 @@ fn gravitational_force(m1: Float64, m2: Float64, r: Float64) -> Float64:
 # ── projectile_range ─────────────────────────────────────────────────────────
 
 
-fn projectile_range(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float64:
+def projectile_range(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float64:
     """Projectile range on flat ground: R = v0²*sin(2θ)/g."""
     var theta2 = _deg_to_rad(2.0 * angle_deg)
     return v0 * v0 * sin(theta2) / g
@@ -97,7 +97,7 @@ fn projectile_range(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float
 # ── projectile_max_height ────────────────────────────────────────────────────
 
 
-fn projectile_max_height(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float64:
+def projectile_max_height(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float64:
     """Projectile maximum height: H = v0²*sin²(θ)/(2g)."""
     var s = sin(_deg_to_rad(angle_deg))
     return v0 * v0 * s * s / (2.0 * g)
@@ -106,7 +106,7 @@ fn projectile_max_height(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> 
 # ── projectile_time ──────────────────────────────────────────────────────────
 
 
-fn projectile_time(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float64:
+def projectile_time(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float64:
     """Total flight time: T = 2*v0*sin(θ)/g."""
     return 2.0 * v0 * sin(_deg_to_rad(angle_deg)) / g
 
@@ -114,7 +114,7 @@ fn projectile_time(v0: Float64, angle_deg: Float64, g: Float64 = 9.81) -> Float6
 # ── work ─────────────────────────────────────────────────────────────────────
 
 
-fn work(force: Float64, distance: Float64, angle_deg: Float64 = 0.0) -> Float64:
+def work(force: Float64, distance: Float64, angle_deg: Float64 = 0.0) -> Float64:
     """Work done: W = F*d*cos(θ)."""
     return force * distance * cos(_deg_to_rad(angle_deg))
 
@@ -122,7 +122,7 @@ fn work(force: Float64, distance: Float64, angle_deg: Float64 = 0.0) -> Float64:
 # ── power ────────────────────────────────────────────────────────────────────
 
 
-fn power(work: Float64, time: Float64) -> Float64:
+def power(work: Float64, time: Float64) -> Float64:
     """Power: P = W/t."""
     return work / time
 
@@ -130,7 +130,7 @@ fn power(work: Float64, time: Float64) -> Float64:
 # ── elastic_collision_v1 ─────────────────────────────────────────────────────
 
 
-fn elastic_collision_v1(m1: Float64, m2: Float64, v1: Float64, v2: Float64) -> Float64:
+def elastic_collision_v1(m1: Float64, m2: Float64, v1: Float64, v2: Float64) -> Float64:
     """Post-collision velocity of m1 in a 1D elastic collision.
 
     v1' = ((m1 - m2)*v1 + 2*m2*v2) / (m1 + m2)

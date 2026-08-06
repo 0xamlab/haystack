@@ -43,52 +43,52 @@ from std.math import abs as fabs, sqrt, cos, exp
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _li(a: Int, b: Int, c: Int, d: Int, e: Int) -> List[Int]:
+def _li(a: Int, b: Int, c: Int, d: Int, e: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a); r.append(b); r.append(c); r.append(d); r.append(e)
     return r^
 
 
-fn _li4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _li4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a); r.append(b); r.append(c); r.append(d)
     return r^
 
 
-fn _lf3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _lf3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c)
     return r^
 
 
-fn _lf4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def _lf4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c); r.append(d)
     return r^
 
 
-fn _lf5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
+def _lf5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c); r.append(d); r.append(e)
     return r^
 
 
-fn _lf8(a: Float64, b: Float64, c: Float64, d: Float64,
+def _lf8(a: Float64, b: Float64, c: Float64, d: Float64,
         e: Float64, f: Float64, g: Float64, h: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c); r.append(d)
@@ -96,7 +96,7 @@ fn _lf8(a: Float64, b: Float64, c: Float64, d: Float64,
     return r^
 
 
-fn _li8(a: Int, b: Int, c: Int, d: Int,
+def _li8(a: Int, b: Int, c: Int, d: Int,
         e: Int, f: Int, g: Int, h: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a); r.append(b); r.append(c); r.append(d)
@@ -104,7 +104,7 @@ fn _li8(a: Int, b: Int, c: Int, d: Int,
     return r^
 
 
-fn _lf6(a: Float64, b: Float64, c: Float64,
+def _lf6(a: Float64, b: Float64, c: Float64,
         d: Float64, e: Float64, f: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c)
@@ -112,20 +112,20 @@ fn _lf6(a: Float64, b: Float64, c: Float64,
     return r^
 
 
-fn _li6(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int) -> List[Int]:
+def _li6(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a); r.append(b); r.append(c)
     r.append(d); r.append(e); r.append(f)
     return r^
 
 
-fn _lf1(a: Float64) -> List[Float64]:
+def _lf1(a: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     return r^
 
 
-fn _lf2(a: Float64, b: Float64) -> List[Float64]:
+def _lf2(a: Float64, b: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b)
     return r^
@@ -134,7 +134,7 @@ fn _lf2(a: Float64, b: Float64) -> List[Float64]:
 # ── Root Finding Tests ───────────────────────────────────────────────────────
 
 
-fn test_eval_func() raises:
+def test_eval_func() raises:
     print("  test_eval_func ...")
     var s2 = sqrt(2.0)
     # 1: eval_func(sqrt(2), 0) ≈ 0
@@ -150,7 +150,7 @@ fn test_eval_func() raises:
     print("    PASS")
 
 
-fn test_eval_deriv() raises:
+def test_eval_deriv() raises:
     print("  test_eval_deriv ...")
     # 6: deriv of x^2-2 at x=3 is 6
     _assert_close(eval_deriv(3.0, 0), 6.0, 1e-10, "f0'(3)=6")
@@ -159,7 +159,7 @@ fn test_eval_deriv() raises:
     print("    PASS")
 
 
-fn test_bisection() raises:
+def test_bisection() raises:
     print("  test_bisection ...")
     var s2 = sqrt(2.0)
     # 8: bisection on f0 over [1,2] ≈ sqrt(2)
@@ -174,7 +174,7 @@ fn test_bisection() raises:
     print("    PASS")
 
 
-fn test_newton_raphson() raises:
+def test_newton_raphson() raises:
     print("  test_newton_raphson ...")
     var s2 = sqrt(2.0)
     # 11: newton on f0 from x0=1.5 ≈ sqrt(2)
@@ -192,7 +192,7 @@ fn test_newton_raphson() raises:
     print("    PASS")
 
 
-fn test_secant_method() raises:
+def test_secant_method() raises:
     print("  test_secant_method ...")
     var s2 = sqrt(2.0)
     # 15: secant on f0
@@ -204,7 +204,7 @@ fn test_secant_method() raises:
     print("    PASS")
 
 
-fn test_fixed_point() raises:
+def test_fixed_point() raises:
     print("  test_fixed_point ...")
     var s2 = sqrt(2.0)
     # 17: fixed-point on f0
@@ -216,7 +216,7 @@ fn test_fixed_point() raises:
     print("    PASS")
 
 
-fn test_regula_falsi() raises:
+def test_regula_falsi() raises:
     print("  test_regula_falsi ...")
     var s2 = sqrt(2.0)
     # 19: regula_falsi on f0
@@ -231,7 +231,7 @@ fn test_regula_falsi() raises:
     print("    PASS")
 
 
-fn test_methods_agree() raises:
+def test_methods_agree() raises:
     print("  test_methods_agree ...")
     var rb = bisection(1.0, 2.0, 0)
     var rn = newton_raphson(1.5, 0)
@@ -246,7 +246,7 @@ fn test_methods_agree() raises:
     print("    PASS")
 
 
-fn test_bracket_root() raises:
+def test_bracket_root() raises:
     print("  test_bracket_root ...")
     # 26: bracket_root returns valid bracket for f0
     var br = bracket_root(0, start=0.0, step=0.5)
@@ -262,7 +262,7 @@ fn test_bracket_root() raises:
     print("    PASS")
 
 
-fn test_convergence_order() raises:
+def test_convergence_order() raises:
     print("  test_convergence_order ...")
     # Newton method convergence: collect errors for f0, starting from x=2
     var s2 = sqrt(2.0)
@@ -284,7 +284,7 @@ fn test_convergence_order() raises:
 # ── Delta Compression Tests ─────────────────────────────────────────────────
 
 
-fn test_delta_encode_decode() raises:
+def test_delta_encode_decode() raises:
     print("  test_delta_encode_decode ...")
     var data = _li(1, 3, 6, 10, 15)
     var encoded = delta_encode(data)
@@ -305,7 +305,7 @@ fn test_delta_encode_decode() raises:
     print("    PASS")
 
 
-fn test_delta_encode_specific() raises:
+def test_delta_encode_specific() raises:
     print("  test_delta_encode_specific ...")
     var data = _li4(1, 3, 6, 10)
     var encoded = delta_encode(data)
@@ -317,7 +317,7 @@ fn test_delta_encode_specific() raises:
     print("    PASS")
 
 
-fn test_xor_delta() raises:
+def test_xor_delta() raises:
     print("  test_xor_delta ...")
     var data = _li(10, 12, 15, 8, 20)
     var encoded = xor_delta_encode(data)
@@ -328,7 +328,7 @@ fn test_xor_delta() raises:
     print("    PASS")
 
 
-fn test_zigzag_delta() raises:
+def test_zigzag_delta() raises:
     print("  test_zigzag_delta ...")
     var data = _li(100, 98, 102, 97, 105)
     var encoded = zigzag_delta_encode(data)
@@ -339,7 +339,7 @@ fn test_zigzag_delta() raises:
     print("    PASS")
 
 
-fn test_double_delta() raises:
+def test_double_delta() raises:
     print("  test_double_delta ...")
     # Linear sequence: 10, 20, 30, 40, 50
     var data = _li(10, 20, 30, 40, 50)
@@ -355,7 +355,7 @@ fn test_double_delta() raises:
     print("    PASS")
 
 
-fn test_delta_float() raises:
+def test_delta_float() raises:
     print("  test_delta_float ...")
     var data = _lf4(1.5, 2.3, 3.7, 4.1)
     var encoded = delta_encode_float(data, precision=1000)
@@ -366,7 +366,7 @@ fn test_delta_float() raises:
     print("    PASS")
 
 
-fn test_compression_savings() raises:
+def test_compression_savings() raises:
     print("  test_compression_savings ...")
     # 54: 50% savings
     _assert_close(compression_savings(100, 50), 0.5, 1e-10, "savings 50%")
@@ -380,7 +380,7 @@ fn test_compression_savings() raises:
     print("    PASS")
 
 
-fn test_delta_empty() raises:
+def test_delta_empty() raises:
     print("  test_delta_empty ...")
     var empty = List[Int]()
     # 58: empty encode
@@ -395,7 +395,7 @@ fn test_delta_empty() raises:
 # ── Causal Inference Tests ───────────────────────────────────────────────────
 
 
-fn test_ate_basic() raises:
+def test_ate_basic() raises:
     print("  test_ate_basic ...")
     var treated = _lf3(10.0, 12.0, 11.0)
     var control = _lf3(5.0, 6.0, 7.0)
@@ -404,7 +404,7 @@ fn test_ate_basic() raises:
     print("    PASS")
 
 
-fn test_att_basic() raises:
+def test_att_basic() raises:
     print("  test_att_basic ...")
     var treated = _lf3(10.0, 12.0, 14.0)
     var counter = _lf3(8.0, 9.0, 10.0)
@@ -413,7 +413,7 @@ fn test_att_basic() raises:
     print("    PASS")
 
 
-fn test_diff_in_diff() raises:
+def test_diff_in_diff() raises:
     print("  test_diff_in_diff ...")
     var pre_t = _lf3(10.0, 11.0, 12.0)
     var post_t = _lf3(15.0, 16.0, 17.0)
@@ -424,7 +424,7 @@ fn test_diff_in_diff() raises:
     print("    PASS")
 
 
-fn test_cohens_d_identical() raises:
+def test_cohens_d_identical() raises:
     print("  test_cohens_d_identical ...")
     var g1 = _lf5(5.0, 5.0, 5.0, 5.0, 5.0)
     var g2 = _lf5(5.0, 5.0, 5.0, 5.0, 5.0)
@@ -433,7 +433,7 @@ fn test_cohens_d_identical() raises:
     print("    PASS")
 
 
-fn test_cohens_d_separated() raises:
+def test_cohens_d_separated() raises:
     print("  test_cohens_d_separated ...")
     var g1 = _lf5(10.0, 10.1, 9.9, 10.2, 9.8)
     var g2 = _lf5(5.0, 5.1, 4.9, 5.2, 4.8)
@@ -445,7 +445,7 @@ fn test_cohens_d_separated() raises:
     print("    PASS")
 
 
-fn test_propensity_score() raises:
+def test_propensity_score() raises:
     print("  test_propensity_score ...")
     var features = _lf5(1.0, 2.0, 3.0, 4.0, 5.0)
     var treatment = _li(0, 0, 1, 1, 1)
@@ -459,7 +459,7 @@ fn test_propensity_score() raises:
     print("    PASS")
 
 
-fn test_ipw_estimate() raises:
+def test_ipw_estimate() raises:
     print("  test_ipw_estimate ...")
     var outcomes = _lf4(10.0, 12.0, 5.0, 6.0)
     var treatment = _li4(1, 1, 0, 0)
@@ -472,7 +472,7 @@ fn test_ipw_estimate() raises:
     print("    PASS")
 
 
-fn test_iv_estimate() raises:
+def test_iv_estimate() raises:
     print("  test_iv_estimate ...")
     # Simple IV: z perfectly predicts x, effect of x on y is 2
     var z = _lf6(0.0, 0.0, 1.0, 1.0, 0.0, 1.0)
@@ -484,7 +484,7 @@ fn test_iv_estimate() raises:
     print("    PASS")
 
 
-fn test_regression_discontinuity() raises:
+def test_regression_discontinuity() raises:
     print("  test_regression_discontinuity ...")
     var x = _lf8(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
     var y = _lf8(2.0, 3.0, 4.0, 5.0, 12.0, 13.0, 14.0, 15.0)
@@ -496,7 +496,7 @@ fn test_regression_discontinuity() raises:
     print("    PASS")
 
 
-fn test_stratified_ate() raises:
+def test_stratified_ate() raises:
     print("  test_stratified_ate ...")
     var outcomes = _lf8(10.0, 5.0, 12.0, 6.0, 20.0, 15.0, 22.0, 16.0)
     var treatment = _li8(1, 0, 1, 0, 1, 0, 1, 0)
@@ -509,7 +509,7 @@ fn test_stratified_ate() raises:
     print("    PASS")
 
 
-fn test_needed_sample_size() raises:
+def test_needed_sample_size() raises:
     print("  test_needed_sample_size ...")
     # 74: sample size should be positive
     var n = needed_sample_size_ate(0.5, 1.0)
@@ -523,7 +523,7 @@ fn test_needed_sample_size() raises:
     print("    PASS")
 
 
-fn test_causal_edge_cases() raises:
+def test_causal_edge_cases() raises:
     print("  test_causal_edge_cases ...")
     # 77: ATE with single elements
     var t1 = _lf1(10.0)
@@ -538,7 +538,7 @@ fn test_causal_edge_cases() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 46 Tests ===")
 
     print("\n── Root Finding ──")

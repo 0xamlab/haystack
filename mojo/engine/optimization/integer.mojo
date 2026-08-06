@@ -299,7 +299,7 @@ comptime MILP_MAX_STACK: Int = MILP_MAX_DEPTH + 2
 comptime MILP_DEFAULT_MAX_NODES: Int = 10000
 
 
-fn milp_status_name(code: Int) -> String:
+def milp_status_name(code: Int) -> String:
     """Name for a branch-and-bound status, falling through to `lp_status_name`."""
     if code == MILP_RELAXATION_UNBOUNDED:
         return "relaxation_unbounded"
@@ -433,13 +433,13 @@ struct MILPResult(Copyable, Movable):
     var x: List[Float64]
 
 
-fn _no_branch(status: Int, n_fractional: Int, n_discrete: Int) -> BranchChoice:
+def _no_branch(status: Int, n_fractional: Int, n_discrete: Int) -> BranchChoice:
     return BranchChoice(
         status, False, -1, 0.0, 0.0, 0.0, 0.0, n_fractional, n_discrete
     )
 
 
-fn _milp_rejected(status: Int, n_vars: Int, n_cons: Int) -> MILPResult:
+def _milp_rejected(status: Int, n_vars: Int, n_cons: Int) -> MILPResult:
     """A rejected request: no answer, no bound, no gap, and no census to report."""
     return MILPResult(
         status, False, False, False, False, 0.0, False, 0.0, False, 0.0,
@@ -451,7 +451,7 @@ fn _milp_rejected(status: Int, n_vars: Int, n_cons: Int) -> MILPResult:
 # ── the branching rule, public so it can be inspected ─────────────────────────
 
 
-fn branch_choice(
+def branch_choice(
     x: List[Float64], var_kind: List[Int], integrality_tol: Float64
 ) -> BranchChoice:
     """The most-fractional discrete variable at `x`, lowest index on a tie.
@@ -550,7 +550,7 @@ struct _Program(Copyable, Movable):
     var rhs: List[Float64]
 
 
-fn _milp_input_defect(
+def _milp_input_defect(
     c: List[Float64],
     constant: Float64,
     a: List[Float64],
@@ -629,7 +629,7 @@ fn _milp_input_defect(
     return MODEL_OK
 
 
-fn _root_node(cols: Int, var_kind: List[Int]) -> _Node:
+def _root_node(cols: Int, var_kind: List[Int]) -> _Node:
     """The root box: nothing bounded, except a binary variable's promised `x <= 1`."""
     var lo = List[Float64]()
     var has_lo = List[Bool]()
@@ -649,7 +649,7 @@ fn _root_node(cols: Int, var_kind: List[Int]) -> _Node:
     return _Node(False, 0.0, 0, lo^, has_lo^, up^, has_up^)
 
 
-fn _augment(
+def _augment(
     a: List[Float64],
     rows: Int,
     cols: Int,
@@ -688,7 +688,7 @@ fn _augment(
     return _Program(total, out_a^, out_senses^, out_rhs^)
 
 
-fn _child(node: _Node, index: Int, bound: Float64, upper: Bool, value: Float64) -> _Node:
+def _child(node: _Node, index: Int, bound: Float64, upper: Bool, value: Float64) -> _Node:
     """`node` with `x_index` bounded by `value`, TIGHTENING any inherited bound.
 
     Tightening rather than appending keeps the per-node LP at `rows + 2*cols`, and it means
@@ -711,7 +711,7 @@ fn _child(node: _Node, index: Int, bound: Float64, upper: Bool, value: Float64) 
     return _Node(True, bound, node.depth + 1, lo^, has_lo^, up^, has_up^)
 
 
-fn _verify_row_budget(
+def _verify_row_budget(
     row: List[Float64], x: List[Float64], rhs: Float64, var_kind: List[Int],
     feasibility_tol: Float64, integrality_tol: Float64,
 ) -> Float64:
@@ -772,7 +772,7 @@ fn _verify_row_budget(
     return budget
 
 
-fn _verify_point(
+def _verify_point(
     a: List[Float64], rows: Int, cols: Int, senses: List[Int], rhs: List[Float64],
     x: List[Float64], var_kind: List[Int], feasibility_tol: Float64,
     integrality_tol: Float64,
@@ -817,7 +817,7 @@ fn _verify_point(
 # ── the driver ────────────────────────────────────────────────────────────────
 
 
-fn milp_solve(
+def milp_solve(
     c: List[Float64], constant: Float64, a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool, var_kind: List[Int],
     max_nodes: Int, max_iterations: Int, feasibility_tol: Float64,
@@ -1099,7 +1099,7 @@ fn milp_solve(
     )
 
 
-fn milp_solve_default(
+def milp_solve_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
     var_kind: List[Int], max_nodes: Int,
@@ -1116,7 +1116,7 @@ fn milp_solve_default(
     )
 
 
-fn _declared_box(
+def _declared_box(
     n_vars: Int, var_kind: List[Int], var_lower: List[Float64],
     var_upper: List[Float64], var_flags: List[Int],
 ) -> _Node:
@@ -1147,7 +1147,7 @@ fn _declared_box(
     return _Node(False, 0.0, 0, lo^, has_lo^, up^, has_up^)
 
 
-fn _box_row_count(box: _Node, n_vars: Int) -> Int:
+def _box_row_count(box: _Node, n_vars: Int) -> Int:
     """How many rows `_augment` will emit for `box`, or -1 when it cannot be expressed.
 
     Counted BEFORE anything is appended, because `_augment` allocates `cols` cells per row
@@ -1183,7 +1183,7 @@ fn _box_row_count(box: _Node, n_vars: Int) -> Int:
 # closed on exactly the ninth line, so one added parameter or one reflow would have
 # unregistered the package's widest driver. Six parameters per line keeps three lines of
 # headroom. Do not expand it back out to one parameter per line.
-fn milp_from_arenas(
+def milp_from_arenas(
     obj_ops: List[Int], obj_values: List[Float64], obj_var_idx: List[Int], obj_lefts: List[Int], obj_rights: List[Int], obj_extras: List[Int],
     obj_root: Int, con_ptr: List[Int], con_roots: List[Int], con_senses: List[Int], con_rhs: List[Float64], con_ops: List[Int],
     con_values: List[Float64], con_var_idx: List[Int], con_lefts: List[Int], con_rights: List[Int], con_extras: List[Int], n_vars: Int,
@@ -1283,7 +1283,7 @@ fn milp_from_arenas(
     )
 
 
-fn milp_knapsack(
+def milp_knapsack(
     values: List[Float64], weights: List[Float64], capacity: Float64, max_nodes: Int
 ) -> MILPResult:
     """Maximise `Σ values[j] x_j` subject to `Σ weights[j] x_j <= capacity`, `x` binary.

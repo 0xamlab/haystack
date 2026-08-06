@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs, exp, log, pow
 # ── Helper: power via exp/log ─────────────────────────────────────────────────
 
 
-fn _power(base: Float64, exponent: Float64) -> Float64:
+def _power(base: Float64, exponent: Float64) -> Float64:
     """Compute base^exponent via exp(exponent * ln(base))."""
     if exponent == 0.0:
         return 1.0
@@ -36,7 +36,7 @@ fn _power(base: Float64, exponent: Float64) -> Float64:
 # ── present_value ─────────────────────────────────────────────────────────────
 
 
-fn present_value(
+def present_value(
     future_value_amt: Float64, rate: Float64, periods: Float64
 ) -> Float64:
     """PV = FV / (1 + r)^n."""
@@ -46,7 +46,7 @@ fn present_value(
 # ── future_value ──────────────────────────────────────────────────────────────
 
 
-fn future_value(
+def future_value(
     present_value_val: Float64, rate: Float64, periods: Float64
 ) -> Float64:
     """FV = PV * (1 + r)^n."""
@@ -56,7 +56,7 @@ fn future_value(
 # ── annuity_present_value ─────────────────────────────────────────────────────
 
 
-fn annuity_present_value(
+def annuity_present_value(
     payment: Float64, rate: Float64, periods: Float64
 ) -> Float64:
     """PV = PMT * (1 - (1+r)^(-n)) / r."""
@@ -68,7 +68,7 @@ fn annuity_present_value(
 # ── annuity_future_value ──────────────────────────────────────────────────────
 
 
-fn annuity_future_value(
+def annuity_future_value(
     payment: Float64, rate: Float64, periods: Float64
 ) -> Float64:
     """FV = PMT * ((1+r)^n - 1) / r."""
@@ -80,7 +80,7 @@ fn annuity_future_value(
 # ── life_expectancy_curtate ───────────────────────────────────────────────────
 
 
-fn life_expectancy_curtate(
+def life_expectancy_curtate(
     qx: Float64, age: Int, max_age: Int
 ) -> Float64:
     """Simplified curtate life expectancy using constant qx.
@@ -99,7 +99,7 @@ fn life_expectancy_curtate(
 # ── mortality_rate ────────────────────────────────────────────────────────────
 
 
-fn mortality_rate(deaths: Float64, exposed: Float64) -> Float64:
+def mortality_rate(deaths: Float64, exposed: Float64) -> Float64:
     """qx = deaths / exposed."""
     return deaths / exposed
 
@@ -107,7 +107,7 @@ fn mortality_rate(deaths: Float64, exposed: Float64) -> Float64:
 # ── survival_probability ──────────────────────────────────────────────────────
 
 
-fn survival_probability(qx: Float64) -> Float64:
+def survival_probability(qx: Float64) -> Float64:
     """px = 1 - qx."""
     return 1.0 - qx
 
@@ -115,7 +115,7 @@ fn survival_probability(qx: Float64) -> Float64:
 # ── force_of_mortality ────────────────────────────────────────────────────────
 
 
-fn force_of_mortality(qx: Float64) -> Float64:
+def force_of_mortality(qx: Float64) -> Float64:
     """μx ≈ -ln(1 - qx)."""
     # qx >= 1 degenerates the log to inf/NaN, which cannot cross the wire.
     if qx >= 1.0:
@@ -126,7 +126,7 @@ fn force_of_mortality(qx: Float64) -> Float64:
 # ── net_single_premium ────────────────────────────────────────────────────────
 
 
-fn net_single_premium(
+def net_single_premium(
     benefit: Float64, v: Float64, px: Float64
 ) -> Float64:
     """One-year term NSP = benefit * v * px.
@@ -139,7 +139,7 @@ fn net_single_premium(
 # ── loss_ratio ────────────────────────────────────────────────────────────────
 
 
-fn loss_ratio(claims: Float64, premiums: Float64) -> Float64:
+def loss_ratio(claims: Float64, premiums: Float64) -> Float64:
     """LR = claims / premiums."""
     return claims / premiums
 
@@ -147,7 +147,7 @@ fn loss_ratio(claims: Float64, premiums: Float64) -> Float64:
 # ── combined_ratio ────────────────────────────────────────────────────────────
 
 
-fn combined_ratio(
+def combined_ratio(
     loss_ratio_val: Float64, expense_ratio: Float64
 ) -> Float64:
     """CR = LR + ER."""
@@ -157,7 +157,7 @@ fn combined_ratio(
 # ── reserve_prospective ───────────────────────────────────────────────────────
 
 
-fn reserve_prospective(
+def reserve_prospective(
     future_benefits_pv: Float64, future_premiums_pv: Float64
 ) -> Float64:
     """Prospective reserve: V = PVFB - PVFP."""

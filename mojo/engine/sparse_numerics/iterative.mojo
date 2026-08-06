@@ -135,7 +135,7 @@ comptime ITER_DIAG_EPS: Float64 = 1e-300
 comptime ITER_SYM_TOL: Float64 = 1e-10
 
 
-fn iter_status_name(code: Int) -> String:
+def iter_status_name(code: Int) -> String:
     """Name for a status code, so a failure surfaces the outcome and not a bare number."""
     if code == ITER_CONVERGED:
         return "converged"
@@ -252,14 +252,14 @@ struct IterativeVectorResult(Copyable, Movable):
     var values: List[Float64]
 
 
-fn _failed(status: Int, breakdown: Bool) -> IterativeResult:
+def _failed(status: Int, breakdown: Bool) -> IterativeResult:
     """No iterate at all: empty x, so an ignored status cannot be read as a solution."""
     return IterativeResult(
         status, False, breakdown, 0, 0.0, 0.0, 0.0, List[Float64]()
     )
 
 
-fn _ls_failed(status: Int, breakdown: Bool) -> LeastSquaresResult:
+def _ls_failed(status: Int, breakdown: Bool) -> LeastSquaresResult:
     return LeastSquaresResult(
         status, False, breakdown, 0, 0.0, 0.0, 0.0, 0.0, List[Float64]()
     )
@@ -268,18 +268,18 @@ fn _ls_failed(status: Int, breakdown: Bool) -> LeastSquaresResult:
 # ── small internal helpers ────────────────────────────────────────────────────
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _finite(x: Float64) -> Bool:
+def _finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 
-fn _all_finite(v: List[Float64]) -> Bool:
+def _all_finite(v: List[Float64]) -> Bool:
     """Reject NaN/Inf at the door.
 
     A single NaN in A or b propagates into x, alpha and the residual norm, and every
@@ -293,7 +293,7 @@ fn _all_finite(v: List[Float64]) -> Bool:
     return True
 
 
-fn _apply(m: CSRMatrix, x: List[Float64]) -> List[Float64]:
+def _apply(m: CSRMatrix, x: List[Float64]) -> List[Float64]:
     """A @ x through the frozen-package matvec, or an empty list if it refused.
 
     The callers have already validated m and pass an x of length ncols, so the refusal
@@ -307,7 +307,7 @@ fn _apply(m: CSRMatrix, x: List[Float64]) -> List[Float64]:
     return r.values.copy()
 
 
-fn _apply_transpose(m: CSRMatrix, y: List[Float64]) -> List[Float64]:
+def _apply_transpose(m: CSRMatrix, y: List[Float64]) -> List[Float64]:
     """A^T @ y, or an empty list if it refused. Length `ncols`; `y` is indexed by row.
 
     Rejected `csr_matvec(csr_transpose(m), y)`: it is the same numbers, but it copies the
@@ -320,7 +320,7 @@ fn _apply_transpose(m: CSRMatrix, y: List[Float64]) -> List[Float64]:
     return r.values.copy()
 
 
-fn _residual(m: CSRMatrix, b: List[Float64], x: List[Float64]) -> List[Float64]:
+def _residual(m: CSRMatrix, b: List[Float64], x: List[Float64]) -> List[Float64]:
     """b - A x, computed fresh. Empty if the matvec refused."""
     var ax = _apply(m, x)
     if len(ax) != len(b):
@@ -334,7 +334,7 @@ fn _residual(m: CSRMatrix, b: List[Float64], x: List[Float64]) -> List[Float64]:
 # ── symmetry ──────────────────────────────────────────────────────────────────
 
 
-fn csr_symmetry(m: CSRMatrix, tol: Float64 = ITER_SYM_TOL) -> SymmetryResult:
+def csr_symmetry(m: CSRMatrix, tol: Float64 = ITER_SYM_TOL) -> SymmetryResult:
     """Whether A is symmetric enough for CG, using the package's ONE defect definition.
 
     The defect itself — `max |A_ij - A_ji|` over a sorted two-pointer merge of A against
@@ -386,7 +386,7 @@ fn csr_symmetry(m: CSRMatrix, tol: Float64 = ITER_SYM_TOL) -> SymmetryResult:
     )
 
 
-fn csr_is_symmetric(m: CSRMatrix, tol: Float64 = ITER_SYM_TOL) -> Bool:
+def csr_is_symmetric(m: CSRMatrix, tol: Float64 = ITER_SYM_TOL) -> Bool:
     """True only for a valid square matrix that equals its transpose within `tol`."""
     var r = csr_symmetry(m, tol)
     return r.status == ITER_OK and r.symmetric
@@ -395,7 +395,7 @@ fn csr_is_symmetric(m: CSRMatrix, tol: Float64 = ITER_SYM_TOL) -> Bool:
 # ── diagonal and preconditioners ──────────────────────────────────────────────
 
 
-fn _diagonal_unchecked(m: CSRMatrix) -> List[Float64]:
+def _diagonal_unchecked(m: CSRMatrix) -> List[Float64]:
     """The diagonal of a validated square matrix, duplicates summed.
 
     Summing is not a choice made here: `csr_matvec` adds every stored value, so this is
@@ -411,7 +411,7 @@ fn _diagonal_unchecked(m: CSRMatrix) -> List[Float64]:
     return d^
 
 
-fn csr_diagonal(m: CSRMatrix) -> IterativeVectorResult:
+def csr_diagonal(m: CSRMatrix) -> IterativeVectorResult:
     """The main diagonal. A missing diagonal entry is 0.0 and is counted in
     `zero_pivots`, because "not stored" and "stored as zero" are the same matrix."""
     var status = csr_validate(m)
@@ -428,7 +428,7 @@ fn csr_diagonal(m: CSRMatrix) -> IterativeVectorResult:
     return IterativeVectorResult(ITER_OK, n, zeros, d^)
 
 
-fn csr_jacobi_inverse(m: CSRMatrix) -> IterativeVectorResult:
+def csr_jacobi_inverse(m: CSRMatrix) -> IterativeVectorResult:
     """The Jacobi preconditioner `diag(A)^-1`.
 
     A zero diagonal entry means this preconditioner does not exist, so the status says
@@ -451,7 +451,7 @@ fn csr_jacobi_inverse(m: CSRMatrix) -> IterativeVectorResult:
     return IterativeVectorResult(ITER_OK, n, 0, out^)
 
 
-fn _sgs_apply_unchecked(
+def _sgs_apply_unchecked(
     m: CSRMatrix, d: List[Float64], r: List[Float64]
 ) -> List[Float64]:
     """`M^-1 r` for the symmetric Gauss-Seidel `M = (D+L) D^-1 (D+U)`.
@@ -488,7 +488,7 @@ fn _sgs_apply_unchecked(
     return z^
 
 
-fn csr_sgs_apply(m: CSRMatrix, r: List[Float64]) -> IterativeVectorResult:
+def csr_sgs_apply(m: CSRMatrix, r: List[Float64]) -> IterativeVectorResult:
     """Apply the symmetric Gauss-Seidel preconditioner to one vector."""
     var d = csr_diagonal(m)
     if d.status != ITER_OK:
@@ -506,7 +506,7 @@ fn csr_sgs_apply(m: CSRMatrix, r: List[Float64]) -> IterativeVectorResult:
     return IterativeVectorResult(ITER_OK, n, 0, z^)
 
 
-fn _precond_apply(
+def _precond_apply(
     m: CSRMatrix,
     precond: Int,
     dinv: List[Float64],
@@ -530,7 +530,7 @@ fn _precond_apply(
 # ── conjugate gradient, preconditioned and not ────────────────────────────────
 
 
-fn _pcg_core(
+def _pcg_core(
     m: CSRMatrix, b: List[Float64], tol: Float64, max_iter: Int, precond: Int
 ) -> IterativeResult:
     """Preconditioned CG. `PRECOND_NONE` reduces it to textbook CG exactly.
@@ -699,14 +699,14 @@ fn _pcg_core(
     )
 
 
-fn csr_cg(
+def csr_cg(
     m: CSRMatrix, b: List[Float64], tol: Float64 = 1e-10, max_iter: Int = 1000
 ) -> IterativeResult:
     """Conjugate gradient for a symmetric positive definite A. Unpreconditioned."""
     return _pcg_core(m, b, tol, max_iter, PRECOND_NONE)
 
 
-fn csr_pcg(
+def csr_pcg(
     m: CSRMatrix,
     b: List[Float64],
     tol: Float64 = 1e-10,
@@ -720,7 +720,7 @@ fn csr_pcg(
 # ── CGLS: least squares / nonsymmetric ────────────────────────────────────────
 
 
-fn csr_cgls(
+def csr_cgls(
     m: CSRMatrix, b: List[Float64], tol: Float64 = 1e-10, max_iter: Int = 1000
 ) -> LeastSquaresResult:
     """CG on the normal equations, applied as `A` and `A^T` and never formed.
@@ -865,7 +865,7 @@ fn csr_cgls(
 # ── restarted GMRES ───────────────────────────────────────────────────────────
 
 
-fn csr_gmres(
+def csr_gmres(
     m: CSRMatrix,
     b: List[Float64],
     tol: Float64 = 1e-10,
@@ -1071,7 +1071,7 @@ fn csr_gmres(
 # `seq_nn.lstm_cell_backward` are already invisible for this reason.)
 
 
-fn csr_cg_driver(
+def csr_cg_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1087,7 +1087,7 @@ fn csr_cg_driver(
     )
 
 
-fn csr_pcg_driver(
+def csr_pcg_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1106,7 +1106,7 @@ fn csr_pcg_driver(
     )
 
 
-fn csr_cgls_driver(
+def csr_cgls_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1122,7 +1122,7 @@ fn csr_cgls_driver(
     )
 
 
-fn csr_gmres_driver(
+def csr_gmres_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1141,7 +1141,7 @@ fn csr_gmres_driver(
     )
 
 
-fn csr_symmetry_driver(
+def csr_symmetry_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1155,7 +1155,7 @@ fn csr_symmetry_driver(
     )
 
 
-fn csr_diagonal_driver(
+def csr_diagonal_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1166,7 +1166,7 @@ fn csr_diagonal_driver(
     return csr_diagonal(csr_from_arrays(indptr, indices, values, nrows, ncols))
 
 
-fn csr_jacobi_inverse_driver(
+def csr_jacobi_inverse_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -1179,7 +1179,7 @@ fn csr_jacobi_inverse_driver(
     )
 
 
-fn csr_sgs_apply_driver(
+def csr_sgs_apply_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],

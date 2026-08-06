@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from elevator import round_trip_time, handling_capacity, interval_time, probable_stops, motor_power, counterweight_mass, shaft_area, annual_energy_consumption, waiting_time_average, traffic_intensity, rope_factor_of_safety, pit_depth_requirement
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

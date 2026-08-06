@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from soil_science import soil_texture_sand_silt_clay, bulk_density, particle_density_typical, total_porosity, volumetric_water_content, gravimetric_water_content, field_capacity_estimate, wilting_point_estimate, available_water, cation_exchange_capacity_estimate, soil_organic_carbon, infiltration_rate_horton
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

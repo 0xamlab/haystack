@@ -49,7 +49,7 @@ def _assert_eq_string(got: String, expected: String, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _red_blue_2x2() -> List[Float64]:
+def _red_blue_2x2() -> List[Float64]:
     var flat = List[Float64]()
     flat.append(200.0); flat.append(20.0); flat.append(20.0)
     flat.append(200.0); flat.append(20.0); flat.append(20.0)
@@ -58,7 +58,7 @@ fn _red_blue_2x2() -> List[Float64]:
     return flat^
 
 
-fn _gray_2x2() -> List[Float64]:
+def _gray_2x2() -> List[Float64]:
     var flat = List[Float64]()
     flat.append(40.0); flat.append(40.0); flat.append(40.0)
     flat.append(120.0); flat.append(120.0); flat.append(120.0)

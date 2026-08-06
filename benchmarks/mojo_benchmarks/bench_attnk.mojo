@@ -53,15 +53,15 @@ from attnk.sdpa import sdpa_forward_flat
 from runtime_library_dispatch_generated import dispatch_runtime_library
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 
-fn _count_occ(haystack: String, needle: String) -> Int:
+def _count_occ(haystack: String, needle: String) -> Int:
     """Count non-overlapping occurrences by byte scan; `String` has no slice operator here."""
     var h = haystack.as_bytes()
     var nd = needle.as_bytes()
@@ -83,7 +83,7 @@ fn _count_occ(haystack: String, needle: String) -> Int:
     return count
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic values in roughly [-1, 1], so runs are comparable across machines."""
     var o = List[Float64](capacity=n)
     var s = seed
@@ -294,7 +294,7 @@ def main() raises:
     frame += '],"partial_ok":true}'
 
     var tb0 = perf_counter_ns()
-    var batched = run_batch_execute[dispatch_runtime_library](frame, datasets)
+    var batched = run_batch_execute(dispatch_runtime_library, frame, datasets)
     var batch_ns = _ns_since(tb0)
 
     var unregistered = _count_occ(batched, String("module_not_registered"))

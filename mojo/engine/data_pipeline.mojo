@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn sequence_packing_efficiency(
+def sequence_packing_efficiency(
     total_tokens: Float64, padded_tokens: Float64
 ) -> Float64:
     """Sequence packing efficiency: useful tokens / padded total.
@@ -34,7 +34,7 @@ fn sequence_packing_efficiency(
     return total_tokens / padded_tokens
 
 
-fn deduplication_minhash_band(
+def deduplication_minhash_band(
     signature_a: Float64, signature_b: Float64
 ) -> Float64:
     """MinHash LSH band similarity check.
@@ -53,7 +53,7 @@ fn deduplication_minhash_band(
     return 0.0
 
 
-fn curriculum_difficulty_score(
+def curriculum_difficulty_score(
     perplexity: Float64, seq_len: Float64,
     vocab_diversity: Float64
 ) -> Float64:
@@ -74,7 +74,7 @@ fn curriculum_difficulty_score(
     return perplexity * log(seq_len + 1.0) / vocab_diversity
 
 
-fn dataset_mixing_weight(
+def dataset_mixing_weight(
     domain_loss: Float64, reference_loss: Float64,
     temperature: Float64
 ) -> Float64:
@@ -95,7 +95,7 @@ fn dataset_mixing_weight(
     return exp((domain_loss - reference_loss) / temperature)
 
 
-fn token_accounting_cost(
+def token_accounting_cost(
     n_documents: Float64, avg_doc_tokens: Float64,
     epochs: Float64
 ) -> Float64:
@@ -114,7 +114,7 @@ fn token_accounting_cost(
     return n_documents * avg_doc_tokens * epochs
 
 
-fn quality_filter_score(
+def quality_filter_score(
     perplexity: Float64, perplexity_threshold: Float64,
     repetition_ratio: Float64, length_score: Float64
 ) -> Float64:
@@ -138,7 +138,7 @@ fn quality_filter_score(
     return 0.4 * ppl_score + 0.3 * rep_score + 0.3 * length_score
 
 
-fn shard_balance_score(
+def shard_balance_score(
     shard_tokens: Float64, target_tokens_per_shard: Float64
 ) -> Float64:
     """How balanced this shard is relative to the target.
@@ -163,7 +163,7 @@ fn shard_balance_score(
     return score
 
 
-fn streaming_buffer_fullness(
+def streaming_buffer_fullness(
     buffered_tokens: Float64, buffer_capacity: Float64
 ) -> Float64:
     """Streaming dataloader buffer fullness ratio.
@@ -183,7 +183,7 @@ fn streaming_buffer_fullness(
     return ratio
 
 
-fn epoch_sample_index(
+def epoch_sample_index(
     sample_id: Float64, epoch: Float64, n_samples: Float64, seed: Float64
 ) -> Float64:
     """Deterministic shuffled sample index within epoch.
@@ -204,7 +204,7 @@ fn epoch_sample_index(
     return Float64(Int64(sample_id + epoch * seed) % Int64(n_samples))
 
 
-fn data_augmentation_weight(
+def data_augmentation_weight(
     is_augmented: Float64, augmentation_factor: Float64
 ) -> Float64:
     """Loss weight for augmented samples (down-weight if augmented).

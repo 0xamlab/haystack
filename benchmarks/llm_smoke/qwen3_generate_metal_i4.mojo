@@ -76,16 +76,16 @@ comptime N_NEW_MAX: Int = 16
 comptime EOS_TOKEN_ID: Int = 151643
 
 
-fn _ceil_div(a: Int, b: Int) -> Int:
+def _ceil_div(a: Int, b: Int) -> Int:
     return (a + b - 1) // b
 
 
-fn _check(status: Int, ok: Int, ctx: String) raises:
+def _check(status: Int, ok: Int, ctx: String) raises:
     if status != ok:
         raise Error("qwen3_generate_metal_i4: " + ctx + " failed, status=" + String(status))
 
 
-fn _check_resident(status: Int, ctx: String) raises:
+def _check_resident(status: Int, ctx: String) raises:
     if status != RESIDENT_OK:
         raise Error(
             "qwen3_generate_metal_i4: " + ctx + " failed, status=" + String(status)
@@ -93,7 +93,7 @@ fn _check_resident(status: Int, ctx: String) raises:
         )
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -106,7 +106,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -115,7 +115,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -129,18 +129,18 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn _write_text(path: String, text: String) raises:
+def _write_text(path: String, text: String) raises:
     var f = open(path, "w")
     f.write_bytes(text.as_bytes())
     f.close()
 
 
-fn _ms(ns: UInt) -> Float64:
+def _ms(ns: UInt) -> Float64:
     return Float64(Int(ns)) / 1.0e6
 
 

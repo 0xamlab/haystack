@@ -256,7 +256,7 @@ comptime STM_KLL_C: Float64 = 8.0
 # ── status names ──────────────────────────────────────────────────────────────
 
 
-fn stm_status_name(code: Int) -> String:
+def stm_status_name(code: Int) -> String:
     """Name for a status code, so a refusal surfaces the defect and not a bare number.
 
     @capability stm_status_name
@@ -307,7 +307,7 @@ fn stm_status_name(code: Int) -> String:
     return "unknown_status"
 
 
-fn stm_version() -> String:
+def stm_version() -> String:
     """Identity of the hashing and compaction rules. Deterministic, zero-argument.
 
     Two sketches whose `stm_version` agrees were built by the same rules and may be merged;
@@ -325,7 +325,7 @@ fn stm_version() -> String:
 # ── finiteness, tolerance ─────────────────────────────────────────────────────
 
 
-fn stm_finite(x: Float64) -> Bool:
+def stm_finite(x: Float64) -> Bool:
     """True when `x` is a real number a JSON response can carry.
 
     @capability stm_finite
@@ -336,7 +336,7 @@ fn stm_finite(x: Float64) -> Bool:
     return not (isnan(x) or isinf(x))
 
 
-fn stm_tolerance(quantity: Float64, abs_tol: Float64) -> Float64:
+def stm_tolerance(quantity: Float64, abs_tol: Float64) -> Float64:
     """Rounding allowance for judging ONE number: `abs_tol + slack * eps * |quantity|`.
 
     `quantity` is the number being judged and nothing else -- never a sum or a maximum over
@@ -357,7 +357,7 @@ fn stm_tolerance(quantity: Float64, abs_tol: Float64) -> Float64:
 # ── budgets: division, never a wrapping product ───────────────────────────────
 
 
-fn stm_work_fits(units: Int, per_unit: Int, budget: Int) -> Bool:
+def stm_work_fits(units: Int, per_unit: Int, budget: Int) -> Bool:
     """True when `units * per_unit <= budget`, decided WITHOUT forming the product.
 
     A guard written as `units * per_unit > budget` is not a guard: the multiply wraps, and
@@ -378,7 +378,7 @@ fn stm_work_fits(units: Int, per_unit: Int, budget: Int) -> Bool:
     return units <= budget // per_unit
 
 
-fn stm_cells_fit(depth: Int, width: Int, length: Int) -> Bool:
+def stm_cells_fit(depth: Int, width: Int, length: Int) -> Bool:
     """True when `depth` rows of `width` columns are exactly `length` cells.
 
     Delegates to the frozen `sparse_numerics.csr.dims_fit`, which is the tree's one
@@ -394,7 +394,7 @@ fn stm_cells_fit(depth: Int, width: Int, length: Int) -> Bool:
     return length <= MAX_STM_CELLS
 
 
-fn stm_seed_ok(seed: Int) -> Bool:
+def stm_seed_ok(seed: Int) -> Bool:
     """True when `seed` survives a JSON round trip exactly, so a replay reproduces.
 
     @capability stm_seed_ok
@@ -405,7 +405,7 @@ fn stm_seed_ok(seed: Int) -> Bool:
     return seed >= 0 and seed <= MAX_STM_SEED
 
 
-fn stm_items_ok(n: Int) -> Bool:
+def stm_items_ok(n: Int) -> Bool:
     """True when `n` observations are inside the per-call item ceiling.
 
     @capability stm_items_ok
@@ -419,7 +419,7 @@ fn stm_items_ok(n: Int) -> Bool:
 # ── the keyed hash ────────────────────────────────────────────────────────────
 
 
-fn stm_u64_of(value: Int) -> UInt64:
+def stm_u64_of(value: Int) -> UInt64:
     """Two's-complement bit pattern of `value` as a UInt64, for negative values too.
 
     `UInt64(negative)` is the whole reason this exists: item identifiers arrive from a
@@ -436,7 +436,7 @@ fn stm_u64_of(value: Int) -> UInt64:
     return ~UInt64(-(value + 1))
 
 
-fn stm_key_word(seed: Int, row: Int, item: Int) -> UInt64:
+def stm_key_word(seed: Int, row: Int, item: Int) -> UInt64:
     """Keyed 64-bit hash of `item` on `row`, from the frozen Philox generator.
 
     Deterministic and reproducible: a pure function of the three arguments with no process
@@ -457,7 +457,7 @@ fn stm_key_word(seed: Int, row: Int, item: Int) -> UInt64:
     )
 
 
-fn stm_key_hash31(seed: Int, row: Int, item: Int) -> Int:
+def stm_key_hash31(seed: Int, row: Int, item: Int) -> Int:
     """Keyed hash reduced to a NON-NEGATIVE 31-bit `Int`.
 
     Non-negative matters twice over: the frozen `cms_hash` negates its intermediate when it
@@ -473,7 +473,7 @@ fn stm_key_hash31(seed: Int, row: Int, item: Int) -> Int:
     return Int(stm_key_word(seed, row, item) & 0x7FFFFFFF)
 
 
-fn stm_key_bucket(seed: Int, row: Int, item: Int, width: Int) -> Int:
+def stm_key_bucket(seed: Int, row: Int, item: Int, width: Int) -> Int:
     """Keyed column in `[0, width)` for `item` on `row`, or -1 when `width` is unusable.
 
     The frozen `sketch.cms_hash` performs the final reduction; what is added here is that
@@ -497,7 +497,7 @@ fn stm_key_bucket(seed: Int, row: Int, item: Int, width: Int) -> Int:
     return cms_hash(stm_key_hash31(seed, row, item), 7, width)
 
 
-fn stm_coin(seed: Int, level: Int, index: Int) -> Bool:
+def stm_coin(seed: Int, level: Int, index: Int) -> Bool:
     """Fair keyed coin for compaction at `level`, `index`-th time.
 
     Lives on a row axis offset by `STM_COIN_ROW_BASE` so a coin cannot collide with an item
@@ -511,7 +511,7 @@ fn stm_coin(seed: Int, level: Int, index: Int) -> Bool:
     return (stm_key_word(seed, STM_COIN_ROW_BASE + level, index) & 1) == 1
 
 
-fn stm_stream_id() -> UInt64:
+def stm_stream_id() -> UInt64:
     """The Philox stream id this package hashes on.
 
     Exposed so a caller can prove the constant matches
@@ -542,13 +542,13 @@ struct StmClaim(Copyable, Movable):
     var present: Bool
     var status: Int
 
-    fn __init__(out self, value: Float64, present: Bool, status: Int):
+    def __init__(out self, value: Float64, present: Bool, status: Int):
         self.value = value
         self.present = present
         self.status = status
 
 
-fn stm_no_claim(status: Int) -> StmClaim:
+def stm_no_claim(status: Int) -> StmClaim:
     """No bound, with the reason. `value` is 0.0 and is not a bound.
 
     @capability stm_no_claim
@@ -559,7 +559,7 @@ fn stm_no_claim(status: Int) -> StmClaim:
     return StmClaim(0.0, False, status)
 
 
-fn stm_hll_relative_error(precision: Int) -> StmClaim:
+def stm_hll_relative_error(precision: Int) -> StmClaim:
     """HyperLogLog's claimed relative standard error, `1.04 / sqrt(2^precision)`.
 
     This is ONE standard deviation, not a guarantee. A suite that asserts an observed
@@ -578,7 +578,7 @@ fn stm_hll_relative_error(precision: Int) -> StmClaim:
     return StmClaim(STM_HLL_SIGMA / sqrt(m), True, STM_OK)
 
 
-fn stm_cms_epsilon(width: Int) -> StmClaim:
+def stm_cms_epsilon(width: Int) -> StmClaim:
     """Count-Min's claimed additive over-estimate as a FRACTION of total mass.
 
     `e / width`, inflated by `1 + width / 1000003` for the modulo bias the frozen
@@ -601,7 +601,7 @@ fn stm_cms_epsilon(width: Int) -> StmClaim:
     return StmClaim(STM_E * bias / w, True, STM_OK)
 
 
-fn stm_cms_delta(depth: Int) -> StmClaim:
+def stm_cms_delta(depth: Int) -> StmClaim:
     """Count-Min's claimed failure probability for the epsilon bound: `e^-depth`.
 
     One row over-estimates by more than `e/width * total` with probability at most `1/e` by
@@ -621,7 +621,7 @@ fn stm_cms_delta(depth: Int) -> StmClaim:
     return StmClaim(exp(-Float64(depth)), True, STM_OK)
 
 
-fn stm_kll_rank_error(k: Int) -> StmClaim:
+def stm_kll_rank_error(k: Int) -> StmClaim:
     """The quantile sketch's claimed rank error as a FRACTION of the stream length.
 
     `STM_KLL_C / k`, derived in this module's constant block from the variance of the
@@ -639,7 +639,7 @@ fn stm_kll_rank_error(k: Int) -> StmClaim:
     return StmClaim(STM_KLL_C / Float64(k), True, STM_OK)
 
 
-fn stm_hll_registers(precision: Int) -> Int:
+def stm_hll_registers(precision: Int) -> Int:
     """Register count `2^precision`, or 0 when `precision` is out of range.
 
     0 is not a register count, so a caller that ignores the range gets an allocation of
@@ -656,7 +656,7 @@ fn stm_hll_registers(precision: Int) -> Int:
     return 1 << precision
 
 
-fn stm_log2_floor(value: Int) -> Int:
+def stm_log2_floor(value: Int) -> Int:
     """`floor(log2(value))` for `value >= 1`, and -1 for anything below 1.
 
     Integer-only, so it never disagrees with a shift the way a `log(x)/log(2)` rounding

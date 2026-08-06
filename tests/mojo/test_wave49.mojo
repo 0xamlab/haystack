@@ -44,46 +44,46 @@ from std.math import abs as fabs, exp, sqrt
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _li2(a: Int, b: Int) -> List[Int]:
+def _li2(a: Int, b: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a); r.append(b)
     return r^
 
 
-fn _li3(a: Int, b: Int, c: Int) -> List[Int]:
+def _li3(a: Int, b: Int, c: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a); r.append(b); r.append(c)
     return r^
 
 
-fn _lf2(a: Float64, b: Float64) -> List[Float64]:
+def _lf2(a: Float64, b: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b)
     return r^
 
 
-fn _lf3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _lf3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c)
     return r^
 
 
-fn _lf5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
+def _lf5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c); r.append(d); r.append(e)
     return r^
@@ -92,7 +92,7 @@ fn _lf5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Floa
 # ── Sparse vector tests ─────────────────────────────────────────────────────
 
 
-fn test_sparse_vector() raises:
+def test_sparse_vector() raises:
     print("Testing sparse_vector...")
 
     # 1. sv_dot of orthogonal vectors == 0
@@ -208,7 +208,7 @@ fn test_sparse_vector() raises:
 # ── Climate tests ────────────────────────────────────────────────────────────
 
 
-fn test_climate() raises:
+def test_climate() raises:
     print("Testing climate...")
 
     # 20. celsius_to_fahrenheit(0) == 32
@@ -295,7 +295,7 @@ fn test_climate() raises:
 # ── PDE tests ────────────────────────────────────────────────────────────────
 
 
-fn test_pde() raises:
+def test_pde() raises:
     print("Testing pde...")
 
     # 42. gaussian_initial — peak at center
@@ -426,7 +426,7 @@ fn test_pde() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 49 Tests ===")
     test_sparse_vector()
     test_climate()

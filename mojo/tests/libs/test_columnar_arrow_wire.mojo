@@ -70,26 +70,26 @@ from columnar.arrow_wire import (
 from json.parser import json_parse_float64_list
 
 
-fn _batch_of(var columns: List[Float64Array], n_rows: Int) -> RecordBatch:
+def _batch_of(var columns: List[Float64Array], n_rows: Int) -> RecordBatch:
     var n = len(columns)
     return RecordBatch(
         Schema(positional_names(n), null_dtypes(n)), columns^, n_rows
     )
 
 
-fn _append_u64(mut out: List[UInt8], value: UInt64):
+def _append_u64(mut out: List[UInt8], value: UInt64):
     for k in range(8):
         out.append(UInt8((value >> UInt64(8 * k)) & UInt64(0xFF)))
 
 
-fn _bytes_of(items: List[Int]) -> List[UInt8]:
+def _bytes_of(items: List[Int]) -> List[UInt8]:
     var out = List[UInt8]()
     for i in range(len(items)):
         out.append(UInt8(items[i]))
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

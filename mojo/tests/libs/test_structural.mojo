@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from structural import bending_stress, shear_stress_beam, moment_of_inertia_rect, section_modulus_rect, deflection_cantilever_point, deflection_simply_supported_center, euler_buckling_load, slenderness_ratio, axial_stress, combined_stress_von_mises, safety_factor, natural_frequency_cantilever
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

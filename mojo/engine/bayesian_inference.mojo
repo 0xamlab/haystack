@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn bayes_update_log(
+def bayes_update_log(
     log_prior: Float64, log_likelihood: Float64
 ) -> Float64:
     """Log-space posterior update: log P(θ|x) ∝ log P(x|θ) + log P(θ).
@@ -32,7 +32,7 @@ fn bayes_update_log(
     return log_prior + log_likelihood
 
 
-fn prior_predictive(
+def prior_predictive(
     likelihood: Float64, prior: Float64
 ) -> Float64:
     """Prior predictive density contribution: P(x) = Σ P(x|θ) P(θ).
@@ -49,7 +49,7 @@ fn prior_predictive(
     return likelihood * prior
 
 
-fn variational_elbo_term(
+def variational_elbo_term(
     log_likelihood: Float64, kl_divergence: Float64
 ) -> Float64:
     """ELBO (Evidence Lower Bound): E_q[log p(x|z)] - KL(q||p).
@@ -64,7 +64,7 @@ fn variational_elbo_term(
     return log_likelihood - kl_divergence
 
 
-fn mean_field_update_mean(
+def mean_field_update_mean(
     natural_grad_sum: Float64, precision: Float64
 ) -> Float64:
     """Mean-field Gaussian mean update: μ = Σ natural_grads / precision.
@@ -81,7 +81,7 @@ fn mean_field_update_mean(
     return natural_grad_sum / precision
 
 
-fn mean_field_update_var(
+def mean_field_update_var(
     expected_hessian: Float64
 ) -> Float64:
     """Mean-field Gaussian variance update: σ² = 1 / E[-∂²log p/∂θ²].
@@ -97,7 +97,7 @@ fn mean_field_update_var(
     return 1.0 / expected_hessian
 
 
-fn laplace_approx_log_posterior(
+def laplace_approx_log_posterior(
     log_post_mode: Float64, hessian_at_mode: Float64,
     theta: Float64, theta_mode: Float64
 ) -> Float64:
@@ -118,7 +118,7 @@ fn laplace_approx_log_posterior(
     return log_post_mode - 0.5 * hessian_at_mode * diff * diff
 
 
-fn expected_information_gain(
+def expected_information_gain(
     posterior_entropy: Float64, prior_entropy: Float64
 ) -> Float64:
     """Expected Information Gain: EIG = H[p(θ)] - E[H[p(θ|x)]].
@@ -133,7 +133,7 @@ fn expected_information_gain(
     return prior_entropy - posterior_entropy
 
 
-fn credible_interval_half_width(
+def credible_interval_half_width(
     std: Float64, z_score: Float64
 ) -> Float64:
     """Gaussian credible interval half-width: z × σ.
@@ -150,7 +150,7 @@ fn credible_interval_half_width(
     return z_score * std
 
 
-fn kl_gaussians(
+def kl_gaussians(
     mu1: Float64, sigma1: Float64, mu2: Float64, sigma2: Float64
 ) -> Float64:
     """KL divergence KL(N(μ1,σ1²) || N(μ2,σ2²)).
@@ -172,7 +172,7 @@ fn kl_gaussians(
     return log(sigma2 / sigma1) + (sigma1 * sigma1 + mu_diff * mu_diff) / (2.0 * sigma2 * sigma2) - 0.5
 
 
-fn jeffreys_prior_gaussian(sigma: Float64) -> Float64:
+def jeffreys_prior_gaussian(sigma: Float64) -> Float64:
     """Jeffreys prior for Gaussian σ: p(σ) ∝ 1/σ.
 
     Args:

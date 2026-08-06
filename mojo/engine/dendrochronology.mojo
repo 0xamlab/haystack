@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, exp, log, pow
 
 
-fn ring_width_index(ring_width: Float64, trend_value: Float64) -> Float64:
+def ring_width_index(ring_width: Float64, trend_value: Float64) -> Float64:
     """Detrended ring width index: RWI = RW / trend.
 
     Args:
@@ -31,7 +31,7 @@ fn ring_width_index(ring_width: Float64, trend_value: Float64) -> Float64:
     return ring_width / trend_value
 
 
-fn basal_area_increment(
+def basal_area_increment(
     radius_now: Float64, radius_prev: Float64
 ) -> Float64:
     """Basal area increment for one year.
@@ -49,7 +49,7 @@ fn basal_area_increment(
     return pi * (radius_now * radius_now - radius_prev * radius_prev)
 
 
-fn standardise_negative_exp(
+def standardise_negative_exp(
     ring_width: Float64, a: Float64, b: Float64, age: Float64
 ) -> Float64:
     """Negative exponential detrending: trend(t) = a·exp(-b·t).
@@ -69,7 +69,7 @@ fn standardise_negative_exp(
     return ring_width / trend
 
 
-fn sensitivity_coefficient(mean_width: Float64, std_width: Float64) -> Float64:
+def sensitivity_coefficient(mean_width: Float64, std_width: Float64) -> Float64:
     """Mean sensitivity: ratio of std to mean ring width.
 
     MS = σ / μ  (coefficient of variation)
@@ -86,7 +86,7 @@ fn sensitivity_coefficient(mean_width: Float64, std_width: Float64) -> Float64:
     return std_width / mean_width
 
 
-fn first_order_autocorrelation(
+def first_order_autocorrelation(
     mean: Float64, n: Float64, sum_lag_product: Float64, sum_sq_dev: Float64
 ) -> Float64:
     """First-order autocorrelation coefficient r1.
@@ -107,7 +107,7 @@ fn first_order_autocorrelation(
     return sum_lag_product / sum_sq_dev
 
 
-fn expressed_population_signal(rbar: Float64, n_trees: Float64) -> Float64:
+def expressed_population_signal(rbar: Float64, n_trees: Float64) -> Float64:
     """Expressed Population Signal (EPS).
 
     EPS = n·rbar / (n·rbar + (1 - rbar))
@@ -125,7 +125,7 @@ fn expressed_population_signal(rbar: Float64, n_trees: Float64) -> Float64:
     return n_trees * rbar / denom
 
 
-fn signal_free_mean(mean_rwi: Float64, signal_strength: Float64) -> Float64:
+def signal_free_mean(mean_rwi: Float64, signal_strength: Float64) -> Float64:
     """Signal-free chronology value (simplified iteration step).
 
     Residual = RWI - signal_strength * (RWI - 1)
@@ -140,7 +140,7 @@ fn signal_free_mean(mean_rwi: Float64, signal_strength: Float64) -> Float64:
     return mean_rwi - signal_strength * (mean_rwi - 1.0)
 
 
-fn pointer_year_threshold(
+def pointer_year_threshold(
     mean_width: Float64, std_width: Float64, k: Float64
 ) -> Float64:
     """Threshold for pointer year detection.
@@ -158,7 +158,7 @@ fn pointer_year_threshold(
     return mean_width - k * std_width
 
 
-fn crossdating_t_value(
+def crossdating_t_value(
     r: Float64, n: Float64
 ) -> Float64:
     """Student's t for cross-correlation significance.
@@ -177,7 +177,7 @@ fn crossdating_t_value(
     return r * sqrt(n - 2.0) / sqrt(1.0 - r * r)
 
 
-fn temperature_response(
+def temperature_response(
     sum_rw_t_product: Float64, sum_t_sq: Float64, n: Float64,
     mean_rw: Float64, mean_t: Float64
 ) -> Float64:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from nn_layers import relu, sigmoid_activation, tanh_activation, softmax_layer, mse_loss, cross_entropy_loss, dropout, batch_norm, leaky_relu, init_weights_xavier
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

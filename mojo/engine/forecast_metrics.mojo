@@ -17,7 +17,7 @@ Design notes that matter for honest reporting:
     cars are classified equal, and integer-rank shortcuts silently bias rho.
 """
 
-from math import log, sqrt
+from std.math import log, sqrt
 
 
 struct MurphyTerms(Copyable, Movable):
@@ -30,7 +30,7 @@ struct MurphyTerms(Copyable, Movable):
     var n: Int
     var base_rate: Float64
 
-    fn __init__(
+    def __init__(
         out self, brier: Float64, reliability: Float64, resolution: Float64,
         uncertainty: Float64, n: Int, base_rate: Float64,
     ):
@@ -50,7 +50,7 @@ struct ReliabilityBins(Copyable, Movable):
     var observed_freq: List[Float64]
     var count: List[Float64]
 
-    fn __init__(
+    def __init__(
         out self, var bin_center: List[Float64], var forecast_mean: List[Float64],
         var observed_freq: List[Float64], var count: List[Float64],
     ):
@@ -60,7 +60,7 @@ struct ReliabilityBins(Copyable, Movable):
         self.count = count^
 
 
-fn brier_score(probs: List[Float64], outcomes: List[Float64]) -> Float64:
+def brier_score(probs: List[Float64], outcomes: List[Float64]) -> Float64:
     """Mean squared error of probabilistic forecasts against 0/1 outcomes."""
     var n = len(probs)
     if len(outcomes) < n:
@@ -74,7 +74,7 @@ fn brier_score(probs: List[Float64], outcomes: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn base_rate(outcomes: List[Float64]) -> Float64:
+def base_rate(outcomes: List[Float64]) -> Float64:
     """Observed event frequency — the climatological baseline."""
     var n = len(outcomes)
     if n == 0:
@@ -85,7 +85,7 @@ fn base_rate(outcomes: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn brier_skill_score(probs: List[Float64], outcomes: List[Float64], baseline: Float64) -> Float64:
+def brier_skill_score(probs: List[Float64], outcomes: List[Float64], baseline: Float64) -> Float64:
     """Skill against a constant-probability baseline. 0 means no better than the baseline.
 
     This is the primary accuracy number, not raw Brier. For a rare event a constant base-rate
@@ -110,7 +110,7 @@ fn brier_skill_score(probs: List[Float64], outcomes: List[Float64], baseline: Fl
     return 1.0 - bs / baseline_bs
 
 
-fn log_loss(probs: List[Float64], outcomes: List[Float64], eps: Float64) -> Float64:
+def log_loss(probs: List[Float64], outcomes: List[Float64], eps: Float64) -> Float64:
     """Mean negative log likelihood, clipped by eps so a confident miss is finite but heavy."""
     # The clip interval [eps, 1-eps] only exists for 0 < eps < 0.5. An untrusted eps at or
     # beyond those bounds inverts the interval and forces p onto 0.0 or a negative value,
@@ -138,7 +138,7 @@ fn log_loss(probs: List[Float64], outcomes: List[Float64], eps: Float64) -> Floa
     return s / Float64(n)
 
 
-fn reliability_bins(
+def reliability_bins(
     probs: List[Float64], outcomes: List[Float64], n_bins: Int
 ) -> ReliabilityBins:
     """Equal-width binning shared by ECE and the reliability diagram, so the two cannot disagree."""
@@ -177,7 +177,7 @@ fn reliability_bins(
     return ReliabilityBins(centers^, fmean^, ofreq^, cnt^)
 
 
-fn expected_calibration_error(
+def expected_calibration_error(
     probs: List[Float64], outcomes: List[Float64], n_bins: Int
 ) -> Float64:
     """Bin-weighted mean |forecast - observed|, over the same bins as the diagram."""
@@ -197,7 +197,7 @@ fn expected_calibration_error(
     return e / total
 
 
-fn murphy_decomposition(
+def murphy_decomposition(
     probs: List[Float64], outcomes: List[Float64], n_bins: Int
 ) -> MurphyTerms:
     """BS = REL - RES + UNC over binned forecasts.
@@ -229,7 +229,7 @@ fn murphy_decomposition(
     return MurphyTerms(brier_score(probs, outcomes), rel, res, unc, n, br)
 
 
-fn _avg_ranks(x: List[Float64]) -> List[Float64]:
+def _avg_ranks(x: List[Float64]) -> List[Float64]:
     """Average ranks with tie handling. Integer ranks bias Spearman when values tie."""
     var n = len(x)
     var idx = List[Int]()
@@ -258,7 +258,7 @@ fn _avg_ranks(x: List[Float64]) -> List[Float64]:
     return ranks^
 
 
-fn spearman_rho(a: List[Float64], b: List[Float64]) -> Float64:
+def spearman_rho(a: List[Float64], b: List[Float64]) -> Float64:
     """Rank correlation with proper tie handling — Pearson on average ranks."""
     var n = len(a)
     if len(b) < n:
@@ -291,12 +291,12 @@ fn spearman_rho(a: List[Float64], b: List[Float64]) -> Float64:
 # ── deterministic zero-argument probes ────────────────────────────────────────
 
 
-fn metrics_version() -> String:
+def metrics_version() -> String:
     """Contract identifier. Deterministic, zero-argument."""
     return String("forecast-metrics/v1")
 
 
-fn metrics_selftest() -> Float64:
+def metrics_selftest() -> Float64:
     """A perfectly calibrated 2-bin forecast must have zero reliability. Deterministic, zero-argument."""
     var p = List[Float64]()
     var o = List[Float64]()

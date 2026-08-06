@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from viticulture import brix_to_potential_alcohol, chaptalization_sugar, total_acidity_as_tartaric, ph_buffer_capacity, growing_degree_days_wine, winkler_index_daily, yield_tonnes_per_hectare, vine_density, pruning_weight_ratio, must_volume_from_grapes, sulfite_molecular_so2, fermentation_progress
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from distributions import sample_normal, sample_uniform, sample_triangular, sample_lognormal, sample_exponential, sample_weibull, sample_gamma_mt, sample_beta, sample_pert, sample_bernoulli, sample_poisson, sample_student_t, sample_cauchy, sample_laplace, sample_pareto, sample_gumbel, sample_rayleigh, sample_arcsine, sample_logistic, sample_halfnormal, acos_approx, sample_vonmises, sample_neg_binomial, sample_hypergeometric, sample_one
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

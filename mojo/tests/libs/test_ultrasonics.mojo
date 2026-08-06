@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ultrasonics import acoustic_impedance, reflection_coefficient, attenuation_loss, doppler_frequency_shift, pulse_repetition_frequency, axial_resolution, lateral_resolution, acoustic_pressure_spl, ultrasound_power, thermal_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

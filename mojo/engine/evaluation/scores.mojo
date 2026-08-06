@@ -146,7 +146,7 @@ struct MetricValue(Copyable, Movable):
     var bins_used: Int
     var bin_policy: Int
 
-    fn __init__(out self, status: Int, metric_id: Int, n: Int):
+    def __init__(out self, status: Int, metric_id: Int, n: Int):
         self.status = status
         self.present = False
         self.value = 0.0
@@ -173,7 +173,7 @@ struct BrierDecomposition(Copyable, Movable):
     var bins_occupied: Int
     var bin_policy: Int
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.present = False
         self.brier = 0.0
@@ -204,7 +204,7 @@ struct LogLossResult(Copyable, Movable):
     var clamped_count: Int
     var n: Int
 
-    fn __init__(out self, status: Int, n: Int):
+    def __init__(out self, status: Int, n: Int):
         self.status = status
         self.present = False
         self.log_loss = 0.0
@@ -225,7 +225,7 @@ struct CalibrationErrorResult(Copyable, Movable):
     var bins_occupied: Int
     var bin_policy: Int
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.present = False
         self.ece = 0.0
@@ -259,7 +259,7 @@ struct ReliabilityDiagram(Copyable, Movable):
     var bin_count: List[Int]
     var bin_present: List[Bool]
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.n = n
         self.bins_used = n_bins
@@ -306,7 +306,7 @@ struct EvalReport(Copyable, Movable):
     var mce: Float64
     var ece_present: Bool
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.n = n
         self.bins_used = n_bins
@@ -334,7 +334,7 @@ struct EvalReport(Copyable, Movable):
 # ── internal aggregations, each over a frozen per-item kernel ─────────────────
 
 
-fn _brier_mean(probs: List[Float64], labels: List[Float64], n: Int) -> Float64:
+def _brier_mean(probs: List[Float64], labels: List[Float64], n: Int) -> Float64:
     """Mean of the frozen `brier_score_term`. `n` is pre-validated `<= len(...)`."""
     var total = 0.0
     for i in range(n):
@@ -342,7 +342,7 @@ fn _brier_mean(probs: List[Float64], labels: List[Float64], n: Int) -> Float64:
     return total / Float64(n)
 
 
-fn _base_rate(labels: List[Float64], n: Int) -> Float64:
+def _base_rate(labels: List[Float64], n: Int) -> Float64:
     """Observed positive rate. Labels are pre-validated to be exactly 0.0 or 1.0."""
     var total = 0.0
     for i in range(n):
@@ -350,7 +350,7 @@ fn _base_rate(labels: List[Float64], n: Int) -> Float64:
     return total / Float64(n)
 
 
-fn _accuracy_at_threshold(
+def _accuracy_at_threshold(
     probs: List[Float64], labels: List[Float64], n: Int
 ) -> Float64:
     """Fraction of samples whose thresholded prediction equals the label."""
@@ -363,7 +363,7 @@ fn _accuracy_at_threshold(
     return Float64(hits) / Float64(n)
 
 
-fn _ece_of_bins(bins: EvalBins) -> Float64:
+def _ece_of_bins(bins: EvalBins) -> Float64:
     """Sum of the frozen `calibration_ece_term` over the partition."""
     var total = 0.0
     for b in range(len(bins.count)):
@@ -376,7 +376,7 @@ fn _ece_of_bins(bins: EvalBins) -> Float64:
     return total
 
 
-fn _mce_of_bins(bins: EvalBins) -> Float64:
+def _mce_of_bins(bins: EvalBins) -> Float64:
     """Largest |observed - predicted| over OCCUPIED bins only.
 
     An empty bin holds 0.0 in both slots, so including it would contribute a gap of zero —
@@ -392,7 +392,7 @@ fn _mce_of_bins(bins: EvalBins) -> Float64:
     return worst
 
 
-fn _log_loss_parts(
+def _log_loss_parts(
     probs: List[Float64], labels: List[Float64], n: Int
 ) -> List[Float64]:
     """`[mean log-loss, clamped sample count]` from the frozen `binary_cross_entropy`.
@@ -413,7 +413,7 @@ fn _log_loss_parts(
     return out^
 
 
-fn _residual_tolerance(
+def _residual_tolerance(
     brier: Float64,
     reliability: Float64,
     resolution: Float64,
@@ -440,7 +440,7 @@ fn _residual_tolerance(
 # ── public drivers ────────────────────────────────────────────────────────────
 
 
-fn brier_decomposition_flat(
+def brier_decomposition_flat(
     probs: List[Float64], labels: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> BrierDecomposition:
     """Brier score with Murphy's reliability / resolution / uncertainty and the residual.
@@ -499,7 +499,7 @@ fn brier_decomposition_flat(
     return out^
 
 
-fn log_loss_flat(
+def log_loss_flat(
     probs: List[Float64], labels: List[Float64], n: Int
 ) -> LogLossResult:
     """Mean log-loss from the frozen `binary_cross_entropy`, with the clamp reported.
@@ -529,7 +529,7 @@ fn log_loss_flat(
     return out^
 
 
-fn calibration_error_flat(
+def calibration_error_flat(
     probs: List[Float64], labels: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> CalibrationErrorResult:
     """Expected and maximum calibration error under an EXPLICIT binning policy.
@@ -562,7 +562,7 @@ fn calibration_error_flat(
     return out^
 
 
-fn reliability_diagram_flat(
+def reliability_diagram_flat(
     probs: List[Float64], labels: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> ReliabilityDiagram:
     """Per-bin reliability data with an explicit `bin_present` flag per bin.
@@ -609,7 +609,7 @@ fn reliability_diagram_flat(
     return out^
 
 
-fn metric_value_flat(
+def metric_value_flat(
     probs: List[Float64], labels: List[Float64], n: Int, metric_id: Int,
     n_bins: Int, policy: Int
 ) -> MetricValue:
@@ -673,7 +673,7 @@ fn metric_value_flat(
     return out^
 
 
-fn evaluate_flat(
+def evaluate_flat(
     probs: List[Float64], labels: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> EvalReport:
     """The unified driver: every scalar in this module, one pass, one binning.

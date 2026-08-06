@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cytometry import percent_positive_gate, median_fluorescence_intensity, staining_index, coefficient_of_variation_peak, cell_cycle_g1_fraction, apoptosis_annexin_pi, lymphocyte_subset_ratio, absolute_count, compensation_spillover, sensitivity_lod_cytometry
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

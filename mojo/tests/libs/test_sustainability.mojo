@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sustainability import carbon_footprint_transport, energy_intensity, water_intensity, waste_diversion_rate, renewable_energy_fraction, ghg_scope1, ghg_scope2, ghg_scope3_estimate, carbon_offset_cost, circular_economy_index, social_return_on_investment, esg_composite_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

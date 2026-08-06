@@ -64,10 +64,8 @@ from algenta_runtime.session import (
 # hostile frame from pinning the single-threaded worker loop.
 alias MAX_PIPELINE_NODES = 512
 
-alias Dispatcher = fn (String) raises -> String
 
-
-fn _pipeline_error(code: String, message: String) -> String:
+def _pipeline_error(code: String, message: String) -> String:
     return (
         '{"error":"'
         + code
@@ -88,7 +86,7 @@ alias _NINE: UInt8 = 57  # 9
 alias _BRACE_CLOSE: UInt8 = 125  # }
 
 
-fn _is_reference(token: String) -> Bool:
+def _is_reference(token: String) -> Bool:
     """True for a `"$<digits>"` argument token (quoted, at least one digit)."""
     if len(token) < 4:
         return False
@@ -103,7 +101,7 @@ fn _is_reference(token: String) -> Bool:
     return True
 
 
-fn _reference_index(token: String) -> Int:
+def _reference_index(token: String) -> Int:
     """Index from a validated `"$<digits>"` token."""
     var bytes = token.as_bytes()
     var value = 0
@@ -112,7 +110,7 @@ fn _reference_index(token: String) -> Int:
     return value
 
 
-fn extract_result_json(response: String) -> String:
+def extract_result_json(response: String) -> String:
     """The raw JSON of a dispatch response's `result` field.
 
     The envelope is always `{"result":<value>}` for a success, so slicing after
@@ -141,7 +139,7 @@ fn extract_result_json(response: String) -> String:
     return value
 
 
-fn _bind_args(
+def _bind_args(
     args_json: String,
     results: List[String],
     datasets: ResidentDatasets,
@@ -171,7 +169,7 @@ fn _bind_args(
     return bound
 
 
-fn plan_hash(nodes_json: String) -> String:
+def plan_hash(nodes_json: String) -> String:
     """Stable identity of a plan: its nodes, references intact, no results.
 
     Hashes the plan's *canonical* form, not its JSON text. Hashing the text made the
@@ -189,7 +187,8 @@ fn plan_hash(nodes_json: String) -> String:
         return sha256_hex(nodes_json)
 
 
-fn run_pipeline_execute[dispatch: Dispatcher](
+def run_pipeline_execute[DispatchT: def(String) raises -> String](
+    dispatch: DispatchT,
     raw: String,
     datasets: ResidentDatasets,
 ) raises -> String:

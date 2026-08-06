@@ -18,7 +18,7 @@ Public API:
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
 
-fn _path_substring(s: String, start: Int, end: Int) -> String:
+def _path_substring(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var result = String("")
@@ -28,7 +28,7 @@ fn _path_substring(s: String, start: Int, end: Int) -> String:
     return result
 
 
-fn _path_char_at(s: String, idx: Int) -> Int:
+def _path_char_at(s: String, idx: Int) -> Int:
     """Get character code at index."""
     return Int(s.as_bytes()[idx])
 
@@ -36,7 +36,7 @@ fn _path_char_at(s: String, idx: Int) -> Int:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-fn path_join(parts: List[String]) -> String:
+def path_join(parts: List[String]) -> String:
     """Join path components with /. Skips empty parts."""
     var result = String("")
     for i in range(len(parts)):
@@ -51,7 +51,7 @@ fn path_join(parts: List[String]) -> String:
     return result
 
 
-fn path_basename(path: String) -> String:
+def path_basename(path: String) -> String:
     """Return the last component of a path (filename)."""
     if len(path) == 0:
         return String("")
@@ -71,7 +71,7 @@ fn path_basename(path: String) -> String:
     return _path_substring(path, last_slash + 1, end)
 
 
-fn path_dirname(path: String) -> String:
+def path_dirname(path: String) -> String:
     """Return the parent directory of a path."""
     if len(path) == 0:
         return String(".")
@@ -93,7 +93,7 @@ fn path_dirname(path: String) -> String:
     return _path_substring(path, 0, last_slash)
 
 
-fn path_extension(path: String) -> String:
+def path_extension(path: String) -> String:
     """Return the file extension including the dot. Returns '' if none."""
     var base = path_basename(path)
     if len(base) == 0:
@@ -110,7 +110,7 @@ fn path_extension(path: String) -> String:
     return _path_substring(base, last_dot, n)
 
 
-fn path_stem(path: String) -> String:
+def path_stem(path: String) -> String:
     """Return the filename without extension."""
     var base = path_basename(path)
     if len(base) == 0:
@@ -127,14 +127,14 @@ fn path_stem(path: String) -> String:
     return _path_substring(base, 0, last_dot)
 
 
-fn path_is_absolute(path: String) -> Bool:
+def path_is_absolute(path: String) -> Bool:
     """Check if path is absolute (starts with /)."""
     if len(path) == 0:
         return False
     return Int(path.as_bytes()[0]) == 47  # '/'
 
 
-fn path_split(path: String) -> List[String]:
+def path_split(path: String) -> List[String]:
     """Split a path into its components. Leading / becomes empty first element."""
     var parts = List[String]()
     if len(path) == 0:
@@ -163,7 +163,7 @@ fn path_split(path: String) -> List[String]:
     return parts^
 
 
-fn path_normalize(path: String) -> String:
+def path_normalize(path: String) -> String:
     """Normalize a path: resolve . and .. components, collapse multiple slashes."""
     if len(path) == 0:
         return String(".")

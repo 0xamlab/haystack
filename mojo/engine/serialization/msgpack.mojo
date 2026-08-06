@@ -25,11 +25,11 @@ struct MsgPackIntResult(Copyable, Movable):
     var value: Int
     var consumed: Int
 
-    fn __init__(out self, value: Int = 0, consumed: Int = 0):
+    def __init__(out self, value: Int = 0, consumed: Int = 0):
         self.value = value
         self.consumed = consumed
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.value = copy.value
         self.consumed = copy.consumed
 
@@ -39,11 +39,11 @@ struct MsgPackFloatResult(Copyable, Movable):
     var value: Float64
     var consumed: Int
 
-    fn __init__(out self, value: Float64 = 0.0, consumed: Int = 0):
+    def __init__(out self, value: Float64 = 0.0, consumed: Int = 0):
         self.value = value
         self.consumed = consumed
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.value = copy.value
         self.consumed = copy.consumed
 
@@ -53,11 +53,11 @@ struct MsgPackStringResult(Copyable, Movable):
     var value: String
     var consumed: Int
 
-    fn __init__(out self, value: String = String(""), consumed: Int = 0):
+    def __init__(out self, value: String = String(""), consumed: Int = 0):
         self.value = value
         self.consumed = consumed
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.value = copy.value
         self.consumed = copy.consumed
 
@@ -65,7 +65,7 @@ struct MsgPackStringResult(Copyable, Movable):
 # ── Encoding: Integer ────────────────────────────────────────────────────────
 
 
-fn msgpack_encode_int(v: Int) -> List[UInt8]:
+def msgpack_encode_int(v: Int) -> List[UInt8]:
     """Encode an integer using the most compact MessagePack format."""
     var buf = List[UInt8]()
 
@@ -155,7 +155,7 @@ fn msgpack_encode_int(v: Int) -> List[UInt8]:
 # ── Encoding: Float64 ───────────────────────────────────────────────────────
 
 
-fn msgpack_encode_float(v: Float64) -> List[UInt8]:
+def msgpack_encode_float(v: Float64) -> List[UInt8]:
     """Encode a float64 as MessagePack float64 (0xcb + 8 bytes big-endian IEEE 754)."""
     var buf = List[UInt8]()
     buf.append(UInt8(0xcb))
@@ -176,7 +176,7 @@ fn msgpack_encode_float(v: Float64) -> List[UInt8]:
 # ── Encoding: String ─────────────────────────────────────────────────────────
 
 
-fn msgpack_encode_string(v: String) -> List[UInt8]:
+def msgpack_encode_string(v: String) -> List[UInt8]:
     """Encode a string using the most compact MessagePack string format."""
     var buf = List[UInt8]()
     var bs = v.as_bytes()
@@ -207,7 +207,7 @@ fn msgpack_encode_string(v: String) -> List[UInt8]:
 # ── Encoding: Bool ───────────────────────────────────────────────────────────
 
 
-fn msgpack_encode_bool(v: Bool) -> List[UInt8]:
+def msgpack_encode_bool(v: Bool) -> List[UInt8]:
     """Encode a boolean: true=0xc3, false=0xc2."""
     var buf = List[UInt8]()
     if v:
@@ -220,7 +220,7 @@ fn msgpack_encode_bool(v: Bool) -> List[UInt8]:
 # ── Encoding: Nil ────────────────────────────────────────────────────────────
 
 
-fn msgpack_encode_nil() -> List[UInt8]:
+def msgpack_encode_nil() -> List[UInt8]:
     """Encode nil: 0xc0."""
     var buf = List[UInt8]()
     buf.append(UInt8(0xc0))
@@ -230,7 +230,7 @@ fn msgpack_encode_nil() -> List[UInt8]:
 # ── Encoding: Array header ───────────────────────────────────────────────────
 
 
-fn msgpack_encode_array_header(n: Int) -> List[UInt8]:
+def msgpack_encode_array_header(n: Int) -> List[UInt8]:
     """Encode an array header (element count)."""
     var buf = List[UInt8]()
     if n <= 15:
@@ -251,7 +251,7 @@ fn msgpack_encode_array_header(n: Int) -> List[UInt8]:
 # ── Encoding: Map header ────────────────────────────────────────────────────
 
 
-fn msgpack_encode_map_header(n: Int) -> List[UInt8]:
+def msgpack_encode_map_header(n: Int) -> List[UInt8]:
     """Encode a map header (pair count)."""
     var buf = List[UInt8]()
     if n <= 15:
@@ -272,7 +272,7 @@ fn msgpack_encode_map_header(n: Int) -> List[UInt8]:
 # ── Decoding: Integer ────────────────────────────────────────────────────────
 
 
-fn msgpack_decode_int(data: List[UInt8], pos: Int) -> MsgPackIntResult:
+def msgpack_decode_int(data: List[UInt8], pos: Int) -> MsgPackIntResult:
     """Decode an integer from data at pos. Returns MsgPackIntResult(value, consumed)."""
     # A negative pos would read data out of bounds — an uncatchable abort.
     if pos < 0 or pos >= len(data):
@@ -361,7 +361,7 @@ fn msgpack_decode_int(data: List[UInt8], pos: Int) -> MsgPackIntResult:
 # ── Decoding: Float64 ───────────────────────────────────────────────────────
 
 
-fn msgpack_decode_float(data: List[UInt8], pos: Int) -> MsgPackFloatResult:
+def msgpack_decode_float(data: List[UInt8], pos: Int) -> MsgPackFloatResult:
     """Decode a float64 from data at pos. Returns MsgPackFloatResult(value, consumed)."""
     # A negative pos would read data out of bounds — an uncatchable abort.
     if pos < 0 or pos >= len(data):
@@ -395,7 +395,7 @@ fn msgpack_decode_float(data: List[UInt8], pos: Int) -> MsgPackFloatResult:
 # ── Decoding: String ─────────────────────────────────────────────────────────
 
 
-fn msgpack_decode_string(data: List[UInt8], pos: Int) -> MsgPackStringResult:
+def msgpack_decode_string(data: List[UInt8], pos: Int) -> MsgPackStringResult:
     """Decode a string from data at pos. Returns MsgPackStringResult(value, consumed)."""
     # A negative pos would read data out of bounds — an uncatchable abort.
     if pos < 0 or pos >= len(data):

@@ -26,7 +26,7 @@ from std.math import sqrt, abs as fabs
 # ── joint_torque ─────────────────────────────────────────────────────────────
 
 
-fn joint_torque(force: Float64, moment_arm: Float64) -> Float64:
+def joint_torque(force: Float64, moment_arm: Float64) -> Float64:
     """τ = F · d  (N·m)."""
     return force * moment_arm
 
@@ -34,7 +34,7 @@ fn joint_torque(force: Float64, moment_arm: Float64) -> Float64:
 # ── angular_velocity ─────────────────────────────────────────────────────────
 
 
-fn angular_velocity(angular_displacement: Float64, time: Float64) -> Float64:
+def angular_velocity(angular_displacement: Float64, time: Float64) -> Float64:
     """ω = θ / t  (rad/s)."""
     return angular_displacement / time
 
@@ -42,7 +42,7 @@ fn angular_velocity(angular_displacement: Float64, time: Float64) -> Float64:
 # ── angular_acceleration ─────────────────────────────────────────────────────
 
 
-fn angular_acceleration(delta_omega: Float64, time: Float64) -> Float64:
+def angular_acceleration(delta_omega: Float64, time: Float64) -> Float64:
     """α = Δω / t  (rad/s²)."""
     return delta_omega / time
 
@@ -50,7 +50,7 @@ fn angular_acceleration(delta_omega: Float64, time: Float64) -> Float64:
 # ── moment_of_inertia_limb ──────────────────────────────────────────────────
 
 
-fn moment_of_inertia_limb(mass: Float64, length: Float64) -> Float64:
+def moment_of_inertia_limb(mass: Float64, length: Float64) -> Float64:
     """I ≈ m · L² / 3  (rod about end)."""
     return mass * length * length / 3.0
 
@@ -58,7 +58,7 @@ fn moment_of_inertia_limb(mass: Float64, length: Float64) -> Float64:
 # ── ground_reaction_force_ratio ──────────────────────────────────────────────
 
 
-fn ground_reaction_force_ratio(grf: Float64, body_weight: Float64) -> Float64:
+def ground_reaction_force_ratio(grf: Float64, body_weight: Float64) -> Float64:
     """Ratio = GRF / BW."""
     return grf / body_weight
 
@@ -66,7 +66,7 @@ fn ground_reaction_force_ratio(grf: Float64, body_weight: Float64) -> Float64:
 # ── stride_length ────────────────────────────────────────────────────────────
 
 
-fn stride_length(velocity: Float64, cadence_steps_per_min: Float64) -> Float64:
+def stride_length(velocity: Float64, cadence_steps_per_min: Float64) -> Float64:
     """SL = v * 60 / (cadence / 2)  metres."""
     return velocity * 60.0 / (cadence_steps_per_min / 2.0)
 
@@ -74,7 +74,7 @@ fn stride_length(velocity: Float64, cadence_steps_per_min: Float64) -> Float64:
 # ── cadence_from_velocity ────────────────────────────────────────────────────
 
 
-fn cadence_from_velocity(velocity: Float64, stride_len: Float64) -> Float64:
+def cadence_from_velocity(velocity: Float64, stride_len: Float64) -> Float64:
     """Cadence = (v / SL) * 2 * 60  steps/min."""
     return (velocity / stride_len) * 2.0 * 60.0
 
@@ -82,7 +82,7 @@ fn cadence_from_velocity(velocity: Float64, stride_len: Float64) -> Float64:
 # ── metabolic_cost_walking ───────────────────────────────────────────────────
 
 
-fn metabolic_cost_walking(mass: Float64, velocity: Float64) -> Float64:
+def metabolic_cost_walking(mass: Float64, velocity: Float64) -> Float64:
     """E ≈ 2.5·mass + 3.0·mass·velocity²  (W, simplified)."""
     return 2.5 * mass + 3.0 * mass * velocity * velocity
 
@@ -90,7 +90,7 @@ fn metabolic_cost_walking(mass: Float64, velocity: Float64) -> Float64:
 # ── joint_power ──────────────────────────────────────────────────────────────
 
 
-fn joint_power(torque: Float64, angular_vel: Float64) -> Float64:
+def joint_power(torque: Float64, angular_vel: Float64) -> Float64:
     """P = τ · ω  (watts)."""
     return torque * angular_vel
 
@@ -98,7 +98,7 @@ fn joint_power(torque: Float64, angular_vel: Float64) -> Float64:
 # ── elastic_energy_tendon ────────────────────────────────────────────────────
 
 
-fn elastic_energy_tendon(stiffness: Float64, deformation: Float64) -> Float64:
+def elastic_energy_tendon(stiffness: Float64, deformation: Float64) -> Float64:
     """E = 0.5 · k · x²  (joules)."""
     return 0.5 * stiffness * deformation * deformation
 
@@ -106,7 +106,7 @@ fn elastic_energy_tendon(stiffness: Float64, deformation: Float64) -> Float64:
 # ── center_of_mass_two_segments ──────────────────────────────────────────────
 
 
-fn center_of_mass_two_segments(m1: Float64, x1: Float64,
+def center_of_mass_two_segments(m1: Float64, x1: Float64,
                                 m2: Float64, x2: Float64) -> Float64:
     """CoM = (m1·x1 + m2·x2) / (m1 + m2)."""
     return (m1 * x1 + m2 * x2) / (m1 + m2)
@@ -115,7 +115,7 @@ fn center_of_mass_two_segments(m1: Float64, x1: Float64,
 # ── muscle_force_hill ────────────────────────────────────────────────────────
 
 
-fn muscle_force_hill(fmax: Float64, velocity: Float64,
+def muscle_force_hill(fmax: Float64, velocity: Float64,
                      vmax: Float64, a_hill: Float64) -> Float64:
     """F = Fmax · (vmax - v) / (vmax + v / a_hill)  (simplified Hill model)."""
     return fmax * (vmax - velocity) / (vmax + velocity / a_hill)

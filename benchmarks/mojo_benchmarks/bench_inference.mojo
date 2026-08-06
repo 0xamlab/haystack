@@ -205,29 +205,29 @@ comptime PI: Float64 = 3.141592653589793
 comptime GATE_REPS: Int = 7
 
 
-fn _f64s(*vals: Float64) -> List[Float64]:
+def _f64s(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ns(t0: UInt, t1: UInt) -> Float64:
+def _ns(t0: UInt, t1: UInt) -> Float64:
     return Float64(Int(t1 - t0))
 
 
-fn _log2(x: Float64) -> Float64:
+def _log2(x: Float64) -> Float64:
     return log(x) / log(2.0)
 
 
-fn _flat(small: Float64, large: Float64, allow: Float64) -> Bool:
+def _flat(small: Float64, large: Float64, allow: Float64) -> Bool:
     """Per-unit cost at the LARGER problem must not exceed `allow` times the smaller one.
 
     Rule 9: the contract is that per-unit cost stays flat as the problem grows. A zero or
@@ -239,7 +239,7 @@ fn _flat(small: Float64, large: Float64, allow: Float64) -> Bool:
     return large <= allow * small
 
 
-fn _exponent(t_small: Float64, n_small: Int, t_large: Float64, n_large: Int) -> Float64:
+def _exponent(t_small: Float64, n_small: Int, t_large: Float64, n_large: Int) -> Float64:
     """`p` in `t ~ n^p` from two measurements, or -1.0 when they cannot decide one.
 
     Normalised for the size step, which a raw ratio is not: a 2x ratio across a 4x rise and a
@@ -252,7 +252,7 @@ fn _exponent(t_small: Float64, n_small: Int, t_large: Float64, n_large: Int) -> 
     return log(t_large / t_small) / log(Float64(n_large) / Float64(n_small))
 
 
-fn _p_family(n: Int) -> List[Float64]:
+def _p_family(n: Int) -> List[Float64]:
     """A deterministic family of `n` p-values in [0, 1). No randomness: a benchmark whose
     input changes between runs cannot be compared against its own previous numbers. 7919 and
     100003 are coprime primes, so the sequence walks the residue grid rather than cycling
@@ -263,7 +263,7 @@ fn _p_family(n: Int) -> List[Float64]:
     return out^
 
 
-fn _sample(n: Int) -> List[Float64]:
+def _sample(n: Int) -> List[Float64]:
     """A deterministic bounded sample for the resampling sections."""
     var out = List[Float64](capacity=n)
     for i in range(n):
@@ -271,7 +271,7 @@ fn _sample(n: Int) -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
     print("\n[bench_inference] gate for the inference package")
     # One warm-up through the two hot primitives, so the first timed loop below is not

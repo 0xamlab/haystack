@@ -171,7 +171,7 @@ struct AttnDelta(Copyable, Movable):
     var status: Int
 
 
-fn attn_flop_count(
+def attn_flop_count(
     batch: Int, h_q: Int, s_q: Int, s_kv: Int, d: Int, causal: Bool
 ) -> Float64:
     """FLOPs for one forward pass: 2*B*H*Sq*Skv*D for QK^T plus the same again for P@V.
@@ -194,7 +194,7 @@ fn attn_flop_count(
     return f * 0.5 if causal else f
 
 
-fn _dot_simd(
+def _dot_simd(
     qp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     kp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     q_off: Int, k_off: Int, d: Int
@@ -241,7 +241,7 @@ fn _dot_simd(
     return acc
 
 
-fn _dot4_simd(
+def _dot4_simd(
     qp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     kp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     q0: Int, q_stride: Int, k0: Int, d: Int
@@ -290,7 +290,7 @@ fn _dot4_simd(
     return out
 
 
-fn _dot4x4_simd(
+def _dot4x4_simd(
     qp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     kp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     q0: Int, q_stride: Int, k0: Int, k_stride: Int, d: Int
@@ -399,7 +399,7 @@ fn _dot4x4_simd(
     return o
 
 
-fn _axpy4_simd(
+def _axpy4_simd(
     op: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     vp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     o0: Int, o_stride: Int, v_off: Int, d: Int,
@@ -435,7 +435,7 @@ fn _axpy4_simd(
         i += 1
 
 
-fn _axpy_simd(
+def _axpy_simd(
     op: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     vp: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     o_off: Int, v_off: Int, d: Int, p: Float64
@@ -461,7 +461,7 @@ fn _axpy_simd(
         i += 1
 
 
-fn _scale_simd(
+def _scale_simd(
     op: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     o_off: Int, d: Int, s: Float64,
 ):
@@ -477,14 +477,14 @@ fn _scale_simd(
         i += 1
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64](capacity=n if n > 0 else 1)
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _workers_for(tasks: Int, requested: Int) -> Int:
+def _workers_for(tasks: Int, requested: Int) -> Int:
     """`requested` workers, or one per physical core when `requested` <= 0. Never more than tasks.
 
     Explicit rather than always-auto because a ratio between two arms at different thread counts is a
@@ -505,7 +505,7 @@ fn _workers_for(tasks: Int, requested: Int) -> Int:
     return nw
 
 
-fn attn_forward_tiled(
+def attn_forward_tiled(
     q: List[Float64], k: List[Float64], v: List[Float64],
     batch: Int, h_q: Int, h_kv: Int, s_q: Int, s_kv: Int, d: Int,
     scale: Float64, causal: Bool, br: Int, bc: Int, workers: Int
@@ -583,7 +583,7 @@ fn attn_forward_tiled(
     var ptasks = tasks
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         # Scratch once per worker. Per task would put the allocator in the inner loop.
         var s_tile = _zeros(pbr * pbc)
         var acc = _zeros(pbr * pd)
@@ -794,7 +794,7 @@ fn attn_forward_tiled(
     )
 
 
-fn _forward_materialized(
+def _forward_materialized(
     q: List[Float64], k: List[Float64], v: List[Float64],
     batch: Int, h_q: Int, h_kv: Int, s_q: Int, s_kv: Int, d: Int,
     scale: Float64, causal: Bool, subtract_max: Bool, workers: Int
@@ -861,7 +861,7 @@ fn _forward_materialized(
     var ptasks = tasks
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var scores = _zeros(ps_q * ps_kv)
         var sp = scores.unsafe_ptr()
         var local_max = 0.0
@@ -956,7 +956,7 @@ fn _forward_materialized(
     )
 
 
-fn attn_forward_direct(
+def attn_forward_direct(
     q: List[Float64], k: List[Float64], v: List[Float64],
     batch: Int, h_q: Int, h_kv: Int, s_q: Int, s_kv: Int, d: Int,
     scale: Float64, causal: Bool, workers: Int
@@ -976,7 +976,7 @@ fn attn_forward_direct(
     )
 
 
-fn attn_forward_unstable(
+def attn_forward_unstable(
     q: List[Float64], k: List[Float64], v: List[Float64],
     batch: Int, h_q: Int, h_kv: Int, s_q: Int, s_kv: Int, d: Int,
     scale: Float64, causal: Bool, workers: Int
@@ -998,7 +998,7 @@ fn attn_forward_unstable(
     )
 
 
-fn attn_reference_delta(
+def attn_reference_delta(
     q: List[Float64], k: List[Float64], v: List[Float64],
     batch: Int, h_q: Int, h_kv: Int, s_q: Int, s_kv: Int, d: Int,
     scale: Float64, causal: Bool

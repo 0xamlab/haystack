@@ -117,7 +117,7 @@ struct PageHinkleyState(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         mean: Float64,
         cum_up: Float64,
@@ -165,7 +165,7 @@ struct DriftVerdict(Copyable, Movable):
     var present: Bool
     var status: Int
 
-    fn __init__(
+    def __init__(
         out self,
         detected: Bool,
         change_index: Int,
@@ -184,20 +184,20 @@ struct DriftVerdict(Copyable, Movable):
         self.status = status
 
 
-fn _invalid_state(status: Int) -> PageHinkleyState:
+def _invalid_state(status: Int) -> PageHinkleyState:
     """Not a state, with the reason."""
     return PageHinkleyState(
         0.0, 0.0, 0.0, 0.0, 0.0, 0, False, -1, 0.0, status, False
     )
 
 
-fn _no_verdict(status: Int, n_seen: Int, threshold: Float64) -> DriftVerdict:
+def _no_verdict(status: Int, n_seen: Int, threshold: Float64) -> DriftVerdict:
     """No decision, with the reason. `statistic` is 0.0 and means nothing."""
     var safe = threshold if stm_finite(threshold) else 0.0
     return DriftVerdict(False, -1, 0.0, safe, n_seen, False, status)
 
 
-fn _params_ok(delta: Float64, threshold: Float64) -> Int:
+def _params_ok(delta: Float64, threshold: Float64) -> Int:
     """`STM_OK`, or the status that refuses these parameters.
 
     `delta` is the change magnitude tolerated before the cumulative sum starts to grow and
@@ -213,7 +213,7 @@ fn _params_ok(delta: Float64, threshold: Float64) -> Int:
     return STM_OK
 
 
-fn _state_ok(state: PageHinkleyState) -> Int:
+def _state_ok(state: PageHinkleyState) -> Int:
     """`STM_OK`, or the status refusing this state. O(1).
 
     THE STRUCT PATH IS A CALLER PATH. `PageHinkleyState` is decoded from caller JSON by the
@@ -249,7 +249,7 @@ fn _state_ok(state: PageHinkleyState) -> Int:
     return STM_OK
 
 
-fn page_hinkley_init() -> PageHinkleyState:
+def page_hinkley_init() -> PageHinkleyState:
     """A fresh detector that has seen nothing.
 
     Valid, with `count == 0`. `page_hinkley_verdict` reports ABSENT for it, because a
@@ -263,7 +263,7 @@ fn page_hinkley_init() -> PageHinkleyState:
     return PageHinkleyState(0.0, 0.0, 0.0, 0.0, 0.0, 0, False, -1, 0.0, STM_OK, True)
 
 
-fn page_hinkley_step(
+def page_hinkley_step(
     state: PageHinkleyState, x: Float64, delta: Float64, threshold: Float64
 ) -> PageHinkleyState:
     """The detector after one more observation, as a new value.
@@ -319,7 +319,7 @@ fn page_hinkley_step(
     )
 
 
-fn page_hinkley_verdict(
+def page_hinkley_verdict(
     state: PageHinkleyState, threshold: Float64
 ) -> DriftVerdict:
     """The detector's decision, or ABSENCE when it has seen nothing.
@@ -342,7 +342,7 @@ fn page_hinkley_verdict(
     )
 
 
-fn page_hinkley_resume(
+def page_hinkley_resume(
     state: PageHinkleyState, values: List[Float64], delta: Float64, threshold: Float64
 ) -> PageHinkleyState:
     """The detector after a whole further chunk, as a new value.
@@ -374,7 +374,7 @@ fn page_hinkley_resume(
     return current^
 
 
-fn page_hinkley_scan(
+def page_hinkley_scan(
     values: List[Float64], delta: Float64, threshold: Float64
 ) -> DriftVerdict:
     """Two-sided Page-Hinkley over the whole series.
@@ -390,7 +390,7 @@ fn page_hinkley_scan(
     return page_hinkley_scan_prefix(values, len(values), delta, threshold)
 
 
-fn page_hinkley_scan_prefix(
+def page_hinkley_scan_prefix(
     values: List[Float64], n: Int, delta: Float64, threshold: Float64
 ) -> DriftVerdict:
     """Two-sided Page-Hinkley over `values[0..n)`.
@@ -423,7 +423,7 @@ fn page_hinkley_scan_prefix(
     return page_hinkley_verdict(state, threshold)
 
 
-fn _ddm_params_bad(warning_level: Float64, drift_level: Float64) -> Bool:
+def _ddm_params_bad(warning_level: Float64, drift_level: Float64) -> Bool:
     """True when the two DDM multipliers are not a usable pair.
 
     `drift_level` below `warning_level` would make the drift band a subset of the warning
@@ -434,7 +434,7 @@ fn _ddm_params_bad(warning_level: Float64, drift_level: Float64) -> Bool:
     return warning_level <= 0.0 or drift_level < warning_level
 
 
-fn _ddm_levels(
+def _ddm_levels(
     errors: List[Bool], warning_level: Float64, drift_level: Float64
 ) -> List[Int]:
     """The shared DDM accumulator. One implementation, two public shapes over it.
@@ -489,7 +489,7 @@ fn _ddm_levels(
     return out^
 
 
-fn ddm_scan(
+def ddm_scan(
     errors: List[Bool], warning_level: Float64, drift_level: Float64
 ) -> DriftVerdict:
     """Drift Detection Method over a stream of classification errors.
@@ -533,7 +533,7 @@ fn ddm_scan(
     )
 
 
-fn ddm_levels(
+def ddm_levels(
     errors: List[Bool], warning_level: Float64, drift_level: Float64
 ) -> List[Int]:
     """The frozen DDM alert level (0 normal, 1 warning, 2 drift) at every instant.

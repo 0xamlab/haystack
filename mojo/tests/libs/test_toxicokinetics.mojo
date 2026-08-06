@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from toxicokinetics import internal_dose, peak_plasma_concentration, time_to_peak, plasma_auc, apparent_volume_distribution, elimination_half_life, systemic_clearance, bioconcentration_factor, toxic_equivalency_factor, margin_of_exposure
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

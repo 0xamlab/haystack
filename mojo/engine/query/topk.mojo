@@ -112,7 +112,7 @@ struct TopKSelection(Copyable, Movable):
     """
     var workers: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var indices: List[Int],
         status: Int,
@@ -127,7 +127,7 @@ struct TopKSelection(Copyable, Movable):
         self.workers = workers
 
 
-fn _absent(status: Int, n: Int) -> TopKSelection:
+def _absent(status: Int, n: Int) -> TopKSelection:
     return TopKSelection(List[Int](), status, n, 0, 0)
 
 
@@ -135,7 +135,7 @@ fn _absent(status: Int, n: Int) -> TopKSelection:
 
 
 @always_inline
-fn _better[descending: Bool](
+def _better[descending: Bool](
     left_value: Float64, left_index: Int, right_value: Float64, right_index: Int
 ) -> Bool:
     """True when `left` strictly precedes `right` under `(value, index)`.
@@ -162,7 +162,7 @@ fn _better[descending: Bool](
 
 
 @always_inline
-fn _sift_down[descending: Bool](
+def _sift_down[descending: Bool](
     key: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     idx: UnsafePointer[Int, origin=AnyOrigin[mut=True]], size: Int, start: Int
 ):
@@ -188,7 +188,7 @@ fn _sift_down[descending: Bool](
 
 
 @always_inline
-fn _heapify[descending: Bool](
+def _heapify[descending: Bool](
     key: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     idx: UnsafePointer[Int, origin=AnyOrigin[mut=True]], size: Int
 ):
@@ -199,7 +199,7 @@ fn _heapify[descending: Bool](
         start -= 1
 
 
-fn _heap_sort_best_first[descending: Bool](
+def _heap_sort_best_first[descending: Bool](
     key: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     idx: UnsafePointer[Int, origin=AnyOrigin[mut=True]], size: Int
 ):
@@ -225,7 +225,7 @@ fn _heap_sort_best_first[descending: Bool](
 # ── the scan ──────────────────────────────────────────────────────────────────
 
 
-fn _scan_band[descending: Bool](
+def _scan_band[descending: Bool](
     values: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     lo: Int,
     hi: Int,
@@ -317,7 +317,7 @@ fn _scan_band[descending: Bool](
 # Float64 and 2k Int of extra memory, which at k = 1000 is 32 KB and fits in L2.
 
 
-fn _nth_element[descending: Bool](
+def _nth_element[descending: Bool](
     key: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     idx: UnsafePointer[Int, origin=AnyOrigin[mut=True]],
     lo0: Int,
@@ -376,7 +376,7 @@ fn _nth_element[descending: Bool](
 
 
 @always_inline
-fn _swap_slots(
+def _swap_slots(
     key: UnsafePointer[Float64, origin=AnyOrigin[mut=True]],
     idx: UnsafePointer[Int, origin=AnyOrigin[mut=True]],
     a: Int,
@@ -392,7 +392,7 @@ fn _swap_slots(
     idx[b] = ti
 
 
-fn _scan_band_buffered[descending: Bool](
+def _scan_band_buffered[descending: Bool](
     values: UnsafePointer[Float64, origin=AnyOrigin[mut=False]],
     lo: Int,
     hi: Int,
@@ -472,7 +472,7 @@ fn _scan_band_buffered[descending: Bool](
 # ── public entry points ───────────────────────────────────────────────────────
 
 
-fn top_k_flat[descending: Bool = True, buffered: Bool = True](
+def top_k_flat[descending: Bool = True, buffered: Bool = True](
     values: List[Float64], n: Int, k: Int
 ) -> TopKSelection:
     """The k best of `values[0, n)`, best first. Single thread.
@@ -527,7 +527,7 @@ fn top_k_flat[descending: Bool = True, buffered: Bool = True](
     return TopKSelection(out^, TOPK_OK, n, candidates, 1)
 
 
-fn top_k_flat_parallel[descending: Bool = True, buffered: Bool = True](
+def top_k_flat_parallel[descending: Bool = True, buffered: Bool = True](
     values: List[Float64], n: Int, k: Int, n_workers: Int
 ) -> TopKSelection:
     """`top_k_flat(values, n, k)` on `n_workers` threads. IDENTICAL list, every count.
@@ -593,7 +593,7 @@ fn top_k_flat_parallel[descending: Bool = True, buffered: Bool = True](
     var vp = values.unsafe_ptr()
 
     @parameter
-    fn select_band(w: Int):
+    def select_band(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n:
@@ -681,7 +681,7 @@ fn top_k_flat_parallel[descending: Bool = True, buffered: Bool = True](
 comptime TOPK_PARALLEL_MIN_ELEMENTS: Int = 4_194_304
 
 
-fn top_k_flat_auto[descending: Bool = True, buffered: Bool = True](
+def top_k_flat_auto[descending: Bool = True, buffered: Bool = True](
     values: List[Float64], n: Int, k: Int
 ) -> TopKSelection:
     """`top_k_flat` below the measured crossover, `top_k_flat_parallel` above it.
@@ -696,7 +696,7 @@ fn top_k_flat_auto[descending: Bool = True, buffered: Bool = True](
     )
 
 
-fn top_k_indices_dense(
+def top_k_indices_dense(
     column: Float64Array, k: Int, descending: Bool
 ) -> TopKSelection:
     """The `Float64Array` bridge for a column with no nulls.

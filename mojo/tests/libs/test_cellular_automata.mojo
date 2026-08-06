@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cellular_automata import elementary_rule, rule_step_1d, game_of_life_cell, game_of_life_step, totalistic_rule, langtons_ant_step, wireworld_cell, rule110_cell, majority_rule, parity_rule
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

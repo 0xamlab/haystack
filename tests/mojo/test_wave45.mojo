@@ -42,22 +42,22 @@ from std.math import abs as fabs
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _make_A2() -> List[List[Float64]]:
+def _make_A2() -> List[List[Float64]]:
     """Helper: build constraint matrix [[1,1],[2,1]]."""
     var r1 = List[Float64]()
     r1.append(1.0); r1.append(1.0)
@@ -68,7 +68,7 @@ fn _make_A2() -> List[List[Float64]]:
     return A^
 
 
-fn _make_A_lp() -> List[List[Float64]]:
+def _make_A_lp() -> List[List[Float64]]:
     """Helper: build constraint matrix [[1,1],[1,3]]."""
     var r1 = List[Float64]()
     r1.append(1.0); r1.append(1.0)
@@ -79,7 +79,7 @@ fn _make_A_lp() -> List[List[Float64]]:
     return A^
 
 
-fn _make_A1() -> List[List[Float64]]:
+def _make_A1() -> List[List[Float64]]:
     """Helper: build constraint matrix [[1,1]]."""
     var r = List[Float64]()
     r.append(1.0); r.append(1.0)
@@ -88,7 +88,7 @@ fn _make_A1() -> List[List[Float64]]:
     return A^
 
 
-fn _make_costs() -> List[List[Float64]]:
+def _make_costs() -> List[List[Float64]]:
     """Helper: build cost matrix for transportation."""
     var c1 = List[Float64]()
     c1.append(8.0); c1.append(6.0); c1.append(10.0)
@@ -102,7 +102,7 @@ fn _make_costs() -> List[List[Float64]]:
 # ── LP Tests ─────────────────────────────────────────────────────────────────
 
 
-fn test_objective_value() raises:
+def test_objective_value() raises:
     var c = List[Float64]()
     c.append(3.0); c.append(2.0)
     var x = List[Float64]()
@@ -111,7 +111,7 @@ fn test_objective_value() raises:
     print("  ✓ objective_value")
 
 
-fn test_is_feasible() raises:
+def test_is_feasible() raises:
     var x1 = List[Float64]()
     x1.append(1.0); x1.append(1.0)
     var A = _make_A2()
@@ -134,7 +134,7 @@ fn test_is_feasible() raises:
     print("  ✓ is_feasible")
 
 
-fn test_line_intersection() raises:
+def test_line_intersection() raises:
     # x = 3, y = 2
     var pt = line_intersection_2d(1.0, 0.0, 3.0, 0.0, 1.0, 2.0)
     _assert_eq(len(pt), 2, "line_intersection should return 2 values")
@@ -152,7 +152,7 @@ fn test_line_intersection() raises:
     print("  ✓ line_intersection_2d")
 
 
-fn test_enumerate_vertices() raises:
+def test_enumerate_vertices() raises:
     var A = _make_A_lp()
     var b = List[Float64]()
     b.append(4.0); b.append(6.0)
@@ -166,7 +166,7 @@ fn test_enumerate_vertices() raises:
     print("  ✓ enumerate_vertices_2d")
 
 
-fn test_lp_solve() raises:
+def test_lp_solve() raises:
     # maximize 3x+2y s.t. x+y≤4, x+3y≤6
     var c = List[Float64]()
     c.append(3.0); c.append(2.0)
@@ -182,7 +182,7 @@ fn test_lp_solve() raises:
     print("  ✓ lp_solve_2var")
 
 
-fn test_dual_value() raises:
+def test_dual_value() raises:
     var c = List[Float64]()
     c.append(3.0); c.append(2.0)
     var A = _make_A_lp()
@@ -194,7 +194,7 @@ fn test_dual_value() raises:
     print("  ✓ dual_value")
 
 
-fn test_sensitivity() raises:
+def test_sensitivity() raises:
     var c = List[Float64]()
     c.append(3.0); c.append(2.0)
     var A = _make_A_lp()
@@ -208,7 +208,7 @@ fn test_sensitivity() raises:
     print("  ✓ sensitivity_rhs")
 
 
-fn test_transportation() raises:
+def test_transportation() raises:
     var supply = List[Float64]()
     supply.append(20.0); supply.append(30.0)
     var demand = List[Float64]()
@@ -225,7 +225,7 @@ fn test_transportation() raises:
 # ── Time Zone Tests ──────────────────────────────────────────────────────────
 
 
-fn test_utc_offset() raises:
+def test_utc_offset() raises:
     _assert_close(utc_offset("UTC"), 0.0, 1e-9, "UTC offset=0")
     _assert_close(utc_offset("EST"), -5.0, 1e-9, "EST offset=-5")
     _assert_close(utc_offset("IST"), 5.5, 1e-9, "IST offset=5.5")
@@ -236,7 +236,7 @@ fn test_utc_offset() raises:
     print("  ✓ utc_offset")
 
 
-fn test_convert_time() raises:
+def test_convert_time() raises:
     var r1 = convert_time(12, 0, "UTC", "EST")
     _assert_eq(r1[0], 7, "12:00 UTC → 7:xx EST")
     _assert_eq(r1[1], 0, "12:00 UTC → x:00 EST")
@@ -252,7 +252,7 @@ fn test_convert_time() raises:
     print("  ✓ convert_time")
 
 
-fn test_time_difference() raises:
+def test_time_difference() raises:
     _assert_close(time_difference("UTC", "JST"), 9.0, 1e-9, "UTC→JST=9h")
     _assert_close(time_difference("EST", "PST"), -3.0, 1e-9, "EST→PST=-3h")
     _assert_close(time_difference("PST", "EST"), 3.0, 1e-9, "PST→EST=3h")
@@ -260,7 +260,7 @@ fn test_time_difference() raises:
     print("  ✓ time_difference")
 
 
-fn test_is_valid_zone() raises:
+def test_is_valid_zone() raises:
     _assert(is_valid_zone("UTC"), "UTC is valid")
     _assert(is_valid_zone("EST"), "EST is valid")
     _assert(is_valid_zone("CET"), "CET is valid")
@@ -270,7 +270,7 @@ fn test_is_valid_zone() raises:
     print("  ✓ is_valid_zone")
 
 
-fn test_is_dst() raises:
+def test_is_dst() raises:
     _assert(is_dst(6, "EST"), "EST June is DST")
     _assert(not is_dst(1, "EST"), "EST January is not DST")
     _assert(is_dst(6, "CET"), "CET June is DST")
@@ -280,7 +280,7 @@ fn test_is_dst() raises:
     print("  ✓ is_dst")
 
 
-fn test_effective_offset() raises:
+def test_effective_offset() raises:
     _assert_close(effective_offset("EST", 6), -4.0, 1e-9, "EST summer=-4")
     _assert_close(effective_offset("EST", 1), -5.0, 1e-9, "EST winter=-5")
     _assert_close(effective_offset("CET", 7), 2.0, 1e-9, "CET summer=2")
@@ -288,7 +288,7 @@ fn test_effective_offset() raises:
     print("  ✓ effective_offset")
 
 
-fn test_format_offset() raises:
+def test_format_offset() raises:
     _assert(format_offset(5.5) == "+05:30", "format +5.5 → +05:30")
     _assert(format_offset(-8.0) == "-08:00", "format -8 → -08:00")
     _assert(format_offset(0.0) == "+00:00", "format 0 → +00:00")
@@ -296,7 +296,7 @@ fn test_format_offset() raises:
     print("  ✓ format_offset")
 
 
-fn test_local_to_utc() raises:
+def test_local_to_utc() raises:
     var r = local_to_utc(12, 0, "CET")
     _assert_eq(r[0], 11, "12:00 CET → 11:xx UTC")
     _assert_eq(r[1], 0, "12:00 CET → x:00 UTC")
@@ -306,14 +306,14 @@ fn test_local_to_utc() raises:
     print("  ✓ local_to_utc")
 
 
-fn test_utc_to_local() raises:
+def test_utc_to_local() raises:
     var r = utc_to_local(12, 0, "JST")
     _assert_eq(r[0], 21, "12:00 UTC → 21:xx JST")
     _assert_eq(r[1], 0, "12:00 UTC → x:00 JST")
     print("  ✓ utc_to_local")
 
 
-fn test_overlap_hours() raises:
+def test_overlap_hours() raises:
     var ov = overlap_hours("EST", "CET")
     _assert(ov >= 0 and ov <= 8, "EST/CET overlap in [0,8]")
     _assert_eq(ov, 2, "EST/CET overlap=2h")
@@ -326,7 +326,7 @@ fn test_overlap_hours() raises:
 # ── Checksum Tests ───────────────────────────────────────────────────────────
 
 
-fn test_adler32() raises:
+def test_adler32() raises:
     var d0 = List[Int]()
     d0.append(0)
     _assert_eq(adler32(d0), 65537, "adler32([0])=65537")
@@ -342,7 +342,7 @@ fn test_adler32() raises:
     print("  ✓ adler32")
 
 
-fn test_fletcher16() raises:
+def test_fletcher16() raises:
     var d = List[Int]()
     d.append(1); d.append(2)
     # sum1: 0+1=1, 1+2=3. sum2: 0+1=1, 1+3=4. Result=(4<<8)|3=1027
@@ -355,7 +355,7 @@ fn test_fletcher16() raises:
     print("  ✓ fletcher16")
 
 
-fn test_luhn_check() raises:
+def test_luhn_check() raises:
     # 79927398713 is a well-known valid Luhn number
     var valid = List[Int]()
     valid.append(7); valid.append(9); valid.append(9); valid.append(2)
@@ -372,7 +372,7 @@ fn test_luhn_check() raises:
     print("  ✓ luhn_check")
 
 
-fn test_luhn_checksum() raises:
+def test_luhn_checksum() raises:
     # For 7992739871, check digit should be 3
     var d = List[Int]()
     d.append(7); d.append(9); d.append(9); d.append(2)
@@ -382,7 +382,7 @@ fn test_luhn_checksum() raises:
     print("  ✓ luhn_checksum")
 
 
-fn test_isbn10() raises:
+def test_isbn10() raises:
     # 0306406152 is a valid ISBN-10
     var d = List[Int]()
     d.append(0); d.append(3); d.append(0); d.append(6); d.append(4)
@@ -402,7 +402,7 @@ fn test_isbn10() raises:
     print("  ✓ isbn10_check")
 
 
-fn test_isbn13() raises:
+def test_isbn13() raises:
     # 9780306406157 is a valid ISBN-13
     var d = List[Int]()
     d.append(9); d.append(7); d.append(8); d.append(0); d.append(3)
@@ -419,7 +419,7 @@ fn test_isbn13() raises:
     print("  ✓ isbn13_check")
 
 
-fn test_xor_checksum() raises:
+def test_xor_checksum() raises:
     var d = List[Int]()
     d.append(0xFF); d.append(0xFF)
     _assert_eq(xor_checksum(d), 0, "xor([0xFF,0xFF])=0")
@@ -434,7 +434,7 @@ fn test_xor_checksum() raises:
     print("  ✓ xor_checksum")
 
 
-fn test_modular_sum() raises:
+def test_modular_sum() raises:
     var d = List[Int]()
     d.append(1); d.append(2); d.append(3)
     _assert_eq(modular_sum(d, 256), 6, "mod_sum([1,2,3],256)=6")
@@ -445,7 +445,7 @@ fn test_modular_sum() raises:
     print("  ✓ modular_sum")
 
 
-fn test_parity_bit() raises:
+def test_parity_bit() raises:
     var d = List[Int]()
     d.append(1); d.append(0); d.append(1); d.append(1)
     _assert_eq(parity_bit(d), 1, "parity([1,0,1,1])=1")
@@ -460,7 +460,7 @@ fn test_parity_bit() raises:
     print("  ✓ parity_bit")
 
 
-fn test_internet_checksum() raises:
+def test_internet_checksum() raises:
     var d = List[Int]()
     d.append(0x00); d.append(0x01); d.append(0x00); d.append(0x02)
     var ic = internet_checksum(d)
@@ -470,7 +470,7 @@ fn test_internet_checksum() raises:
     print("  ✓ internet_checksum")
 
 
-fn test_verhoeff() raises:
+def test_verhoeff() raises:
     # [0, 1] is a valid Verhoeff pair
     var v1 = List[Int]()
     v1.append(0); v1.append(1)
@@ -490,7 +490,7 @@ fn test_verhoeff() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 45 Tests ===")
 
     print("\n── Linear Programming ──")

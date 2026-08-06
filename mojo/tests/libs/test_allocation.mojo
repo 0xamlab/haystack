@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from allocation import equal_weight, inverse_variance, risk_parity_simple, max_sharpe_2asset, min_variance_2asset, portfolio_return, portfolio_variance_2asset, kelly_criterion, efficient_frontier_2asset, rebalance_threshold
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

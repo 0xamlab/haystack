@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from power_systems import active_power, reactive_power, apparent_power, power_factor_from_pq, three_phase_power, transformer_turns_ratio, transformer_secondary_voltage, line_loss, voltage_drop, power_efficiency, capacitor_reactive_power, load_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

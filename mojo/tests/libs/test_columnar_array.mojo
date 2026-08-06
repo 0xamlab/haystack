@@ -19,7 +19,7 @@ from columnar.dtype import DTYPE_FLOAT64, DTYPE_INT64, DTYPE_STRING
 from numeric.reduce import reduce_mean, reduce_sum
 
 
-fn _floats(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def _floats(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
@@ -28,7 +28,7 @@ fn _floats(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

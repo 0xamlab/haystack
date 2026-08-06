@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from number_theory import is_prime, gcd, lcm, mod_pow, euler_totient, prime_factors, sieve_of_eratosthenes, is_coprime, extended_gcd, mod_inverse, fibonacci, is_perfect_square
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -199,7 +199,7 @@ comptime COMMUNITY_MAX_PAIR_CELLS: Int = 4194304
 comptime COMMUNITY_MAX_ORDER: Int = 1048576
 
 
-fn community_status_name(code: Int) -> String:
+def community_status_name(code: Int) -> String:
     """Name for a status code, including the `adjacency` codes this module can return.
 
     Delegating below 20 rather than re-listing keeps one name per code: a duplicated
@@ -221,7 +221,7 @@ fn community_status_name(code: Int) -> String:
     return graph_status_name(code)
 
 
-fn community_version() -> String:
+def community_version() -> String:
     """The frozen objective and convention identifier. Deterministic, zero-argument.
 
     Changing the symmetrisation, the self-loop convention or the draw addressing
@@ -230,7 +230,7 @@ fn community_version() -> String:
     return String("louvain/newman-girvan-Q/sym-sum/loop-doubled/philox4x64-10-order/v1")
 
 
-fn community_default_tolerance() -> Float64:
+def community_default_tolerance() -> Float64:
     """The tolerance `community_louvain_default_driver` applies. Zero-argument probe."""
     return COMMUNITY_DEFAULT_TOLERANCE
 
@@ -458,13 +458,13 @@ struct _Moving(Copyable, Movable):
     var converged: Bool
 
 
-fn _empty_level(status: Int) -> _Level:
+def _empty_level(status: Int) -> _Level:
     return _Level(
         status, 0, List[Int](), List[Int](), List[Float64](), List[Float64](), 0.0
     )
 
 
-fn _seed_key(seed: Int) -> UInt64:
+def _seed_key(seed: Int) -> UInt64:
     """Fold an arbitrary `Int` seed onto a non-negative key.
 
     Masking rather than negating: `-Int.MIN` overflows, and a seed is a name for a
@@ -474,12 +474,12 @@ fn _seed_key(seed: Int) -> UInt64:
     return UInt64(seed & 0x7FFFFFFFFFFFFFFF)
 
 
-fn _louvain_stream() -> UInt64:
+def _louvain_stream() -> UInt64:
     """Named draw stream for the local-moving visit order."""
     return stream_id("graph_analytics.community.louvain")
 
 
-fn _propagation_stream() -> UInt64:
+def _propagation_stream() -> UInt64:
     """Named draw stream for label propagation, distinct from Louvain's.
 
     Two independent streams so a caller running both with one seed does not get the
@@ -489,13 +489,13 @@ fn _propagation_stream() -> UInt64:
     return stream_id("graph_analytics.community.label_propagation")
 
 
-fn _draw_base(level: Int, pass_index: Int) -> UInt64:
+def _draw_base(level: Int, pass_index: Int) -> UInt64:
     """First draw coordinate for one `(level, pass)` block."""
     var block = level * COMMUNITY_PASS_LIMIT + pass_index
     return UInt64(block) * UInt64(COMMUNITY_DRAW_STRIDE)
 
 
-fn _weight_defect(weights: List[Float64]) -> Int:
+def _weight_defect(weights: List[Float64]) -> Int:
     """`GRAPH_OK`, or the code for the first weight modularity cannot be defined on.
 
     NaN first: `nan < 0.0` is False, so a sign test alone admits NaN, and a NaN weight
@@ -511,7 +511,7 @@ fn _weight_defect(weights: List[Float64]) -> Int:
     return GRAPH_OK
 
 
-fn _level_from_undirected(
+def _level_from_undirected(
     src: List[Int], dst: List[Int], weight: List[Float64], n: Int
 ) -> _Level:
     """Group already-symmetric triplets into a `_Level`, summing parallel entries.
@@ -560,7 +560,7 @@ fn _level_from_undirected(
     return _Level(GRAPH_OK, n, row_ptr^, targets^, weights^, degree^, two_m)
 
 
-fn _level_from_flat(
+def _level_from_flat(
     row_ptr: List[Int], targets: List[Int], weights: List[Float64], n_nodes: Int
 ) -> _Level:
     """Validate four caller-supplied CSR arrays, then symmetrise them into a `_Level`.
@@ -594,7 +594,7 @@ fn _level_from_flat(
     return _level_from_undirected(src, dst, weight, n_nodes)
 
 
-fn _canonicalize(label: List[Int], n: Int) -> _Canon:
+def _canonicalize(label: List[Int], n: Int) -> _Canon:
     """Renumber `label` by first appearance in node order. One partition, one form.
 
     Requires `len(label) == n` and every entry in `[0, n)`; both are checked before any
@@ -620,14 +620,14 @@ fn _canonicalize(label: List[Int], n: Int) -> _Canon:
     return _Canon(GRAPH_OK, k, out^)
 
 
-fn _identity(n: Int) -> List[Int]:
+def _identity(n: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n):
         out.append(i)
     return out^
 
 
-fn _level_terms(level: _Level, comm: List[Int], k: Int) -> _Terms:
+def _level_terms(level: _Level, comm: List[Int], k: Int) -> _Terms:
     """`Q`, `in_c` and `tot_c` for a canonical labelling. O(V + E).
 
     `Q = (1/2m) * sum_c modularity_contribution(in_c, tot_c, tot_c, m)` — the frozen
@@ -655,7 +655,7 @@ fn _level_terms(level: _Level, comm: List[Int], k: Int) -> _Terms:
     return _Terms(acc / level.two_m, internal^, total^)
 
 
-fn _local_moving(
+def _local_moving(
     level: _Level, seed: Int, level_index: Int, max_passes: Int, tolerance: Float64
 ) -> _Moving:
     """Louvain's phase one: greedy single-node moves until no move improves `Q`.
@@ -760,7 +760,7 @@ fn _local_moving(
     return _Moving(canon.label.copy(), canon.k, moves_total, passes, converged)
 
 
-fn _aggregate_level(level: _Level, comm: List[Int], k: Int) -> _Level:
+def _aggregate_level(level: _Level, comm: List[Int], k: Int) -> _Level:
     """The community graph: one node per community, `W'_ab = sum_{i in a, j in b} W_ij`.
 
     `k'_a = sum_b W'_ab = sum_{i in a} k_i = tot_a` and `2m' = 2m`, so the singleton
@@ -786,7 +786,7 @@ fn _aggregate_level(level: _Level, comm: List[Int], k: Int) -> _Level:
 # ── labelling utilities ───────────────────────────────────────────────────────
 
 
-fn community_canonical_labels(label: List[Int]) -> CommunityCounts:
+def community_canonical_labels(label: List[Int]) -> CommunityCounts:
     """Renumber a labelling by first appearance and count its communities.
 
     The canonical form is what makes two partitions comparable without a float
@@ -801,7 +801,7 @@ fn community_canonical_labels(label: List[Int]) -> CommunityCounts:
     return CommunityCounts(GRAPH_OK, n, canon.k, canon.label.copy(), sizes^)
 
 
-fn community_compare_labels(
+def community_compare_labels(
     label_a: List[Int], label_b: List[Int]
 ) -> CommunityCompare:
     """Do two labellings describe the same partition, exactly, and how close if not.
@@ -836,7 +836,7 @@ fn community_compare_labels(
     )
 
 
-fn community_visit_order(
+def community_visit_order(
     n_nodes: Int, seed: Int, level: Int, pass_index: Int
 ) -> CommunityOrder:
     """The exact node order local moving will use for `(seed, level, pass_index)`.
@@ -863,7 +863,7 @@ fn community_visit_order(
     return CommunityOrder(GRAPH_OK, n_nodes, seed, level, pass_index, order^)
 
 
-fn community_modularity_gain(
+def community_modularity_gain(
     weight_to_community: Float64,
     node_degree: Float64,
     community_degree: Float64,
@@ -894,7 +894,7 @@ fn community_modularity_gain(
 # ── modularity scorers ────────────────────────────────────────────────────────
 
 
-fn _no_score(status: Int, n_nodes: Int) -> CommunityScore:
+def _no_score(status: Int, n_nodes: Int) -> CommunityScore:
     return CommunityScore(
         status,
         n_nodes,
@@ -908,7 +908,7 @@ fn _no_score(status: Int, n_nodes: Int) -> CommunityScore:
     )
 
 
-fn community_modularity_driver(
+def community_modularity_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -943,7 +943,7 @@ fn community_modularity_driver(
     )
 
 
-fn community_modularity_pairwise_driver(
+def community_modularity_pairwise_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1013,7 +1013,7 @@ fn community_modularity_pairwise_driver(
     )
 
 
-fn community_modularity_from_triplets(
+def community_modularity_from_triplets(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1043,13 +1043,13 @@ fn community_modularity_from_triplets(
 # ── aggregation ───────────────────────────────────────────────────────────────
 
 
-fn _no_aggregate(status: Int) -> CommunityAggregate:
+def _no_aggregate(status: Int) -> CommunityAggregate:
     return CommunityAggregate(
         status, 0, 0, 0.0, List[Int](), List[Int](), List[Float64]()
     )
 
 
-fn _aggregate_out(level: _Level) -> CommunityAggregate:
+def _aggregate_out(level: _Level) -> CommunityAggregate:
     if level.status != GRAPH_OK:
         return _no_aggregate(level.status)
     return CommunityAggregate(
@@ -1063,7 +1063,7 @@ fn _aggregate_out(level: _Level) -> CommunityAggregate:
     )
 
 
-fn community_symmetrized_driver(
+def community_symmetrized_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1077,7 +1077,7 @@ fn community_symmetrized_driver(
     return _aggregate_out(_level_from_flat(row_ptr, targets, weights, n_nodes))
 
 
-fn community_aggregate_driver(
+def community_aggregate_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1103,7 +1103,7 @@ fn community_aggregate_driver(
 # ── Louvain ───────────────────────────────────────────────────────────────────
 
 
-fn _no_partition(status: Int, n_nodes: Int) -> CommunityPartition:
+def _no_partition(status: Int, n_nodes: Int) -> CommunityPartition:
     return CommunityPartition(
         status,
         n_nodes,
@@ -1119,7 +1119,7 @@ fn _no_partition(status: Int, n_nodes: Int) -> CommunityPartition:
     )
 
 
-fn _no_levels(status: Int, n_nodes: Int) -> CommunityLevels:
+def _no_levels(status: Int, n_nodes: Int) -> CommunityLevels:
     return CommunityLevels(
         status,
         n_nodes,
@@ -1137,7 +1137,7 @@ fn _no_levels(status: Int, n_nodes: Int) -> CommunityLevels:
     )
 
 
-fn _clamped_tolerance(tolerance: Float64) -> Float64:
+def _clamped_tolerance(tolerance: Float64) -> Float64:
     """`tolerance` clamped to non-negative.
 
     A negative tolerance would admit moves that *lower* `Q`, which breaks the one
@@ -1151,7 +1151,7 @@ fn _clamped_tolerance(tolerance: Float64) -> Float64:
     return tolerance
 
 
-fn _louvain_levels(
+def _louvain_levels(
     level0: _Level, seed: Int, max_levels: Int, max_passes: Int, tolerance: Float64
 ) -> CommunityLevels:
     """The full ladder. Returns the original-node labelling and the per-level scores."""
@@ -1222,7 +1222,7 @@ fn _louvain_levels(
     )
 
 
-fn community_louvain_levels_driver(
+def community_louvain_levels_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1255,7 +1255,7 @@ fn community_louvain_levels_driver(
     )
 
 
-fn _partition_from_levels(result: CommunityLevels) -> CommunityPartition:
+def _partition_from_levels(result: CommunityLevels) -> CommunityPartition:
     if result.status != GRAPH_OK:
         return _no_partition(result.status, result.n_nodes)
     var sizes = cluster_sizes(result.label, result.n_communities)
@@ -1274,7 +1274,7 @@ fn _partition_from_levels(result: CommunityLevels) -> CommunityPartition:
     )
 
 
-fn community_louvain_driver(
+def community_louvain_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1300,7 +1300,7 @@ fn community_louvain_driver(
     )
 
 
-fn community_louvain_default_driver(
+def community_louvain_default_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1326,7 +1326,7 @@ fn community_louvain_default_driver(
     )
 
 
-fn community_louvain_from_triplets(
+def community_louvain_from_triplets(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1357,7 +1357,7 @@ fn community_louvain_from_triplets(
     )
 
 
-fn community_local_moving_driver(
+def community_local_moving_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1404,7 +1404,7 @@ fn community_local_moving_driver(
 # ── label propagation ─────────────────────────────────────────────────────────
 
 
-fn _label_propagation(level: _Level, seed: Int, max_rounds: Int) -> _Moving:
+def _label_propagation(level: _Level, seed: Int, max_rounds: Int) -> _Moving:
     """Weighted asynchronous label propagation with a seeded visit order.
 
     Each node takes the label carrying the most incident weight among its neighbours;
@@ -1481,7 +1481,7 @@ fn _label_propagation(level: _Level, seed: Int, max_rounds: Int) -> _Moving:
     return _Moving(canon.label.copy(), canon.k, changes_total, rounds, converged)
 
 
-fn community_label_propagation_driver(
+def community_label_propagation_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1524,7 +1524,7 @@ fn community_label_propagation_driver(
     )
 
 
-fn community_label_propagation_from_triplets(
+def community_label_propagation_from_triplets(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],

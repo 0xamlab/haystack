@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from soil_mechanics import bearing_capacity_terzaghi, settlement_elastic, consolidation_degree, void_ratio, relative_density, liquid_limit_plasticity, shear_strength_mohr_coulomb, lateral_earth_pressure_ka, compression_index, hydraulic_conductivity_hazen
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -20,7 +20,7 @@ from json.parser import json_get_string, json_get_float, json_get_object, json_a
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, eps: Float64 = 1e-9) -> Bool:
+def approx_eq(a: Float64, b: Float64, eps: Float64 = 1e-9) -> Bool:
     """Check if two Float64 values are approximately equal."""
     var diff = a - b
     if diff < 0:

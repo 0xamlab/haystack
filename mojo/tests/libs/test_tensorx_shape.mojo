@@ -35,7 +35,7 @@ from tensorx.shape import (
 )
 
 
-fn _dims(a: Int, b: Int = -1, c: Int = -1, d: Int = -1) -> List[Int]:
+def _dims(a: Int, b: Int = -1, c: Int = -1, d: Int = -1) -> List[Int]:
     """Small helper: build a dims list from up to four values, stopping at the first -1."""
     var out = List[Int]()
     out.append(a)
@@ -48,7 +48,7 @@ fn _dims(a: Int, b: Int = -1, c: Int = -1, d: Int = -1) -> List[Int]:
     return out^
 
 
-fn _dims_eq(a: List[Int], b: List[Int]) -> Bool:
+def _dims_eq(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):

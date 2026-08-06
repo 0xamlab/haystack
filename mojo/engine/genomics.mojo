@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, pow
 
 
-fn gc_content(g_count: Float64, c_count: Float64, total_bp: Float64) -> Float64:
+def gc_content(g_count: Float64, c_count: Float64, total_bp: Float64) -> Float64:
     """GC content of a sequence.
 
     GC% = (G + C) / N × 100
@@ -34,7 +34,7 @@ fn gc_content(g_count: Float64, c_count: Float64, total_bp: Float64) -> Float64:
     return (g_count + c_count) / total_bp * 100.0
 
 
-fn genome_size_from_cot(
+def genome_size_from_cot(
     cot_half: Float64, reassociation_rate: Float64
 ) -> Float64:
     """Genome complexity from Cot½ reassociation kinetics.
@@ -53,7 +53,7 @@ fn genome_size_from_cot(
     return cot_half / reassociation_rate
 
 
-fn coverage_depth(
+def coverage_depth(
     read_count: Float64, read_length: Float64, genome_size_bp: Float64
 ) -> Float64:
     """Average sequencing coverage depth.
@@ -73,7 +73,7 @@ fn coverage_depth(
     return (read_count * read_length) / genome_size_bp
 
 
-fn n50_approximation(
+def n50_approximation(
     total_assembly_bp: Float64, contig_count: Float64
 ) -> Float64:
     """N50 approximation assuming uniform contig size distribution.
@@ -92,7 +92,7 @@ fn n50_approximation(
     return total_assembly_bp / (2.0 * contig_count)
 
 
-fn snp_density(
+def snp_density(
     snp_count: Float64, region_bp: Float64
 ) -> Float64:
     """SNP density per kilobase.
@@ -111,7 +111,7 @@ fn snp_density(
     return snp_count / (region_bp / 1000.0)
 
 
-fn indel_rate(
+def indel_rate(
     indel_count: Float64, callable_bp: Float64
 ) -> Float64:
     """Insertion/deletion rate.
@@ -130,7 +130,7 @@ fn indel_rate(
     return indel_count / callable_bp
 
 
-fn repeat_fraction(
+def repeat_fraction(
     repeat_bp: Float64, genome_size_bp: Float64
 ) -> Float64:
     """Fraction of genome composed of repetitive elements.
@@ -147,7 +147,7 @@ fn repeat_fraction(
     return repeat_bp / genome_size_bp
 
 
-fn gene_density(
+def gene_density(
     gene_count: Float64, genome_size_bp: Float64
 ) -> Float64:
     """Gene density per megabase.
@@ -164,7 +164,7 @@ fn gene_density(
     return gene_count / (genome_size_bp / 1e6)
 
 
-fn read_mapping_efficiency(
+def read_mapping_efficiency(
     mapped_reads: Float64, total_reads: Float64
 ) -> Float64:
     """Fraction of reads that mapped to the reference.
@@ -181,7 +181,7 @@ fn read_mapping_efficiency(
     return mapped_reads / total_reads
 
 
-fn sequencing_error_rate(phred_q: Float64) -> Float64:
+def sequencing_error_rate(phred_q: Float64) -> Float64:
     """Base-call error probability from Phred quality score.
 
     P_error = 10^(-Q/10)

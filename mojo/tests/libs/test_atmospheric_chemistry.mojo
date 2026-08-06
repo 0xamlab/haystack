@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from atmospheric_chemistry import ozone_column_dobson, photolysis_rate, hydroxyl_steady_state, aerosol_optical_depth, mixing_ratio_to_conc, residence_time, smog_formation_index, acid_rain_ph, greenhouse_forcing, lifetime_from_oh
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

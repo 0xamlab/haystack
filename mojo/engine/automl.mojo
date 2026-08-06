@@ -35,7 +35,7 @@ struct HalvingRound(Copyable, Movable):
     var n_survivors: Int
     var budget: Int
 
-    fn __init__(out self, n_survivors: Int, budget: Int):
+    def __init__(out self, n_survivors: Int, budget: Int):
         self.n_survivors = n_survivors
         self.budget = budget
 
@@ -48,7 +48,7 @@ struct Bracket(Copyable, Movable):
     var min_budget: Int
     var rounds: List[HalvingRound]
 
-    fn __init__(
+    def __init__(
         out self,
         s: Int,
         n_configs: Int,
@@ -64,7 +64,7 @@ struct Bracket(Copyable, Movable):
 # ── successive halving ───────────────────────────────────────────────────────
 
 
-fn successive_halving_schedule(
+def successive_halving_schedule(
     n_configs: Int, min_budget: Int, eta: Int
 ) -> List[HalvingRound]:
     """SHA schedule: round i keeps floor(n_configs / eta^i) configs at budget
@@ -93,7 +93,7 @@ fn successive_halving_schedule(
 # ── hyperband ────────────────────────────────────────────────────────────────
 
 
-fn hyperband_brackets(max_budget: Int, eta: Int) -> List[Bracket]:
+def hyperband_brackets(max_budget: Int, eta: Int) -> List[Bracket]:
     """Hyperband bracket list for a maximum per-config budget R = max_budget.
 
     s_max = floor(log_eta(R)) computed by exact integer repeated
@@ -135,7 +135,7 @@ fn hyperband_brackets(max_budget: Int, eta: Int) -> List[Bracket]:
 # ── promotion ────────────────────────────────────────────────────────────────
 
 
-fn promote_top_k(scores: List[Float64], k: Int) -> List[Int]:
+def promote_top_k(scores: List[Float64], k: Int) -> List[Int]:
     """Indices of the k highest scores, ordered best-first. Ties broken
     deterministically by lower index (strict > comparison keeps the earlier
     index as champion). k is clamped to len(scores); k < 1 -> empty list.
@@ -165,7 +165,7 @@ fn promote_top_k(scores: List[Float64], k: Int) -> List[Int]:
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -173,7 +173,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -189,13 +189,13 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
 
 
-fn _rand_u01(mut state: UInt64) -> Float64:
+def _rand_u01(mut state: UInt64) -> Float64:
     """Uniform Float64 in [0, 1) with 53 bits of mantissa."""
     state = _xorshift64(state)
     return Float64(state >> 11) / 9007199254740992.0  # 2^53
@@ -204,7 +204,7 @@ fn _rand_u01(mut state: UInt64) -> Float64:
 # ── random search (Latin hypercube) ──────────────────────────────────────────
 
 
-fn random_search_configs(
+def random_search_configs(
     n: Int, dims: Int, seed: Int
 ) -> List[List[Float64]]:
     """LHS-style config matrix: n rows x dims columns, every value in [0, 1).

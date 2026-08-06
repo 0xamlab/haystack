@@ -34,11 +34,11 @@ from lossk.cross_entropy import (
 from std.math import log
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 23)) / 11.0 - 1.0)

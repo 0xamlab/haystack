@@ -114,7 +114,7 @@ struct UpliftCurve(Copyable, Movable):
     var bin_score_hi: List[Float64]
     var bin_score_lo: List[Float64]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_curve = False
         self.n_bins = 0
@@ -165,7 +165,7 @@ struct QiniResult(Copyable, Movable):
     var qini_normalized: Float64
     var has_normalized: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_curve = False
         self.n_points = 0
@@ -188,7 +188,7 @@ struct QiniResult(Copyable, Movable):
 # ── shared validation, one implementation ────────────────────────────────────
 
 
-fn _uplift_input_defect(
+def _uplift_input_defect(
     scores: List[Float64], treatment: List[Int], outcomes: List[Float64], k: Int
 ) -> Int:
     """`CI_OK` or the code naming why these three parallel arrays and `k` cannot be used.
@@ -213,7 +213,7 @@ fn _uplift_input_defect(
 # ── uplift_by_bin ────────────────────────────────────────────────────────────
 
 
-fn uplift_by_bin(
+def uplift_by_bin(
     scores: List[Float64], treatment: List[Int], outcomes: List[Float64], n_bins: Int
 ) -> UpliftCurve:
     """Rank units by `scores` descending, split into `n_bins` equal-count bins, report each bin's
@@ -315,7 +315,7 @@ fn uplift_by_bin(
 # ── qini_curve ───────────────────────────────────────────────────────────────
 
 
-fn qini_curve(
+def qini_curve(
     scores: List[Float64], treatment: List[Int], outcomes: List[Float64], n_points: Int
 ) -> QiniResult:
     """The Qini curve at `n_points` evenly spaced cutoffs, plus its coefficient.

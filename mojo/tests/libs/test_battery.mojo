@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from battery import state_of_charge, depth_of_discharge, coulombic_efficiency, energy_density, power_density, c_rate, discharge_time, peukert_capacity, cycle_life_degradation, internal_resistance_from_voltage, battery_pack_voltage, battery_pack_capacity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

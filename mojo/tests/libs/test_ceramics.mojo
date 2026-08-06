@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ceramics import weibull_failure_probability, weibull_characteristic_strength, thermal_shock_resistance, youngs_modulus_porosity, sintering_shrinkage, density_from_archimedes, relative_density, porosity_from_density, fracture_toughness_indentation, dielectric_constant_mixture, coefficient_of_thermal_expansion, glass_transition_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

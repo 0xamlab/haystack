@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from reliability import exponential_reliability, exponential_failure_rate, weibull_reliability, weibull_failure_rate, mtbf, availability, series_reliability, parallel_reliability, k_of_n_reliability, bathtub_rate, mission_reliability
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

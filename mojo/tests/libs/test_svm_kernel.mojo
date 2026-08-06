@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from svm_kernel import kernel_linear, kernel_rbf, kernel_polynomial, kernel_sigmoid
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

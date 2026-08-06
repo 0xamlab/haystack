@@ -127,7 +127,7 @@ struct EValue(Copyable, Movable):
     var evalue_ci_limit: Float64
     var ci_limit_crosses_null: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_value = False
         self.evalue = CI_ABSENT
@@ -159,7 +159,7 @@ struct RobustnessValue(Copyable, Movable):
     var t_abs: Float64
     var q: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_value = False
         self.rv = CI_ABSENT
@@ -195,7 +195,7 @@ struct OvbResult(Copyable, Movable):
     var flips_sign: Bool
     var original_estimate: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_result = False
         self.bias = CI_ABSENT
@@ -231,7 +231,7 @@ struct SensitivityCurve(Copyable, Movable):
     var has_sign_flip: Bool
     var first_sign_flip_r2: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_curve = False
         self.r2_used = List[Float64]()
@@ -269,7 +269,7 @@ struct RosenbaumBound(Copyable, Movable):
     var gamma_critical: Float64
     var n_iter: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_bound = False
         self.p_upper_bound = CI_ABSENT
@@ -285,14 +285,14 @@ struct RosenbaumBound(Copyable, Movable):
 # ── E-value ──────────────────────────────────────────────────────────────────
 
 
-fn _evalue_of(rr_ge_one: Float64) -> Float64:
+def _evalue_of(rr_ge_one: Float64) -> Float64:
     """`RR + sqrt(RR (RR - 1))` for `RR >= 1`. THE package's one E-value formula."""
     if rr_ge_one <= 1.0:
         return 1.0
     return rr_ge_one + sqrt(rr_ge_one * (rr_ge_one - 1.0))
 
 
-fn e_value_ratio(risk_ratio: Float64) -> EValue:
+def e_value_ratio(risk_ratio: Float64) -> EValue:
     """VanderWeele-Ding E-value for a point estimate expressed as a risk ratio.
 
     The minimum strength of association, on the risk-ratio scale, that an unmeasured confounder
@@ -331,7 +331,7 @@ fn e_value_ratio(risk_ratio: Float64) -> EValue:
     return out^
 
 
-fn e_value_bound(risk_ratio: Float64, ci_limit: Float64) -> EValue:
+def e_value_bound(risk_ratio: Float64, ci_limit: Float64) -> EValue:
     """`e_value_ratio` plus the E-value for the confidence limit nearer the null.
 
     The limit is oriented the same way as the point estimate. For `risk_ratio > 1` the relevant
@@ -382,7 +382,7 @@ fn e_value_bound(risk_ratio: Float64, ci_limit: Float64) -> EValue:
 # ── robustness value ─────────────────────────────────────────────────────────
 
 
-fn robustness_value(t_stat: Float64, dof: Int, q: Float64) -> RobustnessValue:
+def robustness_value(t_stat: Float64, dof: Int, q: Float64) -> RobustnessValue:
     """Cinelli-Hazlett `RV_q`: the confounder strength needed to reduce an estimate by `100q%`.
 
     `RV_q = (sqrt(f^4 + 4 f^2) - f^2) / 2` with `f = q |t| / sqrt(dof)`. It is the value `R^2`
@@ -434,7 +434,7 @@ fn robustness_value(t_stat: Float64, dof: Int, q: Float64) -> RobustnessValue:
 # ── omitted-variable bias ────────────────────────────────────────────────────
 
 
-fn _ovb_bias(se: Float64, dof: Int, r2_dz: Float64, r2_yz: Float64) -> Float64:
+def _ovb_bias(se: Float64, dof: Int, r2_dz: Float64, r2_yz: Float64) -> Float64:
     """`se sqrt(dof) sqrt(r2_yz r2_dz / (1 - r2_dz))`. THE package's one bias formula.
 
     Callers must have checked `0 <= r2_dz < 1`, `0 <= r2_yz <= 1`, `dof >= 2`, `se >= 0` and
@@ -444,7 +444,7 @@ fn _ovb_bias(se: Float64, dof: Int, r2_dz: Float64, r2_yz: Float64) -> Float64:
     return se * sqrt(Float64(dof)) * sqrt(r2_yz * r2_dz / (1.0 - r2_dz))
 
 
-fn omitted_variable_bias(
+def omitted_variable_bias(
     estimate: Float64, se: Float64, dof: Int, r2_dz: Float64, r2_yz: Float64
 ) -> OvbResult:
     """The bias-adjusted estimate under an unmeasured confounder of stated strength.
@@ -507,7 +507,7 @@ fn omitted_variable_bias(
     return out^
 
 
-fn sensitivity_curve(
+def sensitivity_curve(
     estimate: Float64, se: Float64, dof: Int, r2_grid: List[Float64]
 ) -> SensitivityCurve:
     """`omitted_variable_bias` along the diagonal `r2_dz = r2_yz`, over a caller-supplied grid.
@@ -582,7 +582,7 @@ fn sensitivity_curve(
 # ── Rosenbaum bounds ─────────────────────────────────────────────────────────
 
 
-fn _binomial_upper_tail(n: Int, k: Int, p: Float64) -> Float64:
+def _binomial_upper_tail(n: Int, k: Int, p: Float64) -> Float64:
     """`P(Bin(n, p) >= k)` as an exact sum of frozen `probability.binomial_pmf` terms.
 
     Summed from `k` upward rather than as `1 - lower tail`, because the upper tail is the small
@@ -599,7 +599,7 @@ fn _binomial_upper_tail(n: Int, k: Int, p: Float64) -> Float64:
     return total
 
 
-fn rosenbaum_sign_bound(
+def rosenbaum_sign_bound(
     n_pairs: Int, n_positive: Int, gamma: Float64
 ) -> RosenbaumBound:
     """Worst-case one-sided p-value for a matched-pairs sign test under bias factor `gamma`.
@@ -651,7 +651,7 @@ fn rosenbaum_sign_bound(
     return out^
 
 
-fn rosenbaum_gamma_needed(
+def rosenbaum_gamma_needed(
     n_pairs: Int, n_positive: Int, target_p: Float64,
     gamma_max: Float64, tol: Float64,
 ) -> RosenbaumBound:

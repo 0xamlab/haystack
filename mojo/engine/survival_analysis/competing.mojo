@@ -105,7 +105,7 @@ from survival_analysis.base import (
 comptime CIF_MAX_CAUSES: Int = 64
 
 
-fn cif_validate_causes(times: List[Float64], cause: List[Int], n_causes: Int) -> Int:
+def cif_validate_causes(times: List[Float64], cause: List[Int], n_causes: Int) -> Int:
     """Validate a competing-risks sample: times, alignment, and cause codes in [0, n_causes].
 
     `cause[i] == 0` is a right-censored observation; `1 <= cause[i] <= n_causes` is an event
@@ -171,7 +171,7 @@ struct CIFFit(Copyable, Movable):
     var cause_cum_hazard_se: List[Float64]
     var cause_event_count: List[Int]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -192,7 +192,7 @@ struct CIFFit(Copyable, Movable):
         self.cause_event_count = List[Int]()
 
 
-fn cif_fit(times: List[Float64], cause: List[Int], n_causes: Int) -> CIFFit:
+def cif_fit(times: List[Float64], cause: List[Int], n_causes: Int) -> CIFFit:
     """Cumulative incidence per cause, plus the all-cause survival it is built from.
 
     `cause[i]` is 0 for right-censored and `k` in `1..n_causes` for a cause-k failure.
@@ -353,7 +353,7 @@ struct CIFAtTime(Copyable, Movable):
     var incidence: List[Float64]
     var has_value: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.cause = 0
         self.n_queries = 0
@@ -364,7 +364,7 @@ struct CIFAtTime(Copyable, Movable):
         self.has_value = List[Bool]()
 
 
-fn cif_at_time(
+def cif_at_time(
     times: List[Float64], cause: List[Int], n_causes: Int, selected: Int, query: List[Float64]
 ) -> CIFAtTime:
     """Step-function lookup of `CIF_selected(t)` at each `query[q]`.

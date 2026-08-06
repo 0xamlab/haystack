@@ -47,7 +47,7 @@ from types import ExprNode
 comptime WARMUP: Int = 3
 
 
-fn _build_batch(n_rows: Int, n_groups: Int) -> RecordBatch:
+def _build_batch(n_rows: Int, n_groups: Int) -> RecordBatch:
     """`key` cycles through `n_groups` values; `amount` is a cheap varying series.
 
     Every tenth amount is null so the validity path is exercised rather than skipped —
@@ -70,7 +70,7 @@ fn _build_batch(n_rows: Int, n_groups: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _predicate() -> List[ExprNode]:
+def _predicate() -> List[ExprNode]:
     """`amount > 100 AND amount < 400` — two comparisons and a conjunction.
 
     Children precede parents, which is what lets the evaluator run one forward pass.
@@ -86,7 +86,7 @@ fn _predicate() -> List[ExprNode]:
     return nodes^
 
 
-fn _materialize_then_reduce(batch: RecordBatch) -> Float64:
+def _materialize_then_reduce(batch: RecordBatch) -> Float64:
     """The baseline shape: collect every value per group, then reduce.
 
     Deliberately the *natural* implementation — this is what a group-by looks like
@@ -121,7 +121,7 @@ fn _materialize_then_reduce(batch: RecordBatch) -> Float64:
     return checksum
 
 
-fn _baseline_live_values(batch: RecordBatch) -> Int:
+def _baseline_live_values(batch: RecordBatch) -> Int:
     """Float64 values the baseline holds simultaneously — its peak footprint.
 
     Counted rather than asserted: the whole memory argument for streaming rests on
@@ -136,12 +136,12 @@ fn _baseline_live_values(batch: RecordBatch) -> Int:
     return live
 
 
-fn _ns_per_row(elapsed_ns: UInt, rows: Int, reps: Int) -> Float64:
+def _ns_per_row(elapsed_ns: UInt, rows: Int, reps: Int) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     return Float64(Int(elapsed_ns)) / Float64(rows * reps)
 
 
-fn main() raises:
+def main() raises:
     print("=== query plane: predicate evaluation (column-at-a-time) ===")
     var nodes = _predicate()
     var sizes = List[Int]()

@@ -194,14 +194,14 @@ struct AssumptionVerdict(Copyable, Movable):
     var variance_ratio_known: Bool
 
 
-fn _verdict_failure(code: Int, n: Int, k: Int, alpha: Float64) -> AssumptionVerdict:
+def _verdict_failure(code: Int, n: Int, k: Int, alpha: Float64) -> AssumptionVerdict:
     return AssumptionVerdict(
         code, METHOD_LEVENE_MEDIAN, n, k, alpha, 0.0, ASSUME_P_ABSENT,
         -1.0, -1.0, False, -1.0, False,
     )
 
 
-fn variance_homogeneity_flat(
+def variance_homogeneity_flat(
     values: List[Float64], group_lengths: List[Int], alpha: Float64
 ) -> AssumptionVerdict:
     """Levene's test with median centring (Brown-Forsythe), over concatenated groups.
@@ -350,14 +350,14 @@ struct CellCountVerdict(Copyable, Movable):
     var satisfied: Bool
 
 
-fn _cells_failure(code: Int, n: Int, required: Float64) -> CellCountVerdict:
+def _cells_failure(code: Int, n: Int, required: Float64) -> CellCountVerdict:
     return CellCountVerdict(
         code, METHOD_CHI2_CELLS, n, 0.0, ASSUME_P_ABSENT, -1.0, -1,
         -1.0, required, 0.0, 0.0, False, False,
     )
 
 
-fn expected_counts_flat(
+def expected_counts_flat(
     observed: List[Float64], expected: List[Float64], min_expected: Float64
 ) -> CellCountVerdict:
     """The frozen chi-squared test plus the verdict on its minimum-expected-cell assumption.
@@ -455,14 +455,14 @@ struct NormalityVerdict(Copyable, Movable):
     var satisfied: Bool
 
 
-fn _normality_failure(code: Int, n: Int, alpha: Float64) -> NormalityVerdict:
+def _normality_failure(code: Int, n: Int, alpha: Float64) -> NormalityVerdict:
     return NormalityVerdict(
         code, METHOD_NORMALITY_PAIR, n, alpha, 0.0, ASSUME_P_ABSENT, False,
         0.0, ASSUME_P_ABSENT, False, False, False,
     )
 
 
-fn residual_normality_flat(
+def residual_normality_flat(
     residuals: List[Float64], n: Int, alpha: Float64
 ) -> NormalityVerdict:
     """Shapiro-Wilk and Anderson-Darling on the first `n` residuals, both verdicts reported.
@@ -561,7 +561,7 @@ struct CheckedTest(Copyable, Movable):
     var assumptions_satisfied: Bool
 
 
-fn _checked_failure(code: Int, n1: Int, n2: Int, alpha: Float64) -> CheckedTest:
+def _checked_failure(code: Int, n1: Int, n2: Int, alpha: Float64) -> CheckedTest:
     return CheckedTest(
         code, METHOD_WELCH, n1, n2, alpha, 0.0, 0.0, -1.0, -1.0, 0.0, False,
         -1.0, ASSUME_P_ABSENT, ASSUME_P_ABSENT, False, False,
@@ -569,7 +569,7 @@ fn _checked_failure(code: Int, n1: Int, n2: Int, alpha: Float64) -> CheckedTest:
     )
 
 
-fn t_test_checked_flat(
+def t_test_checked_flat(
     values: List[Float64], n1: Int, n2: Int, alpha: Float64
 ) -> CheckedTest:
     """Welch's two-sample t-test with a corrected tail and every checkable assumption verdict.
@@ -721,7 +721,7 @@ struct CheckedProportionTest(Copyable, Movable):
     var ci_b_hi: Float64
 
 
-fn _proportion_failure(code: Int, n_a: Int, n_b: Int, alpha: Float64) -> CheckedProportionTest:
+def _proportion_failure(code: Int, n_a: Int, n_b: Int, alpha: Float64) -> CheckedProportionTest:
     return CheckedProportionTest(
         code, METHOD_TWO_PROPORTION_Z, n_a, n_b, alpha, -1.0, -1.0, 0.0,
         ASSUME_P_ABSENT, ASSUME_P_ABSENT, False, -1.0, False, False,
@@ -729,7 +729,7 @@ fn _proportion_failure(code: Int, n_a: Int, n_b: Int, alpha: Float64) -> Checked
     )
 
 
-fn proportion_test_checked_flat(
+def proportion_test_checked_flat(
     successes_a: Int, n_a: Int, successes_b: Int, n_b: Int, alpha: Float64
 ) -> CheckedProportionTest:
     """The frozen two-proportion z-test, validated, with its normal-approximation verdict.

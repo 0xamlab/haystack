@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ecohydrology import interception_loss, transpiration_priestley_taylor, root_water_uptake, streamflow_baseflow_index, wetland_retention_time, riparian_buffer_efficiency, ecohydrological_stress, flood_pulse_benefit, water_table_depth_et, catchment_runoff_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from compression.huffman import frequency_count, huffman_encode, compression_ratio_huffman
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from electrostatics import coulomb_force, electric_field_point, electric_potential, capacitance_parallel_plate, energy_stored_capacitor, electric_flux, surface_charge_density, dielectric_polarization, breakdown_voltage, image_charge_force
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

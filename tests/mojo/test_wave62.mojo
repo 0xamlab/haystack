@@ -43,12 +43,12 @@ from formal_logic import (
 from std.math import abs as fabs, log
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -58,7 +58,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Spectral Analysis tests ─────────────────────────────────────────────────
 
 
-fn test_power_spectral_density() raises:
+def test_power_spectral_density() raises:
     print("  test_power_spectral_density...")
     # Simple DC signal: [1, 1, 1, 1] → PSD[0] should dominate
     var sig = List[Float64]()
@@ -77,7 +77,7 @@ fn test_power_spectral_density() raises:
     print("    PASSED")
 
 
-fn test_cross_spectral_density() raises:
+def test_cross_spectral_density() raises:
     print("  test_cross_spectral_density...")
     # Signal with itself → should equal PSD
     var sig = List[Float64]()
@@ -93,7 +93,7 @@ fn test_cross_spectral_density() raises:
     print("    PASSED")
 
 
-fn test_coherence() raises:
+def test_coherence() raises:
     print("  test_coherence...")
     # Signal with itself → coherence = 1 everywhere (where non-zero)
     var sig = List[Float64]()
@@ -109,7 +109,7 @@ fn test_coherence() raises:
     print("    PASSED")
 
 
-fn test_spectral_centroid() raises:
+def test_spectral_centroid() raises:
     print("  test_spectral_centroid...")
     var mags = List[Float64]()
     var freqs = List[Float64]()
@@ -135,7 +135,7 @@ fn test_spectral_centroid() raises:
     print("    PASSED")
 
 
-fn test_spectral_bandwidth() raises:
+def test_spectral_bandwidth() raises:
     print("  test_spectral_bandwidth...")
     var mags = List[Float64]()
     var freqs = List[Float64]()
@@ -163,7 +163,7 @@ fn test_spectral_bandwidth() raises:
     print("    PASSED")
 
 
-fn test_spectral_rolloff() raises:
+def test_spectral_rolloff() raises:
     print("  test_spectral_rolloff...")
     var mags = List[Float64]()
     var freqs = List[Float64]()
@@ -182,7 +182,7 @@ fn test_spectral_rolloff() raises:
     print("    PASSED")
 
 
-fn test_spectral_flatness() raises:
+def test_spectral_flatness() raises:
     print("  test_spectral_flatness...")
     # Uniform spectrum → flatness = 1
     var mags = List[Float64]()
@@ -209,7 +209,7 @@ fn test_spectral_flatness() raises:
     print("    PASSED")
 
 
-fn test_spectral_entropy() raises:
+def test_spectral_entropy() raises:
     print("  test_spectral_entropy...")
     # Uniform → max entropy = log(N)
     var mags = List[Float64]()
@@ -229,7 +229,7 @@ fn test_spectral_entropy() raises:
     print("    PASSED")
 
 
-fn test_band_energy() raises:
+def test_band_energy() raises:
     print("  test_band_energy...")
     var mags = List[Float64]()
     var freqs = List[Float64]()
@@ -251,7 +251,7 @@ fn test_band_energy() raises:
     print("    PASSED")
 
 
-fn test_peak_frequency() raises:
+def test_peak_frequency() raises:
     print("  test_peak_frequency...")
     var mags = List[Float64]()
     var freqs = List[Float64]()
@@ -269,7 +269,7 @@ fn test_peak_frequency() raises:
 # ── Geodesy tests ────────────────────────────────────────────────────────────
 
 
-fn test_haversine_distance() raises:
+def test_haversine_distance() raises:
     print("  test_haversine_distance...")
     # London (51.5074, -0.1278) to Paris (48.8566, 2.3522) ≈ 343 km
     var d = haversine_distance(51.5074, -0.1278, 48.8566, 2.3522)
@@ -283,7 +283,7 @@ fn test_haversine_distance() raises:
     print("    PASSED")
 
 
-fn test_vincenty_distance() raises:
+def test_vincenty_distance() raises:
     print("  test_vincenty_distance...")
     # Same London-Paris
     var d = vincenty_distance(51.5074, -0.1278, 48.8566, 2.3522)
@@ -297,7 +297,7 @@ fn test_vincenty_distance() raises:
     print("    PASSED")
 
 
-fn test_initial_bearing() raises:
+def test_initial_bearing() raises:
     print("  test_initial_bearing...")
     # Due east from equator → ~90°
     var b = initial_bearing(0.0, 0.0, 0.0, 1.0)
@@ -314,7 +314,7 @@ fn test_initial_bearing() raises:
     print("    PASSED")
 
 
-fn test_destination_point() raises:
+def test_destination_point() raises:
     print("  test_destination_point...")
     # From equator, go north 111.2 km ≈ 1° latitude
     var dp = destination_point(0.0, 0.0, 0.0, 111.2)
@@ -323,7 +323,7 @@ fn test_destination_point() raises:
     print("    PASSED")
 
 
-fn test_midpoint() raises:
+def test_midpoint() raises:
     print("  test_midpoint...")
     # Midpoint of (0,0) and (0,2) should be (0,1)
     var mp = midpoint(0.0, 0.0, 0.0, 2.0)
@@ -335,7 +335,7 @@ fn test_midpoint() raises:
     print("    PASSED")
 
 
-fn test_cross_track_distance() raises:
+def test_cross_track_distance() raises:
     print("  test_cross_track_distance...")
     # Point on the path → cross-track ≈ 0
     var d = cross_track_distance(0.5, 0.0, 0.0, 0.0, 1.0, 0.0)
@@ -346,7 +346,7 @@ fn test_cross_track_distance() raises:
     print("    PASSED")
 
 
-fn test_along_track_distance() raises:
+def test_along_track_distance() raises:
     print("  test_along_track_distance...")
     # Point near the midpoint of the path
     var d = along_track_distance(0.5, 0.0, 0.0, 0.0, 1.0, 0.0)
@@ -355,7 +355,7 @@ fn test_along_track_distance() raises:
     print("    PASSED")
 
 
-fn test_geodetic_to_ecef() raises:
+def test_geodetic_to_ecef() raises:
     print("  test_geodetic_to_ecef...")
     # (0, 0, 0) → (a, 0, 0) where a = WGS84_A
     var ecef = geodetic_to_ecef(0.0, 0.0, 0.0)
@@ -370,7 +370,7 @@ fn test_geodetic_to_ecef() raises:
     print("    PASSED")
 
 
-fn test_ecef_to_geodetic() raises:
+def test_ecef_to_geodetic() raises:
     print("  test_ecef_to_geodetic...")
     # Round-trip: geodetic → ECEF → geodetic
     var ecef = geodetic_to_ecef(40.0, -74.0, 100.0)
@@ -381,7 +381,7 @@ fn test_ecef_to_geodetic() raises:
     print("    PASSED")
 
 
-fn test_rhumb_distance() raises:
+def test_rhumb_distance() raises:
     print("  test_rhumb_distance...")
     # Same point → 0
     var d = rhumb_distance(40.0, -74.0, 40.0, -74.0)
@@ -399,7 +399,7 @@ fn test_rhumb_distance() raises:
 # ── Formal Logic tests ──────────────────────────────────────────────────────
 
 
-fn test_truth_and() raises:
+def test_truth_and() raises:
     print("  test_truth_and...")
     _assert(truth_and(True, True) == True, "T∧T=T")  # 58
     _assert(truth_and(True, False) == False, "T∧F=F")  # 59
@@ -408,7 +408,7 @@ fn test_truth_and() raises:
     print("    PASSED")
 
 
-fn test_truth_or() raises:
+def test_truth_or() raises:
     print("  test_truth_or...")
     _assert(truth_or(True, True) == True, "T∨T=T")  # 62
     _assert(truth_or(True, False) == True, "T∨F=T")  # 63
@@ -416,14 +416,14 @@ fn test_truth_or() raises:
     print("    PASSED")
 
 
-fn test_truth_not() raises:
+def test_truth_not() raises:
     print("  test_truth_not...")
     _assert(truth_not(True) == False, "¬T=F")  # 65
     _assert(truth_not(False) == True, "¬F=T")  # 66
     print("    PASSED")
 
 
-fn test_truth_implies() raises:
+def test_truth_implies() raises:
     print("  test_truth_implies...")
     _assert(truth_implies(True, True) == True, "T→T=T")  # 67
     _assert(truth_implies(True, False) == False, "T→F=F")  # 68
@@ -432,7 +432,7 @@ fn test_truth_implies() raises:
     print("    PASSED")
 
 
-fn test_truth_iff() raises:
+def test_truth_iff() raises:
     print("  test_truth_iff...")
     _assert(truth_iff(True, True) == True, "T↔T=T")  # 71
     _assert(truth_iff(True, False) == False, "T↔F=F")  # 72
@@ -440,7 +440,7 @@ fn test_truth_iff() raises:
     print("    PASSED")
 
 
-fn test_truth_xor() raises:
+def test_truth_xor() raises:
     print("  test_truth_xor...")
     _assert(truth_xor(True, True) == False, "T⊕T=F")  # 74
     _assert(truth_xor(True, False) == True, "T⊕F=T")  # 75
@@ -448,7 +448,7 @@ fn test_truth_xor() raises:
     print("    PASSED")
 
 
-fn test_truth_nand_nor() raises:
+def test_truth_nand_nor() raises:
     print("  test_truth_nand_nor...")
     _assert(truth_nand(True, True) == False, "NAND(T,T)=F")  # 77
     _assert(truth_nand(True, False) == True, "NAND(T,F)=T")  # 78
@@ -457,7 +457,7 @@ fn test_truth_nand_nor() raises:
     print("    PASSED")
 
 
-fn test_modus_ponens() raises:
+def test_modus_ponens() raises:
     print("  test_modus_ponens...")
     # p=T, p→q=T → q=T
     _assert(modus_ponens(True, True) == True, "MP: T,T→T")  # 81
@@ -466,7 +466,7 @@ fn test_modus_ponens() raises:
     print("    PASSED")
 
 
-fn test_modus_tollens() raises:
+def test_modus_tollens() raises:
     print("  test_modus_tollens...")
     # ¬q=T, p→q=T → ¬p=T
     _assert(modus_tollens(True, True) == True, "MT: T,T→T")  # 83
@@ -475,7 +475,7 @@ fn test_modus_tollens() raises:
     print("    PASSED")
 
 
-fn test_hypothetical_syllogism() raises:
+def test_hypothetical_syllogism() raises:
     print("  test_hypothetical_syllogism...")
     _assert(hypothetical_syllogism(True, True) == True, "HS: T,T→T")  # 85
     _assert(hypothetical_syllogism(True, False) == False, "HS: T,F→F")  # 86
@@ -483,7 +483,7 @@ fn test_hypothetical_syllogism() raises:
     print("    PASSED")
 
 
-fn test_disjunctive_syllogism() raises:
+def test_disjunctive_syllogism() raises:
     print("  test_disjunctive_syllogism...")
     _assert(disjunctive_syllogism(True, True) == True, "DS: T,T→T")  # 88
     _assert(disjunctive_syllogism(True, False) == False, "DS: T,F→F")  # 89
@@ -491,7 +491,7 @@ fn test_disjunctive_syllogism() raises:
     print("    PASSED")
 
 
-fn test_tautology_contradiction() raises:
+def test_tautology_contradiction() raises:
     print("  test_tautology_contradiction...")
     # fn_idx=15 is tautology (always True)
     _assert(is_tautology_2var(15) == True, "idx 15 is tautology")  # 91
@@ -509,7 +509,7 @@ fn test_tautology_contradiction() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 62 tests: Spectral Analysis, Geodesy, Formal Logic")
     print("=" * 60)
 

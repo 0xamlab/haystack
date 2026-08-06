@@ -32,7 +32,7 @@ comptime SQRT_2: Float64 = 1.4142135623730951
 # ── eoq ──────────────────────────────────────────────────────────────────────
 
 
-fn eoq(demand: Float64, order_cost: Float64, holding_cost: Float64) -> Float64:
+def eoq(demand: Float64, order_cost: Float64, holding_cost: Float64) -> Float64:
     """Economic Order Quantity: sqrt(2*D*S/H)."""
     if holding_cost <= 0.0:
         return 0.0
@@ -42,7 +42,7 @@ fn eoq(demand: Float64, order_cost: Float64, holding_cost: Float64) -> Float64:
 # ── reorder_point ────────────────────────────────────────────────────────────
 
 
-fn reorder_point(demand_rate: Float64, lead_time: Float64, safety_stock: Float64) -> Float64:
+def reorder_point(demand_rate: Float64, lead_time: Float64, safety_stock: Float64) -> Float64:
     """Reorder Point = demand_rate * lead_time + safety_stock."""
     return demand_rate * lead_time + safety_stock
 
@@ -50,7 +50,7 @@ fn reorder_point(demand_rate: Float64, lead_time: Float64, safety_stock: Float64
 # ── safety_stock ─────────────────────────────────────────────────────────────
 
 
-fn safety_stock(z_score: Float64, demand_std: Float64, lead_time: Float64) -> Float64:
+def safety_stock(z_score: Float64, demand_std: Float64, lead_time: Float64) -> Float64:
     """Safety Stock = z * σ_d * sqrt(LT)."""
     return z_score * demand_std * sqrt(lead_time)
 
@@ -58,7 +58,7 @@ fn safety_stock(z_score: Float64, demand_std: Float64, lead_time: Float64) -> Fl
 # ── total_inventory_cost ─────────────────────────────────────────────────────
 
 
-fn total_inventory_cost(demand: Float64, order_qty: Float64, order_cost: Float64, holding_cost: Float64) -> Float64:
+def total_inventory_cost(demand: Float64, order_qty: Float64, order_cost: Float64, holding_cost: Float64) -> Float64:
     """Total Inventory Cost = (D/Q)*S + (Q/2)*H."""
     if order_qty <= 0.0:
         return 0.0
@@ -68,7 +68,7 @@ fn total_inventory_cost(demand: Float64, order_qty: Float64, order_cost: Float64
 # ── _normal_cdf_approx ──────────────────────────────────────────────────────
 
 
-fn _normal_cdf_approx(z: Float64) -> Float64:
+def _normal_cdf_approx(z: Float64) -> Float64:
     """Approximate standard normal CDF using Abramowitz & Stegun formula."""
     if z < -8.0:
         return 0.0
@@ -98,7 +98,7 @@ fn _normal_cdf_approx(z: Float64) -> Float64:
 # ── _normal_quantile_approx ─────────────────────────────────────────────────
 
 
-fn _normal_quantile_approx(p: Float64) -> Float64:
+def _normal_quantile_approx(p: Float64) -> Float64:
     """Approximate inverse normal CDF (quantile) using rational approx."""
     # Clamp
     var pp = p
@@ -131,7 +131,7 @@ fn _normal_quantile_approx(p: Float64) -> Float64:
 # ── newsvendor_qty ───────────────────────────────────────────────────────────
 
 
-fn newsvendor_qty(mean_demand: Float64, std_demand: Float64, cost_under: Float64, cost_over: Float64) -> Float64:
+def newsvendor_qty(mean_demand: Float64, std_demand: Float64, cost_under: Float64, cost_over: Float64) -> Float64:
     """Newsvendor: Q* = mean + z*std where z = Φ^-1(Cu/(Cu+Co)).
     Uses normal CDF inverse approximation.
     """
@@ -146,7 +146,7 @@ fn newsvendor_qty(mean_demand: Float64, std_demand: Float64, cost_under: Float64
 # ── service_level ────────────────────────────────────────────────────────────
 
 
-fn service_level(z_score: Float64) -> Float64:
+def service_level(z_score: Float64) -> Float64:
     """Approximate service level from z-score using normal CDF approximation."""
     return _normal_cdf_approx(z_score)
 
@@ -154,7 +154,7 @@ fn service_level(z_score: Float64) -> Float64:
 # ── abc_classify ─────────────────────────────────────────────────────────────
 
 
-fn abc_classify(values: List[Float64]) -> List[Int]:
+def abc_classify(values: List[Float64]) -> List[Int]:
     """ABC classification: top 20% value → A(0), next 30% → B(1), rest → C(2).
     Sort items by value descending, then assign based on cumulative value share.
     """
@@ -202,7 +202,7 @@ fn abc_classify(values: List[Float64]) -> List[Int]:
 # ── days_of_supply ───────────────────────────────────────────────────────────
 
 
-fn days_of_supply(inventory: Float64, daily_demand: Float64) -> Float64:
+def days_of_supply(inventory: Float64, daily_demand: Float64) -> Float64:
     """Days of supply = inventory / daily_demand."""
     if daily_demand <= 0.0:
         return 0.0
@@ -212,7 +212,7 @@ fn days_of_supply(inventory: Float64, daily_demand: Float64) -> Float64:
 # ── inventory_turnover ───────────────────────────────────────────────────────
 
 
-fn inventory_turnover(cogs: Float64, avg_inventory: Float64) -> Float64:
+def inventory_turnover(cogs: Float64, avg_inventory: Float64) -> Float64:
     """Inventory turnover = COGS / avg_inventory."""
     if avg_inventory <= 0.0:
         return 0.0
@@ -222,7 +222,7 @@ fn inventory_turnover(cogs: Float64, avg_inventory: Float64) -> Float64:
 # ── fill_rate ────────────────────────────────────────────────────────────────
 
 
-fn fill_rate(orders_filled: Int, total_orders: Int) -> Float64:
+def fill_rate(orders_filled: Int, total_orders: Int) -> Float64:
     """Fill rate = orders_filled / total_orders."""
     if total_orders <= 0:
         return 0.0
@@ -232,7 +232,7 @@ fn fill_rate(orders_filled: Int, total_orders: Int) -> Float64:
 # ── periodic_review_order ────────────────────────────────────────────────────
 
 
-fn periodic_review_order(target: Float64, on_hand: Float64, on_order: Float64) -> Float64:
+def periodic_review_order(target: Float64, on_hand: Float64, on_order: Float64) -> Float64:
     """Order up to target: max(0, target - on_hand - on_order)."""
     var qty = target - on_hand - on_order
     if qty < 0.0:

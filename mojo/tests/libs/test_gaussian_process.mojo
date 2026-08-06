@@ -13,11 +13,11 @@ from gaussian_process import (
 from std.math import sqrt, log, exp, abs as fabs
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ gaussian_process::" + name)

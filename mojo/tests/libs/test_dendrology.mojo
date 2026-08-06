@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from dendrology import tree_height_from_hypsometer, sin_approx, cos_approx, crown_area, crown_competition_factor, stem_taper_percentage, heartwood_ratio, sapwood_area_from_dbh, root_biomass_allometric, leaf_biomass_allometric, tree_age_from_rings, foliar_nitrogen_content
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

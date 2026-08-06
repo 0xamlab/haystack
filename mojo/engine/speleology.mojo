@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt, pow
 
 
-fn cave_passage_volume(
+def cave_passage_volume(
     length_m: Float64, width_m: Float64, height_m: Float64
 ) -> Float64:
     """Cave passage volume approximated as elliptical cross section.
@@ -35,7 +35,7 @@ fn cave_passage_volume(
     return pi / 4.0 * width_m * height_m * length_m
 
 
-fn stalactite_growth_rate(
+def stalactite_growth_rate(
     drip_rate_ml_per_min: Float64, calcite_per_ml_mg: Float64, density_g_cm3: Float64
 ) -> Float64:
     """Linear stalactite growth rate from deposition.
@@ -55,7 +55,7 @@ fn stalactite_growth_rate(
     return cm3_per_yr * 10.0  # cm3 to mm, assuming 1 cm² area
 
 
-fn drip_water_calcite_saturation(
+def drip_water_calcite_saturation(
     ca_mmol_l: Float64, co3_mmol_l: Float64, ksp: Float64
 ) -> Float64:
     """Saturation index SI = log10([Ca²⁺][CO₃²⁻] / Ksp).
@@ -76,7 +76,7 @@ fn drip_water_calcite_saturation(
     return log(ip / ksp) / log(10.0)
 
 
-fn cave_climate_temperature(
+def cave_climate_temperature(
     surface_maat: Float64, depth_m: Float64, lapse_rate: Float64
 ) -> Float64:
     """Cave air temperature ≈ surface MAAT (adjusted for deep caves).
@@ -94,7 +94,7 @@ fn cave_climate_temperature(
     return surface_maat + depth_m * lapse_rate
 
 
-fn turbulent_flow_cave(
+def turbulent_flow_cave(
     velocity: Float64, hydraulic_diameter: Float64, kinematic_viscosity: Float64
 ) -> Float64:
     """Reynolds number for cave passage flow.
@@ -114,7 +114,7 @@ fn turbulent_flow_cave(
     return velocity * hydraulic_diameter / kinematic_viscosity
 
 
-fn karst_spring_discharge(
+def karst_spring_discharge(
     storage_m3: Float64, recession_coefficient: Float64
 ) -> Float64:
     """Karst spring discharge by exponential recession.
@@ -131,7 +131,7 @@ fn karst_spring_discharge(
     return storage_m3 * recession_coefficient
 
 
-fn cave_radio_signal_depth(
+def cave_radio_signal_depth(
     frequency_hz: Float64, conductivity: Float64
 ) -> Float64:
     """Radio signal skin depth in rock: δ = sqrt(2 / (ω·μ·σ)).
@@ -151,7 +151,7 @@ fn cave_radio_signal_depth(
     return sqrt(2.0 / denom)
 
 
-fn dissolution_rate_limestone(
+def dissolution_rate_limestone(
     saturation_index: Float64, rate_constant: Float64
 ) -> Float64:
     """Limestone dissolution rate from saturation state (PWP model simplified).
@@ -172,7 +172,7 @@ fn dissolution_rate_limestone(
     return rate_constant * undersaturation
 
 
-fn age_uranium_series(
+def age_uranium_series(
     activity_ratio_230_234: Float64
 ) -> Float64:
     """Simplified 230Th/234U age for speleothems (secular equilibrium model).
@@ -191,7 +191,7 @@ fn age_uranium_series(
     return -log(1.0 - activity_ratio_230_234) / lambda230
 
 
-fn radon_in_cave_air(
+def radon_in_cave_air(
     radon_flux: Float64, ventilation_rate: Float64, decay_constant: Float64
 ) -> Float64:
     """Equilibrium radon concentration in cave air.

@@ -65,14 +65,14 @@ from forecasting.contract import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _refused(r: BacktestReport) -> Bool:
+def _refused(r: BacktestReport) -> Bool:
     """A refusal carries no matrix at all — not a partial one, not a zero-filled one."""
     return (
         r.status != FC_OK
@@ -89,7 +89,7 @@ fn _refused(r: BacktestReport) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.backtest] known-value suite")

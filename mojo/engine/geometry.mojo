@@ -28,7 +28,7 @@ struct Point(Copyable, Movable):
     var x: Float64
     var y: Float64
 
-    fn __init__(out self, x: Float64, y: Float64):
+    def __init__(out self, x: Float64, y: Float64):
         self.x = x
         self.y = y
 
@@ -36,7 +36,7 @@ struct Point(Copyable, Movable):
 # ── distance_2d ──────────────────────────────────────────────────────────────
 
 
-fn distance_2d(a: Point, b: Point) -> Float64:
+def distance_2d(a: Point, b: Point) -> Float64:
     """Euclidean distance between two 2D points."""
     var dx = a.x - b.x
     var dy = a.y - b.y
@@ -46,7 +46,7 @@ fn distance_2d(a: Point, b: Point) -> Float64:
 # ── cross_product_2d ─────────────────────────────────────────────────────────
 
 
-fn cross_product_2d(o: Point, a: Point, b: Point) -> Float64:
+def cross_product_2d(o: Point, a: Point, b: Point) -> Float64:
     """2D cross product of vectors OA and OB.
 
     Positive if O→A→B is counter-clockwise, negative if clockwise.
@@ -57,7 +57,7 @@ fn cross_product_2d(o: Point, a: Point, b: Point) -> Float64:
 # ── _cross_from_list (helper) ────────────────────────────────────────────────
 
 
-fn _cross_from_list(pts: List[Point], oi: Int, ai: Int, bi: Int) -> Float64:
+def _cross_from_list(pts: List[Point], oi: Int, ai: Int, bi: Int) -> Float64:
     """Cross product reading points by index — avoids copy issues."""
     return (pts[ai].x - pts[oi].x) * (pts[bi].y - pts[oi].y) - (
         pts[ai].y - pts[oi].y
@@ -67,7 +67,7 @@ fn _cross_from_list(pts: List[Point], oi: Int, ai: Int, bi: Int) -> Float64:
 # ── point_in_polygon ─────────────────────────────────────────────────────────
 
 
-fn point_in_polygon(p: Point, polygon: List[Point]) -> Bool:
+def point_in_polygon(p: Point, polygon: List[Point]) -> Bool:
     """Test whether a point lies inside a polygon using the ray casting algorithm."""
     var n = len(polygon)
     if n < 3:
@@ -93,7 +93,7 @@ fn point_in_polygon(p: Point, polygon: List[Point]) -> Bool:
 # ── polygon_area ─────────────────────────────────────────────────────────────
 
 
-fn polygon_area(polygon: List[Point]) -> Float64:
+def polygon_area(polygon: List[Point]) -> Float64:
     """Area of a simple polygon using the Shoelace formula."""
     var n = len(polygon)
     if n < 3:
@@ -111,7 +111,7 @@ fn polygon_area(polygon: List[Point]) -> Float64:
 # ── polygon_perimeter ────────────────────────────────────────────────────────
 
 
-fn polygon_perimeter(polygon: List[Point]) -> Float64:
+def polygon_perimeter(polygon: List[Point]) -> Float64:
     """Perimeter of a polygon (sum of edge lengths)."""
     var n = len(polygon)
     if n < 2:
@@ -129,7 +129,7 @@ fn polygon_perimeter(polygon: List[Point]) -> Float64:
 # ── convex_hull ──────────────────────────────────────────────────────────────
 
 
-fn convex_hull(points: List[Point]) -> List[Point]:
+def convex_hull(points: List[Point]) -> List[Point]:
     """Convex hull using Andrew's monotone chain algorithm.
 
     Returns hull vertices in counter-clockwise order.
@@ -208,7 +208,7 @@ fn convex_hull(points: List[Point]) -> List[Point]:
 # ── line_intersection ────────────────────────────────────────────────────────
 
 
-fn line_intersection(p1: Point, p2: Point, p3: Point, p4: Point) raises -> Point:
+def line_intersection(p1: Point, p2: Point, p3: Point, p4: Point) raises -> Point:
     """Intersection point of two lines through (p1-p2) and (p3-p4)."""
     var x1 = p1.x
     var y1 = p1.y
@@ -233,7 +233,7 @@ fn line_intersection(p1: Point, p2: Point, p3: Point, p4: Point) raises -> Point
 # ── centroid ─────────────────────────────────────────────────────────────────
 
 
-fn centroid(polygon: List[Point]) -> Point:
+def centroid(polygon: List[Point]) -> Point:
     """Centroid of a simple polygon."""
     var n = len(polygon)
     if n == 0:
@@ -274,7 +274,7 @@ fn centroid(polygon: List[Point]) -> Point:
 # ── bounding_box ─────────────────────────────────────────────────────────────
 
 
-fn bounding_box(points: List[Point]) -> List[Float64]:
+def bounding_box(points: List[Point]) -> List[Float64]:
     """Axis-aligned bounding box. Returns [min_x, min_y, max_x, max_y]."""
     var n = len(points)
     if n == 0:

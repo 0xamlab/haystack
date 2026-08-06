@@ -25,7 +25,7 @@ from std.math import log
 # ── Radiometric dating ───────────────────────────────────────────────────────
 
 
-fn radiocarbon_age(ratio: Float64, lambda_c14: Float64) -> Float64:
+def radiocarbon_age(ratio: Float64, lambda_c14: Float64) -> Float64:
     """Radiocarbon age: t = -ln(R) / λ  years.
 
     ratio = current/initial C-14 ratio (0 < R ≤ 1).
@@ -34,7 +34,7 @@ fn radiocarbon_age(ratio: Float64, lambda_c14: Float64) -> Float64:
     return -log(ratio) / lambda_c14
 
 
-fn potassium_argon_age(
+def potassium_argon_age(
     ar40_k40_ratio: Float64, lambda_k: Float64
 ) -> Float64:
     """K-Ar age: t = ln(1 + R) / λ.
@@ -45,7 +45,7 @@ fn potassium_argon_age(
     return log(1.0 + ar40_k40_ratio) / lambda_k
 
 
-fn uranium_lead_age(
+def uranium_lead_age(
     pb206_u238_ratio: Float64, lambda_u: Float64
 ) -> Float64:
     """U-Pb age: t = ln(1 + R) / λ.
@@ -59,14 +59,14 @@ fn uranium_lead_age(
 # ── Stratigraphic analysis ───────────────────────────────────────────────────
 
 
-fn stratigraphic_completeness(
+def stratigraphic_completeness(
     preserved_intervals: Float64, total_time: Float64
 ) -> Float64:
     """Stratigraphic completeness SC = preserved / total (0–1)."""
     return preserved_intervals / total_time
 
 
-fn sedimentation_rate(
+def sedimentation_rate(
     thickness: Float64, time: Float64
 ) -> Float64:
     """Sedimentation rate SR = thickness / time  (m/Myr)."""
@@ -76,7 +76,7 @@ fn sedimentation_rate(
 # ── Diversity & turnover ─────────────────────────────────────────────────────
 
 
-fn fossil_diversity_index(
+def fossil_diversity_index(
     n_species: Float64, n_specimens: Float64
 ) -> Float64:
     """Margalef diversity index: D = (S - 1) / ln(N).
@@ -93,7 +93,7 @@ fn fossil_diversity_index(
     return d
 
 
-fn extinction_rate(
+def extinction_rate(
     n_extinct: Float64,
     n_total: Float64,
     time_interval: Float64,
@@ -102,7 +102,7 @@ fn extinction_rate(
     return (n_extinct / n_total) / time_interval
 
 
-fn origination_rate(
+def origination_rate(
     n_new: Float64,
     n_total: Float64,
     time_interval: Float64,
@@ -111,7 +111,7 @@ fn origination_rate(
     return (n_new / n_total) / time_interval
 
 
-fn turnover_rate(
+def turnover_rate(
     extinction_r: Float64, origination_r: Float64
 ) -> Float64:
     """Turnover rate TR = (ER + OR) / 2."""
@@ -121,7 +121,7 @@ fn turnover_rate(
 # ── Allometry & phylogenetics ────────────────────────────────────────────────
 
 
-fn body_mass_estimate_mammal(femur_length_mm: Float64) -> Float64:
+def body_mass_estimate_mammal(femur_length_mm: Float64) -> Float64:
     """Estimate mammalian body mass (g) from femur length (mm).
 
     log10(M) = 2.75 * log10(FL) - 3.30  (simplified allometry).
@@ -135,13 +135,13 @@ fn body_mass_estimate_mammal(femur_length_mm: Float64) -> Float64:
     return m
 
 
-fn _pow10(x: Float64) -> Float64:
+def _pow10(x: Float64) -> Float64:
     """10^x via exp(x * ln(10))."""
     from std.math import exp
     return exp(x * log(10.0))
 
 
-fn phylogenetic_distance(
+def phylogenetic_distance(
     divergence_time: Float64, molecular_rate: Float64
 ) -> Float64:
     """Phylogenetic distance D = 2 * t * r.
@@ -151,7 +151,7 @@ fn phylogenetic_distance(
     return 2.0 * divergence_time * molecular_rate
 
 
-fn completeness_metric(
+def completeness_metric(
     bones_found: Float64, bones_expected: Float64
 ) -> Float64:
     """Skeletal completeness C = bones_found / bones_expected  (0–1)."""

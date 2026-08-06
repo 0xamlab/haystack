@@ -23,11 +23,11 @@ from contest_strategy import (
 )
 
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 
-fn field(focal_age: Float64, rival_age: Float64) -> List[List[Float64]]:
+def field(focal_age: Float64, rival_age: Float64) -> List[List[Float64]]:
     """Eight-car field; focal index 3, rival index 2 directly ahead by 1.5 s."""
     var pace = List[Float64]()
     var deg = List[Float64]()

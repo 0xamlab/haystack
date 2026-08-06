@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ecology import logistic_growth, exponential_growth, carrying_capacity_estimate, lotka_volterra_prey, lotka_volterra_predator, species_richness_margalef, shannon_diversity, simpson_index, simpson_diversity, jaccard_similarity, sorensen_similarity, species_area_relationship
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -25,7 +25,7 @@ from std.math import log, exp, abs as fabs
 # ── logsumexp ─────────────────────────────────────────────────────────────────
 
 
-fn logsumexp(values: List[Float64]) -> Float64:
+def logsumexp(values: List[Float64]) -> Float64:
     """log(Σexp(x_i)) = max + log(Σexp(x_i - max)). Avoids overflow."""
     var n = len(values)
     if n == 0:
@@ -43,7 +43,7 @@ fn logsumexp(values: List[Float64]) -> Float64:
 # ── softmax ───────────────────────────────────────────────────────────────────
 
 
-fn softmax(values: List[Float64]) -> List[Float64]:
+def softmax(values: List[Float64]) -> List[Float64]:
     """Stable softmax: exp(x_i - max) / Σexp(x_j - max)."""
     var n = len(values)
     var result = List[Float64]()
@@ -66,7 +66,7 @@ fn softmax(values: List[Float64]) -> List[Float64]:
 # ── log_softmax ───────────────────────────────────────────────────────────────
 
 
-fn log_softmax(values: List[Float64]) -> List[Float64]:
+def log_softmax(values: List[Float64]) -> List[Float64]:
     """log-softmax: x_i - logsumexp(values)."""
     var lse = logsumexp(values)
     var result = List[Float64]()
@@ -78,7 +78,7 @@ fn log_softmax(values: List[Float64]) -> List[Float64]:
 # ── kahan_sum ─────────────────────────────────────────────────────────────────
 
 
-fn kahan_sum(values: List[Float64]) -> Float64:
+def kahan_sum(values: List[Float64]) -> Float64:
     """Kahan compensated summation for reduced floating-point error."""
     var s: Float64 = 0.0
     var c: Float64 = 0.0  # compensation
@@ -93,7 +93,7 @@ fn kahan_sum(values: List[Float64]) -> Float64:
 # ── welford_mean_var ──────────────────────────────────────────────────────────
 
 
-fn welford_mean_var(values: List[Float64]) -> List[Float64]:
+def welford_mean_var(values: List[Float64]) -> List[Float64]:
     """Welford's online algorithm for mean and variance. Returns [mean, variance]."""
     var n = len(values)
     var result = List[Float64]()
@@ -120,7 +120,7 @@ fn welford_mean_var(values: List[Float64]) -> List[Float64]:
 # ── log_add_exp ───────────────────────────────────────────────────────────────
 
 
-fn log_add_exp(a: Float64, b: Float64) -> Float64:
+def log_add_exp(a: Float64, b: Float64) -> Float64:
     """log(exp(a) + exp(b)) numerically stable."""
     var mx = a
     if b > a:
@@ -131,7 +131,7 @@ fn log_add_exp(a: Float64, b: Float64) -> Float64:
 # ── sigmoid_stable ────────────────────────────────────────────────────────────
 
 
-fn sigmoid_stable(x: Float64) -> Float64:
+def sigmoid_stable(x: Float64) -> Float64:
     """Numerically stable sigmoid: x>=0 → 1/(1+exp(-x)), x<0 → exp(x)/(1+exp(x))."""
     if x >= 0.0:
         return 1.0 / (1.0 + exp(-x))
@@ -143,7 +143,7 @@ fn sigmoid_stable(x: Float64) -> Float64:
 # ── log_sigmoid ───────────────────────────────────────────────────────────────
 
 
-fn log_sigmoid(x: Float64) -> Float64:
+def log_sigmoid(x: Float64) -> Float64:
     """log(sigmoid(x)) = -softplus(-x)."""
     return -softplus(-x)
 
@@ -151,7 +151,7 @@ fn log_sigmoid(x: Float64) -> Float64:
 # ── softplus ──────────────────────────────────────────────────────────────────
 
 
-fn softplus(x: Float64) -> Float64:
+def softplus(x: Float64) -> Float64:
     """log(1 + exp(x)), stable version.
 
     For large x, returns x directly. For very negative x, returns exp(x).
@@ -167,7 +167,7 @@ fn softplus(x: Float64) -> Float64:
 # ── normalize_probabilities ───────────────────────────────────────────────────
 
 
-fn normalize_probabilities(probs: List[Float64]) -> List[Float64]:
+def normalize_probabilities(probs: List[Float64]) -> List[Float64]:
     """Normalize to sum to 1.0, handle all-zero case (uniform)."""
     var n = len(probs)
     var result = List[Float64]()
@@ -187,7 +187,7 @@ fn normalize_probabilities(probs: List[Float64]) -> List[Float64]:
 # ── relative_error ────────────────────────────────────────────────────────────
 
 
-fn relative_error(approx: Float64, exact: Float64) -> Float64:
+def relative_error(approx: Float64, exact: Float64) -> Float64:
     """|approx - exact| / |exact|."""
     if fabs(exact) < 1e-300:
         return fabs(approx)
@@ -197,7 +197,7 @@ fn relative_error(approx: Float64, exact: Float64) -> Float64:
 # ── safe_divide ───────────────────────────────────────────────────────────────
 
 
-fn safe_divide(a: Float64, b: Float64, default: Float64 = 0.0) -> Float64:
+def safe_divide(a: Float64, b: Float64, default: Float64 = 0.0) -> Float64:
     """a/b with divide-by-zero protection. Returns default if b≈0."""
     if fabs(b) < 1e-300:
         return default

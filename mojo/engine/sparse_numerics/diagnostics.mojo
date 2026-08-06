@@ -141,7 +141,7 @@ comptime DIAG_ERR_NON_FINITE: Int = 23
 comptime DIAG_ERR_EMPTY: Int = 24
 
 
-fn diag_status_name(code: Int) -> String:
+def diag_status_name(code: Int) -> String:
     """Name for a diagnostics status, delegating to `csr_status_name` below 20."""
     if code == DIAG_ERR_NOT_SQUARE:
         return "not_square"
@@ -209,7 +209,7 @@ struct SparseHealthReport(Copyable, Movable):
     var empty_cols: Int
     var structurally_singular: Bool
 
-    fn __init__(out self, status: Int, diagnosed: Bool, nrows: Int, ncols: Int):
+    def __init__(out self, status: Int, diagnosed: Bool, nrows: Int, ncols: Int):
         """The absent report: a status, a shape, and no measurements.
 
         Constructed this way rather than memberwise because a 34-argument positional
@@ -264,7 +264,7 @@ struct SparseMetric(Copyable, Movable):
     var present: Bool
     var value: Float64
 
-    fn __init__(out self, status: Int, present: Bool, value: Float64):
+    def __init__(out self, status: Int, present: Bool, value: Float64):
         self.status = status
         self.present = present
         self.value = value
@@ -285,7 +285,7 @@ struct SparseConditionEstimate(Copyable, Movable):
     var norm_inf: Float64  # ||A||_inf via the frozen mat_norm_inf; 0.0 when absent
     var singular: Bool
 
-    fn __init__(out self, status: Int, n: Int):
+    def __init__(out self, status: Int, n: Int):
         self.status = status
         self.present = False
         self.n = n
@@ -297,11 +297,11 @@ struct SparseConditionEstimate(Copyable, Movable):
 # ── internals ─────────────────────────────────────────────────────────────────
 
 
-fn _is_finite(v: Float64) -> Bool:
+def _is_finite(v: Float64) -> Bool:
     return not (isnan(v) or isinf(v))
 
 
-fn _drop_out_of_range(m: CSRMatrix) -> CSRMatrix:
+def _drop_out_of_range(m: CSRMatrix) -> CSRMatrix:
     """`m` without the column indices outside `[0, ncols)`, `indptr` rebuilt.
 
     Only safe once the caller has established that the pointer structure is sound —
@@ -322,7 +322,7 @@ fn _drop_out_of_range(m: CSRMatrix) -> CSRMatrix:
     return csr_from_arrays(indptr, indices, values, m.nrows, m.ncols)
 
 
-fn _max_abs_row_sum(m: CSRMatrix) -> Float64:
+def _max_abs_row_sum(m: CSRMatrix) -> Float64:
     """Max absolute row sum over the FINITE stored values. `m` must be valid.
 
     Unstored positions contribute nothing, which is exactly right: their value is zero.
@@ -342,7 +342,7 @@ fn _max_abs_row_sum(m: CSRMatrix) -> Float64:
     return best
 
 
-fn _count_zeros(counts: List[Int]) -> Int:
+def _count_zeros(counts: List[Int]) -> Int:
     var empty = 0
     for i in range(len(counts)):
         if counts[i] == 0:
@@ -350,7 +350,7 @@ fn _count_zeros(counts: List[Int]) -> Int:
     return empty
 
 
-fn _symmetry_defect(a: CSRMatrix, t: CSRMatrix) -> Float64:
+def _symmetry_defect(a: CSRMatrix, t: CSRMatrix) -> Float64:
     """`max |A_ij - A_ji|` over the finite entries. Both inputs must be canonical.
 
     A sorted two-pointer merge of row `i` of `A` with row `i` of `A^T`, so a coordinate
@@ -396,7 +396,7 @@ fn _symmetry_defect(a: CSRMatrix, t: CSRMatrix) -> Float64:
     return worst
 
 
-fn _summarize(r: SparseHealthReport) -> String:
+def _summarize(r: SparseHealthReport) -> String:
     """One line naming the shape, the status and every defect found.
 
     Concatenation only — `String` has no slice operator here and none is needed.
@@ -441,7 +441,7 @@ fn _summarize(r: SparseHealthReport) -> String:
 # ── the report ────────────────────────────────────────────────────────────────
 
 
-fn sparse_health(
+def sparse_health(
     m: CSRMatrix, tol: Float64 = DIAG_SYMMETRY_TOL
 ) -> SparseHealthReport:
     """Structural and numerical health of `m` in one O(nnz + nrows + ncols) pass.
@@ -601,7 +601,7 @@ fn sparse_health(
 # them can drift.
 
 
-fn sparse_density_checked(m: CSRMatrix) -> SparseMetric:
+def sparse_density_checked(m: CSRMatrix) -> SparseMetric:
     """Density in [0, 1], absent for a matrix with no elements.
 
     The frozen `sparse_density` returns 0.0 for a 0x0 — indistinguishable from a
@@ -614,7 +614,7 @@ fn sparse_density_checked(m: CSRMatrix) -> SparseMetric:
     return SparseMetric(report.status, report.has_elements, report.density)
 
 
-fn sparse_trace_checked(m: CSRMatrix) -> SparseMetric:
+def sparse_trace_checked(m: CSRMatrix) -> SparseMetric:
     """Sum of the diagonal, absent for a non-square matrix.
 
     `sparse_trace` sums every entry with `row == col` whatever the shape, so on a
@@ -628,7 +628,7 @@ fn sparse_trace_checked(m: CSRMatrix) -> SparseMetric:
     return SparseMetric(report.status, True, report.trace)
 
 
-fn sparse_max_abs(m: CSRMatrix) -> SparseMetric:
+def sparse_max_abs(m: CSRMatrix) -> SparseMetric:
     """Largest magnitude among the finite stored values; absent when there are none."""
     var report = sparse_health(m)
     if not report.diagnosed:
@@ -636,7 +636,7 @@ fn sparse_max_abs(m: CSRMatrix) -> SparseMetric:
     return SparseMetric(report.status, report.max_abs_present, report.max_abs)
 
 
-fn sparse_max_element(m: CSRMatrix) -> SparseMetric:
+def sparse_max_element(m: CSRMatrix) -> SparseMetric:
     """True maximum over ALL positions, implicit zeros included.
 
     Differs from `sv_max` exactly when every stored value is negative and some position
@@ -650,7 +650,7 @@ fn sparse_max_element(m: CSRMatrix) -> SparseMetric:
     )
 
 
-fn sparse_row_norm_inf(m: CSRMatrix) -> SparseMetric:
+def sparse_row_norm_inf(m: CSRMatrix) -> SparseMetric:
     """Max absolute row sum. Absent when a non-finite value makes it meaningless."""
     var report = sparse_health(m)
     if not report.diagnosed:
@@ -660,7 +660,7 @@ fn sparse_row_norm_inf(m: CSRMatrix) -> SparseMetric:
     return SparseMetric(report.status, True, report.norm_inf)
 
 
-fn sparse_min_abs_diagonal(m: CSRMatrix) -> SparseMetric:
+def sparse_min_abs_diagonal(m: CSRMatrix) -> SparseMetric:
     """Smallest `|A_ii|` over the whole diagonal, absent entries counted as zeros.
 
     The tempting version — a minimum over the STORED diagonal entries — reports a
@@ -675,7 +675,7 @@ fn sparse_min_abs_diagonal(m: CSRMatrix) -> SparseMetric:
     )
 
 
-fn sparse_symmetry_defect(
+def sparse_symmetry_defect(
     m: CSRMatrix, tol: Float64 = DIAG_SYMMETRY_TOL
 ) -> SparseMetric:
     """`max |A_ij - A_ji|`, absent for a non-square or non-finite matrix."""
@@ -692,7 +692,7 @@ fn sparse_symmetry_defect(
 # ── condition number ──────────────────────────────────────────────────────────
 
 
-fn sparse_condition_estimate(
+def sparse_condition_estimate(
     m: CSRMatrix, max_n: Int
 ) -> SparseConditionEstimate:
     """`||A||_inf * ||A^-1||_inf` from `linalg_ext.mat_condition_number`, honestly.
@@ -749,7 +749,7 @@ fn sparse_condition_estimate(
 # runtime contract and the dispatch generator are known to carry.
 
 
-fn sparse_health_driver(
+def sparse_health_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -763,7 +763,7 @@ fn sparse_health_driver(
     )
 
 
-fn sparse_health_from_dense_driver(
+def sparse_health_from_dense_driver(
     dense: List[Float64], rows: Int, cols: Int, tol: Float64
 ) -> SparseHealthReport:
     """Health report for a flat row-major dense matrix.
@@ -776,7 +776,7 @@ fn sparse_health_from_dense_driver(
     return sparse_health(csr_from_dense(dense, rows, cols), tol)
 
 
-fn sparse_health_summary_driver(
+def sparse_health_summary_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -790,7 +790,7 @@ fn sparse_health_summary_driver(
     )
 
 
-fn sparse_density_driver(
+def sparse_density_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -802,7 +802,7 @@ fn sparse_density_driver(
     )
 
 
-fn sparse_trace_driver(
+def sparse_trace_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -814,7 +814,7 @@ fn sparse_trace_driver(
     )
 
 
-fn sparse_max_abs_driver(
+def sparse_max_abs_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -826,7 +826,7 @@ fn sparse_max_abs_driver(
     )
 
 
-fn sparse_max_element_driver(
+def sparse_max_element_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -838,7 +838,7 @@ fn sparse_max_element_driver(
     )
 
 
-fn sparse_row_norm_inf_driver(
+def sparse_row_norm_inf_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -850,7 +850,7 @@ fn sparse_row_norm_inf_driver(
     )
 
 
-fn sparse_min_abs_diagonal_driver(
+def sparse_min_abs_diagonal_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -862,7 +862,7 @@ fn sparse_min_abs_diagonal_driver(
     )
 
 
-fn sparse_symmetry_defect_driver(
+def sparse_symmetry_defect_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -875,7 +875,7 @@ fn sparse_symmetry_defect_driver(
     )
 
 
-fn sparse_condition_estimate_driver(
+def sparse_condition_estimate_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],

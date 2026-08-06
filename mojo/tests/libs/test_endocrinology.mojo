@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from endocrinology import hormone_clearance_rate, receptor_binding_bmax, feedback_gain, hormone_pulsatility, cortisol_circadian, insulin_sensitivity_index, thyroid_free_fraction, growth_rate_igf, testosterone_free, negative_feedback_strength
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

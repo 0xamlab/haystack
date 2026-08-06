@@ -49,11 +49,11 @@ from std.math import abs as fabs, exp, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Telecommunications Tests ─────────────────────────────────────────────────
 
 
-fn test_telecommunications() raises:
+def test_telecommunications() raises:
     # shannon_capacity: 1MHz * log2(1+100) = 1e6 * log2(101) ≈ 6.66e6
     var sc = shannon_capacity(1e6, 100.0)
     assert_true(rel_eq(sc, 1e6 * log(101.0) / log(2.0)), "shannon cap")
@@ -123,7 +123,7 @@ fn test_telecommunications() raises:
 # ── Composites Tests ─────────────────────────────────────────────────────────
 
 
-fn test_composites() raises:
+def test_composites() raises:
     # rule_of_mixtures_modulus: 0.6*230 + 0.4*3.5 = 138+1.4 = 139.4
     assert_true(approx_eq(rule_of_mixtures_modulus(0.6, 230.0, 3.5), 139.4), "rom E1")
     # pure matrix: 0*230 + 1*3.5 = 3.5
@@ -184,7 +184,7 @@ fn test_composites() raises:
 # ── Demographics Tests ───────────────────────────────────────────────────────
 
 
-fn test_demographics() raises:
+def test_demographics() raises:
     # crude_birth_rate: 50000/5000000 * 1000 = 10.0
     assert_true(approx_eq(crude_birth_rate(50000.0, 5000000.0), 10.0), "cbr")
     assert_true(approx_eq(crude_birth_rate(100.0, 0.0), 0.0), "cbr zero pop")
@@ -240,7 +240,7 @@ fn test_demographics() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 84 tests: Telecommunications, Composites, Demographics")
     test_telecommunications()
     test_composites()

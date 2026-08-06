@@ -25,12 +25,12 @@ from std.math import sqrt, exp
 # ── Box geometry ─────────────────────────────────────────────────────────────
 
 
-fn box_volume(length: Float64, width: Float64, height: Float64) -> Float64:
+def box_volume(length: Float64, width: Float64, height: Float64) -> Float64:
     """Box volume: V = L * W * H."""
     return length * width * height
 
 
-fn box_surface_area(
+def box_surface_area(
     length: Float64, width: Float64, height: Float64
 ) -> Float64:
     """Box surface area: SA = 2*(L*W + W*H + L*H)."""
@@ -40,13 +40,13 @@ fn box_surface_area(
 # ── Cylinder geometry ────────────────────────────────────────────────────────
 
 
-fn cylinder_volume(radius: Float64, height: Float64) -> Float64:
+def cylinder_volume(radius: Float64, height: Float64) -> Float64:
     """Cylinder volume: V = π*r²*h."""
     var pi: Float64 = 3.141592653589793
     return pi * radius * radius * height
 
 
-fn cylinder_surface_area(radius: Float64, height: Float64) -> Float64:
+def cylinder_surface_area(radius: Float64, height: Float64) -> Float64:
     """Cylinder total surface area: SA = 2*π*r*(r + h)."""
     var pi: Float64 = 3.141592653589793
     return 2.0 * pi * radius * (radius + height)
@@ -55,14 +55,14 @@ fn cylinder_surface_area(radius: Float64, height: Float64) -> Float64:
 # ── Material & strength ──────────────────────────────────────────────────────
 
 
-fn material_utilization(
+def material_utilization(
     product_area: Float64, blank_area: Float64
 ) -> Float64:
     """Material utilization percentage: MU = (product / blank) * 100."""
     return product_area / blank_area * 100.0
 
 
-fn compression_strength_mckee(
+def compression_strength_mckee(
     ect: Float64, perimeter: Float64, thickness: Float64
 ) -> Float64:
     """McKee box compression strength: CS = 5.87 * ECT * √(perimeter * thickness).
@@ -75,12 +75,12 @@ fn compression_strength_mckee(
 # ── Stacking & cushioning ───────────────────────────────────────────────────
 
 
-fn stacking_load(weight: Float64, layers: Float64) -> Float64:
+def stacking_load(weight: Float64, layers: Float64) -> Float64:
     """Static stacking load on bottom box: F = weight * (layers - 1)."""
     return weight * (layers - 1.0)
 
 
-fn cushion_curve_g(
+def cushion_curve_g(
     drop_height: Float64,
     cushion_thickness: Float64,
     static_stress: Float64,
@@ -98,7 +98,7 @@ fn cushion_curve_g(
 # ── Pallet & fill ───────────────────────────────────────────────────────────
 
 
-fn pallet_efficiency(
+def pallet_efficiency(
     box_area: Float64,
     pallet_area: Float64,
     boxes_per_layer: Float64,
@@ -107,7 +107,7 @@ fn pallet_efficiency(
     return boxes_per_layer * box_area / pallet_area * 100.0
 
 
-fn fill_percentage(
+def fill_percentage(
     product_volume: Float64, container_volume: Float64
 ) -> Float64:
     """Fill percentage: FP = (product / container) * 100."""
@@ -117,7 +117,7 @@ fn fill_percentage(
 # ── Shelf life & shipping ───────────────────────────────────────────────────
 
 
-fn shelf_life_arrhenius(
+def shelf_life_arrhenius(
     a: Float64, ea: Float64, r: Float64, temperature: Float64
 ) -> Float64:
     """Arrhenius reaction rate: k = A * exp(-Ea / (R * T)).
@@ -128,7 +128,7 @@ fn shelf_life_arrhenius(
     return a * exp(-ea / (r * temperature))
 
 
-fn dimensional_weight(
+def dimensional_weight(
     length: Float64,
     width: Float64,
     height: Float64,

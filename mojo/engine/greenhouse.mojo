@@ -24,7 +24,7 @@ from std.math import abs as fabs
 # ── heat_loss_conduction ─────────────────────────────────────────────────────
 
 
-fn heat_loss_conduction(
+def heat_loss_conduction(
     u_value: Float64, area: Float64, delta_t: Float64
 ) -> Float64:
     """Heat loss by conduction: Q = U * A * ΔT (watts).
@@ -43,7 +43,7 @@ fn heat_loss_conduction(
 # ── ventilation_rate ─────────────────────────────────────────────────────────
 
 
-fn ventilation_rate(
+def ventilation_rate(
     volume: Float64, air_changes_per_hour: Float64
 ) -> Float64:
     """Ventilation flow rate: Q = V * ACH / 3600 (m³/s).
@@ -61,7 +61,7 @@ fn ventilation_rate(
 # ── solar_gain ───────────────────────────────────────────────────────────────
 
 
-fn solar_gain(
+def solar_gain(
     transmittance: Float64, area: Float64, radiation: Float64
 ) -> Float64:
     """Solar heat gain: Q = τ * A * G (watts).
@@ -80,7 +80,7 @@ fn solar_gain(
 # ── heating_requirement ──────────────────────────────────────────────────────
 
 
-fn heating_requirement(
+def heating_requirement(
     heat_loss: Float64, solar_gain_val: Float64
 ) -> Float64:
     """Net heating requirement: H = max(0, loss - gain).
@@ -101,7 +101,7 @@ fn heating_requirement(
 # ── co2_enrichment_rate ──────────────────────────────────────────────────────
 
 
-fn co2_enrichment_rate(
+def co2_enrichment_rate(
     target_ppm: Float64,
     current_ppm: Float64,
     volume: Float64,
@@ -124,7 +124,7 @@ fn co2_enrichment_rate(
 # ── light_supplementation_hours ──────────────────────────────────────────────
 
 
-fn light_supplementation_hours(
+def light_supplementation_hours(
     target_dli: Float64, natural_dli: Float64, ppfd: Float64
 ) -> Float64:
     """Supplemental lighting hours: Hours = (target-natural)*1e6/(ppfd*3600).
@@ -148,7 +148,7 @@ fn light_supplementation_hours(
 # ── irrigation_volume ────────────────────────────────────────────────────────
 
 
-fn irrigation_volume(
+def irrigation_volume(
     et_rate: Float64, area: Float64, efficiency: Float64
 ) -> Float64:
     """Irrigation volume: V = ET * A / eff (liters).
@@ -169,7 +169,7 @@ fn irrigation_volume(
 # ── growing_area_utilization ─────────────────────────────────────────────────
 
 
-fn growing_area_utilization(
+def growing_area_utilization(
     planted_area: Float64, total_area: Float64
 ) -> Float64:
     """Growing area utilization: U = planted/total * 100 (%).
@@ -189,7 +189,7 @@ fn growing_area_utilization(
 # ── energy_cost_heating ──────────────────────────────────────────────────────
 
 
-fn energy_cost_heating(kwh: Float64, rate: Float64) -> Float64:
+def energy_cost_heating(kwh: Float64, rate: Float64) -> Float64:
     """Heating energy cost: Cost = kWh * rate.
 
     Args:
@@ -205,7 +205,7 @@ fn energy_cost_heating(kwh: Float64, rate: Float64) -> Float64:
 # ── yield_per_sq_meter ───────────────────────────────────────────────────────
 
 
-fn yield_per_sq_meter(
+def yield_per_sq_meter(
     total_kg: Float64, area_m2: Float64
 ) -> Float64:
     """Yield per square metre: Y = kg / m².
@@ -225,7 +225,7 @@ fn yield_per_sq_meter(
 # ── temperature_setpoint_night ───────────────────────────────────────────────
 
 
-fn temperature_setpoint_night(
+def temperature_setpoint_night(
     day_temp: Float64, dif: Float64
 ) -> Float64:
     """Night temperature setpoint: T_night = day_temp - DIF.
@@ -243,7 +243,7 @@ fn temperature_setpoint_night(
 # ── shade_factor ─────────────────────────────────────────────────────────────
 
 
-fn shade_factor(shade_pct: Float64) -> Float64:
+def shade_factor(shade_pct: Float64) -> Float64:
     """Shade factor: Factor = 1 - shade/100.
 
     Args:

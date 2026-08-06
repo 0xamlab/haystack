@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from urban_planning import population_density, floor_area_ratio, lot_coverage, green_space_ratio, walk_score_distance_decay, vehicle_miles_traveled, parking_requirement, traffic_level_of_service, housing_affordability_ratio, jobs_housing_balance, infrastructure_cost_per_unit, impervious_surface_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

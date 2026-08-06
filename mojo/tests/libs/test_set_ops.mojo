@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from set_ops import set_union, set_intersection, set_difference, set_symmetric_difference, is_subset, is_superset, set_equals, power_set_size, jaccard_index, to_set, set_contains, set_cardinality
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -34,11 +34,11 @@ struct ARFit(Copyable, Movable):
     var phi: List[Float64]
     var sigma2: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.phi = List[Float64]()
         self.sigma2 = 0.0
 
-    fn __init__(out self, phi: List[Float64], sigma2: Float64):
+    def __init__(out self, phi: List[Float64], sigma2: Float64):
         self.phi = phi.copy()
         self.sigma2 = sigma2
 
@@ -49,11 +49,11 @@ struct MAFit(Copyable, Movable):
     var theta: List[Float64]
     var sigma2: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.theta = List[Float64]()
         self.sigma2 = 0.0
 
-    fn __init__(out self, theta: List[Float64], sigma2: Float64):
+    def __init__(out self, theta: List[Float64], sigma2: Float64):
         self.theta = theta.copy()
         self.sigma2 = sigma2
 
@@ -61,7 +61,7 @@ struct MAFit(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     var n = len(data)
     if n == 0:
         return 0.0
@@ -71,7 +71,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _autocovariances(data: List[Float64], max_lag: Int) -> List[Float64]:
+def _autocovariances(data: List[Float64], max_lag: Int) -> List[Float64]:
     """Biased (1/n) sample autocovariances gamma[0..max_lag], de-meaned.
 
     The 1/n normalization keeps the autocovariance sequence non-negative
@@ -91,7 +91,7 @@ fn _autocovariances(data: List[Float64], max_lag: Int) -> List[Float64]:
     return out^
 
 
-fn _gamma_at(autocov: List[Float64], k: Int) -> Float64:
+def _gamma_at(autocov: List[Float64], k: Int) -> Float64:
     """autocov[k] with out-of-range lags treated as 0."""
     if k < 0 or k >= len(autocov):
         return 0.0
@@ -101,7 +101,7 @@ fn _gamma_at(autocov: List[Float64], k: Int) -> Float64:
 # ── durbin_levinson ──────────────────────────────────────────────────────────
 
 
-fn durbin_levinson(autocov: List[Float64], p: Int) -> ARFit:
+def durbin_levinson(autocov: List[Float64], p: Int) -> ARFit:
     """Durbin-Levinson recursion: solve the order-p Yule-Walker equations.
 
     autocov must hold gamma(0..p) (missing high lags are treated as 0;
@@ -160,7 +160,7 @@ fn durbin_levinson(autocov: List[Float64], p: Int) -> ARFit:
 # ── ar_fit_yule_walker ───────────────────────────────────────────────────────
 
 
-fn ar_fit_yule_walker(series: List[Float64], p: Int) -> ARFit:
+def ar_fit_yule_walker(series: List[Float64], p: Int) -> ARFit:
     """Fit AR(p) by Yule-Walker: Durbin-Levinson on the sample ACF.
 
     The series is de-meaned internally (model on x_t - mean). p is clamped
@@ -183,7 +183,7 @@ fn ar_fit_yule_walker(series: List[Float64], p: Int) -> ARFit:
 # ── ar_forecast ──────────────────────────────────────────────────────────────
 
 
-fn ar_forecast(
+def ar_forecast(
     series: List[Float64], phi: List[Float64], steps: Int
 ) -> List[Float64]:
     """h-step-ahead AR forecasts, h = 1..steps.
@@ -222,7 +222,7 @@ fn ar_forecast(
 # ── innovations_algorithm ────────────────────────────────────────────────────
 
 
-fn innovations_algorithm(
+def innovations_algorithm(
     autocov: List[Float64], q: Int, max_iter: Int
 ) -> MAFit:
     """Innovations algorithm (Brockwell & Davis) on given autocovariances.
@@ -291,7 +291,7 @@ fn innovations_algorithm(
 # ── ma_fit_innovations ───────────────────────────────────────────────────────
 
 
-fn ma_fit_innovations(series: List[Float64], q: Int, max_iter: Int) -> MAFit:
+def ma_fit_innovations(series: List[Float64], q: Int, max_iter: Int) -> MAFit:
     """Fit MA(q) via the innovations algorithm on the sample ACF.
 
     The series is de-meaned internally. Runs M = max(q, min(max_iter, n-1))
@@ -323,7 +323,7 @@ fn ma_fit_innovations(series: List[Float64], q: Int, max_iter: Int) -> MAFit:
 # ── arma_loglik_css ──────────────────────────────────────────────────────────
 
 
-fn arma_loglik_css(
+def arma_loglik_css(
     series: List[Float64], phi: List[Float64], theta: List[Float64]
 ) -> Float64:
     """Conditional-sum-of-squares Gaussian log-likelihood of an ARMA(p,q).
@@ -371,7 +371,7 @@ fn arma_loglik_css(
 # ── difference ───────────────────────────────────────────────────────────────
 
 
-fn difference(series: List[Float64], order: Int = 1) -> List[Float64]:
+def difference(series: List[Float64], order: Int = 1) -> List[Float64]:
     """Order-d differencing: apply diff[i] = x[i+1] - x[i], d times.
 
     Returns a series of length max(len(series) - order, 0); order <= 0
@@ -394,7 +394,7 @@ fn difference(series: List[Float64], order: Int = 1) -> List[Float64]:
 # ── undifference ─────────────────────────────────────────────────────────────
 
 
-fn undifference(
+def undifference(
     diffed: List[Float64], initial: List[Float64]
 ) -> List[Float64]:
     """Exact inverse of order-d differencing; d = len(initial).

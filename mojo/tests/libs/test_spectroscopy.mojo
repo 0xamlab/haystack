@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from spectroscopy import wavenumber_from_wavelength, wavelength_from_wavenumber, energy_from_wavelength, absorbance_from_transmittance, transmittance_from_absorbance, beer_lambert_concentration, resolution_spectrometer, snr_coadd, raman_shift, fluorescence_quantum_yield, stokes_shift, spectral_bandwidth
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

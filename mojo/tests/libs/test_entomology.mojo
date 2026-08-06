@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from entomology import degree_days, accumulated_degree_days, population_growth_intrinsic, net_reproductive_rate, generation_time, doubling_time_population, species_diversity_simpson, trap_catch_index, infestation_rate, biocontrol_efficacy, larval_mortality_rate, metabolic_rate_insect
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

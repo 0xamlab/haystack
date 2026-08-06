@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from orthodontics import tooth_movement_rate, moment_to_force_ratio, anchorage_loss_estimate, arch_wire_force, levelling_torque, bolton_ratio, pont_index, arch_perimeter_estimate, growth_prediction_cephalometric, retainer_force_decay
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

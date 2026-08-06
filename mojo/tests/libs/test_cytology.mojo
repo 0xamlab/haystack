@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cytology import cell_volume_sphere, nuclear_cytoplasmic_ratio, membrane_permeability, cell_doubling_time, mitotic_index, cell_viability, apoptosis_rate, phagocytic_index, cell_adhesion_strength, osmotic_fragility
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

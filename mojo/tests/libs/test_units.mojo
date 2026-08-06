@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from units import convert_length, convert_mass, convert_temperature, convert_time, convert_area, convert_volume, convert_speed, convert_data
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

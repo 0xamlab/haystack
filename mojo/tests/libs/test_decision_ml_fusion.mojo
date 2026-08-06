@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from decision_ml_fusion import ml_to_simulation_weight, simulation_to_objective, expected_value_under_model, regret_from_prediction, counterfactual_utility, policy_gradient_advantage, reward_shaping_potential, multi_objective_scalarize, model_confidence_gate, adaptive_exploration_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

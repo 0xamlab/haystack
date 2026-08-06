@@ -24,12 +24,12 @@ from columnar.hash_index import (
 )
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     """A NaN produced arithmetically, so it is not a literal the compiler folded."""
     return sqrt(-1.0)
 
 
-fn _lcg_next_local(state: UInt64) -> UInt64:
+def _lcg_next_local(state: UInt64) -> UInt64:
     """A tiny deterministic PRNG — same shape as `test_query_aggregate_round3`'s
     own `_lcg_next`, re-derived here rather than imported so this file's key
     stream needs no cross-test-file dependency for a handful of pseudo-random
@@ -37,7 +37,7 @@ fn _lcg_next_local(state: UInt64) -> UInt64:
     return state * 6364136223846793005 + 1442695040888963407
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

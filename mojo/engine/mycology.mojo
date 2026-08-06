@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt, pow
 
 
-fn spore_dispersal_distance(
+def spore_dispersal_distance(
     release_height: Float64, wind_speed: Float64, settling_velocity: Float64
 ) -> Float64:
     """Horizontal dispersal distance for a spore released at height h.
@@ -36,7 +36,7 @@ fn spore_dispersal_distance(
     return wind_speed * release_height / settling_velocity
 
 
-fn mycelial_growth_rate(
+def mycelial_growth_rate(
     colony_diam_t2: Float64, colony_diam_t1: Float64, time_days: Float64
 ) -> Float64:
     """Radial mycelial extension rate.
@@ -56,7 +56,7 @@ fn mycelial_growth_rate(
     return (colony_diam_t2 - colony_diam_t1) / (2.0 * time_days)
 
 
-fn fungal_biomass(ergosterol_ug_g: Float64, conversion_factor: Float64) -> Float64:
+def fungal_biomass(ergosterol_ug_g: Float64, conversion_factor: Float64) -> Float64:
     """Fungal biomass from ergosterol content.
 
     Biomass = ergosterol / conversion_factor
@@ -73,7 +73,7 @@ fn fungal_biomass(ergosterol_ug_g: Float64, conversion_factor: Float64) -> Float
     return ergosterol_ug_g / conversion_factor
 
 
-fn sporulation_index(
+def sporulation_index(
     spore_count: Float64, colony_area_cm2: Float64
 ) -> Float64:
     """Sporulation density: spores per cm² colony area.
@@ -90,7 +90,7 @@ fn sporulation_index(
     return spore_count / colony_area_cm2
 
 
-fn infection_efficiency(
+def infection_efficiency(
     successful_infections: Float64, spores_deposited: Float64
 ) -> Float64:
     """Fraction of deposited spores causing infection (infection efficiency).
@@ -107,7 +107,7 @@ fn infection_efficiency(
     return successful_infections / spores_deposited
 
 
-fn latent_period(
+def latent_period(
     temperature: Float64, t_min: Float64, t_opt: Float64
 ) -> Float64:
     """Thermal latent period estimate (Analytis-type model).
@@ -130,7 +130,7 @@ fn latent_period(
     return 1.0 / activity
 
 
-fn epidemic_progress_rate(
+def epidemic_progress_rate(
     x1: Float64, x2: Float64, t1: Float64, t2: Float64
 ) -> Float64:
     """Logistic epidemic rate r (Vanderplank).
@@ -152,7 +152,7 @@ fn epidemic_progress_rate(
     return (log(x2 / (1.0 - x2)) - log(x1 / (1.0 - x1))) / dt
 
 
-fn spore_germination_prob(
+def spore_germination_prob(
     temperature: Float64, t_opt: Float64, relative_humidity: Float64
 ) -> Float64:
     """Probability of spore germination based on temperature and humidity.
@@ -177,7 +177,7 @@ fn spore_germination_prob(
     return temp_factor * rh_factor
 
 
-fn colony_diameter(growth_rate_mm_day: Float64, time_days: Float64) -> Float64:
+def colony_diameter(growth_rate_mm_day: Float64, time_days: Float64) -> Float64:
     """Colony diameter from linear extension rate.
 
     D = 2 * r * t  (starting from small inoculum)
@@ -194,7 +194,7 @@ fn colony_diameter(growth_rate_mm_day: Float64, time_days: Float64) -> Float64:
     return 2.0 * growth_rate_mm_day * time_days
 
 
-fn competitive_exclusion_index(
+def competitive_exclusion_index(
     alpha12: Float64, alpha21: Float64
 ) -> Float64:
     """Lotka-Volterra competitive exclusion ratio.

@@ -53,7 +53,7 @@ struct WeightsBundle(Copyable, Movable):
     var names: List[String]
     var arrays: List[List[Float64]]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.names = List[String]()
         self.arrays = List[List[Float64]]()
@@ -62,7 +62,7 @@ struct WeightsBundle(Copyable, Movable):
 # ── integer digit formatting (manual, no String(Float64)) ───────────────────
 
 
-fn _uint_to_string(v: Int) -> String:
+def _uint_to_string(v: Int) -> String:
     """Decimal digits of a non-negative Int, built manually."""
     if v <= 0:
         return String("0")
@@ -79,14 +79,14 @@ fn _uint_to_string(v: Int) -> String:
     return s
 
 
-fn _int_to_string(v: Int) -> String:
+def _int_to_string(v: Int) -> String:
     """Decimal digits of a signed Int."""
     if v < 0:
         return "-" + _uint_to_string(-v)
     return _uint_to_string(v)
 
 
-fn _bit_length(v: Int) -> Int:
+def _bit_length(v: Int) -> Int:
     """Number of bits needed to represent v > 0."""
     var b = 0
     var x = v
@@ -100,19 +100,19 @@ fn _bit_length(v: Int) -> Int:
 
 
 @always_inline
-fn _pos_inf() -> Float64:
+def _pos_inf() -> Float64:
     var big: Float64 = 1.0e308
     return big * 10.0
 
 
 @always_inline
-fn _quiet_nan() -> Float64:
+def _quiet_nan() -> Float64:
     var z: Float64 = 0.0
     return z / z
 
 
 @always_inline
-fn _is_neg_zero(v: Float64) -> Bool:
+def _is_neg_zero(v: Float64) -> Bool:
     if v != 0.0:
         return False
     var one: Float64 = 1.0
@@ -122,7 +122,7 @@ fn _is_neg_zero(v: Float64) -> Bool:
 # ── exact binary decomposition / reconstruction ──────────────────────────────
 
 
-fn _decompose(x0: Float64) -> Tuple[Int, Int]:
+def _decompose(x0: Float64) -> Tuple[Int, Int]:
     """Exact (m, e) with x0 = m * 2^e and m odd, for finite x0 > 0.
 
     Scales x0 into [2^52, 2^53) using only power-of-two multiplies and
@@ -155,7 +155,7 @@ fn _decompose(x0: Float64) -> Tuple[Int, Int]:
     return (m, e)
 
 
-fn _scale_by_pow2(v0: Float64, e: Int) -> Float64:
+def _scale_by_pow2(v0: Float64, e: Int) -> Float64:
     """v0 * 2^e via exact power-of-two steps.
 
     Exact whenever the true result (and thus every intermediate, which
@@ -183,7 +183,7 @@ fn _scale_by_pow2(v0: Float64, e: Int) -> Float64:
 # ── value token: format ──────────────────────────────────────────────────────
 
 
-fn _float_to_token(v: Float64) -> String:
+def _float_to_token(v: Float64) -> String:
     """One Float64 -> exact token (see module docstring for grammar)."""
     if v != v:
         return String("nan")
@@ -215,7 +215,7 @@ fn _float_to_token(v: Float64) -> String:
 # ── value token: parse ───────────────────────────────────────────────────────
 
 
-fn _parse_token(bytes: Span[Byte, _], start: Int, end: Int) -> Tuple[Bool, Float64]:
+def _parse_token(bytes: Span[Byte, _], start: Int, end: Int) -> Tuple[Bool, Float64]:
     """Strict parse of one token in bytes[start:end). Returns (ok, value)."""
     if start >= end:
         return (False, 0.0)
@@ -302,7 +302,7 @@ fn _parse_token(bytes: Span[Byte, _], start: Int, end: Int) -> Tuple[Bool, Float
 # ── name sanitization ────────────────────────────────────────────────────────
 
 
-fn _sanitize_name(name: String) -> String:
+def _sanitize_name(name: String) -> String:
     """Replace '|', '\\n', '\\r' bytes with '_'; unchanged names pass through."""
     var bytes = name.as_bytes()
     var n = len(name)
@@ -327,7 +327,7 @@ fn _sanitize_name(name: String) -> String:
 # ── weights_to_string ────────────────────────────────────────────────────────
 
 
-fn weights_to_string(names: List[String], arrays: List[List[Float64]]) -> String:
+def weights_to_string(names: List[String], arrays: List[List[Float64]]) -> String:
     """Serialize named Float64 arrays to the versioned 'v1|name|len|csv' format.
 
     One '\\n'-terminated line per array; value tokens are bit-exact (see
@@ -363,7 +363,7 @@ fn weights_to_string(names: List[String], arrays: List[List[Float64]]) -> String
 # ── weights_from_string ──────────────────────────────────────────────────────
 
 
-fn _parse_line(
+def _parse_line(
     bytes: Span[Byte, _], start: Int, end: Int, mut bundle: WeightsBundle
 ) -> Bool:
     """Parse one 'v1|name|len|csv' line in bytes[start:end) into bundle."""
@@ -423,7 +423,7 @@ fn _parse_line(
     return True
 
 
-fn weights_from_string(s: String) -> WeightsBundle:
+def weights_from_string(s: String) -> WeightsBundle:
     """Parse a payload produced by weights_to_string.
 
     Strict: version tag must be 'v1', field count must match, declared
@@ -462,7 +462,7 @@ fn weights_from_string(s: String) -> WeightsBundle:
 # ── string_checksum ──────────────────────────────────────────────────────────
 
 
-fn string_checksum(s: String) -> Float64:
+def string_checksum(s: String) -> Float64:
     """FNV-1a 64-bit hash of the string's bytes, xor-folded to 32 bits.
 
     For receipts/audit logs: deterministic, order-sensitive, and exactly

@@ -233,7 +233,7 @@ comptime _F_DRIFT: Int = 14
 comptime _F_SQ1MR2: Int = 15
 
 
-fn heston_scheme_name(scheme: Int) -> String:
+def heston_scheme_name(scheme: Int) -> String:
     """The discretisation's name. Print this next to every figure — an unnamed scheme is not a
     result, because full truncation and QE have different bias and disagree at coarse dt."""
     if scheme == HESTON_SCHEME_QE:
@@ -243,7 +243,7 @@ fn heston_scheme_name(scheme: Int) -> String:
     return String("unknown")
 
 
-fn _finite(x: Float64) -> Bool:
+def _finite(x: Float64) -> Bool:
     return not (isnan(x) or isinf(x))
 
 
@@ -266,7 +266,7 @@ fn _finite(x: Float64) -> Bool:
 # of silently producing a different distribution.
 
 
-fn _philox_block(
+def _philox_block(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, block: UInt64,
     mut o0: UInt64, mut o1: UInt64,
@@ -300,7 +300,7 @@ fn _philox_block(
     o1 = c1
 
 
-fn _mul_hi64_h(a: UInt64, b: UInt64) -> UInt64:
+def _mul_hi64_h(a: UInt64, b: UInt64) -> UInt64:
     """High 64 bits of a 64x64 product. Mirrors `counter_rng._mul_hi64` exactly."""
     var a_lo = a & 0xFFFFFFFF
     var a_hi = a >> 32
@@ -321,7 +321,7 @@ comptime PHILOX_W1_H: UInt64 = 0xBB67AE8584CAA73B
 comptime TWO_POW_NEG_53_H: Float64 = 1.1102230246251565e-16
 
 
-fn _fast_normal_and_uniform(
+def _fast_normal_and_uniform(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64,
     mut z: Float64, mut u: Float64,
@@ -342,7 +342,7 @@ fn _fast_normal_and_uniform(
     z = sqrt(-2.0 * log(u1)) * cos(TWO_PI_H * u2)
 
 
-fn heston_rng_bit_identity(n_draws: Int) -> Int:
+def heston_rng_bit_identity(n_draws: Int) -> Int:
     """Count of draws where the one-block path DISAGREES bit-for-bit with the frozen
     `counter_rng`. Must be 0, and the benchmark gates on it.
 
@@ -385,7 +385,7 @@ struct HestonParams(Copyable, ImplicitlyCopyable, Movable):
     var rho: Float64
     var q: Float64
 
-    fn __init__(
+    def __init__(
         out self, s0: Float64, v0: Float64, kappa: Float64, theta: Float64,
         xi: Float64, rho: Float64, q: Float64 = 0.0,
     ):
@@ -397,7 +397,7 @@ struct HestonParams(Copyable, ImplicitlyCopyable, Movable):
         self.rho = rho
         self.q = q
 
-    fn bumped(
+    def bumped(
         self, d_s0: Float64 = 0.0, d_v0: Float64 = 0.0, d_kappa: Float64 = 0.0,
         d_theta: Float64 = 0.0, d_xi: Float64 = 0.0, d_rho: Float64 = 0.0,
     ) -> HestonParams:
@@ -409,7 +409,7 @@ struct HestonParams(Copyable, ImplicitlyCopyable, Movable):
         )
 
 
-fn heston_feller(p: HestonParams) -> Float64:
+def heston_feller(p: HestonParams) -> Float64:
     """The Feller ratio 2 kappa theta / xi^2. Below 1 the variance reaches zero with positive
     probability, which is legitimate and is exactly the regime where a naive-Euler scheme goes
     negative. Report it: a Heston figure whose Feller ratio is not stated hides whether the
@@ -436,7 +436,7 @@ struct _QeCoef(Copyable, ImplicitlyCopyable, Movable):
     var k4: Float64
     var drift: Float64          # (r - q) dt
 
-    fn __init__(out self, p: HestonParams, r: Float64, dt: Float64):
+    def __init__(out self, p: HestonParams, r: Float64, dt: Float64):
         self.e_kdt = exp(-p.kappa * dt)
         self.one_m_e = 1.0 - self.e_kdt
         self.xi2 = p.xi * p.xi
@@ -482,7 +482,7 @@ struct HestonPaths(Copyable, Movable):
     var martingale_fallbacks: Int
     var n_exponential_branch: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_paths: Int, n_steps: Int, scheme: Int,
         log_s: List[Float64], terminal_v: List[Float64],
         n_negative_variance: Int, n_zero_variance: Int, martingale_fallbacks: Int,
@@ -500,14 +500,14 @@ struct HestonPaths(Copyable, Movable):
         self.n_exponential_branch = n_exponential_branch
 
 
-fn _paths_refusal(code: Int) -> HestonPaths:
+def _paths_refusal(code: Int) -> HestonPaths:
     return HestonPaths(code, 0, 0, 0, List[Float64](), List[Float64](), 0, 0, 0, 0)
 
 
 # ── heston_asset_paths ────────────────────────────────────────────────────────
 
 
-fn heston_asset_paths(
+def heston_asset_paths(
     p: HestonParams, r: Float64, t_years: Float64, n_paths: Int, n_steps: Int,
     master_seed: UInt64, scenario_id: UInt64, asset_index: UInt64,
     scheme: Int = HESTON_SCHEME_QE, martingale: Bool = True, workers: Int = 1,
@@ -578,7 +578,7 @@ struct BasketPaths(Copyable, Movable):
     var martingale_fallbacks: Int
     var n_exponential_branch: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_paths: Int, n_steps: Int, n_assets: Int, scheme: Int,
         best: List[Float64], log_s: List[Float64], terminal_v: List[Float64],
         n_negative_variance: Int, n_zero_variance: Int, martingale_fallbacks: Int,
@@ -598,13 +598,13 @@ struct BasketPaths(Copyable, Movable):
         self.n_exponential_branch = n_exponential_branch
 
 
-fn _basket_refusal(code: Int) -> BasketPaths:
+def _basket_refusal(code: Int) -> BasketPaths:
     return BasketPaths(
         code, 0, 0, 0, 0, List[Float64](), List[Float64](), List[Float64](), 0, 0, 0, 0
     )
 
 
-fn heston_basket_paths(
+def heston_basket_paths(
     params: List[HestonParams], asset_corr: List[List[Float64]], r: Float64, t_years: Float64,
     n_paths: Int, n_steps: Int, master_seed: UInt64, scenario_id: UInt64,
     scheme: Int = HESTON_SCHEME_QE, martingale: Bool = True, workers: Int = 1,
@@ -741,7 +741,7 @@ fn heston_basket_paths(
     var single = n_assets == 1
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var each = pn_paths // pnw
         var lo = tid * each
         var hi = lo + each if tid < pnw - 1 else pn_paths
@@ -993,7 +993,7 @@ struct BasketPrice(Copyable, Movable):
     var n_zero_variance: Int
     var martingale_fallbacks: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, price: Float64, std_error: Float64, european_value: Float64,
         early_exercise_premium: Float64, n_exercised: Int, n_paths: Int,
         n_negative_variance: Int, n_zero_variance: Int, martingale_fallbacks: Int,
@@ -1010,11 +1010,11 @@ struct BasketPrice(Copyable, Movable):
         self.martingale_fallbacks = martingale_fallbacks
 
 
-fn _price_refusal(code: Int) -> BasketPrice:
+def _price_refusal(code: Int) -> BasketPrice:
     return BasketPrice(code, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0)
 
 
-fn _lsm_fit(
+def _lsm_fit(
     xs: List[Float64], ys: List[Float64], n_itm: Int, degree: Int
 ) -> List[Float64]:
     """Normal-equations polynomial fit, accumulated in place.
@@ -1078,7 +1078,7 @@ fn _lsm_fit(
     return beta^
 
 
-fn heston_basket_price(
+def heston_basket_price(
     params: List[HestonParams], asset_corr: List[List[Float64]], strike: Float64,
     r: Float64, t_years: Float64, n_paths: Int, n_steps: Int,
     master_seed: UInt64, scenario_id: UInt64,
@@ -1260,7 +1260,7 @@ struct BasketGreeks(Copyable, Movable):
     var n_assets: Int
     var scheme: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, price: Float64, delta: List[Float64], gamma: List[Float64],
         cross_gamma: List[Float64], theta_greek: Float64, rho_greek: Float64,
         model_vega_kappa: List[Float64], model_vega_theta: List[Float64],
@@ -1298,7 +1298,7 @@ struct BasketGreeks(Copyable, Movable):
         self.scheme = scheme
 
 
-fn _greeks_refusal(code: Int) -> BasketGreeks:
+def _greeks_refusal(code: Int) -> BasketGreeks:
     var e = List[Float64]()
     return BasketGreeks(
         code, 0.0, e, e, e, 0.0, 0.0, e, e, e, e, e,
@@ -1306,7 +1306,7 @@ fn _greeks_refusal(code: Int) -> BasketGreeks:
     )
 
 
-fn _bump_spot(params: List[HestonParams], a: Int, rel: Float64) -> List[HestonParams]:
+def _bump_spot(params: List[HestonParams], a: Int, rel: Float64) -> List[HestonParams]:
     var out = List[HestonParams]()
     for i in range(len(params)):
         if i == a:
@@ -1316,7 +1316,7 @@ fn _bump_spot(params: List[HestonParams], a: Int, rel: Float64) -> List[HestonPa
     return out^
 
 
-fn _bump_corr_entry(
+def _bump_corr_entry(
     c: List[List[Float64]], i: Int, j: Int, h: Float64
 ) -> List[List[Float64]]:
     var out = List[List[Float64]]()
@@ -1335,7 +1335,7 @@ fn _bump_corr_entry(
     return out^
 
 
-fn heston_basket_greeks(
+def heston_basket_greeks(
     params: List[HestonParams], asset_corr: List[List[Float64]], strike: Float64,
     r: Float64, t_years: Float64, n_paths: Int, n_steps: Int,
     master_seed: UInt64, scenario_id: UInt64,
@@ -1390,7 +1390,7 @@ fn heston_basket_greeks(
     var np_ = 0
 
     @parameter
-    fn price_of(
+    def price_of(
         ps: List[HestonParams], cc: List[List[Float64]], rr: Float64, tt: Float64
     ) capturing -> Float64:
         var res = heston_basket_price(
@@ -1509,14 +1509,14 @@ fn heston_basket_greeks(
 # ── Heston closed form, "Little Heston Trap" formulation ──────────────────────
 
 
-fn _cf_ln(re: Float64, im: Float64, mut out_re: Float64, mut out_im: Float64):
+def _cf_ln(re: Float64, im: Float64, mut out_re: Float64, mut out_im: Float64):
     """Principal complex log. The branch cut is at the negative real axis, and the whole point of
     the trap formulation below is that the argument never crosses it, so `atan2` is safe."""
     out_re = 0.5 * log(re * re + im * im)
     out_im = atan2(im, re)
 
 
-fn _heston_char_integrand(
+def _heston_char_integrand(
     phi: Float64, j: Int, s0: Float64, k: Float64, v0: Float64, kappa: Float64,
     theta: Float64, xi: Float64, rho: Float64, r: Float64, q: Float64, t: Float64,
 ) -> Float64:
@@ -1622,7 +1622,7 @@ fn _heston_char_integrand(
     return val
 
 
-fn heston_closed_form_call(
+def heston_closed_form_call(
     p: HestonParams, strike: Float64, r: Float64, t_years: Float64,
     upper: Float64 = 200.0, n_nodes: Int = 4097,
 ) -> Float64:
@@ -1687,7 +1687,7 @@ struct DegeneracyCheck(Copyable, Movable):
     var rel_error: Float64
     var z_score: Float64
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_paths: Int, mc_price: Float64, bs_price: Float64,
         std_error: Float64, abs_error: Float64, rel_error: Float64, z_score: Float64,
     ):
@@ -1701,7 +1701,7 @@ struct DegeneracyCheck(Copyable, Movable):
         self.z_score = z_score
 
 
-fn heston_bs_degeneracy(
+def heston_bs_degeneracy(
     s0: Float64, strike: Float64, sigma: Float64, r: Float64, t_years: Float64,
     n_paths: Int, n_steps: Int, master_seed: UInt64, scenario_id: UInt64,
     scheme: Int = HESTON_SCHEME_QE, workers: Int = 1,
@@ -1776,7 +1776,7 @@ struct OptionPvCheck(Copyable, Movable):
     var martingale_fallbacks: Int
     var n_exponential_branch: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_paths: Int, n_steps: Int, mc_price: Float64,
         closed_form: Float64, std_error: Float64, abs_error: Float64, rel_error: Float64,
         z_score: Float64, n_negative_variance: Int, n_zero_variance: Int,
@@ -1797,7 +1797,7 @@ struct OptionPvCheck(Copyable, Movable):
         self.n_exponential_branch = n_exponential_branch
 
 
-fn heston_optionpv_error(
+def heston_optionpv_error(
     p: HestonParams, strike: Float64, r: Float64, t_years: Float64,
     n_paths: Int, n_steps: Int, master_seed: UInt64, scenario_id: UInt64,
     scheme: Int = HESTON_SCHEME_QE, martingale: Bool = True, workers: Int = 1,
@@ -1847,7 +1847,7 @@ fn heston_optionpv_error(
     )
 
 
-fn heston_binomial_earlyex_error(
+def heston_binomial_earlyex_error(
     s0: Float64, strike: Float64, sigma: Float64, r: Float64, t_years: Float64,
     n_paths: Int, n_steps: Int, master_seed: UInt64, scenario_id: UInt64,
     lsm_degree: Int = 2, workers: Int = 1,
@@ -1885,7 +1885,7 @@ fn heston_binomial_earlyex_error(
     return fabs(lsm.price - reference) / reference
 
 
-fn heston_realised_correlation(
+def heston_realised_correlation(
     n_assets: Int, asset_corr: List[List[Float64]], n_paths: Int,
     master_seed: UInt64, scenario_id: UInt64,
 ) -> Float64:
@@ -1954,7 +1954,7 @@ fn heston_realised_correlation(
     return sqrt(acc / Float64(cnt))
 
 
-fn heston_worker_invariance(
+def heston_worker_invariance(
     params: List[HestonParams], asset_corr: List[List[Float64]], strike: Float64,
     r: Float64, t_years: Float64, n_paths: Int, n_steps: Int,
     master_seed: UInt64, scenario_id: UInt64, workers: Int,
@@ -1996,7 +1996,7 @@ fn heston_worker_invariance(
     return 0
 
 
-fn heston_lsm_regression_agreement(n_points: Int, degree: Int) -> Float64:
+def heston_lsm_regression_agreement(n_points: Int, degree: Int) -> Float64:
     """Max absolute coefficient disagreement between `_lsm_fit` and the frozen
     `regression.ols_multiple` on the same synthetic data.
 
@@ -2070,7 +2070,7 @@ struct CrnReplicationStudy(Copyable, Movable):
     var pairing_reduces_variance: Bool
     var n_coordinate_identical: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_replications: Int, n_paths_per_rep: Int, half_width: Float64,
         z_level: Float64, paired_mean: Float64, paired_variance: Float64,
         unpaired_mean: Float64, unpaired_variance: Float64, variance_ratio: Float64,
@@ -2093,7 +2093,7 @@ struct CrnReplicationStudy(Copyable, Movable):
         self.n_coordinate_identical = n_coordinate_identical
 
 
-fn _reps_for(variance: Float64, half_width: Float64, z: Float64) -> Int:
+def _reps_for(variance: Float64, half_width: Float64, z: Float64) -> Int:
     if variance <= 0.0 or half_width <= 0.0:
         return 0
     var raw = (z * sqrt(variance) / half_width) * (z * sqrt(variance) / half_width)
@@ -2105,7 +2105,7 @@ fn _reps_for(variance: Float64, half_width: Float64, z: Float64) -> Int:
     return n
 
 
-fn heston_crn_replication_study(
+def heston_crn_replication_study(
     params: List[HestonParams], asset_corr: List[List[Float64]], strike: Float64,
     r: Float64, t_years: Float64, n_paths_per_rep: Int, n_steps: Int,
     n_replications: Int, master_seed: UInt64, half_width: Float64, z_level: Float64 = 1.96,
@@ -2221,17 +2221,17 @@ fn heston_crn_replication_study(
 # ── Deterministic zero-argument probes ────────────────────────────────────────
 
 
-fn heston_contract_id() -> String:
+def heston_contract_id() -> String:
     """The frozen contract identifier for this module. Deterministic, zero-argument."""
     return String("heston/qe-andersen2008+lsm-ls2001/v1")
 
 
-fn heston_qe_psi_critical() -> Float64:
+def heston_qe_psi_critical() -> Float64:
     """Andersen's psi_c branch threshold. Deterministic, zero-argument."""
     return QE_PSI_C
 
 
-fn heston_selftest() -> Float64:
+def heston_selftest() -> Float64:
     """A fixed 64-path, 16-step degeneracy price. Deterministic, zero-argument.
 
     Changing the scheme, the counter layout, or the draw budget changes this value — which is

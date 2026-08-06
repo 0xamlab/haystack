@@ -29,7 +29,7 @@ comptime LN10: Float64 = 2.302585092994046
 # ── stoichiometric_air_fuel_ratio ─────────────────────────────────────────────
 
 
-fn stoichiometric_air_fuel_ratio(
+def stoichiometric_air_fuel_ratio(
     c: Float64, h: Float64, o_fuel: Float64
 ) -> Float64:
     """Simplified stoichiometric AFR for CxHy fuels.
@@ -41,7 +41,7 @@ fn stoichiometric_air_fuel_ratio(
 # ── equivalence_ratio ─────────────────────────────────────────────────────────
 
 
-fn equivalence_ratio(actual_afr: Float64, stoich_afr: Float64) -> Float64:
+def equivalence_ratio(actual_afr: Float64, stoich_afr: Float64) -> Float64:
     """Equivalence ratio: φ = AFR_s / AFR_actual.
     φ < 1 = lean, φ > 1 = rich, φ = 1 = stoichiometric."""
     return stoich_afr / actual_afr
@@ -50,7 +50,7 @@ fn equivalence_ratio(actual_afr: Float64, stoich_afr: Float64) -> Float64:
 # ── excess_air_percentage ─────────────────────────────────────────────────────
 
 
-fn excess_air_percentage(phi: Float64) -> Float64:
+def excess_air_percentage(phi: Float64) -> Float64:
     """Excess air percentage: EA = (1/φ - 1) * 100."""
     return (1.0 / phi - 1.0) * 100.0
 
@@ -58,7 +58,7 @@ fn excess_air_percentage(phi: Float64) -> Float64:
 # ── adiabatic_flame_temp_estimate ─────────────────────────────────────────────
 
 
-fn adiabatic_flame_temp_estimate(
+def adiabatic_flame_temp_estimate(
     t_reactants: Float64,
     heat_release: Float64,
     cp_products: Float64,
@@ -72,7 +72,7 @@ fn adiabatic_flame_temp_estimate(
 # ── lower_heating_value_methane ───────────────────────────────────────────────
 
 
-fn lower_heating_value_methane() -> Float64:
+def lower_heating_value_methane() -> Float64:
     """LHV of methane (CH4) ≈ 50.0 MJ/kg. Returns MJ/kg."""
     return 50.0
 
@@ -80,7 +80,7 @@ fn lower_heating_value_methane() -> Float64:
 # ── thermal_efficiency ────────────────────────────────────────────────────────
 
 
-fn thermal_efficiency(work_out: Float64, heat_in: Float64) -> Float64:
+def thermal_efficiency(work_out: Float64, heat_in: Float64) -> Float64:
     """Thermal efficiency: η = W / Q_in."""
     return work_out / heat_in
 
@@ -88,7 +88,7 @@ fn thermal_efficiency(work_out: Float64, heat_in: Float64) -> Float64:
 # ── carnot_efficiency ─────────────────────────────────────────────────────────
 
 
-fn carnot_efficiency(t_hot: Float64, t_cold: Float64) -> Float64:
+def carnot_efficiency(t_hot: Float64, t_cold: Float64) -> Float64:
     """Carnot efficiency: η_c = 1 - T_c/T_h. Temperatures in Kelvin."""
     return 1.0 - t_cold / t_hot
 
@@ -96,7 +96,7 @@ fn carnot_efficiency(t_hot: Float64, t_cold: Float64) -> Float64:
 # ── brake_specific_fuel_consumption ───────────────────────────────────────────
 
 
-fn brake_specific_fuel_consumption(
+def brake_specific_fuel_consumption(
     fuel_rate: Float64, power: Float64
 ) -> Float64:
     """BSFC = m_fuel / P (kg/kWh when fuel_rate in kg/h, power in kW)."""
@@ -106,7 +106,7 @@ fn brake_specific_fuel_consumption(
 # ── combustion_efficiency ─────────────────────────────────────────────────────
 
 
-fn combustion_efficiency(
+def combustion_efficiency(
     heat_released: Float64, theoretical_heat: Float64
 ) -> Float64:
     """Combustion efficiency: η_c = Q_rel / Q_theo."""
@@ -116,7 +116,7 @@ fn combustion_efficiency(
 # ── flame_speed_laminar ───────────────────────────────────────────────────────
 
 
-fn flame_speed_laminar(
+def flame_speed_laminar(
     su0: Float64,
     t_ratio: Float64,
     pressure_ratio: Float64,
@@ -134,7 +134,7 @@ fn flame_speed_laminar(
 # ── nox_formation_rate ────────────────────────────────────────────────────────
 
 
-fn nox_formation_rate(temp: Float64, oxygen_fraction: Float64) -> Float64:
+def nox_formation_rate(temp: Float64, oxygen_fraction: Float64) -> Float64:
     """Simplified NOx formation rate ∝ O2_frac * exp(-const/T).
     Uses Zeldovich-inspired constant = 38000 K."""
     return oxygen_fraction * exp(-38000.0 / temp)
@@ -143,7 +143,7 @@ fn nox_formation_rate(temp: Float64, oxygen_fraction: Float64) -> Float64:
 # ── heat_release_rate ─────────────────────────────────────────────────────────
 
 
-fn heat_release_rate(
+def heat_release_rate(
     pressure: Float64,
     volume: Float64,
     gamma: Float64,

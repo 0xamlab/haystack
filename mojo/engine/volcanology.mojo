@@ -27,7 +27,7 @@ from std.math import sqrt, sin, pow, abs as fabs
 # ── vei_energy_estimate ──────────────────────────────────────────────────────
 
 
-fn vei_energy_estimate(vei: Float64) -> Float64:
+def vei_energy_estimate(vei: Float64) -> Float64:
     """E ≈ 10^(vei + 7)  joules (simplified)."""
     return pow(10.0, vei + 7.0)
 
@@ -35,7 +35,7 @@ fn vei_energy_estimate(vei: Float64) -> Float64:
 # ── lava_flow_velocity ───────────────────────────────────────────────────────
 
 
-fn lava_flow_velocity(slope_deg: Float64, viscosity: Float64, thickness: Float64,
+def lava_flow_velocity(slope_deg: Float64, viscosity: Float64, thickness: Float64,
                       density: Float64, g: Float64) -> Float64:
     """v = ρ·g·sin(θ)·h² / (3·μ)  (simplified Jeffreys equation)."""
     comptime PI: Float64 = 3.141592653589793
@@ -46,7 +46,7 @@ fn lava_flow_velocity(slope_deg: Float64, viscosity: Float64, thickness: Float64
 # ── eruption_column_height ───────────────────────────────────────────────────
 
 
-fn eruption_column_height(mass_rate: Float64, g: Float64) -> Float64:
+def eruption_column_height(mass_rate: Float64, g: Float64) -> Float64:
     """H ≈ 0.25 * mass_rate^0.25  (km, simplified Morton model)."""
     return 0.25 * pow(mass_rate, 0.25)
 
@@ -54,7 +54,7 @@ fn eruption_column_height(mass_rate: Float64, g: Float64) -> Float64:
 # ── tephra_fallout_thickness ─────────────────────────────────────────────────
 
 
-fn tephra_fallout_thickness(volume: Float64, area: Float64) -> Float64:
+def tephra_fallout_thickness(volume: Float64, area: Float64) -> Float64:
     """T = V / A  (metres)."""
     return volume / area
 
@@ -62,7 +62,7 @@ fn tephra_fallout_thickness(volume: Float64, area: Float64) -> Float64:
 # ── magma_viscosity_estimate ─────────────────────────────────────────────────
 
 
-fn magma_viscosity_estimate(sio2_pct: Float64) -> Float64:
+def magma_viscosity_estimate(sio2_pct: Float64) -> Float64:
     """η ≈ 10^((sio2 - 40) * 0.1)  (Pa·s, highly simplified)."""
     return pow(10.0, (sio2_pct - 40.0) * 0.1)
 
@@ -70,7 +70,7 @@ fn magma_viscosity_estimate(sio2_pct: Float64) -> Float64:
 # ── effusion_rate ────────────────────────────────────────────────────────────
 
 
-fn effusion_rate(volume: Float64, time_seconds: Float64) -> Float64:
+def effusion_rate(volume: Float64, time_seconds: Float64) -> Float64:
     """Q = V / t  (m³/s)."""
     return volume / time_seconds
 
@@ -78,7 +78,7 @@ fn effusion_rate(volume: Float64, time_seconds: Float64) -> Float64:
 # ── lahar_velocity ───────────────────────────────────────────────────────────
 
 
-fn lahar_velocity(slope: Float64, depth: Float64) -> Float64:
+def lahar_velocity(slope: Float64, depth: Float64) -> Float64:
     """v ≈ sqrt(g · depth · slope)  (simplified)."""
     return sqrt(9.81 * depth * slope)
 
@@ -86,7 +86,7 @@ fn lahar_velocity(slope: Float64, depth: Float64) -> Float64:
 # ── volcanic_gas_emission_rate ───────────────────────────────────────────────
 
 
-fn volcanic_gas_emission_rate(concentration: Float64, plume_flux: Float64) -> Float64:
+def volcanic_gas_emission_rate(concentration: Float64, plume_flux: Float64) -> Float64:
     """Rate = concentration * plume_flux  (tonnes/day)."""
     return concentration * plume_flux
 
@@ -94,7 +94,7 @@ fn volcanic_gas_emission_rate(concentration: Float64, plume_flux: Float64) -> Fl
 # ── recurrence_interval ──────────────────────────────────────────────────────
 
 
-fn recurrence_interval(n_events: Float64, time_span: Float64) -> Float64:
+def recurrence_interval(n_events: Float64, time_span: Float64) -> Float64:
     """RI = span / events  (years)."""
     return time_span / n_events
 
@@ -102,7 +102,7 @@ fn recurrence_interval(n_events: Float64, time_span: Float64) -> Float64:
 # ── alert_level ──────────────────────────────────────────────────────────────
 
 
-fn alert_level(seismicity: Float64, deformation: Float64, gas_emission: Float64) -> Float64:
+def alert_level(seismicity: Float64, deformation: Float64, gas_emission: Float64) -> Float64:
     """Level = max of 3 indicators  (0-4 scale)."""
     var m = seismicity
     if deformation > m:
@@ -115,7 +115,7 @@ fn alert_level(seismicity: Float64, deformation: Float64, gas_emission: Float64)
 # ── pyroclastic_flow_runout ──────────────────────────────────────────────────
 
 
-fn pyroclastic_flow_runout(column_height: Float64, density_ratio: Float64) -> Float64:
+def pyroclastic_flow_runout(column_height: Float64, density_ratio: Float64) -> Float64:
     """R ≈ height * density_ratio * 10  (km, simplified)."""
     return column_height * density_ratio * 10.0
 
@@ -123,7 +123,7 @@ fn pyroclastic_flow_runout(column_height: Float64, density_ratio: Float64) -> Fl
 # ── caldera_collapse_volume ──────────────────────────────────────────────────
 
 
-fn caldera_collapse_volume(diameter_km: Float64, depth_km: Float64) -> Float64:
+def caldera_collapse_volume(diameter_km: Float64, depth_km: Float64) -> Float64:
     """V = π * (d/2)² * depth  (km³)."""
     comptime PI: Float64 = 3.141592653589793
     var r = diameter_km / 2.0

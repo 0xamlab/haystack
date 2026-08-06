@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn exponential_moving_average(
+def exponential_moving_average(
     ema_prev: Float64, x: Float64, alpha: Float64
 ) -> Float64:
     """EMA update: EMA_t = α × x + (1-α) × EMA_{t-1}.
@@ -33,7 +33,7 @@ fn exponential_moving_average(
     return alpha * x + (1.0 - alpha) * ema_prev
 
 
-fn exponential_moving_variance(
+def exponential_moving_variance(
     emv_prev: Float64, ema_prev: Float64,
     x: Float64, alpha: Float64
 ) -> Float64:
@@ -52,7 +52,7 @@ fn exponential_moving_variance(
     return (1.0 - alpha) * (emv_prev + alpha * diff * diff)
 
 
-fn river_sgd_update(
+def river_sgd_update(
     weight: Float64, gradient: Float64, lr: Float64
 ) -> Float64:
     """Online SGD weight update (one sample at a time).
@@ -70,7 +70,7 @@ fn river_sgd_update(
     return weight - lr * gradient
 
 
-fn perceptron_update(
+def perceptron_update(
     weight: Float64, x: Float64,
     y_true: Float64, y_pred: Float64, lr: Float64
 ) -> Float64:
@@ -91,7 +91,7 @@ fn perceptron_update(
     return weight + lr * (y_true - y_pred) * x
 
 
-fn passive_aggressive_step(
+def passive_aggressive_step(
     loss: Float64, x_norm_sq: Float64, c: Float64
 ) -> Float64:
     """PA-I (Passive-Aggressive) update step size τ.
@@ -114,7 +114,7 @@ fn passive_aggressive_step(
     return tau
 
 
-fn adagrad_online_update(
+def adagrad_online_update(
     weight: Float64, gradient: Float64,
     accumulated_sq: Float64, lr: Float64, eps: Float64
 ) -> Float64:
@@ -136,7 +136,7 @@ fn adagrad_online_update(
     return weight - lr * gradient / sqrt(new_acc + eps)
 
 
-fn ftrl_step(
+def ftrl_step(
     z: Float64, n: Float64, alpha: Float64,
     beta: Float64, l1: Float64, l2: Float64
 ) -> Float64:
@@ -165,7 +165,7 @@ fn ftrl_step(
     return -(z - sign_z * l1) / denom
 
 
-fn streaming_mean_update(
+def streaming_mean_update(
     mean: Float64, x: Float64, count: Float64
 ) -> Float64:
     """Welford streaming mean: μ_n = μ_{n-1} + (x - μ_{n-1}) / n.
@@ -183,7 +183,7 @@ fn streaming_mean_update(
     return mean + (x - mean) / count
 
 
-fn streaming_variance_update(
+def streaming_variance_update(
     m2: Float64, old_mean: Float64, new_mean: Float64, x: Float64
 ) -> Float64:
     """Welford M2 update for streaming variance.
@@ -202,7 +202,7 @@ fn streaming_variance_update(
     return m2 + (x - old_mean) * (x - new_mean)
 
 
-fn concept_drift_ddm_error(
+def concept_drift_ddm_error(
     error_rate: Float64, std_error: Float64,
     min_error: Float64, min_std: Float64,
     warning_level: Float64, drift_level: Float64

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from privacy import laplace_mechanism, gaussian_mechanism, exponential_mechanism_scores, randomized_response, composition_epsilon, advanced_composition, sensitivity_l1, sensitivity_l2, dp_mean, dp_count
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

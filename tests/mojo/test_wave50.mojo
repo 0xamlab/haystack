@@ -42,12 +42,12 @@ from cellular import (
 from std.math import abs as fabs, sqrt
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -57,7 +57,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Signal Processing Tests ───────────────────────────────────────────────────
 
 
-fn test_hamming_window() raises:
+def test_hamming_window() raises:
     print("  Testing hamming_window...")
     var w = hamming_window(5)
     _assert(len(w) == 5, "hamming_window(5) length")                    # 1
@@ -73,7 +73,7 @@ fn test_hamming_window() raises:
     _assert_close(w1[0], 1.0, 1e-10, "hamming_window(1) == 1.0")       # 8
 
 
-fn test_hann_window() raises:
+def test_hann_window() raises:
     print("  Testing hann_window...")
     var w = hann_window(4)
     _assert(len(w) == 4, "hann_window(4) length")                       # 9
@@ -84,7 +84,7 @@ fn test_hann_window() raises:
     _assert_close(w5[0], w5[4], 1e-10, "hann symmetric 0,4")           # 12
 
 
-fn test_blackman_window() raises:
+def test_blackman_window() raises:
     print("  Testing blackman_window...")
     var w = blackman_window(5)
     _assert(len(w) == 5, "blackman_window(5) length")                   # 13
@@ -92,7 +92,7 @@ fn test_blackman_window() raises:
     _assert_close(w[0], w[4], 1e-10, "blackman symmetric")              # 15
 
 
-fn test_apply_window() raises:
+def test_apply_window() raises:
     print("  Testing apply_window...")
     var data = List[Float64]()
     data.append(1.0)
@@ -109,7 +109,7 @@ fn test_apply_window() raises:
     _assert_close(out[2], 1.5, 1e-10, "apply_window[2]")               # 19
 
 
-fn test_peak_detect() raises:
+def test_peak_detect() raises:
     print("  Testing peak_detect...")
     var data = List[Float64]()
     data.append(0.0)
@@ -126,7 +126,7 @@ fn test_peak_detect() raises:
     _assert(peaks[2] == 5, "peak at 5")                                 # 23
 
 
-fn test_zero_crossings() raises:
+def test_zero_crossings() raises:
     print("  Testing zero_crossings...")
     var data = List[Float64]()
     data.append(-1.0)
@@ -137,7 +137,7 @@ fn test_zero_crossings() raises:
     _assert(len(zc) == 3, "3 zero crossings")                           # 24
 
 
-fn test_spectral_energy() raises:
+def test_spectral_energy() raises:
     print("  Testing spectral_energy...")
     var mags = List[Float64]()
     mags.append(1.0)
@@ -148,7 +148,7 @@ fn test_spectral_energy() raises:
     _assert_close(e, 14.0, 1e-10, "spectral_energy = 1+4+9")           # 26
 
 
-fn test_spectral_centroid() raises:
+def test_spectral_centroid() raises:
     print("  Testing spectral_centroid...")
     var mags = List[Float64]()
     mags.append(1.0)
@@ -161,7 +161,7 @@ fn test_spectral_centroid() raises:
     _assert(c < sr / 2.0, "spectral_centroid < sr/2")                   # 28
 
 
-fn test_spectral_flatness() raises:
+def test_spectral_flatness() raises:
     print("  Testing spectral_flatness...")
     # Uniform magnitudes → flatness near 1
     var flat = List[Float64]()
@@ -175,7 +175,7 @@ fn test_spectral_flatness() raises:
     _assert_close(sf, 1.0, 0.01, "uniform flatness ≈ 1")               # 31
 
 
-fn test_signal_power() raises:
+def test_signal_power() raises:
     print("  Testing signal_power...")
     var data = List[Float64]()
     data.append(3.0)
@@ -188,7 +188,7 @@ fn test_signal_power() raises:
 # ── Allocation Tests ──────────────────────────────────────────────────────────
 
 
-fn test_equal_weight() raises:
+def test_equal_weight() raises:
     print("  Testing equal_weight...")
     var w = equal_weight(4)
     _assert(len(w) == 4, "equal_weight(4) length")                      # 34
@@ -196,7 +196,7 @@ fn test_equal_weight() raises:
         _assert_close(w[i], 0.25, 1e-10, "equal_weight[" + String(i) + "]")  # 35-38
 
 
-fn test_inverse_variance() raises:
+def test_inverse_variance() raises:
     print("  Testing inverse_variance...")
     var vars = List[Float64]()
     vars.append(0.01)
@@ -207,7 +207,7 @@ fn test_inverse_variance() raises:
     _assert_close(w[0] + w[1], 1.0, 1e-10, "weights sum to 1")         # 41
 
 
-fn test_portfolio_return() raises:
+def test_portfolio_return() raises:
     print("  Testing portfolio_return...")
     var w = List[Float64]()
     w.append(0.6)
@@ -219,7 +219,7 @@ fn test_portfolio_return() raises:
     _assert_close(pr, 0.08, 1e-10, "portfolio_return ≈ 0.08")          # 42
 
 
-fn test_kelly_criterion() raises:
+def test_kelly_criterion() raises:
     print("  Testing kelly_criterion...")
     var k = kelly_criterion(0.6, 2.0)
     _assert(k > 0.0, "kelly positive")                                  # 43
@@ -228,7 +228,7 @@ fn test_kelly_criterion() raises:
     _assert_close(k, 0.4, 1e-10, "kelly = 0.4")                        # 45
 
 
-fn test_min_variance_2asset() raises:
+def test_min_variance_2asset() raises:
     print("  Testing min_variance_2asset...")
     var w = min_variance_2asset(0.2, 0.3, 0.5)
     _assert_close(w[0] + w[1], 1.0, 1e-10, "min_var weights sum to 1") # 46
@@ -236,7 +236,7 @@ fn test_min_variance_2asset() raises:
     _assert(w[1] >= 0.0, "min_var w2 >= 0")                            # 48
 
 
-fn test_efficient_frontier() raises:
+def test_efficient_frontier() raises:
     print("  Testing efficient_frontier_2asset...")
     var ef = efficient_frontier_2asset(0.10, 0.05, 0.20, 0.15, 0.3, 10)
     _assert(len(ef) == 10, "ef has n_points entries")                    # 49
@@ -244,7 +244,7 @@ fn test_efficient_frontier() raises:
     _assert(ef[0][1] != ef[9][1], "risk varies across frontier")        # 50
 
 
-fn test_rebalance_threshold() raises:
+def test_rebalance_threshold() raises:
     print("  Testing rebalance_threshold...")
     var curr = List[Float64]()
     curr.append(0.55)
@@ -262,7 +262,7 @@ fn test_rebalance_threshold() raises:
     )                                                                    # 52
 
 
-fn test_risk_parity() raises:
+def test_risk_parity() raises:
     print("  Testing risk_parity_simple...")
     var vars = List[Float64]()
     vars.append(0.01)
@@ -278,7 +278,7 @@ fn test_risk_parity() raises:
     _assert(w[0] > w[1], "risk_parity: lower var → higher weight")      # 55
 
 
-fn test_portfolio_variance_2asset() raises:
+def test_portfolio_variance_2asset() raises:
     print("  Testing portfolio_variance_2asset...")
     var v = portfolio_variance_2asset(0.5, 0.2, 0.2, 1.0)
     # With perfect correlation and equal weight: var = (0.5*0.2 + 0.5*0.2)^2 = 0.04
@@ -288,7 +288,7 @@ fn test_portfolio_variance_2asset() raises:
 # ── Cellular Automata Tests ───────────────────────────────────────────────────
 
 
-fn test_grid_create() raises:
+def test_grid_create() raises:
     print("  Testing grid_create...")
     var g = grid_create(3, 3)
     _assert(len(g) == 3, "grid_create rows")                            # 57
@@ -296,7 +296,7 @@ fn test_grid_create() raises:
     _assert(count_alive(g) == 0, "grid_create all zeros")               # 59
 
 
-fn test_count_neighbors() raises:
+def test_count_neighbors() raises:
     print("  Testing count_neighbors...")
     # All-ones 3x3 grid, center should have 8 neighbors
     var g = List[List[Int]]()
@@ -312,7 +312,7 @@ fn test_count_neighbors() raises:
     _assert(c == 3, "corner of all-ones = 3 neighbors")                 # 61
 
 
-fn test_game_of_life_block() raises:
+def test_game_of_life_block() raises:
     print("  Testing game_of_life_step (block still life)...")
     # Block: 2x2 alive in center of 4x4 grid
     var g = grid_create(4, 4)
@@ -327,7 +327,7 @@ fn test_game_of_life_block() raises:
     _assert(next_g[2][2] == 1, "block survives [2][2]")                 # 65
 
 
-fn test_is_still_life() raises:
+def test_is_still_life() raises:
     print("  Testing is_still_life...")
     # Block is a still life
     var g = grid_create(4, 4)
@@ -342,7 +342,7 @@ fn test_is_still_life() raises:
     _assert(not is_still_life(g2, 3, 3), "single cell not still life")  # 67
 
 
-fn test_rule_lookup() raises:
+def test_rule_lookup() raises:
     print("  Testing rule_lookup...")
     # Rule 30: binary 00011110
     # Neighborhood (1,1,0) = index 6, bit 6 of 30 = 0
@@ -355,7 +355,7 @@ fn test_rule_lookup() raises:
     _assert(r2 == 1, "rule_lookup(0,0,1,30) = 1")                       # 69
 
 
-fn test_elementary_ca_step() raises:
+def test_elementary_ca_step() raises:
     print("  Testing elementary_ca_step (Rule 30)...")
     # Start with single cell in center
     var state = List[Int]()
@@ -370,7 +370,7 @@ fn test_elementary_ca_step() raises:
     _assert(next_s[4] == 1, "Rule 30 step: pos 4")                     # 73
 
 
-fn test_run_elementary_ca() raises:
+def test_run_elementary_ca() raises:
     print("  Testing run_elementary_ca...")
     var init = List[Int]()
     for _ in range(5):
@@ -381,7 +381,7 @@ fn test_run_elementary_ca() raises:
     _assert(len(hist[0]) == 5, "run_elementary_ca: width preserved")    # 75
 
 
-fn test_grid_to_density() raises:
+def test_grid_to_density() raises:
     print("  Testing grid_to_density...")
     # All-ones 2x2
     var g = List[List[Int]]()
@@ -396,7 +396,7 @@ fn test_grid_to_density() raises:
     _assert_close(grid_to_density(g0), 0.0, 1e-10, "all-zeros density=0")  # 77
 
 
-fn test_population_history() raises:
+def test_population_history() raises:
     print("  Testing population_history...")
     # Block still life: population should be constant
     var g = grid_create(4, 4)
@@ -410,7 +410,7 @@ fn test_population_history() raises:
         _assert(hist[i] == 4, "block population constant at 4")         # 79-84
 
 
-fn test_max_sharpe_2asset() raises:
+def test_max_sharpe_2asset() raises:
     print("  Testing max_sharpe_2asset...")
     var w = max_sharpe_2asset(0.12, 0.08, 0.20, 0.15, 0.3, 0.03)
     _assert_close(w[0] + w[1], 1.0, 1e-10, "max_sharpe weights sum 1") # 85
@@ -421,7 +421,7 @@ fn test_max_sharpe_2asset() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("")
     print("=" * 70)
     print("🎯🎯🎯  200 LIBRARY MILESTONE — WAVE 50  🎯🎯🎯")

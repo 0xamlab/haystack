@@ -134,7 +134,7 @@ struct BaggedForecast(Copyable, Movable):
     var status_name: String
 
 
-fn _no_bagged(
+def _no_bagged(
     status: Int, candidate: Int, horizon: Int, n_train: Int,
     n_boot: Int, block_len: Int, trend_window: Int, seed: Int, series_id: Int,
 ) -> BaggedForecast:
@@ -148,7 +148,7 @@ fn _no_bagged(
     )
 
 
-fn shrinking_ma_trend(y: List[Float64], trend_window: Int) -> List[Float64]:
+def shrinking_ma_trend(y: List[Float64], trend_window: Int) -> List[Float64]:
     """Centered moving-average trend whose window shrinks symmetrically at the edges.
 
     At index `i` the radius is `min(trend_window // 2, i, n - 1 - i)`, so every point
@@ -186,7 +186,7 @@ fn shrinking_ma_trend(y: List[Float64], trend_window: Int) -> List[Float64]:
     return out^
 
 
-fn mbb_replicate(
+def mbb_replicate(
     remainder: List[Float64], block_len: Int, master_seed: Int,
     series_id: Int, replicate_id: Int,
 ) -> List[Float64]:
@@ -238,7 +238,7 @@ fn mbb_replicate(
     return out^
 
 
-fn _fit_one_candidate(
+def _fit_one_candidate(
     y: List[Float64], horizon: Int, candidate: Int
 ) -> List[Float64]:
     """Candidate `candidate`'s forecast path on `y`, or EMPTY when the fit refuses.
@@ -270,7 +270,7 @@ fn _fit_one_candidate(
     return List[Float64]()
 
 
-fn bagged_candidate_forecast(
+def bagged_candidate_forecast(
     y: List[Float64], horizon: Int, candidate: Int, n_boot: Int,
     block_len: Int, trend_window: Int, master_seed: Int, series_id: Int,
 ) -> BaggedForecast:

@@ -41,7 +41,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _noise(width: Int, height: Int, m1: UInt64, m2: UInt64) -> List[List[Float64]]:
+def _noise(width: Int, height: Int, m1: UInt64, m2: UInt64) -> List[List[Float64]]:
     """Deterministic broadband value-noise in [20, 219] (so +15 stays unclamped)."""
     var g = List[List[Float64]]()
     for r in range(height):
@@ -60,7 +60,7 @@ fn _noise(width: Int, height: Int, m1: UInt64, m2: UInt64) -> List[List[Float64]
     return g^
 
 
-fn _brighten(image: List[List[Float64]], delta: Float64) -> List[List[Float64]]:
+def _brighten(image: List[List[Float64]], delta: Float64) -> List[List[Float64]]:
     var g = List[List[Float64]]()
     for r in range(len(image)):
         var row = List[Float64]()
@@ -70,7 +70,7 @@ fn _brighten(image: List[List[Float64]], delta: Float64) -> List[List[Float64]]:
     return g^
 
 
-fn _invert(image: List[List[Float64]]) -> List[List[Float64]]:
+def _invert(image: List[List[Float64]]) -> List[List[Float64]]:
     var g = List[List[Float64]]()
     for r in range(len(image)):
         var row = List[Float64]()

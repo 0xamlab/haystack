@@ -42,7 +42,7 @@ struct ConformalInterval(Copyable, Movable):
     var lo: Float64
     var hi: Float64
 
-    fn __init__(out self, lo: Float64, hi: Float64):
+    def __init__(out self, lo: Float64, hi: Float64):
         self.lo = lo
         self.hi = hi
 
@@ -52,7 +52,7 @@ struct ConformalBand(Copyable, Movable):
     var lo: List[Float64]
     var hi: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.lo = List[Float64]()
         self.hi = List[Float64]()
 
@@ -60,7 +60,7 @@ struct ConformalBand(Copyable, Movable):
 # ── sorting helpers (heapsort: O(n log n) worst case, no recursion) ──────────
 
 
-fn _sift_down(mut a: List[Float64], start: Int, end: Int):
+def _sift_down(mut a: List[Float64], start: Int, end: Int):
     """Restore the max-heap property for the subtree rooted at start (heap
     occupies a[0:end])."""
     var root = start
@@ -78,7 +78,7 @@ fn _sift_down(mut a: List[Float64], start: Int, end: Int):
         root = child
 
 
-fn _sort_floats(mut a: List[Float64]):
+def _sort_floats(mut a: List[Float64]):
     """In-place ascending heapsort. Deterministic; sub-ms for n <= 10k."""
     var n = len(a)
     if n < 2:
@@ -99,7 +99,7 @@ fn _sort_floats(mut a: List[Float64]):
 # ── rank rule ────────────────────────────────────────────────────────────────
 
 
-fn _conformal_rank(n: Int, alpha: Float64) -> Int:
+def _conformal_rank(n: Int, alpha: Float64) -> Int:
     """1-based rank k = ceil((1 - alpha) * (n + 1)), clamped to k >= 1.
 
     Equivalent to the (1-alpha)(1+1/n) empirical quantile of n calibration
@@ -126,7 +126,7 @@ fn _conformal_rank(n: Int, alpha: Float64) -> Int:
     return k
 
 
-fn _quantile_of_scores(var scores: List[Float64], alpha: Float64) -> Float64:
+def _quantile_of_scores(var scores: List[Float64], alpha: Float64) -> Float64:
     """Sort scores ascending and take the ceil((1-alpha)(n+1))-th smallest."""
     var n = len(scores)
     if n <= 0:
@@ -141,7 +141,7 @@ fn _quantile_of_scores(var scores: List[Float64], alpha: Float64) -> Float64:
 # ── conformal_quantile ───────────────────────────────────────────────────────
 
 
-fn conformal_quantile(
+def conformal_quantile(
     residuals_calibration: List[Float64], alpha: Float64
 ) -> Float64:
     """Split-conformal quantile q from calibration residuals.
@@ -168,7 +168,7 @@ fn conformal_quantile(
 # ── conformal_quantile_normalized ────────────────────────────────────────────
 
 
-fn conformal_quantile_normalized(
+def conformal_quantile_normalized(
     residuals_calibration: List[Float64],
     scales: List[Float64],
     alpha: Float64,
@@ -203,7 +203,7 @@ fn conformal_quantile_normalized(
 # ── conformal_interval / conformal_interval_normalized ───────────────────────
 
 
-fn conformal_interval(pred: Float64, q: Float64) -> ConformalInterval:
+def conformal_interval(pred: Float64, q: Float64) -> ConformalInterval:
     """Symmetric conformal interval [pred - q, pred + q].
 
     A negative or NaN q is treated as 0 (degenerate point interval) so a
@@ -215,7 +215,7 @@ fn conformal_interval(pred: Float64, q: Float64) -> ConformalInterval:
     return ConformalInterval(pred - hw, pred + hw)
 
 
-fn conformal_interval_normalized(
+def conformal_interval_normalized(
     pred: Float64, q: Float64, scale: Float64
 ) -> ConformalInterval:
     """Normalized conformal interval [pred - q*scale, pred + q*scale].
@@ -232,7 +232,7 @@ fn conformal_interval_normalized(
 # ── conformal_band ───────────────────────────────────────────────────────────
 
 
-fn conformal_band(preds: List[Float64], q: Float64) -> ConformalBand:
+def conformal_band(preds: List[Float64], q: Float64) -> ConformalBand:
     """Intervals pred_i ± q for every prediction (feeds conformal_coverage)."""
     var out = ConformalBand()
     for i in range(len(preds)):
@@ -245,7 +245,7 @@ fn conformal_band(preds: List[Float64], q: Float64) -> ConformalBand:
 # ── conformal_coverage ───────────────────────────────────────────────────────
 
 
-fn conformal_coverage(
+def conformal_coverage(
     y: List[Float64], lo: List[Float64], hi: List[Float64]
 ) -> Float64:
     """Fraction of samples with lo[i] <= y[i] <= hi[i] (bounds inclusive).

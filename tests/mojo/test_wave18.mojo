@@ -35,19 +35,19 @@ from std.math import abs as fabs
 from std.random import random_float64
 
 
-fn assert_true(cond: Bool, msg: String) raises:
+def assert_true(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("ASSERTION FAILED: " + msg)
 
 
-fn _make_list2(v0: Float64, v1: Float64) -> List[Float64]:
+def _make_list2(v0: Float64, v1: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
     return l^
 
 
-fn _make_ts5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> List[Float64]:
+def _make_ts5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
@@ -57,7 +57,7 @@ fn _make_ts5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) ->
     return l^
 
 
-fn _make_ts4(v0: Float64, v1: Float64, v2: Float64, v3: Float64) -> List[Float64]:
+def _make_ts4(v0: Float64, v1: Float64, v2: Float64, v3: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)

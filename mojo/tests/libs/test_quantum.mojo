@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from quantum import qubit_zero, qubit_one, hadamard, pauli_x, pauli_z, phase_gate, measure_probability, qubit_norm, bell_state, expectation_z, bloch_coords
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

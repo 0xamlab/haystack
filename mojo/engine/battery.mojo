@@ -26,7 +26,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── state_of_charge ──────────────────────────────────────────────────────────
 
 
-fn state_of_charge(current_capacity: Float64, max_capacity: Float64) -> Float64:
+def state_of_charge(current_capacity: Float64, max_capacity: Float64) -> Float64:
     """SOC = current_capacity / max_capacity * 100 (%)."""
     if max_capacity <= 0.0:
         return 0.0
@@ -36,7 +36,7 @@ fn state_of_charge(current_capacity: Float64, max_capacity: Float64) -> Float64:
 # ── depth_of_discharge ───────────────────────────────────────────────────────
 
 
-fn depth_of_discharge(soc: Float64) -> Float64:
+def depth_of_discharge(soc: Float64) -> Float64:
     """DOD = 100 - SOC (%)."""
     return 100.0 - soc
 
@@ -44,7 +44,7 @@ fn depth_of_discharge(soc: Float64) -> Float64:
 # ── coulombic_efficiency ─────────────────────────────────────────────────────
 
 
-fn coulombic_efficiency(discharge_ah: Float64, charge_ah: Float64) -> Float64:
+def coulombic_efficiency(discharge_ah: Float64, charge_ah: Float64) -> Float64:
     """η = Qdis / Qchg * 100 (%)."""
     if charge_ah <= 0.0:
         return 0.0
@@ -54,7 +54,7 @@ fn coulombic_efficiency(discharge_ah: Float64, charge_ah: Float64) -> Float64:
 # ── energy_density ───────────────────────────────────────────────────────────
 
 
-fn energy_density(energy_wh: Float64, mass_kg: Float64) -> Float64:
+def energy_density(energy_wh: Float64, mass_kg: Float64) -> Float64:
     """Energy density = E / m (Wh/kg)."""
     if mass_kg <= 0.0:
         return 0.0
@@ -64,7 +64,7 @@ fn energy_density(energy_wh: Float64, mass_kg: Float64) -> Float64:
 # ── power_density ────────────────────────────────────────────────────────────
 
 
-fn power_density(power_w: Float64, mass_kg: Float64) -> Float64:
+def power_density(power_w: Float64, mass_kg: Float64) -> Float64:
     """Power density = P / m (W/kg)."""
     if mass_kg <= 0.0:
         return 0.0
@@ -74,7 +74,7 @@ fn power_density(power_w: Float64, mass_kg: Float64) -> Float64:
 # ── c_rate ───────────────────────────────────────────────────────────────────
 
 
-fn c_rate(current: Float64, capacity: Float64) -> Float64:
+def c_rate(current: Float64, capacity: Float64) -> Float64:
     """C-rate = I / Q (1/hours)."""
     if capacity <= 0.0:
         return 0.0
@@ -84,7 +84,7 @@ fn c_rate(current: Float64, capacity: Float64) -> Float64:
 # ── discharge_time ───────────────────────────────────────────────────────────
 
 
-fn discharge_time(capacity: Float64, current: Float64) -> Float64:
+def discharge_time(capacity: Float64, current: Float64) -> Float64:
     """Discharge time t = capacity / current (hours)."""
     if current <= 0.0:
         return 0.0
@@ -94,7 +94,7 @@ fn discharge_time(capacity: Float64, current: Float64) -> Float64:
 # ── peukert_capacity ─────────────────────────────────────────────────────────
 
 
-fn peukert_capacity(
+def peukert_capacity(
     rated_capacity: Float64,
     rated_hours: Float64,
     actual_rate: Float64,
@@ -115,7 +115,7 @@ fn peukert_capacity(
 # ── cycle_life_degradation ───────────────────────────────────────────────────
 
 
-fn cycle_life_degradation(
+def cycle_life_degradation(
     initial_capacity: Float64,
     cycles: Float64,
     degradation_per_cycle: Float64,
@@ -130,7 +130,7 @@ fn cycle_life_degradation(
 # ── internal_resistance_from_voltage ─────────────────────────────────────────
 
 
-fn internal_resistance_from_voltage(
+def internal_resistance_from_voltage(
     ocv: Float64, terminal_voltage: Float64, current: Float64
 ) -> Float64:
     """Internal resistance R = (OCV - V_terminal) / I (Ohms)."""
@@ -142,7 +142,7 @@ fn internal_resistance_from_voltage(
 # ── battery_pack_voltage ─────────────────────────────────────────────────────
 
 
-fn battery_pack_voltage(
+def battery_pack_voltage(
     cells_in_series: Float64, cell_voltage: Float64
 ) -> Float64:
     """Pack voltage V = n_series * V_cell."""
@@ -152,7 +152,7 @@ fn battery_pack_voltage(
 # ── battery_pack_capacity ────────────────────────────────────────────────────
 
 
-fn battery_pack_capacity(
+def battery_pack_capacity(
     cells_in_parallel: Float64, cell_capacity: Float64
 ) -> Float64:
     """Pack capacity C = n_parallel * C_cell (Ah)."""

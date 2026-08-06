@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from neurophysics import nernst_potential, goldman_equation, membrane_time_constant, cable_length_constant, action_potential_threshold, firing_rate_simple, synaptic_current, integrate_and_fire_voltage, eeg_spectral_power, conduction_velocity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

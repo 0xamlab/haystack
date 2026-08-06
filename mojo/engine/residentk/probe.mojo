@@ -102,7 +102,7 @@ struct ResidentProbe(Copyable, Movable):
     var status: Int
 
 
-fn resident_gpu_kernels_compiled() -> Bool:
+def resident_gpu_kernels_compiled() -> Bool:
     """True when this binary was built with `-D ALGENTA_GPU`.
 
     A build fact, not a host fact: it is the same answer on every machine the binary is copied to.
@@ -116,7 +116,7 @@ fn resident_gpu_kernels_compiled() -> Bool:
     return RESIDENT_GPU_BUILD
 
 
-fn resident_available() -> Bool:
+def resident_available() -> Bool:
     """True when this binary can actually open a resident GPU decode session on this host.
 
     Both conditions are necessary and they fail independently: the binary must have been BUILT with
@@ -134,7 +134,7 @@ fn resident_available() -> Bool:
     return probe.device_present and probe.name_length > 0
 
 
-fn resident_session_probe(
+def resident_session_probe(
     d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int, vocab: Int
 ) -> ResidentProbe:
     """The full answer for one model shape: could a session hold it here, and what would it cost.

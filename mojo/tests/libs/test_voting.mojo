@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from voting import plurality_winner, borda_score, condorcet_pairwise, approval_score, majority_threshold, quota_droop, quota_hare, dhondt_divisor, sainte_lague_divisor, power_index_banzhaf, spoiler_effect
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

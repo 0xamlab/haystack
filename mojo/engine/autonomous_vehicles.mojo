@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, pow
 # ── safe_following_distance ──────────────────────────────────────────────────
 
 
-fn safe_following_distance(
+def safe_following_distance(
     speed_mps: Float64, reaction_time: Float64, deceleration: Float64
 ) -> Float64:
     """d = v*t + v²/(2*a) — reaction distance + braking distance."""
@@ -35,7 +35,7 @@ fn safe_following_distance(
 # ── time_to_collision ────────────────────────────────────────────────────────
 
 
-fn time_to_collision(distance: Float64, relative_speed: Float64) -> Float64:
+def time_to_collision(distance: Float64, relative_speed: Float64) -> Float64:
     """TTC = d / v_rel (seconds). Returns -1 if relative_speed <= 0."""
     if relative_speed <= 0.0:
         return -1.0
@@ -45,7 +45,7 @@ fn time_to_collision(distance: Float64, relative_speed: Float64) -> Float64:
 # ── braking_distance ─────────────────────────────────────────────────────────
 
 
-fn braking_distance(speed: Float64, friction: Float64, grade: Float64) -> Float64:
+def braking_distance(speed: Float64, friction: Float64, grade: Float64) -> Float64:
     """d = v²/(2*g*(μ+G)) where g=9.81 m/s²."""
     var g = 9.81
     return speed * speed / (2.0 * g * (friction + grade))
@@ -54,7 +54,7 @@ fn braking_distance(speed: Float64, friction: Float64, grade: Float64) -> Float6
 # ── sensor_range_required ────────────────────────────────────────────────────
 
 
-fn sensor_range_required(
+def sensor_range_required(
     speed: Float64, reaction_time: Float64, max_decel: Float64
 ) -> Float64:
     """R = v*t + v²/(2*a) — minimum sensor detection range needed."""
@@ -64,7 +64,7 @@ fn sensor_range_required(
 # ── lane_change_distance ────────────────────────────────────────────────────
 
 
-fn lane_change_distance(
+def lane_change_distance(
     speed: Float64, lateral_accel: Float64, lane_width: Float64
 ) -> Float64:
     """d ≈ v * sqrt(2*w / a_lat) — longitudinal distance during lane change."""
@@ -74,7 +74,7 @@ fn lane_change_distance(
 # ── perception_latency_distance ──────────────────────────────────────────────
 
 
-fn perception_latency_distance(speed: Float64, latency_ms: Float64) -> Float64:
+def perception_latency_distance(speed: Float64, latency_ms: Float64) -> Float64:
     """d = v * latency/1000 — distance traveled during perception latency."""
     return speed * latency_ms / 1000.0
 
@@ -82,7 +82,7 @@ fn perception_latency_distance(speed: Float64, latency_ms: Float64) -> Float64:
 # ── comfort_deceleration ────────────────────────────────────────────────────
 
 
-fn comfort_deceleration() -> Float64:
+def comfort_deceleration() -> Float64:
     """Returns 3.0 m/s² — standard comfortable braking deceleration."""
     return 3.0
 
@@ -90,7 +90,7 @@ fn comfort_deceleration() -> Float64:
 # ── emergency_deceleration ──────────────────────────────────────────────────
 
 
-fn emergency_deceleration() -> Float64:
+def emergency_deceleration() -> Float64:
     """Returns 8.0 m/s² — maximum emergency braking deceleration."""
     return 8.0
 
@@ -98,7 +98,7 @@ fn emergency_deceleration() -> Float64:
 # ── headway_time ─────────────────────────────────────────────────────────────
 
 
-fn headway_time(distance: Float64, speed: Float64) -> Float64:
+def headway_time(distance: Float64, speed: Float64) -> Float64:
     """THW = d / v (seconds) — time headway between vehicles."""
     return distance / speed
 
@@ -106,7 +106,7 @@ fn headway_time(distance: Float64, speed: Float64) -> Float64:
 # ── fuel_efficiency_at_speed ─────────────────────────────────────────────────
 
 
-fn fuel_efficiency_at_speed(
+def fuel_efficiency_at_speed(
     base_eff: Float64, speed: Float64, optimal_speed: Float64
 ) -> Float64:
     """eff = base_eff * (1 - 0.01*(speed - optimal_speed)²/optimal_speed).
@@ -120,7 +120,7 @@ fn fuel_efficiency_at_speed(
 # ── v2x_communication_range ─────────────────────────────────────────────────
 
 
-fn v2x_communication_range(
+def v2x_communication_range(
     tx_power: Float64, frequency: Float64, path_loss_exp: Float64
 ) -> Float64:
     """Simplified V2X range: R = (tx_power / frequency)^(1/n).
@@ -135,7 +135,7 @@ fn v2x_communication_range(
 # ── localization_error_gps ───────────────────────────────────────────────────
 
 
-fn localization_error_gps(hdop: Float64, uere: Float64) -> Float64:
+def localization_error_gps(hdop: Float64, uere: Float64) -> Float64:
     """GPS localization error = HDOP * UERE (meters).
 
     HDOP = Horizontal Dilution of Precision.

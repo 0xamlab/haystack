@@ -44,7 +44,7 @@ comptime BATCH_SIZE:   Int = 10
 # ── SIMD dot-product kernel ────────────────────────────────────────────────────
 
 @always_inline
-fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
+def _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     var pa = a.unsafe_ptr()
     var pb = b.unsafe_ptr()
     var a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
@@ -59,7 +59,7 @@ fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
 
 
 @always_inline
-fn _cosine(
+def _cosine(
     qv: List[Float32], cv: List[Float32],
     q_ni: Float32, c_ni: Float32,
 ) -> Float32:
@@ -76,15 +76,15 @@ fn _cosine(
 struct _Vec64(Copyable, Movable):
     var data: List[Float32]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.data = List[Float32](capacity=VEC_DIM)
         for _ in range(VEC_DIM):
             self.data.append(Float32(0.0))
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.data = copy.data.copy()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.data = take.data.copy()
 
 
@@ -92,15 +92,15 @@ struct _Entry(Copyable, Movable):
     var norm_inv: Float32
     var vec:      _Vec64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.norm_inv = Float32(0.0)
         self.vec      = _Vec64()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.norm_inv = copy.norm_inv
         self.vec      = copy.vec.copy()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.norm_inv = take.norm_inv
         self.vec      = take.vec.copy()
 
@@ -109,13 +109,13 @@ struct _PostingSlice(Copyable, Movable):
     var start: UInt32
     var count: UInt16
 
-    fn __init__(out self): self.start = 0; self.count = 0
+    def __init__(out self): self.start = 0; self.count = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.start = copy.start
         self.count = copy.count
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.start = take.start
         self.count = take.count
 
@@ -125,11 +125,11 @@ struct _PostingIndex(Movable):
     var slices:     List[_PostingSlice]   # [VOCAB_SIZE]
     var column_ids: List[UInt32]          # flat posting buffer
 
-    fn __init__(out self):
+    def __init__(out self):
         self.slices     = List[_PostingSlice](capacity=VOCAB_SIZE)
         self.column_ids = List[UInt32]()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.slices     = take.slices.copy()
         self.column_ids = take.column_ids.copy()
 
@@ -137,7 +137,7 @@ struct _PostingIndex(Movable):
 # ── Token assignment ───────────────────────────────────────────────────────────
 
 @always_inline
-fn _col_tok(col: Int, k: Int) -> Int:
+def _col_tok(col: Int, k: Int) -> Int:
     """Deterministic token assignment: 4 tokens per column, vocab size 128."""
     if k == 0: return col % VOCAB_SIZE
     if k == 1: return (col * 7  +  3) % VOCAB_SIZE
@@ -147,7 +147,7 @@ fn _col_tok(col: Int, k: Int) -> Int:
 
 # ── Data builders ──────────────────────────────────────────────────────────────
 
-fn _make_entries(n: Int) -> List[_Entry]:
+def _make_entries(n: Int) -> List[_Entry]:
     """
     Build N entries with deterministic float32 vectors.
     Each column's vec filled with (col + dim + 1) % 64 / 32.0, then L2-normalized.
@@ -166,7 +166,7 @@ fn _make_entries(n: Int) -> List[_Entry]:
     return entries^
 
 
-fn _make_posting_index(n: Int) -> _PostingIndex:
+def _make_posting_index(n: Int) -> _PostingIndex:
     """
     Build token posting index for N columns using counting sort.
     Each column is assigned 4 deterministic token IDs.
@@ -216,7 +216,7 @@ fn _make_posting_index(n: Int) -> _PostingIndex:
     return idx^
 
 
-fn _make_query() -> _Entry:
+def _make_query() -> _Entry:
     """
     Build query: uniform vector (all components = 1.0), properly normalized.
     """
@@ -228,7 +228,7 @@ fn _make_query() -> _Entry:
     return q^
 
 
-fn _query_token_ids() -> List[UInt32]:
+def _query_token_ids() -> List[UInt32]:
     """Query tokens [0, 1, 2, 3] — hit ~N/8 columns for VOCAB_SIZE=128, 4 toks/col."""
     var ids = List[UInt32](capacity=4)
     ids.append(UInt32(0))
@@ -240,7 +240,7 @@ fn _query_token_ids() -> List[UInt32]:
 
 # ── Benchmark primitives ───────────────────────────────────────────────────────
 
-fn _full_scan(
+def _full_scan(
     entries: List[_Entry],
     query:   _Entry,
     n:       Int,
@@ -254,7 +254,7 @@ fn _full_scan(
     return best
 
 
-fn _prefilter_score(
+def _prefilter_score(
     entries:   List[_Entry],
     query:     _Entry,
     tok_ids:   List[UInt32],
@@ -307,7 +307,7 @@ fn _prefilter_score(
 
 # ── Tier runner ────────────────────────────────────────────────────────────────
 
-fn _run_tier(n: Int, iters: Int):
+def _run_tier(n: Int, iters: Int):
     """Build data for schema size N, run all four paths, report ns/query."""
     var entries = _make_entries(n)
     var idx     = _make_posting_index(n)
@@ -396,7 +396,7 @@ fn _run_tier(n: Int, iters: Int):
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
-fn main():
+def main():
     print("=== bench_prefilter_vs_fullscan ===")
     print("VEC_DIM=64  VOCAB=128  TOKS_PER_COL=4  QUERY_TOKS=4  SHORTLIST_CAP=64")
     print()

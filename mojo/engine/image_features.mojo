@@ -39,7 +39,7 @@ comptime MAX_SALIENCY_DIM: Int = 1024
 # ── Sobel magnitude / edge density ──────────────────────────────────────────────
 
 
-fn sobel_magnitude(image: List[List[Float64]]) -> List[List[Float64]]:
+def sobel_magnitude(image: List[List[Float64]]) -> List[List[Float64]]:
     """Per-pixel sqrt(gx² + gy²) gradient magnitude (valid-mode, H-2 × W-2)."""
     var gx = convolve_2d(image, sobel_x_kernel())
     var gy = convolve_2d(image, sobel_y_kernel())
@@ -52,7 +52,7 @@ fn sobel_magnitude(image: List[List[Float64]]) -> List[List[Float64]]:
     return result^
 
 
-fn edge_density(image: List[List[Float64]], mag_threshold: Float64) -> Float64:
+def edge_density(image: List[List[Float64]], mag_threshold: Float64) -> Float64:
     """Fraction of pixels whose Sobel magnitude exceeds mag_threshold."""
     var mag = sobel_magnitude(image)
     var n = 0
@@ -70,7 +70,7 @@ fn edge_density(image: List[List[Float64]], mag_threshold: Float64) -> Float64:
 # ── Colour histograms ───────────────────────────────────────────────────────────
 
 
-fn color_histogram(
+def color_histogram(
     flat_rgb: List[Float64], width: Int, height: Int, bins_per_channel: Int
 ) -> List[Float64]:
     """Normalized bins³ RGB histogram. Index = (rb·bins + gb)·bins + bb."""
@@ -120,7 +120,7 @@ fn color_histogram(
     return hist^
 
 
-fn histogram_intersection(a: List[Float64], b: List[Float64]) -> Float64:
+def histogram_intersection(a: List[Float64], b: List[Float64]) -> Float64:
     """Σ min(a_i, b_i). For normalized histograms: 1 = identical, 0 = disjoint."""
     var n = len(a)
     if len(b) < n:
@@ -131,7 +131,7 @@ fn histogram_intersection(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn histogram_chi_square(a: List[Float64], b: List[Float64]) -> Float64:
+def histogram_chi_square(a: List[Float64], b: List[Float64]) -> Float64:
     """½ Σ (a_i-b_i)²/(a_i+b_i). 0 = identical; larger = more different."""
     var n = len(a)
     if len(b) < n:
@@ -145,7 +145,7 @@ fn histogram_chi_square(a: List[Float64], b: List[Float64]) -> Float64:
     return 0.5 * s
 
 
-fn histogram_correlation(a: List[Float64], b: List[Float64]) -> Float64:
+def histogram_correlation(a: List[Float64], b: List[Float64]) -> Float64:
     """Pearson correlation of two histograms in [-1, 1]; 0 if either is flat."""
     var n = len(a)
     if len(b) < n:
@@ -177,7 +177,7 @@ fn histogram_correlation(a: List[Float64], b: List[Float64]) -> Float64:
 # ── Dominant colours ────────────────────────────────────────────────────────────
 
 
-fn dominant_colors(
+def dominant_colors(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int
 ) -> List[Float64]:
     """Top-3 quantized colours as a flat [r,g,b,weight] × 3 list (bin centers)."""
@@ -213,7 +213,7 @@ fn dominant_colors(
 # ── Saliency ──────────────────────────────────────────────────────────────────
 
 
-fn saliency_grid(
+def saliency_grid(
     image: List[List[Float64]], grid_rows: Int, grid_cols: Int
 ) -> List[List[Float64]]:
     """grid_rows×grid_cols map of mean Sobel edge energy per cell."""
@@ -254,7 +254,7 @@ fn saliency_grid(
     return result^
 
 
-fn most_salient_cell(saliency: List[List[Float64]]) -> Int:
+def most_salient_cell(saliency: List[List[Float64]]) -> Int:
     """Flattened index (row*cols + col) of the highest-energy cell; -1 if empty."""
     var rows = len(saliency)
     if rows == 0:
@@ -275,7 +275,7 @@ fn most_salient_cell(saliency: List[List[Float64]]) -> Int:
 # ── flat-pixel entry points ─────────────────────────────────────────────────────
 
 
-fn edge_density_flat(
+def edge_density_flat(
     flat: List[Float64], width: Int, height: Int, mag_threshold: Float64
 ) -> Float64:
     # The declared width*height must fit the pixels actually supplied; a
@@ -286,7 +286,7 @@ fn edge_density_flat(
     return edge_density(reshape_to_grid(flat, width, height), mag_threshold)
 
 
-fn most_salient_cell_flat(
+def most_salient_cell_flat(
     flat: List[Float64], width: Int, height: Int, grid_rows: Int, grid_cols: Int
 ) -> Int:
     # The declared width*height must fit the pixels actually supplied, and

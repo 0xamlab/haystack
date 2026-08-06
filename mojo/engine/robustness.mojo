@@ -17,13 +17,13 @@ Public API:
 """
 
 from std.math import sqrt, abs as fabs
-from random import random_float64
+from std.random import random_float64
 
 
 # ── eval_test_func ───────────────────────────────────────────────────────────
 
 
-fn eval_test_func(x: List[Float64], func_id: Int) -> Float64:
+def eval_test_func(x: List[Float64], func_id: Int) -> Float64:
     """Built-in test functions.
 
     func_id 0: sum of x
@@ -53,7 +53,7 @@ fn eval_test_func(x: List[Float64], func_id: Int) -> Float64:
 # ── perturbation_test ────────────────────────────────────────────────────────
 
 
-fn perturbation_test(values: List[Float64],
+def perturbation_test(values: List[Float64],
                      perturbation: Float64) -> List[Float64]:
     """Add random perturbation (+-perturbation) to each value."""
     var n = len(values)
@@ -67,7 +67,7 @@ fn perturbation_test(values: List[Float64],
 # ── sensitivity_one_at_a_time ────────────────────────────────────────────────
 
 
-fn sensitivity_one_at_a_time(baseline: List[Float64], index: Int,
+def sensitivity_one_at_a_time(baseline: List[Float64], index: Int,
                              delta: Float64, func_id: Int) -> Float64:
     """OAT sensitivity: change one input by delta, measure output change."""
     var f0 = eval_test_func(baseline, func_id)
@@ -86,7 +86,7 @@ fn sensitivity_one_at_a_time(baseline: List[Float64], index: Int,
 # ── morris_screening ─────────────────────────────────────────────────────────
 
 
-fn morris_screening(n_inputs: Int, func_id: Int, n_trajectories: Int,
+def morris_screening(n_inputs: Int, func_id: Int, n_trajectories: Int,
                     delta: Float64) -> List[Float64]:
     """Morris elementary effects screening.
 
@@ -122,7 +122,7 @@ fn morris_screening(n_inputs: Int, func_id: Int, n_trajectories: Int,
 # ── sobol_first_order_estimate ───────────────────────────────────────────────
 
 
-fn sobol_first_order_estimate(n_inputs: Int, func_id: Int,
+def sobol_first_order_estimate(n_inputs: Int, func_id: Int,
                               n_samples: Int) -> List[Float64]:
     """Simplified Sobol first-order indices via Monte Carlo."""
     var indices = List[Float64]()
@@ -181,7 +181,7 @@ fn sobol_first_order_estimate(n_inputs: Int, func_id: Int,
 # ── input_range_sweep ────────────────────────────────────────────────────────
 
 
-fn input_range_sweep(baseline: List[Float64], index: Int,
+def input_range_sweep(baseline: List[Float64], index: Int,
                      lo: Float64, hi: Float64, n_points: Int,
                      func_id: Int) -> List[List[Float64]]:
     """Sweep one input from lo to hi and record [input_value, output] pairs."""
@@ -217,7 +217,7 @@ fn input_range_sweep(baseline: List[Float64], index: Int,
 # ── tornado_data ─────────────────────────────────────────────────────────────
 
 
-fn tornado_data(baseline: List[Float64], deltas: List[Float64],
+def tornado_data(baseline: List[Float64], deltas: List[Float64],
                 func_id: Int) -> List[List[Float64]]:
     """Tornado chart data: for each input, [low_output, high_output]."""
     var n = len(baseline)
@@ -245,7 +245,7 @@ fn tornado_data(baseline: List[Float64], deltas: List[Float64],
 # ── robustness_score ─────────────────────────────────────────────────────────
 
 
-fn robustness_score(results: List[Float64]) -> Float64:
+def robustness_score(results: List[Float64]) -> Float64:
     """Coefficient of variation: std / |mean|."""
     var n = len(results)
     if n == 0:

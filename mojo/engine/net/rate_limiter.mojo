@@ -8,12 +8,12 @@ The caller can refill tokens manually via add_tokens() or reset().
 
 Public API:
   struct TokenBucket(Copyable, Movable)
-    fn __init__(out self, rate: Float64, burst: Int)
-    fn allow(mut self) -> Bool
-    fn allow_n(mut self, n: Int) -> Bool
-    fn tokens_available(self) -> Int
-    fn add_tokens(mut self, n: Int)
-    fn reset(mut self)
+    def __init__(out self, rate: Float64, burst: Int)
+    def allow(mut self) -> Bool
+    def allow_n(mut self, n: Int) -> Bool
+    def tokens_available(self) -> Int
+    def add_tokens(mut self, n: Int)
+    def reset(mut self)
 """
 
 
@@ -42,7 +42,7 @@ struct TokenBucket(Copyable, Movable):
     var _total_allowed: Int
     var _total_denied: Int
 
-    fn __init__(out self, rate: Float64, burst: Int):
+    def __init__(out self, rate: Float64, burst: Int):
         """Create a new token bucket rate limiter.
 
         Args:
@@ -59,7 +59,7 @@ struct TokenBucket(Copyable, Movable):
         self._total_allowed = 0
         self._total_denied = 0
 
-    fn allow(mut self) -> Bool:
+    def allow(mut self) -> Bool:
         """Try to consume 1 token. Returns True if allowed.
 
         Returns:
@@ -67,7 +67,7 @@ struct TokenBucket(Copyable, Movable):
         """
         return self.allow_n(1)
 
-    fn allow_n(mut self, n: Int) -> Bool:
+    def allow_n(mut self, n: Int) -> Bool:
         """Try to consume n tokens. Returns True if allowed.
 
         This is an all-or-nothing operation: either all n tokens are consumed,
@@ -88,7 +88,7 @@ struct TokenBucket(Copyable, Movable):
         self._total_denied += 1
         return False
 
-    fn tokens_available(self) -> Int:
+    def tokens_available(self) -> Int:
         """Return the number of tokens currently available.
 
         Returns:
@@ -96,7 +96,7 @@ struct TokenBucket(Copyable, Movable):
         """
         return self._tokens
 
-    fn add_tokens(mut self, n: Int):
+    def add_tokens(mut self, n: Int):
         """Manually add tokens to the bucket, up to burst capacity.
 
         Args:
@@ -106,7 +106,7 @@ struct TokenBucket(Copyable, Movable):
         if self._tokens > self._burst:
             self._tokens = self._burst
 
-    fn reset(mut self):
+    def reset(mut self):
         """Reset the bucket to full capacity and clear counters."""
         self._tokens = self._burst
         self._total_allowed = 0

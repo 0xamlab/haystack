@@ -60,7 +60,7 @@ and a reassociation in either one would silently destroy every compensated resul
 """
 from sys import argv
 
-from memory import bitcast
+from std.memory import bitcast
 
 from exactnum.eft import EFT_OK, eft_selfcheck_code
 from exactnum.lstsq import (
@@ -75,7 +75,7 @@ from exactnum.lstsq import (
 from sparse_numerics.factor import csr_least_squares
 
 
-fn hex_to_f64(s: StringSlice) raises -> Float64:
+def hex_to_f64(s: StringSlice) raises -> Float64:
     var acc: UInt64 = 0
     var raw = s.as_bytes()
     if len(raw) != 16:
@@ -95,7 +95,7 @@ fn hex_to_f64(s: StringSlice) raises -> Float64:
     return bitcast[DType.float64, 1](acc)
 
 
-fn f64_to_hex(v: Float64) -> String:
+def f64_to_hex(v: Float64) -> String:
     var u = v.to_bits()
     var out = String("")
     for i in range(16):
@@ -105,14 +105,14 @@ fn f64_to_hex(v: Float64) -> String:
     return out
 
 
-fn read_all(path: String) raises -> String:
+def read_all(path: String) raises -> String:
     var f = open(path, "r")
     var s = f.read()
     f.close()
     return s
 
 
-fn emit(arm: String, r: DDLstsq):
+def emit(arm: String, r: DDLstsq):
     print(
         "ARM",
         arm,
@@ -139,7 +139,7 @@ fn emit(arm: String, r: DDLstsq):
         )
 
 
-fn shipped_normal_equations(
+def shipped_normal_equations(
     a: List[Float64], rows: Int, cols: Int, b: List[Float64]
 ) -> DDLstsq:
     """The FROZEN `csr_least_squares` on the same design matrix, as dense-in-CSR.
@@ -169,7 +169,7 @@ fn shipped_normal_equations(
     return DDLstsq(out^, lo^, status, cols, 0.0, 0.0, s.residual_norm, -1)
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 2:
         print("usage: measure_exactnum_strd <spec_file>")

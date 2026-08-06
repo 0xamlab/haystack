@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, exp, log, pow
 
 
-fn metabolic_rate_kleiber(mass_kg: Float64) -> Float64:
+def metabolic_rate_kleiber(mass_kg: Float64) -> Float64:
     """Kleiber's law: BMR = 70 · M^0.75.
 
     Args:
@@ -30,7 +30,7 @@ fn metabolic_rate_kleiber(mass_kg: Float64) -> Float64:
     return 70.0 * pow(mass_kg, 0.75)
 
 
-fn thermal_conductance(
+def thermal_conductance(
     heat_loss: Float64, t_body: Float64, t_ambient: Float64
 ) -> Float64:
     """Thermal conductance of an animal.
@@ -51,7 +51,7 @@ fn thermal_conductance(
     return heat_loss / dt
 
 
-fn q10_temperature_coefficient(
+def q10_temperature_coefficient(
     rate1: Float64, rate2: Float64, t1: Float64, t2: Float64
 ) -> Float64:
     """Q10 temperature coefficient: metabolic sensitivity to temperature.
@@ -72,7 +72,7 @@ fn q10_temperature_coefficient(
     return pow(rate2 / rate1, 10.0 / (t2 - t1))
 
 
-fn evaporative_water_loss(
+def evaporative_water_loss(
     surface_area: Float64, permeability: Float64,
     vpd: Float64
 ) -> Float64:
@@ -93,7 +93,7 @@ fn evaporative_water_loss(
     return surface_area * permeability * vpd
 
 
-fn aerobic_scope(
+def aerobic_scope(
     max_metabolic_rate: Float64, resting_metabolic_rate: Float64
 ) -> Float64:
     """Aerobic scope: capacity above resting metabolism.
@@ -113,7 +113,7 @@ fn aerobic_scope(
     return scope
 
 
-fn hypoxia_tolerance(
+def hypoxia_tolerance(
     resting_mr: Float64, mass_specific_o2: Float64
 ) -> Float64:
     """Critical oxygen partial pressure (Pcrit) estimate.
@@ -132,7 +132,7 @@ fn hypoxia_tolerance(
     return resting_mr / mass_specific_o2
 
 
-fn osmoregulation_cost(
+def osmoregulation_cost(
     osmotic_gradient: Float64, membrane_permeability: Float64, body_mass: Float64
 ) -> Float64:
     """Energetic cost of osmoregulation.
@@ -152,7 +152,7 @@ fn osmoregulation_cost(
     return osmotic_gradient * membrane_permeability * body_mass
 
 
-fn heart_rate_fick(
+def heart_rate_fick(
     vo2: Float64, o2_arterial: Float64, o2_venous: Float64
 ) -> Float64:
     """Cardiac output from Fick principle: CO = VO2 / (CaO2 - CvO2).
@@ -171,7 +171,7 @@ fn heart_rate_fick(
     return vo2 / (diff * 10.0)  # × 10 for mL → L and 100mL → mL conversion
 
 
-fn oxygen_consumption_rate(
+def oxygen_consumption_rate(
     delta_o2_ppm: Float64, flow_rate_l_h: Float64, mass_kg: Float64
 ) -> Float64:
     """Mass-specific oxygen consumption from respirometry.
@@ -192,7 +192,7 @@ fn oxygen_consumption_rate(
     return (delta_o2_ppm * 1e-3) * flow_rate_l_h / mass_kg
 
 
-fn field_metabolic_rate(mass_kg: Float64, taxon_a: Float64, taxon_b: Float64) -> Float64:
+def field_metabolic_rate(mass_kg: Float64, taxon_a: Float64, taxon_b: Float64) -> Float64:
     """Field metabolic rate from doubly-labelled water allometric equation.
 
     FMR = a · M^b  (where a and b are taxon-specific)

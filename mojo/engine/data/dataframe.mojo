@@ -15,17 +15,17 @@ struct Column(Copyable, Movable):
     var data: List[Float64]
     var n: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.name = String("")
         self.data = List[Float64]()
         self.n = 0
 
-    fn __init__(out self, name: String, data: List[Float64]):
+    def __init__(out self, name: String, data: List[Float64]):
         self.name = name
         self.data = data.copy()
         self.n = len(data)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.name = copy.name
         self.data = copy.data.copy()
         self.n = copy.n
@@ -41,13 +41,13 @@ struct DataFrame(Copyable, Movable):
     var n_rows: Int
     var col_names: List[String]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.columns = List[Column]()
         self.n_cols = 0
         self.n_rows = 0
         self.col_names = List[String]()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.columns = copy.columns.copy()
         self.n_cols = copy.n_cols
         self.n_rows = copy.n_rows
@@ -55,7 +55,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Construction ──────────────────────────────────────────────────────
 
-    fn add_column(mut self, name: String, data: List[Float64]):
+    def add_column(mut self, name: String, data: List[Float64]):
         """Add a column. If first column, sets n_rows."""
         var col = Column(name, data)
         if self.n_cols == 0:
@@ -66,27 +66,27 @@ struct DataFrame(Copyable, Movable):
 
     # ── Access ────────────────────────────────────────────────────────────
 
-    fn col_index(self, name: String) -> Int:
+    def col_index(self, name: String) -> Int:
         """Return index of column with given name, or -1 if not found."""
         for i in range(self.n_cols):
             if self.col_names[i] == name:
                 return i
         return -1
 
-    fn get_column(self, name: String) -> List[Float64]:
+    def get_column(self, name: String) -> List[Float64]:
         """Get column data by name. Returns empty list if not found."""
         var idx = self.col_index(name)
         if idx < 0:
             return List[Float64]()
         return self.columns[idx].data.copy()
 
-    fn get_column_idx(self, idx: Int) -> List[Float64]:
+    def get_column_idx(self, idx: Int) -> List[Float64]:
         """Get column data by index."""
         if idx < 0 or idx >= self.n_cols:
             return List[Float64]()
         return self.columns[idx].data.copy()
 
-    fn get_value(self, row: Int, col: String) -> Float64:
+    def get_value(self, row: Int, col: String) -> Float64:
         """Get a single value at (row, col_name)."""
         var idx = self.col_index(col)
         if idx < 0 or row < 0 or row >= self.n_rows:
@@ -95,15 +95,15 @@ struct DataFrame(Copyable, Movable):
 
     # ── Info ──────────────────────────────────────────────────────────────
 
-    fn shape(self) -> Tuple[Int, Int]:
+    def shape(self) -> Tuple[Int, Int]:
         """Return (n_rows, n_cols)."""
         return (self.n_rows, self.n_cols)
 
-    fn count(self) -> Int:
+    def count(self) -> Int:
         """Return number of rows."""
         return self.n_rows
 
-    fn head(self, n: Int = 5) -> String:
+    def head(self, n: Int = 5) -> String:
         """First n rows as formatted string."""
         var rows_to_show = n
         if rows_to_show > self.n_rows:
@@ -124,7 +124,7 @@ struct DataFrame(Copyable, Movable):
             result += "\n"
         return result
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         """Summary stats per column (count, mean, std, min, 25%, 50%, 75%, max)."""
         var result = String("")
         for c in range(self.n_cols):
@@ -176,7 +176,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Selection ─────────────────────────────────────────────────────────
 
-    fn select(self, selected_names: List[String]) -> DataFrame:
+    def select(self, selected_names: List[String]) -> DataFrame:
         """Select specific columns by name."""
         var result = DataFrame()
         for i in range(len(selected_names)):
@@ -185,7 +185,7 @@ struct DataFrame(Copyable, Movable):
                 result.add_column(self.col_names[idx], self.columns[idx].data.copy())
         return result^
 
-    fn drop(self, drop_names: List[String]) -> DataFrame:
+    def drop(self, drop_names: List[String]) -> DataFrame:
         """Drop specific columns by name."""
         var result = DataFrame()
         for c in range(self.n_cols):
@@ -198,7 +198,7 @@ struct DataFrame(Copyable, Movable):
                 result.add_column(self.col_names[c], self.columns[c].data.copy())
         return result^
 
-    fn slice_rows(self, start: Int, end: Int) -> DataFrame:
+    def slice_rows(self, start: Int, end: Int) -> DataFrame:
         """Row range selection [start, end)."""
         var result = DataFrame()
         var s = start
@@ -216,7 +216,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Filter ────────────────────────────────────────────────────────────
 
-    fn filter_gt(self, col: String, threshold: Float64) -> DataFrame:
+    def filter_gt(self, col: String, threshold: Float64) -> DataFrame:
         """Rows where col > threshold."""
         var idx = self.col_index(col)
         if idx < 0:
@@ -227,7 +227,7 @@ struct DataFrame(Copyable, Movable):
             mask.append(self.columns[idx].data[r] > threshold)
         return self._apply_mask(mask)
 
-    fn filter_lt(self, col: String, threshold: Float64) -> DataFrame:
+    def filter_lt(self, col: String, threshold: Float64) -> DataFrame:
         """Rows where col < threshold."""
         var idx = self.col_index(col)
         if idx < 0:
@@ -237,7 +237,7 @@ struct DataFrame(Copyable, Movable):
             mask.append(self.columns[idx].data[r] < threshold)
         return self._apply_mask(mask)
 
-    fn filter_eq(self, col: String, value: Float64) -> DataFrame:
+    def filter_eq(self, col: String, value: Float64) -> DataFrame:
         """Rows where col == value."""
         var idx = self.col_index(col)
         if idx < 0:
@@ -247,7 +247,7 @@ struct DataFrame(Copyable, Movable):
             mask.append(fabs(self.columns[idx].data[r] - value) < 1e-12)
         return self._apply_mask(mask)
 
-    fn filter_between(self, col: String, low: Float64, high: Float64) -> DataFrame:
+    def filter_between(self, col: String, low: Float64, high: Float64) -> DataFrame:
         """Rows where low <= col <= high."""
         var idx = self.col_index(col)
         if idx < 0:
@@ -258,7 +258,7 @@ struct DataFrame(Copyable, Movable):
             mask.append(v >= low and v <= high)
         return self._apply_mask(mask)
 
-    fn _apply_mask(self, mask: List[Bool]) -> DataFrame:
+    def _apply_mask(self, mask: List[Bool]) -> DataFrame:
         """Internal: build new DataFrame with only rows where mask is True."""
         var result = DataFrame()
         for c in range(self.n_cols):
@@ -271,7 +271,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Sort ──────────────────────────────────────────────────────────────
 
-    fn sort_by(self, col: String, ascending: Bool = True) -> DataFrame:
+    def sort_by(self, col: String, ascending: Bool = True) -> DataFrame:
         """Sort all columns by values in the specified column."""
         var idx = self.col_index(col)
         if idx < 0:
@@ -311,7 +311,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Aggregate ─────────────────────────────────────────────────────────
 
-    fn sum(self, col: String) -> Float64:
+    def sum(self, col: String) -> Float64:
         """Sum of column values."""
         var idx = self.col_index(col)
         if idx < 0:
@@ -321,7 +321,7 @@ struct DataFrame(Copyable, Movable):
             total += self.columns[idx].data[i]
         return total
 
-    fn mean_col(self, col: String) -> Float64:
+    def mean_col(self, col: String) -> Float64:
         """Mean of column values."""
         var idx = self.col_index(col)
         if idx < 0 or self.n_rows == 0:
@@ -331,7 +331,7 @@ struct DataFrame(Copyable, Movable):
             total += self.columns[idx].data[i]
         return total / Float64(self.n_rows)
 
-    fn std_col(self, col: String) -> Float64:
+    def std_col(self, col: String) -> Float64:
         """Standard deviation (sample) of column values."""
         var idx = self.col_index(col)
         if idx < 0 or self.n_rows <= 1:
@@ -343,7 +343,7 @@ struct DataFrame(Copyable, Movable):
             s += d * d
         return sqrt(s / Float64(self.n_rows - 1))
 
-    fn min_col(self, col: String) -> Float64:
+    def min_col(self, col: String) -> Float64:
         """Minimum of column values."""
         var idx = self.col_index(col)
         if idx < 0 or self.n_rows == 0:
@@ -354,7 +354,7 @@ struct DataFrame(Copyable, Movable):
                 result = self.columns[idx].data[i]
         return result
 
-    fn max_col(self, col: String) -> Float64:
+    def max_col(self, col: String) -> Float64:
         """Maximum of column values."""
         var idx = self.col_index(col)
         if idx < 0 or self.n_rows == 0:
@@ -367,7 +367,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── GroupBy + Aggregate ───────────────────────────────────────────────
 
-    fn groupby_agg(self, group_col: String, agg_col: String, agg_fn: String) -> DataFrame:
+    def groupby_agg(self, group_col: String, agg_col: String, agg_fn: String) -> DataFrame:
         """Group by group_col and aggregate agg_col.
         agg_fn: "sum", "mean", "min", "max", "count", "std".
         Returns DataFrame with 2 columns: [group_col, agg_result]."""
@@ -446,7 +446,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Transform ─────────────────────────────────────────────────────────
 
-    fn add_computed_column(mut self, name: String, col_a: String, op: String, col_b: String):
+    def add_computed_column(mut self, name: String, col_a: String, op: String, col_b: String):
         """Add new column: result = col_a op col_b. op: "+", "-", "*", "/"."""
         var a_idx = self.col_index(col_a)
         var b_idx = self.col_index(col_b)
@@ -469,7 +469,7 @@ struct DataFrame(Copyable, Movable):
             new_data.append(result)
         self.add_column(name, new_data^)
 
-    fn apply_scalar(self, col: String, op: String, scalar: Float64) -> DataFrame:
+    def apply_scalar(self, col: String, op: String, scalar: Float64) -> DataFrame:
         """Apply scalar operation to a column. op: "+", "-", "*", "/"."""
         var result = DataFrame()
         var target_idx = self.col_index(col)
@@ -495,7 +495,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── Merge/Join ────────────────────────────────────────────────────────
 
-    fn merge_inner(self, other: DataFrame, on: String) -> DataFrame:
+    def merge_inner(self, other: DataFrame, on: String) -> DataFrame:
         """Inner join on a common column name. O(n*m) for simplicity."""
         var self_key_idx = self.col_index(on)
         var other_key_idx = other.col_index(on)
@@ -539,7 +539,7 @@ struct DataFrame(Copyable, Movable):
 
     # ── I/O ───────────────────────────────────────────────────────────────
 
-    fn to_json(self) -> String:
+    def to_json(self) -> String:
         """JSON array of row objects."""
         var result = String("[")
         for r in range(self.n_rows):
@@ -555,7 +555,7 @@ struct DataFrame(Copyable, Movable):
         result += "]"
         return result
 
-    fn to_csv(self) -> String:
+    def to_csv(self) -> String:
         """CSV string with headers."""
         var result = String("")
         # Headers
@@ -577,7 +577,7 @@ struct DataFrame(Copyable, Movable):
 # ── Module-level factory ──────────────────────────────────────────────────────
 
 
-fn df_from_columns(names: List[String], cols: List[List[Float64]]) -> DataFrame:
+def df_from_columns(names: List[String], cols: List[List[Float64]]) -> DataFrame:
     """Create DataFrame from column names and data lists."""
     var df = DataFrame()
     var n = len(names)
@@ -590,7 +590,7 @@ fn df_from_columns(names: List[String], cols: List[List[Float64]]) -> DataFrame:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _insertion_sort(mut data: List[Float64], n: Int):
+def _insertion_sort(mut data: List[Float64], n: Int):
     """In-place insertion sort for percentile computation."""
     for i in range(1, n):
         var key = data[i]

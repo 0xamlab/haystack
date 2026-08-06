@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from materials import youngs_modulus, shear_modulus, bulk_modulus, stress_from_force, strain_from_deformation, thermal_expansion, safety_factor, stress_concentration, fatigue_life, beam_deflection_cantilever, moment_of_inertia_rect, poisson_ratio_from_moduli
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

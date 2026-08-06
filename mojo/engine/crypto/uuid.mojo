@@ -17,13 +17,13 @@ comptime _HEX_ALPHABET = "0123456789abcdef"
 
 
 @always_inline
-fn _nibble_to_hex(n: Int) -> String:
+def _nibble_to_hex(n: Int) -> String:
     """Convert a 4-bit nibble (0-15) to a single lowercase hex character."""
     return chr(Int(_HEX_ALPHABET.as_bytes()[n & 0x0F]))
 
 
 @always_inline
-fn _byte_to_hex(b: Int) -> String:
+def _byte_to_hex(b: Int) -> String:
     """Convert a byte (0-255) to a 2-character lowercase hex string."""
     return _nibble_to_hex((b >> 4) & 0x0F) + _nibble_to_hex(b & 0x0F)
 
@@ -31,7 +31,7 @@ fn _byte_to_hex(b: Int) -> String:
 # ── Random byte generation ───────────────────────────────────────────────────
 
 @always_inline
-fn _random_byte() -> Int:
+def _random_byte() -> Int:
     """Generate a random byte (0-255) using random_float64()."""
     var v = Int(random_float64() * 256.0)
     if v > 255:
@@ -41,7 +41,7 @@ fn _random_byte() -> Int:
     return v
 
 
-fn _random_bytes_16() -> List[Int]:
+def _random_bytes_16() -> List[Int]:
     """Generate 16 random bytes."""
     var bytes = List[Int](capacity=16)
     for _ in range(16):
@@ -51,7 +51,7 @@ fn _random_bytes_16() -> List[Int]:
 
 # ── UUID v4 ──────────────────────────────────────────────────────────────────
 
-fn uuid4() -> String:
+def uuid4() -> String:
     """Generate a UUID v4 (random) string.
 
     Format: 8-4-4-4-12 hex chars = 36 chars total.
@@ -107,7 +107,7 @@ fn uuid4() -> String:
     return result
 
 
-fn uuid4_hex() -> String:
+def uuid4_hex() -> String:
     """Generate a UUID v4 as 32 hex chars (no dashes)."""
     var b = _random_bytes_16()
 

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn prompt_injection_score(
+def prompt_injection_score(
     instruction_override_tokens: Float64, system_prompt_distance: Float64,
     role_switch_probability: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn prompt_injection_score(
     return instruction_override_tokens * role_switch_probability / (system_prompt_distance + 1.0)
 
 
-fn token_level_safety_score(
+def token_level_safety_score(
     token_harm_logit: Float64, context_harm_factor: Float64,
     refusal_trained_weight: Float64
 ) -> Float64:
@@ -56,7 +56,7 @@ fn token_level_safety_score(
     return raw_harm * (1.0 - refusal_trained_weight)
 
 
-fn tool_call_validation_score(
+def tool_call_validation_score(
     arg_type_match: Float64, arg_range_valid: Float64,
     permission_granted: Float64, rate_limit_ok: Float64
 ) -> Float64:
@@ -74,7 +74,7 @@ fn tool_call_validation_score(
     return arg_type_match * arg_range_valid * permission_granted * rate_limit_ok
 
 
-fn data_leakage_risk_score(
+def data_leakage_risk_score(
     token_memorization_score: Float64, training_data_similarity: Float64,
     privacy_sensitivity: Float64
 ) -> Float64:
@@ -93,7 +93,7 @@ fn data_leakage_risk_score(
     return token_memorization_score * training_data_similarity * privacy_sensitivity
 
 
-fn jailbreak_pattern_score(
+def jailbreak_pattern_score(
     roleplay_frame_depth: Float64, hypothetical_nesting: Float64,
     constraint_negation_count: Float64
 ) -> Float64:
@@ -113,7 +113,7 @@ fn jailbreak_pattern_score(
             constraint_negation_count * 0.3)
 
 
-fn output_toxicity_estimate(
+def output_toxicity_estimate(
     toxicity_classifier_logit: Float64, generation_temperature: Float64,
     safety_steering_strength: Float64
 ) -> Float64:
@@ -137,7 +137,7 @@ fn output_toxicity_estimate(
     return steered
 
 
-fn pii_token_risk(
+def pii_token_risk(
     token_pii_classifier_prob: Float64, context_pii_density: Float64,
     user_consent_level: Float64
 ) -> Float64:
@@ -156,7 +156,7 @@ fn pii_token_risk(
     return token_pii_classifier_prob * context_pii_density * (1.0 - user_consent_level)
 
 
-fn sandboxed_exec_trust_score(
+def sandboxed_exec_trust_score(
     tool_signature_valid: Float64, execution_timeout_ok: Float64,
     resource_limit_ok: Float64, output_schema_valid: Float64
 ) -> Float64:
@@ -176,7 +176,7 @@ fn sandboxed_exec_trust_score(
     return tool_signature_valid * execution_timeout_ok * resource_limit_ok * output_schema_valid
 
 
-fn rate_limit_violation_score(
+def rate_limit_violation_score(
     requests_in_window: Float64, rate_limit: Float64,
     window_fraction_elapsed: Float64
 ) -> Float64:
@@ -196,7 +196,7 @@ fn rate_limit_violation_score(
     return (projected - rate_limit) / rate_limit
 
 
-fn adversarial_input_score(
+def adversarial_input_score(
     input_perplexity: Float64, baseline_perplexity: Float64,
     perturbation_budget: Float64
 ) -> Float64:

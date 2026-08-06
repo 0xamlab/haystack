@@ -13,17 +13,17 @@ from conformal import (
 )
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     return fabs(a - b) <= 1e-12
 
 
-fn _is_inf_sentinel(x: Float64) -> Bool:
+def _is_inf_sentinel(x: Float64) -> Bool:
     # Must be the effectively-infinite sentinel, and finite per the module
     # convention (never IEEE inf).
     return x >= 1e307 and not isinf(x)
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ conformal::" + name)

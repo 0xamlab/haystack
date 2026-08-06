@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn dpo_loss(
+def dpo_loss(
     log_ratio_chosen: Float64, log_ratio_rejected: Float64, beta: Float64
 ) -> Float64:
     """Direct Preference Optimisation loss (Rafailov et al. 2023).
@@ -36,7 +36,7 @@ fn dpo_loss(
     return -log(1.0 / (1.0 + exp(-logit)))  # -log sigmoid
 
 
-fn ipo_loss(
+def ipo_loss(
     log_ratio_chosen: Float64, log_ratio_rejected: Float64, tau: Float64
 ) -> Float64:
     """Identity Preference Optimisation loss (Azar et al. 2024).
@@ -55,7 +55,7 @@ fn ipo_loss(
     return diff * diff
 
 
-fn orpo_ratio(
+def orpo_ratio(
     chosen_log_prob: Float64, rejected_log_prob: Float64,
     chosen_seq_len: Float64, rejected_seq_len: Float64,
     lambda_orpo: Float64
@@ -87,7 +87,7 @@ fn orpo_ratio(
     return -lambda_orpo * log(p)
 
 
-fn ppo_clip_objective(
+def ppo_clip_objective(
     ratio: Float64, advantage: Float64, clip_eps: Float64
 ) -> Float64:
     """PPO clipped surrogate objective.
@@ -114,7 +114,7 @@ fn ppo_clip_objective(
     return obj2
 
 
-fn reward_model_score(
+def reward_model_score(
     chosen_logit: Float64, rejected_logit: Float64
 ) -> Float64:
     """Bradley-Terry reward model pairwise loss.
@@ -132,7 +132,7 @@ fn reward_model_score(
     return -log(1.0 / (1.0 + exp(-diff)))
 
 
-fn kl_penalty_term(
+def kl_penalty_term(
     log_prob_policy: Float64, log_prob_reference: Float64, beta: Float64
 ) -> Float64:
     """KL divergence penalty from reference model.
@@ -150,7 +150,7 @@ fn kl_penalty_term(
     return beta * (log_prob_policy - log_prob_reference)
 
 
-fn advantage_gae(
+def advantage_gae(
     reward: Float64, value_current: Float64, value_next: Float64,
     gamma: Float64, lam: Float64, prev_gae: Float64
 ) -> Float64:
@@ -174,7 +174,7 @@ fn advantage_gae(
     return delta + gamma * lam * prev_gae
 
 
-fn grpo_group_advantage(
+def grpo_group_advantage(
     reward: Float64, group_mean: Float64, group_std: Float64
 ) -> Float64:
     """GRPO group-relative advantage (DeepSeek-R1 style).
@@ -194,7 +194,7 @@ fn grpo_group_advantage(
     return (reward - group_mean) / group_std
 
 
-fn sft_loss_token(
+def sft_loss_token(
     log_prob: Float64
 ) -> Float64:
     """Supervised fine-tuning cross-entropy loss for one token.
@@ -210,7 +210,7 @@ fn sft_loss_token(
     return -log_prob
 
 
-fn preference_margin_loss(
+def preference_margin_loss(
     chosen_reward: Float64, rejected_reward: Float64, margin: Float64
 ) -> Float64:
     """Margin-based preference loss: max(0, margin - (chosen - rejected)).

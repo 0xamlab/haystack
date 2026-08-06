@@ -31,18 +31,18 @@ comptime EV_JOULE: Float64 = 1.602e-19     # J per eV
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _deg_to_rad(deg: Float64) -> Float64:
+def _deg_to_rad(deg: Float64) -> Float64:
     return deg * PI / 180.0
 
 
-fn _rad_to_deg(rad: Float64) -> Float64:
+def _rad_to_deg(rad: Float64) -> Float64:
     return rad * 180.0 / PI
 
 
 # ── snells_law ───────────────────────────────────────────────────────────────
 
 
-fn snells_law(n1: Float64, theta1_deg: Float64, n2: Float64) -> Float64:
+def snells_law(n1: Float64, theta1_deg: Float64, n2: Float64) -> Float64:
     """Angle of refraction in degrees via Snell's law: n1·sin(θ1)=n2·sin(θ2)."""
     var sin_theta2 = n1 * sin(_deg_to_rad(theta1_deg)) / n2
     if sin_theta2 > 1.0 or sin_theta2 < -1.0:
@@ -53,7 +53,7 @@ fn snells_law(n1: Float64, theta1_deg: Float64, n2: Float64) -> Float64:
 # ── critical_angle ───────────────────────────────────────────────────────────
 
 
-fn critical_angle(n1: Float64, n2: Float64) -> Float64:
+def critical_angle(n1: Float64, n2: Float64) -> Float64:
     """Critical angle for total internal reflection (degrees). Returns -1 if n2>=n1."""
     if n2 >= n1:
         return -1.0
@@ -63,7 +63,7 @@ fn critical_angle(n1: Float64, n2: Float64) -> Float64:
 # ── fresnel_reflectance_normal ───────────────────────────────────────────────
 
 
-fn fresnel_reflectance_normal(n1: Float64, n2: Float64) -> Float64:
+def fresnel_reflectance_normal(n1: Float64, n2: Float64) -> Float64:
     """Normal-incidence Fresnel reflectance: R = ((n1-n2)/(n1+n2))²."""
     var r = (n1 - n2) / (n1 + n2)
     return r * r
@@ -72,7 +72,7 @@ fn fresnel_reflectance_normal(n1: Float64, n2: Float64) -> Float64:
 # ── thin_lens_equation ───────────────────────────────────────────────────────
 
 
-fn thin_lens_equation(f: Float64, do_: Float64) -> Float64:
+def thin_lens_equation(f: Float64, do_: Float64) -> Float64:
     """Image distance from thin lens equation: 1/di = 1/f - 1/do."""
     var inv_di = 1.0 / f - 1.0 / do_
     if inv_di == 0.0:
@@ -83,7 +83,7 @@ fn thin_lens_equation(f: Float64, do_: Float64) -> Float64:
 # ── magnification ────────────────────────────────────────────────────────────
 
 
-fn magnification(di: Float64, do_: Float64) -> Float64:
+def magnification(di: Float64, do_: Float64) -> Float64:
     """Transverse magnification M = -di/do."""
     return -di / do_
 
@@ -91,7 +91,7 @@ fn magnification(di: Float64, do_: Float64) -> Float64:
 # ── wavelength_to_frequency ──────────────────────────────────────────────────
 
 
-fn wavelength_to_frequency(wavelength_nm: Float64) -> Float64:
+def wavelength_to_frequency(wavelength_nm: Float64) -> Float64:
     """Frequency in Hz from wavelength in nm: f = c/λ."""
     return C_LIGHT / (wavelength_nm * 1.0e-9)
 
@@ -99,7 +99,7 @@ fn wavelength_to_frequency(wavelength_nm: Float64) -> Float64:
 # ── photon_energy ────────────────────────────────────────────────────────────
 
 
-fn photon_energy(wavelength_nm: Float64) -> Float64:
+def photon_energy(wavelength_nm: Float64) -> Float64:
     """Photon energy in eV from wavelength in nm: E = hc/λ."""
     var lam = wavelength_nm * 1.0e-9
     return (H_PLANCK * C_LIGHT / lam) / EV_JOULE
@@ -108,7 +108,7 @@ fn photon_energy(wavelength_nm: Float64) -> Float64:
 # ── diffraction_limit ────────────────────────────────────────────────────────
 
 
-fn diffraction_limit(wavelength_nm: Float64, aperture_mm: Float64) -> Float64:
+def diffraction_limit(wavelength_nm: Float64, aperture_mm: Float64) -> Float64:
     """Airy disk angular radius in arcseconds: θ ≈ 1.22·λ/D."""
     var lam = wavelength_nm * 1.0e-9
     var d = aperture_mm * 1.0e-3
@@ -119,7 +119,7 @@ fn diffraction_limit(wavelength_nm: Float64, aperture_mm: Float64) -> Float64:
 # ── brewster_angle ───────────────────────────────────────────────────────────
 
 
-fn brewster_angle(n1: Float64, n2: Float64) -> Float64:
+def brewster_angle(n1: Float64, n2: Float64) -> Float64:
     """Brewster's angle in degrees: θ_B = atan(n2/n1)."""
     return _rad_to_deg(atan(n2 / n1))
 
@@ -127,6 +127,6 @@ fn brewster_angle(n1: Float64, n2: Float64) -> Float64:
 # ── numerical_aperture ───────────────────────────────────────────────────────
 
 
-fn numerical_aperture(n: Float64, half_angle_deg: Float64) -> Float64:
+def numerical_aperture(n: Float64, half_angle_deg: Float64) -> Float64:
     """Numerical aperture: NA = n·sin(θ)."""
     return n * sin(_deg_to_rad(half_angle_deg))

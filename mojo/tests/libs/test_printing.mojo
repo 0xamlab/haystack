@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from printing import dpi_to_lpi, pixel_count, file_size_uncompressed, bleed_area, spine_width, ink_coverage, paper_weight_gsm_to_lb, sheets_per_ream, cost_per_page, imposition_pages, color_delta_e, dot_gain_apparent
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from llmk.contract import llmk_status_name, llmk_residual_dims_check, llmk_kv_append_dims_check, llmk_argmax_dims_check, llmk_gemv_dims_check
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -25,7 +25,7 @@ from std.math import exp, pow, log as math_log
 # ── exponential_reliability ──────────────────────────────────────────────────
 
 
-fn exponential_reliability(t: Float64, lambda_rate: Float64) -> Float64:
+def exponential_reliability(t: Float64, lambda_rate: Float64) -> Float64:
     """R(t) = exp(-λt)."""
     return exp(-lambda_rate * t)
 
@@ -33,7 +33,7 @@ fn exponential_reliability(t: Float64, lambda_rate: Float64) -> Float64:
 # ── exponential_failure_rate ─────────────────────────────────────────────────
 
 
-fn exponential_failure_rate(lambda_rate: Float64) -> Float64:
+def exponential_failure_rate(lambda_rate: Float64) -> Float64:
     """Constant failure rate = λ."""
     return lambda_rate
 
@@ -41,7 +41,7 @@ fn exponential_failure_rate(lambda_rate: Float64) -> Float64:
 # ── weibull_reliability ──────────────────────────────────────────────────────
 
 
-fn weibull_reliability(t: Float64, beta: Float64, eta: Float64) -> Float64:
+def weibull_reliability(t: Float64, beta: Float64, eta: Float64) -> Float64:
     """R(t) = exp(-(t/η)^β)."""
     if t <= 0.0:
         return 1.0
@@ -53,7 +53,7 @@ fn weibull_reliability(t: Float64, beta: Float64, eta: Float64) -> Float64:
 # ── weibull_failure_rate ─────────────────────────────────────────────────────
 
 
-fn weibull_failure_rate(t: Float64, beta: Float64, eta: Float64) -> Float64:
+def weibull_failure_rate(t: Float64, beta: Float64, eta: Float64) -> Float64:
     """h(t) = (β/η)(t/η)^(β-1)."""
     if t <= 0.0 or eta <= 0.0:
         return 0.0
@@ -63,7 +63,7 @@ fn weibull_failure_rate(t: Float64, beta: Float64, eta: Float64) -> Float64:
 # ── mtbf ─────────────────────────────────────────────────────────────────────
 
 
-fn mtbf(failure_rate: Float64) -> Float64:
+def mtbf(failure_rate: Float64) -> Float64:
     """Mean time between failures: 1/λ."""
     if failure_rate <= 0.0:
         return 1e30
@@ -73,7 +73,7 @@ fn mtbf(failure_rate: Float64) -> Float64:
 # ── availability ─────────────────────────────────────────────────────────────
 
 
-fn availability(mtbf_val: Float64, mttr: Float64) -> Float64:
+def availability(mtbf_val: Float64, mttr: Float64) -> Float64:
     """A = MTBF / (MTBF + MTTR)."""
     var denom = mtbf_val + mttr
     if denom <= 0.0:
@@ -84,7 +84,7 @@ fn availability(mtbf_val: Float64, mttr: Float64) -> Float64:
 # ── series_reliability ───────────────────────────────────────────────────────
 
 
-fn series_reliability(reliabilities: List[Float64]) -> Float64:
+def series_reliability(reliabilities: List[Float64]) -> Float64:
     """R_series = Π(R_i)."""
     var result: Float64 = 1.0
     for i in range(len(reliabilities)):
@@ -95,7 +95,7 @@ fn series_reliability(reliabilities: List[Float64]) -> Float64:
 # ── parallel_reliability ─────────────────────────────────────────────────────
 
 
-fn parallel_reliability(reliabilities: List[Float64]) -> Float64:
+def parallel_reliability(reliabilities: List[Float64]) -> Float64:
     """R_parallel = 1 - Π(1-R_i)."""
     var fail_product: Float64 = 1.0
     for i in range(len(reliabilities)):
@@ -106,7 +106,7 @@ fn parallel_reliability(reliabilities: List[Float64]) -> Float64:
 # ── k_of_n_reliability ──────────────────────────────────────────────────────
 
 
-fn _comb(n: Int, k: Int) -> Int:
+def _comb(n: Int, k: Int) -> Int:
     """Binomial coefficient C(n, k)."""
     if k < 0 or k > n:
         return 0
@@ -121,7 +121,7 @@ fn _comb(n: Int, k: Int) -> Int:
     return result
 
 
-fn k_of_n_reliability(k: Int, n: Int, r: Float64) -> Float64:
+def k_of_n_reliability(k: Int, n: Int, r: Float64) -> Float64:
     """k-out-of-n system reliability: Σ(C(n,i)*r^i*(1-r)^(n-i)) for i=k..n."""
     var result: Float64 = 0.0
     var q = 1.0 - r
@@ -134,7 +134,7 @@ fn k_of_n_reliability(k: Int, n: Int, r: Float64) -> Float64:
 # ── bathtub_rate ─────────────────────────────────────────────────────────────
 
 
-fn bathtub_rate(
+def bathtub_rate(
     t: Float64,
     beta_infant: Float64,
     lambda_useful: Float64,
@@ -169,7 +169,7 @@ fn bathtub_rate(
 # ── mission_reliability ──────────────────────────────────────────────────────
 
 
-fn mission_reliability(duration: Float64, failure_rate: Float64) -> Float64:
+def mission_reliability(duration: Float64, failure_rate: Float64) -> Float64:
     """R_mission = exp(-λ*duration). Same as exponential but semantically
     for mission planning."""
     return exp(-failure_rate * duration)

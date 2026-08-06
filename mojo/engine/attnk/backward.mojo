@@ -92,7 +92,7 @@ struct BwdAgreement(Copyable, Movable):
     var status: Int
 
 
-fn sdpa_bwd_flat(
+def sdpa_bwd_flat(
     dout: List[Float64], q: List[Float64], k: List[Float64], v: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int, scale: Float64
 ) -> SdpaGrad:
@@ -198,7 +198,7 @@ fn sdpa_bwd_flat(
     return SdpaGrad(dq^, dk^, dv^, n_tok_q, n_tok_k, ATTN_OK)
 
 
-fn attn_bwd_gradcheck_flat(
+def attn_bwd_gradcheck_flat(
     q: List[Float64], k: List[Float64], v: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int,
     scale: Float64, step: Float64
@@ -271,7 +271,7 @@ fn attn_bwd_gradcheck_flat(
     return BwdAgreement(worst, tol_at_worst, worst <= tol_at_worst, n_q, ATTN_OK)
 
 
-fn _sum_out(
+def _sum_out(
     q: List[Float64], k: List[Float64], v: List[Float64], bias: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int, scale: Float64
 ) -> Float64:
@@ -287,7 +287,7 @@ fn _sum_out(
     return total
 
 
-fn _sqrt(x: Float64) -> Float64:
+def _sqrt(x: Float64) -> Float64:
     """Square root, guarding the non-positive case. Underscore-prefixed: not a kernel."""
     if x <= 0.0:
         return 1.0

@@ -23,7 +23,7 @@ from std.math import exp, log, abs as fabs
 # ── combinations ─────────────────────────────────────────────────────────────
 
 
-fn combinations(n: Int, k: Int) -> Float64:
+def combinations(n: Int, k: Int) -> Float64:
     """C(n,k) = n! / (k!(n-k)!) computed iteratively to avoid overflow.
 
     Args:
@@ -47,7 +47,7 @@ fn combinations(n: Int, k: Int) -> Float64:
 # ── permutations ─────────────────────────────────────────────────────────────
 
 
-fn permutations(n: Int, k: Int) -> Float64:
+def permutations(n: Int, k: Int) -> Float64:
     """P(n,k) = n! / (n-k)! computed iteratively.
 
     Args:
@@ -68,7 +68,7 @@ fn permutations(n: Int, k: Int) -> Float64:
 # ── lottery_odds ─────────────────────────────────────────────────────────────
 
 
-fn lottery_odds(
+def lottery_odds(
     total_numbers: Int, drawn: Int, bonus: Int
 ) -> Float64:
     """Lottery odds: Odds = C(total, drawn) * bonus.
@@ -87,7 +87,7 @@ fn lottery_odds(
 # ── expected_value ───────────────────────────────────────────────────────────
 
 
-fn expected_value(prize: Float64, probability: Float64) -> Float64:
+def expected_value(prize: Float64, probability: Float64) -> Float64:
     """Expected value: EV = prize * probability.
 
     Args:
@@ -103,7 +103,7 @@ fn expected_value(prize: Float64, probability: Float64) -> Float64:
 # ── expected_value_net ───────────────────────────────────────────────────────
 
 
-fn expected_value_net(
+def expected_value_net(
     prizes_ev_sum: Float64, ticket_cost: Float64
 ) -> Float64:
     """Net expected value: Net EV = Σ(EV) - cost.
@@ -121,7 +121,7 @@ fn expected_value_net(
 # ── house_edge ───────────────────────────────────────────────────────────────
 
 
-fn house_edge(
+def house_edge(
     expected_return: Float64, ticket_cost: Float64
 ) -> Float64:
     """House edge: HE = (cost - return) / cost * 100 (%).
@@ -141,7 +141,7 @@ fn house_edge(
 # ── probability_at_least_one_win ─────────────────────────────────────────────
 
 
-fn probability_at_least_one_win(
+def probability_at_least_one_win(
     p_single: Float64, n_tickets: Int
 ) -> Float64:
     """P(at least one win) = 1 - (1 - p)^n.
@@ -163,7 +163,7 @@ fn probability_at_least_one_win(
 # ── annuity_vs_lump_sum ─────────────────────────────────────────────────────
 
 
-fn annuity_vs_lump_sum(
+def annuity_vs_lump_sum(
     annual_payment: Float64, years: Float64, discount_rate: Float64
 ) -> Float64:
     """Present value of annuity: PV = payment * (1 - (1+r)^(-n)) / r.
@@ -185,7 +185,7 @@ fn annuity_vs_lump_sum(
 # ── tax_after_winnings ───────────────────────────────────────────────────────
 
 
-fn tax_after_winnings(
+def tax_after_winnings(
     gross: Float64, federal_rate: Float64, state_rate: Float64
 ) -> Float64:
     """Net after taxes: Net = gross * (1 - federal - state).
@@ -204,7 +204,7 @@ fn tax_after_winnings(
 # ── odds_to_probability ─────────────────────────────────────────────────────
 
 
-fn odds_to_probability(odds_against: Float64) -> Float64:
+def odds_to_probability(odds_against: Float64) -> Float64:
     """Convert odds-against to probability: P = 1 / (odds + 1).
 
     Args:
@@ -219,7 +219,7 @@ fn odds_to_probability(odds_against: Float64) -> Float64:
 # ── probability_to_odds ─────────────────────────────────────────────────────
 
 
-fn probability_to_odds(probability: Float64) -> Float64:
+def probability_to_odds(probability: Float64) -> Float64:
     """Convert probability to odds-against: Odds = (1 - p) / p.
 
     Args:
@@ -236,7 +236,7 @@ fn probability_to_odds(probability: Float64) -> Float64:
 # ── jackpot_ev_threshold ─────────────────────────────────────────────────────
 
 
-fn jackpot_ev_threshold(
+def jackpot_ev_threshold(
     jackpot_odds: Float64, ticket_cost: Float64
 ) -> Float64:
     """Jackpot threshold for +EV: Threshold = odds * cost.

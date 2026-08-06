@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from plasma_physics import debye_length, plasma_frequency, thermal_velocity, larmor_radius, coulomb_logarithm, spitzer_resistivity, alfven_speed, mhd_beta, fusion_lawson_criterion, bremsstrahlung_power
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

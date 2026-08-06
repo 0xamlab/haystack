@@ -59,7 +59,7 @@ alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 alias _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
 
 
-fn _sbyte(word: UInt32, shift: Int) -> Float32:
+def _sbyte(word: UInt32, shift: Int) -> Float32:
     """Unpack ONE signed int8 lane from a packed 32-bit word at byte offset `shift/8`, little-endian
     (byte 0 = the lowest 8 bits) -- the same byte order a `char4` vector load reads from the
     identical bytes, verified by this file's own correctness check rather than assumed."""
@@ -69,7 +69,7 @@ fn _sbyte(word: UInt32, shift: Int) -> Float32:
     return Float32(b)
 
 
-fn _sbyte_bl(word: UInt32, shift: Int) -> Float32:
+def _sbyte_bl(word: UInt32, shift: Int) -> Float32:
     """Branchless twin of `_sbyte`: shift the target byte into the sign position and arithmetic-
     shift back, instead of a mask + compare + conditional subtract. Exists to rule out "the branch
     is what's slow" before blaming the load itself -- see `_gemv_i8_word32_bl`."""
@@ -78,7 +78,7 @@ fn _sbyte_bl(word: UInt32, shift: Int) -> Float32:
     return Float32(signed_val)
 
 
-fn _gemv_i8_char4(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_i8_char4(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
     """Variant A (baseline): `w.load[width=4]` char4 vector load, dequant, accumulate -- byte-for-
     byte the same inner loop `residentk.kernels._norm_gemv_kernel_i8` uses, with the rmsnorm stage
     removed (`xs` is a verbatim copy of `x`, not a normalized one) so this probe measures only the
@@ -124,7 +124,7 @@ fn _gemv_i8_char4(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         y[j] = red[sub * _LANES]
 
 
-fn _gemv_i8_word32(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_i8_word32(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
     """Variant B: ONE explicit `UInt32` read (via `w.bitcast[UInt32]()`) fetching the same 4 bytes
     `_gemv_i8_char4` reads with `load[width=4]`, then a manual shift/mask unpack to 4 signed lanes.
     Same 4-elements-per-step throughput as variant A -- the only difference is the load
@@ -173,7 +173,7 @@ fn _gemv_i8_word32(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         y[j] = red[sub * _LANES]
 
 
-fn _gemv_i8_word32_bl(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_i8_word32_bl(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
     """Variant B2: identical to `_gemv_i8_word32` except the unpack uses `_sbyte_bl` (branchless
     shift-based sign extension) instead of `_sbyte` (mask + compare + conditional subtract). Exists
     to separate "the extra unpack arithmetic is inherently costly" from "the branch specifically is
@@ -222,7 +222,7 @@ fn _gemv_i8_word32_bl(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         y[j] = red[sub * _LANES]
 
 
-fn _gemv_i8_word32x2(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_i8_word32x2(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
     """Variant C: TWO consecutive `UInt32` reads (8 bytes, 8 elements) issued back-to-back before
     either is unpacked, then two 4-wide `Float32` sub-vectors combined -- 8 elements/step instead of
     4, half as many outer-loop iterations for the same `k`. Tests whether more independent memory
@@ -278,7 +278,7 @@ fn _gemv_i8_word32x2(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         y[j] = red[sub * _LANES]
 
 
-fn _gemv_i8_scalar_ref(y: List[Float64], x: List[Float64], w: List[Int8], wscale: List[Float64], k: Int, n: Int) -> List[Float64]:
+def _gemv_i8_scalar_ref(y: List[Float64], x: List[Float64], w: List[Int8], wscale: List[Float64], k: Int, n: Int) -> List[Float64]:
     """Pure-host, no-vectorization Int8 GEMV reference -- one multiply-add at a time, no `char4`, no
     packed word, nothing this probe is trying to measure. Used only to check that variants A/B/C
     agree with EACH OTHER and with this independent scalar path, on a small shape, before any timing
@@ -294,11 +294,11 @@ fn _gemv_i8_scalar_ref(y: List[Float64], x: List[Float64], w: List[Int8], wscale
     return out^
 
 
-fn _ceil_div(a: Int, b: Int) -> Int:
+def _ceil_div(a: Int, b: Int) -> Int:
     return (a + b - 1) // b
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1
@@ -315,7 +315,7 @@ struct _QRow(Copyable, Movable):
     var scale: Float64
 
 
-fn _quantize_row(v: List[Float64], row: Int, k: Int) -> _QRow:
+def _quantize_row(v: List[Float64], row: Int, k: Int) -> _QRow:
     """Per-row symmetric int8 quantize, matching `residentk.session._quantize_row_i8`'s scheme
     exactly (scale = max(|row|)/127, never zero)."""
     var maxabs = 0.0
@@ -339,14 +339,14 @@ fn _quantize_row(v: List[Float64], row: Int, k: Int) -> _QRow:
     return _QRow(out^, scale)
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 47)) / 19.0 - 1.2)
     return o^
 
 
-fn _run_correctness(ctx: DeviceContext) raises -> Bool:
+def _run_correctness(ctx: DeviceContext) raises -> Bool:
     """Stage 1: small, hand-computable shape (k=136, n=24 -- not a multiple of 256 either, so the
     scalar-tail path in every variant is exercised too), checked against the pure-host scalar
     reference AND against each other. `k=136` deliberately includes the `_VEC_STRIDE8`-misaligned
@@ -431,7 +431,7 @@ fn _run_correctness(ctx: DeviceContext) raises -> Bool:
     return all_ok
 
 
-fn _worst_delta(ybuf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) raises -> Float64:
+def _worst_delta(ybuf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) raises -> Float64:
     var worst = 0.0
     with ybuf.map_to_host() as h:
         for j in range(n):
@@ -473,7 +473,7 @@ def main() raises:
     _time_shape(ctx, 1024, 2048, 200)
 
 
-fn _time_shape(ctx: DeviceContext, k: Int, n: Int, reps: Int) raises:
+def _time_shape(ctx: DeviceContext, k: Int, n: Int, reps: Int) raises:
     var x64 = _pseudo(k, 3)
     var wf = _pseudo(n * k, 11)
     var w_i8 = List[Int8](capacity=n * k)

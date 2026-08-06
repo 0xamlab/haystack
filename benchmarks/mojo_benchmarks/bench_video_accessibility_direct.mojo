@@ -31,7 +31,7 @@ comptime IS_BOLD: Bool = False
 comptime ITERATIONS: Int = 24
 
 
-fn _scene(frame_index: Int) -> Int:
+def _scene(frame_index: Int) -> Int:
     if frame_index < 4:
         return 0
     if frame_index < 8:

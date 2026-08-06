@@ -24,13 +24,13 @@ from std.math import sqrt, log
 
 
 @always_inline
-fn _is_ws(c: UInt8) -> Bool:
+def _is_ws(c: UInt8) -> Bool:
     """Check if byte is whitespace."""
     return c == 32 or c == 9 or c == 10 or c == 13  # space, tab, nl, cr
 
 
 @always_inline
-fn _is_punct(c: UInt8) -> Bool:
+def _is_punct(c: UInt8) -> Bool:
     """Check if byte is common ASCII punctuation."""
     return (c == 46 or c == 44 or c == 33 or c == 63 or c == 59   # . , ! ? ;
             or c == 58 or c == 40 or c == 41 or c == 91 or c == 93   # : ( ) [ ]
@@ -42,14 +42,14 @@ fn _is_punct(c: UInt8) -> Bool:
 
 
 @always_inline
-fn _to_lower_byte(c: UInt8) -> UInt8:
+def _to_lower_byte(c: UInt8) -> UInt8:
     """Lowercase a single ASCII byte."""
     if c >= 65 and c <= 90:
         return c + 32
     return c
 
 
-fn _contains_str(haystack: List[String], needle: String) -> Bool:
+def _contains_str(haystack: List[String], needle: String) -> Bool:
     """Check if needle is in the list."""
     for i in range(len(haystack)):
         if haystack[i] == needle:
@@ -60,7 +60,7 @@ fn _contains_str(haystack: List[String], needle: String) -> Bool:
 # ── Tokenize ─────────────────────────────────────────────────────────────────
 
 
-fn tokenize(text: String) -> List[String]:
+def tokenize(text: String) -> List[String]:
     """Split text on whitespace and common punctuation. Lowercase all tokens."""
     var tokens = List[String]()
     var bs = text.as_bytes()
@@ -89,7 +89,7 @@ fn tokenize(text: String) -> List[String]:
 # ── N-grams ──────────────────────────────────────────────────────────────────
 
 
-fn ngrams(tokens: List[String], n: Int) -> List[String]:
+def ngrams(tokens: List[String], n: Int) -> List[String]:
     """Generate n-grams as joined strings (e.g., 'the_cat' for bigram)."""
     var result = List[String]()
     var sz = len(tokens)
@@ -106,7 +106,7 @@ fn ngrams(tokens: List[String], n: Int) -> List[String]:
 # ── Term Frequency (as list of pairs) ────────────────────────────────────────
 
 
-fn term_frequency(tokens: List[String]) -> List[List[String]]:
+def term_frequency(tokens: List[String]) -> List[List[String]]:
     """Returns pairs [term, count_as_string] sorted by frequency descending."""
     var terms = List[String]()
     var counts = List[Int]()
@@ -144,7 +144,7 @@ fn term_frequency(tokens: List[String]) -> List[List[String]]:
 # ── TF ───────────────────────────────────────────────────────────────────────
 
 
-fn tf(term: String, tokens: List[String]) -> Float64:
+def tf(term: String, tokens: List[String]) -> Float64:
     """Term frequency: count(term) / len(tokens)."""
     var n = len(tokens)
     if n == 0:
@@ -159,7 +159,7 @@ fn tf(term: String, tokens: List[String]) -> Float64:
 # ── IDF ──────────────────────────────────────────────────────────────────────
 
 
-fn idf(term: String, documents: List[List[String]]) -> Float64:
+def idf(term: String, documents: List[List[String]]) -> Float64:
     """Inverse document frequency: log(N / (1 + df))."""
     var n_docs = len(documents)
     if n_docs == 0:
@@ -177,7 +177,7 @@ fn idf(term: String, documents: List[List[String]]) -> Float64:
 # ── TF-IDF ───────────────────────────────────────────────────────────────────
 
 
-fn tfidf(term: String, tokens: List[String],
+def tfidf(term: String, tokens: List[String],
          documents: List[List[String]]) -> Float64:
     """TF × IDF."""
     return tf(term, tokens) * idf(term, documents)
@@ -186,7 +186,7 @@ fn tfidf(term: String, tokens: List[String],
 # ── Cosine Similarity ────────────────────────────────────────────────────────
 
 
-fn cosine_similarity_vec(a: List[Float64], b: List[Float64]) -> Float64:
+def cosine_similarity_vec(a: List[Float64], b: List[Float64]) -> Float64:
     """Cosine similarity of two vectors."""
     var n = len(a)
     if n == 0 or len(b) != n:
@@ -207,7 +207,7 @@ fn cosine_similarity_vec(a: List[Float64], b: List[Float64]) -> Float64:
 # ── Jaccard Similarity ───────────────────────────────────────────────────────
 
 
-fn jaccard_similarity(a: List[String], b: List[String]) -> Float64:
+def jaccard_similarity(a: List[String], b: List[String]) -> Float64:
     """|A∩B| / |A∪B| on token sets."""
     # Build union and count intersection
     var union_set = List[String]()
@@ -239,7 +239,7 @@ fn jaccard_similarity(a: List[String], b: List[String]) -> Float64:
 # ── Word Count ───────────────────────────────────────────────────────────────
 
 
-fn word_count(text: String) -> Int:
+def word_count(text: String) -> Int:
     """Count words in text (split by whitespace)."""
     var count: Int = 0
     var in_word = False
@@ -260,7 +260,7 @@ fn word_count(text: String) -> Int:
 # ── Char Count ───────────────────────────────────────────────────────────────
 
 
-fn char_count(text: String) -> Int:
+def char_count(text: String) -> Int:
     """Count non-whitespace characters."""
     var count: Int = 0
     var bs = text.as_bytes()
@@ -274,7 +274,7 @@ fn char_count(text: String) -> Int:
 # ── Unique Tokens ────────────────────────────────────────────────────────────
 
 
-fn unique_tokens(tokens: List[String]) -> List[String]:
+def unique_tokens(tokens: List[String]) -> List[String]:
     """Unique tokens in order of first appearance."""
     var result = List[String]()
     for i in range(len(tokens)):

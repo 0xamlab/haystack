@@ -52,7 +52,7 @@ alias DEFAULT_CHUNK_ROWS = 1024
 alias MAX_CHUNK_ROWS = 65536
 
 
-fn _stream_error(code: String, message: String) -> String:
+def _stream_error(code: String, message: String) -> String:
     return (
         '{"error":"'
         + code
@@ -79,23 +79,23 @@ struct ResidentStreams(Copyable, Movable):
     var chunk_rows: List[Int]
     var next_id: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.cursors = List[String]()
         self.handles = List[String]()
         self.positions = List[Int]()
         self.chunk_rows = List[Int]()
         self.next_id = 1
 
-    fn count(self) -> Int:
+    def count(self) -> Int:
         return len(self.cursors)
 
-    fn _index_of(self, cursor: String) -> Int:
+    def _index_of(self, cursor: String) -> Int:
         for i in range(len(self.cursors)):
             if self.cursors[i] == cursor:
                 return i
         return -1
 
-    fn open_from_json(mut self, raw: String, datasets: ResidentDatasets) raises -> String:
+    def open_from_json(mut self, raw: String, datasets: ResidentDatasets) raises -> String:
         var handle = json_get_string(raw, "handle")
         if len(handle) == 0:
             return _stream_error("invalid_arguments", "stream_open requires a handle.")
@@ -133,7 +133,7 @@ struct ResidentStreams(Copyable, Movable):
             + "}"
         )
 
-    fn next_from_json(mut self, raw: String, datasets: ResidentDatasets) raises -> String:
+    def next_from_json(mut self, raw: String, datasets: ResidentDatasets) raises -> String:
         var cursor = json_get_string(raw, "cursor")
         if len(cursor) == 0:
             return _stream_error("invalid_arguments", "stream_next requires a cursor.")
@@ -188,7 +188,7 @@ struct ResidentStreams(Copyable, Movable):
             + "}"
         )
 
-    fn close_from_json(mut self, raw: String) -> String:
+    def close_from_json(mut self, raw: String) -> String:
         var cursor = json_get_string(raw, "cursor")
         if len(cursor) == 0:
             return _stream_error("invalid_arguments", "stream_close requires a cursor.")

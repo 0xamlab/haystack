@@ -21,7 +21,7 @@ from std.random import random_float64
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _argmax(vals: List[Float64]) -> Int:
+def _argmax(vals: List[Float64]) -> Int:
     """Return index of maximum value."""
     var n = len(vals)
     if n == 0:
@@ -35,7 +35,7 @@ fn _argmax(vals: List[Float64]) -> Int:
     return best
 
 
-fn _init_q(n_states: Int, n_actions: Int) -> List[List[Float64]]:
+def _init_q(n_states: Int, n_actions: Int) -> List[List[Float64]]:
     """Initialize Q-table to zeros."""
     var Q = List[List[Float64]]()
     for _ in range(n_states):
@@ -49,7 +49,7 @@ fn _init_q(n_states: Int, n_actions: Int) -> List[List[Float64]]:
 # ── Epsilon-greedy ────────────────────────────────────────────────────────────
 
 
-fn epsilon_greedy_action(Q_state: List[Float64], epsilon: Float64) -> Int:
+def epsilon_greedy_action(Q_state: List[Float64], epsilon: Float64) -> Int:
     """ε-greedy action selection."""
     var n = len(Q_state)
     if n == 0:
@@ -68,7 +68,7 @@ fn epsilon_greedy_action(Q_state: List[Float64], epsilon: Float64) -> Int:
 # ── Q-learning ────────────────────────────────────────────────────────────────
 
 
-fn q_learning(
+def q_learning(
     n_states: Int,
     n_actions: Int,
     rewards: List[List[Float64]],
@@ -139,7 +139,7 @@ fn q_learning(
 # ── SARSA ─────────────────────────────────────────────────────────────────────
 
 
-fn sarsa(
+def sarsa(
     n_states: Int,
     n_actions: Int,
     rewards: List[List[Float64]],
@@ -201,7 +201,7 @@ fn sarsa(
 # ── Value iteration ───────────────────────────────────────────────────────────
 
 
-fn value_iteration(
+def value_iteration(
     n_states: Int,
     n_actions: Int,
     rewards: List[List[Float64]],
@@ -261,7 +261,7 @@ fn value_iteration(
 # ── Policy extraction ─────────────────────────────────────────────────────────
 
 
-fn policy_from_q(Q: List[List[Float64]]) -> List[Int]:
+def policy_from_q(Q: List[List[Float64]]) -> List[Int]:
     """Greedy policy from Q-table: argmax over actions for each state."""
     var n_states = len(Q)
     var policy = List[Int]()
@@ -273,7 +273,7 @@ fn policy_from_q(Q: List[List[Float64]]) -> List[Int]:
 # ── Policy evaluation ─────────────────────────────────────────────────────────
 
 
-fn policy_evaluation(
+def policy_evaluation(
     policy: List[Int],
     n_states: Int,
     rewards: List[List[Float64]],
@@ -328,7 +328,7 @@ fn policy_evaluation(
 # ── TD error ──────────────────────────────────────────────────────────────────
 
 
-fn td_error(reward: Float64, gamma: Float64, v_next: Float64, v_current: Float64) -> Float64:
+def td_error(reward: Float64, gamma: Float64, v_next: Float64, v_current: Float64) -> Float64:
     """TD(0) error: r + γV(s') - V(s)."""
     return reward + gamma * v_next - v_current
 
@@ -336,7 +336,7 @@ fn td_error(reward: Float64, gamma: Float64, v_next: Float64, v_current: Float64
 # ── Discounted return ─────────────────────────────────────────────────────────
 
 
-fn discounted_return(rewards: List[Float64], gamma: Float64) -> Float64:
+def discounted_return(rewards: List[Float64], gamma: Float64) -> Float64:
     """G = Σ γ^t * r_t."""
     var G: Float64 = 0.0
     var n = len(rewards)

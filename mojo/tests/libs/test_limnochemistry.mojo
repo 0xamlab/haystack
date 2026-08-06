@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from limnochemistry import carbonate_alkalinity, ionic_strength, activity_coefficient_davies, pow_10, saturation_index_calcite, silicon_weathering_flux, redox_pe_eh, phosphorus_fractionation, nitrogen_speciation, doc_light_attenuation, epilimnion_mixing_depth
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

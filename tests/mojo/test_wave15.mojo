@@ -35,20 +35,20 @@ from tensor import (
 from std.math import abs as fabs
 
 
-fn _make_list1(v0: Float64) -> List[Float64]:
+def _make_list1(v0: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     return l^
 
 
-fn _make_list2(v0: Float64, v1: Float64) -> List[Float64]:
+def _make_list2(v0: Float64, v1: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
     return l^
 
 
-fn _make_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
+def _make_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
@@ -242,6 +242,6 @@ def main() raises:
     print("\n✅ All Wave 15 tests passed")
 
 
-fn assert_true(cond: Bool, msg: String) raises:
+def assert_true(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("ASSERTION FAILED: " + msg)

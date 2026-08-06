@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, pow, log
 
 
-fn friction_coefficient(friction_force: Float64, normal_force: Float64) -> Float64:
+def friction_coefficient(friction_force: Float64, normal_force: Float64) -> Float64:
     """Coulomb friction coefficient: μ = Ff/Fn.
 
     Args:
@@ -31,7 +31,7 @@ fn friction_coefficient(friction_force: Float64, normal_force: Float64) -> Float
     return friction_force / normal_force
 
 
-fn archard_wear_rate(
+def archard_wear_rate(
     wear_coefficient: Float64, sliding_distance: Float64,
     normal_force: Float64, hardness: Float64
 ) -> Float64:
@@ -51,7 +51,7 @@ fn archard_wear_rate(
     return wear_coefficient * sliding_distance * normal_force / hardness
 
 
-fn hertz_contact_radius(
+def hertz_contact_radius(
     normal_force: Float64, effective_radius: Float64, effective_modulus: Float64
 ) -> Float64:
     """Hertz contact radius for sphere-on-flat: a = (3FR/4E*)^(1/3).
@@ -69,7 +69,7 @@ fn hertz_contact_radius(
     return pow(3.0 * normal_force * effective_radius / (4.0 * effective_modulus), 1.0 / 3.0)
 
 
-fn hertz_max_pressure(normal_force: Float64, contact_radius: Float64) -> Float64:
+def hertz_max_pressure(normal_force: Float64, contact_radius: Float64) -> Float64:
     """Maximum Hertz contact pressure: p0 = 3F/(2πa²).
 
     Args:
@@ -85,7 +85,7 @@ fn hertz_max_pressure(normal_force: Float64, contact_radius: Float64) -> Float64
     return 3.0 * normal_force / (2.0 * pi * contact_radius * contact_radius)
 
 
-fn flash_temperature(
+def flash_temperature(
     friction_coeff: Float64, normal_force: Float64, velocity: Float64,
     conductivity: Float64, contact_area: Float64
 ) -> Float64:
@@ -109,7 +109,7 @@ fn flash_temperature(
     return friction_coeff * normal_force * velocity / denom
 
 
-fn film_thickness_ehd(
+def film_thickness_ehd(
     speed: Float64, viscosity: Float64, pressure_coeff: Float64,
     modulus: Float64, radius: Float64, force: Float64
 ) -> Float64:
@@ -136,7 +136,7 @@ fn film_thickness_ehd(
     return 2.69 * pow(U_param, 0.67) * pow(G_param, 0.53) * pow(W_param, -0.067)
 
 
-fn lambda_ratio(film_thickness: Float64, combined_roughness: Float64) -> Float64:
+def lambda_ratio(film_thickness: Float64, combined_roughness: Float64) -> Float64:
     """Lambda ratio (specific film thickness): Λ = h / σ*.
 
     Args:
@@ -151,7 +151,7 @@ fn lambda_ratio(film_thickness: Float64, combined_roughness: Float64) -> Float64
     return film_thickness / combined_roughness
 
 
-fn surface_energy_work(surface_energy: Float64) -> Float64:
+def surface_energy_work(surface_energy: Float64) -> Float64:
     """Work of adhesion for identical surfaces: W = 2·γ.
 
     Args:
@@ -163,7 +163,7 @@ fn surface_energy_work(surface_energy: Float64) -> Float64:
     return 2.0 * surface_energy
 
 
-fn tribocorrosion_rate(
+def tribocorrosion_rate(
     wear_rate: Float64, corrosion_rate: Float64, synergy_factor: Float64
 ) -> Float64:
     """Total tribocorrosion material loss rate with synergy.
@@ -182,7 +182,7 @@ fn tribocorrosion_rate(
     return mechanical_chem * (1.0 + synergy_factor)
 
 
-fn wear_volume(
+def wear_volume(
     wear_coefficient: Float64, sliding_distance: Float64,
     normal_force: Float64, hardness_pa: Float64
 ) -> Float64:

@@ -157,7 +157,7 @@ comptime OPTM_VERDICT_WRONG: Int = 2
 comptime OPTM_MAX_LOWERED_CELLS: Int = 1 << 26
 
 
-fn optm_status_name(code: Int) -> String:
+def optm_status_name(code: Int) -> String:
     """Name for a status, falling through the composed solver vocabularies."""
     if code == OPTM_ERR_FREE_VARIABLE:
         return "free_variable_unsupported_declare_a_lower_bound"
@@ -178,7 +178,7 @@ fn optm_status_name(code: Int) -> String:
     return milp_status_name(code)
 
 
-fn optm_verdict_name(code: Int) -> String:
+def optm_verdict_name(code: Int) -> String:
     """Name for a verdict bucket, so a table never prints a bare integer."""
     if code == OPTM_VERDICT_VERIFIED:
         return "verified"
@@ -271,7 +271,7 @@ struct PointAudit(Copyable, Movable):
     var objective: Float64
 
 
-fn _check_failure(
+def _check_failure(
     status: Int, n_vars: Int, n_cons: Int, constraint_index: Int, var_index: Int
 ) -> FormulationCheck:
     return FormulationCheck(
@@ -279,13 +279,13 @@ fn _check_failure(
     )
 
 
-fn _audit_failure(status: Int) -> PointAudit:
+def _audit_failure(status: Int) -> PointAudit:
     return PointAudit(
         status, False, 0, -1, 0.0, 0, -1, 0.0, 0, -1, 0.0, False, 0.0
     )
 
 
-fn _empty_lowered(status: Int) -> LoweredForm:
+def _empty_lowered(status: Int) -> LoweredForm:
     return LoweredForm(
         status, False, 0, 0, 0, 0.0,
         List[Float64](), List[Float64](), List[Int](), List[Float64](),
@@ -293,7 +293,7 @@ fn _empty_lowered(status: Int) -> LoweredForm:
     )
 
 
-fn _upper_row_redundant(kind: Int, lower: Float64, upper: Float64, n_cons: Int) -> Bool:
+def _upper_row_redundant(kind: Int, lower: Float64, upper: Float64, n_cons: Int) -> Bool:
     """True when `milp_solve`'s OWN root box already enforces this upper bound for free.
 
     `integer._root_node` adds an unconditional `y_j <= 1` row for EVERY `VAR_BINARY`
@@ -334,7 +334,7 @@ fn _upper_row_redundant(kind: Int, lower: Float64, upper: Float64, n_cons: Int) 
     return kind == VAR_BINARY and lower == 0.0 and upper == 1.0 and n_cons >= 1
 
 
-fn formulation_check_flat(
+def formulation_check_flat(
     n_vars: Int, n_cons: Int, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],
@@ -404,7 +404,7 @@ fn formulation_check_flat(
     )
 
 
-fn formulation_lower_flat(
+def formulation_lower_flat(
     n_vars: Int, n_cons: Int, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],
@@ -524,7 +524,7 @@ fn formulation_lower_flat(
     )
 
 
-fn _audit_row_budget(
+def _audit_row_budget(
     absolute_tol: Float64, integrality_tol: Float64,
     activity_scale: Float64, snap_scale: Float64,
 ) -> Float64:
@@ -552,7 +552,7 @@ fn _audit_row_budget(
     return budget
 
 
-fn formulation_point_audit_flat(
+def formulation_point_audit_flat(
     n_vars: Int, n_cons: Int, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],

@@ -29,7 +29,7 @@ comptime SQRT2: Float64 = 1.4142135623730951
 # ── norm_cdf ─────────────────────────────────────────────────────────────────
 
 
-fn norm_cdf(x: Float64) -> Float64:
+def norm_cdf(x: Float64) -> Float64:
     """Standard normal CDF using erf: Φ(x) = 0.5*(1 + erf(x/√2))."""
     return 0.5 * (1.0 + erf(x / SQRT2))
 
@@ -37,7 +37,7 @@ fn norm_cdf(x: Float64) -> Float64:
 # ── _norm_pdf ────────────────────────────────────────────────────────────────
 
 
-fn _norm_pdf(x: Float64) -> Float64:
+def _norm_pdf(x: Float64) -> Float64:
     """Standard normal PDF."""
     return exp(-0.5 * x * x) / sqrt(2.0 * PI)
 
@@ -45,12 +45,12 @@ fn _norm_pdf(x: Float64) -> Float64:
 # ── _d1_d2 ───────────────────────────────────────────────────────────────────
 
 
-fn _d1(S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64) -> Float64:
+def _d1(S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64) -> Float64:
     """d1 in Black-Scholes formula."""
     return (log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * sqrt(T))
 
 
-fn _d2(S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64) -> Float64:
+def _d2(S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64) -> Float64:
     """d2 in Black-Scholes formula."""
     return _d1(S, K, T, r, sigma) - sigma * sqrt(T)
 
@@ -58,7 +58,7 @@ fn _d2(S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64) -> Float6
 # ── black_scholes_call ───────────────────────────────────────────────────────
 
 
-fn black_scholes_call(
+def black_scholes_call(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64
 ) -> Float64:
     """Black-Scholes European call price: S*N(d1) - K*exp(-rT)*N(d2)."""
@@ -70,7 +70,7 @@ fn black_scholes_call(
 # ── black_scholes_put ────────────────────────────────────────────────────────
 
 
-fn black_scholes_put(
+def black_scholes_put(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64
 ) -> Float64:
     """Black-Scholes European put price: K*exp(-rT)*N(-d2) - S*N(-d1)."""
@@ -82,7 +82,7 @@ fn black_scholes_put(
 # ── delta_call ───────────────────────────────────────────────────────────────
 
 
-fn delta_call(
+def delta_call(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64
 ) -> Float64:
     """Call delta: N(d1)."""
@@ -92,7 +92,7 @@ fn delta_call(
 # ── gamma ────────────────────────────────────────────────────────────────────
 
 
-fn gamma(
+def gamma(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64
 ) -> Float64:
     """Gamma (same for call/put): φ(d1) / (S * σ * √T)."""
@@ -103,7 +103,7 @@ fn gamma(
 # ── vega ─────────────────────────────────────────────────────────────────────
 
 
-fn vega(
+def vega(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64
 ) -> Float64:
     """Vega: S * φ(d1) * √T."""
@@ -114,7 +114,7 @@ fn vega(
 # ── theta_call ───────────────────────────────────────────────────────────────
 
 
-fn theta_call(
+def theta_call(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64
 ) -> Float64:
     """Call theta: -(S*φ(d1)*σ)/(2√T) - r*K*exp(-rT)*N(d2)."""
@@ -128,7 +128,7 @@ fn theta_call(
 # ── put_call_parity ──────────────────────────────────────────────────────────
 
 
-fn put_call_parity(
+def put_call_parity(
     call_price: Float64, K: Float64, T: Float64, r: Float64, S: Float64
 ) -> Float64:
     """Put price from put-call parity: P = C - S + K*exp(-rT)."""
@@ -138,7 +138,7 @@ fn put_call_parity(
 # ── binomial_tree_call ───────────────────────────────────────────────────────
 
 
-fn binomial_tree_call(
+def binomial_tree_call(
     S: Float64, K: Float64, T: Float64, r: Float64, sigma: Float64, n_steps: Int
 ) -> Float64:
     """CRR binomial tree for European call option."""
@@ -167,7 +167,7 @@ fn binomial_tree_call(
     return prices[0]
 
 
-fn _pow_simple(base: Float64, n: Int) -> Float64:
+def _pow_simple(base: Float64, n: Int) -> Float64:
     """Simple integer power."""
     var result: Float64 = 1.0
     for _ in range(n):
@@ -178,7 +178,7 @@ fn _pow_simple(base: Float64, n: Int) -> Float64:
 # ── implied_volatility ───────────────────────────────────────────────────────
 
 
-fn implied_volatility(
+def implied_volatility(
     market_price: Float64,
     S: Float64,
     K: Float64,

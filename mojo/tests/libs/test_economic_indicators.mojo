@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from economic_indicators import gdp_growth, inflation_rate, unemployment_rate, real_gdp, gini_coefficient, phillips_curve, okuns_law, velocity_of_money, fisher_equation, trade_balance, gdp_per_capita, purchasing_power_parity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

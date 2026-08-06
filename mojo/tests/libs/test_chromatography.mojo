@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from chromatography import retention_factor, selectivity_factor, plate_count, plate_height, resolution, van_deemter_h, peak_capacity, separation_number, retention_index_kovats, mobile_phase_velocity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

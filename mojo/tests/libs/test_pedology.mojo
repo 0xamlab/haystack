@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pedology import soil_development_index, clay_illuviation_ratio, rubification_index, organic_horizon_depth, base_saturation_percent, solum_thickness_estimate, profile_development_index, biological_weathering_index, translocation_coefficient, soil_age_from_pedogenesis
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

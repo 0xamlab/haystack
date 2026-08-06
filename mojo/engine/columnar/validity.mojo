@@ -22,14 +22,14 @@ from std.bit import pop_count
 comptime BITS_PER_BYTE: Int = 8
 
 
-fn bytes_for_bits(n: Int) -> Int:
+def bytes_for_bits(n: Int) -> Int:
     """Bytes needed for `n` bits, rounded up."""
     if n <= 0:
         return 0
     return (n + BITS_PER_BYTE - 1) // BITS_PER_BYTE
 
 
-fn new_all_null(n: Int) -> List[UInt8]:
+def new_all_null(n: Int) -> List[UInt8]:
     """A bitmap of `n` slots, every one absent."""
     var out = List[UInt8]()
     for _ in range(bytes_for_bits(n)):
@@ -37,7 +37,7 @@ fn new_all_null(n: Int) -> List[UInt8]:
     return out^
 
 
-fn new_all_valid(n: Int) -> List[UInt8]:
+def new_all_valid(n: Int) -> List[UInt8]:
     """A bitmap of `n` slots, every one present.
 
     Trailing bits past `n` in the final byte are left set; `is_valid` bounds-checks
@@ -50,7 +50,7 @@ fn new_all_valid(n: Int) -> List[UInt8]:
     return out^
 
 
-fn is_valid(bitmap: List[UInt8], index: Int) -> Bool:
+def is_valid(bitmap: List[UInt8], index: Int) -> Bool:
     """True when slot `index` holds a value. Out of range reads as absent."""
     if index < 0:
         return False
@@ -60,7 +60,7 @@ fn is_valid(bitmap: List[UInt8], index: Int) -> Bool:
     return (bitmap[byte] >> UInt8(index % BITS_PER_BYTE)) & UInt8(1) == UInt8(1)
 
 
-fn set_valid(mut bitmap: List[UInt8], index: Int):
+def set_valid(mut bitmap: List[UInt8], index: Int):
     if index < 0:
         return
     var byte = index // BITS_PER_BYTE
@@ -69,7 +69,7 @@ fn set_valid(mut bitmap: List[UInt8], index: Int):
     bitmap[byte] = bitmap[byte] | (UInt8(1) << UInt8(index % BITS_PER_BYTE))
 
 
-fn set_null(mut bitmap: List[UInt8], index: Int):
+def set_null(mut bitmap: List[UInt8], index: Int):
     if index < 0:
         return
     var byte = index // BITS_PER_BYTE
@@ -78,7 +78,7 @@ fn set_null(mut bitmap: List[UInt8], index: Int):
     bitmap[byte] = bitmap[byte] & ~(UInt8(1) << UInt8(index % BITS_PER_BYTE))
 
 
-fn count_valid(bitmap: List[UInt8], length: Int) -> Int:
+def count_valid(bitmap: List[UInt8], length: Int) -> Int:
     """Present slots among the first `length`.
 
     Whole 64-bit words go through the popcount instruction, leftover whole
@@ -111,22 +111,22 @@ fn count_valid(bitmap: List[UInt8], length: Int) -> Int:
     return total
 
 
-fn count_null(bitmap: List[UInt8], length: Int) -> Int:
+def count_null(bitmap: List[UInt8], length: Int) -> Int:
     if length <= 0:
         return 0
     return length - count_valid(bitmap, length)
 
 
-fn all_valid(bitmap: List[UInt8], length: Int) -> Bool:
+def all_valid(bitmap: List[UInt8], length: Int) -> Bool:
     """True when nothing is missing — lets callers take a no-null fast path."""
     return count_valid(bitmap, length) == length
 
 
-fn any_null(bitmap: List[UInt8], length: Int) -> Bool:
+def any_null(bitmap: List[UInt8], length: Int) -> Bool:
     return not all_valid(bitmap, length)
 
 
-fn slice_bitmap(bitmap: List[UInt8], offset: Int, length: Int) -> List[UInt8]:
+def slice_bitmap(bitmap: List[UInt8], offset: Int, length: Int) -> List[UInt8]:
     """A bitmap for `length` slots starting at `offset`, re-aligned to bit 0.
 
     Re-aligning costs a copy, but it means a sliced column needs no offset field and
@@ -141,7 +141,7 @@ fn slice_bitmap(bitmap: List[UInt8], offset: Int, length: Int) -> List[UInt8]:
     return out^
 
 
-fn bitmap_and(a: List[UInt8], b: List[UInt8], length: Int) -> List[UInt8]:
+def bitmap_and(a: List[UInt8], b: List[UInt8], length: Int) -> List[UInt8]:
     """Slots present in both — the validity of a binary operation's result."""
     var out = new_all_null(length)
     for i in range(length):
@@ -150,7 +150,7 @@ fn bitmap_and(a: List[UInt8], b: List[UInt8], length: Int) -> List[UInt8]:
     return out^
 
 
-fn bitmap_or(a: List[UInt8], b: List[UInt8], length: Int) -> List[UInt8]:
+def bitmap_or(a: List[UInt8], b: List[UInt8], length: Int) -> List[UInt8]:
     var out = new_all_null(length)
     for i in range(length):
         if is_valid(a, i) or is_valid(b, i):

@@ -97,7 +97,7 @@ comptime GOLDEN: UInt64 = 0x9E3779B97F4A7C15
 # ── data ──────────────────────────────────────────────────────────────────────
 
 
-fn splitmix64(counter: UInt64) -> UInt64:
+def splitmix64(counter: UInt64) -> UInt64:
     """SplitMix64 finalizer over a COUNTER, not carried state -- see `bench_vs_topk.mojo`."""
     var z = counter * GOLDEN + GOLDEN
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9
@@ -105,12 +105,12 @@ fn splitmix64(counter: UInt64) -> UInt64:
     return z ^ (z >> 31)
 
 
-fn to_unit(bits: UInt64) -> Float64:
+def to_unit(bits: UInt64) -> Float64:
     """Top 53 bits -> Float64 in [0, 1)."""
     return Float64(bits >> 11) * (1.0 / 9007199254740992.0)
 
 
-fn gen_pair(n: Int, mut x: List[Float64], mut y: List[Float64]):
+def gen_pair(n: Int, mut x: List[Float64], mut y: List[Float64]):
     """`x[i]` from counter `2i`, `noise[i]` from counter `2i+1`, `y = 0.6x + 0.4*noise`.
 
     Disjoint counters by construction (even vs odd), so the two streams never collide for
@@ -123,11 +123,11 @@ fn gen_pair(n: Int, mut x: List[Float64], mut y: List[Float64]):
         y.append(0.6 * xi + 0.4 * ni)
 
 
-fn bits_of(v: Float64) -> UInt64:
+def bits_of(v: Float64) -> UInt64:
     return v.to_bits[DType.uint64]()
 
 
-fn fingerprint(a: List[Float64], n: Int) -> UInt64:
+def fingerprint(a: List[Float64], n: Int) -> UInt64:
     """XOR fingerprint of the raw bit patterns -- proves both sides got the same array."""
     var h = UInt64(0)
     for i in range(n):
@@ -138,7 +138,7 @@ fn fingerprint(a: List[Float64], n: Int) -> UInt64:
 # ── timing (identical shape to bench_vs_topk.mojo's judge/reps_for/batch_size) ────────
 
 
-fn reps_for(unit_ns: Float64) -> Int:
+def reps_for(unit_ns: Float64) -> Int:
     if unit_ns <= 0.0:
         return HOT_REPS
     var want = Int(CELL_BUDGET_NS / unit_ns)
@@ -149,7 +149,7 @@ fn reps_for(unit_ns: Float64) -> Int:
     return want
 
 
-fn batch_size(pilot_ns: Float64) -> Int:
+def batch_size(pilot_ns: Float64) -> Int:
     if pilot_ns <= 0.0:
         return MAX_INNER
     var want = Int(UNIT_FLOOR_NS / pilot_ns) + 1
@@ -172,7 +172,7 @@ struct Cell(Copyable, Movable):
     var inner: Int
     var reps: Int
 
-    fn __init__(
+    def __init__(
         out self,
         cold: Float64,
         warm: Float64,
@@ -197,7 +197,7 @@ struct Cell(Copyable, Movable):
         self.reps = reps
 
 
-fn judge(cold: Float64, warm: Float64, var units: List[Float64], inner: Int) -> Cell:
+def judge(cold: Float64, warm: Float64, var units: List[Float64], inner: Int) -> Cell:
     """Every failing condition is named, never one that held. See bench_vs_topk.mojo."""
     for i in range(1, len(units)):
         var v = units[i]
@@ -239,7 +239,7 @@ fn judge(cold: Float64, warm: Float64, var units: List[Float64], inner: Int) -> 
     )
 
 
-fn time_pearson(x: List[Float64], y: List[Float64], n: Int, mut sink: Float64) -> Cell:
+def time_pearson(x: List[Float64], y: List[Float64], n: Int, mut sink: Float64) -> Cell:
     """COLD = call one, alone. WARM and HOT = per-call figures from equal-sized units."""
     var t0 = perf_counter_ns()
     var r0 = pearson_r(x, y)
@@ -268,7 +268,7 @@ fn time_pearson(x: List[Float64], y: List[Float64], n: Int, mut sink: Float64) -
     return judge(cold, warm, units^, inner)
 
 
-fn report(mut failures: Int, n: Int, cell: Cell):
+def report(mut failures: Int, n: Int, cell: Cell):
     var head = "PEARSONR pearson_r n=" + String(n)
     var common = (
         " cold_ns=" + String(cell.cold)
@@ -296,7 +296,7 @@ fn report(mut failures: Int, n: Int, cell: Cell):
 # ── main ──────────────────────────────────────────────────────────────────────
 
 
-fn main():
+def main():
     var failures = 0
     var sink: Float64 = 0.0
 

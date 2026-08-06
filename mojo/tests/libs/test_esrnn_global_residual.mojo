@@ -44,7 +44,7 @@ from forecasting.contract import (
 from forecasting.fitted import damped_fitted, holt_fitted, theta_fitted
 
 
-fn _same_values(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_values(a: List[Float64], b: List[Float64]) -> Bool:
     """Elementwise `==` over two value lists — `List[Float64]` has no `__eq__` here, so
     every bit-exact comparison in this suite goes through this helper, never `a == b`."""
     if len(a) != len(b):
@@ -55,7 +55,7 @@ fn _same_values(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _pure_trend() -> List[Float64]:
+def _pure_trend() -> List[Float64]:
     """30 points of y = 10 + 2t: a clean line every method can fit well, Holt best."""
     var y = List[Float64]()
     for t in range(30):
@@ -63,7 +63,7 @@ fn _pure_trend() -> List[Float64]:
     return y^
 
 
-fn _damped_shape() -> List[Float64]:
+def _damped_shape() -> List[Float64]:
     """A fast rise that decelerates toward a plateau — the textbook damped-trend shape."""
     var y = List[Float64]()
     for t in range(20):
@@ -71,7 +71,7 @@ fn _damped_shape() -> List[Float64]:
     return y^
 
 
-fn _early_spike() -> List[Float64]:
+def _early_spike() -> List[Float64]:
     """A sharp early outlier then a near-flat tail: the adaptive level/trend methods
     carry the spike's disturbance forward; Theta's global OLS line does not."""
     var y = List[Float64]()
@@ -84,7 +84,7 @@ fn _early_spike() -> List[Float64]:
     return y^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[esrnn.global_residual] hand-written known-value suite")

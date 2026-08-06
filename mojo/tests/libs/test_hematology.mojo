@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hematology import hematocrit, mean_corpuscular_volume, mean_corpuscular_hemoglobin, mchc, red_cell_distribution_width, oxygen_carrying_capacity, coagulation_inr, platelet_count_index, blood_viscosity_relative, erythrocyte_sedimentation
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

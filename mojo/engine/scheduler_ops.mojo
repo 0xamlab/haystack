@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn priority_fair_score(
+def priority_fair_score(
     priority: Float64, wait_time: Float64,
     base_priority_weight: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn priority_fair_score(
     return base_priority_weight * priority + wait_time
 
 
-fn weighted_fair_queue_credit(
+def weighted_fair_queue_credit(
     current_credit: Float64, weight: Float64, tick: Float64
 ) -> Float64:
     """WFQ (Weighted Fair Queuing) virtual time credit.
@@ -54,7 +54,7 @@ fn weighted_fair_queue_credit(
     return current_credit + weight * tick
 
 
-fn backpressure_load_factor(
+def backpressure_load_factor(
     queue_depth: Float64, max_queue_depth: Float64
 ) -> Float64:
     """Backpressure signal: queue utilization (→1 = saturated).
@@ -74,7 +74,7 @@ fn backpressure_load_factor(
     return load
 
 
-fn token_bucket_tokens(
+def token_bucket_tokens(
     current_tokens: Float64, refill_rate: Float64,
     elapsed_ms: Float64, max_tokens: Float64
 ) -> Float64:
@@ -97,7 +97,7 @@ fn token_bucket_tokens(
     return new_tokens
 
 
-fn rate_limiter_wait_time(
+def rate_limiter_wait_time(
     tokens_needed: Float64, current_tokens: Float64, refill_rate: Float64
 ) -> Float64:
     """Time to wait for token bucket to refill enough tokens.
@@ -120,7 +120,7 @@ fn rate_limiter_wait_time(
     return deficit / refill_rate
 
 
-fn work_stealing_threshold(
+def work_stealing_threshold(
     local_queue_depth: Float64, remote_queue_depth: Float64,
     steal_ratio: Float64
 ) -> Float64:
@@ -143,7 +143,7 @@ fn work_stealing_threshold(
     return 0.0
 
 
-fn request_timeout_score(
+def request_timeout_score(
     elapsed_ms: Float64, timeout_ms: Float64, priority: Float64
 ) -> Float64:
     """Timeout-adjusted priority: escalate priority as deadline approaches.
@@ -166,7 +166,7 @@ fn request_timeout_score(
     return priority * (1.0 + urgency * urgency)
 
 
-fn pipeline_stage_utilization(
+def pipeline_stage_utilization(
     busy_time_ms: Float64, total_time_ms: Float64
 ) -> Float64:
     """Pipeline stage utilization: fraction of time processing.
@@ -186,7 +186,7 @@ fn pipeline_stage_utilization(
     return util
 
 
-fn latency_sla_headroom(
+def latency_sla_headroom(
     sla_budget_ms: Float64, elapsed_ms: Float64, remaining_stages: Float64,
     avg_stage_latency_ms: Float64
 ) -> Float64:
@@ -206,7 +206,7 @@ fn latency_sla_headroom(
     return remaining_budget - remaining_work
 
 
-fn exponential_backoff_delay(
+def exponential_backoff_delay(
     attempt: Float64, base_delay_ms: Float64,
     max_delay_ms: Float64, jitter: Float64
 ) -> Float64:

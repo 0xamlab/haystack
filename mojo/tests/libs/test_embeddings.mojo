@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from embeddings import dot_product, dot_product_strict, vector_magnitude, cosine_similarity, cosine_similarity_strict, euclidean_distance, euclidean_distance_strict, manhattan_distance, manhattan_distance_strict, normalize_vector, vector_add, vector_add_strict, vector_scale
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -16,7 +16,7 @@ from sheet.api import sheet_recalc_report
 from sheet.numio import _bs_str
 
 
-fn _esc(s: String) -> String:
+def _esc(s: String) -> String:
     var bs = s.as_bytes()
     var buf = List[UInt8]()
     for i in range(len(bs)):
@@ -31,7 +31,7 @@ fn _esc(s: String) -> String:
     return _bs_str(buf)
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 2:
         print("usage: sheet_validate <workbook.swt> [budget_ops]")

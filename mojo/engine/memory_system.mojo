@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn pool_fragmentation_ratio(
+def pool_fragmentation_ratio(
     allocated_bytes: Float64, used_bytes: Float64
 ) -> Float64:
     """Memory pool fragmentation: (allocated - used) / allocated.
@@ -37,7 +37,7 @@ fn pool_fragmentation_ratio(
     return frag
 
 
-fn slab_alloc_waste(
+def slab_alloc_waste(
     object_size: Float64, slab_size: Float64
 ) -> Float64:
     """Waste per slab from non-integer number of objects.
@@ -57,7 +57,7 @@ fn slab_alloc_waste(
     return slab_size - n_objects * object_size
 
 
-fn cache_line_padding_bytes(
+def cache_line_padding_bytes(
     struct_size: Float64, cache_line: Float64
 ) -> Float64:
     """Bytes of padding needed to align struct to cache line boundary.
@@ -77,7 +77,7 @@ fn cache_line_padding_bytes(
     return cache_line - remainder
 
 
-fn strided_access_penalty(
+def strided_access_penalty(
     stride_bytes: Float64, cache_line: Float64
 ) -> Float64:
     """Cache miss rate multiplier for strided memory access.
@@ -99,7 +99,7 @@ fn strided_access_penalty(
     return penalty
 
 
-fn activation_memory_bytes(
+def activation_memory_bytes(
     batch_size: Float64, seq_len: Float64,
     d_model: Float64, n_layers: Float64, dtype_bytes: Float64
 ) -> Float64:
@@ -121,7 +121,7 @@ fn activation_memory_bytes(
     return batch_size * seq_len * d_model * n_layers * 2.0 * dtype_bytes
 
 
-fn gradient_memory_bytes(
+def gradient_memory_bytes(
     n_parameters: Float64, dtype_bytes: Float64
 ) -> Float64:
     """Gradient memory: same shape as parameters.
@@ -136,7 +136,7 @@ fn gradient_memory_bytes(
     return n_parameters * dtype_bytes
 
 
-fn optimizer_state_bytes(
+def optimizer_state_bytes(
     n_parameters: Float64, optimizer_type: Float64
 ) -> Float64:
     """Optimizer state memory.
@@ -158,7 +158,7 @@ fn optimizer_state_bytes(
     return n_parameters * multiplier * 4.0
 
 
-fn peak_memory_estimate(
+def peak_memory_estimate(
     model_weights_bytes: Float64, activation_bytes: Float64,
     gradient_bytes: Float64, optimizer_bytes: Float64
 ) -> Float64:
@@ -178,7 +178,7 @@ fn peak_memory_estimate(
     return model_weights_bytes + activation_bytes + gradient_bytes + optimizer_bytes
 
 
-fn memory_bandwidth_utilization(
+def memory_bandwidth_utilization(
     actual_throughput_gbs: Float64, peak_bandwidth_gbs: Float64
 ) -> Float64:
     """Memory bandwidth utilization ratio.
@@ -198,7 +198,7 @@ fn memory_bandwidth_utilization(
     return util
 
 
-fn numa_locality_score(
+def numa_locality_score(
     local_accesses: Float64, remote_accesses: Float64,
     remote_penalty: Float64
 ) -> Float64:

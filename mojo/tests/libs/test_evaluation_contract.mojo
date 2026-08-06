@@ -63,7 +63,7 @@ from evaluation.contract import (
 )
 
 
-fn good_probs() -> List[Float64]:
+def good_probs() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.1)
     out.append(0.3)
@@ -73,7 +73,7 @@ fn good_probs() -> List[Float64]:
     return out^
 
 
-fn good_labels() -> List[Float64]:
+def good_labels() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.0)
     out.append(0.0)

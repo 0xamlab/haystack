@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from series import sma_forecast, linear_extrapolation, weighted_moving_avg, exponential_forecast, naive_forecast, seasonal_naive, drift_forecast, forecast_accuracy, trend_strength, detect_seasonality
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

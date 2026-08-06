@@ -128,7 +128,7 @@ struct BlockResult(Copyable, Movable):
     var status: Int
 
 
-fn gate_bytes_moved(n: Int) -> Float64:
+def gate_bytes_moved(n: Int) -> Float64:
     """Bytes a fused f64 gated activation must move: read gate, read up, write out.
 
     Args:
@@ -145,18 +145,18 @@ fn gate_bytes_moved(n: Int) -> Float64:
 # three drivers below differ only in this one call and share their loop, band split and tail handling.
 # ---------------------------------------------------------------------------------------------------
 @always_inline
-fn _swish_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
+def _swish_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
     return g / (SIMD[DType.float64, W](1.0) + exp(-g))
 
 
 @always_inline
-fn _gelu_tanh_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
+def _gelu_tanh_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
     var inner = SIMD[DType.float64, W](TANH_C) * (g + SIMD[DType.float64, W](TANH_A) * g * g * g)
     return SIMD[DType.float64, W](0.5) * g * (SIMD[DType.float64, W](1.0) + tanh(inner))
 
 
 @always_inline
-fn _gelu_tanh_exp_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
+def _gelu_tanh_exp_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
     """The same tanh-form GELU with `1 + tanh(y)` rewritten as `2 / (1 + exp(-2y))`.
 
     Not an approximation — an identity. It exists because `std.math.tanh` at f64 SIMD width 2 is the
@@ -178,7 +178,7 @@ fn _gelu_tanh_exp_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
 
 
 @always_inline
-fn _gelu_erf_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
+def _gelu_erf_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
     return (
         SIMD[DType.float64, W](0.5)
         * g
@@ -187,7 +187,7 @@ fn _gelu_erf_v(g: SIMD[DType.float64, W]) -> SIMD[DType.float64, W]:
 
 
 @always_inline
-fn _gelu_erf_frozen_s(g: Float64) -> Float64:
+def _gelu_erf_frozen_s(g: Float64) -> Float64:
     """The same value via the frozen `special_functions.erf`, kept as the accuracy counter-example.
 
     Measured max absolute error against `scipy.special.erf` over x in [-6, 6], 20001 points:
@@ -206,7 +206,7 @@ fn _gelu_erf_frozen_s(g: Float64) -> Float64:
     return 0.5 * g * (1.0 + erf_frozen_as(g * INV_SQRT2))
 
 
-fn swiglu_gate(
+def swiglu_gate(
     gate: List[Float64], up: List[Float64], n: Int, requested_workers: Int
 ) -> GateResult:
     """out[i] = swish(gate[i]) * up[i], fused, SIMD, optionally parallel over contiguous bands.
@@ -234,7 +234,7 @@ fn swiglu_gate(
     var nw = workers
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var each = nn // nw
         var lo = tid * each
         var hi = lo + each if tid < nw - 1 else nn
@@ -266,7 +266,7 @@ fn swiglu_gate(
     return GateResult(out^, n, workers, backend, gate_bytes_moved(n), MLP_OK)
 
 
-fn geglu_tanh_gate(
+def geglu_tanh_gate(
     gate: List[Float64], up: List[Float64], n: Int, requested_workers: Int
 ) -> GateResult:
     """out[i] = gelu_tanh(gate[i]) * up[i] — the tanh approximation, matching `F.gelu(approximate='tanh')`.
@@ -292,7 +292,7 @@ fn geglu_tanh_gate(
     var nw = workers
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var each = nn // nw
         var lo = tid * each
         var hi = lo + each if tid < nw - 1 else nn
@@ -327,7 +327,7 @@ fn geglu_tanh_gate(
     return GateResult(out^, n, workers, backend, gate_bytes_moved(n), MLP_OK)
 
 
-fn geglu_tanh_fast_gate(
+def geglu_tanh_fast_gate(
     gate: List[Float64], up: List[Float64], n: Int, requested_workers: Int
 ) -> GateResult:
     """`geglu_tanh_gate` with the `exp` identity in place of `std.math.tanh`: 4.7x, 1.18e-13 apart.
@@ -356,7 +356,7 @@ fn geglu_tanh_fast_gate(
     var nw = workers
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var each = nn // nw
         var lo = tid * each
         var hi = lo + each if tid < nw - 1 else nn
@@ -393,7 +393,7 @@ fn geglu_tanh_fast_gate(
     return GateResult(out^, n, workers, backend, gate_bytes_moved(n), MLP_OK)
 
 
-fn geglu_erf_gate(
+def geglu_erf_gate(
     gate: List[Float64], up: List[Float64], n: Int, requested_workers: Int
 ) -> GateResult:
     """out[i] = 0.5*g*(1+erf(g/sqrt2)) * up[i] — the erf form, matching `F.gelu(approximate='none')`.
@@ -427,7 +427,7 @@ fn geglu_erf_gate(
     var nw = workers
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var each = nn // nw
         var lo = tid * each
         var hi = lo + each if tid < nw - 1 else nn
@@ -461,7 +461,7 @@ fn geglu_erf_gate(
     return GateResult(out^, n, workers, backend, gate_bytes_moved(n), MLP_OK)
 
 
-fn swiglu_ffn_block(
+def swiglu_ffn_block(
     x: List[Float64],
     wg: List[Float64],
     wu: List[Float64],

@@ -54,7 +54,7 @@ comptime ROLE_DERIVED: UInt8 = 2
 # ── SIMD kernels (private, inline) ────────────────────────────────────────────
 
 @always_inline
-fn _norm_byte(c: UInt8) -> UInt8:
+def _norm_byte(c: UInt8) -> UInt8:
     if c == 95 or c == 45 or c == 46:   # _ - .
         return 32
     if c >= 65 and c <= 90:             # A-Z → a-z
@@ -62,7 +62,7 @@ fn _norm_byte(c: UInt8) -> UInt8:
     return c
 
 
-fn _build_vec_inplace(s: String, mut buf: List[Float32]) -> Float32:
+def _build_vec_inplace(s: String, mut buf: List[Float32]) -> Float32:
     """Zero buf, fill with bigram counts (direct byte scan), return norm_inv."""
     for i in range(VEC_DIM):
         buf[i] = Float32(0.0)
@@ -96,7 +96,7 @@ fn _build_vec_inplace(s: String, mut buf: List[Float32]) -> Float32:
 
 
 @always_inline
-fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
+def _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     var pa = a.unsafe_ptr()
     var pb = b.unsafe_ptr()
     var a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
@@ -111,7 +111,7 @@ fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
 
 
 @always_inline
-fn _cosine(
+def _cosine(
     qv: List[Float32], cv: List[Float32],
     q_ni: Float32, c_ni: Float32,
 ) -> Float32:
@@ -126,7 +126,7 @@ fn _cosine(
 # ── Role/source boost (integer arithmetic — no strings) ───────────────────────
 
 @always_inline
-fn _type_boost_ids(query_role: UInt8, cand_role: UInt8) -> Float32:
+def _type_boost_ids(query_role: UInt8, cand_role: UInt8) -> Float32:
     """
     +0.15 exact role match, +0.05 both non-OTHER, -0.08 clear mismatch.
     Integer comparison only — zero string ops on the hot path.
@@ -141,7 +141,7 @@ fn _type_boost_ids(query_role: UInt8, cand_role: UInt8) -> Float32:
 
 
 @always_inline
-fn _prior_boost_ids(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Float32:
+def _prior_boost_ids(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Float32:
     """
     Source-context prior: integer table lookup, no strings.
     POS   + UNIT    = +0.10
@@ -169,26 +169,26 @@ struct _Slot(Copyable, Movable):
     var name_sim:   Float32
     var type_boost: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id  = 0
         self.score      = Float32(0.0)
         self.name_sim   = Float32(0.0)
         self.type_boost = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id  = copy.column_id
         self.score      = copy.score
         self.name_sim   = copy.name_sim
         self.type_boost = copy.type_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id  = take.column_id
         self.score      = take.score
         self.name_sim   = take.name_sim
         self.type_boost = take.type_boost
 
 
-fn _insert_sort_slots(mut slots: List[_Slot]):
+def _insert_sort_slots(mut slots: List[_Slot]):
     """Descending insertion sort by score."""
     var n = len(slots)
     for i in range(1, n):
@@ -220,17 +220,17 @@ struct _Vec64(Copyable, Movable):
     var data:     List[Float32]
     var norm_inv: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.data = List[Float32](capacity=VEC_DIM)
         for _ in range(VEC_DIM):
             self.data.append(Float32(0.0))
         self.norm_inv = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.data     = copy.data.copy()   # explicit — List not ImplicitlyCopyable
         self.norm_inv = copy.norm_inv
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.data     = take.data.copy()   # ^ on fields disallowed; runtime destroys take
         self.norm_inv = take.norm_inv
 
@@ -245,21 +245,21 @@ struct CandidateEntry(Copyable, Movable):
     var norm_inv:  Float32
     var vec:       _Vec64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id = 0
         self.source_id = SOURCE_UNKNOWN
         self.role_id   = ROLE_OTHER
         self.norm_inv  = Float32(0.0)
         self.vec       = _Vec64()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id = copy.column_id
         self.source_id = copy.source_id
         self.role_id   = copy.role_id
         self.norm_inv  = copy.norm_inv
         self.vec       = copy.vec.copy()   # explicit
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id = take.column_id
         self.source_id = take.source_id
         self.role_id   = take.role_id
@@ -280,21 +280,21 @@ struct RankRequest(Copyable, Movable):
     var query_norm_inv: Float32
     var query_vec:      _Vec64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.source_id      = SOURCE_UNKNOWN
         self.role_id        = ROLE_OTHER
         self.top_k          = 5
         self.query_norm_inv = Float32(0.0)
         self.query_vec      = _Vec64()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.source_id      = copy.source_id
         self.role_id        = copy.role_id
         self.top_k          = copy.top_k
         self.query_norm_inv = copy.query_norm_inv
         self.query_vec      = copy.query_vec.copy()  # explicit
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.source_id      = take.source_id
         self.role_id        = take.role_id
         self.top_k          = take.top_k
@@ -310,19 +310,19 @@ struct TopKEntry(Copyable, Movable):
     var name_sim:   Float32
     var type_boost: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id  = 0
         self.score      = Float32(0.0)
         self.name_sim   = Float32(0.0)
         self.type_boost = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id  = copy.column_id
         self.score      = copy.score
         self.name_sim   = copy.name_sim
         self.type_boost = copy.type_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id  = take.column_id
         self.score      = take.score
         self.name_sim   = take.name_sim
@@ -339,7 +339,7 @@ struct RankResult(Copyable, Movable):
     var confidence_gap: Float32
     var entries:        List[TopKEntry]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.count          = 0
         self.ambiguous      = False
         self.confidence_gap = Float32(0.0)
@@ -347,13 +347,13 @@ struct RankResult(Copyable, Movable):
         for _ in range(RANK_TOP_K):
             self.entries.append(TopKEntry())
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.count          = copy.count
         self.ambiguous      = copy.ambiguous
         self.confidence_gap = copy.confidence_gap
         self.entries        = copy.entries.copy()   # explicit
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.count          = take.count
         self.ambiguous      = take.ambiguous
         self.confidence_gap = take.confidence_gap
@@ -386,13 +386,13 @@ struct CandidateTable(Movable):
     """
     var entries: List[CandidateEntry]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.entries = List[CandidateEntry]()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.entries = take.entries.copy()   # ^ disallowed; use copy
 
-    fn add_column(
+    def add_column(
         mut self,
         column_id: UInt32,
         source_id: UInt16,
@@ -410,10 +410,10 @@ struct CandidateTable(Movable):
         entry.norm_inv  = _build_vec_inplace(name, entry.vec.data)
         self.entries.append(entry^)
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         return len(self.entries)
 
-    fn rank(self, req: RankRequest) -> RankResult:
+    def rank(self, req: RankRequest) -> RankResult:
         """
         Score every resident candidate against the query vector.
 
@@ -490,7 +490,7 @@ struct CandidateTable(Movable):
 
 # ── build_query — encode a name string into a RankRequest vec ─────────────────
 
-fn build_query(name: String, source_id: UInt16, role_id: UInt8, top_k: UInt8) -> RankRequest:
+def build_query(name: String, source_id: UInt16, role_id: UInt8, top_k: UInt8) -> RankRequest:
     """
     Helper: build a typed RankRequest from a raw column name.
     Call this once per query on the Python side to eliminate build_vec overhead.
@@ -505,7 +505,7 @@ fn build_query(name: String, source_id: UInt16, role_id: UInt8, top_k: UInt8) ->
 
 # ── source_id_of / role_id_of — string → integer mapping ─────────────────────
 
-fn source_id_of(s: String) -> UInt16:
+def source_id_of(s: String) -> UInt16:
     """Map source-type string to UInt16 constant. Case-sensitive."""
     if s == "POS":     return SOURCE_POS
     if s == "BACKLOG": return SOURCE_BACKLOG
@@ -513,7 +513,7 @@ fn source_id_of(s: String) -> UInt16:
     return SOURCE_UNKNOWN
 
 
-fn role_id_of(s: String) -> UInt8:
+def role_id_of(s: String) -> UInt8:
     """Map role-hint string to UInt8 constant. Case-sensitive."""
     if s == "unit_measure":    return ROLE_UNIT
     if s == "derived_measure": return ROLE_DERIVED
@@ -522,7 +522,7 @@ fn role_id_of(s: String) -> UInt8:
 
 # ── build_table_json — populate from JSON candidates array ───────────────────
 
-fn _jget(raw: String, key: String) -> String:
+def _jget(raw: String, key: String) -> String:
     """Minimal JSON string value extractor."""
     var needle = '"' + key + '"'
     var ki = raw.find(needle)
@@ -545,7 +545,7 @@ fn _jget(raw: String, key: String) -> String:
     return String(raw[byte=start : end2])
 
 
-fn build_table_json(candidates_json: String) -> CandidateTable:
+def build_table_json(candidates_json: String) -> CandidateTable:
     """
     Build a CandidateTable from a JSON candidates array.
 

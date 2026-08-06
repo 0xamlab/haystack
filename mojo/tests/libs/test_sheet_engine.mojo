@@ -21,7 +21,7 @@ from sheet.grid import (
 from sheet.values import VK_BOOL, VK_ERR, VK_NUM, VK_TEXT
 
 
-fn _hand_workbook() -> String:
+def _hand_workbook() -> String:
     """Five formula cells, every expectation computed by hand:
     C1 = A1+A2 = 30; C2 = C1*2 = 60; C3 = A1/A2 = 0.5;
     C4 = "x" & B1 = "xhello"; C5 = (A1>A2) = FALSE."""
@@ -37,7 +37,7 @@ fn _hand_workbook() -> String:
     return t^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

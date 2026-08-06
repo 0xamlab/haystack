@@ -113,7 +113,7 @@ fat-fingered sequence length returns an error instead of a hang. From a client's
 indistinguishable from rule 1's uncatchable abort, which is why work is bounded at all."""
 
 
-fn attn_status_name(code: Int) -> String:
+def attn_status_name(code: Int) -> String:
     """Name a status code. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == ATTN_OK:
         return String("ok")
@@ -152,7 +152,7 @@ fn attn_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn attn_backend_name(code: Int) -> String:
+def attn_backend_name(code: Int) -> String:
     """Name a backend tag. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == ATTN_BACKEND_DIRECT:
         return String("direct")
@@ -163,7 +163,7 @@ fn attn_backend_name(code: Int) -> String:
     return String("unknown_backend")
 
 
-fn attn_work_fits(n_seq: Int, h_q: Int, s: Int, d: Int, ceiling: Int) -> Bool:
+def attn_work_fits(n_seq: Int, h_q: Int, s: Int, d: Int, ceiling: Int) -> Bool:
     """True when `n_seq * h_q * s * s * d` fits in `ceiling`, computed WITHOUT forming the product.
 
     Five factors, grown one at a time by division. A wrapping 64-bit multiply is how a product guard
@@ -197,7 +197,7 @@ fn attn_work_fits(n_seq: Int, h_q: Int, s: Int, d: Int, ceiling: Int) -> Bool:
     return d <= remaining
 
 
-fn attn_dims_check(
+def attn_dims_check(
     n_seq: Int, h_q: Int, h_kv: Int, s_q: Int, s_k: Int, d: Int
 ) -> Int:
     """Validate attention shapes, including the GQA head-grouping rule.
@@ -231,7 +231,7 @@ fn attn_dims_check(
     return ATTN_OK
 
 
-fn attn_work_cells_varlen(
+def attn_work_cells_varlen(
     cu_seqlens: List[Int], n_seq: Int, h_q: Int, d: Int
 ) -> Float64:
     """Score cells for a packed batch: `h_q * d * SUM_i(s_i^2)`. Negative on a malformed `cu_seqlens`.
@@ -269,7 +269,7 @@ fn attn_work_cells_varlen(
     return total * Float64(h_q) * Float64(d)
 
 
-fn attn_scalars_ok(scale: Float64) -> Bool:
+def attn_scalars_ok(scale: Float64) -> Bool:
     """True when the softmax scale is finite.
 
     Checked before any score is formed. A NaN scale makes every score NaN, every subsequent
@@ -278,14 +278,14 @@ fn attn_scalars_ok(scale: Float64) -> Bool:
     return tx_finite(scale)
 
 
-fn attn_scale_ok(scale: Float64) -> Bool:
+def attn_scale_ok(scale: Float64) -> Bool:
     """Alias of `attn_scalars_ok`, named for the single-scalar call sites that check one softmax
     scale rather than a batch of them. Same body, on purpose: two names for one check would let
     them drift."""
     return attn_scalars_ok(scale)
 
 
-fn attn_ws_bytes_direct(s_q: Int, s_kv: Int, d: Int) -> Float64:
+def attn_ws_bytes_direct(s_q: Int, s_kv: Int, d: Int) -> Float64:
     """Bytes ONE worker's materialized score matrix occupies: `s_q * s_kv` Float64 cells.
 
     `d` is accepted for signature symmetry with `attn_ws_bytes_tiled` and is not part of the
@@ -304,7 +304,7 @@ fn attn_ws_bytes_direct(s_q: Int, s_kv: Int, d: Int) -> Float64:
     return Float64(s_q) * Float64(s_kv) * 8.0
 
 
-fn attn_ws_bytes_tiled(br: Int, bc: Int, d: Int) -> Float64:
+def attn_ws_bytes_tiled(br: Int, bc: Int, d: Int) -> Float64:
     """Bytes ONE worker's tiled-kernel scratch occupies for a `(br, bc)` tile at head dimension `d`.
 
     Three pieces, all Float64: the `br x bc` score tile, the `br x d` running accumulator, and the
@@ -328,7 +328,7 @@ fn attn_ws_bytes_tiled(br: Int, bc: Int, d: Int) -> Float64:
     return 8.0 * (score_tile + accumulator + kv_blocks)
 
 
-fn attn_score_bytes_fit(s_q: Int, s_kv: Int, n_workers: Int, ceiling: Int) -> Bool:
+def attn_score_bytes_fit(s_q: Int, s_kv: Int, n_workers: Int, ceiling: Int) -> Bool:
     """True when `n_workers * s_q * s_kv * 8` fits in `ceiling`, computed WITHOUT forming the product.
 
     This is the TOTAL the direct kernel would hold live across every worker at once -- each worker

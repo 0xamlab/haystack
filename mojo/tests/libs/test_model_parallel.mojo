@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from model_parallel import data_parallel_gradient_scale, tensor_parallel_split_dim, pipeline_bubble_fraction, gradient_all_reduce_bytes, activation_checkpointing_ratio, pipeline_stage_assignment, microbatch_throughput, zero_stage3_param_bytes, communication_computation_ratio, ddp_sync_overhead
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

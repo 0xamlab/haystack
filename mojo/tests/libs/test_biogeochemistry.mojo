@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from biogeochemistry import net_ecosystem_production, carbon_use_efficiency, nitrogen_mineralisation, denitrification_rate, phosphorus_sorption, methane_oxidation, soil_carbon_turnover, weathering_co2_consumption, nitrogen_fixation_estimate, global_carbon_budget
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

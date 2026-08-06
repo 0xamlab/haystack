@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from vector_similarity import cosine_similarity, dot_product, euclidean_distance, manhattan_distance, chebyshev_distance, hamming_distance_bits, jaccard_similarity, pearson_correlation, minkowski_distance, angular_distance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

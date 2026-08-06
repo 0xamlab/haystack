@@ -23,7 +23,7 @@ from std.random import random_float64
 comptime MAX_SIM_COUNT: Int = 100000
 
 
-fn _adj_valid(adj: List[List[Int]]) -> Bool:
+def _adj_valid(adj: List[List[Int]]) -> Bool:
     """True when every neighbor index lies in [0, n).
 
     Neighbor values are used directly as indices into adj and per-node arrays;
@@ -40,7 +40,7 @@ fn _adj_valid(adj: List[List[Int]]) -> Bool:
 # ── in_degree ────────────────────────────────────────────────────────────────
 
 
-fn in_degree(adj: List[List[Int]], node: Int) -> Int:
+def in_degree(adj: List[List[Int]], node: Int) -> Int:
     """Count incoming edges to a node.
 
     Args:
@@ -61,7 +61,7 @@ fn in_degree(adj: List[List[Int]], node: Int) -> Int:
 # ── out_degree ───────────────────────────────────────────────────────────────
 
 
-fn out_degree(adj: List[List[Int]], node: Int) -> Int:
+def out_degree(adj: List[List[Int]], node: Int) -> Int:
     """Count outgoing edges from a node.
 
     Args:
@@ -77,7 +77,7 @@ fn out_degree(adj: List[List[Int]], node: Int) -> Int:
 # ── reciprocity ──────────────────────────────────────────────────────────────
 
 
-fn reciprocity(adj: List[List[Int]]) -> Float64:
+def reciprocity(adj: List[List[Int]]) -> Float64:
     """Fraction of edges that are reciprocated.
 
     Args:
@@ -109,7 +109,7 @@ fn reciprocity(adj: List[List[Int]]) -> Float64:
 # ── _has_edge ────────────────────────────────────────────────────────────────
 
 
-fn _has_edge(adj: List[List[Int]], src: Int, dst: Int) -> Bool:
+def _has_edge(adj: List[List[Int]], src: Int, dst: Int) -> Bool:
     """Check if edge src->dst exists."""
     for i in range(len(adj[src])):
         if adj[src][i] == dst:
@@ -120,7 +120,7 @@ fn _has_edge(adj: List[List[Int]], src: Int, dst: Int) -> Bool:
 # ── influence_spread_ic ──────────────────────────────────────────────────────
 
 
-fn influence_spread_ic(
+def influence_spread_ic(
     adj: List[List[Int]],
     seeds: List[Int],
     p: Float64,
@@ -186,7 +186,7 @@ fn influence_spread_ic(
 # ── local_clustering_directed ────────────────────────────────────────────────
 
 
-fn local_clustering_directed(adj: List[List[Int]], node: Int) -> Float64:
+def local_clustering_directed(adj: List[List[Int]], node: Int) -> Float64:
     """Local clustering coefficient for a directed graph node.
 
     Uses the formula: C = edges among neighbors / (k*(k-1))
@@ -241,7 +241,7 @@ fn local_clustering_directed(adj: List[List[Int]], node: Int) -> Float64:
 # ── strongly_connected_check ────────────────────────────────────────────────
 
 
-fn strongly_connected_check(adj: List[List[Int]]) -> Bool:
+def strongly_connected_check(adj: List[List[Int]]) -> Bool:
     """Check if directed graph is strongly connected.
 
     BFS from node 0 reaches all, and reverse graph BFS from 0 also reaches all.
@@ -315,7 +315,7 @@ fn strongly_connected_check(adj: List[List[Int]]) -> Bool:
 # ── community_label_propagation ──────────────────────────────────────────────
 
 
-fn community_label_propagation(adj: List[List[Int]], max_iter: Int) -> List[Int]:
+def community_label_propagation(adj: List[List[Int]], max_iter: Int) -> List[Int]:
     """Label propagation community detection.
 
     Each node starts with its own label. Iteratively, each node adopts
@@ -386,7 +386,7 @@ fn community_label_propagation(adj: List[List[Int]], max_iter: Int) -> List[Int]
 # ── network_density ──────────────────────────────────────────────────────────
 
 
-fn network_density(adj: List[List[Int]]) -> Float64:
+def network_density(adj: List[List[Int]]) -> Float64:
     """Network density: E / (V*(V-1)) for directed graph.
 
     Args:
@@ -407,7 +407,7 @@ fn network_density(adj: List[List[Int]]) -> Float64:
 # ── average_path_length_estimate ─────────────────────────────────────────────
 
 
-fn average_path_length_estimate(adj: List[List[Int]], n_samples: Int) -> Float64:
+def average_path_length_estimate(adj: List[List[Int]], n_samples: Int) -> Float64:
     """Estimate average path length via BFS from random sample of nodes.
 
     Args:

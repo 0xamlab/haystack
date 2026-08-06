@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from video_features import scene_change_scores, scene_cut_count, scene_cut_rate, peak_motion_frame, keyframe_indices
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

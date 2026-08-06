@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn topk_gate_score(logit: Float64, temperature: Float64) -> Float64:
+def topk_gate_score(logit: Float64, temperature: Float64) -> Float64:
     """Gating logit scaled by temperature before softmax.
 
     Args:
@@ -32,7 +32,7 @@ fn topk_gate_score(logit: Float64, temperature: Float64) -> Float64:
     return logit / temperature
 
 
-fn expert_load_fraction(
+def expert_load_fraction(
     tokens_to_expert: Float64, total_tokens: Float64
 ) -> Float64:
     """Fraction of tokens dispatched to a given expert.
@@ -49,7 +49,7 @@ fn expert_load_fraction(
     return tokens_to_expert / total_tokens
 
 
-fn load_balance_loss(
+def load_balance_loss(
     router_prob: Float64, load_fraction: Float64,
     n_experts: Float64
 ) -> Float64:
@@ -70,7 +70,7 @@ fn load_balance_loss(
     return n_experts * load_fraction * router_prob
 
 
-fn router_z_loss(logit: Float64, n_tokens: Float64) -> Float64:
+def router_z_loss(logit: Float64, n_tokens: Float64) -> Float64:
     """Router z-loss: log²(Σ exp(logit)) / n_tokens.
 
     This function computes the per-logit contribution assuming
@@ -88,7 +88,7 @@ fn router_z_loss(logit: Float64, n_tokens: Float64) -> Float64:
     return exp(logit)
 
 
-fn expert_capacity(
+def expert_capacity(
     n_tokens: Float64, n_experts: Float64, capacity_factor: Float64
 ) -> Float64:
     """Expert capacity: ceil(capacity_factor × n_tokens / n_experts).
@@ -107,7 +107,7 @@ fn expert_capacity(
     return Float64(Int64(cap + 1.0))
 
 
-fn token_dispatch_weight(
+def token_dispatch_weight(
     gate_prob: Float64, is_selected: Float64
 ) -> Float64:
     """Token dispatch weight to expert: gate_prob if selected, else 0.
@@ -124,7 +124,7 @@ fn token_dispatch_weight(
     return gate_prob
 
 
-fn sparse_gate_entropy(probs_sum_log: Float64, n_experts: Float64) -> Float64:
+def sparse_gate_entropy(probs_sum_log: Float64, n_experts: Float64) -> Float64:
     """Routing entropy: -Σ p_i log(p_i) / log(n_experts) (normalised).
 
     This is the per-expert contribution assuming caller sums p_i × log(p_i).
@@ -141,7 +141,7 @@ fn sparse_gate_entropy(probs_sum_log: Float64, n_experts: Float64) -> Float64:
     return -probs_sum_log / log(n_experts)
 
 
-fn soft_moe_slot_score(
+def soft_moe_slot_score(
     query_dot_phi: Float64, n_slots: Float64
 ) -> Float64:
     """Soft-MoE slot score: exp(q·φ) / n_slots for dispatch weights.
@@ -158,7 +158,7 @@ fn soft_moe_slot_score(
     return exp(query_dot_phi) / n_slots
 
 
-fn expert_utilization(
+def expert_utilization(
     active_tokens: Float64, capacity: Float64
 ) -> Float64:
     """Expert utilization: tokens_processed / capacity.
@@ -178,7 +178,7 @@ fn expert_utilization(
     return u
 
 
-fn moe_ffn_output(
+def moe_ffn_output(
     expert_output: Float64, gate_weight: Float64
 ) -> Float64:
     """Weighted combination of expert FFN output.

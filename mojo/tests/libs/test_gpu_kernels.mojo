@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from gpu_kernels import tile_size_for_smem, warp_occupancy, arithmetic_intensity, roofline_performance, memory_coalescing_efficiency, kernel_launch_overhead_ratio, tensor_core_flops, flash_attention_hbm_reads, register_pressure, stream_multiprocessor_util
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

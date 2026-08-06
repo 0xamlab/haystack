@@ -143,7 +143,7 @@ comptime MAX_NODES_PER_FORMULA: Int = 65536
 comptime MAX_PARSE_DEPTH: Int = 200
 
 
-fn function_id_of(name_upper: String) -> Int:
+def function_id_of(name_upper: String) -> Int:
     """Resolve a (prefix-stripped, uppercased) function name to its id.
 
     @capability function_id_of
@@ -272,7 +272,7 @@ struct FNode(Copyable, Movable):
     var arg_start: Int
     var argc: Int
 
-    fn __init__(out self, k: Int):
+    def __init__(out self, k: Int):
         self.k = k
         self.num = 0.0
         self.text = String("")
@@ -285,7 +285,7 @@ struct FNode(Copyable, Movable):
         self.arg_start = 0
         self.argc = 0
 
-    fn __init__(
+    def __init__(
         out self,
         k: Int,
         num: Float64,
@@ -349,18 +349,18 @@ struct Token(Copyable, Movable):
     var num: Float64
     var text: String
 
-    fn __init__(out self, kind: Int):
+    def __init__(out self, kind: Int):
         self.kind = kind
         self.num = 0.0
         self.text = String("")
 
-    fn __init__(out self, kind: Int, num: Float64, text: String):
+    def __init__(out self, kind: Int, num: Float64, text: String):
         self.kind = kind
         self.num = num
         self.text = text
 
 
-fn _is_ident_byte(b: Int) -> Bool:
+def _is_ident_byte(b: Int) -> Bool:
     if b >= 48 and b <= 57:
         return True
     if b >= 65 and b <= 90:
@@ -374,7 +374,7 @@ fn _is_ident_byte(b: Int) -> Bool:
     return False
 
 
-fn _upper(s: String) -> String:
+def _upper(s: String) -> String:
     var bs = s.as_bytes()
     var buf = List[UInt8]()
     for i in range(len(bs)):
@@ -385,7 +385,7 @@ fn _upper(s: String) -> String:
     return _bs_str(buf)
 
 
-fn tokenize(formula: String, mut toks: List[Token]) -> Bool:
+def tokenize(formula: String, mut toks: List[Token]) -> Bool:
     """Formula text (without the leading '=') -> token list. False only on a
     hard refusal (over-long input, unterminated string); anything merely odd
     becomes TK_BAD for the parser to refuse with a reason."""
@@ -622,30 +622,30 @@ struct Parser(Copyable, Movable):
     var fail_reason: String
     var sheet_names_folded: List[String]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.toks = List[Token]()
         self.pos = 0
         self.failed = False
         self.fail_reason = String("")
         self.sheet_names_folded = List[String]()
 
-    fn peek_kind(self) -> Int:
+    def peek_kind(self) -> Int:
         if self.pos < len(self.toks):
             return self.toks[self.pos].kind
         return TK_END
 
-    fn peek_kind_at(self, ahead: Int) -> Int:
+    def peek_kind_at(self, ahead: Int) -> Int:
         var p = self.pos + ahead
         if p < len(self.toks):
             return self.toks[p].kind
         return TK_END
 
-    fn fail(mut self, reason: String):
+    def fail(mut self, reason: String):
         if not self.failed:
             self.failed = True
             self.fail_reason = reason
 
-    fn resolve_sheet(self, name: String) -> Int:
+    def resolve_sheet(self, name: String) -> Int:
         """Case-insensitive sheet lookup; -2 when unknown (eval -> #REF!)."""
         var folded = _fold(name)
         for i in range(len(self.sheet_names_folded)):
@@ -654,7 +654,7 @@ struct Parser(Copyable, Movable):
         return -2
 
 
-fn _fold(s: String) -> String:
+def _fold(s: String) -> String:
     var bs = s.as_bytes()
     var buf = List[UInt8]()
     for i in range(len(bs)):
@@ -665,7 +665,7 @@ fn _fold(s: String) -> String:
     return _bs_str(buf)
 
 
-fn _strip_fn_prefix(name_upper: String) -> String:
+def _strip_fn_prefix(name_upper: String) -> String:
     """Strip the storage prefixes modern functions carry: _XLFN.XLWS.,
     _XLFN., _XLWS., _XLPM.  (verified against corpus XML)."""
     var s = name_upper
@@ -680,7 +680,7 @@ fn _strip_fn_prefix(name_upper: String) -> String:
     return s
 
 
-fn _starts_with(s: String, prefix: String) -> Bool:
+def _starts_with(s: String, prefix: String) -> Bool:
     var sb = s.as_bytes()
     var pb = prefix.as_bytes()
     if len(sb) < len(pb):
@@ -691,7 +691,7 @@ fn _starts_with(s: String, prefix: String) -> Bool:
     return True
 
 
-fn _drop(s: String, n: Int) -> String:
+def _drop(s: String, n: Int) -> String:
     var bs = s.as_bytes()
     var buf = List[UInt8]()
     for i in range(n, len(bs)):
@@ -699,12 +699,12 @@ fn _drop(s: String, n: Int) -> String:
     return _bs_str(buf)
 
 
-fn _new_node(mut nodes: List[FNode], var nd: FNode) -> Int:
+def _new_node(mut nodes: List[FNode], var nd: FNode) -> Int:
     nodes.append(nd^)
     return len(nodes) - 1
 
 
-fn parse_formula(
+def parse_formula(
     formula: String, sheet_names: List[String], mut nodes: List[FNode], mut pool: List[Int]
 ) -> Int:
     """Parse one formula (text WITHOUT the leading '='). Appends nodes to the
@@ -742,7 +742,7 @@ fn parse_formula(
     return root
 
 
-fn _parse_cmp(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_cmp(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -770,7 +770,7 @@ fn _parse_cmp(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth:
     return left
 
 
-fn _parse_concat(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_concat(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -782,7 +782,7 @@ fn _parse_concat(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], dep
     return left
 
 
-fn _parse_addsub(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_addsub(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -802,7 +802,7 @@ fn _parse_addsub(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], dep
     return left
 
 
-fn _parse_muldiv(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_muldiv(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -822,7 +822,7 @@ fn _parse_muldiv(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], dep
     return left
 
 
-fn _parse_pow(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_pow(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -834,7 +834,7 @@ fn _parse_pow(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth:
     return left
 
 
-fn _parse_unary(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_unary(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -849,7 +849,7 @@ fn _parse_unary(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], dept
     return _parse_postfix(p, nodes, pool, depth + 1)
 
 
-fn _parse_postfix(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_postfix(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     var e = _parse_primary(p, nodes, pool, depth + 1)
     while not p.failed and p.peek_kind() == TK_PCT:
         p.pos += 1
@@ -857,7 +857,7 @@ fn _parse_postfix(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], de
     return e
 
 
-fn _bin(mut nodes: List[FNode], mut pool: List[Int], op: Int, l: Int, r: Int) -> Int:
+def _bin(mut nodes: List[FNode], mut pool: List[Int], op: Int, l: Int, r: Int) -> Int:
     if l < 0 or r < 0:
         return -1
     var nd = FNode(NK_BIN)
@@ -869,7 +869,7 @@ fn _bin(mut nodes: List[FNode], mut pool: List[Int], op: Int, l: Int, r: Int) ->
     return _new_node(nodes, nd^)
 
 
-fn _un(mut nodes: List[FNode], mut pool: List[Int], op: Int, x: Int) -> Int:
+def _un(mut nodes: List[FNode], mut pool: List[Int], op: Int, x: Int) -> Int:
     if x < 0:
         return -1
     var nd = FNode(NK_UN)
@@ -880,7 +880,7 @@ fn _un(mut nodes: List[FNode], mut pool: List[Int], op: Int, x: Int) -> Int:
     return _new_node(nodes, nd^)
 
 
-fn _parse_primary(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
+def _parse_primary(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], depth: Int) -> Int:
     if depth > MAX_PARSE_DEPTH:
         p.fail(String("DEEP_EXPR"))
         return -1
@@ -973,7 +973,7 @@ fn _parse_primary(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], de
     return -1
 
 
-fn _row_only_of_num(t: Token) -> Int:
+def _row_only_of_num(t: Token) -> Int:
     """A TK_NUM token that is a plain integer row (digits only) -> 0-based
     row; -1 otherwise."""
     var bs = t.text.as_bytes()
@@ -991,7 +991,7 @@ fn _row_only_of_num(t: Token) -> Int:
     return acc - 1
 
 
-fn _parse_call(
+def _parse_call(
     mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], raw_name: String, depth: Int
 ) -> Int:
     var name = _strip_fn_prefix(_upper(raw_name))
@@ -1027,7 +1027,7 @@ fn _parse_call(
     return _new_node(nodes, nd^)
 
 
-fn _parse_ref_body(
+def _parse_ref_body(
     mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], sheet_name: String, had_sheet: Bool
 ) -> Int:
     """After `Sheet!` — parse the A1/range body. The sheet resolves now; an
@@ -1074,7 +1074,7 @@ fn _parse_ref_body(
     return -1
 
 
-fn _parse_range_tail(
+def _parse_range_tail(
     mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], left_text: String, sheet_idx: Int
 ) -> Int:
     """`left_text` came right before a consumed ':'. Parse the right side and
@@ -1146,7 +1146,7 @@ fn _parse_range_tail(
     return -1
 
 
-fn _mk_ref(mut nodes: List[FNode], sheet_idx: Int, pa: A1Parse) -> Int:
+def _mk_ref(mut nodes: List[FNode], sheet_idx: Int, pa: A1Parse) -> Int:
     var nd = FNode(NK_REF)
     nd.a = sheet_idx
     nd.b = pa.row
@@ -1160,7 +1160,7 @@ fn _mk_ref(mut nodes: List[FNode], sheet_idx: Int, pa: A1Parse) -> Int:
     return _new_node(nodes, nd^)
 
 
-fn _parse_single_token_ref_or_name(
+def _parse_single_token_ref_or_name(
     mut p: Parser, mut nodes: List[FNode], mut pool: List[Int], text: String
 ) -> Int:
     """A bare identifier: A1 cell, TRUE/FALSE, or a defined name."""
@@ -1182,7 +1182,7 @@ fn _parse_single_token_ref_or_name(
     return _new_node(nodes, nd^)
 
 
-fn _parse_array_literal(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int]) -> Int:
+def _parse_array_literal(mut p: Parser, mut nodes: List[FNode], mut pool: List[Int]) -> Int:
     """{1,2;3,4} — constants only (numbers with optional sign, strings, bools,
     error literals). Must be rectangular."""
     p.pos += 1  # consume {

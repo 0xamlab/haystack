@@ -21,19 +21,19 @@ from image_quality import quality_score
 from image_resize import box_sum, integral_image, reshape_to_grid
 
 
-fn _pixel_count(width: Int, height: Int) -> Int:
+def _pixel_count(width: Int, height: Int) -> Int:
     if width <= 0 or height <= 0:
         return 0
     return width * height
 
 
-fn _pixel_value(flat: List[Float64], index: Int) -> Float64:
+def _pixel_value(flat: List[Float64], index: Int) -> Float64:
     if index < 0 or index >= len(flat):
         return 0.0
     return flat[index]
 
 
-fn _clamp255(v: Float64) -> Float64:
+def _clamp255(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 255.0:
@@ -41,7 +41,7 @@ fn _clamp255(v: Float64) -> Float64:
     return v
 
 
-fn _clamp01(v: Float64) -> Float64:
+def _clamp01(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 1.0:
@@ -49,15 +49,15 @@ fn _clamp01(v: Float64) -> Float64:
     return v
 
 
-fn _abs(v: Float64) -> Float64:
+def _abs(v: Float64) -> Float64:
     return -v if v < 0.0 else v
 
 
-fn _foreground_mask_value(value: Float64, threshold: Float64) -> Float64:
+def _foreground_mask_value(value: Float64, threshold: Float64) -> Float64:
     return 255.0 if value <= threshold else 0.0
 
 
-fn _projection_coefficient_of_variation(values: List[Float64]) -> Float64:
+def _projection_coefficient_of_variation(values: List[Float64]) -> Float64:
     if len(values) == 0:
         return 0.0
     var mean: Float64 = 0.0
@@ -74,7 +74,7 @@ fn _projection_coefficient_of_variation(values: List[Float64]) -> Float64:
     return sqrt(variance) / mean
 
 
-fn otsu_threshold_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def otsu_threshold_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     """Global Otsu threshold in 0-255 space. Missing pixels are treated as 0."""
     var pixels = _pixel_count(width, height)
     if pixels <= 0:
@@ -118,7 +118,7 @@ fn otsu_threshold_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     return Float64(best_threshold)
 
 
-fn binarize_otsu_flat(flat: List[Float64], width: Int, height: Int) -> List[Float64]:
+def binarize_otsu_flat(flat: List[Float64], width: Int, height: Int) -> List[Float64]:
     """Binary dark-ink mask via Otsu thresholding."""
     var out = List[Float64]()
     var pixels = _pixel_count(width, height)
@@ -130,7 +130,7 @@ fn binarize_otsu_flat(flat: List[Float64], width: Int, height: Int) -> List[Floa
     return out^
 
 
-fn adaptive_mean_binarize_flat(
+def adaptive_mean_binarize_flat(
     flat: List[Float64], width: Int, height: Int, window_radius: Int, bias: Float64
 ) -> List[Float64]:
     """Local-mean thresholding for uneven lighting. Ink is any pixel <= local_mean - bias."""
@@ -163,7 +163,7 @@ fn adaptive_mean_binarize_flat(
     return out^
 
 
-fn horizontal_projection(
+def horizontal_projection(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Foreground counts by row from a binary or thresholded mask."""
@@ -180,7 +180,7 @@ fn horizontal_projection(
     return out^
 
 
-fn vertical_projection(
+def vertical_projection(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Foreground counts by column from a binary or thresholded mask."""
@@ -197,7 +197,7 @@ fn vertical_projection(
     return out^
 
 
-fn mask_content_bbox_flat(
+def mask_content_bbox_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Int]:
     """Foreground bounding box as [x0, y0, x1, y1, area]. Empty masks return []."""
@@ -232,7 +232,7 @@ fn mask_content_bbox_flat(
     return out^
 
 
-fn skew_angle_estimate_flat(
+def skew_angle_estimate_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> Float64:
     """Least-squares slope angle in degrees from row-wise ink centroids."""
@@ -274,7 +274,7 @@ fn skew_angle_estimate_flat(
     return atan2(slope, 1.0) * 180.0 / 3.141592653589793
 
 
-fn horizontal_text_score_flat(
+def horizontal_text_score_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> Float64:
     """Row-peakiness score in [0, 1]. Higher values suggest horizontal text layout."""
@@ -293,7 +293,7 @@ fn horizontal_text_score_flat(
     if row_cv <= 0.0 and col_cv <= 0.0:
         return 0.5
     return _clamp01(row_cv / (row_cv + col_cv))
-fn document_scan_quality_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def document_scan_quality_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     """Composite document scan quality score in [0, 1]."""
     var pixels = _pixel_count(width, height)
     if pixels <= 0:

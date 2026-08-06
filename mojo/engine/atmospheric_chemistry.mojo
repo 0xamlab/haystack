@@ -16,11 +16,11 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
-fn ozone_column_dobson(
+def ozone_column_dobson(
     column_density_mol_m2: Float64
 ) -> Float64:
     """Convert ozone column to Dobson units.
@@ -38,7 +38,7 @@ fn ozone_column_dobson(
     return molecules_per_m2 / 2.687e20
 
 
-fn photolysis_rate(
+def photolysis_rate(
     actinic_flux: Float64, cross_section: Float64, quantum_yield: Float64
 ) -> Float64:
     """Photolysis rate coefficient: j = F·σ·Φ.
@@ -54,7 +54,7 @@ fn photolysis_rate(
     return actinic_flux * cross_section * quantum_yield
 
 
-fn hydroxyl_steady_state(
+def hydroxyl_steady_state(
     oh_production: Float64, loss_rate_constant: Float64, substrate_conc: Float64
 ) -> Float64:
     """Steady-state OH concentration.
@@ -75,7 +75,7 @@ fn hydroxyl_steady_state(
     return oh_production / denom
 
 
-fn aerosol_optical_depth(
+def aerosol_optical_depth(
     extinction_coefficient: Float64, path_length: Float64
 ) -> Float64:
     """Aerosol optical depth: AOD = β_ext · L.
@@ -90,7 +90,7 @@ fn aerosol_optical_depth(
     return extinction_coefficient * path_length
 
 
-fn mixing_ratio_to_conc(
+def mixing_ratio_to_conc(
     mixing_ratio_ppm: Float64, temperature_k: Float64, pressure_pa: Float64
 ) -> Float64:
     """Convert volume mixing ratio to number concentration.
@@ -112,7 +112,7 @@ fn mixing_ratio_to_conc(
     return chi * pressure_pa / (kB * temperature_k)
 
 
-fn residence_time(column_amount: Float64, source_rate: Float64) -> Float64:
+def residence_time(column_amount: Float64, source_rate: Float64) -> Float64:
     """Atmospheric residence time: τ = column / source rate.
 
     Args:
@@ -127,7 +127,7 @@ fn residence_time(column_amount: Float64, source_rate: Float64) -> Float64:
     return column_amount / source_rate
 
 
-fn smog_formation_index(
+def smog_formation_index(
     nox_ppb: Float64, voc_ppb: Float64
 ) -> Float64:
     """Simple smog formation potential index.
@@ -144,7 +144,7 @@ fn smog_formation_index(
     return nox_ppb * voc_ppb
 
 
-fn acid_rain_ph(
+def acid_rain_ph(
     so2_deposition: Float64, nox_deposition: Float64
 ) -> Float64:
     """Approximate pH of precipitation from acid deposition.
@@ -164,7 +164,7 @@ fn acid_rain_ph(
     return 5.6 - _log10(1.0 + total / 100.0)
 
 
-fn greenhouse_forcing(co2_ppm: Float64, co2_ref_ppm: Float64) -> Float64:
+def greenhouse_forcing(co2_ppm: Float64, co2_ref_ppm: Float64) -> Float64:
     """Simplified CO2 radiative forcing: ΔF = 5.35·ln(C/C0).
 
     Args:
@@ -179,7 +179,7 @@ fn greenhouse_forcing(co2_ppm: Float64, co2_ref_ppm: Float64) -> Float64:
     return 5.35 * log(co2_ppm / co2_ref_ppm)
 
 
-fn lifetime_from_oh(
+def lifetime_from_oh(
     rate_constant_oh: Float64, oh_concentration: Float64
 ) -> Float64:
     """Atmospheric lifetime from OH reaction: τ = 1/(k_OH·[OH]).

@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log
 
 
-fn crop_yield_potential(radiation: Float64, rue: Float64, harvest_index: Float64) -> Float64:
+def crop_yield_potential(radiation: Float64, rue: Float64, harvest_index: Float64) -> Float64:
     """Yield potential = radiation use efficiency model.
 
     Args:
@@ -32,7 +32,7 @@ fn crop_yield_potential(radiation: Float64, rue: Float64, harvest_index: Float64
     return radiation * rue * harvest_index
 
 
-fn nitrogen_uptake_efficiency(grain_n: Float64, soil_n: Float64) -> Float64:
+def nitrogen_uptake_efficiency(grain_n: Float64, soil_n: Float64) -> Float64:
     """Nitrogen use efficiency (NUE) of a crop.
 
     Args:
@@ -47,7 +47,7 @@ fn nitrogen_uptake_efficiency(grain_n: Float64, soil_n: Float64) -> Float64:
     return grain_n / soil_n
 
 
-fn soil_organic_matter_decay(som0: Float64, k: Float64, t: Float64) -> Float64:
+def soil_organic_matter_decay(som0: Float64, k: Float64, t: Float64) -> Float64:
     """First-order decay of soil organic matter.
 
     Args:
@@ -63,7 +63,7 @@ fn soil_organic_matter_decay(som0: Float64, k: Float64, t: Float64) -> Float64:
     return som0 * exp(-k * t)
 
 
-fn evapotranspiration_penman(
+def evapotranspiration_penman(
     rn: Float64, temp: Float64, wind: Float64, vpd: Float64
 ) -> Float64:
     """Simplified Penman-Monteith reference ET (mm/day).
@@ -86,7 +86,7 @@ fn evapotranspiration_penman(
     return num / den
 
 
-fn leaf_area_index(leaf_area: Float64, ground_area: Float64) -> Float64:
+def leaf_area_index(leaf_area: Float64, ground_area: Float64) -> Float64:
     """Leaf Area Index (LAI).
 
     Args:
@@ -101,7 +101,7 @@ fn leaf_area_index(leaf_area: Float64, ground_area: Float64) -> Float64:
     return leaf_area / ground_area
 
 
-fn light_use_efficiency(biomass: Float64, intercepted_radiation: Float64) -> Float64:
+def light_use_efficiency(biomass: Float64, intercepted_radiation: Float64) -> Float64:
     """Light use efficiency: LUE = biomass / intercepted PAR.
 
     Args:
@@ -116,7 +116,7 @@ fn light_use_efficiency(biomass: Float64, intercepted_radiation: Float64) -> Flo
     return biomass / intercepted_radiation
 
 
-fn crop_water_stress_index(
+def crop_water_stress_index(
     tc: Float64, ta: Float64, tc_ll: Float64
 ) -> Float64:
     """Crop Water Stress Index (CWSI).
@@ -140,7 +140,7 @@ fn crop_water_stress_index(
     return cwsi
 
 
-fn irrigation_requirement(
+def irrigation_requirement(
     et: Float64, rainfall: Float64, soil_moisture_change: Float64
 ) -> Float64:
     """Net irrigation requirement (mm).
@@ -159,7 +159,7 @@ fn irrigation_requirement(
     return ir
 
 
-fn soil_cation_exchange(clay_pct: Float64, om_pct: Float64) -> Float64:
+def soil_cation_exchange(clay_pct: Float64, om_pct: Float64) -> Float64:
     """Estimate cation exchange capacity (CEC) from texture and organic matter.
 
     Empirical approximation: CEC ≈ 0.7*clay + 3.5*OM (cmol/kg).
@@ -176,7 +176,7 @@ fn soil_cation_exchange(clay_pct: Float64, om_pct: Float64) -> Float64:
     return 0.7 * clay_pct + 3.5 * om_pct
 
 
-fn growing_degree_days(t_max: Float64, t_min: Float64, t_base: Float64) -> Float64:
+def growing_degree_days(t_max: Float64, t_min: Float64, t_base: Float64) -> Float64:
     """Growing degree days accumulated in one day.
 
     Args:

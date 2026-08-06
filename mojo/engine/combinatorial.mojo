@@ -21,7 +21,7 @@ Public API:
 # ── knapsack_01 ──────────────────────────────────────────────────────────────
 
 
-fn knapsack_01(weights: List[Int], values: List[Int], capacity: Int) -> List[Int]:
+def knapsack_01(weights: List[Int], values: List[Int], capacity: Int) -> List[Int]:
     """0/1 Knapsack via DP. Returns list of selected item indices."""
     var n = len(weights)
     if n == 0 or capacity <= 0:
@@ -72,7 +72,7 @@ fn knapsack_01(weights: List[Int], values: List[Int], capacity: Int) -> List[Int
 # ── knapsack_01_value ────────────────────────────────────────────────────────
 
 
-fn knapsack_01_value(weights: List[Int], values: List[Int], capacity: Int) -> Int:
+def knapsack_01_value(weights: List[Int], values: List[Int], capacity: Int) -> Int:
     """Maximum value achievable with 0/1 knapsack. Space-optimized 1D DP."""
     var n = len(weights)
     if n == 0 or capacity <= 0:
@@ -103,7 +103,7 @@ fn knapsack_01_value(weights: List[Int], values: List[Int], capacity: Int) -> In
 # ── tsp_greedy ───────────────────────────────────────────────────────────────
 
 
-fn tsp_greedy(distances: List[List[Float64]]) -> List[Int]:
+def tsp_greedy(distances: List[List[Float64]]) -> List[Int]:
     """Greedy nearest-neighbor TSP tour starting from node 0.
 
     Returns visit order including return to start.
@@ -144,7 +144,7 @@ fn tsp_greedy(distances: List[List[Float64]]) -> List[Int]:
 # ── tsp_tour_length ──────────────────────────────────────────────────────────
 
 
-fn tsp_tour_length(distances: List[List[Float64]], tour: List[Int]) -> Float64:
+def tsp_tour_length(distances: List[List[Float64]], tour: List[Int]) -> Float64:
     """Total length of a TSP tour."""
     var total = 0.0
     var n = len(tour)
@@ -162,7 +162,7 @@ fn tsp_tour_length(distances: List[List[Float64]], tour: List[Int]) -> Float64:
 # ── bin_packing_first_fit ────────────────────────────────────────────────────
 
 
-fn bin_packing_first_fit(items: List[Float64], bin_capacity: Float64) -> Int:
+def bin_packing_first_fit(items: List[Float64], bin_capacity: Float64) -> Int:
     """First-fit bin packing. Returns number of bins needed."""
     var n = len(items)
     if n == 0:
@@ -183,7 +183,7 @@ fn bin_packing_first_fit(items: List[Float64], bin_capacity: Float64) -> Int:
 # ── bin_packing_first_fit_decreasing ─────────────────────────────────────────
 
 
-fn bin_packing_first_fit_decreasing(items: List[Float64], bin_capacity: Float64) -> Int:
+def bin_packing_first_fit_decreasing(items: List[Float64], bin_capacity: Float64) -> Int:
     """FFD: sort items descending, then apply first-fit."""
     var n = len(items)
     if n == 0:
@@ -205,7 +205,7 @@ fn bin_packing_first_fit_decreasing(items: List[Float64], bin_capacity: Float64)
 # ── assignment_greedy ────────────────────────────────────────────────────────
 
 
-fn assignment_greedy(cost_matrix: List[List[Float64]]) -> List[Int]:
+def assignment_greedy(cost_matrix: List[List[Float64]]) -> List[Int]:
     """Greedy assignment: for each row, pick cheapest available column.
 
     Returns assignment[row] = col.
@@ -236,7 +236,7 @@ fn assignment_greedy(cost_matrix: List[List[Float64]]) -> List[Int]:
 # ── max_subarray_sum ─────────────────────────────────────────────────────────
 
 
-fn max_subarray_sum(data: List[Float64]) -> Float64:
+def max_subarray_sum(data: List[Float64]) -> Float64:
     """Kadane's algorithm: maximum contiguous subarray sum.
 
     Returns 0.0 for empty input. For all-negative, returns largest element.
@@ -259,7 +259,7 @@ fn max_subarray_sum(data: List[Float64]) -> Float64:
 # ── longest_increasing_subsequence ───────────────────────────────────────────
 
 
-fn longest_increasing_subsequence(data: List[Float64]) -> Int:
+def longest_increasing_subsequence(data: List[Float64]) -> Int:
     """Length of LIS using patience sorting (O(n log n)).
 
     Uses binary search to maintain tails array.
@@ -290,7 +290,7 @@ fn longest_increasing_subsequence(data: List[Float64]) -> Int:
 # ── coin_change ──────────────────────────────────────────────────────────────
 
 
-fn coin_change(coins: List[Int], amount: Int) -> Int:
+def coin_change(coins: List[Int], amount: Int) -> Int:
     """Minimum number of coins to make amount. Returns -1 if impossible.
 
     Uses bottom-up DP.

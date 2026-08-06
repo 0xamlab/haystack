@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from dimensions import infer_from_samples, propagate, propagate_is_valid, validate_formula, can_sum, can_avg, aggregation_valid, role_for_dimension, dimension_name, dimension_from_role
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

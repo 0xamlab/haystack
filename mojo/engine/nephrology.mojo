@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, pow
 
 
-fn gfr_ckd_epi(
+def gfr_ckd_epi(
     creatinine_mg_dl: Float64, age: Float64, is_female: Float64
 ) -> Float64:
     """Estimated GFR using simplified CKD-EPI equation.
@@ -45,7 +45,7 @@ fn gfr_ckd_epi(
     return egfr
 
 
-fn creatinine_clearance_cockroft(
+def creatinine_clearance_cockroft(
     age: Float64, weight_kg: Float64, creatinine_mg_dl: Float64, is_female: Float64
 ) -> Float64:
     """Cockcroft-Gault creatinine clearance.
@@ -69,7 +69,7 @@ fn creatinine_clearance_cockroft(
     return crcl
 
 
-fn fractional_excretion_sodium(
+def fractional_excretion_sodium(
     urine_na: Float64, plasma_na: Float64,
     urine_cr: Float64, plasma_cr: Float64
 ) -> Float64:
@@ -90,7 +90,7 @@ fn fractional_excretion_sodium(
     return urine_na * plasma_cr / denom * 100.0
 
 
-fn urine_anion_gap(
+def urine_anion_gap(
     urine_na: Float64, urine_k: Float64, urine_cl: Float64
 ) -> Float64:
     """Urine anion gap: UAG = Na + K - Cl.
@@ -106,7 +106,7 @@ fn urine_anion_gap(
     return urine_na + urine_k - urine_cl
 
 
-fn transtubular_potassium_gradient(
+def transtubular_potassium_gradient(
     urine_k: Float64, plasma_k: Float64,
     urine_osm: Float64, plasma_osm: Float64
 ) -> Float64:
@@ -131,7 +131,7 @@ fn transtubular_potassium_gradient(
     return (urine_k / plasma_k) / correction
 
 
-fn renal_plasma_flow(
+def renal_plasma_flow(
     urine_pah_conc: Float64, plasma_pah_conc: Float64,
     urine_volume_ml_per_min: Float64
 ) -> Float64:
@@ -152,7 +152,7 @@ fn renal_plasma_flow(
     return urine_pah_conc * urine_volume_ml_per_min / plasma_pah_conc
 
 
-fn filtration_fraction(gfr: Float64, rpf: Float64) -> Float64:
+def filtration_fraction(gfr: Float64, rpf: Float64) -> Float64:
     """Filtration fraction: FF = GFR / RPF.
 
     Args:
@@ -167,7 +167,7 @@ fn filtration_fraction(gfr: Float64, rpf: Float64) -> Float64:
     return gfr / rpf
 
 
-fn osmolar_clearance(
+def osmolar_clearance(
     urine_osm: Float64, urine_flow: Float64, plasma_osm: Float64
 ) -> Float64:
     """Osmolar clearance: Cosm = Uosm × V / Posm.
@@ -185,7 +185,7 @@ fn osmolar_clearance(
     return urine_osm * urine_flow / plasma_osm
 
 
-fn free_water_clearance(
+def free_water_clearance(
     urine_flow: Float64, cosm: Float64
 ) -> Float64:
     """Free water clearance: CH2O = V - Cosm.
@@ -200,7 +200,7 @@ fn free_water_clearance(
     return urine_flow - cosm
 
 
-fn protein_creatinine_ratio(
+def protein_creatinine_ratio(
     urine_protein_mg_dl: Float64, urine_creatinine_mg_dl: Float64
 ) -> Float64:
     """Spot urine protein-to-creatinine ratio.

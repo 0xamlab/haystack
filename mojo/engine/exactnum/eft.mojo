@@ -97,7 +97,7 @@ comptime _DEKKER_SPLITTER: Float64 = 134217729.0
 """2^27 + 1, Dekker's splitter. Only used by the no-FMA fallback."""
 
 
-fn eft_status_name(code: Int) -> String:
+def eft_status_name(code: Int) -> String:
     """The `exactnum.eft` status vocabulary. One integer, one meaning (rule 4e)."""
     if code == EFT_OK:
         return String("ok")
@@ -136,7 +136,7 @@ struct DD(ImplicitlyCopyable, Movable):
 
 
 @always_inline
-fn eft_two_sum(a: Float64, b: Float64) -> DD:
+def eft_two_sum(a: Float64, b: Float64) -> DD:
     """Knuth two_sum: `hi + lo == a + b` exactly, for any finite a, b. 6 flops.
 
     Branch-free and order-independent, unlike `eft_fast_two_sum`. The `s - bb` term must be
@@ -154,7 +154,7 @@ fn eft_two_sum(a: Float64, b: Float64) -> DD:
 
 
 @always_inline
-fn eft_fast_two_sum(a: Float64, b: Float64) -> DD:
+def eft_fast_two_sum(a: Float64, b: Float64) -> DD:
     """Dekker fast_two_sum: `hi + lo == a + b` exactly, **only when `|a| >= |b|`**. 3 flops.
 
     The precondition is not checked. It is not checkable for free — a branch here costs more
@@ -172,7 +172,7 @@ fn eft_fast_two_sum(a: Float64, b: Float64) -> DD:
 
 
 @always_inline
-fn eft_two_product(a: Float64, b: Float64) -> DD:
+def eft_two_product(a: Float64, b: Float64) -> DD:
     """Dekker two_product via one FMA: `hi + lo == a * b` exactly. 2 flops.
 
     Exact for every finite product that does not overflow or fall into the subnormal range,
@@ -189,7 +189,7 @@ fn eft_two_product(a: Float64, b: Float64) -> DD:
 
 
 @always_inline
-fn _dekker_split(a: Float64) -> DD:
+def _dekker_split(a: Float64) -> DD:
     var c = _DEKKER_SPLITTER * a
     var hi = c - (c - a)
     var lo = a - hi
@@ -197,7 +197,7 @@ fn _dekker_split(a: Float64) -> DD:
 
 
 @always_inline
-fn eft_two_product_dekker(a: Float64, b: Float64) -> DD:
+def eft_two_product_dekker(a: Float64, b: Float64) -> DD:
     """`eft_two_product` without any FMA — 17 flops of splitting instead of 2.
 
     Kept as a portability fallback and as an independent second opinion: it agrees with the
@@ -219,18 +219,18 @@ fn eft_two_product_dekker(a: Float64, b: Float64) -> DD:
 
 
 @always_inline
-fn dd_from(a: Float64) -> DD:
+def dd_from(a: Float64) -> DD:
     """A float64 lifted exactly into double-double."""
     return DD(a, 0.0)
 
 
 @always_inline
-fn dd_neg(a: DD) -> DD:
+def dd_neg(a: DD) -> DD:
     return DD(-a.hi, -a.lo)
 
 
 @always_inline
-fn dd_add(a: DD, b: DD) -> DD:
+def dd_add(a: DD, b: DD) -> DD:
     """Accurate double-double addition (Bailey's `ieee_add`), ~2^-106 relative. 20 flops.
 
     The cheaper `sloppy_add` loses its error bound when the operands nearly cancel, which is
@@ -249,12 +249,12 @@ fn dd_add(a: DD, b: DD) -> DD:
 
 
 @always_inline
-fn dd_sub(a: DD, b: DD) -> DD:
+def dd_sub(a: DD, b: DD) -> DD:
     return dd_add(a, dd_neg(b))
 
 
 @always_inline
-fn dd_add_d(a: DD, b: Float64) -> DD:
+def dd_add_d(a: DD, b: Float64) -> DD:
     """`a + b` where `b` is a float64. 10 flops."""
     var s = eft_two_sum(a.hi, b)
     var lo = s.lo + a.lo
@@ -262,7 +262,7 @@ fn dd_add_d(a: DD, b: Float64) -> DD:
 
 
 @always_inline
-fn dd_mul(a: DD, b: DD) -> DD:
+def dd_mul(a: DD, b: DD) -> DD:
     """`a * b`, ~2^-106 relative. 9 flops.
 
     The `a.lo * b.lo` cross term is dropped: it is O(2^-106) *relative to the product*, i.e.
@@ -274,14 +274,14 @@ fn dd_mul(a: DD, b: DD) -> DD:
 
 
 @always_inline
-fn dd_mul_d(a: DD, b: Float64) -> DD:
+def dd_mul_d(a: DD, b: Float64) -> DD:
     """`a * b` where `b` is a float64. 6 flops, and exact in `b`."""
     var p = eft_two_product(a.hi, b)
     var lo = p.lo + a.lo * b
     return eft_fast_two_sum(p.hi, lo)
 
 
-fn dd_div(a: DD, b: DD) -> DD:
+def dd_div(a: DD, b: DD) -> DD:
     """`a / b` by three float64 Newton corrections (Bailey's `accurate_div`).
 
     Returns a NaN pair when `b` is zero rather than raising: this is an inner arithmetic
@@ -299,7 +299,7 @@ fn dd_div(a: DD, b: DD) -> DD:
     return dd_add_d(q, q3)
 
 
-fn dd_sqrt(a: DD) -> DD:
+def dd_sqrt(a: DD) -> DD:
     """`sqrt(a)` by one Newton step from the float64 square root. ~2^-106 relative.
 
     `sqrt(0)` is `0`. A negative radicand has no real square root, so it returns a NaN pair
@@ -320,7 +320,7 @@ fn dd_sqrt(a: DD) -> DD:
 # ── compensated reductions ───────────────────────────────────────────────────
 
 
-fn _dot2(x: List[Float64], y: List[Float64], n: Int) -> DD:
+def _dot2(x: List[Float64], y: List[Float64], n: Int) -> DD:
     """Ogita-Rump-Oishi Dot2 over `x[0..n)` and `y[0..n)`. Caller has bounds-checked `n`.
 
     Internal: takes an unchecked `n` because it sits inside the QR inner loop. The public
@@ -339,7 +339,7 @@ fn _dot2(x: List[Float64], y: List[Float64], n: Int) -> DD:
     return eft_fast_two_sum(hi, s)
 
 
-fn _sum2(x: List[Float64], n: Int) -> DD:
+def _sum2(x: List[Float64], n: Int) -> DD:
     """Ogita-Rump-Oishi Sum2 over `x[0..n)`. Caller has bounds-checked `n`.
 
     Unlike `kahan_sum` this keeps the accumulated error term in the result, which is what
@@ -359,7 +359,7 @@ fn _sum2(x: List[Float64], n: Int) -> DD:
 # ── the runtime self-check: three cases plain float64 provably gets wrong ─────
 
 
-fn eft_selfcheck_code() -> Int:
+def eft_selfcheck_code() -> Int:
     """`EFT_OK` iff the FMA is fused, the compiler does not contract, and `+` is not reassociated.
 
     Every case here is one where plain float64 gives a *different* answer, so passing cannot
@@ -410,7 +410,7 @@ fn eft_selfcheck_code() -> Int:
 # ── public, contract-shaped entry points ─────────────────────────────────────
 
 
-fn eft_two_sum_pair(a: Float64, b: Float64) -> DD:
+def eft_two_sum_pair(a: Float64, b: Float64) -> DD:
     """Knuth two_sum as a returned pair. See `eft_two_sum`.
 
     @capability eft_two_sum_pair
@@ -420,7 +420,7 @@ fn eft_two_sum_pair(a: Float64, b: Float64) -> DD:
     return eft_two_sum(a, b)
 
 
-fn eft_two_product_pair(a: Float64, b: Float64) -> DD:
+def eft_two_product_pair(a: Float64, b: Float64) -> DD:
     """Dekker two_product as a returned pair. See `eft_two_product`.
 
     @capability eft_two_product_pair
@@ -430,7 +430,7 @@ fn eft_two_product_pair(a: Float64, b: Float64) -> DD:
     return eft_two_product(a, b)
 
 
-fn eft_dd_add(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
+def eft_dd_add(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
     """Double-double sum of `(a_hi, a_lo)` and `(b_hi, b_lo)`.
 
     @capability eft_dd_add
@@ -440,7 +440,7 @@ fn eft_dd_add(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
     return dd_add(DD(a_hi, a_lo), DD(b_hi, b_lo))
 
 
-fn eft_dd_mul(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
+def eft_dd_mul(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
     """Double-double product of `(a_hi, a_lo)` and `(b_hi, b_lo)`.
 
     @capability eft_dd_mul
@@ -450,7 +450,7 @@ fn eft_dd_mul(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
     return dd_mul(DD(a_hi, a_lo), DD(b_hi, b_lo))
 
 
-fn eft_dd_div(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
+def eft_dd_div(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
     """Double-double quotient. A zero divisor returns a NaN pair; check first.
 
     @capability eft_dd_div
@@ -460,7 +460,7 @@ fn eft_dd_div(a_hi: Float64, a_lo: Float64, b_hi: Float64, b_lo: Float64) -> DD:
     return dd_div(DD(a_hi, a_lo), DD(b_hi, b_lo))
 
 
-fn eft_dd_sqrt(a_hi: Float64, a_lo: Float64) -> DD:
+def eft_dd_sqrt(a_hi: Float64, a_lo: Float64) -> DD:
     """Double-double square root. A negative radicand returns a NaN pair; check first.
 
     @capability eft_dd_sqrt
@@ -485,7 +485,7 @@ struct EftReduction(Copyable, Movable):
     var terms: Int
 
 
-fn eft_dot2(x: List[Float64], y: List[Float64], n: Int) -> EftReduction:
+def eft_dot2(x: List[Float64], y: List[Float64], n: Int) -> EftReduction:
     """Compensated dot product of the first `n` elements, ~2^-106 relative.
 
     `n` is an element count over BOTH buffers and is validated against both real lengths
@@ -508,7 +508,7 @@ fn eft_dot2(x: List[Float64], y: List[Float64], n: Int) -> EftReduction:
     return EftReduction(r.hi, r.lo, EFT_OK, n)
 
 
-fn eft_sum2(x: List[Float64], n: Int) -> EftReduction:
+def eft_sum2(x: List[Float64], n: Int) -> EftReduction:
     """Compensated sum of the first `n` elements, keeping the error term.
 
     @capability eft_sum2
@@ -527,7 +527,7 @@ fn eft_sum2(x: List[Float64], n: Int) -> EftReduction:
     return EftReduction(r.hi, r.lo, EFT_OK, n)
 
 
-fn eft_kahan_sum_f64(x: List[Float64]) -> Float64:
+def eft_kahan_sum_f64(x: List[Float64]) -> Float64:
     """The frozen `numerical_stability.kahan_sum`, forwarded unchanged (rule 3).
 
     Present so that "compensated float64 sum" has one definition in the tree and a

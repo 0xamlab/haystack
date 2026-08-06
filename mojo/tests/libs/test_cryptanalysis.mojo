@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cryptanalysis import frequency_score_2, index_of_coincidence_2, expected_ic_random, expected_ic_english, friedman_key_length, kasiski_distance_gcd, caesar_decrypt_score, hamming_distance_bytes, entropy_bits_2, entropy_bits_4, brute_force_time_estimate, avalanche_effect
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from text.fuzzy import levenshtein_distance, normalized_levenshtein, jaro_similarity, jaro_winkler_similarity, hamming_distance, longest_common_subsequence, fuzzy_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

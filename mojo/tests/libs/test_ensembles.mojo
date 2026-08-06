@@ -9,7 +9,7 @@ from ensembles import (
 from std.math import abs as fabs
 
 
-fn _int_lists_equal(a: List[Int], b: List[Int]) -> Bool:
+def _int_lists_equal(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -18,11 +18,11 @@ fn _int_lists_equal(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ ensembles::" + name)

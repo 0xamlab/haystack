@@ -37,12 +37,12 @@ from stats_bootstrap import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -50,7 +50,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Polynomial tests ─────────────────────────────────────────────────────────
 
 
-fn test_polynomial() raises:
+def test_polynomial() raises:
     print("── Polynomial tests ──")
     var passed = 0
 
@@ -234,7 +234,7 @@ fn test_polynomial() raises:
 # ── Election tests ───────────────────────────────────────────────────────────
 
 
-fn test_election() raises:
+def test_election() raises:
     print("── Election tests ──")
     var passed = 0
 
@@ -396,7 +396,7 @@ fn test_election() raises:
 # ── Bootstrap tests ──────────────────────────────────────────────────────────
 
 
-fn test_bootstrap() raises:
+def test_bootstrap() raises:
     print("── Bootstrap tests ──")
     var passed = 0
 
@@ -536,7 +536,7 @@ fn test_bootstrap() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 37 Tests ===")
     test_polynomial()
     test_election()

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from proteomics import molecular_weight_da, isoelectric_point_approx, extinction_coefficient, protein_concentration_a280, sequence_coverage, peptide_mass_monoisotopic, peak_area_ratio, protein_abundance_index, empa_score, fdr_target_decoy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hydroponics import ec_from_tds, tds_from_ec, nutrient_concentration, ph_adjustment_acid, light_daily_integral, vpd, water_consumption_rate, nutrient_uptake_rate, grow_light_efficiency, reservoir_dilution, yield_per_area, crop_cycle_roi
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

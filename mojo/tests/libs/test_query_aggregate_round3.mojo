@@ -75,11 +75,11 @@ from query.aggregate import (
 )
 
 
-fn _lcg_next(state: UInt64) -> UInt64:
+def _lcg_next(state: UInt64) -> UInt64:
     return state * 6364136223846793005 + 1442695040888963407
 
 
-fn _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
+def _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
     if a.n_groups() != b.n_groups() or a.key_width != b.key_width:
         return False
     if a.n_aggs != b.n_aggs or a.null_key_rows != b.null_key_rows:
@@ -97,7 +97,7 @@ fn _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
     return True
 
 
-fn _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResult) -> Bool:
+def _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResult) -> Bool:
     if many.n_groups() != single.n_groups() or many.key_width != 1:
         return False
     if many.null_key_rows != single.null_key_rows:
@@ -114,7 +114,7 @@ fn _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResul
     return True
 
 
-fn _single_key_batch(keys: List[Float64], values: List[Float64]) -> RecordBatch:
+def _single_key_batch(keys: List[Float64], values: List[Float64]) -> RecordBatch:
     var names = List[String]()
     names.append("k")
     names.append("v")
@@ -127,7 +127,7 @@ fn _single_key_batch(keys: List[Float64], values: List[Float64]) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

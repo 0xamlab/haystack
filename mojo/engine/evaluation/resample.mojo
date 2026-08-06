@@ -166,7 +166,7 @@ struct MetricCI(Copyable, Movable):
     var distinct_replicates: Int
     var point_inside: Bool
 
-    fn __init__(
+    def __init__(
         out self, status: Int, metric_id: Int, n: Int, n_boot: Int, seed: Int
     ):
         self.status = status
@@ -187,7 +187,7 @@ struct MetricCI(Copyable, Movable):
         self.point_inside = False
 
 
-fn bootstrap_draw_index(replicate: Int, sample: Int, n: Int) -> Int:
+def bootstrap_draw_index(replicate: Int, sample: Int, n: Int) -> Int:
     """The Philox `draw_index` for sample `sample` of replicate `replicate`: `b * n + i`.
 
     Exposed rather than inlined so a test can assert the coordinate map is injective — the
@@ -206,7 +206,7 @@ fn bootstrap_draw_index(replicate: Int, sample: Int, n: Int) -> Int:
     return replicate * n + sample
 
 
-fn bootstrap_min_replicates(alpha: Float64) -> Int:
+def bootstrap_min_replicates(alpha: Float64) -> Int:
     """The smallest `n_boot` whose replicate distribution resolves `alpha`'s tails.
 
     `n_boot * alpha >= 2`, i.e. the requested tail probability `alpha/2` is at least the
@@ -256,7 +256,7 @@ fn bootstrap_min_replicates(alpha: Float64) -> Int:
     return candidate
 
 
-fn _distinct_sorted(sorted_values: List[Float64]) -> Int:
+def _distinct_sorted(sorted_values: List[Float64]) -> Int:
     """Number of distinct values in an ascending list. Exact `!=`, no tolerance.
 
     A tolerance here would report a collapsed replicate distribution as merely tightly
@@ -272,7 +272,7 @@ fn _distinct_sorted(sorted_values: List[Float64]) -> Int:
     return distinct
 
 
-fn bootstrap_metric_ci_flat(
+def bootstrap_metric_ci_flat(
     probs: List[Float64], labels: List[Float64], n: Int, metric_id: Int,
     n_bins: Int, policy: Int, n_boot: Int, alpha: Float64, seed: Int
 ) -> MetricCI:

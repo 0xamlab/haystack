@@ -246,7 +246,7 @@ comptime _VERDICT_INFEASIBLE: Int = 2
 comptime _VERDICT_INCONCLUSIVE: Int = 3
 
 
-fn explain_status_name(code: Int) -> String:
+def explain_status_name(code: Int) -> String:
     """Name for an explanation status, falling through to `lp_status_name`."""
     if code == EXPLAIN_ERR_SUM_MISMATCH:
         return "objective_parts_do_not_sum_to_the_objective"
@@ -275,7 +275,7 @@ fn explain_status_name(code: Int) -> String:
 # ── the two budget builders every threshold below goes through ────────────────
 
 
-fn _rounding_budget(additions: Int, magnitude: Float64) -> Float64:
+def _rounding_budget(additions: Int, magnitude: Float64) -> Float64:
     """`LP_FEAS_ULP_BUDGET + additions` ulps of `magnitude`, and never a non-finite budget.
 
     `magnitude` must be the magnitude of the QUANTITY BEING JUDGED — the operands of the very
@@ -302,7 +302,7 @@ fn _rounding_budget(additions: Int, magnitude: Float64) -> Float64:
     return budget
 
 
-fn _cs_product_budget(dual_mag: Float64, slack_mag: Float64, dual_tol: Float64) -> Float64:
+def _cs_product_budget(dual_mag: Float64, slack_mag: Float64, dual_tol: Float64) -> Float64:
     """How far ONE row's `|dual_i| * slack_i` may sit from zero and still be indistinguishable
     from it.
 
@@ -501,7 +501,7 @@ struct ObjectiveDecomposition(Copyable, Movable):
 # ── complementary slackness ───────────────────────────────────────────────────
 
 
-fn slackness_check(
+def slackness_check(
     duals: List[Float64], slack: List[Float64], binding: List[Bool], dual_tol: Float64
 ) -> SlacknessCheck:
     """Audit a primal/dual pair for complementary slackness, without solving anything.
@@ -589,7 +589,7 @@ fn slackness_check(
 # ── binding constraints ───────────────────────────────────────────────────────
 
 
-fn _no_binding(status: Int, n_vars: Int, n_cons: Int) -> BindingReport:
+def _no_binding(status: Int, n_vars: Int, n_cons: Int) -> BindingReport:
     return BindingReport(
         status, False, 0.0, 0.0, EXPLAIN_GAP_ABSENT, False, False, n_vars, n_cons,
         0, 0, -1, EXPLAIN_GAP_ABSENT,
@@ -598,7 +598,7 @@ fn _no_binding(status: Int, n_vars: Int, n_cons: Int) -> BindingReport:
     )
 
 
-fn binding_constraints(
+def binding_constraints(
     c: List[Float64], constant: Float64,
     a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
@@ -726,7 +726,7 @@ fn binding_constraints(
     )
 
 
-fn binding_constraints_default(
+def binding_constraints_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
 ) -> BindingReport:
@@ -740,7 +740,7 @@ fn binding_constraints_default(
 # ── infeasibility core ────────────────────────────────────────────────────────
 
 
-fn _no_core(status: Int, n_cons: Int, infeasibility: Float64, n_solves: Int) -> InfeasibilityCore:
+def _no_core(status: Int, n_cons: Int, infeasibility: Float64, n_solves: Int) -> InfeasibilityCore:
     return InfeasibilityCore(
         status, False, False, False, False, n_cons, 0, n_solves, 0,
         infeasibility, EXPLAIN_GAP_ABSENT,
@@ -748,7 +748,7 @@ fn _no_core(status: Int, n_cons: Int, infeasibility: Float64, n_solves: Int) -> 
     )
 
 
-fn _core_input_defect(
+def _core_input_defect(
     a: List[Float64], rows: Int, cols: Int, senses: List[Int], rhs: List[Float64],
     max_iterations: Int, feasibility_tol: Float64, optimality_tol: Float64,
 ) -> Int:
@@ -783,7 +783,7 @@ fn _core_input_defect(
     )
 
 
-fn _verdict(status: Int) -> Int:
+def _verdict(status: Int) -> Int:
     """Feasible / infeasible / inconclusive from one trial solve's status.
 
     `LP_UNBOUNDED` is FEASIBLE: an unbounded objective is only definable over a nonempty
@@ -798,7 +798,7 @@ fn _verdict(status: Int) -> Int:
     return _VERDICT_INCONCLUSIVE
 
 
-fn _subset_solve(
+def _subset_solve(
     a: List[Float64], rows: Int, cols: Int, senses: List[Int], rhs: List[Float64],
     keep: List[Bool], drop: Int, zeros: List[Float64],
     max_iterations: Int, feasibility_tol: Float64, optimality_tol: Float64,
@@ -827,7 +827,7 @@ fn _subset_solve(
     )
 
 
-fn infeasibility_core(
+def infeasibility_core(
     a: List[Float64], rows: Int, cols: Int, senses: List[Int], rhs: List[Float64],
     max_iterations: Int, feasibility_tol: Float64, optimality_tol: Float64,
 ) -> InfeasibilityCore:
@@ -953,7 +953,7 @@ fn infeasibility_core(
     )
 
 
-fn infeasibility_core_default(
+def infeasibility_core_default(
     a: List[Float64], rows: Int, cols: Int, senses: List[Int], rhs: List[Float64],
 ) -> InfeasibilityCore:
     """`infeasibility_core` under `model.mojo`'s default policy."""
@@ -966,14 +966,14 @@ fn infeasibility_core_default(
 # ── objective decomposition ───────────────────────────────────────────────────
 
 
-fn _no_decomposition(status: Int, n_vars: Int, maximize: Bool) -> ObjectiveDecomposition:
+def _no_decomposition(status: Int, n_vars: Int, maximize: Bool) -> ObjectiveDecomposition:
     return ObjectiveDecomposition(
         status, False, 0.0, 0.0, maximize, 0.0, 0.0, 0.0, False, n_vars, 0, -1, 0.0,
         False, List[Float64](), List[Float64](), List[Float64](),
     )
 
 
-fn objective_contributions(
+def objective_contributions(
     c: List[Float64], constant: Float64, x: List[Float64], maximize: Bool
 ) -> ObjectiveDecomposition:
     """Per-variable `c_j x_j` at `x`, with the residual that proves the parts sum to the whole.
@@ -1058,7 +1058,7 @@ fn objective_contributions(
     )
 
 
-fn optimum_contributions(
+def optimum_contributions(
     c: List[Float64], constant: Float64,
     a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
@@ -1106,7 +1106,7 @@ fn optimum_contributions(
     return parts^
 
 
-fn optimum_contributions_default(
+def optimum_contributions_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
 ) -> ObjectiveDecomposition:
@@ -1120,7 +1120,7 @@ fn optimum_contributions_default(
 # ── the general model, explained ──────────────────────────────────────────────
 
 
-fn _model_lp_defect(flat: ModelFlat) -> Int:
+def _model_lp_defect(flat: ModelFlat) -> Int:
     """`MODEL_OK` when this model's feasible set is exactly what an LP certificate covers.
 
     `lp_from_arenas` reads the objective and constraint arenas and imposes `x >= 0`; it does
@@ -1159,7 +1159,7 @@ fn _model_lp_defect(flat: ModelFlat) -> Int:
     return MODEL_OK
 
 
-fn _model_lp(flat: ModelFlat) -> LPMatrix:
+def _model_lp(flat: ModelFlat) -> LPMatrix:
     """The model's `(c, constant, A, senses, rhs)`, or a status and no matrix.
 
     Two validations, both delegated: `model_validate` for the whole model (parallel columns,
@@ -1191,7 +1191,7 @@ fn _model_lp(flat: ModelFlat) -> LPMatrix:
     )
 
 
-fn model_binding_constraints(flat: ModelFlat) -> BindingReport:
+def model_binding_constraints(flat: ModelFlat) -> BindingReport:
     """`binding_constraints` for a general model, under the model's OWN policy.
 
     A `ModelFlat` parameter rather than twenty-eight flat arguments: the proven pattern is
@@ -1207,7 +1207,7 @@ fn model_binding_constraints(flat: ModelFlat) -> BindingReport:
     )
 
 
-fn model_infeasibility_core(flat: ModelFlat) -> InfeasibilityCore:
+def model_infeasibility_core(flat: ModelFlat) -> InfeasibilityCore:
     """`infeasibility_core` for a general model. The objective is not consulted."""
     var lp = _model_lp(flat)
     if lp.status != MODEL_OK:
@@ -1218,7 +1218,7 @@ fn model_infeasibility_core(flat: ModelFlat) -> InfeasibilityCore:
     )
 
 
-fn model_contributions(flat: ModelFlat) -> ObjectiveDecomposition:
+def model_contributions(flat: ModelFlat) -> ObjectiveDecomposition:
     """`optimum_contributions` for a general model, itemised over its own variables."""
     var lp = _model_lp(flat)
     if lp.status != MODEL_OK:

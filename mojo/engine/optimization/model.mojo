@@ -246,7 +246,7 @@ comptime DEFAULT_OPTIMALITY_TOL: Float64 = 1e-9
 comptime DEFAULT_INTEGRALITY_TOL: Float64 = 1e-9
 
 
-fn model_status_name(code: Int) -> String:
+def model_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number."""
     if code == MODEL_OK:
         return "ok"
@@ -313,7 +313,7 @@ fn model_status_name(code: Int) -> String:
     return "unknown_status_" + String(code)
 
 
-fn var_kind_name(kind: Int) -> String:
+def var_kind_name(kind: Int) -> String:
     if kind == VAR_CONTINUOUS:
         return "continuous"
     if kind == VAR_INTEGER:
@@ -323,7 +323,7 @@ fn var_kind_name(kind: Int) -> String:
     return "unknown_kind_" + String(kind)
 
 
-fn constraint_sense_name(sense: Int) -> String:
+def constraint_sense_name(sense: Int) -> String:
     if sense == SENSE_LE:
         return "le"
     if sense == SENSE_EQ:
@@ -333,19 +333,19 @@ fn constraint_sense_name(sense: Int) -> String:
     return "unknown_sense_" + String(sense)
 
 
-fn has_lower_bound(flags: Int) -> Bool:
+def has_lower_bound(flags: Int) -> Bool:
     return (flags & VAR_FLAG_HAS_LOWER) != 0
 
 
-fn has_upper_bound(flags: Int) -> Bool:
+def has_upper_bound(flags: Int) -> Bool:
     return (flags & VAR_FLAG_HAS_UPPER) != 0
 
 
-fn has_warm_start(flags: Int) -> Bool:
+def has_warm_start(flags: Int) -> Bool:
     return (flags & VAR_FLAG_HAS_START) != 0
 
 
-fn var_flags_valid(flags: Int) -> Bool:
+def var_flags_valid(flags: Int) -> Bool:
     """True when `flags` sets only bits this module defines.
 
     An unknown bit is rejected rather than ignored: a caller that thinks bit 3 means
@@ -357,7 +357,7 @@ fn var_flags_valid(flags: Int) -> Bool:
 # ── opcode metadata ───────────────────────────────────────────────────────────
 
 
-fn model_op_arity(op: Int) -> Int:
+def model_op_arity(op: Int) -> Int:
     """Children this opcode consumes, or -1 for one this evaluator cannot run.
 
     `query.ir.op_arity` returns -2 for the whole frozen range on purpose — it refuses to
@@ -389,7 +389,7 @@ fn model_op_arity(op: Int) -> Int:
     return -1
 
 
-fn is_model_op(op: Int) -> Bool:
+def is_model_op(op: Int) -> Bool:
     """True for an opcode a model expression may use.
 
     The v2 comparison and logical opcodes (`query.ir` 100+) are deliberately excluded: a
@@ -437,7 +437,7 @@ struct OptVar(Copyable, Movable):
     var has_start: Bool
     var start: Float64
 
-    fn flags(self) -> Int:
+    def flags(self) -> Int:
         var bits = 0
         if self.has_lower:
             bits += VAR_FLAG_HAS_LOWER
@@ -447,7 +447,7 @@ struct OptVar(Copyable, Movable):
             bits += VAR_FLAG_HAS_START
         return bits
 
-    fn is_discrete(self) -> Bool:
+    def is_discrete(self) -> Bool:
         return self.kind == VAR_INTEGER or self.kind == VAR_BINARY
 
 
@@ -484,10 +484,10 @@ struct OptModel(Copyable, Movable):
     var constraints: List[OptConstraint]
     var policy: OptPolicy
 
-    fn n_vars(self) -> Int:
+    def n_vars(self) -> Int:
         return len(self.variables)
 
-    fn n_constraints(self) -> Int:
+    def n_constraints(self) -> Int:
         return len(self.constraints)
 
 
@@ -666,7 +666,7 @@ struct ModelFlat(Copyable, Movable):
 # ── small numeric helpers ─────────────────────────────────────────────────────
 
 
-fn model_finite(v: Float64) -> Bool:
+def model_finite(v: Float64) -> Bool:
     """True for a real number: neither NaN nor ±inf.
 
     PUBLIC on purpose, and the SINGLE definition of "finite" for this package.
@@ -680,7 +680,7 @@ fn model_finite(v: Float64) -> Bool:
     return not (isnan(v) or isinf(v))
 
 
-fn _floor_f(v: Float64) -> Float64:
+def _floor_f(v: Float64) -> Float64:
     """Greatest integer <= `v`. Total over every finite Float64.
 
     Built on `std.math.floor`, NEVER on `Float64(Int(v))`. `Int()` on a magnitude past the
@@ -697,12 +697,12 @@ fn _floor_f(v: Float64) -> Float64:
     return floor(v)
 
 
-fn _ceil_f(v: Float64) -> Float64:
+def _ceil_f(v: Float64) -> Float64:
     """Least integer >= `v`. Total over every finite Float64; see `_floor_f` for why."""
     return ceil(v)
 
 
-fn _round_f(v: Float64) -> Float64:
+def _round_f(v: Float64) -> Float64:
     """Round half away from zero, matching `expr.mojo` opcode 16. Total over every Float64.
 
     This was `Float64(Int(v + 0.5))`, reachable from `project_point` / `project_point_flat`,
@@ -737,7 +737,7 @@ fn _round_f(v: Float64) -> Float64:
     return -floor(-v + 0.5)
 
 
-fn integer_in_interval(lower: Float64, upper: Float64) -> Bool:
+def integer_in_interval(lower: Float64, upper: Float64) -> Bool:
     """True when `[lower, upper]` contains at least one integer.
 
     An interval reaching past the Float64 integer grid answers True structurally: every
@@ -756,7 +756,7 @@ fn integer_in_interval(lower: Float64, upper: Float64) -> Bool:
     return _ceil_f(lower) <= _floor_f(upper)
 
 
-fn minimization_value(objective: Float64, maximize: Bool) -> Float64:
+def minimization_value(objective: Float64, maximize: Bool) -> Float64:
     """The number a MINIMISING solver should drive down for this objective.
 
     Explicit, and applied by the solver rather than by the model: negating the arena at
@@ -767,7 +767,7 @@ fn minimization_value(objective: Float64, maximize: Bool) -> Float64:
     return objective
 
 
-fn sense_violation(value: Float64, sense: Int, rhs: Float64, tol: Float64) -> Float64:
+def sense_violation(value: Float64, sense: Int, rhs: Float64, tol: Float64) -> Float64:
     """How badly `value sense rhs` fails, 0.0 when it holds within `tol`.
 
     Returns `MODEL_VIOLATION_ABSENT` (-1.0) for an unknown sense or a non-finite input:
@@ -804,7 +804,7 @@ fn sense_violation(value: Float64, sense: Int, rhs: Float64, tol: Float64) -> Fl
 # lookahead and SKIPS the function silently on failure, dropping it from the runtime
 # contract AND from dispatch with no error — the only symptom is a lower per-module
 # count. One parameter per line put this at the limit; keep several per line.
-fn opt_policy_new(
+def opt_policy_new(
     max_iterations: Int, max_time_ms: Float64, feasibility_tol: Float64,
     optimality_tol: Float64, integrality_tol: Float64,
 ) -> OptPolicy:
@@ -813,7 +813,7 @@ fn opt_policy_new(
     )
 
 
-fn default_policy() -> OptPolicy:
+def default_policy() -> OptPolicy:
     return OptPolicy(
         DEFAULT_MAX_ITERATIONS,
         DEFAULT_MAX_TIME_MS,
@@ -823,7 +823,7 @@ fn default_policy() -> OptPolicy:
     )
 
 
-fn policy_defect(policy: OptPolicy) -> Int:
+def policy_defect(policy: OptPolicy) -> Int:
     """`MODEL_OK`, or `MODEL_ERR_POLICY` for a policy no solver could honour.
 
     THE definition of a valid policy, stated once here because the package previously held
@@ -863,7 +863,7 @@ fn policy_defect(policy: OptPolicy) -> Int:
     return MODEL_OK
 
 
-fn _policy_parts_defect(
+def _policy_parts_defect(
     max_iterations: Int, feasibility_tol: Float64,
     optimality_tol: Float64, integrality_tol: Float64,
 ) -> Int:
@@ -892,33 +892,33 @@ fn _policy_parts_defect(
     )
 
 
-fn opt_var(name: String, lower: Float64, upper: Float64, kind: Int) -> OptVar:
+def opt_var(name: String, lower: Float64, upper: Float64, kind: Int) -> OptVar:
     """A boxed variable: both bounds present, no warm start."""
     return OptVar(name, lower, upper, kind, True, True, False, 0.0)
 
 
-fn opt_var_free(name: String, kind: Int) -> OptVar:
+def opt_var_free(name: String, kind: Int) -> OptVar:
     """A variable with no bound on either side. The bound slots hold 0.0, never inf."""
     return OptVar(name, 0.0, 0.0, kind, False, False, False, 0.0)
 
 
-fn opt_var_lower_bounded(name: String, lower: Float64, kind: Int) -> OptVar:
+def opt_var_lower_bounded(name: String, lower: Float64, kind: Int) -> OptVar:
     """`x >= lower`, the shape an LP's default non-negativity actually has."""
     return OptVar(name, lower, 0.0, kind, True, False, False, 0.0)
 
 
-fn opt_var_binary(name: String) -> OptVar:
+def opt_var_binary(name: String) -> OptVar:
     """A 0/1 variable, boxed in the unit interval as `VAR_BINARY` requires."""
     return OptVar(name, 0.0, 1.0, VAR_BINARY, True, True, False, 0.0)
 
 
-fn opt_var_warm(
+def opt_var_warm(
     name: String, lower: Float64, upper: Float64, kind: Int, start: Float64
 ) -> OptVar:
     return OptVar(name, lower, upper, kind, True, True, True, start)
 
 
-fn make_constraint(
+def make_constraint(
     nodes: List[ExprNode], root: Int, sense: Int, rhs: Float64, name: String
 ) -> OptConstraint:
     return OptConstraint(nodes.copy(), root, sense, rhs, name)
@@ -928,7 +928,7 @@ fn make_constraint(
 # lookahead and SKIPS the function silently on failure, dropping it from the runtime
 # contract AND from dispatch with no error — the only symptom is a lower per-module
 # count. One parameter per line put this at the limit; keep several per line.
-fn make_model(
+def make_model(
     variables: List[OptVar], obj_nodes: List[ExprNode], obj_root: Int,
     maximize: Bool, constraints: List[OptConstraint], policy: OptPolicy,
 ) -> OptModel:
@@ -949,7 +949,7 @@ fn make_model(
 # lookahead and SKIPS the function silently on failure, dropping it from the runtime
 # contract AND from dispatch with no error — the only symptom is a lower per-module
 # count. One parameter per line put this at the limit; keep several per line.
-fn arena_flat_defect(
+def arena_flat_defect(
     ops: List[Int], values: List[Float64], var_idx: List[Int],
     lefts: List[Int], rights: List[Int], extras: List[Int],
 ) -> Int:
@@ -977,7 +977,7 @@ fn arena_flat_defect(
 # lookahead and SKIPS the function silently on failure, dropping it from the runtime
 # contract AND from dispatch with no error — the only symptom is a lower per-module
 # count. One parameter per line put this at the limit; keep several per line.
-fn arena_from_flat(
+def arena_from_flat(
     ops: List[Int], values: List[Float64], var_idx: List[Int],
     lefts: List[Int], rights: List[Int], extras: List[Int],
 ) -> List[ExprNode]:
@@ -997,7 +997,7 @@ fn arena_from_flat(
     return nodes^
 
 
-fn arena_to_flat(nodes: List[ExprNode], root: Int) -> ArenaFlat:
+def arena_to_flat(nodes: List[ExprNode], root: Int) -> ArenaFlat:
     """Transpose an arena into its columns. Mojo-level for the same reason as above."""
     var ops = List[Int]()
     var values = List[Float64]()
@@ -1033,7 +1033,7 @@ fn arena_to_flat(nodes: List[ExprNode], root: Int) -> ArenaFlat:
 # line, so any reflow or one added parameter would have unregistered `arena_roundtrip`.
 # Four parameters per line closes it on the fourth line, five clear of the limit. Do not
 # expand it back out to one parameter per line.
-fn arena_roundtrip(
+def arena_roundtrip(
     ops: List[Int], values: List[Float64], var_idx: List[Int], lefts: List[Int],
     rights: List[Int], extras: List[Int], root: Int,
 ) -> ArenaFlat:
@@ -1061,7 +1061,7 @@ fn arena_roundtrip(
     return arena_to_flat(nodes, root)
 
 
-fn linear_arena(coeffs: List[Float64], constant: Float64) -> ArenaFlat:
+def linear_arena(coeffs: List[Float64], constant: Float64) -> ArenaFlat:
     """The arena for `Σ coeffs[i] * x_i + constant`, in canonical node order.
 
     Layout is fixed rather than value-dependent — every term emits `literal, var_ref, mul`
@@ -1136,7 +1136,7 @@ fn linear_arena(coeffs: List[Float64], constant: Float64) -> ArenaFlat:
 # ── expression validation ─────────────────────────────────────────────────────
 
 
-fn check_expr(nodes: List[ExprNode], root: Int, n_vars: Int) -> ExprCheck:
+def check_expr(nodes: List[ExprNode], root: Int, n_vars: Int) -> ExprCheck:
     """Reject a malformed arena whole, before anything evaluates part of it.
 
     Structure is delegated to `query.ir.validation_error` with `n_columns = 0` — it
@@ -1271,7 +1271,7 @@ fn check_expr(nodes: List[ExprNode], root: Int, n_vars: Int) -> ExprCheck:
 # of its own, would push the closing paren past the window and `expr_validate_flat` would
 # vanish from the runtime contract and the dispatch with no error anywhere. Three parameters
 # per line leaves five lines of headroom.
-fn expr_validate_flat(
+def expr_validate_flat(
     ops: List[Int], values: List[Float64], var_idx: List[Int],
     lefts: List[Int], rights: List[Int], extras: List[Int],
     root: Int, n_vars: Int,
@@ -1287,7 +1287,7 @@ fn expr_validate_flat(
 # ── scalar evaluation ─────────────────────────────────────────────────────────
 
 
-fn _frozen_delegate(op: Int, a: Float64, b: Float64, mut raised: Bool) -> Float64:
+def _frozen_delegate(op: Int, a: Float64, b: Float64, mut raised: Bool) -> Float64:
     """Evaluate one opcode 22-38 node through the FROZEN evaluator.
 
     A two-literal arena carrying the already-computed children means `expr.eval_expr`
@@ -1308,7 +1308,7 @@ fn _frozen_delegate(op: Int, a: Float64, b: Float64, mut raised: Bool) -> Float6
         return 0.0
 
 
-fn _delegated_domain_defect(op: Int, a: Float64, b: Float64) -> Int:
+def _delegated_domain_defect(op: Int, a: Float64, b: Float64) -> Int:
     """`MODEL_OK`, or the code for an argument the frozen evaluator would CLAMP.
 
     Every case below is one where `expr.eval_expr` returns a finite, plausible number for
@@ -1347,11 +1347,11 @@ fn _delegated_domain_defect(op: Int, a: Float64, b: Float64) -> Int:
     return MODEL_OK
 
 
-fn _no_value(status: Int, node_index: Int, evaluated: Int) -> ScalarResult:
+def _no_value(status: Int, node_index: Int, evaluated: Int) -> ScalarResult:
     return ScalarResult(status, False, 0.0, node_index, evaluated)
 
 
-fn evaluate_expr(
+def evaluate_expr(
     nodes: List[ExprNode], root: Int, x: List[Float64], n_vars: Int
 ) -> ScalarResult:
     """Value of one arena at one point, or a status naming what has no value.
@@ -1552,7 +1552,7 @@ fn evaluate_expr(
 # Packed for the same reason as `expr_validate_flat` above: one parameter per line closed
 # this signature on the tenth line, the last one `mojo_inventory`'s nine-line lookahead
 # reaches, so the function was one added parameter away from silently leaving the contract.
-fn expr_evaluate_flat(
+def expr_evaluate_flat(
     ops: List[Int], values: List[Float64], var_idx: List[Int],
     lefts: List[Int], rights: List[Int], extras: List[Int],
     root: Int, x: List[Float64],
@@ -1568,7 +1568,7 @@ fn expr_evaluate_flat(
 # ── variables ─────────────────────────────────────────────────────────────────
 
 
-fn check_variables(variables: List[OptVar], integrality_tol: Float64) -> VarCheck:
+def check_variables(variables: List[OptVar], integrality_tol: Float64) -> VarCheck:
     """Reject a variable block whole, and census the kinds while walking it."""
     var n = len(variables)
     var n_cont = 0
@@ -1628,7 +1628,7 @@ fn check_variables(variables: List[OptVar], integrality_tol: Float64) -> VarChec
     return VarCheck(MODEL_OK, -1, n, n_cont, n_int, n_bin, n_free, n_warm)
 
 
-fn _variables_from_flat(
+def _variables_from_flat(
     var_lower: List[Float64],
     var_upper: List[Float64],
     var_kind: List[Int],
@@ -1662,7 +1662,7 @@ fn _variables_from_flat(
     return out^
 
 
-fn variables_defect_flat(
+def variables_defect_flat(
     var_lower: List[Float64],
     var_upper: List[Float64],
     var_kind: List[Int],
@@ -1684,7 +1684,7 @@ fn variables_defect_flat(
 # lookahead and SKIPS the function silently on failure, dropping it from the runtime
 # contract AND from dispatch with no error — the only symptom is a lower per-module
 # count. One parameter per line put this at the limit; keep several per line.
-fn variables_validate_flat(
+def variables_validate_flat(
     var_lower: List[Float64], var_upper: List[Float64], var_kind: List[Int],
     var_flags: List[Int], var_start: List[Float64], integrality_tol: Float64,
 ) -> VarCheck:
@@ -1706,7 +1706,7 @@ fn variables_validate_flat(
     return check_variables(variables, integrality_tol)
 
 
-fn project_point(
+def project_point(
     x: List[Float64], variables: List[OptVar], integrality_tol: Float64
 ) -> PointResult:
     """Move `x` into the box and onto the integer grid, reporting what had to move.
@@ -1769,7 +1769,7 @@ fn project_point(
 # signature closes outside it, with no error anywhere. One parameter per line closed this on
 # exactly the ninth line. Three per line closes it on the fifth, four clear of the limit; do
 # not re-expand it to one parameter per line.
-fn project_point_flat(
+def project_point_flat(
     x: List[Float64], var_lower: List[Float64], var_upper: List[Float64],
     var_kind: List[Int], var_flags: List[Int], var_start: List[Float64],
     integrality_tol: Float64,
@@ -1791,7 +1791,7 @@ fn project_point_flat(
     return project_point(x, variables, integrality_tol)
 
 
-fn warm_start_point(variables: List[OptVar], integrality_tol: Float64) -> PointResult:
+def warm_start_point(variables: List[OptVar], integrality_tol: Float64) -> PointResult:
     """The warm start as a point, or a status when even one variable has none.
 
     A partial warm start is not a starting point: filling the gaps with 0.0 or with a
@@ -1812,7 +1812,7 @@ fn warm_start_point(variables: List[OptVar], integrality_tol: Float64) -> PointR
 # ── model validation ──────────────────────────────────────────────────────────
 
 
-fn _rejected(
+def _rejected(
     status: Int,
     message: String,
     n_vars: Int,
@@ -1841,7 +1841,7 @@ fn _rejected(
     )
 
 
-fn validate_model(model: OptModel) -> ModelValidation:
+def validate_model(model: OptModel) -> ModelValidation:
     """Accept or reject the whole model. Nothing is evaluated until this returns `MODEL_OK`.
 
     A model is rejected whole rather than repaired, and the status says which check
@@ -1979,7 +1979,7 @@ fn validate_model(model: OptModel) -> ModelValidation:
 # ── model evaluation ──────────────────────────────────────────────────────────
 
 
-fn _no_evaluation(
+def _no_evaluation(
     status: Int, n_vars: Int, n_cons: Int, maximize: Bool, failed: Int, node_index: Int
 ) -> ModelEvaluation:
     return ModelEvaluation(
@@ -2002,7 +2002,7 @@ fn _no_evaluation(
     )
 
 
-fn evaluate_objective(model: OptModel, x: List[Float64]) -> ScalarResult:
+def evaluate_objective(model: OptModel, x: List[Float64]) -> ScalarResult:
     """The objective's raw value at `x` — not sign-flipped for a maximisation."""
     var verdict = validate_model(model)
     if verdict.status != MODEL_OK:
@@ -2010,7 +2010,7 @@ fn evaluate_objective(model: OptModel, x: List[Float64]) -> ScalarResult:
     return evaluate_expr(model.obj_nodes, model.obj_root, x, model.n_vars())
 
 
-fn evaluate_model(model: OptModel, x: List[Float64]) -> ModelEvaluation:
+def evaluate_model(model: OptModel, x: List[Float64]) -> ModelEvaluation:
     """Objective and every constraint at one point, or a status and no numbers.
 
     `feasible` is computed against `policy.feasibility_tol`, and `max_violation` is the
@@ -2088,7 +2088,7 @@ fn evaluate_model(model: OptModel, x: List[Float64]) -> ModelEvaluation:
 # ── the flat wire model ───────────────────────────────────────────────────────
 
 
-fn flat_defect(flat: ModelFlat) -> Int:
+def flat_defect(flat: ModelFlat) -> Int:
     """`MODEL_OK` when every array-length and pointer invariant of a `ModelFlat` holds.
 
     Called before ANY index into a `ModelFlat`, because a struct arriving over the wire
@@ -2181,7 +2181,7 @@ fn flat_defect(flat: ModelFlat) -> Int:
     return MODEL_OK
 
 
-fn model_from_flat(flat: ModelFlat) -> OptModel:
+def model_from_flat(flat: ModelFlat) -> OptModel:
     """Unpack the wire model. Returns an EMPTY model when `flat_defect` rejects the input.
 
     Mojo-level: the return type owns `List[ExprNode]`. Callers that need to tell "empty
@@ -2240,7 +2240,7 @@ fn model_from_flat(flat: ModelFlat) -> OptModel:
     )
 
 
-fn model_to_flat(model: OptModel) -> ModelFlat:
+def model_to_flat(model: OptModel) -> ModelFlat:
     """Pack a model into its wire form — the other half of `model_from_flat`.
 
     Constraint arenas are concatenated in order and `con_roots[k]` stays RELATIVE to
@@ -2320,7 +2320,7 @@ fn model_to_flat(model: OptModel) -> ModelFlat:
     )
 
 
-fn model_validate(flat: ModelFlat) -> ModelValidation:
+def model_validate(flat: ModelFlat) -> ModelValidation:
     """Validate a wire model. The structural defect of the FLAT form is reported as
     itself, never as the "empty objective" it would degenerate into."""
     var defect = flat_defect(flat)
@@ -2331,7 +2331,7 @@ fn model_validate(flat: ModelFlat) -> ModelValidation:
     return validate_model(model_from_flat(flat))
 
 
-fn model_evaluate(flat: ModelFlat, x: List[Float64]) -> ModelEvaluation:
+def model_evaluate(flat: ModelFlat, x: List[Float64]) -> ModelEvaluation:
     """Evaluate a wire model at a point."""
     var defect = flat_defect(flat)
     if defect != MODEL_OK:
@@ -2339,7 +2339,7 @@ fn model_evaluate(flat: ModelFlat, x: List[Float64]) -> ModelEvaluation:
     return evaluate_model(model_from_flat(flat), x)
 
 
-fn model_objective(flat: ModelFlat, x: List[Float64]) -> ScalarResult:
+def model_objective(flat: ModelFlat, x: List[Float64]) -> ScalarResult:
     """The objective of a wire model at a point — the call an optimizer makes per iterate."""
     var defect = flat_defect(flat)
     if defect != MODEL_OK:
@@ -2347,7 +2347,7 @@ fn model_objective(flat: ModelFlat, x: List[Float64]) -> ScalarResult:
     return evaluate_objective(model_from_flat(flat), x)
 
 
-fn _empty_flat(maximize: Bool) -> ModelFlat:
+def _empty_flat(maximize: Bool) -> ModelFlat:
     """A ModelFlat with nothing in it, used as the rejection value of `linear_model_flat`.
 
     `obj_root` is -1, which `check_expr` rejects, so an ignored status cannot be evaluated
@@ -2401,7 +2401,7 @@ struct LinearModel(Copyable, Movable):
     var model: ModelFlat
 
 
-fn linear_model_flat(
+def linear_model_flat(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64],
     var_lower: List[Float64], var_upper: List[Float64],

@@ -87,21 +87,21 @@ from stat_tests import _t_cdf
 comptime PI: Float64 = 3.141592653589793
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     """Absolute closeness. Used only where the comment states the reference value."""
     if not inference_finite(a) or not inference_finite(b):
         return False
     return fabs(a - b) <= tol
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

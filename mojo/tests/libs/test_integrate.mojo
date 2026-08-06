@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from integrate import trapezoid, simpson, romberg, cumulative_trapezoid, integrate_poly, quad_gauss_legendre
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

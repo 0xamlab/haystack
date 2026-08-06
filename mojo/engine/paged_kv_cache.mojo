@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn page_table_lookup(
+def page_table_lookup(
     virtual_block_id: Float64, page_table_entry: Float64
 ) -> Float64:
     """Virtual-to-physical KV block mapping.
@@ -34,7 +34,7 @@ fn page_table_lookup(
     return page_table_entry
 
 
-fn cache_compaction_gain(
+def cache_compaction_gain(
     fragmented_blocks: Float64, block_size_tokens: Float64,
     dtype_bytes: Float64, n_layers: Float64,
     n_heads: Float64, head_dim: Float64
@@ -56,7 +56,7 @@ fn cache_compaction_gain(
     return fragmented_blocks * bytes_per_block * 0.5  # avg 50% wasted per block
 
 
-fn prefix_sharing_savings(
+def prefix_sharing_savings(
     shared_prefix_tokens: Float64, n_sequences: Float64,
     n_layers: Float64, n_heads: Float64,
     head_dim: Float64, dtype_bytes: Float64
@@ -83,7 +83,7 @@ fn prefix_sharing_savings(
     return (n_sequences - 1.0) * prefix_bytes
 
 
-fn speculative_branch_memory(
+def speculative_branch_memory(
     n_branches: Float64, speculation_depth: Float64,
     n_layers: Float64, n_heads: Float64,
     head_dim: Float64, dtype_bytes: Float64
@@ -104,7 +104,7 @@ fn speculative_branch_memory(
     return n_branches * speculation_depth * n_layers * n_heads * head_dim * dtype_bytes * 2.0
 
 
-fn cache_eviction_lru_score(
+def cache_eviction_lru_score(
     last_access_step: Float64, current_step: Float64
 ) -> Float64:
     """LRU eviction score: steps since last access (higher = evict sooner).
@@ -119,7 +119,7 @@ fn cache_eviction_lru_score(
     return current_step - last_access_step
 
 
-fn cache_eviction_beladys_score(
+def cache_eviction_beladys_score(
     next_access_step: Float64, current_step: Float64
 ) -> Float64:
     """Belady's optimal eviction: evict block used farthest in future.
@@ -136,7 +136,7 @@ fn cache_eviction_beladys_score(
     return next_access_step - current_step
 
 
-fn block_copy_cost(
+def block_copy_cost(
     block_size_tokens: Float64, n_layers: Float64,
     n_heads: Float64, head_dim: Float64,
     dtype_bytes: Float64, bandwidth_gbs: Float64
@@ -160,7 +160,7 @@ fn block_copy_cost(
     return block_bytes / (bandwidth_gbs * 1e9) * 1000.0
 
 
-fn cache_hit_latency_saving(
+def cache_hit_latency_saving(
     prompt_tokens: Float64, prefill_throughput_tps: Float64
 ) -> Float64:
     """Latency saving from KV cache hit (skipped prefill).
@@ -177,7 +177,7 @@ fn cache_hit_latency_saving(
     return prompt_tokens / prefill_throughput_tps
 
 
-fn dynamic_ntk_rope_scale(
+def dynamic_ntk_rope_scale(
     seq_len: Float64, base_context: Float64, alpha: Float64
 ) -> Float64:
     """NTK-aware RoPE scaling factor for extended context.
@@ -201,7 +201,7 @@ fn dynamic_ntk_rope_scale(
     return exp(alpha * log(ratio))
 
 
-fn context_extension_factor(
+def context_extension_factor(
     original_max_len: Float64, target_max_len: Float64
 ) -> Float64:
     """Rope scaling factor for simple context length extension.

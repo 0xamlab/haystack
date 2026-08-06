@@ -25,14 +25,14 @@ Public API:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _empty_grid() -> List[List[Float64]]:
+def _empty_grid() -> List[List[Float64]]:
     return List[List[Float64]]()
 
 
 # ── reshape_to_grid / flatten_grid ──────────────────────────────────────────────
 
 
-fn reshape_to_grid(
+def reshape_to_grid(
     flat: List[Float64], width: Int, height: Int
 ) -> List[List[Float64]]:
     """Row-major flat pixels → height×width grid. Missing cells become 0.0."""
@@ -52,7 +52,7 @@ fn reshape_to_grid(
     return result^
 
 
-fn flatten_grid(image: List[List[Float64]]) -> List[Float64]:
+def flatten_grid(image: List[List[Float64]]) -> List[Float64]:
     """Grid → row-major flat list."""
     var result = List[Float64]()
     var rows = len(image)
@@ -66,7 +66,7 @@ fn flatten_grid(image: List[List[Float64]]) -> List[Float64]:
 # ── box_downscale ───────────────────────────────────────────────────────────────
 
 
-fn box_downscale(
+def box_downscale(
     image: List[List[Float64]], out_w: Int, out_h: Int
 ) -> List[List[Float64]]:
     """Area-average downscale. Each output cell averages its source block."""
@@ -109,7 +109,7 @@ fn box_downscale(
 # ── bilinear_downscale ──────────────────────────────────────────────────────────
 
 
-fn bilinear_downscale(
+def bilinear_downscale(
     image: List[List[Float64]], out_w: Int, out_h: Int
 ) -> List[List[Float64]]:
     """Bilinear-interpolated resize to out_w × out_h (half-pixel centers)."""
@@ -149,12 +149,12 @@ fn bilinear_downscale(
 # ── resize_for_hash / resize_for_dhash ──────────────────────────────────────────
 
 
-fn resize_for_hash(image: List[List[Float64]], size: Int) -> List[List[Float64]]:
+def resize_for_hash(image: List[List[Float64]], size: Int) -> List[List[Float64]]:
     """Square size×size area-average (e.g. 8 for aHash, 32 for pHash prep)."""
     return box_downscale(image, size, size)
 
 
-fn resize_for_dhash(
+def resize_for_dhash(
     image: List[List[Float64]], hash_w: Int, hash_h: Int
 ) -> List[List[Float64]]:
     """(hash_w+1)×hash_h grid so adjacent-column compares yield hash_w×hash_h bits."""
@@ -164,7 +164,7 @@ fn resize_for_dhash(
 # ── integral_image / box_sum ────────────────────────────────────────────────────
 
 
-fn integral_image(image: List[List[Float64]]) -> List[List[Float64]]:
+def integral_image(image: List[List[Float64]]) -> List[List[Float64]]:
     """(H+1)×(W+1) summed-area table; I[y+1][x+1] = sum of image[0..y][0..x]."""
     var ih = len(image)
     if ih == 0:
@@ -185,7 +185,7 @@ fn integral_image(image: List[List[Float64]]) -> List[List[Float64]]:
     return result^
 
 
-fn box_sum(
+def box_sum(
     integral: List[List[Float64]], r0: Int, c0: Int, r1: Int, c1: Int
 ) -> Float64:
     """Inclusive sum over rows r0..r1 and cols c0..c1 of the source grid."""
@@ -218,7 +218,7 @@ fn box_sum(
 # ── downscale_flat ──────────────────────────────────────────────────────────────
 
 
-fn downscale_flat(
+def downscale_flat(
     flat: List[Float64], in_w: Int, in_h: Int, out_w: Int, out_h: Int
 ) -> List[Float64]:
     """Socket-friendly: flat row-major pixels → box-downscaled flat pixels."""

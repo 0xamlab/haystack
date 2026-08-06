@@ -120,6 +120,6 @@ def main() raises:
     print("\n✅ All Wave 14 tests passed")
 
 
-fn assert_true(cond: Bool, msg: String) raises:
+def assert_true(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("ASSERTION FAILED: " + msg)

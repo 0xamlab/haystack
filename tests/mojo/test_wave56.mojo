@@ -42,12 +42,12 @@ from economic_indicators import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -59,7 +59,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Category Theory Tests ─────────────────────────────────────────────────────
 
 
-fn test_map_list_fn() raises:
+def test_map_list_fn() raises:
     print("  test_map_list_fn ...")
     # op=0: double
     var d = List[Float64]()
@@ -95,7 +95,7 @@ fn test_map_list_fn() raises:
     print("    PASSED")
 
 
-fn test_filter_fn() raises:
+def test_filter_fn() raises:
     print("  test_filter_fn ...")
     var d = List[Float64]()
     d.append(1.0)
@@ -124,7 +124,7 @@ fn test_filter_fn() raises:
     print("    PASSED")
 
 
-fn test_fold_left() raises:
+def test_fold_left() raises:
     print("  test_fold_left ...")
     var d = List[Float64]()
     d.append(1.0)
@@ -150,7 +150,7 @@ fn test_fold_left() raises:
     print("    PASSED")
 
 
-fn test_fold_right() raises:
+def test_fold_right() raises:
     print("  test_fold_right ...")
     var d = List[Float64]()
     d.append(1.0)
@@ -169,7 +169,7 @@ fn test_fold_right() raises:
     print("    PASSED")
 
 
-fn test_compose() raises:
+def test_compose() raises:
     print("  test_compose ...")
     var d = List[Float64]()
     d.append(3.0)
@@ -187,7 +187,7 @@ fn test_compose() raises:
     print("    PASSED")
 
 
-fn test_zip_with() raises:
+def test_zip_with() raises:
     print("  test_zip_with ...")
     var a = List[Float64]()
     a.append(1.0)
@@ -215,7 +215,7 @@ fn test_zip_with() raises:
     print("    PASSED")
 
 
-fn test_scan_left() raises:
+def test_scan_left() raises:
     print("  test_scan_left ...")
     var d = List[Float64]()
     d.append(1.0)
@@ -232,7 +232,7 @@ fn test_scan_left() raises:
     print("    PASSED")
 
 
-fn test_take_while() raises:
+def test_take_while() raises:
     print("  test_take_while ...")
     var d = List[Float64]()
     d.append(1.0)
@@ -249,7 +249,7 @@ fn test_take_while() raises:
     print("    PASSED")
 
 
-fn test_drop_while() raises:
+def test_drop_while() raises:
     print("  test_drop_while ...")
     var d = List[Float64]()
     d.append(1.0)
@@ -266,7 +266,7 @@ fn test_drop_while() raises:
     print("    PASSED")
 
 
-fn test_flat_map() raises:
+def test_flat_map() raises:
     print("  test_flat_map ...")
     var d = List[Float64]()
     d.append(2.0)
@@ -292,7 +292,7 @@ fn test_flat_map() raises:
 # ── Quantum Tests ─────────────────────────────────────────────────────────────
 
 
-fn test_qubit_basics() raises:
+def test_qubit_basics() raises:
     print("  test_qubit_basics ...")
     var q0 = qubit_zero()
     var q1 = qubit_one()
@@ -309,7 +309,7 @@ fn test_qubit_basics() raises:
     print("    PASSED")
 
 
-fn test_hadamard_gate() raises:
+def test_hadamard_gate() raises:
     print("  test_hadamard_gate ...")
     var q0 = qubit_zero()
     var h = hadamard(q0)
@@ -328,7 +328,7 @@ fn test_hadamard_gate() raises:
     print("    PASSED")
 
 
-fn test_pauli_gates() raises:
+def test_pauli_gates() raises:
     print("  test_pauli_gates ...")
     var q0 = qubit_zero()
     var q1 = qubit_one()
@@ -354,7 +354,7 @@ fn test_pauli_gates() raises:
     print("    PASSED")
 
 
-fn test_phase_gate() raises:
+def test_phase_gate() raises:
     print("  test_phase_gate ...")
     var q0 = qubit_zero()
     var h = hadamard(q0)
@@ -369,7 +369,7 @@ fn test_phase_gate() raises:
     print("    PASSED")
 
 
-fn test_expectation_z() raises:
+def test_expectation_z() raises:
     print("  test_expectation_z ...")
     var q0 = qubit_zero()
     var q1 = qubit_one()
@@ -383,7 +383,7 @@ fn test_expectation_z() raises:
     print("    PASSED")
 
 
-fn test_bloch_coords() raises:
+def test_bloch_coords() raises:
     print("  test_bloch_coords ...")
     var q0 = qubit_zero()
     var bc0 = bloch_coords(q0)
@@ -403,7 +403,7 @@ fn test_bloch_coords() raises:
     print("    PASSED")
 
 
-fn test_bell_state() raises:
+def test_bell_state() raises:
     print("  test_bell_state ...")
     var bs = bell_state()
     _assert(len(bs) == 8, "bell state length")                        # 78
@@ -419,7 +419,7 @@ fn test_bell_state() raises:
 # ── Economic Indicators Tests ─────────────────────────────────────────────────
 
 
-fn test_gdp_growth() raises:
+def test_gdp_growth() raises:
     print("  test_gdp_growth ...")
     _assert_close(gdp_growth(110.0, 100.0), 0.1, 1e-9, "gdp_growth 10%")  # 80
     _assert_close(gdp_growth(100.0, 100.0), 0.0, 1e-9, "gdp_growth 0%")   # 81
@@ -427,27 +427,27 @@ fn test_gdp_growth() raises:
     print("    PASSED")
 
 
-fn test_inflation_rate() raises:
+def test_inflation_rate() raises:
     print("  test_inflation_rate ...")
     _assert_close(inflation_rate(105.0, 100.0), 0.05, 1e-9, "inflation 5%")  # 83
     _assert_close(inflation_rate(100.0, 100.0), 0.0, 1e-9, "inflation 0%")   # 84
     print("    PASSED")
 
 
-fn test_unemployment_rate() raises:
+def test_unemployment_rate() raises:
     print("  test_unemployment_rate ...")
     _assert_close(unemployment_rate(5.0, 100.0), 0.05, 1e-9, "unemp 5%")  # 85
     _assert_close(unemployment_rate(0.0, 100.0), 0.0, 1e-9, "unemp 0%")   # 86
     print("    PASSED")
 
 
-fn test_real_gdp() raises:
+def test_real_gdp() raises:
     print("  test_real_gdp ...")
     _assert_close(real_gdp(1000.0, 110.0), 1000.0 / 110.0 * 100.0, 1e-6, "real_gdp")  # 87
     print("    PASSED")
 
 
-fn test_gini() raises:
+def test_gini() raises:
     print("  test_gini ...")
     # Perfect equality
     var equal = List[Float64]()
@@ -478,7 +478,7 @@ fn test_gini() raises:
     print("    PASSED")
 
 
-fn test_phillips_curve() raises:
+def test_phillips_curve() raises:
     print("  test_phillips_curve ...")
     var inf = phillips_curve(4.0, 5.0, 0.5)
     _assert_close(inf, 0.5, 1e-9, "phillips curve")                   # 92
@@ -489,34 +489,34 @@ fn test_phillips_curve() raises:
     print("    PASSED")
 
 
-fn test_okuns_law() raises:
+def test_okuns_law() raises:
     print("  test_okuns_law ...")
     _assert_close(okuns_law(4.0, 2.0), 2.0, 1e-9, "okun default")     # 94
     _assert_close(okuns_law(6.0, 3.0), 2.0, 1e-9, "okun custom")      # 95
     print("    PASSED")
 
 
-fn test_velocity_of_money() raises:
+def test_velocity_of_money() raises:
     print("  test_velocity_of_money ...")
     _assert_close(velocity_of_money(1000.0, 200.0), 5.0, 1e-9, "V=5")  # 96
     print("    PASSED")
 
 
-fn test_fisher_equation() raises:
+def test_fisher_equation() raises:
     print("  test_fisher_equation ...")
     _assert_close(fisher_equation(0.05, 0.02), 0.03, 1e-9, "fisher")  # 97
     _assert_close(fisher_equation(0.10, 0.04), 0.06, 1e-9, "fisher 2")# 98
     print("    PASSED")
 
 
-fn test_trade_balance() raises:
+def test_trade_balance() raises:
     print("  test_trade_balance ...")
     _assert_close(trade_balance(100.0, 80.0), 20.0, 1e-9, "surplus")  # 99
     _assert_close(trade_balance(80.0, 100.0), -20.0, 1e-9, "deficit") # 100
     print("    PASSED")
 
 
-fn test_gdp_per_capita() raises:
+def test_gdp_per_capita() raises:
     print("  test_gdp_per_capita ...")
     var gpc = gdp_per_capita(1e12, 330e6)
     _assert_close(gpc, 1e12 / 330e6, 1e-2, "gdp_per_capita")         # 101
@@ -525,7 +525,7 @@ fn test_gdp_per_capita() raises:
     print("    PASSED")
 
 
-fn test_purchasing_power_parity() raises:
+def test_purchasing_power_parity() raises:
     print("  test_purchasing_power_parity ...")
     _assert_close(
         purchasing_power_parity(10.0, 5.0), 2.0, 1e-9, "ppp"
@@ -539,7 +539,7 @@ fn test_purchasing_power_parity() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 56 Tests ===")
 
     # Category Theory

@@ -29,7 +29,7 @@ correctly-rounded(v)`, `lo_g = correctly-rounded(v - hi_g)`. The test asserts `h
 whole pair agrees with the exact value to the published double-double bound, measured with
 `dd_sub` against the golden pair.
 """
-from memory import bitcast
+from std.memory import bitcast
 
 from numerical_stability import kahan_sum
 
@@ -105,7 +105,7 @@ comptime MF_DIV_HI: Float64 = bitcast[DType.float64, 1](UInt64(0x3FB3B13B13B13B1
 comptime MF_DIV_LO: Float64 = bitcast[DType.float64, 1](UInt64(0xBC483C977AB2BEDD))
 
 
-fn rel_agrees(got: DD, hi_g: Float64, lo_g: Float64, bits: Int) -> Bool:
+def rel_agrees(got: DD, hi_g: Float64, lo_g: Float64, bits: Int) -> Bool:
     """`|got - (hi_g, lo_g)| <= 2^-bits * |hi_g|`, the double-double error measured in dd.
 
     The tolerance is built from the magnitude of THE QUANTITY BEING JUDGED — this golden's own

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from audio import amplitude_to_db, db_to_amplitude, frequency_to_midi, midi_to_frequency, generate_sine, rms_amplitude, zero_crossing_rate, envelope, normalize_audio, mix_signals
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

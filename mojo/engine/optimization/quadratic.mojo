@@ -310,7 +310,7 @@ comptime QP_ABSENT: Float64 = -1.0
 comptime QP_STREAM_NAME: String = "optimization.quadratic"
 
 
-fn qp_status_name(code: Int) -> String:
+def qp_status_name(code: Int) -> String:
     """Name for a QP status, falling through to `lp_status_name` and then to the model chain.
 
     0 is `optimal` here, as it is for the LP: a QP whose KKT point is certified and whose
@@ -598,7 +598,7 @@ struct QPSolution(Copyable, Movable):
     var ray: List[Float64]
     var message: String
 
-    fn __init__(out self):
+    def __init__(out self):
         """Every field at its ABSENT value, so a return path sets only what it established.
 
         Deliberately not `@fieldwise_init`: 48 positional arguments include runs of five
@@ -765,21 +765,21 @@ struct _Convex(Copyable, Movable):
 # ── small numeric helpers ─────────────────────────────────────────────────────
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _falses(n: Int) -> List[Bool]:
+def _falses(n: Int) -> List[Bool]:
     var out = List[Bool]()
     for _ in range(n):
         out.append(False)
     return out^
 
 
-fn _max_abs(v: List[Float64]) -> Float64:
+def _max_abs(v: List[Float64]) -> Float64:
     var best: Float64 = 0.0
     for i in range(len(v)):
         var m = fabs(v[i])
@@ -788,7 +788,7 @@ fn _max_abs(v: List[Float64]) -> Float64:
     return best
 
 
-fn _unscale2(v: Float64, si: Float64, sj: Float64) -> Float64:
+def _unscale2(v: Float64, si: Float64, sj: Float64) -> Float64:
     """`v / (si · sj)`, divided one factor at a time.
 
     Both factors are powers of two, so each division is exact; done SEPARATELY because
@@ -798,7 +798,7 @@ fn _unscale2(v: Float64, si: Float64, sj: Float64) -> Float64:
     return (v / si) / sj
 
 
-fn _matvec(q: List[Float64], n: Int, x: List[Float64]) -> List[Float64]:
+def _matvec(q: List[Float64], n: Int, x: List[Float64]) -> List[Float64]:
     """`Q x` for a flat row-major `Q`. Callers have already established `len(q) == n*n`."""
     var out = List[Float64]()
     for i in range(n):
@@ -810,20 +810,20 @@ fn _matvec(q: List[Float64], n: Int, x: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _objective_value(q: List[Float64], n: Int, c: List[Float64], x: List[Float64]) -> Float64:
+def _objective_value(q: List[Float64], n: Int, c: List[Float64], x: List[Float64]) -> Float64:
     """`0.5 xᵀQx + cᵀx`, through the frozen `vec_dot` rather than a hand-rolled loop."""
     var qx = _matvec(q, n, x)
     return 0.5 * vec_dot(x, qx) + vec_dot(c, x)
 
 
-fn _all_finite(v: List[Float64]) -> Bool:
+def _all_finite(v: List[Float64]) -> Bool:
     for i in range(len(v)):
         if not _finite(v[i]):
             return False
     return True
 
 
-fn _fold(h: UInt64, v: UInt64, stream: UInt64) -> UInt64:
+def _fold(h: UInt64, v: UInt64, stream: UInt64) -> UInt64:
     """Mix one value into a path signature through the FROZEN Philox core.
 
     Not a new hash: `philox_word` is the tree's specified counter-based mixer and
@@ -834,7 +834,7 @@ fn _fold(h: UInt64, v: UInt64, stream: UInt64) -> UInt64:
     return philox_word(h, v, 0, 0, 0, stream, 0) ^ h
 
 
-fn _unsigned(v: Int) -> UInt64:
+def _unsigned(v: Int) -> UInt64:
     """A signed decision index as a fold input. Negative indices are real (-1 = none)."""
     if v < 0:
         return UInt64(-v) ^ 0x8000000000000000
@@ -844,7 +844,7 @@ fn _unsigned(v: Int) -> UInt64:
 # ── the pivoted LDLt, used for convexity AND for the subproblem step ──────────
 
 
-fn _pow2_scale(m: Float64) -> Float64:
+def _pow2_scale(m: Float64) -> Float64:
     """The power of two `s` with `m·s² ∈ [1, 4)`, or exactly 1.0 when `m` cannot be scaled.
 
     A POWER OF TWO, not `1/sqrt(m)`: multiplying by a power of two only moves a double's
@@ -874,7 +874,7 @@ fn _pow2_scale(m: Float64) -> Float64:
     return s
 
 
-fn _ldl_factor(a: List[Float64], k: Int) -> _Chol:
+def _ldl_factor(a: List[Float64], k: Int) -> _Chol:
     """Diagonal-pivoted `L D Lᵀ` of a symmetric `k x k` flat matrix, with a PSD verdict.
 
     THE MATRIX IS SYMMETRICALLY EQUILIBRATED FIRST, and that is the whole reason this routine
@@ -1049,7 +1049,7 @@ fn _ldl_factor(a: List[Float64], k: Int) -> _Chol:
     )
 
 
-fn _ldl_solve(ch: _Chol, rhs: List[Float64]) -> List[Float64]:
+def _ldl_solve(ch: _Chol, rhs: List[Float64]) -> List[Float64]:
     """One solution of `A y = rhs` using the rank-sized leading block, or all zeros for rank 0.
 
     The factor is of `Ã = S A S`, so the scaling is undone HERE and not by the caller:
@@ -1088,7 +1088,7 @@ fn _ldl_solve(ch: _Chol, rhs: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _ldl_null_vector(ch: _Chol, s: Int) -> List[Float64]:
+def _ldl_null_vector(ch: _Chol, s: Int) -> List[Float64]:
     """Null basis vector `s` of the factored matrix, in the caller's index space.
 
     `Pᵀ Ã P = L D Lᵀ` with `L` of full column rank `rank` and `D` nonsingular on that block,
@@ -1130,7 +1130,7 @@ fn _ldl_null_vector(ch: _Chol, s: Int) -> List[Float64]:
 # ── convexity gate ────────────────────────────────────────────────────────────
 
 
-fn _nested_pair_relative(q: List[Float64], n: Int) -> List[List[Float64]]:
+def _nested_pair_relative(q: List[Float64], n: Int) -> List[List[Float64]]:
     """`Q` with every entry divided by ITS OWN PAIR's magnitude, for the frozen symmetry test.
 
     A NESTED list is not marshalable and must never appear in a public signature here; it is
@@ -1160,7 +1160,7 @@ fn _nested_pair_relative(q: List[Float64], n: Int) -> List[List[Float64]]:
     return out^
 
 
-fn _convexity(q: List[Float64], n: Int) -> _Convex:
+def _convexity(q: List[Float64], n: Int) -> _Convex:
     """Symmetry then semidefiniteness, both measured, on an already-validated `Q`."""
     var asymmetry: Float64 = 0.0
     var worst_rel: Float64 = 0.0
@@ -1220,7 +1220,7 @@ fn _convexity(q: List[Float64], n: Int) -> _Convex:
 # ── input validation ──────────────────────────────────────────────────────────
 
 
-fn _qp_shape_defect(
+def _qp_shape_defect(
     q: List[Float64], n: Int, c: List[Float64], a: List[Float64], rows: Int,
     senses: List[Int], b: List[Float64], lower: List[Float64], upper: List[Float64],
     bound_flags: List[Int],
@@ -1299,7 +1299,7 @@ fn _qp_shape_defect(
 # ── the feasible set as one row system ────────────────────────────────────────
 
 
-fn _build_rows(
+def _build_rows(
     a: List[Float64], rows: Int, n: Int, senses: List[Int], b: List[Float64],
     lower: List[Float64], upper: List[Float64], bound_flags: List[Int],
 ) -> _Rows:
@@ -1354,14 +1354,14 @@ fn _build_rows(
     return _Rows(m, n, g^, h^, is_eq^, origin^, flip^, row_norm^)
 
 
-fn _row_activity(rw: _Rows, i: Int, x: List[Float64]) -> Float64:
+def _row_activity(rw: _Rows, i: Int, x: List[Float64]) -> Float64:
     var acc: Float64 = 0.0
     for j in range(rw.n):
         acc += rw.g[i * rw.n + j] * x[j]
     return acc
 
 
-fn _row_terms_scale(rw: _Rows, i: Int, x: List[Float64]) -> Float64:
+def _row_terms_scale(rw: _Rows, i: Int, x: List[Float64]) -> Float64:
     """`|h_i| + Σ_j |g_ij x_j|` — the magnitude of the terms THIS row's residual is made of.
 
     Spans exactly one row. An aggregate over rows is what let 200 ordinary capacity rows pay
@@ -1379,7 +1379,7 @@ fn _row_terms_scale(rw: _Rows, i: Int, x: List[Float64]) -> Float64:
     return acc
 
 
-fn _split_lp(
+def _split_lp(
     rw: _Rows, obj: List[Float64], n: Int, max_iterations: Int,
     feasibility_tol: Float64, optimality_tol: Float64,
 ) -> LPSolution:
@@ -1415,7 +1415,7 @@ fn _split_lp(
     )
 
 
-fn _unsplit(sol: LPSolution, n: Int) -> List[Float64]:
+def _unsplit(sol: LPSolution, n: Int) -> List[Float64]:
     var x = List[Float64]()
     for j in range(n):
         x.append(sol.x[j] - sol.x[n + j])
@@ -1425,7 +1425,7 @@ fn _unsplit(sol: LPSolution, n: Int) -> List[Float64]:
 # ── the orthogonal split of R^n by the active rows ────────────────────────────
 
 
-fn _null_space(rw: _Rows, w_set: List[Int], n: Int) -> _NullSpace:
+def _null_space(rw: _Rows, w_set: List[Int], n: Int) -> _NullSpace:
     """Modified Gram-Schmidt on the active rows, with the complement basis and the R factor.
 
     The bases are ORTHOGONAL but deliberately NOT normalised, and each vector's squared norm
@@ -1516,7 +1516,7 @@ fn _null_space(rw: _Rows, w_set: List[Int], n: Int) -> _NullSpace:
     return _NullSpace(True, rank, nz, k, n, q^, qn2^, z^, zn2^, r^, pivot_col^)
 
 
-fn _multipliers(ns: _NullSpace, g: List[Float64]) -> List[Float64]:
+def _multipliers(ns: _NullSpace, g: List[Float64]) -> List[Float64]:
     """Non-negative-side multipliers `μ` of the active rows from `A_Wᵀ μ = -g`.
 
     Consistent exactly when `Zᵀg = 0`, which is what "the step is zero" means, and solved by
@@ -1576,7 +1576,7 @@ struct _Primal(Copyable, Movable):
     var upper_tol: List[Float64]
 
 
-fn _primal_scan(
+def _primal_scan(
     a: List[Float64], rows: Int, n: Int, senses: List[Int], b: List[Float64],
     lower: List[Float64], upper: List[Float64], bound_flags: List[Int],
     x: List[Float64], feasibility_tol: Float64,
@@ -1670,7 +1670,7 @@ fn _primal_scan(
 # ── the four-condition KKT audit ──────────────────────────────────────────────
 
 
-fn _certificate(
+def _certificate(
     q: List[Float64], n: Int, c: List[Float64], a: List[Float64], rows: Int,
     senses: List[Int], b: List[Float64], lower: List[Float64], upper: List[Float64],
     bound_flags: List[Int], x: List[Float64], duals: List[Float64],
@@ -1914,7 +1914,7 @@ fn _certificate(
 # ── the linearisation bound ───────────────────────────────────────────────────
 
 
-fn _bound_at(
+def _bound_at(
     q: List[Float64], n: Int, c: List[Float64], rw: _Rows, x: List[Float64],
     max_iterations: Int, feasibility_tol: Float64, optimality_tol: Float64,
 ) -> QPBound:
@@ -2019,7 +2019,7 @@ fn _bound_at(
 # ── public drivers ────────────────────────────────────────────────────────────
 
 
-fn qp_convexity_flat(q: List[Float64], n: Int) -> QPConvexity:
+def qp_convexity_flat(q: List[Float64], n: Int) -> QPConvexity:
     """Is `0.5 xᵀQx` convex, how badly is `Q` asymmetric, and where does convexity fail.
 
     Separate from `qp_solve` because it is the question a caller asks BEFORE they have a
@@ -2086,7 +2086,7 @@ fn qp_convexity_flat(q: List[Float64], n: Int) -> QPConvexity:
     )
 
 
-fn qp_objective_flat(
+def qp_objective_flat(
     q: List[Float64], n: Int, c: List[Float64], x: List[Float64]
 ) -> QPValue:
     """`0.5 xᵀQx + cᵀx`, or a status and NO value.
@@ -2118,7 +2118,7 @@ fn qp_objective_flat(
     return QPValue(MODEL_OK, True, v)
 
 
-fn qp_gradient_flat(
+def qp_gradient_flat(
     q: List[Float64], n: Int, c: List[Float64], x: List[Float64]
 ) -> QPVector:
     """`Q x + c`, or a status and an EMPTY vector.
@@ -2155,7 +2155,7 @@ fn qp_gradient_flat(
 # PACKING IS LOAD-BEARING: `mojo_inventory` matches a signature inside a NINE-line lookahead
 # and drops the function from the contract and from dispatch silently on failure. Six lines
 # with three lines of headroom; do not let a formatter give each parameter its own line.
-fn qp_kkt_check(
+def qp_kkt_check(
     q: List[Float64], n: Int, c: List[Float64], a: List[Float64], rows: Int,
     senses: List[Int], b: List[Float64], lower: List[Float64], upper: List[Float64],
     bound_flags: List[Int], x: List[Float64], duals: List[Float64],
@@ -2219,7 +2219,7 @@ fn qp_kkt_check(
     )
 
 
-fn qp_gap_flat(
+def qp_gap_flat(
     q: List[Float64], n: Int, c: List[Float64], a: List[Float64], rows: Int,
     senses: List[Int], b: List[Float64], lower: List[Float64], upper: List[Float64],
     bound_flags: List[Int], x: List[Float64], max_iterations: Int,
@@ -2290,7 +2290,7 @@ fn qp_gap_flat(
     )
 
 
-fn _qp_rejected(status: Int, message: String) -> QPSolution:
+def _qp_rejected(status: Int, message: String) -> QPSolution:
     """No answer, and no numbers to mistake for one. Every list stays empty."""
     var out = QPSolution()
     out.status = status
@@ -2298,7 +2298,7 @@ fn _qp_rejected(status: Int, message: String) -> QPSolution:
     return out^
 
 
-fn _stamp(mut out: QPSolution, n: Int, rows: Int, cv: _Convex):
+def _stamp(mut out: QPSolution, n: Int, rows: Int, cv: _Convex):
     """Copy the problem's shape and the convexity findings onto any outcome.
 
     ONE place, because the five no-answer paths below were each hand-copying the same seven
@@ -2318,7 +2318,7 @@ fn _stamp(mut out: QPSolution, n: Int, rows: Int, cv: _Convex):
 # PACKING IS LOAD-BEARING: five lines, four of headroom inside `mojo_inventory`'s nine-line
 # lookahead. A signature that closes on the tenth line is dropped from the runtime contract
 # and from dispatch silently, and the only symptom is a lower per-module function count.
-fn qp_solve(
+def qp_solve(
     q: List[Float64], n: Int, c: List[Float64],
     a: List[Float64], rows: Int, senses: List[Int], b: List[Float64],
     lower: List[Float64], upper: List[Float64], bound_flags: List[Int],
@@ -3091,7 +3091,7 @@ fn qp_solve(
     return out^
 
 
-fn qp_solve_default(
+def qp_solve_default(
     q: List[Float64], n: Int, c: List[Float64], a: List[Float64], rows: Int,
     senses: List[Int], b: List[Float64], lower: List[Float64], upper: List[Float64],
     bound_flags: List[Int], seed: UInt64,

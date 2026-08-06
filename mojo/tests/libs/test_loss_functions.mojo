@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from loss_functions import binary_cross_entropy, categorical_cross_entropy, focal_loss, pow_approx, huber_loss, kl_divergence, contrastive_loss, triplet_loss, mse_loss, mae_loss, label_smoothing_loss
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

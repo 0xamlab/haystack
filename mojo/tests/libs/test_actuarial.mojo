@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from actuarial import present_value, future_value, annuity_present_value, annuity_future_value, life_expectancy_curtate, mortality_rate, survival_probability, force_of_mortality, net_single_premium, loss_ratio, combined_ratio, reserve_prospective
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt
 
 
-fn tidal_volume_predicted(ideal_body_weight_kg: Float64) -> Float64:
+def tidal_volume_predicted(ideal_body_weight_kg: Float64) -> Float64:
     """ARDSnet predicted tidal volume: 6–8 mL/kg IBW.
 
     Args:
@@ -29,7 +29,7 @@ fn tidal_volume_predicted(ideal_body_weight_kg: Float64) -> Float64:
     return 6.0 * ideal_body_weight_kg
 
 
-fn minute_ventilation(tidal_volume_ml: Float64, resp_rate: Float64) -> Float64:
+def minute_ventilation(tidal_volume_ml: Float64, resp_rate: Float64) -> Float64:
     """Minute ventilation: VE = TV × RR.
 
     Args:
@@ -42,7 +42,7 @@ fn minute_ventilation(tidal_volume_ml: Float64, resp_rate: Float64) -> Float64:
     return tidal_volume_ml * resp_rate / 1000.0
 
 
-fn alveolar_ventilation(
+def alveolar_ventilation(
     tidal_volume_ml: Float64, dead_space_ml: Float64, resp_rate: Float64
 ) -> Float64:
     """Alveolar ventilation: VA = (TV - VD) × RR.
@@ -61,7 +61,7 @@ fn alveolar_ventilation(
     return alv_vol * resp_rate / 1000.0
 
 
-fn fev1_fvc_ratio(fev1_l: Float64, fvc_l: Float64) -> Float64:
+def fev1_fvc_ratio(fev1_l: Float64, fvc_l: Float64) -> Float64:
     """FEV1/FVC ratio — indicator of obstructive disease.
 
     Args:
@@ -76,7 +76,7 @@ fn fev1_fvc_ratio(fev1_l: Float64, fvc_l: Float64) -> Float64:
     return fev1_l / fvc_l
 
 
-fn peak_expiratory_flow(
+def peak_expiratory_flow(
     measured_pef_l_min: Float64, predicted_pef_l_min: Float64
 ) -> Float64:
     """PEF as percentage of predicted.
@@ -93,7 +93,7 @@ fn peak_expiratory_flow(
     return measured_pef_l_min / predicted_pef_l_min * 100.0
 
 
-fn alveolar_oxygen(
+def alveolar_oxygen(
     fio2: Float64, paco2_mmhg: Float64, barometric_mmhg: Float64
 ) -> Float64:
     """Alveolar gas equation: PAO2 = FiO2·(PB - 47) - PaCO2/0.8.
@@ -109,7 +109,7 @@ fn alveolar_oxygen(
     return fio2 * (barometric_mmhg - 47.0) - paco2_mmhg / 0.8
 
 
-fn a_a_gradient(
+def a_a_gradient(
     pao2_mmhg: Float64, pao2_arterial_mmhg: Float64
 ) -> Float64:
     """Alveolar-arterial O2 gradient.
@@ -124,7 +124,7 @@ fn a_a_gradient(
     return pao2_mmhg - pao2_arterial_mmhg
 
 
-fn respiratory_quotient(vco2: Float64, vo2: Float64) -> Float64:
+def respiratory_quotient(vco2: Float64, vo2: Float64) -> Float64:
     """Respiratory quotient: RQ = VCO2 / VO2.
 
     Args:
@@ -139,7 +139,7 @@ fn respiratory_quotient(vco2: Float64, vo2: Float64) -> Float64:
     return vco2 / vo2
 
 
-fn compliance_static(
+def compliance_static(
     volume_change_ml: Float64, pressure_change_cmh2o: Float64
 ) -> Float64:
     """Static lung compliance: Cs = ΔV / ΔP.
@@ -156,7 +156,7 @@ fn compliance_static(
     return volume_change_ml / pressure_change_cmh2o
 
 
-fn airway_resistance(
+def airway_resistance(
     pressure_diff_cmh2o: Float64, flow_l_per_s: Float64
 ) -> Float64:
     """Airway resistance: Raw = ΔP / V̇.

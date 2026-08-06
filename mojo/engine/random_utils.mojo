@@ -17,7 +17,7 @@ from std.random import random_float64
 # ── Weighted random choice ────────────────────────────────────────────────────
 
 
-fn random_choice(weights: List[Float64]) -> Int:
+def random_choice(weights: List[Float64]) -> Int:
     """Return a random index weighted by the given probabilities.
     Weights need not sum to 1; they will be normalized."""
     var n = len(weights)
@@ -46,7 +46,7 @@ fn random_choice(weights: List[Float64]) -> Int:
 # ── Fisher-Yates shuffle ─────────────────────────────────────────────────────
 
 
-fn random_shuffle(mut data: List[Float64]):
+def random_shuffle(mut data: List[Float64]):
     """Fisher-Yates in-place shuffle."""
     var n = len(data)
     if n <= 1:
@@ -64,7 +64,7 @@ fn random_shuffle(mut data: List[Float64]):
 # ── Sample without replacement ────────────────────────────────────────────────
 
 
-fn random_sample(data: List[Float64], n: Int) -> List[Float64]:
+def random_sample(data: List[Float64], n: Int) -> List[Float64]:
     """Sample n items from data without replacement (Fisher-Yates partial shuffle).
     If n >= len(data), returns a shuffled copy of all data."""
     var sz = len(data)
@@ -97,7 +97,7 @@ fn random_sample(data: List[Float64], n: Int) -> List[Float64]:
 # ── Sample with replacement (bootstrap) ──────────────────────────────────────
 
 
-fn random_bootstrap(data: List[Float64], n: Int) -> List[Float64]:
+def random_bootstrap(data: List[Float64], n: Int) -> List[Float64]:
     """Sample n items from data with replacement (bootstrap sampling)."""
     var sz = len(data)
     var result = List[Float64]()
@@ -114,7 +114,7 @@ fn random_bootstrap(data: List[Float64], n: Int) -> List[Float64]:
 # ── Uniform random integer ───────────────────────────────────────────────────
 
 
-fn random_uniform_int(low: Int, high: Int) -> Int:
+def random_uniform_int(low: Int, high: Int) -> Int:
     """Return a random integer in [low, high). Returns low if low >= high."""
     if low >= high:
         return low
@@ -128,7 +128,7 @@ fn random_uniform_int(low: Int, high: Int) -> Int:
 # ── Random permutation ───────────────────────────────────────────────────────
 
 
-fn random_permutation(n: Int) -> List[Int]:
+def random_permutation(n: Int) -> List[Int]:
     """Return a random permutation of 0, 1, ..., n-1."""
     var perm = List[Int]()
     for i in range(n):
@@ -148,7 +148,7 @@ fn random_permutation(n: Int) -> List[Int]:
 # ── Stratified sampling ──────────────────────────────────────────────────────
 
 
-fn stratified_sample(data: List[Float64], n_strata: Int) -> List[Float64]:
+def stratified_sample(data: List[Float64], n_strata: Int) -> List[Float64]:
     """Stratified sampling: divide data into n_strata equal strata,
     sample one random element from each stratum.
     Data should ideally be sorted for meaningful stratification."""

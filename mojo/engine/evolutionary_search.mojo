@@ -24,7 +24,7 @@ Fitness is MAXIMISED. Genes are stored flat, individual-major: gene j of individ
 `pop[i * n_dim + j]`.
 """
 
-from math import sqrt
+from std.math import sqrt
 
 from counter_rng import (
     rng_uniform,
@@ -33,7 +33,7 @@ from counter_rng import (
 )
 
 
-fn ga_init(
+def ga_init(
     lo: List[Float64], hi: List[Float64], pop_size: Int, master_seed: Int
 ) -> List[Float64]:
     """Uniform initial population inside the bounds, flat and individual-major.
@@ -61,7 +61,7 @@ fn ga_init(
     return pop^
 
 
-fn ga_step(
+def ga_step(
     pop: List[Float64], fitness: List[Float64], lo: List[Float64], hi: List[Float64],
     tournament: Int, cx_rate: Float64, mut_rate: Float64, mut_scale: Float64,
     elite: Int, master_seed: Int, generation: Int,
@@ -133,7 +133,7 @@ fn ga_step(
     return out^
 
 
-fn _tournament(
+def _tournament(
     fitness: List[Float64], size: Int, master_seed: Int, generation: Int, slot: Int, which: Int
 ) -> Int:
     """Pick the fittest of `size` keyed-random contenders. Returns an individual index."""
@@ -157,7 +157,7 @@ fn _tournament(
     return best
 
 
-fn ga_best(pop: List[Float64], fitness: List[Float64], n_dim: Int) -> List[Float64]:
+def ga_best(pop: List[Float64], fitness: List[Float64], n_dim: Int) -> List[Float64]:
     """The fittest individual's genes, with its fitness appended as the final element."""
     var pop_size = len(fitness)
     var out = List[Float64]()
@@ -175,7 +175,7 @@ fn ga_best(pop: List[Float64], fitness: List[Float64], n_dim: Int) -> List[Float
     return out^
 
 
-fn ga_diversity(pop: List[Float64], n_dim: Int) -> List[Float64]:
+def ga_diversity(pop: List[Float64], n_dim: Int) -> List[Float64]:
     """Per-dimension population standard deviation — the IDENTIFIABILITY diagnostic.
 
     A dimension whose spread stays near its initial width is one the objective cannot resolve: the
@@ -202,7 +202,7 @@ fn ga_diversity(pop: List[Float64], n_dim: Int) -> List[Float64]:
     return out^
 
 
-fn ga_saturation(pop: List[Float64], lo: List[Float64], hi: List[Float64]) -> List[Float64]:
+def ga_saturation(pop: List[Float64], lo: List[Float64], hi: List[Float64]) -> List[Float64]:
     """Fraction of the population pinned within 1% of each bound: negative at `lo`, positive at `hi`.
 
     A saturated bound means the search wanted to leave the box, so the fitted value is an artifact of
@@ -234,12 +234,12 @@ fn ga_saturation(pop: List[Float64], lo: List[Float64], hi: List[Float64]) -> Li
 # ── deterministic zero-argument probes ────────────────────────────────────────
 
 
-fn search_version() -> String:
+def search_version() -> String:
     """Contract identifier. Deterministic, zero-argument."""
     return String("evolutionary-search/v1")
 
 
-fn search_selftest() -> Float64:
+def search_selftest() -> Float64:
     """A one-dimensional search for the peak of -(x-3)^2 on [0,10] must converge near 3.
 
     Deterministic and zero-argument: the whole point of keyed randomness is that this returns the same

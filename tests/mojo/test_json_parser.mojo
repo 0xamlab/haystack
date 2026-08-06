@@ -24,7 +24,7 @@ from json.parser import (
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def approx_eq(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     """Check if two Float64 values are approximately equal."""
     var diff = a - b
     if diff < 0:

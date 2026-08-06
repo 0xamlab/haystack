@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from physics import kinematic_distance, kinematic_velocity, kinetic_energy, potential_energy, momentum, gravitational_force, projectile_range, projectile_max_height, projectile_time, work, power, elastic_collision_v1
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

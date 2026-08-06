@@ -23,7 +23,7 @@ Public API:
 # ── bmi ──────────────────────────────────────────────────────────────────────
 
 
-fn bmi(weight_kg: Float64, height_m: Float64) -> Float64:
+def bmi(weight_kg: Float64, height_m: Float64) -> Float64:
     """Body Mass Index: BMI = weight / height²."""
     return weight_kg / (height_m * height_m)
 
@@ -31,7 +31,7 @@ fn bmi(weight_kg: Float64, height_m: Float64) -> Float64:
 # ── bmi_category ─────────────────────────────────────────────────────────────
 
 
-fn bmi_category(bmi_val: Float64) -> Int:
+def bmi_category(bmi_val: Float64) -> Int:
     """Classify BMI: 0=underweight, 1=normal, 2=overweight, 3=obese."""
     if bmi_val < 18.5:
         return 0
@@ -46,7 +46,7 @@ fn bmi_category(bmi_val: Float64) -> Int:
 # ── bmr_mifflin ──────────────────────────────────────────────────────────────
 
 
-fn bmr_mifflin(weight_kg: Float64, height_cm: Float64, age: Int, is_male: Bool) -> Float64:
+def bmr_mifflin(weight_kg: Float64, height_cm: Float64, age: Int, is_male: Bool) -> Float64:
     """Mifflin-St Jeor BMR (kcal/day).
     Male:   10·W + 6.25·H - 5·A + 5
     Female: 10·W + 6.25·H - 5·A - 161
@@ -60,7 +60,7 @@ fn bmr_mifflin(weight_kg: Float64, height_cm: Float64, age: Int, is_male: Bool) 
 # ── tdee ─────────────────────────────────────────────────────────────────────
 
 
-fn tdee(bmr_val: Float64, activity_level: Float64) -> Float64:
+def tdee(bmr_val: Float64, activity_level: Float64) -> Float64:
     """Total Daily Energy Expenditure: TDEE = BMR·activity_level (1.2–1.9)."""
     return bmr_val * activity_level
 
@@ -68,7 +68,7 @@ fn tdee(bmr_val: Float64, activity_level: Float64) -> Float64:
 # ── caloric_deficit ──────────────────────────────────────────────────────────
 
 
-fn caloric_deficit(tdee_val: Float64, target_loss_kg_per_week: Float64) -> Float64:
+def caloric_deficit(tdee_val: Float64, target_loss_kg_per_week: Float64) -> Float64:
     """Daily caloric deficit needed: deficit = target_loss · 7700 / 7."""
     return target_loss_kg_per_week * 7700.0 / 7.0
 
@@ -76,7 +76,7 @@ fn caloric_deficit(tdee_val: Float64, target_loss_kg_per_week: Float64) -> Float
 # ── macro_split ──────────────────────────────────────────────────────────────
 
 
-fn macro_split(calories: Float64, protein_pct: Float64, fat_pct: Float64) -> List[Float64]:
+def macro_split(calories: Float64, protein_pct: Float64, fat_pct: Float64) -> List[Float64]:
     """Returns [protein_g, fat_g, carb_g]. Protein=4cal/g, fat=9cal/g, carb=4cal/g."""
     var carb_pct = 1.0 - protein_pct - fat_pct
     var protein_g = (calories * protein_pct) / 4.0
@@ -92,7 +92,7 @@ fn macro_split(calories: Float64, protein_pct: Float64, fat_pct: Float64) -> Lis
 # ── ideal_body_weight ────────────────────────────────────────────────────────
 
 
-fn ideal_body_weight(height_cm: Float64, is_male: Bool) -> Float64:
+def ideal_body_weight(height_cm: Float64, is_male: Bool) -> Float64:
     """Devine formula IBW (kg).
     Male:   50 + 2.3·((height_cm/2.54) - 60)
     Female: 45.5 + 2.3·((height_cm/2.54) - 60)
@@ -106,7 +106,7 @@ fn ideal_body_weight(height_cm: Float64, is_male: Bool) -> Float64:
 # ── body_fat_estimate ────────────────────────────────────────────────────────
 
 
-fn body_fat_estimate(bmi_val: Float64, age: Int, is_male: Bool) -> Float64:
+def body_fat_estimate(bmi_val: Float64, age: Int, is_male: Bool) -> Float64:
     """Deurenberg formula: BF% = 1.20·BMI + 0.23·age - 10.8·sex - 5.4.
     sex = 1 for male, 0 for female.
     """
@@ -117,7 +117,7 @@ fn body_fat_estimate(bmi_val: Float64, age: Int, is_male: Bool) -> Float64:
 # ── water_intake ─────────────────────────────────────────────────────────────
 
 
-fn water_intake(weight_kg: Float64) -> Float64:
+def water_intake(weight_kg: Float64) -> Float64:
     """Recommended daily water intake in liters: weight · 0.033."""
     return weight_kg * 0.033
 
@@ -125,7 +125,7 @@ fn water_intake(weight_kg: Float64) -> Float64:
 # ── heart_rate_max ───────────────────────────────────────────────────────────
 
 
-fn heart_rate_max(age: Int) -> Int:
+def heart_rate_max(age: Int) -> Int:
     """Maximum heart rate: 220 - age."""
     return 220 - age
 
@@ -133,7 +133,7 @@ fn heart_rate_max(age: Int) -> Int:
 # ── target_heart_rate ────────────────────────────────────────────────────────
 
 
-fn target_heart_rate(hr_max: Int, intensity_low: Float64, intensity_high: Float64) -> List[Float64]:
+def target_heart_rate(hr_max: Int, intensity_low: Float64, intensity_high: Float64) -> List[Float64]:
     """Target heart rate zone: [low_bpm, high_bpm]."""
     var result = List[Float64]()
     result.append(Float64(hr_max) * intensity_low)
@@ -144,6 +144,6 @@ fn target_heart_rate(hr_max: Int, intensity_low: Float64, intensity_high: Float6
 # ── vo2max_estimate ──────────────────────────────────────────────────────────
 
 
-fn vo2max_estimate(hr_rest: Int, hr_max: Int) -> Float64:
+def vo2max_estimate(hr_rest: Int, hr_max: Int) -> Float64:
     """VO2max estimate: 15.3 · (HRmax / HRrest)."""
     return 15.3 * (Float64(hr_max) / Float64(hr_rest))

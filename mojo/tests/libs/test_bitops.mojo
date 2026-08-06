@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bitops import popcount, leading_zeros, trailing_zeros, next_power_of_2, is_power_of_2, reverse_bits, rotate_left, rotate_right, bit_set, bit_clear, bit_test, bit_toggle, fnv1a_hash
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

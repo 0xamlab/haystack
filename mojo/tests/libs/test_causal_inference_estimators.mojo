@@ -43,7 +43,7 @@ decision that has to be explained, which is why the resample draws from `determi
 through `uniform_int_keyed` rather than from process-global state.
 """
 from std.math import abs as fabs, sqrt
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 
 from causal import ate as frozen_ate, stratified_ate as frozen_stratified
 
@@ -75,21 +75,21 @@ from causal_inference.estimators import (
 from causal_inference.propensity import ipw_ate
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     """Judged against the magnitude of THE TWO TERMS BEING COMPARED, and nothing else."""
     return fabs(a - b) <= ci_tolerance(fabs(a) + fabs(b), 0.0)
 
@@ -105,46 +105,46 @@ fn _close(a: Float64, b: Float64) -> Bool:
 # 3.94x and the assertion below passed against the defect it exists to catch. The periods here
 # (5 / 13 / 3 / 4) are pairwise coprime with each other and with the arm alternation, so a
 # resample lands on a different mixture almost every time and the sort sees unsorted input.
-fn _boot_y(n: Int) -> List[Float64]:
+def _boot_y(n: Int) -> List[Float64]:
     var out = List[Float64](capacity=n)
     for i in range(n):
         out.append(1.0 + Float64(i % 13))
     return out^
 
 
-fn _boot_t(n: Int) -> List[Int]:
+def _boot_t(n: Int) -> List[Int]:
     var out = List[Int](capacity=n)
     for i in range(n):
         out.append(1 if (i % 2) == 0 else 0)
     return out^
 
 
-fn _boot_e(n: Int) -> List[Float64]:
+def _boot_e(n: Int) -> List[Float64]:
     var out = List[Float64](capacity=n)
     for i in range(n):
         out.append(0.35 + 0.3 * Float64(i % 5) / 5.0)
     return out^
 
 
-fn _boot_m0(n: Int) -> List[Float64]:
+def _boot_m0(n: Int) -> List[Float64]:
     var out = List[Float64](capacity=n)
     for i in range(n):
         out.append(0.5 + Float64(i % 3))
     return out^
 
 
-fn _boot_m1(n: Int) -> List[Float64]:
+def _boot_m1(n: Int) -> List[Float64]:
     var out = List[Float64](capacity=n)
     for i in range(n):
         out.append(1.5 + Float64(i % 4))
     return out^
 
 
-fn _lf5() -> List[Float64]:
+def _lf5() -> List[Float64]:
     return _floats(0.5, 0.6, 0.7, 0.4, 0.3)
 
 
-fn _li5() -> List[Int]:
+def _li5() -> List[Int]:
     return _ints(1, 2, 3, 4, 5)
 
 
@@ -152,49 +152,49 @@ fn _li5() -> List[Int]:
 # Unit order: four x=0 units (1 treated), then four x=1 units (3 treated).
 
 
-fn _x() -> List[Float64]:
+def _x() -> List[Float64]:
     return _floats(0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
 
 
-fn _t() -> List[Int]:
+def _t() -> List[Int]:
     return _ints(1, 0, 0, 0, 1, 1, 1, 0)
 
 
-fn _y() -> List[Float64]:
+def _y() -> List[Float64]:
     """Y = 2 + 3x + 5T, exactly."""
     return _floats(7.0, 2.0, 2.0, 2.0, 10.0, 10.0, 10.0, 5.0)
 
 
-fn _e_true() -> List[Float64]:
+def _e_true() -> List[Float64]:
     return _floats(0.25, 0.25, 0.25, 0.25, 0.75, 0.75, 0.75, 0.75)
 
 
-fn _e_wrong() -> List[Float64]:
+def _e_wrong() -> List[Float64]:
     return _floats(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
 
 
-fn _strata() -> List[Int]:
+def _strata() -> List[Int]:
     return _ints(0, 0, 0, 0, 1, 1, 1, 1)
 
 
-fn _mu1_perfect() -> List[Float64]:
+def _mu1_perfect() -> List[Float64]:
     """mu1 = 3x + 7: matches Y exactly for every TREATED unit."""
     return _floats(7.0, 7.0, 7.0, 7.0, 10.0, 10.0, 10.0, 10.0)
 
 
-fn _mu0_perfect() -> List[Float64]:
+def _mu0_perfect() -> List[Float64]:
     """mu0 = 3x + 2: matches Y exactly for every CONTROL unit."""
     return _floats(2.0, 2.0, 2.0, 2.0, 5.0, 5.0, 5.0, 5.0)
 
 
-fn _const(c: Float64) -> List[Float64]:
+def _const(c: Float64) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(8):
         out.append(c)
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

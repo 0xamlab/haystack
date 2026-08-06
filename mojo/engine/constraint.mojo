@@ -25,7 +25,7 @@ struct CSPResult(Copyable, Movable):
     var solution: List[Int]
     var found: Bool
 
-    fn __init__(out self, solution: List[Int], found: Bool):
+    def __init__(out self, solution: List[Int], found: Bool):
         self.solution = solution.copy()
         self.found = found
 
@@ -33,7 +33,7 @@ struct CSPResult(Copyable, Movable):
 # ── solve_backtrack ──────────────────────────────────────────────────────────
 
 
-fn _check_constraint(assignment: List[Int], n_assigned: Int, c: List[Int]) -> Bool:
+def _check_constraint(assignment: List[Int], n_assigned: Int, c: List[Int]) -> Bool:
     """Check a single constraint [var1, var2, relation].
     relation: 0=not_equal, 1=less_than, 2=equal."""
     var v1 = c[0]
@@ -52,7 +52,7 @@ fn _check_constraint(assignment: List[Int], n_assigned: Int, c: List[Int]) -> Bo
     return True
 
 
-fn _bt_solve(
+def _bt_solve(
     mut assignment: List[Int],
     idx: Int,
     domains: List[List[Int]],
@@ -76,7 +76,7 @@ fn _bt_solve(
     return False
 
 
-fn solve_backtrack(
+def solve_backtrack(
     domains: List[List[Int]], constraints: List[List[Int]]
 ) -> CSPResult:
     """Backtracking CSP solver. Returns first valid solution or found=False."""
@@ -92,7 +92,7 @@ fn solve_backtrack(
 # ── all_different ────────────────────────────────────────────────────────────
 
 
-fn all_different(values: List[Int]) -> Bool:
+def all_different(values: List[Int]) -> Bool:
     """Check if all values in the list are unique."""
     var n = len(values)
     for i in range(n):
@@ -105,7 +105,7 @@ fn all_different(values: List[Int]) -> Bool:
 # ── n_queens_check ───────────────────────────────────────────────────────────
 
 
-fn n_queens_check(queens: List[Int]) -> Bool:
+def n_queens_check(queens: List[Int]) -> Bool:
     """Check if a queen placement is valid (no attacks).
     queens[i] = column of queen in row i."""
     var n = len(queens)
@@ -122,7 +122,7 @@ fn n_queens_check(queens: List[Int]) -> Bool:
 # ── solve_n_queens ───────────────────────────────────────────────────────────
 
 
-fn _nq_solve(mut queens: List[Int], row: Int, n: Int) -> Bool:
+def _nq_solve(mut queens: List[Int], row: Int, n: Int) -> Bool:
     if row == n:
         return True
     for col in range(n):
@@ -143,7 +143,7 @@ fn _nq_solve(mut queens: List[Int], row: Int, n: Int) -> Bool:
     return False
 
 
-fn solve_n_queens(n: Int) -> List[Int]:
+def solve_n_queens(n: Int) -> List[Int]:
     """Solve N-Queens problem. Returns column assignments or empty list."""
     var queens = List[Int]()
     for i in range(n):
@@ -156,7 +156,7 @@ fn solve_n_queens(n: Int) -> List[Int]:
 # ── magic_square_check ───────────────────────────────────────────────────────
 
 
-fn magic_square_check(square: List[List[Int]]) -> Bool:
+def magic_square_check(square: List[List[Int]]) -> Bool:
     """Check if a square grid is a magic square."""
     var n = len(square)
     if n == 0:
@@ -197,7 +197,7 @@ fn magic_square_check(square: List[List[Int]]) -> Bool:
 # ── graph_coloring ───────────────────────────────────────────────────────────
 
 
-fn _gc_solve(
+def _gc_solve(
     mut colors: List[Int],
     node: Int,
     n_nodes: Int,
@@ -222,7 +222,7 @@ fn _gc_solve(
     return False
 
 
-fn graph_coloring(adj: List[List[Int]], n_colors: Int) -> List[Int]:
+def graph_coloring(adj: List[List[Int]], n_colors: Int) -> List[Int]:
     """Color a graph with n_colors using backtracking.
     adj[i] is the list of neighbors of node i.
     Returns color assignment or empty list if no solution."""
@@ -247,7 +247,7 @@ fn graph_coloring(adj: List[List[Int]], n_colors: Int) -> List[Int]:
 # ── sudoku_valid ─────────────────────────────────────────────────────────────
 
 
-fn sudoku_valid(board: List[List[Int]]) -> Bool:
+def sudoku_valid(board: List[List[Int]]) -> Bool:
     """Check if a 9x9 Sudoku board is valid (0 = empty cell)."""
     if len(board) != 9:
         return False
@@ -291,7 +291,7 @@ fn sudoku_valid(board: List[List[Int]]) -> Bool:
 # ── count_solutions_nqueens ──────────────────────────────────────────────────
 
 
-fn _nq_count(mut queens: List[Int], row: Int, n: Int, mut count: Int):
+def _nq_count(mut queens: List[Int], row: Int, n: Int, mut count: Int):
     if row == n:
         count += 1
         return
@@ -311,7 +311,7 @@ fn _nq_count(mut queens: List[Int], row: Int, n: Int, mut count: Int):
             queens[row] = -1
 
 
-fn count_solutions_nqueens(n: Int) -> Int:
+def count_solutions_nqueens(n: Int) -> Int:
     """Count total solutions for N-Queens."""
     var queens = List[Int]()
     for i in range(n):

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pneumatics import ideal_gas_volume, flow_rate_orifice, compressor_power, pressure_drop_pipe, air_consumption, cylinder_force, bore_area, piston_speed, receiver_volume, free_air_delivery, specific_power, dew_point_pressure
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

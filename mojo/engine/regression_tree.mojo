@@ -36,7 +36,7 @@ struct RegressionTree(Copyable, Movable):
     var leaf_value: List[Float64]
     var n_nodes: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.split_feature = List[Int]()
         self.split_value = List[Float64]()
         self.left_child = List[Int]()
@@ -48,7 +48,7 @@ struct RegressionTree(Copyable, Movable):
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _mean_of(y: List[Float64], indices: List[Int]) -> Float64:
+def _mean_of(y: List[Float64], indices: List[Int]) -> Float64:
     """Mean of y at given indices."""
     var n = len(indices)
     if n == 0:
@@ -59,7 +59,7 @@ fn _mean_of(y: List[Float64], indices: List[Int]) -> Float64:
     return s / Float64(n)
 
 
-fn _mse_of(y: List[Float64], indices: List[Int]) -> Float64:
+def _mse_of(y: List[Float64], indices: List[Int]) -> Float64:
     """MSE (variance) of y at given indices."""
     var n = len(indices)
     if n == 0:
@@ -75,7 +75,7 @@ fn _mse_of(y: List[Float64], indices: List[Int]) -> Float64:
 # ── mse_reduction ─────────────────────────────────────────────────────────────
 
 
-fn mse_reduction(
+def mse_reduction(
     y: List[Float64], left_idx: List[Int], right_idx: List[Int]
 ) -> Float64:
     """MSE reduction from a split.
@@ -116,7 +116,7 @@ fn mse_reduction(
 # ── best_split ────────────────────────────────────────────────────────────────
 
 
-fn best_split(
+def best_split(
     X: List[List[Float64]], y: List[Float64], indices: List[Int]
 ) -> List[Float64]:
     """Find best feature and split value for given indices.
@@ -190,7 +190,7 @@ fn best_split(
 # ── _add_node ─────────────────────────────────────────────────────────────────
 
 
-fn _add_node(
+def _add_node(
     mut tree: RegressionTree,
     feat: Int,
     val: Float64,
@@ -212,7 +212,7 @@ fn _add_node(
 # ── _build_recursive ──────────────────────────────────────────────────────────
 
 
-fn _build_recursive(
+def _build_recursive(
     mut tree: RegressionTree,
     X: List[List[Float64]],
     y: List[Float64],
@@ -268,7 +268,7 @@ fn _build_recursive(
 # ── build_tree ────────────────────────────────────────────────────────────────
 
 
-fn build_tree(
+def build_tree(
     X: List[List[Float64]],
     y: List[Float64],
     max_depth: Int = 5,
@@ -304,7 +304,7 @@ fn build_tree(
 # ── predict_single ────────────────────────────────────────────────────────────
 
 
-fn predict_single(tree: RegressionTree, x: List[Float64]) -> Float64:
+def predict_single(tree: RegressionTree, x: List[Float64]) -> Float64:
     """Predict for one sample by traversing tree from root (node 0)."""
     var node: Int = 0
     while node >= 0 and node < tree.n_nodes:
@@ -324,7 +324,7 @@ fn predict_single(tree: RegressionTree, x: List[Float64]) -> Float64:
 # ── predict_batch ─────────────────────────────────────────────────────────────
 
 
-fn predict_batch(
+def predict_batch(
     tree: RegressionTree, X: List[List[Float64]]
 ) -> List[Float64]:
     """Predict for multiple samples."""
@@ -337,7 +337,7 @@ fn predict_batch(
 # ── tree_depth ────────────────────────────────────────────────────────────────
 
 
-fn _node_depth(tree: RegressionTree, node: Int) -> Int:
+def _node_depth(tree: RegressionTree, node: Int) -> Int:
     """Recursive depth of subtree rooted at node."""
     if node < 0 or node >= tree.n_nodes:
         return 0
@@ -350,7 +350,7 @@ fn _node_depth(tree: RegressionTree, node: Int) -> Int:
     return 1 + rd
 
 
-fn tree_depth(tree: RegressionTree) -> Int:
+def tree_depth(tree: RegressionTree) -> Int:
     """Maximum depth of tree (root = depth 1)."""
     if tree.n_nodes == 0:
         return 0
@@ -360,7 +360,7 @@ fn tree_depth(tree: RegressionTree) -> Int:
 # ── tree_n_leaves ─────────────────────────────────────────────────────────────
 
 
-fn tree_n_leaves(tree: RegressionTree) -> Int:
+def tree_n_leaves(tree: RegressionTree) -> Int:
     """Count leaf nodes."""
     var count: Int = 0
     for i in range(tree.n_nodes):
@@ -372,7 +372,7 @@ fn tree_n_leaves(tree: RegressionTree) -> Int:
 # ── tree_mse ──────────────────────────────────────────────────────────────────
 
 
-fn tree_mse(
+def tree_mse(
     tree: RegressionTree, X: List[List[Float64]], y: List[Float64]
 ) -> Float64:
     """MSE of tree predictions on a dataset."""

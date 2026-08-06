@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from perfumery import concentration_parfum, dilution_ratio, evaporation_rate_relative, top_note_duration, middle_note_duration, base_note_duration, triangle_accord_balance, tenacity_hours, sillage_distance, cost_per_ml, fragrance_strength_scale, ingredient_proportion
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

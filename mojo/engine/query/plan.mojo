@@ -323,7 +323,7 @@ comptime MAX_WINDOW_ROWS: Int = 20_000
 comptime MAX_WINDOW_WORK: Int = 1_600_000_000
 
 
-fn _string_from_utf8(data: List[UInt8]) -> String:
+def _string_from_utf8(data: List[UInt8]) -> String:
     """A String OWNING a copy of raw UTF-8 bytes, byte for byte.
 
     Why not `chr`: accumulating `chr(Int(bytes[i]))` is what the rest of the tree does
@@ -348,7 +348,7 @@ fn _string_from_utf8(data: List[UInt8]) -> String:
     return out
 
 
-fn _append_code_point(mut out: List[UInt8], code_point: Int):
+def _append_code_point(mut out: List[UInt8], code_point: Int):
     """UTF-8 encode one code point. Used to decode a `\\uXXXX` escape."""
     var cp = code_point
     if cp < 0:
@@ -369,7 +369,7 @@ fn _append_code_point(mut out: List[UInt8], code_point: Int):
         out.append(UInt8(0x80 | (cp & 0x3F)))
 
 
-fn _hex_nibble(c: UInt8) -> Int:
+def _hex_nibble(c: UInt8) -> Int:
     """One hex digit's value, or -1. Used only by the `\\uXXXX` decoder."""
     if c >= UInt8(48) and c <= UInt8(57):
         return Int(c) - 48
@@ -380,7 +380,7 @@ fn _hex_nibble(c: UInt8) -> Int:
     return -1
 
 
-fn substring(value: String, start: Int, end: Int) -> String:
+def substring(value: String, start: Int, end: Int) -> String:
     """Bytes `[start, end)` as a String, clamped at both ends, byte-exact.
 
     `String` has no `[a:b]` slice in this Mojo version, but it does have a keyword byte
@@ -399,7 +399,7 @@ fn substring(value: String, start: Int, end: Int) -> String:
     return _string_from_utf8(out)
 
 
-fn json_unescape(token: String) -> String:
+def json_unescape(token: String) -> String:
     """Decode a JSON string body: `\\"`, `\\\\`, `\\n`, `\\t`, `\\r`, `\\/`, `\\b`, `\\f`
     and `\\uXXXX` including surrogate pairs.
 
@@ -480,7 +480,7 @@ fn json_unescape(token: String) -> String:
     return _string_from_utf8(out)
 
 
-fn _unquote(token: String) -> String:
+def _unquote(token: String) -> String:
     """Strip one layer of quotes and decode JSON escapes — the caller's real name."""
     var bytes = token.as_bytes()
     if len(token) >= 2 and bytes[0] == 34 and bytes[len(token) - 1] == 34:
@@ -488,7 +488,7 @@ fn _unquote(token: String) -> String:
     return json_unescape(token)
 
 
-fn json_string_field(raw: String, key: String) -> String:
+def json_string_field(raw: String, key: String) -> String:
     """A TOP-LEVEL string field's value, byte-exact and fully unescaped.
 
     Structure comes from the frozen `find_key`, which walks the object and steps over
@@ -528,7 +528,7 @@ fn json_string_field(raw: String, key: String) -> String:
     return json_unescape(substring(raw, start, pos))
 
 
-fn json_raw_field(raw: String, key: String, opener: UInt8) -> String:
+def json_raw_field(raw: String, key: String, opener: UInt8) -> String:
     """A top-level array or object field's raw TEXT, byte for byte.
 
     `json_get_array` and `json_get_object` rebuild their substring with
@@ -555,17 +555,17 @@ fn json_raw_field(raw: String, key: String, opener: UInt8) -> String:
     return substring(raw, pos, skip_json_value(raw, pos))
 
 
-fn json_raw_array(raw: String, key: String) -> String:
+def json_raw_array(raw: String, key: String) -> String:
     """A top-level array field's raw text, byte-exact. See `json_raw_field`."""
     return json_raw_field(raw, key, UInt8(91))  # '['
 
 
-fn json_raw_object(raw: String, key: String) -> String:
+def json_raw_object(raw: String, key: String) -> String:
     """A top-level object field's raw text, byte-exact. See `json_raw_field`."""
     return json_raw_field(raw, key, UInt8(123))  # '{'
 
 
-fn json_raw_tokens(array: String) -> List[String]:
+def json_raw_tokens(array: String) -> List[String]:
     """Split a JSON array into its element texts in ONE pass, byte for byte.
 
     The byte-exact counterpart of the frozen `json_array_tokens`, which accumulates
@@ -596,7 +596,7 @@ fn json_raw_tokens(array: String) -> List[String]:
     return result^
 
 
-fn _saturating_product(a: Int, b: Int) -> Int:
+def _saturating_product(a: Int, b: Int) -> Int:
     """`a * b`, clamped instead of wrapped.
 
     `rows * cols` is not a bound if the multiply can wrap: a wrapped product compares
@@ -612,7 +612,7 @@ fn _saturating_product(a: Int, b: Int) -> Int:
     return a * b
 
 
-fn _serialized_bytes_floor(n_rows: Int, n_columns: Int) -> Int:
+def _serialized_bytes_floor(n_rows: Int, n_columns: Int) -> Int:
     """The FEWEST bytes `_batch_to_json` can write for a rows x cols result.
 
     `rows * (4 * cols + 3)`: the narrowest cell text is `"0.0"` (3 bytes, measured) plus one
@@ -626,7 +626,7 @@ fn _serialized_bytes_floor(n_rows: Int, n_columns: Int) -> Int:
     return _saturating_product(n_rows, per_row)
 
 
-fn _serialized_bytes_ceiling(n_rows: Int, n_columns: Int) -> Int:
+def _serialized_bytes_ceiling(n_rows: Int, n_columns: Int) -> Int:
     """The MOST bytes `_batch_to_json` can write for a rows x cols result.
 
     `rows * (25 * cols + 3)`: the widest cell text is 24 bytes
@@ -638,7 +638,7 @@ fn _serialized_bytes_ceiling(n_rows: Int, n_columns: Int) -> Int:
     return _saturating_product(n_rows, per_row)
 
 
-fn _saturating_sum(a: Int, b: Int) -> Int:
+def _saturating_sum(a: Int, b: Int) -> Int:
     """`a + b`, clamped instead of wrapped — the additive twin of `_saturating_product`.
 
     Same failure mode: a wrapped total compares SMALL, so the bound passes and the work the
@@ -655,7 +655,7 @@ fn _saturating_sum(a: Int, b: Int) -> Int:
     return a + b
 
 
-fn _plan_error(code: String, message: String) -> String:
+def _plan_error(code: String, message: String) -> String:
     return (
         '{"error":"'
         + code
@@ -669,7 +669,7 @@ fn _plan_error(code: String, message: String) -> String:
     )
 
 
-fn _json_escape(value: String) -> String:
+def _json_escape(value: String) -> String:
     """Escape a name for embedding in the response, preserving non-ASCII bytes exactly.
 
     Names come from the caller, so an unescaped quote would produce a malformed response
@@ -720,17 +720,17 @@ fn _json_escape(value: String) -> String:
 # ── validate before the frozen tokenizer ──────────────────────────────────────
 
 
-fn _is_json_letter(c: UInt8) -> Bool:
+def _is_json_letter(c: UInt8) -> Bool:
     return (c >= UInt8(65) and c <= UInt8(90)) or (c >= UInt8(97) and c <= UInt8(122))
 
 
-fn _is_json_number_start(c: UInt8) -> Bool:
+def _is_json_number_start(c: UInt8) -> Bool:
     return (c >= UInt8(48) and c <= UInt8(57)) or c == UInt8(45) or c == UInt8(
         43
     ) or c == UInt8(46)
 
 
-fn _spells_json_literal(text: String, start: Int, end: Int) -> Bool:
+def _spells_json_literal(text: String, start: Int, end: Int) -> Bool:
     """True if bytes `[start, end)` spell `true`, `false` or `null`.
 
     Byte comparison rather than `substring(...) == "null"` because this is on the ingest
@@ -766,7 +766,7 @@ fn _spells_json_literal(text: String, start: Int, end: Int) -> Bool:
     return False
 
 
-fn json_literal_problem(text: String, rows_shaped: Bool) -> String:
+def json_literal_problem(text: String, rows_shaped: Bool) -> String:
     """"" if every bare token in `text` is JSON; otherwise what is wrong and where.
 
     THIS RUNS BEFORE THE FROZEN TOKENIZER, AND IT HAS TO. `json/parser.mojo` is frozen and
@@ -900,7 +900,7 @@ fn json_literal_problem(text: String, rows_shaped: Bool) -> String:
     return String("")
 
 
-fn reject_non_json_literals(text: String, rows_shaped: Bool) raises:
+def reject_non_json_literals(text: String, rows_shaped: Bool) raises:
     """Raise if `text` holds a bare token JSON does not define. See `json_literal_problem`.
     """
     var problem = json_literal_problem(text, rows_shaped)
@@ -911,7 +911,7 @@ fn reject_non_json_literals(text: String, rows_shaped: Bool) raises:
 # ── ingest ────────────────────────────────────────────────────────────────────
 
 
-fn parse_column_names(raw: String) raises -> List[String]:
+def parse_column_names(raw: String) raises -> List[String]:
     """The `columns` array as a name list."""
     var names = List[String]()
     var array = json_raw_array(raw, "columns")
@@ -922,7 +922,7 @@ fn parse_column_names(raw: String) raises -> List[String]:
     return names^
 
 
-fn parse_rows(
+def parse_rows(
     rows_json: String, n_columns: Int
 ) raises -> RecordBatch:
     """Transpose a row-major `rows` array into columns, with `null` as absence.
@@ -998,7 +998,7 @@ fn parse_rows(
     return RecordBatch(Schema(names^, dtypes^), columns^, n_rows)
 
 
-fn build_batch(raw: String, inline_rows: String) raises -> RecordBatch:
+def build_batch(raw: String, inline_rows: String) raises -> RecordBatch:
     """A named batch from `columns` + `rows`.
 
     `inline_rows` is passed separately so a resident dataset can supply the row array
@@ -1046,24 +1046,24 @@ struct NamedBatches(Copyable, Movable):
     var names: List[String]
     var batches: List[RecordBatch]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.names = List[String]()
         self.batches = List[RecordBatch]()
 
-    fn __init__(out self, var names: List[String], var batches: List[RecordBatch]):
+    def __init__(out self, var names: List[String], var batches: List[RecordBatch]):
         self.names = names^
         self.batches = batches^
 
-    fn count(self) -> Int:
+    def count(self) -> Int:
         return len(self.names)
 
-    fn index_of(self, name: String) -> Int:
+    def index_of(self, name: String) -> Int:
         for i in range(len(self.names)):
             if self.names[i] == name:
                 return i
         return -1
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         """The available table names, for an error that names what IS there."""
         if len(self.names) == 0:
             # "available: )" would read as a truncated message rather than as the real
@@ -1077,7 +1077,7 @@ struct NamedBatches(Copyable, Movable):
         return out
 
 
-fn table_names(raw: String) -> List[String]:
+def table_names(raw: String) -> List[String]:
     """Each `tables` entry's `name`, in DOCUMENT order. "" for an entry without one.
 
     Positional, like `table_dataset_handles`, so `algenta_runtime` can name the table a
@@ -1092,7 +1092,7 @@ fn table_names(raw: String) -> List[String]:
     return out^
 
 
-fn table_dataset_handles(raw: String) -> List[String]:
+def table_dataset_handles(raw: String) -> List[String]:
     """Each `tables` entry's resident-dataset handle, in DOCUMENT order.
 
     One entry per element of `tables`: the handle with a leading `@` stripped, or "" for a
@@ -1118,7 +1118,7 @@ fn table_dataset_handles(raw: String) -> List[String]:
     return out^
 
 
-fn parse_named_tables(
+def parse_named_tables(
     raw: String, table_rows: List[String], table_headers: List[String]
 ) raises -> NamedBatches:
     """Resolve `tables` into batches, once, before any op runs.
@@ -1278,7 +1278,7 @@ fn parse_named_tables(
 # ── expression decoding ───────────────────────────────────────────────────────
 
 
-fn parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
+def parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
     """Decode a `{"nodes":[...]}` array into ExprNodes, resolving column NAMES.
 
     A node is `{"op":100,"left":0,"right":1}`, or `{"op":0,"value":3.5}`, or
@@ -1340,7 +1340,7 @@ fn parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
     return nodes^
 
 
-fn _number_token(raw: String, key: String) -> String:
+def _number_token(raw: String, key: String) -> String:
     """The raw numeric TEXT for a top-level key, or "0". Keeps float precision intact.
 
     `find_key` for the same reason as `json_string_field`: keys arrive sorted, so a naive
@@ -1374,7 +1374,7 @@ fn _number_token(raw: String, key: String) -> String:
 # ── column resolution ─────────────────────────────────────────────────────────
 
 
-fn _resolve_column(schema: Schema, name: String, what: String) raises -> Int:
+def _resolve_column(schema: Schema, name: String, what: String) raises -> Int:
     var index = schema.index_of(name)
     if index < 0:
         raise Error(
@@ -1389,7 +1389,7 @@ fn _resolve_column(schema: Schema, name: String, what: String) raises -> Int:
     return index
 
 
-fn _resolve_column_list(
+def _resolve_column_list(
     schema: Schema, array: String, what: String
 ) raises -> List[Int]:
     var out = List[Int]()
@@ -1400,7 +1400,7 @@ fn _resolve_column_list(
     return out^
 
 
-fn _resolve_one_agg(
+def _resolve_one_agg(
     schema: Schema,
     op_json: String,
     what: String,
@@ -1426,7 +1426,7 @@ fn _resolve_one_agg(
     value_names.append(aggregation_token(opcode) + "_" + value_name)
 
 
-fn _resolve_aggs(
+def _resolve_aggs(
     schema: Schema,
     op_json: String,
     mut value_columns: List[Int],
@@ -1486,7 +1486,7 @@ fn _resolve_aggs(
 # ── execution ─────────────────────────────────────────────────────────────────
 
 
-fn _many_single_to_batch(
+def _many_single_to_batch(
     result: ManyGroupedResult, key_name: String, var value_names: List[String]
 ) -> RecordBatch:
     """A width-1 `ManyGroupedResult` as a batch: one key column, then one
@@ -1529,7 +1529,7 @@ fn _many_single_to_batch(
     return RecordBatch(Schema(names^, dtypes^), columns^, n)
 
 
-fn apply_op(batch: RecordBatch, op_json: String, strict: Bool) raises -> RecordBatch:
+def apply_op(batch: RecordBatch, op_json: String, strict: Bool) raises -> RecordBatch:
     """Run one operator with no side tables and no lineage detail.
 
     A wrapper, not the implementation: `apply_op_detailed` grew two parameters and this
@@ -1541,7 +1541,7 @@ fn apply_op(batch: RecordBatch, op_json: String, strict: Bool) raises -> RecordB
     return apply_op_detailed(batch, op_json, strict, empty, detail)
 
 
-fn apply_op_detailed(
+def apply_op_detailed(
     batch: RecordBatch,
     op_json: String,
     strict: Bool,
@@ -1769,7 +1769,7 @@ fn apply_op_detailed(
 # ── join ──────────────────────────────────────────────────────────────────────
 
 
-fn _apply_join(
+def _apply_join(
     batch: RecordBatch, op_json: String, tables: NamedBatches, mut detail: String
 ) raises -> RecordBatch:
     """`{"op":"join","table":"customers","left_on":"customer_id","right_on":"id", ...}`.
@@ -2083,7 +2083,7 @@ fn _apply_join(
 # ── union ─────────────────────────────────────────────────────────────────────
 
 
-fn _concat_float64(a: Float64Array, b: Float64Array) -> Float64Array:
+def _concat_float64(a: Float64Array, b: Float64Array) -> Float64Array:
     """`a`'s rows then `b`'s, preserving each row's presence — UNION ALL's one
     primitive. `values_list`/`mask_list` copy (there is no in-place append on the
     shared `ArcPointer` buffer a slice reads from — see `columnar.array`), so this
@@ -2100,7 +2100,7 @@ fn _concat_float64(a: Float64Array, b: Float64Array) -> Float64Array:
     return float64_with_nulls(values^, mask)
 
 
-fn _apply_union(
+def _apply_union(
     batch: RecordBatch, op_json: String, tables: NamedBatches, mut detail: String
 ) raises -> RecordBatch:
     """`{"op":"union","tables":["sales_web","sales_catalog"]}` — UNION ALL: every
@@ -2250,7 +2250,7 @@ fn _apply_union(
 # ── window ────────────────────────────────────────────────────────────────────
 
 
-fn _window_fn_is_known(name: String) -> Bool:
+def _window_fn_is_known(name: String) -> Bool:
     return (
         name == "row_number"
         or name == "rank"
@@ -2263,7 +2263,7 @@ fn _window_fn_is_known(name: String) -> Bool:
     )
 
 
-fn _apply_window(
+def _apply_window(
     batch: RecordBatch, op_json: String, mut detail: String
 ) raises -> RecordBatch:
     """`{"op":"window","fn":"rank","partition_by":[...],"order_by":[...],"as":"..."}`.
@@ -2535,7 +2535,7 @@ fn _apply_window(
     return RecordBatch(Schema(names^, dtypes^), columns^, batch.n_rows)
 
 
-fn plan_hash(ops_json: String) -> String:
+def plan_hash(ops_json: String) -> String:
     """SHA-256 over the canonically-encoded ops array.
 
     Over VALUES, not JSON text: key order and whitespace do not change it, a threshold
@@ -2550,7 +2550,7 @@ fn plan_hash(ops_json: String) -> String:
         return ""
 
 
-fn _cell_text(value: Float64) -> String:
+def _cell_text(value: Float64) -> String:
     """One cell's wire text. A value that is not a real number is ABSENT, never `inf`.
 
     THE POLICY, stated once and applied at the single point where a Float64 reaches the
@@ -2576,7 +2576,7 @@ fn _cell_text(value: Float64) -> String:
     return String(value)
 
 
-fn _serialized_bytes_exact(batch: RecordBatch) -> Int:
+def _serialized_bytes_exact(batch: RecordBatch) -> Int:
     """Exactly the byte length `_batch_to_json` will return, WITHOUT building it.
 
     Mirrors the emitter below term for term, so the two cannot disagree: the header's quoted
@@ -2604,7 +2604,7 @@ fn _serialized_bytes_exact(batch: RecordBatch) -> Int:
     return total
 
 
-fn _batch_to_json(batch: RecordBatch, mut non_finite: Int) -> String:
+def _batch_to_json(batch: RecordBatch, mut non_finite: Int) -> String:
     """Columns out, `null` for absent — the mirror of the row-major input.
 
     `non_finite` counts the cells whose value was not a real number and is therefore
@@ -2638,7 +2638,7 @@ fn _batch_to_json(batch: RecordBatch, mut non_finite: Int) -> String:
     return out
 
 
-fn run_query_execute(raw: String, rows_json: String) -> String:
+def run_query_execute(raw: String, rows_json: String) -> String:
     """Execute a whole query plan with no side tables.
 
     A two-argument wrapper, kept because every existing caller — the hand-written suite
@@ -2666,7 +2666,7 @@ struct _OpsPrologue(Copyable, Movable):
     var op_count: Int
     var error: String
 
-    fn __init__(
+    def __init__(
         out self, var ops: String, var op_tokens: List[String], op_count: Int, var error: String
     ):
         self.ops = ops^
@@ -2675,7 +2675,7 @@ struct _OpsPrologue(Copyable, Movable):
         self.error = error^
 
 
-fn _parse_ops_prologue(raw: String) -> _OpsPrologue:
+def _parse_ops_prologue(raw: String) -> _OpsPrologue:
     """Validate `raw`'s `ops` array. See `_OpsPrologue`.
 
     BEFORE `plan_hash`, which hands the ops text to the frozen `canonical.from_json`
@@ -2710,7 +2710,7 @@ fn _parse_ops_prologue(raw: String) -> _OpsPrologue:
     return _OpsPrologue(ops, op_tokens^, op_count, "")
 
 
-fn _finish_query_execute(
+def _finish_query_execute(
     raw: String,
     var batch: RecordBatch,
     table_rows: List[String],
@@ -2833,7 +2833,7 @@ fn _finish_query_execute(
     return out
 
 
-fn ops_validation_error(raw: String) -> String:
+def ops_validation_error(raw: String) -> String:
     """"" when `raw`'s `ops` array is valid, else the same error
     `run_query_execute_with_tables` would return without going any further.
 
@@ -2847,7 +2847,7 @@ fn ops_validation_error(raw: String) -> String:
     return _parse_ops_prologue(raw).error
 
 
-fn run_query_execute_with_tables(
+def run_query_execute_with_tables(
     raw: String,
     rows_json: String,
     table_rows: List[String],
@@ -2880,7 +2880,7 @@ fn run_query_execute_with_tables(
     )
 
 
-fn run_query_execute_on_batch(
+def run_query_execute_on_batch(
     raw: String,
     var batch: RecordBatch,
     table_rows: List[String],

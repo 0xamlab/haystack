@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ml.naive_bayes import compute_priors, gaussian_log_likelihood, accuracy, confusion_matrix, precision_recall
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

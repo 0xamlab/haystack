@@ -106,7 +106,7 @@ comptime ESRNN_METHOD_THETA: Int = 2
 comptime ESRNN_N_METHODS: Int = 3
 
 
-fn esrnn_method_name(method_id: Int) -> String:
+def esrnn_method_name(method_id: Int) -> String:
     """The backbone-local method vocabulary, one place. Unknown ids are loud, never blank.
 
     @capability esrnn_method_name
@@ -145,12 +145,12 @@ struct BackboneFit(Copyable, Movable):
     var status_name: String
 
 
-fn _no_backbone(status: Int, method_id: Int) -> BackboneFit:
+def _no_backbone(status: Int, method_id: Int) -> BackboneFit:
     """A refusal: no path, no statistic, the method id preserved for the caller's audit."""
     return BackboneFit(status, method_id, False, List[Float64](), -1.0, fc_status_name(status))
 
 
-fn esrnn_backbone_forecast(
+def esrnn_backbone_forecast(
     y: List[Float64], method_id: Int, horizon: Int
 ) -> BackboneFit:
     """Fit exactly ONE named backbone method on `y`; no selection.
@@ -190,7 +190,7 @@ fn esrnn_backbone_forecast(
     return _no_backbone(FC_ERR_METHOD, method_id)
 
 
-fn esrnn_select_backbone(y: List[Float64], horizon: Int) -> BackboneFit:
+def esrnn_select_backbone(y: List[Float64], horizon: Int) -> BackboneFit:
     """Fit Holt, Damped and Theta on the SAME `y`; return the lowest-`insample_mae`
     survivor among the ones that produced a forecast.
 
@@ -232,7 +232,7 @@ fn esrnn_select_backbone(y: List[Float64], horizon: Int) -> BackboneFit:
     return _no_backbone(FC_ERR_ALL_UNDEFINED, -1)
 
 
-fn esrnn_window_scale(window: List[Float64]) -> Float64:
+def esrnn_window_scale(window: List[Float64]) -> Float64:
     """Mean absolute value of an already-sliced window; `0.0` on an empty window.
 
     The per-series normaliser that lets a single GLOBALLY-shared model see comparable
@@ -256,7 +256,7 @@ fn esrnn_window_scale(window: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn esrnn_scaled_window(
+def esrnn_scaled_window(
     window: List[Float64], scale: Float64, step_frac: Float64
 ) -> List[Float64]:
     """`[window[i] / scale for i in window] + [step_frac]` — the corrector's raw input.
@@ -286,7 +286,7 @@ fn esrnn_scaled_window(
     return out^
 
 
-fn esrnn_residual(actual: List[Float64], forecast: List[Float64]) -> List[Float64]:
+def esrnn_residual(actual: List[Float64], forecast: List[Float64]) -> List[Float64]:
     """`actual[i] - forecast[i]` elementwise; refuses (empty) on a length mismatch or any
     non-finite input rather than iterating `min(len(actual), len(forecast))`, which would
     silently drop the tail of whichever list ran longer instead of surfacing the caller's
@@ -311,7 +311,7 @@ fn esrnn_residual(actual: List[Float64], forecast: List[Float64]) -> List[Float6
     return out^
 
 
-fn esrnn_apply_correction(
+def esrnn_apply_correction(
     backbone: List[Float64], residual_hat: List[Float64]
 ) -> List[Float64]:
     """`backbone[i] + residual_hat[i]` elementwise — the shipped, corrected forecast.

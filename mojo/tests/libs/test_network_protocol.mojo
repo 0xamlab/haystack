@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from network_protocol import http_status_text, is_success, is_redirect, is_client_error, is_server_error, mime_type, parse_content_type, is_json_type, is_text_type, parse_query_string
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

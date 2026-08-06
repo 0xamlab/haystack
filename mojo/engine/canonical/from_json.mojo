@@ -84,7 +84,7 @@ comptime _LOWER_F: UInt8 = 102
 comptime MAX_JSON_DEPTH: Int = 64
 
 
-fn _string_from_utf8(data: List[UInt8]) -> String:
+def _string_from_utf8(data: List[UInt8]) -> String:
     """A String OWNING a copy of raw UTF-8 bytes, byte for byte.
 
     Why `+=` into an owned String rather than `String(StringSlice(unsafe_from_utf8=...))`:
@@ -107,7 +107,7 @@ fn _string_from_utf8(data: List[UInt8]) -> String:
     return out
 
 
-fn _slice(data: String, start: Int, end: Int) -> String:
+def _slice(data: String, start: Int, end: Int) -> String:
     """Bytes `[start, end)` as an owned String, byte-exact and CLAMPED at both ends.
 
     Clamping is load-bearing, not defensive dressing: `skip_json_value` returns `p + 4`
@@ -128,7 +128,7 @@ fn _slice(data: String, start: Int, end: Int) -> String:
     return _string_from_utf8(raw)
 
 
-fn _hex_nibble(c: UInt8) -> Int:
+def _hex_nibble(c: UInt8) -> Int:
     """One hex digit's value, or -1. Used only by the `\\uXXXX` decoder."""
     if c >= UInt8(48) and c <= UInt8(57):
         return Int(c) - 48
@@ -139,7 +139,7 @@ fn _hex_nibble(c: UInt8) -> Int:
     return -1
 
 
-fn _append_code_point(mut out: List[UInt8], code_point: Int):
+def _append_code_point(mut out: List[UInt8], code_point: Int):
     """UTF-8 encode one code point. The `\\uXXXX` escape's whole point."""
     var cp = code_point
     if cp < 0:
@@ -160,7 +160,7 @@ fn _append_code_point(mut out: List[UInt8], code_point: Int):
         out.append(UInt8(0x80 | (cp & 0x3F)))
 
 
-fn _decode_string_token(data: String, start: Int, end: Int) raises -> String:
+def _decode_string_token(data: String, start: Int, end: Int) raises -> String:
     """The bytes a JSON string token at `[start, end)` denotes — quotes stripped.
 
     Bounds are clamped before any read (rule 1), then the quotes are REQUIRED: a token
@@ -244,7 +244,7 @@ fn _decode_string_token(data: String, start: Int, end: Int) raises -> String:
     return _string_from_utf8(out)
 
 
-fn _looks_integer(token: String) -> Bool:
+def _looks_integer(token: String) -> Bool:
     """True when a number token has no fractional or exponent part."""
     var bytes = token.as_bytes()
     for i in range(len(token)):
@@ -253,7 +253,7 @@ fn _looks_integer(token: String) -> Bool:
     return True
 
 
-fn _is_number_token(token: String) -> Bool:
+def _is_number_token(token: String) -> Bool:
     """True only for a syntactically plausible JSON number.
 
     Needed because the alternative is failing open: without it a stray token like
@@ -282,7 +282,7 @@ fn _is_number_token(token: String) -> Bool:
     return digits > 0
 
 
-fn _parse_int_token(token: String) raises -> Int:
+def _parse_int_token(token: String) raises -> Int:
     if not _is_number_token(token):
         raise Error("canonical.from_json: not a JSON number: " + token)
     var bytes = token.as_bytes()
@@ -300,13 +300,13 @@ fn _parse_int_token(token: String) raises -> Int:
     return -value if negative else value
 
 
-fn _parse_float_token(token: String) raises -> Float64:
+def _parse_float_token(token: String) raises -> Float64:
     if not _is_number_token(token):
         raise Error("canonical.from_json: not a JSON number: " + token)
     return Float64(token)
 
 
-fn transcode(json_text: String) raises -> List[UInt8]:
+def transcode(json_text: String) raises -> List[UInt8]:
     """Canonical bytes for a JSON document, independent of its text form."""
     var out = List[UInt8]()
     var start = skip_whitespace(json_text, 0)
@@ -314,7 +314,7 @@ fn transcode(json_text: String) raises -> List[UInt8]:
     return out^
 
 
-fn _write_value(
+def _write_value(
     data: String,
     start: Int,
     mut out: List[UInt8],
@@ -365,7 +365,7 @@ fn _write_value(
     return end
 
 
-fn _write_array(
+def _write_array(
     data: String,
     start: Int,
     mut out: List[UInt8],
@@ -394,7 +394,7 @@ fn _write_array(
     return skip_json_value(data, start)
 
 
-fn _write_object(
+def _write_object(
     data: String,
     start: Int,
     mut out: List[UInt8],

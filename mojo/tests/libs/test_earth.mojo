@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from earth import deg_to_rad, rad_to_deg, is_valid_coordinate, distance_on_unit_sphere, haversine, bearing, midpoint, destination_point, bounding_box, cross_track_distance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

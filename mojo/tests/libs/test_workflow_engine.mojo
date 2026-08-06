@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from workflow_engine import dag_node_ready_score, retry_backoff_delay, conditional_branch_score, pipeline_stage_throughput, workflow_completion_fraction, step_timeout_remaining_ms, dependency_resolution_order, parallel_step_efficiency, workflow_cost_accumulator, chain_output_compatibility
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

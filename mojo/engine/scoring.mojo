@@ -25,7 +25,7 @@ from std.math import exp, log, abs as fabs
 # ── sigmoid ──────────────────────────────────────────────────────────────────
 
 
-fn sigmoid(x: Float64) -> Float64:
+def sigmoid(x: Float64) -> Float64:
     """Logistic sigmoid: 1 / (1 + exp(-x)).
 
     Args:
@@ -40,7 +40,7 @@ fn sigmoid(x: Float64) -> Float64:
 # ── logit ────────────────────────────────────────────────────────────────────
 
 
-fn logit(p: Float64) -> Float64:
+def logit(p: Float64) -> Float64:
     """Logit (inverse sigmoid): log(p / (1-p)).
 
     Clamps p to [1e-15, 1-1e-15] to avoid log(0).
@@ -62,7 +62,7 @@ fn logit(p: Float64) -> Float64:
 # ── log_odds_to_score ────────────────────────────────────────────────────────
 
 
-fn log_odds_to_score(log_odds: Float64, base_score: Float64 = 600.0,
+def log_odds_to_score(log_odds: Float64, base_score: Float64 = 600.0,
                      pdo: Float64 = 20.0) -> Float64:
     """Convert log-odds to a credit score.
 
@@ -83,7 +83,7 @@ fn log_odds_to_score(log_odds: Float64, base_score: Float64 = 600.0,
 # ── score_to_log_odds ────────────────────────────────────────────────────────
 
 
-fn score_to_log_odds(score: Float64, base_score: Float64 = 600.0,
+def score_to_log_odds(score: Float64, base_score: Float64 = 600.0,
                      pdo: Float64 = 20.0) -> Float64:
     """Convert a credit score back to log-odds.
 
@@ -104,7 +104,7 @@ fn score_to_log_odds(score: Float64, base_score: Float64 = 600.0,
 # ── woe ──────────────────────────────────────────────────────────────────────
 
 
-fn woe(events: Int, non_events: Int, total_events: Int,
+def woe(events: Int, non_events: Int, total_events: Int,
        total_non_events: Int) -> Float64:
     """Weight of Evidence: ln(dist_non_events / dist_events).
 
@@ -130,7 +130,7 @@ fn woe(events: Int, non_events: Int, total_events: Int,
 # ── iv ───────────────────────────────────────────────────────────────────────
 
 
-fn iv(woe_values: List[Float64], dist_events: List[Float64],
+def iv(woe_values: List[Float64], dist_events: List[Float64],
       dist_non_events: List[Float64]) -> Float64:
     """Information Value: Σ(dist_non_events_i - dist_events_i) * woe_i.
 
@@ -155,7 +155,7 @@ fn iv(woe_values: List[Float64], dist_events: List[Float64],
 # ── gini_coefficient ─────────────────────────────────────────────────────────
 
 
-fn gini_coefficient(actual: List[Float64], predicted: List[Float64]) -> Float64:
+def gini_coefficient(actual: List[Float64], predicted: List[Float64]) -> Float64:
     """Gini coefficient from AUC: 2 * AUC - 1.
 
     Computes AUC via trapezoidal rule on sorted predictions.
@@ -224,7 +224,7 @@ fn gini_coefficient(actual: List[Float64], predicted: List[Float64]) -> Float64:
 # ── ks_statistic ─────────────────────────────────────────────────────────────
 
 
-fn ks_statistic(actual: List[Float64], predicted: List[Float64]) -> Float64:
+def ks_statistic(actual: List[Float64], predicted: List[Float64]) -> Float64:
     """Kolmogorov-Smirnov statistic: max |CDF_good - CDF_bad|.
 
     Args:
@@ -282,7 +282,7 @@ fn ks_statistic(actual: List[Float64], predicted: List[Float64]) -> Float64:
 # ── score_band ───────────────────────────────────────────────────────────────
 
 
-fn score_band(score: Float64, boundaries: List[Float64],
+def score_band(score: Float64, boundaries: List[Float64],
               labels: List[String]) -> String:
     """Assign a score to a band based on boundaries.
 
@@ -309,7 +309,7 @@ fn score_band(score: Float64, boundaries: List[Float64],
 # ── linear_score ─────────────────────────────────────────────────────────────
 
 
-fn linear_score(features: List[Float64], weights: List[Float64],
+def linear_score(features: List[Float64], weights: List[Float64],
                 intercept: Float64) -> Float64:
     """Linear scoring: Σ(feature_i * weight_i) + intercept.
 
@@ -334,7 +334,7 @@ fn linear_score(features: List[Float64], weights: List[Float64],
 # ── normalize_score ──────────────────────────────────────────────────────────
 
 
-fn normalize_score(score: Float64, min_score: Float64,
+def normalize_score(score: Float64, min_score: Float64,
                    max_score: Float64) -> Float64:
     """Normalize score to [0, 1]: (score - min) / (max - min).
 

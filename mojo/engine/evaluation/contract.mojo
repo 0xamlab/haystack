@@ -222,7 +222,7 @@ from a saturated one. `log_loss_flat` reports this epsilon and counts the clampe
 constant cannot drift away from the kernel it describes."""
 
 
-fn eval_status_name(code: Int) -> String:
+def eval_status_name(code: Int) -> String:
     """Name a status code.
 
     An unknown code says so rather than borrowing a neighbour's meaning: a caller logging
@@ -276,7 +276,7 @@ fn eval_status_name(code: Int) -> String:
     return String("unknown_status_code")
 
 
-fn eval_status_is_ok(code: Int) -> Bool:
+def eval_status_is_ok(code: Int) -> Bool:
     """Success, spelled once, so no caller has to remember which integer means ok.
 
     @capability eval_status_is_ok
@@ -287,7 +287,7 @@ fn eval_status_is_ok(code: Int) -> Bool:
     return code == EVAL_OK
 
 
-fn eval_bin_policy_name(policy: Int) -> String:
+def eval_bin_policy_name(policy: Int) -> String:
     """Name a binning policy, so a reported ECE says how it was binned.
 
     @capability eval_bin_policy_name
@@ -302,7 +302,7 @@ fn eval_bin_policy_name(policy: Int) -> String:
     return String("unknown_bin_policy")
 
 
-fn eval_metric_name(metric_id: Int) -> String:
+def eval_metric_name(metric_id: Int) -> String:
     """Name a metric id.
 
     @capability eval_metric_name
@@ -323,7 +323,7 @@ fn eval_metric_name(metric_id: Int) -> String:
     return String("unknown_metric")
 
 
-fn eval_metric_higher_is_better(metric_id: Int) -> Bool:
+def eval_metric_higher_is_better(metric_id: Int) -> Bool:
     """Gate direction for a metric.
 
     The direction belongs to the METRIC, not to the caller of a gate: a gate that takes
@@ -340,7 +340,7 @@ fn eval_metric_higher_is_better(metric_id: Int) -> Bool:
     return metric_id == EVAL_METRIC_ACCURACY
 
 
-fn eval_finite(x: Float64) -> Bool:
+def eval_finite(x: Float64) -> Bool:
     """One finiteness test for the whole package.
 
     Public and single so it cannot be copied six times and then drift, which is what
@@ -354,7 +354,7 @@ fn eval_finite(x: Float64) -> Bool:
     return not (isnan(x) or isinf(x))
 
 
-fn eval_pairs_status(
+def eval_pairs_status(
     probs: List[Float64], labels: List[Float64], n: Int
 ) -> Int:
     """The ONE input contract for a predictions-and-labels pair. `EVAL_OK` or why not.
@@ -408,7 +408,7 @@ fn eval_pairs_status(
     return EVAL_OK
 
 
-fn eval_scores_status(scores: List[Float64], n: Int) -> Int:
+def eval_scores_status(scores: List[Float64], n: Int) -> Int:
     """`eval_pairs_status` for a single unlabelled score list — the drift-gate input.
 
     Same order and same ceilings; there is no label to check. Kept beside the paired
@@ -437,7 +437,7 @@ fn eval_scores_status(scores: List[Float64], n: Int) -> Int:
     return EVAL_OK
 
 
-fn eval_bins_status(n_bins: Int, policy: Int) -> Int:
+def eval_bins_status(n_bins: Int, policy: Int) -> Int:
     """Validate the binning arguments. `EVAL_OK` or why not.
 
     `n_bins <= 0` is refused rather than defaulted. The frozen
@@ -460,7 +460,7 @@ fn eval_bins_status(n_bins: Int, policy: Int) -> Int:
     return EVAL_OK
 
 
-fn eval_ece_comparable(
+def eval_ece_comparable(
     bins_a: Int, policy_a: Int, bins_b: Int, policy_b: Int
 ) -> Bool:
     """True only when two calibration errors were produced by the SAME binning.
@@ -485,7 +485,7 @@ fn eval_ece_comparable(
     return bins_a == bins_b and policy_a == policy_b
 
 
-fn eval_log2_ceil(n: Int) -> Int:
+def eval_log2_ceil(n: Int) -> Int:
     """`ceil(log2(n))` for `n >= 1`, and 0 for `n <= 1`. Never uses a float.
 
     This is the per-sample factor a quantile-binned pass costs (a binary search over the
@@ -507,7 +507,7 @@ fn eval_log2_ceil(n: Int) -> Int:
     return bits
 
 
-fn eval_work_fits(a: Int, b: Int, ceiling: Int) -> Bool:
+def eval_work_fits(a: Int, b: Int, ceiling: Int) -> Bool:
     """True when `a * b <= ceiling`, computed WITHOUT forming `a * b`.
 
     `a * b` is a wrapping 64-bit multiply, so a guard written as `a * b <= ceiling` is not
@@ -528,7 +528,7 @@ fn eval_work_fits(a: Int, b: Int, ceiling: Int) -> Bool:
     return a <= ceiling // b
 
 
-fn eval_resample_work_fits(
+def eval_resample_work_fits(
     n_boot: Int, n: Int, n_bins: Int, metric_id: Int, policy: Int
 ) -> Bool:
     """True when a bootstrap of this shape is inside `EVAL_MAX_RESAMPLE_WORK`.

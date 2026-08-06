@@ -67,7 +67,7 @@ comptime _N_COLS: Int = _SUBS
 total, enough to exercise every SIMD-group's independent per-column reduction at once."""
 
 
-fn _lane_width_probe(out_lane: UnsafePointer[Int32, origin=MutAnyOrigin], out_warp: UnsafePointer[Int32, origin=MutAnyOrigin]):
+def _lane_width_probe(out_lane: UnsafePointer[Int32, origin=MutAnyOrigin], out_warp: UnsafePointer[Int32, origin=MutAnyOrigin]):
     """Writes `lane_id()`/`warp_id()` for every thread of one `_TG`-wide threadgroup, so the host
     can confirm -- not assume -- that Apple's real SIMD-group width on THIS hardware is 32, and
     that `_TG / 32 = 8` distinct SIMD-groups appear inside one GEMV-kernel-shaped launch."""
@@ -76,7 +76,7 @@ fn _lane_width_probe(out_lane: UnsafePointer[Int32, origin=MutAnyOrigin], out_wa
     out_warp[e] = Int32(warp_id())
 
 
-fn _ss_reduce_barrier_tree(out_val: UnsafePointer[Float32, origin=MutAnyOrigin], x_buf: UnsafePointer[Float32, origin=MutAnyOrigin], k: Int):
+def _ss_reduce_barrier_tree(out_val: UnsafePointer[Float32, origin=MutAnyOrigin], x_buf: UnsafePointer[Float32, origin=MutAnyOrigin], k: Int):
     """The EXISTING sum-of-squares mechanism, copied verbatim in structure from
     `_norm_gemv_kernel_i8`'s stage 1 (barrier-synchronized shared-memory tree, `log2(_TG)` levels),
     isolated to just the reduction, over a host-supplied `x` instead of a real activation vector."""
@@ -100,7 +100,7 @@ fn _ss_reduce_barrier_tree(out_val: UnsafePointer[Float32, origin=MutAnyOrigin],
         out_val[0] = red[0]
 
 
-fn _ss_reduce_simd_shuffle(out_val: UnsafePointer[Float32, origin=MutAnyOrigin], x_buf: UnsafePointer[Float32, origin=MutAnyOrigin], k: Int):
+def _ss_reduce_simd_shuffle(out_val: UnsafePointer[Float32, origin=MutAnyOrigin], x_buf: UnsafePointer[Float32, origin=MutAnyOrigin], k: Int):
     """The CANDIDATE replacement: two-level reduction, `_TG / 32 = 8` SIMD-groups. Level 1 is
     `warp.sum` inside each 32-lane group -- pure register shuffle, no barrier. Level 2 combines the
     8 per-group partial sums through one shared array and exactly ONE barrier."""
@@ -126,7 +126,7 @@ fn _ss_reduce_simd_shuffle(out_val: UnsafePointer[Float32, origin=MutAnyOrigin],
         out_val[0] = total
 
 
-fn _col_reduce_barrier_tree(
+def _col_reduce_barrier_tree(
     out_val: UnsafePointer[Float32, origin=MutAnyOrigin],
     x_buf: UnsafePointer[Float32, origin=MutAnyOrigin],
     w_buf: UnsafePointer[Float32, origin=MutAnyOrigin],
@@ -160,7 +160,7 @@ fn _col_reduce_barrier_tree(
         out_val[j] = red[sub * _LANES]
 
 
-fn _col_reduce_simd_shuffle(
+def _col_reduce_simd_shuffle(
     out_val: UnsafePointer[Float32, origin=MutAnyOrigin],
     x_buf: UnsafePointer[Float32, origin=MutAnyOrigin],
     w_buf: UnsafePointer[Float32, origin=MutAnyOrigin],
@@ -185,14 +185,14 @@ fn _col_reduce_simd_shuffle(
         out_val[j] = total
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 47)) / 19.0 - 1.2)
     return o^
 
 
-fn _exp64(x: Float64) -> Float64:
+def _exp64(x: Float64) -> Float64:
     from std.math import exp
     return exp(x)
 
@@ -359,7 +359,7 @@ def main() raises:
         _time_col_case(ctx, k_case, _N_COLS, 500)
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1
@@ -370,7 +370,7 @@ fn _median(mut s: List[Float64]) -> Float64:
     return s[len(s) // 2]
 
 
-fn _time_ss_case(ctx: DeviceContext, k: Int, reps: Int) raises:
+def _time_ss_case(ctx: DeviceContext, k: Int, reps: Int) raises:
     var x64 = _pseudo(k, k + 3)
     var xbuf = ctx.enqueue_create_buffer[DType.float32](k)
     with xbuf.map_to_host() as h:
@@ -413,7 +413,7 @@ fn _time_ss_case(ctx: DeviceContext, k: Int, reps: Int) raises:
     )
 
 
-fn _time_col_case(ctx: DeviceContext, k: Int, n: Int, reps: Int) raises:
+def _time_col_case(ctx: DeviceContext, k: Int, n: Int, reps: Int) raises:
     var x64 = _pseudo(k, k + 7)
     var w64 = _pseudo(n * k, k + 13)
     var xbuf = ctx.enqueue_create_buffer[DType.float32](k)

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from currency import round_currency, compound_interest, continuous_compound, amortization_payment, amortization_schedule, present_value, present_value_annuity, future_value_annuity, effective_annual_rate, discount_factor, rule_of_72, loan_balance_after
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

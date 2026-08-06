@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sketch import create_cms, cms_hash, create_hll, hll_hash, leading_zeros
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

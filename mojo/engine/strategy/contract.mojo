@@ -346,7 +346,7 @@ comptime STRAT_FOLD_PRIME: UInt64 = 0x100000001B3
 comptime STRAT_FOLD_OFFSET: UInt64 = 0xCBF29CE484222325
 
 
-fn strat_status_name(code: Int) -> String:
+def strat_status_name(code: Int) -> String:
     """Name for a status code, so a refusal surfaces the defect and not a bare number."""
     if code == STRAT_OK:
         return "ok"
@@ -421,12 +421,12 @@ fn strat_status_name(code: Int) -> String:
     return "unknown_status"
 
 
-fn strat_status_is_ok(code: Int) -> Bool:
+def strat_status_is_ok(code: Int) -> Bool:
     """True only for `STRAT_OK`. A named predicate so no caller writes `code == 450`."""
     return code == STRAT_OK
 
 
-fn strat_verdict_name(verdict: Int) -> String:
+def strat_verdict_name(verdict: Int) -> String:
     """Name for a ranking verdict. `no_significant_difference` is a real outcome, not a gap."""
     if verdict == STRAT_VERDICT_UNDECIDED:
         return "undecided"
@@ -439,7 +439,7 @@ fn strat_verdict_name(verdict: Int) -> String:
     return "unknown_verdict"
 
 
-fn strat_verdict_is_decided(verdict: Int) -> Bool:
+def strat_verdict_is_decided(verdict: Int) -> Bool:
     """True when a verdict was reached. A tie IS a verdict; `undecided` is the absence of one.
 
     The distinction that makes non-negotiable 1 checkable: a ranking may legitimately conclude
@@ -454,7 +454,7 @@ fn strat_verdict_is_decided(verdict: Int) -> Bool:
     )
 
 
-fn strat_exactness_name(kind: Int) -> String:
+def strat_exactness_name(kind: Int) -> String:
     """Name for an equilibrium's exactness. Every equilibrium this package returns carries one."""
     if kind == STRAT_EXACT_UNKNOWN:
         return "unknown"
@@ -465,7 +465,7 @@ fn strat_exactness_name(kind: Int) -> String:
     return "unknown_exactness"
 
 
-fn strat_policy_kind_name(kind: Int) -> String:
+def strat_policy_kind_name(kind: Int) -> String:
     """Name for a policy kind, so an unknown tag surfaces as a name rather than an integer."""
     if kind == STRAT_POLICY_CONSTANT:
         return "constant_action"
@@ -478,7 +478,7 @@ fn strat_policy_kind_name(kind: Int) -> String:
     return "unknown_policy_kind"
 
 
-fn strat_factor_kind_name(kind: Int) -> String:
+def strat_factor_kind_name(kind: Int) -> String:
     """Name for a scenario factor's distribution, each backed by a frozen `counter_rng` draw."""
     if kind == STRAT_FACTOR_UNIFORM:
         return "uniform_01"
@@ -491,7 +491,7 @@ fn strat_factor_kind_name(kind: Int) -> String:
     return "unknown_factor_kind"
 
 
-fn strat_draws_per_cell(factor_kind: Int) -> Int:
+def strat_draws_per_cell(factor_kind: Int) -> Int:
     """How many generator draws one (step, factor) cell of this distribution consumes.
 
     Two for the normal, because the frozen `rng_normal` is Box-Muller and reads `draw_index`
@@ -516,7 +516,7 @@ fn strat_draws_per_cell(factor_kind: Int) -> Int:
 # ── finiteness, absence, tolerance ────────────────────────────────────────────
 
 
-fn strat_finite(v: Float64) -> Bool:
+def strat_finite(v: Float64) -> Bool:
     """True for a real number — neither NaN nor an infinity.
 
     A one-line delegation to `inference.core.inference_finite` ON PURPOSE. This package needs
@@ -527,7 +527,7 @@ fn strat_finite(v: Float64) -> Bool:
     return inference_finite(v)
 
 
-fn strat_absent() -> Float64:
+def strat_absent() -> Float64:
     """The value written into a quantity slot whose `has_*` flag is False: exactly 0.0.
 
     NOT a NaN. The dispatch REFUSES to serialise a non-finite Float64, so a struct field
@@ -540,7 +540,7 @@ fn strat_absent() -> Float64:
     return 0.0
 
 
-fn strat_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
+def strat_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
     """`abs_tol + 256 * DBL_EPSILON * |quantity_magnitude|`, from `inference.core`.
 
     `quantity_magnitude` must be the magnitude of THE ONE QUANTITY BEING JUDGED. Never a sum or
@@ -552,7 +552,7 @@ fn strat_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
     return inference_scaled_tol(quantity_magnitude, abs_tol)
 
 
-fn strat_scaled_tol_additions(
+def strat_scaled_tol_additions(
     quantity_magnitude: Float64, abs_tol: Float64, additions: Int
 ) -> Float64:
     """The same tolerance, widened by one ulp per floating-point addition that built the value.
@@ -573,7 +573,7 @@ fn strat_scaled_tol_additions(
     return inference_scaled_tol_ulps(quantity_magnitude, abs_tol, Float64(extra))
 
 
-fn strat_agrees(
+def strat_agrees(
     quantity: Float64, reference: Float64, abs_tol: Float64, additions: Int
 ) -> Bool:
     """True when `quantity` equals `reference` within a tolerance built from `quantity` alone.
@@ -599,7 +599,7 @@ fn strat_agrees(
     return fabs(d) <= tol
 
 
-fn strat_tolerance_status(abs_tol: Float64) -> Int:
+def strat_tolerance_status(abs_tol: Float64) -> Int:
     """`STRAT_OK` for a finite, non-negative absolute tolerance; `STRAT_ERR_TOLERANCE` else.
 
     A negative tolerance makes every comparison fail and a NaN one makes every comparison pass,
@@ -611,7 +611,7 @@ fn strat_tolerance_status(abs_tol: Float64) -> Int:
     return STRAT_OK
 
 
-fn strat_level_status(level: Float64) -> Int:
+def strat_level_status(level: Float64) -> Int:
     """`STRAT_OK` for a confidence level strictly inside `(0, 1)`.
 
     The interval is OPEN on both ends: a 0% interval is a point and a 100% interval is the whole
@@ -623,7 +623,7 @@ fn strat_level_status(level: Float64) -> Int:
     return STRAT_OK
 
 
-fn strat_discount_status(gamma: Float64) -> Int:
+def strat_discount_status(gamma: Float64) -> Int:
     """`STRAT_OK` for a discount factor in `[0, 1]`.
 
     Closed at both ends: 0.0 is a myopic policy that counts only the current step and 1.0 is an
@@ -638,7 +638,7 @@ fn strat_discount_status(gamma: Float64) -> Int:
 # ── list guards: the count is checked BEFORE the first read, every time ───────
 
 
-fn strat_all_finite(values: List[Float64], n: Int) -> Bool:
+def strat_all_finite(values: List[Float64], n: Int) -> Bool:
     """True when the FIRST `n` entries are all finite, and `n` is a length the list has.
 
     The count is checked before any read, because `n > len(values)` is not a wrong answer — it
@@ -661,7 +661,7 @@ fn strat_all_finite(values: List[Float64], n: Int) -> Bool:
     return True
 
 
-fn strat_ints_in_range(values: List[Int], n: Int, lo: Int, hi: Int) -> Bool:
+def strat_ints_in_range(values: List[Int], n: Int, lo: Int, hi: Int) -> Bool:
     """True when the first `n` entries all lie in `[lo, hi]`. Count checked before any read.
 
     This is the guard that stands between a caller and a frozen kernel's unchecked subscript.
@@ -688,7 +688,7 @@ fn strat_ints_in_range(values: List[Int], n: Int, lo: Int, hi: Int) -> Bool:
     return True
 
 
-fn strat_distribution_status(p: List[Float64], n: Int, abs_tol: Float64) -> Int:
+def strat_distribution_status(p: List[Float64], n: Int, abs_tol: Float64) -> Int:
     """`STRAT_OK` when the first `n` entries are a probability distribution.
 
     Required of a `STRAT_POLICY_MIXED` row and of the state probabilities a
@@ -732,7 +732,7 @@ fn strat_distribution_status(p: List[Float64], n: Int, abs_tol: Float64) -> Int:
 # ── products, formed by DIVISION so nothing can wrap ──────────────────────────
 
 
-fn strat_product_fits(a: Int, b: Int, limit: Int) -> Bool:
+def strat_product_fits(a: Int, b: Int, limit: Int) -> Bool:
     """True when `a * b <= limit`, decided WITHOUT forming the product.
 
     `a * b` is a wrapping 64-bit multiply, so comparing it against a limit is not a bound:
@@ -745,7 +745,7 @@ fn strat_product_fits(a: Int, b: Int, limit: Int) -> Bool:
     return a <= limit // b
 
 
-fn strat_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
+def strat_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
     """True when `a * b * c <= limit`, grown factor by factor so no intermediate wraps."""
     if a < 0 or b < 0 or c < 0 or limit < 0:
         return False
@@ -756,7 +756,7 @@ fn strat_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
     return a * b <= limit // c
 
 
-fn strat_product4_fits(a: Int, b: Int, c: Int, d: Int, limit: Int) -> Bool:
+def strat_product4_fits(a: Int, b: Int, c: Int, d: Int, limit: Int) -> Bool:
     """True when `a * b * c * d <= limit`, grown factor by factor so no intermediate wraps.
 
     Four factors because the work in this package is a four-factor product —
@@ -772,7 +772,7 @@ fn strat_product4_fits(a: Int, b: Int, c: Int, d: Int, limit: Int) -> Bool:
     return a * b * c <= limit // d
 
 
-fn strat_dims_fit(rows: Int, cols: Int, length: Int) -> Bool:
+def strat_dims_fit(rows: Int, cols: Int, length: Int) -> Bool:
     """True when `rows` and `cols` are exactly the shape of a `length`-cell flat block.
 
     Delegates to the FROZEN `sparse_numerics.csr.dims_fit`, which is where this tree's
@@ -786,7 +786,7 @@ fn strat_dims_fit(rows: Int, cols: Int, length: Int) -> Bool:
 # ── the flat Policy encoding ──────────────────────────────────────────────────
 
 
-fn strat_policy_arity(kind: Int, n_factors: Int, n_actions: Int, n_states: Int) -> Int:
+def strat_policy_arity(kind: Int, n_factors: Int, n_actions: Int, n_states: Int) -> Int:
     """How many Float64 parameters ONE policy of this kind needs, or -1 for an unknown kind.
 
     The arity is a FUNCTION of the kind and the environment, never a caller declaration. That
@@ -823,7 +823,7 @@ fn strat_policy_arity(kind: Int, n_factors: Int, n_actions: Int, n_states: Int) 
     return -1
 
 
-fn strat_policy_block_status(params: List[Float64], n_strategies: Int, arity: Int) -> Int:
+def strat_policy_block_status(params: List[Float64], n_strategies: Int, arity: Int) -> Int:
     """`STRAT_OK` when `params` is exactly an `n_strategies x arity` row-major block.
 
     The one guard every driver taking a flat policy block runs first. `STRAT_ERR_SHAPE` when
@@ -858,7 +858,7 @@ fn strat_policy_block_status(params: List[Float64], n_strategies: Int, arity: In
     return STRAT_OK
 
 
-fn strat_policy_row_start(strategy: Int, arity: Int) -> Int:
+def strat_policy_row_start(strategy: Int, arity: Int) -> Int:
     """Where strategy `strategy`'s parameter row begins, or -1 if the pair is not addressable.
 
     Returned rather than left to each call site, so the row-major convention is written once.
@@ -877,7 +877,7 @@ fn strat_policy_row_start(strategy: Int, arity: Int) -> Int:
 # ── the flat Scenario encoding ────────────────────────────────────────────────
 
 
-fn strat_scenario_cells(horizon: Int, n_factors: Int) -> Int:
+def strat_scenario_cells(horizon: Int, n_factors: Int) -> Int:
     """`horizon * n_factors` — the tape size for ONE scenario — or -1 if it does not fit.
 
     One tape, not `n_replications` of them: replications are the OUTER loop and the tape is
@@ -900,7 +900,7 @@ fn strat_scenario_cells(horizon: Int, n_factors: Int) -> Int:
     return horizon * n_factors
 
 
-fn strat_scenario_cell(step: Int, factor: Int, n_factors: Int) -> Int:
+def strat_scenario_cell(step: Int, factor: Int, n_factors: Int) -> Int:
     """The row-major tape offset of `(step, factor)`, or -1 when it is not addressable.
 
     `step * n_factors + factor`. -1 for a negative step or factor, for a factor at or above
@@ -919,7 +919,7 @@ fn strat_scenario_cell(step: Int, factor: Int, n_factors: Int) -> Int:
     return base + factor
 
 
-fn strat_scenario_status(tape: List[Float64], horizon: Int, n_factors: Int) -> Int:
+def strat_scenario_status(tape: List[Float64], horizon: Int, n_factors: Int) -> Int:
     """`STRAT_OK` when `tape` is exactly a `horizon x n_factors` block of finite values.
 
     `STRAT_ERR_HORIZON_RANGE` for a non-positive horizon or one above the ceiling — which is
@@ -950,7 +950,7 @@ fn strat_scenario_status(tape: List[Float64], horizon: Int, n_factors: Int) -> I
 # ── the CRN coordinate assignment ─────────────────────────────────────────────
 
 
-fn strat_rng_version() -> String:
+def strat_rng_version() -> String:
     """The frozen generator contract behind every draw, from `determinism.counter_rng`.
 
     Reported back by every driver so a stored comparison names the generator that produced it.
@@ -959,7 +959,7 @@ fn strat_rng_version() -> String:
     return rng_version()
 
 
-fn strat_crn_contract() -> String:
+def strat_crn_contract() -> String:
     """The identifier of THIS package's coordinate assignment. Deterministic, zero-argument.
 
     `seed:key0,family:key1,scenario:counter0,step:dim0,factor:dim1,process:stream/v1`
@@ -977,7 +977,7 @@ fn strat_crn_contract() -> String:
     return String("seed:key0,family:key1,scenario:counter0,step:dim0,factor:dim1,process:stream/v1")
 
 
-fn strat_stream_scenario() -> Int:
+def strat_stream_scenario() -> Int:
     """The RNG stream id for scenario (environment) draws.
 
     Derived by NAME through `determinism.streams.stream_id`, not hardcoded: an integer picked by
@@ -989,7 +989,7 @@ fn strat_stream_scenario() -> Int:
     return Int(stream_id("strategy.scenario"))
 
 
-fn strat_stream_policy() -> Int:
+def strat_stream_policy() -> Int:
     """The RNG stream id a randomised policy's OWN coin flips are drawn on.
 
     Separate from the scenario stream, and this separation is the reason a mixed strategy does
@@ -1002,7 +1002,7 @@ fn strat_stream_policy() -> Int:
     return Int(stream_id("strategy.policy"))
 
 
-fn strat_stream_tiebreak() -> Int:
+def strat_stream_tiebreak() -> Int:
     """The RNG stream id for breaking an exact tie between equally-ranked actions.
 
     Its own stream so that a tie-break, which is a property of the POLICY, never perturbs the
@@ -1012,7 +1012,7 @@ fn strat_stream_tiebreak() -> Int:
     return Int(stream_id("strategy.tiebreak"))
 
 
-fn strat_stream_status(stream: Int) -> Int:
+def strat_stream_status(stream: Int) -> Int:
     """`STRAT_OK` for a usable stream id: in `[8, 65534]`.
 
     Ids 1-7 are RESERVED by `counter_rng` — they were handed to named processes by that kernel's
@@ -1058,11 +1058,11 @@ struct CrnAddress(Copyable, Movable):
     var draw_index: Int
 
 
-fn _crn_refusal(code: Int) -> CrnAddress:
+def _crn_refusal(code: Int) -> CrnAddress:
     return CrnAddress(code, False, 0, 0, 0, 0, 0, 0, 0)
 
 
-fn strat_coord_status(
+def strat_coord_status(
     master_seed: Int, scenario_family: Int, scenario: Int,
     step: Int, factor: Int, stream: Int, draw_index: Int,
 ) -> Int:
@@ -1110,7 +1110,7 @@ fn strat_coord_status(
     return STRAT_OK
 
 
-fn strat_crn_address(
+def strat_crn_address(
     master_seed: Int, scenario_family: Int, scenario: Int,
     step: Int, factor: Int, stream: Int, draw_index: Int,
 ) -> CrnAddress:
@@ -1145,7 +1145,7 @@ fn strat_crn_address(
     )
 
 
-fn strat_crn_fold(values: List[Float64], n: Int) -> Int:
+def strat_crn_fold(values: List[Float64], n: Int) -> Int:
     """A bit-exact digest of the first `n` values, so CRN is MEASURED and not asserted.
 
     Folds the raw IEEE-754 bits — `bitcast` to `UInt64`, then FNV-1a — so two tapes digest
@@ -1213,11 +1213,11 @@ struct WorkBudget(Copyable, Movable):
     var work_ceiling: Int
 
 
-fn _budget_refusal(code: Int) -> WorkBudget:
+def _budget_refusal(code: Int) -> WorkBudget:
     return WorkBudget(code, False, 0, 0, 0, 0, 0, -1, -1, -1, STRAT_MAX_WORK)
 
 
-fn strat_shape_status(
+def strat_shape_status(
     n_strategies: Int, n_replications: Int, horizon: Int, n_factors: Int
 ) -> Int:
     """`STRAT_OK` when a comparison's four dimensions are each and JOINTLY representable.
@@ -1258,7 +1258,7 @@ fn strat_shape_status(
     return STRAT_OK
 
 
-fn strat_work_charge(
+def strat_work_charge(
     n_strategies: Int, n_replications: Int, horizon: Int, n_factors: Int, draws_per_cell: Int
 ) -> Int:
     """The total charge for a comparison, or -1 when it does not fit the budget.
@@ -1307,7 +1307,7 @@ fn strat_work_charge(
     return replay + draws
 
 
-fn strat_budget(
+def strat_budget(
     n_strategies: Int, n_replications: Int, horizon: Int, n_factors: Int, draws_per_cell: Int
 ) -> WorkBudget:
     """The full budget decision for a comparison, with both terms reported separately.
@@ -1346,7 +1346,7 @@ fn strat_budget(
     )
 
 
-fn strat_ceilings() -> List[Int]:
+def strat_ceilings() -> List[Int]:
     """Every declared ceiling, in one call, so a caller can size a request before sending it.
 
     Order is fixed and documented: strategies, replications, horizon, factors, scenario cells,

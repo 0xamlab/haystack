@@ -59,21 +59,21 @@ from causal_inference.propensity import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -82,20 +82,20 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     """Judged against the magnitude of THE TWO TERMS BEING COMPARED and nothing else."""
     return fabs(a - b) <= ci_tolerance(fabs(a) + fabs(b), 0.0)
 
 
-fn _lf5() -> List[Float64]:
+def _lf5() -> List[Float64]:
     return _floats(0.5, 0.6, 0.7, 0.4, 0.3)
 
 
-fn _li5() -> List[Int]:
+def _li5() -> List[Int]:
     return _ints(1, 2, 3, 4, 5)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

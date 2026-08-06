@@ -40,26 +40,26 @@ from propensity import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
         )
 
 
-fn _is_finite(v: Float64) -> Bool:
+def _is_finite(v: Float64) -> Bool:
     return v == v and v < 1e18 and v > -1e18
 
 
 # ── Materials Tests ──────────────────────────────────────────────────────────
 
 
-fn test_youngs_modulus() raises:
+def test_youngs_modulus() raises:
     # E = stress / strain = 100 / 0.001 = 100000
     var E = youngs_modulus(100.0, 0.001)
     _assert_close(E, 100000.0, 1e-6, "youngs_modulus(100, 0.001)")
@@ -69,56 +69,56 @@ fn test_youngs_modulus() raises:
     print("  ✓ test_youngs_modulus")
 
 
-fn test_shear_modulus() raises:
+def test_shear_modulus() raises:
     # G = 200e9 / (2*(1+0.3)) = 200e9 / 2.6 ≈ 76.923e9
     var G = shear_modulus(200e9, 0.3)
     _assert_close(G, 76.923076923e9, 1e6, "shear_modulus(200e9, 0.3)")
     print("  ✓ test_shear_modulus")
 
 
-fn test_bulk_modulus() raises:
+def test_bulk_modulus() raises:
     # K = 200e9 / (3*(1-0.6)) = 200e9 / 1.2 ≈ 166.67e9
     var K = bulk_modulus(200e9, 0.3)
     _assert_close(K, 166.666666667e9, 1e6, "bulk_modulus(200e9, 0.3)")
     print("  ✓ test_bulk_modulus")
 
 
-fn test_stress_from_force() raises:
+def test_stress_from_force() raises:
     # σ = 1000 / 0.01 = 100000
     var s = stress_from_force(1000.0, 0.01)
     _assert_close(s, 100000.0, 1e-6, "stress_from_force(1000, 0.01)")
     print("  ✓ test_stress_from_force")
 
 
-fn test_strain_from_deformation() raises:
+def test_strain_from_deformation() raises:
     # ε = 0.002 / 1.0 = 0.002
     var e = strain_from_deformation(0.002, 1.0)
     _assert_close(e, 0.002, 1e-12, "strain_from_deformation(0.002, 1.0)")
     print("  ✓ test_strain_from_deformation")
 
 
-fn test_thermal_expansion() raises:
+def test_thermal_expansion() raises:
     # ΔL = 1.0 * 12e-6 * 100 = 0.0012
     var dl = thermal_expansion(1.0, 12e-6, 100.0)
     _assert_close(dl, 0.0012, 1e-8, "thermal_expansion(1, 12e-6, 100)")
     print("  ✓ test_thermal_expansion")
 
 
-fn test_safety_factor() raises:
+def test_safety_factor() raises:
     # SF = 500 / 100 = 5.0
     var sf = safety_factor(500.0, 100.0)
     _assert_close(sf, 5.0, 1e-12, "safety_factor(500, 100)")
     print("  ✓ test_safety_factor")
 
 
-fn test_stress_concentration() raises:
+def test_stress_concentration() raises:
     # σ_max = 2.5 * 100 = 250
     var sm = stress_concentration(100.0, 2.5)
     _assert_close(sm, 250.0, 1e-12, "stress_concentration(100, 2.5)")
     print("  ✓ test_stress_concentration")
 
 
-fn test_fatigue_life() raises:
+def test_fatigue_life() raises:
     # N = (sigma_a / sigma_f)^(1/b); just check finite and positive
     var N = fatigue_life(200e6, 900e6, -0.1)
     _assert(N > 0.0, "fatigue_life should be positive")
@@ -126,14 +126,14 @@ fn test_fatigue_life() raises:
     print("  ✓ test_fatigue_life")
 
 
-fn test_moment_of_inertia_rect() raises:
+def test_moment_of_inertia_rect() raises:
     # I = 0.1 * 0.2^3 / 12 = 0.1 * 0.008 / 12 = 6.667e-5
     var I = moment_of_inertia_rect(0.1, 0.2)
     _assert_close(I, 6.6666666667e-5, 1e-8, "moment_of_inertia_rect(0.1, 0.2)")
     print("  ✓ test_moment_of_inertia_rect")
 
 
-fn test_beam_deflection_cantilever() raises:
+def test_beam_deflection_cantilever() raises:
     # δ = PL³/(3EI), should be positive for positive inputs
     var d = beam_deflection_cantilever(1000.0, 2.0, 200e9, 1e-4)
     _assert(d > 0.0, "beam_deflection should be positive")
@@ -142,7 +142,7 @@ fn test_beam_deflection_cantilever() raises:
     print("  ✓ test_beam_deflection_cantilever")
 
 
-fn test_poisson_ratio_from_moduli() raises:
+def test_poisson_ratio_from_moduli() raises:
     # Check consistency: shear_modulus(200e9, 0.3) -> G, then poisson_from_moduli(200e9, G) ≈ 0.3
     var G = shear_modulus(200e9, 0.3)
     var nu = poisson_ratio_from_moduli(200e9, G)
@@ -153,7 +153,7 @@ fn test_poisson_ratio_from_moduli() raises:
 # ── Topology Tests ───────────────────────────────────────────────────────────
 
 
-fn test_distance_matrix_basic() raises:
+def test_distance_matrix_basic() raises:
     var p1 = List[Float64]()
     p1.append(0.0)
     p1.append(0.0)
@@ -174,7 +174,7 @@ fn test_distance_matrix_basic() raises:
     print("  ✓ test_distance_matrix_basic")
 
 
-fn test_vietoris_rips_edges_zero() raises:
+def test_vietoris_rips_edges_zero() raises:
     # At ε=0, no edges (all distances > 0 for distinct points)
     var p1 = List[Float64]()
     p1.append(0.0)
@@ -192,7 +192,7 @@ fn test_vietoris_rips_edges_zero() raises:
     print("  ✓ test_vietoris_rips_edges_zero")
 
 
-fn test_vietoris_rips_edges_full() raises:
+def test_vietoris_rips_edges_full() raises:
     # At large ε, all edges present
     var p1 = List[Float64]()
     p1.append(0.0)
@@ -210,7 +210,7 @@ fn test_vietoris_rips_edges_full() raises:
     print("  ✓ test_vietoris_rips_edges_full")
 
 
-fn test_betti_0_disconnected() raises:
+def test_betti_0_disconnected() raises:
     # 4 disconnected points → β₀ = 4
     var empty_edges = List[List[Int]]()
     var b0 = betti_0(4, empty_edges)
@@ -218,7 +218,7 @@ fn test_betti_0_disconnected() raises:
     print("  ✓ test_betti_0_disconnected")
 
 
-fn test_betti_0_connected() raises:
+def test_betti_0_connected() raises:
     # 3 points, fully connected → β₀ = 1
     var e1 = List[Int]()
     e1.append(0)
@@ -238,7 +238,7 @@ fn test_betti_0_connected() raises:
     print("  ✓ test_betti_0_connected")
 
 
-fn test_filtration_values_sorted() raises:
+def test_filtration_values_sorted() raises:
     var p1 = List[Float64]()
     p1.append(0.0)
     var p2 = List[Float64]()
@@ -258,7 +258,7 @@ fn test_filtration_values_sorted() raises:
     print("  ✓ test_filtration_values_sorted")
 
 
-fn test_persistence_diagram_0_births() raises:
+def test_persistence_diagram_0_births() raises:
     var p1 = List[Float64]()
     p1.append(0.0)
     var p2 = List[Float64]()
@@ -279,7 +279,7 @@ fn test_persistence_diagram_0_births() raises:
     print("  ✓ test_persistence_diagram_0_births")
 
 
-fn test_total_persistence_positive() raises:
+def test_total_persistence_positive() raises:
     var p1 = List[Float64]()
     p1.append(0.0)
     var p2 = List[Float64]()
@@ -297,7 +297,7 @@ fn test_total_persistence_positive() raises:
     print("  ✓ test_total_persistence_positive")
 
 
-fn test_bottleneck_distance_same() raises:
+def test_bottleneck_distance_same() raises:
     # Bottleneck distance of diagram with itself should be 0
     var d1 = List[List[Float64]]()
     var pair1 = List[Float64]()
@@ -324,7 +324,7 @@ fn test_bottleneck_distance_same() raises:
     print("  ✓ test_bottleneck_distance_same")
 
 
-fn test_bottleneck_distance_diff() raises:
+def test_bottleneck_distance_diff() raises:
     var d1 = List[List[Float64]]()
     var pair1 = List[Float64]()
     pair1.append(0.0)
@@ -343,7 +343,7 @@ fn test_bottleneck_distance_diff() raises:
     print("  ✓ test_bottleneck_distance_diff")
 
 
-fn test_euler_characteristic() raises:
+def test_euler_characteristic() raises:
     # Tetrahedron: V=4, E=6, F=4 → χ=2
     var chi = euler_characteristic(4, 6, 4)
     _assert(chi == 2, "euler_characteristic tetrahedron = 2")
@@ -353,7 +353,7 @@ fn test_euler_characteristic() raises:
     print("  ✓ test_euler_characteristic")
 
 
-fn test_rips_triangle_count() raises:
+def test_rips_triangle_count() raises:
     # 3 fully connected vertices = 1 triangle
     var e1 = List[Int]()
     e1.append(0)
@@ -405,7 +405,7 @@ fn test_rips_triangle_count() raises:
 # ── Propensity Tests ─────────────────────────────────────────────────────────
 
 
-fn _make_features() -> List[List[Float64]]:
+def _make_features() -> List[List[Float64]]:
     """Create simple feature matrix for testing."""
     var features = List[List[Float64]]()
     # Treated group: higher feature values
@@ -445,7 +445,7 @@ fn _make_features() -> List[List[Float64]]:
     return features^
 
 
-fn _make_treatment() -> List[Int]:
+def _make_treatment() -> List[Int]:
     var t = List[Int]()
     t.append(1)
     t.append(1)
@@ -458,7 +458,7 @@ fn _make_treatment() -> List[Int]:
     return t^
 
 
-fn test_propensity_scores_range() raises:
+def test_propensity_scores_range() raises:
     var features = _make_features()
     var treatment = _make_treatment()
     var scores = propensity_scores(features, treatment)
@@ -469,7 +469,7 @@ fn test_propensity_scores_range() raises:
     print("  ✓ test_propensity_scores_range")
 
 
-fn test_nearest_neighbor_match() raises:
+def test_nearest_neighbor_match() raises:
     var s_treated = List[Float64]()
     s_treated.append(0.7)
     s_treated.append(0.8)
@@ -493,7 +493,7 @@ fn test_nearest_neighbor_match() raises:
     print("  ✓ test_nearest_neighbor_match")
 
 
-fn test_caliper_match_tight() raises:
+def test_caliper_match_tight() raises:
     var s_treated = List[Float64]()
     s_treated.append(0.7)
     s_treated.append(0.2)
@@ -511,7 +511,7 @@ fn test_caliper_match_tight() raises:
     print("  ✓ test_caliper_match_tight")
 
 
-fn test_matched_ate() raises:
+def test_matched_ate() raises:
     var outcomes = List[Float64]()
     outcomes.append(10.0)  # treated 0
     outcomes.append(12.0)  # treated 1
@@ -533,7 +533,7 @@ fn test_matched_ate() raises:
     print("  ✓ test_matched_ate")
 
 
-fn test_balance_check() raises:
+def test_balance_check() raises:
     var ft = List[Float64]()
     ft.append(5.0)
     ft.append(6.0)
@@ -548,7 +548,7 @@ fn test_balance_check() raises:
     print("  ✓ test_balance_check")
 
 
-fn test_propensity_overlap() raises:
+def test_propensity_overlap() raises:
     var scores = List[Float64]()
     scores.append(0.3)
     scores.append(0.5)
@@ -570,7 +570,7 @@ fn test_propensity_overlap() raises:
     print("  ✓ test_propensity_overlap")
 
 
-fn test_trimmed_sample() raises:
+def test_trimmed_sample() raises:
     var scores = List[Float64]()
     scores.append(0.1)
     scores.append(0.3)
@@ -594,7 +594,7 @@ fn test_trimmed_sample() raises:
     print("  ✓ test_trimmed_sample")
 
 
-fn test_stratified_estimate() raises:
+def test_stratified_estimate() raises:
     var outcomes = List[Float64]()
     outcomes.append(10.0)
     outcomes.append(12.0)
@@ -621,7 +621,7 @@ fn test_stratified_estimate() raises:
     print("  ✓ test_stratified_estimate")
 
 
-fn test_match_quality() raises:
+def test_match_quality() raises:
     var matches = List[Int]()
     matches.append(0)
     matches.append(-1)
@@ -636,7 +636,7 @@ fn test_match_quality() raises:
     print("  ✓ test_match_quality")
 
 
-fn test_match_quality_all_good() raises:
+def test_match_quality_all_good() raises:
     var matches = List[Int]()
     matches.append(0)
     matches.append(1)
@@ -646,7 +646,7 @@ fn test_match_quality_all_good() raises:
     print("  ✓ test_match_quality_all_good")
 
 
-fn test_match_quality_none() raises:
+def test_match_quality_none() raises:
     var matches = List[Int]()
     matches.append(-1)
     matches.append(-1)
@@ -658,7 +658,7 @@ fn test_match_quality_none() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 58 Tests — Materials Science, Topology, Propensity Score Matching")
     print("═" * 70)
 

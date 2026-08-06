@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from speculative_decoding import speculative_accept_prob, speculative_expected_tokens, draft_model_speedup, json_grammar_logit_mask, structured_repair_score, constrained_beam_score, token_healing_overlap, watermark_green_list_bias, contrastive_decode_score, medusa_head_acceptance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

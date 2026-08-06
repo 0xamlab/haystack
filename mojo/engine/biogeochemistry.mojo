@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp
 
 
-fn net_ecosystem_production(
+def net_ecosystem_production(
     gpp: Float64, ecosystem_respiration: Float64
 ) -> Float64:
     """Net ecosystem production: NEP = GPP - Re.
@@ -31,7 +31,7 @@ fn net_ecosystem_production(
     return gpp - ecosystem_respiration
 
 
-fn carbon_use_efficiency(npp: Float64, gpp: Float64) -> Float64:
+def carbon_use_efficiency(npp: Float64, gpp: Float64) -> Float64:
     """Carbon use efficiency: CUE = NPP / GPP.
 
     Args:
@@ -46,7 +46,7 @@ fn carbon_use_efficiency(npp: Float64, gpp: Float64) -> Float64:
     return npp / gpp
 
 
-fn nitrogen_mineralisation(
+def nitrogen_mineralisation(
     organic_n: Float64, mineralisation_rate: Float64, temperature_factor: Float64
 ) -> Float64:
     """N mineralisation: Nmin = k × Norg × Q10_factor.
@@ -62,7 +62,7 @@ fn nitrogen_mineralisation(
     return mineralisation_rate * organic_n * temperature_factor
 
 
-fn denitrification_rate(
+def denitrification_rate(
     nitrate_conc: Float64, denitrifier_biomass: Float64,
     anaerobic_fraction: Float64
 ) -> Float64:
@@ -82,7 +82,7 @@ fn denitrification_rate(
     return 0.1 * (nitrate_conc / (km + nitrate_conc)) * denitrifier_biomass * anaerobic_fraction
 
 
-fn phosphorus_sorption(
+def phosphorus_sorption(
     dissolved_p: Float64, max_sorption: Float64, binding_constant: Float64
 ) -> Float64:
     """Langmuir P sorption isotherm.
@@ -103,7 +103,7 @@ fn phosphorus_sorption(
     return max_sorption * binding_constant * dissolved_p / denom
 
 
-fn methane_oxidation(
+def methane_oxidation(
     ch4_conc: Float64, oxidation_rate: Float64
 ) -> Float64:
     """First-order aerobic methane oxidation.
@@ -120,7 +120,7 @@ fn methane_oxidation(
     return oxidation_rate * ch4_conc
 
 
-fn soil_carbon_turnover(
+def soil_carbon_turnover(
     soc_pool: Float64, decomposition_rate: Float64, clay_protection: Float64
 ) -> Float64:
     """Soil organic carbon decomposition flux.
@@ -138,7 +138,7 @@ fn soil_carbon_turnover(
     return decomposition_rate * soc_pool * (1.0 - clay_protection)
 
 
-fn weathering_co2_consumption(
+def weathering_co2_consumption(
     cation_flux: Float64, charge_equivalents: Float64
 ) -> Float64:
     """CO2 consumed by silicate weathering from river cation flux.
@@ -155,7 +155,7 @@ fn weathering_co2_consumption(
     return cation_flux * charge_equivalents * 44.0 / 2.0 / 1e6
 
 
-fn nitrogen_fixation_estimate(
+def nitrogen_fixation_estimate(
     acetylene_reduction: Float64
 ) -> Float64:
     """N2 fixation from acetylene reduction assay (3:1 ratio).
@@ -171,7 +171,7 @@ fn nitrogen_fixation_estimate(
     return acetylene_reduction / 3.0
 
 
-fn global_carbon_budget(
+def global_carbon_budget(
     fossil_emissions: Float64, land_use_change: Float64,
     land_sink: Float64, ocean_sink: Float64
 ) -> Float64:

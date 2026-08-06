@@ -233,7 +233,7 @@ struct SeasonalAdjust(Copyable, Movable):
     var status_name: String
 
 
-fn _no_forecast(status: Int, method_id: Int, horizon: Int, n_train: Int) -> PointForecast:
+def _no_forecast(status: Int, method_id: Int, horizon: Int, n_train: Int) -> PointForecast:
     """A refusal: no path, no state, every presence flag cleared."""
     return PointForecast(
         status, method_id, horizon, n_train, List[Float64](), False,
@@ -241,7 +241,7 @@ fn _no_forecast(status: Int, method_id: Int, horizon: Int, n_train: Int) -> Poin
     )
 
 
-fn _no_adjust(status: Int, period: Int, n_obs: Int) -> SeasonalAdjust:
+def _no_adjust(status: Int, period: Int, n_obs: Int) -> SeasonalAdjust:
     """A refusal: no adjusted series, no indices, no certificate."""
     return SeasonalAdjust(
         status, period, n_obs, 0, List[Float64](), List[Float64](), False,
@@ -249,7 +249,7 @@ fn _no_adjust(status: Int, period: Int, n_obs: Int) -> SeasonalAdjust:
     )
 
 
-fn _damped_sum(phi: Float64, h: Int) -> Float64:
+def _damped_sum(phi: Float64, h: Int) -> Float64:
     """`phi + phi^2 + ... + phi^h`, the damped trend multiplier for step `h`.
 
     Accumulated rather than closed-form. The closed form `phi * (1 - phi^h) / (1 - phi)` has
@@ -265,7 +265,7 @@ fn _damped_sum(phi: Float64, h: Int) -> Float64:
     return total
 
 
-fn _holt_state(y: List[Float64], alpha: Float64, beta: Float64) -> List[Float64]:
+def _holt_state(y: List[Float64], alpha: Float64, beta: Float64) -> List[Float64]:
     """`[level, trend]` at the end of the frozen Holt recursion, or empty on refusal.
 
     The level path is `timeseries_stats.holt_linear`'s output, unchanged. The trend is
@@ -296,7 +296,7 @@ fn _holt_state(y: List[Float64], alpha: Float64, beta: Float64) -> List[Float64]
     return out^
 
 
-fn _seasonal_indices(y: List[Float64], period: Int) -> List[Float64]:
+def _seasonal_indices(y: List[Float64], period: Int) -> List[Float64]:
     """Additive seasonal indices by phase, estimated only where the frozen trend exists.
 
     Returns `period` values, or empty when the series cannot support one complete interior
@@ -340,7 +340,7 @@ fn _seasonal_indices(y: List[Float64], period: Int) -> List[Float64]:
     return out^
 
 
-fn ets_ann_forecast(
+def ets_ann_forecast(
     y: List[Float64], alpha: Float64, horizon: Int
 ) -> PointForecast:
     """ETS(A,N,N) — simple exponential smoothing. Flat path at the terminal level.
@@ -377,7 +377,7 @@ fn ets_ann_forecast(
     )
 
 
-fn ets_aan_forecast(
+def ets_aan_forecast(
     y: List[Float64], alpha: Float64, beta: Float64, phi: Float64, horizon: Int
 ) -> PointForecast:
     """ETS(A,A,N) with damped trend: `f_h = level + trend * (phi + ... + phi^h)`.
@@ -448,7 +448,7 @@ fn ets_aan_forecast(
     )
 
 
-fn ets_aaa_forecast(
+def ets_aaa_forecast(
     y: List[Float64], alpha: Float64, beta: Float64, phi: Float64,
     period: Int, horizon: Int
 ) -> PointForecast:
@@ -535,7 +535,7 @@ fn ets_aaa_forecast(
     )
 
 
-fn theta_forecast(
+def theta_forecast(
     y: List[Float64], theta: Float64, alpha: Float64, horizon: Int
 ) -> PointForecast:
     """Classical Theta: the theta-line decomposition identity's own weights.
@@ -602,7 +602,7 @@ fn theta_forecast(
     )
 
 
-fn theta_drift_forecast(
+def theta_drift_forecast(
     y: List[Float64], alpha: Float64, horizon: Int
 ) -> PointForecast:
     """SES level plus the FULL frozen OLS slope: `f_h = SES(y) + b * h`.
@@ -653,7 +653,7 @@ fn theta_drift_forecast(
     )
 
 
-fn ar_forecast_checked(
+def ar_forecast_checked(
     y: List[Float64], ar_order: Int, horizon: Int
 ) -> PointForecast:
     """Yule-Walker AR(p) forecast with the frozen kernel's silent clamp made a status.
@@ -714,7 +714,7 @@ fn ar_forecast_checked(
     )
 
 
-fn _baseline_defect(n: Int, method_id: Int, period: Int) -> Int:
+def _baseline_defect(n: Int, method_id: Int, period: Int) -> Int:
     """Every precondition the four frozen baselines need, decided BEFORE any of them is called.
 
     Split out from `_baseline_values` on purpose: two of the frozen kernels index without
@@ -733,7 +733,7 @@ fn _baseline_defect(n: Int, method_id: Int, period: Int) -> Int:
     return FC_ERR_METHOD
 
 
-fn _baseline_values(
+def _baseline_values(
     y: List[Float64], method_id: Int, horizon: Int, period: Int
 ) -> List[Float64]:
     """Dispatch to the frozen baseline. Only ever called after `_baseline_defect` says FC_OK.
@@ -754,7 +754,7 @@ fn _baseline_values(
     return List[Float64]()
 
 
-fn baseline_forecast(
+def baseline_forecast(
     y: List[Float64], method_id: Int, horizon: Int, period: Int
 ) -> PointForecast:
     """The four frozen baselines behind one guarded entry point, with a status.
@@ -805,7 +805,7 @@ fn baseline_forecast(
     )
 
 
-fn deseasonalise_flat(y: List[Float64], period: Int) -> SeasonalAdjust:
+def deseasonalise_flat(y: List[Float64], period: Int) -> SeasonalAdjust:
     """Seasonally adjust a series and CERTIFY that adding the indices back restores it.
 
     Indices come from `_seasonal_indices` (frozen composition, interior slice, phase

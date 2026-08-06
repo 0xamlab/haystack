@@ -13,43 +13,43 @@ Public API:
 # ── Core bitwise helpers (FIPS 180-4 §4.1.2) ─────────────────────────────────
 
 @always_inline
-fn _rotr(x: UInt32, n: Int) -> UInt32:
+def _rotr(x: UInt32, n: Int) -> UInt32:
     """Right-rotate x by n bits."""
     return (x >> UInt32(n)) | (x << UInt32(32 - n))
 
 
 @always_inline
-fn _ch(x: UInt32, y: UInt32, z: UInt32) -> UInt32:
+def _ch(x: UInt32, y: UInt32, z: UInt32) -> UInt32:
     """Ch(x,y,z) = (x AND y) XOR (NOT x AND z)."""
     return (x & y) ^ (~x & z)
 
 
 @always_inline
-fn _maj(x: UInt32, y: UInt32, z: UInt32) -> UInt32:
+def _maj(x: UInt32, y: UInt32, z: UInt32) -> UInt32:
     """Maj(x,y,z) = (x AND y) XOR (x AND z) XOR (y AND z)."""
     return (x & y) ^ (x & z) ^ (y & z)
 
 
 @always_inline
-fn _big_sigma0(x: UInt32) -> UInt32:
+def _big_sigma0(x: UInt32) -> UInt32:
     """Σ0(x) = ROTR²(x) XOR ROTR¹³(x) XOR ROTR²²(x)."""
     return _rotr(x, 2) ^ _rotr(x, 13) ^ _rotr(x, 22)
 
 
 @always_inline
-fn _big_sigma1(x: UInt32) -> UInt32:
+def _big_sigma1(x: UInt32) -> UInt32:
     """Σ1(x) = ROTR⁶(x) XOR ROTR¹¹(x) XOR ROTR²⁵(x)."""
     return _rotr(x, 6) ^ _rotr(x, 11) ^ _rotr(x, 25)
 
 
 @always_inline
-fn _small_sigma0(x: UInt32) -> UInt32:
+def _small_sigma0(x: UInt32) -> UInt32:
     """σ0(x) = ROTR⁷(x) XOR ROTR¹⁸(x) XOR SHR³(x)."""
     return _rotr(x, 7) ^ _rotr(x, 18) ^ (x >> UInt32(3))
 
 
 @always_inline
-fn _small_sigma1(x: UInt32) -> UInt32:
+def _small_sigma1(x: UInt32) -> UInt32:
     """σ1(x) = ROTR¹⁷(x) XOR ROTR¹⁹(x) XOR SHR¹⁰(x)."""
     return _rotr(x, 17) ^ _rotr(x, 19) ^ (x >> UInt32(10))
 
@@ -57,14 +57,14 @@ fn _small_sigma1(x: UInt32) -> UInt32:
 # ── Hex encoding helpers ──────────────────────────────────────────────────────
 
 @always_inline
-fn _nibble_hex(n: Int) -> String:
+def _nibble_hex(n: Int) -> String:
     """Convert a 4-bit nibble (0-15) to a single lowercase hex character."""
     if n < 10:
         return chr(48 + n)   # ord("0") = 48
     return chr(87 + n)       # ord("a") - 10 = 87
 
 
-fn _u32_hex(v: UInt32) -> String:
+def _u32_hex(v: UInt32) -> String:
     """Convert a UInt32 to an 8-character lowercase hex string (big-endian)."""
     var s = String("")
     for i in range(8):
@@ -76,7 +76,7 @@ fn _u32_hex(v: UInt32) -> String:
 # ── Round constants (FIPS 180-4 §4.2.2) ──────────────────────────────────────
 # First 32 bits of the fractional parts of the cube roots of the first 64 primes.
 
-fn _k_constants() -> List[UInt32]:
+def _k_constants() -> List[UInt32]:
     var k = List[UInt32](capacity=64)
     k.append(0x428a2f98); k.append(0x71374491); k.append(0xb5c0fbcf); k.append(0xe9b5dba5)
     k.append(0x3956c25b); k.append(0x59f111f1); k.append(0x923f82a4); k.append(0xab1c5ed5)
@@ -99,7 +99,7 @@ fn _k_constants() -> List[UInt32]:
 
 # ── Block compression (FIPS 180-4 §6.2.2) ────────────────────────────────────
 
-fn _compress(block: List[UInt8], offset: Int, mut h: List[UInt32]):
+def _compress(block: List[UInt8], offset: Int, mut h: List[UInt32]):
     """
     Process one 512-bit (64-byte) block starting at `offset` in `block`.
     Mutates the 8-word hash state `h` in place.
@@ -144,7 +144,7 @@ struct SHA256:
     var _buf: List[UInt8]
     var _total: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         """Initialise with the FIPS 180-4 initial hash values (H0–H7)."""
         self._h = List[UInt32](capacity=8)
         self._h.append(0x6a09e667)
@@ -158,7 +158,7 @@ struct SHA256:
         self._buf = List[UInt8](capacity=64)
         self._total = 0
 
-    fn update(mut self, data: String):
+    def update(mut self, data: String):
         """Feed data into the hasher.  May be called multiple times."""
         var bspan = data.as_bytes()
         var data_len = len(data)
@@ -189,7 +189,7 @@ struct SHA256:
             self._buf.append(UInt8(bspan[pos]))
             pos += 1
 
-    fn hexdigest(self) -> String:
+    def hexdigest(self) -> String:
         """
         Finalise the hash and return the 64-character lowercase hex digest.
         Does NOT mutate self — safe to call multiple times.
@@ -235,7 +235,7 @@ struct SHA256:
 
 # ── Convenience one-shot API ──────────────────────────────────────────────────
 
-fn sha256_hex(data: String) -> String:
+def sha256_hex(data: String) -> String:
     """
     Compute the SHA-256 digest of `data` and return a 64-character
     lowercase hex string.  Pure Mojo — no Python imports.

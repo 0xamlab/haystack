@@ -282,12 +282,12 @@ struct DetReduction(Copyable, Movable):
     var status: Int
 
 
-fn det_absent(n: Int, status: Int) -> DetReduction:
+def det_absent(n: Int, status: Int) -> DetReduction:
     """No answer, with the reason. `value` is 0.0 and means nothing."""
     return DetReduction(0.0, False, n, status)
 
 
-fn det_status_name(code: Int) -> String:
+def det_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number."""
     if code == DET_OK:
         return "ok"
@@ -306,7 +306,7 @@ fn det_status_name(code: Int) -> String:
     return "unknown_status"
 
 
-fn reduction_shape_id() -> String:
+def reduction_shape_id() -> String:
     """Identity of the reduction order. Deterministic, zero-argument.
 
     A replay manifest records this string; two runs whose manifests agree on it summed
@@ -315,7 +315,7 @@ fn reduction_shape_id() -> String:
     return REDUCTION_SHAPE_ID
 
 
-fn det_tree_depth(n: Int) -> Int:
+def det_tree_depth(n: Int) -> Int:
     """Height of the fixed tree for `n` elements — `ceil(log2(n))`, and 0 for `n <= 1`.
 
     Exposed so a caller can assert the shape rather than infer it, and so a test can
@@ -334,7 +334,7 @@ fn det_tree_depth(n: Int) -> Int:
 # ── the fixed tree, in one place ──────────────────────────────────────────────
 
 
-fn _push_leaf(
+def _push_leaf(
     mut starts: List[Int], mut sizes: List[Int], mut vals: List[Float64],
     start: Int, size: Int, value: Float64
 ):
@@ -373,7 +373,7 @@ fn _push_leaf(
         _ = vals.pop()
 
 
-fn _new_counter_f64() -> List[Float64]:
+def _new_counter_f64() -> List[Float64]:
     """A counter column, pre-reserved to its hard bound so no push ever reallocates.
 
     `COUNTER_CAPACITY` is derived from the two-blocks-per-level bound beside its
@@ -390,7 +390,7 @@ fn _new_counter_f64() -> List[Float64]:
     return List[Float64](capacity=COUNTER_CAPACITY)
 
 
-fn _new_counter_int() -> List[Int]:
+def _new_counter_int() -> List[Int]:
     return List[Int](capacity=COUNTER_CAPACITY)
 
 
@@ -408,7 +408,7 @@ comptime _LEAF_SQUARE: Int = 2
 comptime VEC_WIDTH: Int = 32
 
 
-fn _leaf[mode: Int](a: List[Float64], b: List[Float64], i: Int) -> Float64:
+def _leaf[mode: Int](a: List[Float64], b: List[Float64], i: Int) -> Float64:
     """The value the tree's leaf `i` carries. Caller has already bounded `i`.
 
     `mode` is a compile-time parameter, not a runtime `Int`: it is a literal at all five
@@ -423,7 +423,7 @@ fn _leaf[mode: Int](a: List[Float64], b: List[Float64], i: Int) -> Float64:
         return a[i]
 
 
-fn _leaf_vec[
+def _leaf_vec[
     mode: Int, W: Int
 ](
     ap: UnsafePointer[Float64, ...], bp: UnsafePointer[Float64, ...], i: Int
@@ -444,7 +444,7 @@ fn _leaf_vec[
         return av
 
 
-fn _vec_balanced[W: Int](v: SIMD[DType.float64, W]) -> Float64:
+def _vec_balanced[W: Int](v: SIMD[DType.float64, W]) -> Float64:
     """The balanced tree over `W` lanes, one vector add per level. `W` a power of two.
 
     `deinterleave()` splits even lanes from odd, so `even + odd` is exactly the
@@ -463,7 +463,7 @@ fn _vec_balanced[W: Int](v: SIMD[DType.float64, W]) -> Float64:
         )
 
 
-fn _block_sum[mode: Int](
+def _block_sum[mode: Int](
     a: List[Float64], b: List[Float64], offset: Int, size: Int
 ) -> Float64:
     """Balanced-tree sum of the `size` leaves at `offset`. `size` is a power of two.
@@ -512,7 +512,7 @@ fn _block_sum[mode: Int](
     return lvl[top]
 
 
-fn _pow2_floor(v: Int) -> Int:
+def _pow2_floor(v: Int) -> Int:
     """Largest power of two `<= v`. Caller guarantees `v >= 1`."""
     var p = 1
     while (p << 1) <= v:
@@ -520,7 +520,7 @@ fn _pow2_floor(v: Int) -> Int:
     return p
 
 
-fn _block_span(start: Int, remaining: Int) -> Int:
+def _block_span(start: Int, remaining: Int) -> Int:
     """Size of the aligned block the tree puts at `start` when `remaining` leaves are left.
 
     The largest `2^k` that both divides `start` and fits in `remaining`. `start & -start`
@@ -534,7 +534,7 @@ fn _block_span(start: Int, remaining: Int) -> Int:
     return align if align < fits else fits
 
 
-fn _ingest[mode: Int](
+def _ingest[mode: Int](
     a: List[Float64], b: List[Float64], lo: Int, hi: Int,
     mut starts: List[Int], mut sizes: List[Int], mut vals: List[Float64]
 ):
@@ -579,7 +579,7 @@ fn _ingest[mode: Int](
         start += size
 
 
-fn _fold(vals: List[Float64]) -> Float64:
+def _fold(vals: List[Float64]) -> Float64:
     """Combine the surviving blocks right-nested: `P1 + (P2 + (P3 + ...))`.
 
     Right-nested rather than left, because the surviving blocks have strictly DECREASING
@@ -597,7 +597,7 @@ fn _fold(vals: List[Float64]) -> Float64:
     return acc
 
 
-fn _first_non_finite(a: List[Float64], n: Int) -> Int:
+def _first_non_finite(a: List[Float64], n: Int) -> Int:
     """Index of the first non-finite value in `a[0..n)`, or -1. Caller has bounded `n`.
 
     Non-finite input is refused rather than aggregated, for a reason specific to this
@@ -643,7 +643,7 @@ fn _first_non_finite(a: List[Float64], n: Int) -> Int:
     return -1
 
 
-fn _finish(total: Float64, n: Int) -> DetReduction:
+def _finish(total: Float64, n: Int) -> DetReduction:
     """Wrap a completed tree sum, refusing a result that is not representable.
 
     A sum of finite values can overflow to `inf`. The mathematical answer exists but this
@@ -654,7 +654,7 @@ fn _finish(total: Float64, n: Int) -> DetReduction:
     return DetReduction(total, True, n, DET_OK)
 
 
-fn _finish_screened(
+def _finish_screened(
     total: Float64, a: List[Float64], b: List[Float64], n: Int, pair: Bool
 ) -> DetReduction:
     """`_finish`, plus the non-finite screen — run ONLY when the result is not finite.
@@ -699,7 +699,7 @@ fn _finish_screened(
 # ── public reductions ─────────────────────────────────────────────────────────
 
 
-fn det_sum(a: List[Float64], n: Int) -> DetReduction:
+def det_sum(a: List[Float64], n: Int) -> DetReduction:
     """Sum of `a[0..n)` under the fixed tree shape.
 
     Sum of nothing is 0.0 and present, matching `numeric.contract`: `count` and `sum` of
@@ -759,7 +759,7 @@ fn det_sum(a: List[Float64], n: Int) -> DetReduction:
     return _finish_screened(_fold(vals), a, a, n, False)
 
 
-fn det_sum_chunked(a: List[Float64], n: Int, chunk: Int) -> DetReduction:
+def det_sum_chunked(a: List[Float64], n: Int, chunk: Int) -> DetReduction:
     """Identical to `det_sum(a, n)`, computed as independent chunks of `chunk` elements.
 
     This exists to be compared, and to be the shape a parallel implementation takes: each
@@ -804,7 +804,7 @@ fn det_sum_chunked(a: List[Float64], n: Int, chunk: Int) -> DetReduction:
     return _finish_screened(_fold(acc_vals), a, a, n, False)
 
 
-fn det_sum_parallel(a: List[Float64], n: Int, n_workers: Int) -> DetReduction:
+def det_sum_parallel(a: List[Float64], n: Int, n_workers: Int) -> DetReduction:
     """`det_sum(a, n)` computed on `n_workers` threads. BIT-IDENTICAL for every worker count.
 
     Why this is possible at all, and why it is the module's strongest property
@@ -881,7 +881,7 @@ fn det_sum_parallel(a: List[Float64], n: Int, n_workers: Int) -> DetReduction:
     var vp = w_vals.unsafe_ptr()
 
     @parameter
-    fn ingest_band(w: Int):
+    def ingest_band(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n:
@@ -912,7 +912,7 @@ fn det_sum_parallel(a: List[Float64], n: Int, n_workers: Int) -> DetReduction:
     return _finish_screened(_fold(acc_vals), a, a, n, False)
 
 
-fn det_mean(a: List[Float64], n: Int) -> DetReduction:
+def det_mean(a: List[Float64], n: Int) -> DetReduction:
     """Arithmetic mean of `a[0..n)` — the fixed-tree sum divided by `n`.
 
     Division is a single rounding of a reproducible sum, so the mean inherits the
@@ -940,7 +940,7 @@ fn det_mean(a: List[Float64], n: Int) -> DetReduction:
     return _finish(total.value / Float64(n), n)
 
 
-fn det_dot(a: List[Float64], b: List[Float64], n: Int) -> DetReduction:
+def det_dot(a: List[Float64], b: List[Float64], n: Int) -> DetReduction:
     """Dot product of `a[0..n)` and `b[0..n)` under the fixed tree shape.
 
     Each product is a single rounding, so the only order-sensitive step is the summation,
@@ -969,7 +969,7 @@ fn det_dot(a: List[Float64], b: List[Float64], n: Int) -> DetReduction:
     return _finish_screened(_fold(vals), a, b, n, True)
 
 
-fn det_sum_squares(a: List[Float64], n: Int) -> DetReduction:
+def det_sum_squares(a: List[Float64], n: Int) -> DetReduction:
     """Sum of squares of `a[0..n)` under the fixed tree shape.
 
     Not `det_dot(a, a, n)` — the tree and the fold are the shared ones, and the results
@@ -1000,7 +1000,7 @@ fn det_sum_squares(a: List[Float64], n: Int) -> DetReduction:
 # ── the order-dependent baselines, kept in-tree so the claim stays measurable ──
 
 
-fn det_naive_sum(a: List[Float64], n: Int) -> DetReduction:
+def det_naive_sum(a: List[Float64], n: Int) -> DetReduction:
     """Left-to-right sum of `a[0..n)`. NOT reproducible under chunking — that is the point.
 
     Present so the comparison in this module's docstring is a runnable assertion rather
@@ -1021,7 +1021,7 @@ fn det_naive_sum(a: List[Float64], n: Int) -> DetReduction:
     return _finish_screened(total, a, a, n, False)
 
 
-fn det_naive_sum_chunked(a: List[Float64], n: Int, chunk: Int) -> DetReduction:
+def det_naive_sum_chunked(a: List[Float64], n: Int, chunk: Int) -> DetReduction:
     """Left-to-right sum of independently-summed chunks. Gives a DIFFERENT answer per `chunk`.
 
     The suite asserts that at least two chunk sizes disagree here, which is the failing
@@ -1054,7 +1054,7 @@ fn det_naive_sum_chunked(a: List[Float64], n: Int, chunk: Int) -> DetReduction:
 # ── compensated summation: less error, still not associative ──────────────────
 
 
-fn det_kahan_sum(a: List[Float64], n: Int) -> DetReduction:
+def det_kahan_sum(a: List[Float64], n: Int) -> DetReduction:
     """Kahan compensated sum of `a[0..n)`, via the frozen `numerical_stability.kahan_sum`.
 
     Calls the frozen kernel rather than compensating inline (rule 3). That kernel takes a
@@ -1108,7 +1108,7 @@ fn det_kahan_sum(a: List[Float64], n: Int) -> DetReduction:
     return _finish_screened(kahan_sum(head), a, a, n, False)
 
 
-fn det_neumaier_sum(a: List[Float64], n: Int) -> DetReduction:
+def det_neumaier_sum(a: List[Float64], n: Int) -> DetReduction:
     """Neumaier compensated sum of `a[0..n)`. A different algorithm, not a rewrite.
 
     Kahan's `c = (t - s) - y` recovers the low bits of `s`, which is the wrong half
@@ -1149,7 +1149,7 @@ fn det_neumaier_sum(a: List[Float64], n: Int) -> DetReduction:
     return _finish_screened(s + c, a, a, n, False)
 
 
-fn det_sum_opcode() -> Int:
+def det_sum_opcode() -> Int:
     """The `numeric.contract` opcode this module's `det_sum` implements.
 
     Present so the aggregation vocabulary has one owner: a caller mapping a token to a

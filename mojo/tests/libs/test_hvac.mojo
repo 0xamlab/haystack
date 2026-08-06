@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hvac import sensible_heat_load, latent_heat_load, total_heat_load, sensible_heat_ratio, cooling_tons, btu_from_tons, air_changes_per_hour, duct_velocity, cop_to_eer, eer_to_cop, heating_degree_days, cooling_degree_days
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -20,7 +20,7 @@ from std.math import abs as fabs, sqrt
 # ── Simple moving average ─────────────────────────────────────────────────────
 
 
-fn moving_average(data: List[Float64], window: Int) -> List[Float64]:
+def moving_average(data: List[Float64], window: Int) -> List[Float64]:
     """Simple moving average with centered output.
     Returns a list of the same length as data. For positions where the full
     window is not available, a partial average is computed.
@@ -58,7 +58,7 @@ fn moving_average(data: List[Float64], window: Int) -> List[Float64]:
 # ── Exponential moving average ────────────────────────────────────────────────
 
 
-fn exponential_moving_average(data: List[Float64], alpha: Float64) -> List[Float64]:
+def exponential_moving_average(data: List[Float64], alpha: Float64) -> List[Float64]:
     """Exponential moving average. alpha in (0, 1].
     EMA[0] = data[0], EMA[i] = alpha * data[i] + (1-alpha) * EMA[i-1]."""
     var n = len(data)
@@ -80,7 +80,7 @@ fn exponential_moving_average(data: List[Float64], alpha: Float64) -> List[Float
 # ── First differences ─────────────────────────────────────────────────────────
 
 
-fn diff(data: List[Float64]) -> List[Float64]:
+def diff(data: List[Float64]) -> List[Float64]:
     """First differences: result[i] = data[i+1] - data[i].
     Returns list of length max(0, n-1)."""
     var n = len(data)
@@ -95,7 +95,7 @@ fn diff(data: List[Float64]) -> List[Float64]:
 # ── Cumulative sum ────────────────────────────────────────────────────────────
 
 
-fn cumsum(data: List[Float64]) -> List[Float64]:
+def cumsum(data: List[Float64]) -> List[Float64]:
     """Cumulative sum: result[i] = sum(data[0..i])."""
     var n = len(data)
     var result = List[Float64]()
@@ -111,7 +111,7 @@ fn cumsum(data: List[Float64]) -> List[Float64]:
 # ── 1D Convolution ────────────────────────────────────────────────────────────
 
 
-fn convolve(signal_data: List[Float64], kernel: List[Float64]) -> List[Float64]:
+def convolve(signal_data: List[Float64], kernel: List[Float64]) -> List[Float64]:
     """1D convolution (full mode). Output length = len(signal) + len(kernel) - 1."""
     var n = len(signal_data)
     var m = len(kernel)
@@ -137,7 +137,7 @@ fn convolve(signal_data: List[Float64], kernel: List[Float64]) -> List[Float64]:
 # ── Autocorrelation ───────────────────────────────────────────────────────────
 
 
-fn autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
+def autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
     """Autocorrelation function for lags 0, 1, ..., max_lag.
     Normalized so that autocorrelation at lag 0 = 1.0."""
     var n = len(data)
@@ -179,7 +179,7 @@ fn autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
 # ── Detrend (remove linear trend) ────────────────────────────────────────────
 
 
-fn detrend_linear(data: List[Float64]) -> List[Float64]:
+def detrend_linear(data: List[Float64]) -> List[Float64]:
     """Remove linear trend from data using least-squares fit.
     Result = data - (a + b*i) where a, b are fit via OLS."""
     var n = len(data)
@@ -221,7 +221,7 @@ fn detrend_linear(data: List[Float64]) -> List[Float64]:
 # ── Normalize signal to [-1, 1] ──────────────────────────────────────────────
 
 
-fn normalize_signal(data: List[Float64]) -> List[Float64]:
+def normalize_signal(data: List[Float64]) -> List[Float64]:
     """Normalize signal to [-1, 1] range.
     If all values are equal, returns all zeros."""
     var n = len(data)
@@ -252,7 +252,7 @@ fn normalize_signal(data: List[Float64]) -> List[Float64]:
 # ── Zero crossings ────────────────────────────────────────────────────────────
 
 
-fn zero_crossings(data: List[Float64]) -> Int:
+def zero_crossings(data: List[Float64]) -> Int:
     """Count the number of zero crossings (sign changes) in the data."""
     var n = len(data)
     if n <= 1:
@@ -271,7 +271,7 @@ fn zero_crossings(data: List[Float64]) -> Int:
 # ── Peak detection ────────────────────────────────────────────────────────────
 
 
-fn peak_detect(data: List[Float64], threshold: Float64) -> List[Int]:
+def peak_detect(data: List[Float64], threshold: Float64) -> List[Int]:
     """Find indices of peaks above threshold.
     A peak is a local maximum: data[i] > data[i-1] and data[i] > data[i+1]
     and data[i] >= threshold."""

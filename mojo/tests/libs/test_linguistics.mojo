@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from linguistics import type_token_ratio, hapax_legomena_ratio, yules_k, heaps_law, zipfs_frequency, flesch_reading_ease, flesch_kincaid_grade, gunning_fog_index, automated_readability_index, coleman_liau_index, lexical_density, mean_word_length
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

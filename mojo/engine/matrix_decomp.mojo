@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs, isinf, isnan
 # ── det_2x2 ──────────────────────────────────────────────────────────────────
 
 
-fn det_2x2(A: List[List[Float64]]) -> Float64:
+def det_2x2(A: List[List[Float64]]) -> Float64:
     """Determinant of 2×2 matrix: ad - bc."""
     # A short or ragged matrix would be read past its end below (uncatchable
     # abort), so refuse with the degenerate determinant.
@@ -36,7 +36,7 @@ fn det_2x2(A: List[List[Float64]]) -> Float64:
 # ── det_3x3 ──────────────────────────────────────────────────────────────────
 
 
-fn det_3x3(A: List[List[Float64]]) -> Float64:
+def det_3x3(A: List[List[Float64]]) -> Float64:
     """Determinant of 3×3 matrix via cofactor expansion along row 0."""
     # A short or ragged matrix would be read past its end below (uncatchable
     # abort), so refuse with the degenerate determinant.
@@ -55,7 +55,7 @@ fn det_3x3(A: List[List[Float64]]) -> Float64:
 # ── trace ─────────────────────────────────────────────────────────────────────
 
 
-fn trace(A: List[List[Float64]]) -> Float64:
+def trace(A: List[List[Float64]]) -> Float64:
     """Sum of diagonal elements."""
     var s: Float64 = 0.0
     var n = len(A)
@@ -67,7 +67,7 @@ fn trace(A: List[List[Float64]]) -> Float64:
 # ── is_symmetric ─────────────────────────────────────────────────────────────
 
 
-fn is_symmetric(A: List[List[Float64]], tol: Float64 = 1e-10) -> Bool:
+def is_symmetric(A: List[List[Float64]], tol: Float64 = 1e-10) -> Bool:
     """Check if A == A^T within tolerance."""
     var n = len(A)
     for i in range(n):
@@ -82,7 +82,7 @@ fn is_symmetric(A: List[List[Float64]], tol: Float64 = 1e-10) -> Bool:
 # ── cholesky ─────────────────────────────────────────────────────────────────
 
 
-fn cholesky(A: List[List[Float64]]) -> List[List[Float64]]:
+def cholesky(A: List[List[Float64]]) -> List[List[Float64]]:
     """Cholesky decomposition for symmetric positive-definite matrix.
     Returns lower triangular L where A = L * L^T.
     Returns empty list if not SPD."""
@@ -114,7 +114,7 @@ fn cholesky(A: List[List[Float64]]) -> List[List[Float64]]:
 # ── is_positive_definite ─────────────────────────────────────────────────────
 
 
-fn is_positive_definite(A: List[List[Float64]]) -> Bool:
+def is_positive_definite(A: List[List[Float64]]) -> Bool:
     """Check if matrix is positive definite via Cholesky attempt."""
     var L = cholesky(A)
     return len(L) > 0
@@ -123,7 +123,7 @@ fn is_positive_definite(A: List[List[Float64]]) -> Bool:
 # ── lu_decompose ─────────────────────────────────────────────────────────────
 
 
-fn lu_decompose(A: List[List[Float64]]) -> List[List[List[Float64]]]:
+def lu_decompose(A: List[List[Float64]]) -> List[List[List[Float64]]]:
     """LU decomposition with partial pivoting.
     Returns [L, U] as list of two n×n matrices.
     Uses Doolittle algorithm (L has 1s on diagonal)."""
@@ -180,7 +180,7 @@ fn lu_decompose(A: List[List[Float64]]) -> List[List[List[Float64]]]:
 # ── eigen_2x2 ────────────────────────────────────────────────────────────────
 
 
-fn eigen_2x2(A: List[List[Float64]]) -> List[List[Float64]]:
+def eigen_2x2(A: List[List[Float64]]) -> List[List[Float64]]:
     """Eigenvalues and eigenvectors for 2×2 matrix.
     Returns [[λ1, λ2], [v1x, v1y], [v2x, v2y]]."""
     # A short or ragged matrix would be read past its end below (uncatchable
@@ -246,7 +246,7 @@ fn eigen_2x2(A: List[List[Float64]]) -> List[List[Float64]]:
 # ── forward_substitution ─────────────────────────────────────────────────────
 
 
-fn forward_substitution(L: List[List[Float64]], b: List[Float64]) -> List[Float64]:
+def forward_substitution(L: List[List[Float64]], b: List[Float64]) -> List[Float64]:
     """Solve Lx = b where L is lower triangular."""
     var n = len(b)
     # A short or ragged L would be read past its end below (uncatchable
@@ -274,7 +274,7 @@ fn forward_substitution(L: List[List[Float64]], b: List[Float64]) -> List[Float6
 # ── back_substitution ────────────────────────────────────────────────────────
 
 
-fn back_substitution(U: List[List[Float64]], b: List[Float64]) -> List[Float64]:
+def back_substitution(U: List[List[Float64]], b: List[Float64]) -> List[Float64]:
     """Solve Ux = b where U is upper triangular."""
     var n = len(b)
     # A short or ragged U would be read past its end below (uncatchable
@@ -302,7 +302,7 @@ fn back_substitution(U: List[List[Float64]], b: List[Float64]) -> List[Float64]:
 # ── solve_lu ─────────────────────────────────────────────────────────────────
 
 
-fn solve_lu(A: List[List[Float64]], b: List[Float64]) -> List[Float64]:
+def solve_lu(A: List[List[Float64]], b: List[Float64]) -> List[Float64]:
     """Solve Ax = b via Gaussian elimination with partial pivoting."""
     var n = len(b)
     # A short or ragged A would be read past its end below (uncatchable

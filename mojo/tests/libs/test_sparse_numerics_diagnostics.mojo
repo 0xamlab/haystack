@@ -72,20 +72,20 @@ from sparse_numerics.diagnostics import (
 from sparse_vector import sv_max, sv_nnz
 
 
-fn _ints1(a: Int) -> List[Int]:
+def _ints1(a: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     return out^
 
 
-fn _ints2(a: Int, b: Int) -> List[Int]:
+def _ints2(a: Int, b: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _ints3(a: Int, b: Int, c: Int) -> List[Int]:
+def _ints3(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -93,20 +93,20 @@ fn _ints3(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _floats1(a: Float64) -> List[Float64]:
+def _floats1(a: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     return out^
 
 
-fn _floats2(a: Float64, b: Float64) -> List[Float64]:
+def _floats2(a: Float64, b: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
@@ -114,7 +114,7 @@ fn _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return out^
 
 
-fn _floats4(
+def _floats4(
     a: Float64, b: Float64, c: Float64, d: Float64
 ) -> List[Float64]:
     var out = List[Float64]()
@@ -125,7 +125,7 @@ fn _floats4(
     return out^
 
 
-fn _floats6(
+def _floats6(
     a: Float64,
     b: Float64,
     c: Float64,
@@ -143,7 +143,7 @@ fn _floats6(
     return out^
 
 
-fn _nested(flat: List[Float64], rows: Int, cols: Int) -> List[List[Float64]]:
+def _nested(flat: List[Float64], rows: Int, cols: Int) -> List[List[Float64]]:
     """Row-of-rows image, for the frozen dense oracles only."""
     var out = List[List[Float64]]()
     for i in range(rows):
@@ -154,7 +154,7 @@ fn _nested(flat: List[Float64], rows: Int, cols: Int) -> List[List[Float64]]:
     return out^
 
 
-fn _dense3x3(
+def _dense3x3(
     a: Float64,
     b: Float64,
     c: Float64,
@@ -178,7 +178,7 @@ fn _dense3x3(
     return out^
 
 
-fn _near(actual: Float64, expected: Float64) -> Bool:
+def _near(actual: Float64, expected: Float64) -> Bool:
     """Tolerance only where an exact literal is not the natural value (e.g. 1/3)."""
     var delta = actual - expected
     if delta < 0.0:
@@ -186,7 +186,7 @@ fn _near(actual: Float64, expected: Float64) -> Bool:
     return delta < 1e-12
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var nan_value = Float64(0.0) / Float64(0.0)

@@ -297,7 +297,7 @@ comptime LP_DBL_EPSILON: Float64 = 2.220446049250313e-16
 comptime LP_FEAS_ULP_BUDGET: Float64 = 1024.0
 
 
-fn _lp_row_gap_budget(feas_tol: Float64, rhs_i: Float64) -> Float64:
+def _lp_row_gap_budget(feas_tol: Float64, rhs_i: Float64) -> Float64:
     """How far row `i`'s activity may sit from `b_i` and still count as ZERO distance.
 
     The ONE definition in this file of "this row is met exactly", used by both places that
@@ -330,7 +330,7 @@ fn _lp_row_gap_budget(feas_tol: Float64, rhs_i: Float64) -> Float64:
     return feas_tol + LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * fabs(rhs_i)
 
 
-fn lin_status_name(code: Int) -> String:
+def lin_status_name(code: Int) -> String:
     """Name for an extractor status, falling through to `model_status_name`."""
     if code == LIN_ERR_NONLINEAR_PRODUCT:
         return "nonlinear_product_of_variables"
@@ -341,7 +341,7 @@ fn lin_status_name(code: Int) -> String:
     return model_status_name(code)
 
 
-fn lp_status_name(code: Int) -> String:
+def lp_status_name(code: Int) -> String:
     """Name for a solver status. 0 is `optimal` here, not the generic `ok`."""
     if code == LP_OPTIMAL:
         return "optimal"
@@ -502,7 +502,7 @@ struct RhsSensitivity(Copyable, Movable):
 # ── the extractor ─────────────────────────────────────────────────────────────
 
 
-fn _form_failure(
+def _form_failure(
     status: Int, node_index: Int, op: Int, var_index: Int, n_vars: Int, message: String
 ) -> LinearForm:
     return LinearForm(
@@ -510,7 +510,7 @@ fn _form_failure(
     )
 
 
-fn _first_var_in_subtree(nodes: List[ExprNode], start: Int) -> Int:
+def _first_var_in_subtree(nodes: List[ExprNode], start: Int) -> Int:
     """Lowest-indexed variable referenced under `start`, or -1 when there is none.
 
     The LOWEST rather than the first encountered, so the reported variable does not depend
@@ -548,7 +548,7 @@ fn _first_var_in_subtree(nodes: List[ExprNode], start: Int) -> Int:
     return best
 
 
-fn _max_var_ref(nodes: List[ExprNode]) -> Int:
+def _max_var_ref(nodes: List[ExprNode]) -> Int:
     """Highest variable index any `var_ref` node references, or -1 when there is none.
 
     Only `OP_VAR_REF` nodes are consulted, which is exactly the set `check_expr` range-checks:
@@ -563,7 +563,7 @@ fn _max_var_ref(nodes: List[ExprNode]) -> Int:
     return best
 
 
-fn _max_var_ref_flat(ops: List[Int], var_idx: List[Int]) -> Int:
+def _max_var_ref_flat(ops: List[Int], var_idx: List[Int]) -> Int:
     """`_max_var_ref` over the wire form, before the columns are known to be parallel.
 
     The scan stops at the SHORTER of the two columns because a caller's payload may be
@@ -580,7 +580,7 @@ fn _max_var_ref_flat(ops: List[Int], var_idx: List[Int]) -> Int:
     return best
 
 
-fn _const_subtree(
+def _const_subtree(
     nodes: List[ExprNode], i: Int, n_vars: Int, zeros: List[Float64]
 ) -> ScalarResult:
     """Value of a variable-free subtree, via the frozen-safe evaluator in `model.mojo`.
@@ -598,7 +598,7 @@ fn _const_subtree(
     return evaluate_expr(nodes, i, zeros, n_vars)
 
 
-fn extract_linear(nodes: List[ExprNode], root: Int, n_vars: Int) -> LinearForm:
+def extract_linear(nodes: List[ExprNode], root: Int, n_vars: Int) -> LinearForm:
     """Exact `(coeffs, constant)` for an affine arena, or a status naming what is not affine.
 
     Mojo-level: the signature names `types.ExprNode`, so it is outside the runtime contract
@@ -803,7 +803,7 @@ fn extract_linear(nodes: List[ExprNode], root: Int, n_vars: Int) -> LinearForm:
     )
 
 
-fn linear_extract_flat(
+def linear_extract_flat(
     ops: List[Int], values: List[Float64], var_idx: List[Int],
     lefts: List[Int], rights: List[Int], extras: List[Int],
     root: Int, n_vars: Int,
@@ -824,7 +824,7 @@ fn linear_extract_flat(
     return extract_linear(nodes, root, n_vars)
 
 
-fn linear_form_value(
+def linear_form_value(
     coeffs: List[Float64], constant: Float64, x: List[Float64]
 ) -> FormValue:
     """`Σ coeffs[j] x_j + constant`, or a status. The dot product is `linalg.vec_dot`.
@@ -848,7 +848,7 @@ fn linear_form_value(
     return FormValue(MODEL_OK, True, total)
 
 
-fn lp_dual_objective(duals: List[Float64], rhs: List[Float64]) -> FormValue:
+def lp_dual_objective(duals: List[Float64], rhs: List[Float64]) -> FormValue:
     """`bᵀy` — the dual objective, so strong duality is checkable by the caller.
 
     Exists because the frozen `linear_programming.dual_value` does not compute it: that
@@ -897,21 +897,21 @@ struct _Simplex(Copyable, Movable):
     var unbounded_col: Int
 
 
-fn _empty_simplex(status: Int) -> _Simplex:
+def _empty_simplex(status: Int) -> _Simplex:
     return _Simplex(
         status, 0, 0, 0, 1, 0, List[Float64](), List[Int](), List[Float64](),
         List[Float64](), 0, 0, 0, False, LP_INFEASIBILITY_ABSENT, -1,
     )
 
 
-fn _basic_cost(s: _Simplex, cost: List[Float64]) -> Float64:
+def _basic_cost(s: _Simplex, cost: List[Float64]) -> Float64:
     var total: Float64 = 0.0
     for k in range(s.m):
         total += cost[s.basis[k]] * s.t[k * s.width + s.n_cols]
     return total
 
 
-fn _phase(
+def _phase(
     mut s: _Simplex, cost: List[Float64], bar_from: Int,
     max_iterations: Int, feas_tol: Float64, opt_tol: Float64,
 ) -> Int:
@@ -1024,7 +1024,7 @@ fn _phase(
         last = now
 
 
-fn _drive_out_artificials(mut s: _Simplex) -> Int:
+def _drive_out_artificials(mut s: _Simplex) -> Int:
     """Pivot every basic artificial out of the basis after a feasible phase 1.
 
     When a row has no non-artificial column with a usable pivot, that row is zero over
@@ -1075,7 +1075,7 @@ fn _drive_out_artificials(mut s: _Simplex) -> Int:
     return MODEL_OK
 
 
-fn _artificial_values(s: _Simplex) -> List[Float64]:
+def _artificial_values(s: _Simplex) -> List[Float64]:
     """Row-by-row phase-1 residual: row `i`'s artificial value, 0.0 when it is not basic.
 
     Artificial `i` enters as column `e_i`, so row `i` of the tableau states
@@ -1097,7 +1097,7 @@ fn _artificial_values(s: _Simplex) -> List[Float64]:
     return out^
 
 
-fn _simplex_run(
+def _simplex_run(
     c: List[Float64], a: List[Float64], m: Int, n: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
     max_iterations: Int, feas_tol: Float64, opt_tol: Float64,
@@ -1224,7 +1224,7 @@ fn _simplex_run(
     return s^
 
 
-fn _no_solution(
+def _no_solution(
     status: Int, n_vars: Int, n_cons: Int, s: _Simplex, unbounded_variable: Int
 ) -> LPSolution:
     return LPSolution(
@@ -1235,7 +1235,7 @@ fn _no_solution(
     )
 
 
-fn _lp_input_defect(
+def _lp_input_defect(
     c: List[Float64], constant: Float64, a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], max_iterations: Int,
     feasibility_tol: Float64, optimality_tol: Float64,
@@ -1298,7 +1298,7 @@ fn _lp_input_defect(
     return MODEL_OK
 
 
-fn _duals_from_tableau(s: _Simplex, maximize: Bool) -> List[Float64]:
+def _duals_from_tableau(s: _Simplex, maximize: Bool) -> List[Float64]:
     """`∂objective/∂b_i` in the CALLER's sense, one per row.
 
     Artificial column `i` of the final tableau is column `i` of `B⁻¹` — artificial `i`
@@ -1317,7 +1317,7 @@ fn _duals_from_tableau(s: _Simplex, maximize: Bool) -> List[Float64]:
     return out^
 
 
-fn _solution_from_simplex(
+def _solution_from_simplex(
     s: _Simplex, c: List[Float64], constant: Float64, a: List[Float64],
     rows: Int, cols: Int, rhs: List[Float64], maximize: Bool, feasibility_tol: Float64,
 ) -> LPSolution:
@@ -1389,7 +1389,7 @@ fn _solution_from_simplex(
     )
 
 
-fn lp_solve(
+def lp_solve(
     c: List[Float64], constant: Float64,
     a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
@@ -1425,7 +1425,7 @@ fn lp_solve(
     )
 
 
-fn lp_solve_default(
+def lp_solve_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
 ) -> LPSolution:
@@ -1445,7 +1445,7 @@ fn lp_solve_default(
     )
 
 
-fn lp_rhs_ranges(
+def lp_rhs_ranges(
     c: List[Float64], constant: Float64,
     a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
@@ -1588,7 +1588,7 @@ fn lp_rhs_ranges(
 # ── arenas to LP data ─────────────────────────────────────────────────────────
 
 
-fn _matrix_failure(
+def _matrix_failure(
     status: Int, n_vars: Int, n_cons: Int, row_index: Int,
     node_index: Int, op: Int, var_index: Int, message: String,
 ) -> LPMatrix:
@@ -1598,7 +1598,7 @@ fn _matrix_failure(
     )
 
 
-fn _append_padded(mut out: List[Float64], coeffs: List[Float64], width: Int):
+def _append_padded(mut out: List[Float64], coeffs: List[Float64], width: Int):
     """Append exactly `width` coefficients, zero-filling past the end of `coeffs`.
 
     `extract_linear` sizes its `coeffs` by the highest variable ITS OWN arena references, so
@@ -1614,7 +1614,7 @@ fn _append_padded(mut out: List[Float64], coeffs: List[Float64], width: Int):
             out.append(0.0)
 
 
-fn lp_from_arenas(
+def lp_from_arenas(
     obj_ops: List[Int], obj_values: List[Float64], obj_var_idx: List[Int], obj_lefts: List[Int],
     obj_rights: List[Int], obj_extras: List[Int], obj_root: Int, con_ptr: List[Int],
     con_roots: List[Int], con_senses: List[Int], con_rhs: List[Float64], con_ops: List[Int],

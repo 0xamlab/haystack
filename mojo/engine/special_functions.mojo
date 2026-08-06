@@ -31,7 +31,7 @@ comptime _EULER_MASCHERONI: Float64 = 0.5772156649015329
 
 # ── Lanczos approximation coefficients (g=7, n=9) ────────────────────────────
 
-fn _lanczos_coeffs() -> List[Float64]:
+def _lanczos_coeffs() -> List[Float64]:
     """Lanczos coefficients for g=7."""
     var c = List[Float64]()
     c.append(0.99999999999980993)
@@ -49,7 +49,7 @@ fn _lanczos_coeffs() -> List[Float64]:
 # ── Gamma function ────────────────────────────────────────────────────────────
 
 
-fn gamma_function(x: Float64) -> Float64:
+def gamma_function(x: Float64) -> Float64:
     """Gamma function Γ(x) via Lanczos approximation.
 
     For positive integers: Γ(n) = (n-1)!
@@ -71,7 +71,7 @@ fn gamma_function(x: Float64) -> Float64:
     return sqrt(2.0 * _PI) * (t ** (z + 0.5)) * exp(-t) * ag
 
 
-fn log_gamma(x: Float64) -> Float64:
+def log_gamma(x: Float64) -> Float64:
     """Log-gamma: ln(Γ(x)). More numerically stable for large x."""
     if x < 0.5:
         var s = sin(_PI * x)
@@ -92,7 +92,7 @@ fn log_gamma(x: Float64) -> Float64:
 # ── Beta function ─────────────────────────────────────────────────────────────
 
 
-fn beta_function(a: Float64, b: Float64) -> Float64:
+def beta_function(a: Float64, b: Float64) -> Float64:
     """Beta function B(a,b) = Γ(a)Γ(b)/Γ(a+b).
 
     Uses log-gamma for numerical stability.
@@ -103,7 +103,7 @@ fn beta_function(a: Float64, b: Float64) -> Float64:
 # ── Digamma function ──────────────────────────────────────────────────────────
 
 
-fn digamma(x: Float64) -> Float64:
+def digamma(x: Float64) -> Float64:
     """Digamma function ψ(x) = d/dx ln(Γ(x)).
 
     Uses recurrence relation to shift x to large value, then asymptotic series.
@@ -127,7 +127,7 @@ fn digamma(x: Float64) -> Float64:
 # ── Incomplete gamma ──────────────────────────────────────────────────────────
 
 
-fn incomplete_gamma_lower(a: Float64, x: Float64) -> Float64:
+def incomplete_gamma_lower(a: Float64, x: Float64) -> Float64:
     """Lower incomplete gamma γ(a,x) via series expansion.
 
     γ(a,x) = x^a * e^(-x) * Σ_{n=0}^∞ x^n / (a*(a+1)*...*(a+n))
@@ -148,7 +148,7 @@ fn incomplete_gamma_lower(a: Float64, x: Float64) -> Float64:
     return total * exp(-x + a * log(x))
 
 
-fn regularized_gamma(a: Float64, x: Float64) -> Float64:
+def regularized_gamma(a: Float64, x: Float64) -> Float64:
     """P(a,x) = γ(a,x)/Γ(a). Regularized lower incomplete gamma."""
     if x <= 0.0:
         return 0.0
@@ -158,7 +158,7 @@ fn regularized_gamma(a: Float64, x: Float64) -> Float64:
 # ── Error function ────────────────────────────────────────────────────────────
 
 
-fn erf(x: Float64) -> Float64:
+def erf(x: Float64) -> Float64:
     """Error function via Abramowitz & Stegun approximation (eq 7.1.26).
 
     Maximum error: |ε| < 1.5×10⁻⁷.
@@ -189,7 +189,7 @@ fn erf(x: Float64) -> Float64:
     return sign * y
 
 
-fn erfc(x: Float64) -> Float64:
+def erfc(x: Float64) -> Float64:
     """Complementary error function: 1 - erf(x)."""
     return 1.0 - erf(x)
 
@@ -197,7 +197,7 @@ fn erfc(x: Float64) -> Float64:
 # ── Bessel function J0 ───────────────────────────────────────────────────────
 
 
-fn bessel_j0(x: Float64) -> Float64:
+def bessel_j0(x: Float64) -> Float64:
     """Bessel function J₀(x) via polynomial approximation for |x| ≤ 8,
     asymptotic form for larger x.
 
@@ -227,7 +227,7 @@ fn bessel_j0(x: Float64) -> Float64:
             - q0 * _sin_approx(theta))
 
 
-fn _cos_approx(x: Float64) -> Float64:
+def _cos_approx(x: Float64) -> Float64:
     """Cosine approximation using Taylor series."""
     # Reduce to [0, 2π]
     var two_pi: Float64 = 2.0 * _PI
@@ -241,7 +241,7 @@ fn _cos_approx(x: Float64) -> Float64:
     return 1.0 - x2 / 2.0 + x2 * x2 / 24.0 - x2 * x2 * x2 / 720.0 + x2 * x2 * x2 * x2 / 40320.0
 
 
-fn _sin_approx(x: Float64) -> Float64:
+def _sin_approx(x: Float64) -> Float64:
     """Sine approximation using Taylor series."""
     var two_pi: Float64 = 2.0 * _PI
     var z = x
@@ -256,7 +256,7 @@ fn _sin_approx(x: Float64) -> Float64:
 # ── Factorial functions ───────────────────────────────────────────────────────
 
 
-fn factorial_float(n: Int) -> Float64:
+def factorial_float(n: Int) -> Float64:
     """n! as Float64. Uses direct multiplication for small n, gamma for large."""
     if n < 0:
         return 0.0
@@ -271,7 +271,7 @@ fn factorial_float(n: Int) -> Float64:
     return gamma_function(Float64(n) + 1.0)
 
 
-fn double_factorial(n: Int) -> Float64:
+def double_factorial(n: Int) -> Float64:
     """n!! = n*(n-2)*(n-4)*...*1 (or 2).
 
     Double factorial: product of all integers from n down stepping by 2.
@@ -289,7 +289,7 @@ fn double_factorial(n: Int) -> Float64:
 # ── Binomial coefficient ─────────────────────────────────────────────────────
 
 
-fn binomial_coefficient(n: Int, k: Int) -> Float64:
+def binomial_coefficient(n: Int, k: Int) -> Float64:
     """C(n,k) = n! / (k! * (n-k)!) via log-gamma for numerical stability."""
     if k < 0 or k > n:
         return 0.0

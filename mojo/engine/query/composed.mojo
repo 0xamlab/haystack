@@ -143,7 +143,7 @@ comptime COMPOSE_ROUTE_SHIPPED: Int = 4
 """Nothing above claims it — the shipped `group_by_many_parallel` answers."""
 
 
-fn compose_route_name(route: Int) -> String:
+def compose_route_name(route: Int) -> String:
     """The route vocabulary, so a bench or a log prints a name and not a digit."""
     if route == COMPOSE_ROUTE_DENSE:
         return "dense"
@@ -156,7 +156,7 @@ fn compose_route_name(route: Int) -> String:
     return "unknown"
 
 
-fn compose_status_name(status: Int) -> String:
+def compose_status_name(status: Int) -> String:
     """THE registry for the query plane's 330-339 status block.
 
     Its real job is to be the one place a duplicate is visible. Composing
@@ -232,7 +232,7 @@ BITS, so it is a performance switch only and the suite proves that."""
 
 
 @always_inline
-fn compose_dense_workers(
+def compose_dense_workers(
     cardinality: Int, n_aggs: Int, shared_count: Bool, requested: Int
 ) -> Int:
     """The largest worker count <= `requested` whose dense state fits the budget,
@@ -267,7 +267,7 @@ fn compose_dense_workers(
 
 
 @always_inline
-fn compose_merge_folds(n_groups: Int, n_aggs: Int, workers: Int) -> Int:
+def compose_merge_folds(n_groups: Int, n_aggs: Int, workers: Int) -> Int:
     """Accumulator folds the merge will perform — the parallel-merge decision's
     input, saturating rather than wrapping so a nonsense shape cannot come out
     the far side as a small number."""
@@ -317,7 +317,7 @@ struct ComposedPlan(Copyable, Movable):
     """Why a route was NOT taken, when that is interesting; `GROUP_CODED_OK`
     when the chosen route claimed the call outright."""
 
-    fn __init__(
+    def __init__(
         out self,
         route: Int,
         workers: Int,
@@ -337,7 +337,7 @@ struct ComposedPlan(Copyable, Movable):
         self.exact_domain = exact_domain
         self.status = status
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         return (
             compose_route_name(self.route)
             + " workers=" + String(self.workers)
@@ -357,12 +357,12 @@ struct _ExactDomain(Copyable, Movable):
     var bound: Int
     """max + 1, so it is exactly the `cardinality` the dense array needs."""
 
-    fn __init__(out self, dense: Bool, bound: Int):
+    def __init__(out self, dense: Bool, bound: Int):
         self.dense = dense
         self.bound = bound
 
 
-fn compose_exact_domain(
+def compose_exact_domain(
     batch: RecordBatch, key_column: Int, n_workers: Int
 ) -> _ExactDomain:
     """The key column's exact `[0, max+1)` code bound, in one parallel pass, or
@@ -398,7 +398,7 @@ fn compose_exact_domain(
     var kp = key_col.values[].unsafe_ptr() + key_col.offset
 
     @parameter
-    fn domain_worker(w: Int):
+    def domain_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -436,7 +436,7 @@ fn compose_exact_domain(
     return _ExactDomain(True, best + 1)
 
 
-fn compose_plan(
+def compose_plan(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -544,7 +544,7 @@ fn compose_plan(
     )
 
 
-fn group_by_composed_dense_parallel(
+def group_by_composed_dense_parallel(
     batch: RecordBatch,
     key_column: Int,
     cardinality: Int,
@@ -656,7 +656,7 @@ fn group_by_composed_dense_parallel(
     var kp = key_col.values[].unsafe_ptr() + key_col.offset
 
     @parameter
-    fn dense_worker(w: Int):
+    def dense_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -758,7 +758,7 @@ fn group_by_composed_dense_parallel(
     # which is the association `group_by_coded_parallel` uses, so the answer is
     # bit-identical rather than close.
     @parameter
-    fn merge_one_range(g_lo: Int, g_hi: Int):
+    def merge_one_range(g_lo: Int, g_hi: Int):
         for i in range(g_lo, g_hi):
             var code = gp[i]
             keyp[i] = Float64(code)
@@ -804,7 +804,7 @@ fn group_by_composed_dense_parallel(
         var gband = (n_groups + mw - 1) // mw
 
         @parameter
-        fn merge_worker(m: Int):
+        def merge_worker(m: Int):
             var g_lo = m * gband
             var g_hi = g_lo + gband
             if g_hi > n_groups:
@@ -831,7 +831,7 @@ fn group_by_composed_dense_parallel(
 
 
 
-fn group_by_composed_parallel(
+def group_by_composed_parallel(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -849,7 +849,7 @@ fn group_by_composed_parallel(
     )
 
 
-fn group_by_composed_planned(
+def group_by_composed_planned(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -894,7 +894,7 @@ fn group_by_composed_planned(
     )
 
 
-fn group_by_composed(
+def group_by_composed(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],

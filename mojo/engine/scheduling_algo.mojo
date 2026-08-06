@@ -24,7 +24,7 @@ Public API:
 # ── _make_row4 helper ─────────────────────────────────────────────────────────
 
 
-fn _make_row4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _make_row4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var row = List[Int]()
     row.append(a)
     row.append(b)
@@ -33,7 +33,7 @@ fn _make_row4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     return row^
 
 
-fn _make_row3(a: Int, b: Int, c: Int) -> List[Int]:
+def _make_row3(a: Int, b: Int, c: Int) -> List[Int]:
     var row = List[Int]()
     row.append(a)
     row.append(b)
@@ -44,7 +44,7 @@ fn _make_row3(a: Int, b: Int, c: Int) -> List[Int]:
 # ── fcfs ──────────────────────────────────────────────────────────────────────
 
 
-fn fcfs(processes: List[List[Int]]) -> List[List[Int]]:
+def fcfs(processes: List[List[Int]]) -> List[List[Int]]:
     """First Come First Served scheduling.
 
     Sorts by arrival time, runs each to completion.
@@ -85,7 +85,7 @@ fn fcfs(processes: List[List[Int]]) -> List[List[Int]]:
 # ── sjf ───────────────────────────────────────────────────────────────────────
 
 
-fn sjf(processes: List[List[Int]]) -> List[List[Int]]:
+def sjf(processes: List[List[Int]]) -> List[List[Int]]:
     """Shortest Job First (non-preemptive).
 
     At each step, among arrived processes pick shortest burst.
@@ -130,7 +130,7 @@ fn sjf(processes: List[List[Int]]) -> List[List[Int]]:
 # ── priority_scheduling ───────────────────────────────────────────────────────
 
 
-fn priority_scheduling(processes: List[List[Int]]) -> List[List[Int]]:
+def priority_scheduling(processes: List[List[Int]]) -> List[List[Int]]:
     """Priority scheduling (lower number = higher priority, non-preemptive).
 
     Returns [pid, start_time, finish_time, wait_time] per process.
@@ -172,7 +172,7 @@ fn priority_scheduling(processes: List[List[Int]]) -> List[List[Int]]:
 # ── round_robin ───────────────────────────────────────────────────────────────
 
 
-fn round_robin(processes: List[List[Int]], quantum: Int) -> List[List[Int]]:
+def round_robin(processes: List[List[Int]], quantum: Int) -> List[List[Int]]:
     """Round-robin scheduling with time quantum.
 
     Returns [pid, finish_time, wait_time] for each process (indexed by pid).
@@ -246,7 +246,7 @@ fn round_robin(processes: List[List[Int]], quantum: Int) -> List[List[Int]]:
 # ── avg_wait_time ─────────────────────────────────────────────────────────────
 
 
-fn avg_wait_time(results: List[List[Int]]) -> Float64:
+def avg_wait_time(results: List[List[Int]]) -> Float64:
     """Average waiting time from results. Wait is last element of each row."""
     var n = len(results)
     if n == 0:
@@ -261,7 +261,7 @@ fn avg_wait_time(results: List[List[Int]]) -> Float64:
 # ── avg_turnaround ────────────────────────────────────────────────────────────
 
 
-fn avg_turnaround(results: List[List[Int]]) -> Float64:
+def avg_turnaround(results: List[List[Int]]) -> Float64:
     """Average turnaround time: finish - arrival (for FCFS/SJF/priority results).
 
     For [pid, start, finish, wait] format: turnaround = finish - arrival.
@@ -290,7 +290,7 @@ fn avg_turnaround(results: List[List[Int]]) -> Float64:
 # ── throughput ────────────────────────────────────────────────────────────────
 
 
-fn throughput(results: List[List[Int]], total_time: Int) -> Float64:
+def throughput(results: List[List[Int]], total_time: Int) -> Float64:
     """Throughput: n_processes / total_time."""
     if total_time <= 0:
         return 0.0
@@ -300,7 +300,7 @@ fn throughput(results: List[List[Int]], total_time: Int) -> Float64:
 # ── cpu_utilization ───────────────────────────────────────────────────────────
 
 
-fn cpu_utilization(results: List[List[Int]], total_time: Int) -> Float64:
+def cpu_utilization(results: List[List[Int]], total_time: Int) -> Float64:
     """CPU utilization: sum of burst times / total_time.
 
     For [pid, start, finish, wait]: burst = finish - start.
@@ -320,7 +320,7 @@ fn cpu_utilization(results: List[List[Int]], total_time: Int) -> Float64:
 # ── gantt_chart ───────────────────────────────────────────────────────────────
 
 
-fn gantt_chart(results: List[List[Int]]) -> List[Int]:
+def gantt_chart(results: List[List[Int]]) -> List[Int]:
     """Process IDs in execution order (sorted by start_time).
 
     Assumes results have [pid, start, ...] format.

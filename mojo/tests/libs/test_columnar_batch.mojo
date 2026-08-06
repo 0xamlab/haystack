@@ -19,7 +19,7 @@ from columnar.dtype import DTYPE_FLOAT64
 from numeric.reduce import reduce_mean, reduce_sum
 
 
-fn _batch() -> RecordBatch:
+def _batch() -> RecordBatch:
     """Two columns, four rows. `qty` row 2 is null."""
     var amount = List[Float64]()
     amount.append(10.0)
@@ -48,7 +48,7 @@ fn _batch() -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, 4)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from numismatics import melt_value, premium_over_melt, grade_numeric_to_scale, population_scarcity, annual_return, insurance_value, mintage_per_capita, survival_rate_estimate, price_trend, auction_fee, total_cost_acquisition, bullion_content_troy_oz
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

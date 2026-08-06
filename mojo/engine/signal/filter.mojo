@@ -25,7 +25,7 @@ from std.math import sqrt, log as math_log
 # ── lowpass_ema ──────────────────────────────────────────────────────────────
 
 
-fn lowpass_ema(data: List[Float64], alpha: Float64) -> List[Float64]:
+def lowpass_ema(data: List[Float64], alpha: Float64) -> List[Float64]:
     """Exponential moving average low-pass filter.
     alpha in (0,1), lower = smoother."""
     var n = len(data)
@@ -42,7 +42,7 @@ fn lowpass_ema(data: List[Float64], alpha: Float64) -> List[Float64]:
 # ── highpass_ema ─────────────────────────────────────────────────────────────
 
 
-fn highpass_ema(data: List[Float64], alpha: Float64) -> List[Float64]:
+def highpass_ema(data: List[Float64], alpha: Float64) -> List[Float64]:
     """High-pass filter = original - low-pass."""
     var lp = lowpass_ema(data, alpha)
     var n = len(data)
@@ -55,7 +55,7 @@ fn highpass_ema(data: List[Float64], alpha: Float64) -> List[Float64]:
 # ── bandpass ─────────────────────────────────────────────────────────────────
 
 
-fn bandpass(
+def bandpass(
     data: List[Float64], alpha_low: Float64, alpha_high: Float64
 ) -> List[Float64]:
     """Band-pass = low-pass(alpha_low) - low-pass(alpha_high).
@@ -72,7 +72,7 @@ fn bandpass(
 # ── median_filter ────────────────────────────────────────────────────────────
 
 
-fn _sort_window(mut arr: List[Float64]):
+def _sort_window(mut arr: List[Float64]):
     """Simple insertion sort for small windows."""
     var n = len(arr)
     for i in range(1, n):
@@ -84,7 +84,7 @@ fn _sort_window(mut arr: List[Float64]):
         arr[j + 1] = key
 
 
-fn median_filter(data: List[Float64], window: Int) -> List[Float64]:
+def median_filter(data: List[Float64], window: Int) -> List[Float64]:
     """Median filter with given window size (must be odd)."""
     var n = len(data)
     var result = List[Float64]()
@@ -115,7 +115,7 @@ fn median_filter(data: List[Float64], window: Int) -> List[Float64]:
 # ── savitzky_golay_3 ─────────────────────────────────────────────────────────
 
 
-fn savitzky_golay_3(data: List[Float64]) -> List[Float64]:
+def savitzky_golay_3(data: List[Float64]) -> List[Float64]:
     """Simplified Savitzky-Golay with window=5, polynomial=2.
     Coefficients: [-3, 12, 17, 12, -3] / 35."""
     var n = len(data)
@@ -140,7 +140,7 @@ fn savitzky_golay_3(data: List[Float64]) -> List[Float64]:
 # ── moving_average_filter ────────────────────────────────────────────────────
 
 
-fn moving_average_filter(data: List[Float64], window: Int) -> List[Float64]:
+def moving_average_filter(data: List[Float64], window: Int) -> List[Float64]:
     """Simple moving average filter."""
     var n = len(data)
     var result = List[Float64]()
@@ -169,7 +169,7 @@ fn moving_average_filter(data: List[Float64], window: Int) -> List[Float64]:
 # ── iir_filter_1st ───────────────────────────────────────────────────────────
 
 
-fn iir_filter_1st(data: List[Float64], a: Float64, b: Float64) -> List[Float64]:
+def iir_filter_1st(data: List[Float64], a: Float64, b: Float64) -> List[Float64]:
     """First-order IIR: y[n] = b*x[n] + a*y[n-1]."""
     var n = len(data)
     var result = List[Float64]()
@@ -185,7 +185,7 @@ fn iir_filter_1st(data: List[Float64], a: Float64, b: Float64) -> List[Float64]:
 # ── diff_filter ──────────────────────────────────────────────────────────────
 
 
-fn diff_filter(data: List[Float64]) -> List[Float64]:
+def diff_filter(data: List[Float64]) -> List[Float64]:
     """First difference filter: y[n] = x[n] - x[n-1]."""
     var n = len(data)
     var result = List[Float64]()
@@ -197,7 +197,7 @@ fn diff_filter(data: List[Float64]) -> List[Float64]:
 # ── integrate_filter ─────────────────────────────────────────────────────────
 
 
-fn integrate_filter(data: List[Float64], dt: Float64 = 1.0) -> List[Float64]:
+def integrate_filter(data: List[Float64], dt: Float64 = 1.0) -> List[Float64]:
     """Cumulative trapezoidal integration."""
     var n = len(data)
     var result = List[Float64]()
@@ -213,7 +213,7 @@ fn integrate_filter(data: List[Float64], dt: Float64 = 1.0) -> List[Float64]:
 # ── snr ──────────────────────────────────────────────────────────────────────
 
 
-fn snr(signal: List[Float64], noise: List[Float64]) -> Float64:
+def snr(signal: List[Float64], noise: List[Float64]) -> Float64:
     """Signal-to-noise ratio in dB: 10*log10(Σsig²/Σnoise²)."""
     var sig_power: Float64 = 0.0
     for i in range(len(signal)):
@@ -234,7 +234,7 @@ fn snr(signal: List[Float64], noise: List[Float64]) -> Float64:
 # ── rms ──────────────────────────────────────────────────────────────────────
 
 
-fn rms(data: List[Float64]) -> Float64:
+def rms(data: List[Float64]) -> Float64:
     """Root mean square value."""
     var n = len(data)
     if n == 0:

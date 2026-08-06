@@ -34,12 +34,12 @@ comptime MAX_FOLLOW = 24
 comptime FOLLOW_DEPTH = 2
 
 
-fn _k(o: UnsafePointer[Float32, origin=MutAnyOrigin]):
+def _k(o: UnsafePointer[Float32, origin=MutAnyOrigin]):
     if o[0] == Float32(999999.0):
         o[0] = Float32(1.0)
 
 
-fn _cptr_to_string(p: OpaquePointer[MutAnyOrigin], max_len: Int = 200) -> String:
+def _cptr_to_string(p: OpaquePointer[MutAnyOrigin], max_len: Int = 200) -> String:
     if not p:
         return String("<null>")
     var cp = p.bitcast[UInt8]()
@@ -51,11 +51,11 @@ fn _cptr_to_string(p: OpaquePointer[MutAnyOrigin], max_len: Int = 200) -> String
     return s
 
 
-fn task_self() -> UInt32:
+def task_self() -> UInt32:
     return external_call["task_self_trap", UInt32]()
 
 
-fn safe_read(task: UInt32, addr: UInt64, size: UInt64, dst: UnsafePointer[UInt64, origin=MutAnyOrigin]) -> Bool:
+def safe_read(task: UInt32, addr: UInt64, size: UInt64, dst: UnsafePointer[UInt64, origin=MutAnyOrigin]) -> Bool:
     """mach_vm_read_overwrite: True + dst filled on success, False on any failure (including the
     address being unmapped) -- never a SIGSEGV to this process, unlike a bare dereference."""
     var outsize = UInt64(0)
@@ -72,14 +72,14 @@ fn safe_read(task: UInt32, addr: UInt64, size: UInt64, dst: UnsafePointer[UInt64
     return kr == 0
 
 
-fn class_name(cls_ptr: OpaquePointer[MutAnyOrigin]) -> String:
+def class_name(cls_ptr: OpaquePointer[MutAnyOrigin]) -> String:
     var namep = external_call[
         "class_getName", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
     ](cls_ptr)
     return _cptr_to_string(namep)
 
 
-fn load_class_table(mut addrs: List[Int], mut names: List[String]) raises:
+def load_class_table(mut addrs: List[Int], mut names: List[String]) raises:
     var null_buf = UnsafePointer[UInt64, origin=MutAnyOrigin]()
     var count = external_call[
         "objc_getClassList",
@@ -104,7 +104,7 @@ fn load_class_table(mut addrs: List[Int], mut names: List[String]) raises:
     buf.free()
 
 
-fn looks_like_heap_pointer(w: UInt64) -> Bool:
+def looks_like_heap_pointer(w: UInt64) -> Bool:
     # macOS ARM64 user-space heap/library addresses observed in practice: nonzero, below the
     # kernel half, above a trivial small-integer range (rules out counters/lengths like the
     # `1024` seen at word[1] in handle_int_probe.mojo's dump).
@@ -117,7 +117,7 @@ fn looks_like_heap_pointer(w: UInt64) -> Bool:
     return (w & 0x7) == 0  # 8-byte aligned, as any real object pointer must be
 
 
-fn scan_and_report(
+def scan_and_report(
     task: UInt32,
     label: String,
     addr: UInt64,

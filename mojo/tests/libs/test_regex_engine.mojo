@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from regex_engine import match_literal, match_dot_star, match_char_class, regex_match, regex_search, regex_find_first, count_matches, split_by_literal, is_valid_pattern
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -16,7 +16,7 @@ Public API:
 from std.math import sin, sqrt, pow, log
 
 
-fn glacier_mass_balance(accumulation: Float64, ablation: Float64) -> Float64:
+def glacier_mass_balance(accumulation: Float64, ablation: Float64) -> Float64:
     """Net glacier mass balance.
 
     Args:
@@ -29,7 +29,7 @@ fn glacier_mass_balance(accumulation: Float64, ablation: Float64) -> Float64:
     return accumulation - ablation
 
 
-fn ice_velocity_internal(
+def ice_velocity_internal(
     rate_factor: Float64, shear_stress: Float64, glen_n: Float64, thickness: Float64
 ) -> Float64:
     """Surface velocity from Glen's flow law (internal deformation only).
@@ -50,7 +50,7 @@ fn ice_velocity_internal(
     return 2.0 * rate_factor / (glen_n + 1.0) * pow(shear_stress, glen_n) * thickness
 
 
-fn basal_shear_stress(
+def basal_shear_stress(
     ice_thickness: Float64, surface_slope_rad: Float64
 ) -> Float64:
     """Driving (basal) shear stress: τ = ρ_ice·g·h·sin(α).
@@ -67,7 +67,7 @@ fn basal_shear_stress(
     return rho_ice * g * ice_thickness * sin(surface_slope_rad)
 
 
-fn ablation_degree_day(
+def ablation_degree_day(
     degree_day_factor: Float64, positive_degree_days: Float64
 ) -> Float64:
     """Ice/snow melt from positive degree-day model.
@@ -86,7 +86,7 @@ fn ablation_degree_day(
     return degree_day_factor * positive_degree_days
 
 
-fn ice_thickness_from_surface(
+def ice_thickness_from_surface(
     surface_slope_rad: Float64, yield_stress: Float64
 ) -> Float64:
     """Estimate ice thickness from surface slope (Nye 1952).
@@ -108,7 +108,7 @@ fn ice_thickness_from_surface(
     return yield_stress / denom
 
 
-fn snow_water_equivalent(
+def snow_water_equivalent(
     snow_depth_m: Float64, snow_density_kg_m3: Float64
 ) -> Float64:
     """Snow water equivalent: SWE = depth · density / rho_water.
@@ -125,7 +125,7 @@ fn snow_water_equivalent(
     return snow_depth_m * snow_density_kg_m3 / 1000.0
 
 
-fn equilibrium_line_altitude(
+def equilibrium_line_altitude(
     accumulation_area_ratio: Float64, max_elev: Float64, min_elev: Float64
 ) -> Float64:
     """ELA estimate from accumulation area ratio (linear hypsometry).
@@ -143,7 +143,7 @@ fn equilibrium_line_altitude(
     return max_elev - accumulation_area_ratio * (max_elev - min_elev)
 
 
-fn calving_flux(
+def calving_flux(
     terminus_velocity: Float64, ice_thickness: Float64, terminus_width: Float64
 ) -> Float64:
     """Ice calving flux at glacier terminus: F = U·H·W.
@@ -161,7 +161,7 @@ fn calving_flux(
     return terminus_velocity * ice_thickness * terminus_width
 
 
-fn sea_level_equivalent(
+def sea_level_equivalent(
     ice_mass_kg: Float64, ocean_area_m2: Float64
 ) -> Float64:
     """Sea level equivalent of a given ice mass.
@@ -181,7 +181,7 @@ fn sea_level_equivalent(
     return ice_mass_kg / (ocean_area_m2 * rho_ocean)
 
 
-fn albedo_feedback(
+def albedo_feedback(
     delta_albedo: Float64, solar_constant: Float64, latitude_factor: Float64
 ) -> Float64:
     """Radiative forcing from surface albedo change.

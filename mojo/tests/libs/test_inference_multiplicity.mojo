@@ -63,14 +63,14 @@ from inference.multiplicity import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _rejected(c: Correction) -> Bool:
+def _rejected(c: Correction) -> Bool:
     """A refusal carries no adjusted values and no rejections at all."""
     return (
         c.status != INF_OK
@@ -84,7 +84,7 @@ fn _rejected(c: Correction) -> Bool:
 from inference.multiplicity import Correction
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

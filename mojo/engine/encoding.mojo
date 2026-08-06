@@ -18,7 +18,7 @@ Public API:
 # ── build_vocabulary ──────────────────────────────────────────────────────────
 
 
-fn build_vocabulary(labels: List[String]) -> List[String]:
+def build_vocabulary(labels: List[String]) -> List[String]:
     """Extract unique labels in order of first appearance."""
     var vocab = List[String]()
     for i in range(len(labels)):
@@ -35,7 +35,7 @@ fn build_vocabulary(labels: List[String]) -> List[String]:
 # ── label_encode ──────────────────────────────────────────────────────────────
 
 
-fn label_encode(labels: List[String]) -> List[Int]:
+def label_encode(labels: List[String]) -> List[Int]:
     """Map unique string labels to integers 0, 1, 2, ... in order of first
     appearance.
 
@@ -54,7 +54,7 @@ fn label_encode(labels: List[String]) -> List[Int]:
 # ── label_decode ──────────────────────────────────────────────────────────────
 
 
-fn label_decode(encoded: List[Int], vocabulary: List[String]) -> List[String]:
+def label_decode(encoded: List[Int], vocabulary: List[String]) -> List[String]:
     """Reverse of label_encode using given vocabulary.
 
     Maps each integer index back to its string label.
@@ -73,7 +73,7 @@ fn label_decode(encoded: List[Int], vocabulary: List[String]) -> List[String]:
 # ── one_hot_encode ────────────────────────────────────────────────────────────
 
 
-fn one_hot_encode(labels: List[Int], n_classes: Int) -> List[List[Float64]]:
+def one_hot_encode(labels: List[Int], n_classes: Int) -> List[List[Float64]]:
     """Convert integer labels to one-hot vectors.
 
     Each output is a List[Float64] of length n_classes with 1.0 at the label
@@ -94,7 +94,7 @@ fn one_hot_encode(labels: List[Int], n_classes: Int) -> List[List[Float64]]:
 # ── ordinal_encode ────────────────────────────────────────────────────────────
 
 
-fn ordinal_encode(data: List[String], order: List[String]) -> List[Int]:
+def ordinal_encode(data: List[String], order: List[String]) -> List[Int]:
     """Encode based on a specified ordering.
 
     Each element in data is mapped to its index in order.
@@ -118,7 +118,7 @@ fn ordinal_encode(data: List[String], order: List[String]) -> List[Int]:
 # ── binary_encode ─────────────────────────────────────────────────────────────
 
 
-fn binary_encode(value: Int, n_bits: Int) -> List[Int]:
+def binary_encode(value: Int, n_bits: Int) -> List[Int]:
     """Encode integer as binary digits (MSB first).
 
     Example: binary_encode(5, 4) -> [0, 1, 0, 1]
@@ -138,7 +138,7 @@ fn binary_encode(value: Int, n_bits: Int) -> List[Int]:
 # ── frequency_encode ──────────────────────────────────────────────────────────
 
 
-fn frequency_encode(labels: List[String]) -> List[Float64]:
+def frequency_encode(labels: List[String]) -> List[Float64]:
     """Encode each label with its frequency (count/total) in the dataset.
 
     Example: ["a","a","b","a","b"] -> [0.6, 0.6, 0.4, 0.6, 0.4]

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pattern import glob_match, starts_with, ends_with, contains, count_occurrences, replace_all, split_string, pad_left, pad_right, trim
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

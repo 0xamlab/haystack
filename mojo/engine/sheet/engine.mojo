@@ -201,7 +201,7 @@ struct _Ctx(Copyable, Movable):
     var dc: Int
     var array_mode: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.cell = -1
         self.sheet = 0
         self.row = 0
@@ -228,7 +228,7 @@ struct _EngineState(Copyable, Movable):
     var cycle_names: List[String]  # first few cycles, cells named
     var cycle_cells: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.values = List[CellValue]()
         self.state = List[Int]()
         self.discovered = List[Bool]()
@@ -245,7 +245,7 @@ struct _EngineState(Copyable, Movable):
         self.cycle_names = List[String]()
         self.cycle_cells = 0
 
-    fn charge(mut self, n: Int) -> Bool:
+    def charge(mut self, n: Int) -> Bool:
         """Charge `n` ops; False once the budget is gone."""
         self.ops += n
         if self.ops > self.budget:
@@ -254,7 +254,7 @@ struct _EngineState(Copyable, Movable):
         return True
 
 
-fn _cell_name(wb: Workbook, ci: Int) -> String:
+def _cell_name(wb: Workbook, ci: Int) -> String:
     var out = String("")
     var sh = wb.c_sheet[ci]
     if sh >= 0 and sh < len(wb.sheet_names):
@@ -265,7 +265,7 @@ fn _cell_name(wb: Workbook, ci: Int) -> String:
 
 
 # ── Deref / cycle detection ──────────────────────────────────────────────────
-fn _deref_cell(wb: Workbook, mut st: _EngineState, target: Int) -> CellValue:
+def _deref_cell(wb: Workbook, mut st: _EngineState, target: Int) -> CellValue:
     """The value stored at cell index `target`, or PENDING/CYCLE."""
     if wb.c_froot[target] < 0:
         # constant cell
@@ -294,7 +294,7 @@ fn _deref_cell(wb: Workbook, mut st: _EngineState, target: Int) -> CellValue:
     return cv_pending(target)
 
 
-fn _record_cycle(wb: Workbook, mut st: _EngineState, target: Int):
+def _record_cycle(wb: Workbook, mut st: _EngineState, target: Int):
     """Name the cycle target -> ... -> cur_cell -> target and mark every cell
     on it BLACK with a typed CYCLE value."""
     st.cycle_count += 1
@@ -331,7 +331,7 @@ fn _record_cycle(wb: Workbook, mut st: _EngineState, target: Int):
 
 
 # ── Taint combination ────────────────────────────────────────────────────────
-fn _taint_rank(v: CellValue) -> Int:
+def _taint_rank(v: CellValue) -> Int:
     if v.kind == VK_PENDING:
         return 3
     if v.kind == VK_UNSUP:
@@ -341,14 +341,14 @@ fn _taint_rank(v: CellValue) -> Int:
     return 0
 
 
-fn _worse_taint(a: CellValue, b: CellValue) -> CellValue:
+def _worse_taint(a: CellValue, b: CellValue) -> CellValue:
     if _taint_rank(a) >= _taint_rank(b):
         return a.copy()
     return b.copy()
 
 
 # ── Scalarisation / coercion ─────────────────────────────────────────────────
-fn _materialize(
+def _materialize(
     wb: Workbook, mut st: _EngineState, rng: CellValue, mut rows: Int, mut cols: Int
 ) -> CellValue:
     """RANGE -> ARRAY (elements in st.arr_pool). Bounded by MAX_ARRAY_ELEMS
@@ -407,7 +407,7 @@ fn _materialize(
     return out^
 
 
-fn _array_elem(st: _EngineState, arr: CellValue, r: Int, c: Int) -> CellValue:
+def _array_elem(st: _EngineState, arr: CellValue, r: Int, c: Int) -> CellValue:
     """Broadcast-aware element access: a 1-wide/1-tall dimension repeats;
     anything else out of shape is #N/A (Excel array semantics)."""
     var rr = r
@@ -424,7 +424,7 @@ fn _array_elem(st: _EngineState, arr: CellValue, r: Int, c: Int) -> CellValue:
     return st.arr_pool[idx].copy()
 
 
-fn _to_scalar(wb: Workbook, mut st: _EngineState, ctx: _Ctx, v: CellValue) -> CellValue:
+def _to_scalar(wb: Workbook, mut st: _EngineState, ctx: _Ctx, v: CellValue) -> CellValue:
     """RANGE -> one cell value. In array mode this is the (0,0) element; in
     scalar mode it is Excel's implicit intersection against the formula cell
     (single column spanning the formula's row, single row spanning its
@@ -461,7 +461,7 @@ fn _to_scalar(wb: Workbook, mut st: _EngineState, ctx: _Ctx, v: CellValue) -> Ce
     return v.copy()
 
 
-fn _to_number(v: CellValue, mut out_num: Float64) -> Int:
+def _to_number(v: CellValue, mut out_num: Float64) -> Int:
     """Scalar -> Float64 with Excel coercion. Returns 0 ok, else an error
     code. EMPTY coerces to 0; text must parse as one plain decimal."""
     if v.kind == VK_NUM:
@@ -484,7 +484,7 @@ fn _to_number(v: CellValue, mut out_num: Float64) -> Int:
     return ERR_VALUE
 
 
-fn _to_text(v: CellValue) -> String:
+def _to_text(v: CellValue) -> String:
     if v.kind == VK_TEXT:
         return v.text
     if v.kind == VK_NUM:
@@ -496,7 +496,7 @@ fn _to_text(v: CellValue) -> String:
     return String("")
 
 
-fn _to_bool(v: CellValue, mut out_b: Bool) -> Int:
+def _to_bool(v: CellValue, mut out_b: Bool) -> Int:
     """Scalar -> logical. Numbers: nonzero. Text: TRUE/FALSE (any case) or a
     number-looking string; anything else #VALUE!. EMPTY -> FALSE."""
     if v.kind == VK_BOOL:
@@ -526,7 +526,7 @@ fn _to_bool(v: CellValue, mut out_b: Bool) -> Int:
     return ERR_VALUE
 
 
-fn _type_rank(v: CellValue) -> Int:
+def _type_rank(v: CellValue) -> Int:
     # Excel ordering: numbers < text < FALSE < TRUE (bool ranks above text)
     if v.kind == VK_NUM:
         return 0
@@ -537,7 +537,7 @@ fn _type_rank(v: CellValue) -> Int:
     return 0
 
 
-fn _compare_scalars(l: CellValue, r: CellValue, mut ord_out: Int) -> Int:
+def _compare_scalars(l: CellValue, r: CellValue, mut ord_out: Int) -> Int:
     """Excel `=`/`<`-family comparison. Returns 0 ok (ord_out -1/0/1), else
     an error code. EMPTY coerces to the other side's zero value."""
     var a = l.copy()
@@ -598,13 +598,13 @@ struct _Agg(Copyable, Movable):
     var err: Int
     var taint: CellValue
 
-    fn __init__(out self):
+    def __init__(out self):
         self.nums = List[Float64]()
         self.err = 0
         self.taint = CellValue()
 
 
-fn _agg_cell_value(mut agg: _Agg, v: CellValue):
+def _agg_cell_value(mut agg: _Agg, v: CellValue):
     """RANGE-cell semantics: numbers count, bools/text/blanks are ignored,
     errors and taints propagate."""
     if agg.err != 0:
@@ -617,7 +617,7 @@ fn _agg_cell_value(mut agg: _Agg, v: CellValue):
         agg.taint = _worse_taint(agg.taint, v)
 
 
-fn _agg_scalar_value(mut agg: _Agg, v: CellValue):
+def _agg_scalar_value(mut agg: _Agg, v: CellValue):
     """Direct-argument semantics: bools count as 0/1, numeric text counts,
     non-numeric text is #VALUE!."""
     if agg.err != 0:
@@ -636,7 +636,7 @@ fn _agg_scalar_value(mut agg: _Agg, v: CellValue):
     agg.nums.append(x)
 
 
-fn _agg_range(wb: Workbook, mut st: _EngineState, rng: CellValue, mut agg: _Agg):
+def _agg_range(wb: Workbook, mut st: _EngineState, rng: CellValue, mut agg: _Agg):
     """Walk the STORED cells of a rectangle (blanks contribute nothing to any
     numeric aggregate), charging the walk."""
     var r0 = rng.b
@@ -680,7 +680,7 @@ fn _agg_range(wb: Workbook, mut st: _EngineState, rng: CellValue, mut agg: _Agg)
             return
 
 
-fn _agg_value(wb: Workbook, mut st: _EngineState, ctx: _Ctx, v: CellValue, mut agg: _Agg):
+def _agg_value(wb: Workbook, mut st: _EngineState, ctx: _Ctx, v: CellValue, mut agg: _Agg):
     if v.kind == VK_RANGE:
         _agg_range(wb, st, v, agg)
         return
@@ -718,7 +718,7 @@ struct _Crit(Copyable, Movable):
     var err: Int
     var wild: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.op = _CEQ
         self.kind = _CK_EMPTY
         self.num = 0.0
@@ -727,7 +727,7 @@ struct _Crit(Copyable, Movable):
         self.wild = False
 
 
-fn _crit_of(v: CellValue) -> _Crit:
+def _crit_of(v: CellValue) -> _Crit:
     var c = _Crit()
     if v.kind == VK_NUM:
         c.kind = _CK_NUM
@@ -804,11 +804,11 @@ fn _crit_of(v: CellValue) -> _Crit:
     return c^
 
 
-fn _crit_err_code(s: String) -> Int:
+def _crit_err_code(s: String) -> Int:
     return error_code_of(s)
 
 
-fn _crit_matches_blank(c: _Crit) -> Bool:
+def _crit_matches_blank(c: _Crit) -> Bool:
     """Does this criterion match a truly-empty cell? `=`/"" do; `<>x` does
     (a blank is not x); bare `<>` means non-blank and does not."""
     if c.kind == _CK_EMPTY:
@@ -816,7 +816,7 @@ fn _crit_matches_blank(c: _Crit) -> Bool:
     return c.op == _CNE
 
 
-fn _crit_match(c: _Crit, v: CellValue) -> Bool:
+def _crit_match(c: _Crit, v: CellValue) -> Bool:
     if v.kind == VK_EMPTY:
         return _crit_matches_blank(c)
     if c.kind == _CK_EMPTY:
@@ -859,7 +859,7 @@ fn _crit_match(c: _Crit, v: CellValue) -> Bool:
     return False
 
 
-fn _fcmp(a: Float64, b: Float64) -> Int:
+def _fcmp(a: Float64, b: Float64) -> Int:
     if a < b:
         return -1
     if a > b:
@@ -867,7 +867,7 @@ fn _fcmp(a: Float64, b: Float64) -> Int:
     return 0
 
 
-fn _ord_ok(op: Int, ord_v: Int) -> Bool:
+def _ord_ok(op: Int, ord_v: Int) -> Bool:
     if op == _CEQ:
         return ord_v == 0
     if op == _CNE:
@@ -882,7 +882,7 @@ fn _ord_ok(op: Int, ord_v: Int) -> Bool:
 
 
 # ── Excel serial dates (1900 system, leap bug preserved) ─────────────────────
-fn _serial_to_ymd(serial: Int, mut y: Int, mut m: Int, mut d: Int) -> Bool:
+def _serial_to_ymd(serial: Int, mut y: Int, mut m: Int, mut d: Int) -> Bool:
     """Excel 1900-system serial -> (year, month, day). Serial 60 is the fake
     1900-02-29; 0 is 'January 0, 1900'. False outside [0, 2958465]."""
     if serial < 0 or serial > EXCEL_MAX_SERIAL:
@@ -919,7 +919,7 @@ fn _serial_to_ymd(serial: Int, mut y: Int, mut m: Int, mut d: Int) -> Bool:
 
 
 # ── Reference resolution (shared-formula deltas applied here) ────────────────
-fn _shifted_range_of_node(nd: FNode, ctx: _Ctx) -> CellValue:
+def _shifted_range_of_node(nd: FNode, ctx: _Ctx) -> CellValue:
     """NK_REF/NK_RANGE -> VK_RANGE with follower deltas applied to RELATIVE
     corners; #REF! when shifted off the grid or the sheet is unknown."""
     var sheet = nd.a
@@ -952,7 +952,7 @@ fn _shifted_range_of_node(nd: FNode, ctx: _Ctx) -> CellValue:
 
 
 # ── The expression evaluator ─────────────────────────────────────────────────
-fn _eval(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth: Int) -> CellValue:
+def _eval(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth: Int) -> CellValue:
     if depth > MAX_EVAL_DEPTH:
         return cv_unsup(String("DEEP_EVAL"))
     if ni < 0 or ni >= len(wb.nodes):
@@ -1011,7 +1011,7 @@ fn _eval(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth: Int) -> 
     return cv_unsup(String("INTERNAL_NODE"))
 
 
-fn _apply_unary(
+def _apply_unary(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, op: Int, var x: CellValue
 ) -> CellValue:
     if x.kind == VK_RANGE or x.kind == VK_ARRAY:
@@ -1043,7 +1043,7 @@ fn _apply_unary(
     return _apply_unary_scalar(op, x)
 
 
-fn _apply_unary_scalar(op: Int, v: CellValue) -> CellValue:
+def _apply_unary_scalar(op: Int, v: CellValue) -> CellValue:
     if _taint_rank(v) > 0:
         return v.copy()
     var x: Float64 = 0.0
@@ -1056,7 +1056,7 @@ fn _apply_unary_scalar(op: Int, v: CellValue) -> CellValue:
     return cv_num(x / 100.0)
 
 
-fn _apply_binary(
+def _apply_binary(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, op: Int, var l: CellValue, var r: CellValue
 ) -> CellValue:
     if l.kind == VK_PENDING:
@@ -1124,7 +1124,7 @@ fn _apply_binary(
     return _apply_binary_scalar(op, l, r)
 
 
-fn _apply_binary_scalar(op: Int, l: CellValue, r: CellValue) -> CellValue:
+def _apply_binary_scalar(op: Int, l: CellValue, r: CellValue) -> CellValue:
     if _taint_rank(l) > 0 or _taint_rank(r) > 0:
         return _worse_taint(l, r)
     if op == OP_CAT:
@@ -1184,7 +1184,7 @@ fn _apply_binary_scalar(op: Int, l: CellValue, r: CellValue) -> CellValue:
 
 
 # ── Function dispatch ────────────────────────────────────────────────────────
-fn _call_function(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth: Int) -> CellValue:
+def _call_function(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth: Int) -> CellValue:
     var fid = wb.nodes[ni].b
     var argc = wb.nodes[ni].argc
     var arg0 = wb.nodes[ni].arg_start
@@ -1318,7 +1318,7 @@ fn _call_function(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth:
     return _dispatch_eager(wb, st, actx, fid, args)
 
 
-fn _dispatch_eager(
+def _dispatch_eager(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if fid == FID_SUM or fid == FID_MIN or fid == FID_MAX or fid == FID_AVERAGE or fid == FID_STDEV:
@@ -1386,7 +1386,7 @@ fn _dispatch_eager(
     return cv_unsup(String("INTERNAL_FID"))
 
 
-fn _if_array(
+def _if_array(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, var cond: CellValue, depth: Int
 ) -> CellValue:
     """Array-context IF: elementwise condition, both branches evaluated once,
@@ -1463,7 +1463,7 @@ fn _if_array(
 
 
 # ── Individual functions ─────────────────────────────────────────────────────
-fn _fn_numeric_agg(
+def _fn_numeric_agg(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     var agg = _Agg()
@@ -1514,7 +1514,7 @@ fn _fn_numeric_agg(
     return cv_num(sqrt(ss / Float64(n - 1)))
 
 
-fn _fn_row(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_row(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) == 0:
         return cv_num(Float64(ctx.row + 1))
     if len(args) != 1:
@@ -1545,7 +1545,7 @@ fn _fn_row(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue])
     return cv_num(Float64(a.b + 1))
 
 
-fn _trunc_int(x: Float64, mut out_i: Int) -> Bool:
+def _trunc_int(x: Float64, mut out_i: Int) -> Bool:
     """Truncate toward zero; refuses past the exact-integer grid (rule 4c:
     Float64(Int(v)) outside range is poison, not truncation)."""
     if x != x or x >= 2147483648.0 or x <= -2147483648.0:
@@ -1554,7 +1554,7 @@ fn _trunc_int(x: Float64, mut out_i: Int) -> Bool:
     return True
 
 
-fn _fn_offset(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_offset(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 3 or len(args) > 5:
         return cv_err(ERR_VALUE)
     var base = args[0].copy()
@@ -1623,7 +1623,7 @@ fn _fn_offset(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValu
     return cv_range(base.a, r0, c0, r1, c1)
 
 
-fn _fn_indirect(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_indirect(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 1 or len(args) > 2:
         return cv_err(ERR_VALUE)
     if len(args) == 2 and args[1].kind != VK_EMPTY:
@@ -1659,7 +1659,7 @@ fn _fn_indirect(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellVa
     return cv_range(sheet, rp.r0, rp.c0, rp.r1, rp.c1)
 
 
-fn _fn_and(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_and(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     var seen = False
     var all_true = True
     for i in range(len(args)):
@@ -1695,7 +1695,7 @@ fn _fn_and(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue])
     return cv_bool(all_true)
 
 
-fn _and_over_array_or_range(
+def _and_over_array_or_range(
     wb: Workbook,
     mut st: _EngineState,
     v: CellValue,
@@ -1748,7 +1748,7 @@ fn _and_over_array_or_range(
             truth = truth and e.num != 0.0
 
 
-fn _fn_time(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_time(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) != 3:
         return cv_err(ERR_VALUE)
     var parts = List[Int]()
@@ -1771,7 +1771,7 @@ fn _fn_time(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]
     return cv_num(Float64(total) / 86400.0)
 
 
-fn _fn_abs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_abs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) != 1:
         return cv_err(ERR_VALUE)
     var v = _to_scalar(wb, st, ctx, args[0])
@@ -1784,7 +1784,7 @@ fn _fn_abs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue])
     return cv_num(fabs(x))
 
 
-fn _fn_year_month(
+def _fn_year_month(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if len(args) != 1:
@@ -1814,7 +1814,7 @@ fn _fn_year_month(
     return cv_num(Float64(m))
 
 
-fn _fn_textafter(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_textafter(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 2 or len(args) > 6:
         return cv_err(ERR_VALUE)
     var tv = _to_scalar(wb, st, ctx, args[0])
@@ -1906,11 +1906,11 @@ fn _fn_textafter(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellV
     return cv_text(_bs_str(obuf))
 
 
-fn _range_dims_equal(a: CellValue, b: CellValue) -> Bool:
+def _range_dims_equal(a: CellValue, b: CellValue) -> Bool:
     return a.d - a.b == b.d - b.b and a.e - a.c == b.e - b.c
 
 
-fn _fn_countif(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_countif(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) != 2:
         return cv_err(ERR_VALUE)
     var rng = args[0].copy()
@@ -1939,7 +1939,7 @@ fn _fn_countif(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellVal
     return cv_num(Float64(total))
 
 
-fn _countif_walk(
+def _countif_walk(
     wb: Workbook,
     mut st: _EngineState,
     rng: CellValue,
@@ -1992,7 +1992,7 @@ fn _countif_walk(
             matched += 1
 
 
-fn _fn_countifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_countifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     var n = len(args)
     if n < 2 or n % 2 != 0:
         return cv_err(ERR_VALUE)
@@ -2081,7 +2081,7 @@ fn _fn_countifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellVa
     return cv_num(Float64(count))
 
 
-fn _fn_sumif(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_sumif(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 2 or len(args) > 3:
         return cv_err(ERR_VALUE)
     var rng = args[0].copy()
@@ -2170,7 +2170,7 @@ fn _fn_sumif(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue
     return cv_num(total)
 
 
-fn _lookup_compatible(lookup: CellValue, cand: CellValue) -> Bool:
+def _lookup_compatible(lookup: CellValue, cand: CellValue) -> Bool:
     """Same-type comparability for lookup scans (Excel's binary search only
     ever compares like types)."""
     if lookup.kind == VK_NUM and cand.kind == VK_NUM:
@@ -2182,7 +2182,7 @@ fn _lookup_compatible(lookup: CellValue, cand: CellValue) -> Bool:
     return False
 
 
-fn _lookup_cmp(lookup: CellValue, cand: CellValue) -> Int:
+def _lookup_cmp(lookup: CellValue, cand: CellValue) -> Int:
     """cand vs lookup: -1 below, 0 equal, 1 above. Only called on
     _lookup_compatible pairs."""
     if lookup.kind == VK_TEXT:
@@ -2190,7 +2190,7 @@ fn _lookup_cmp(lookup: CellValue, cand: CellValue) -> Int:
     return _fcmp(cand.num, lookup.num)
 
 
-fn _fn_vlookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_vlookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 3 or len(args) > 4:
         return cv_err(ERR_VALUE)
     var lookup = _to_scalar(wb, st, ctx, args[0])
@@ -2273,7 +2273,7 @@ fn _fn_vlookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellVal
     return _deref_cell(wb, st, target)
 
 
-fn _fn_match(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_match(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 2 or len(args) > 3:
         return cv_err(ERR_VALUE)
     var lookup = _to_scalar(wb, st, ctx, args[0])
@@ -2364,7 +2364,7 @@ fn _fn_match(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue
     return cv_num(Float64(best_pos))
 
 
-fn _fn_index(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_index(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 2 or len(args) > 3:
         return cv_err(ERR_VALUE)
     var rng = args[0].copy()
@@ -2447,7 +2447,7 @@ fn _fn_index(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue
     return cv_range(rng.a, r0, c0, r1, c1)
 
 
-fn _fn_rank(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_rank(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 2 or len(args) > 3:
         return cv_err(ERR_VALUE)
     var xv = _to_scalar(wb, st, ctx, args[0])
@@ -2495,7 +2495,7 @@ fn _fn_rank(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]
 
 
 # ── Discovery: push a cell's static dependencies ─────────────────────────────
-fn _push_cell(mut st: _EngineState, ci: Int, parent: Int):
+def _push_cell(mut st: _EngineState, ci: Int, parent: Int):
     if st.state[ci] == _WHITE:
         st.state[ci] = _QUEUED
         st.parent[ci] = parent
@@ -2511,7 +2511,7 @@ fn _push_cell(mut st: _EngineState, ci: Int, parent: Int):
             st.max_stack = len(st.stack)
 
 
-fn _discover_range_deps(
+def _discover_range_deps(
     wb: Workbook, mut st: _EngineState, sheet: Int, r0: Int, c0: Int, r1: Int, c1: Int, owner: Int
 ):
     """Queue every stored FORMULA cell inside the rectangle."""
@@ -2546,7 +2546,7 @@ fn _discover_range_deps(
             _push_cell(st, ci, owner)
 
 
-fn _discover_cell(wb: Workbook, mut st: _EngineState, owner: Int):
+def _discover_cell(wb: Workbook, mut st: _EngineState, owner: Int):
     """Walk the formula tree of `owner` (iteratively — a node stack, never
     machine recursion) and queue its static dependencies. Dynamic targets
     (whatever OFFSET/INDIRECT resolve to at eval time) join later via
@@ -2586,7 +2586,7 @@ fn _discover_cell(wb: Workbook, mut st: _EngineState, owner: Int):
                 todo.append(wb.pool[wb.nodes[ni].arg_start + i])
 
 
-fn _ctx_of(wb: Workbook, ci: Int) -> _Ctx:
+def _ctx_of(wb: Workbook, ci: Int) -> _Ctx:
     var ctx = _Ctx()
     ctx.cell = ci
     ctx.sheet = wb.c_sheet[ci]
@@ -2598,7 +2598,7 @@ fn _ctx_of(wb: Workbook, ci: Int) -> _Ctx:
     return ctx^
 
 
-fn _finalize(wb: Workbook, mut st: _EngineState, ctx: _Ctx, var v: CellValue) -> CellValue:
+def _finalize(wb: Workbook, mut st: _EngineState, ctx: _Ctx, var v: CellValue) -> CellValue:
     """Turn an evaluation result into the stored cell value: references
     dereference (array masters take their (0,0) element), arrays take (0,0),
     and a final EMPTY displays as 0 — exactly Excel."""
@@ -2631,7 +2631,7 @@ struct RecalcOutcome(Copyable, Movable):
     var cycle_names: List[String]
     var values: List[CellValue]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.status = RECALC_OK
         self.evaluated = 0
         self.not_evaluated = 0
@@ -2643,7 +2643,7 @@ struct RecalcOutcome(Copyable, Movable):
         self.values = List[CellValue]()
 
 
-fn _run_cell(wb: Workbook, mut st: _EngineState, root_cell: Int):
+def _run_cell(wb: Workbook, mut st: _EngineState, root_cell: Int):
     _push_cell(st, root_cell, -1)
     while len(st.stack) > 0:
         if st.exhausted:
@@ -2685,7 +2685,7 @@ fn _run_cell(wb: Workbook, mut st: _EngineState, root_cell: Int):
         st.arr_pool.clear()
 
 
-fn recalc_workbook(wb: Workbook, budget_ops: Int) -> RecalcOutcome:
+def recalc_workbook(wb: Workbook, budget_ops: Int) -> RecalcOutcome:
     """Demand-driven topological recalculation of every formula cell.
     `budget_ops <= 0` selects DEFAULT_BUDGET. Never raises; budget
     exhaustion returns status RECALC_BUDGET with everything evaluated so far.
@@ -2727,7 +2727,7 @@ fn recalc_workbook(wb: Workbook, budget_ops: Int) -> RecalcOutcome:
 
 
 # ── Census functions 24-48 (see formula.mojo for the ordering note) ──────────
-fn _fn_column(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_column(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) == 0:
         return cv_num(Float64(ctx.col + 1))
     if len(args) != 1:
@@ -2757,7 +2757,7 @@ fn _fn_column(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValu
     return cv_num(Float64(a.c + 1))
 
 
-fn _fn_weekday(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_weekday(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 1 or len(args) > 2:
         return cv_err(ERR_VALUE)
     var v = _to_scalar(wb, st, ctx, args[0])
@@ -2795,7 +2795,7 @@ fn _fn_weekday(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellVal
     return cv_err(ERR_NUM)
 
 
-fn _fn_simple_numeric(
+def _fn_simple_numeric(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if fid == FID_INT:
@@ -2860,7 +2860,7 @@ fn _fn_simple_numeric(
     return cv_num(floor(xe) - floor(xs))
 
 
-fn _utf8_len(s: String) -> Int:
+def _utf8_len(s: String) -> Int:
     """Character count (codepoints) — Excel's LEN counts characters, and the
     corpus is UTF-8; continuation bytes (10xxxxxx) do not count."""
     var bs = s.as_bytes()
@@ -2871,7 +2871,7 @@ fn _utf8_len(s: String) -> Int:
     return n
 
 
-fn _utf8_slice(s: String, from_start: Bool, n_chars: Int) -> String:
+def _utf8_slice(s: String, from_start: Bool, n_chars: Int) -> String:
     var bs = s.as_bytes()
     var nb = len(bs)
     # character start offsets
@@ -2895,7 +2895,7 @@ fn _utf8_slice(s: String, from_start: Bool, n_chars: Int) -> String:
     return _bs_str(buf)
 
 
-fn _fn_text_slice(
+def _fn_text_slice(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if len(args) < 1 or len(args) > 2:
@@ -2924,7 +2924,7 @@ fn _fn_text_slice(
     return cv_text(_utf8_slice(text, fid == FID_LEFT, n))
 
 
-fn _ymd_to_serial(y: Int, m: Int, d: Int) -> Int:
+def _ymd_to_serial(y: Int, m: Int, d: Int) -> Int:
     """Civil (y, m, d) -> Excel 1900 serial, preserving the leap bug. Months
     outside 1..12 and days outside the month ROLL (Excel semantics). Returns
     -1 below serial 0."""
@@ -2954,7 +2954,7 @@ fn _ymd_to_serial(y: Int, m: Int, d: Int) -> Int:
     return serial
 
 
-fn _fn_edate_eomonth(
+def _fn_edate_eomonth(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if len(args) != 2:
@@ -3005,7 +3005,7 @@ fn _fn_edate_eomonth(
     return cv_num(Float64(serial))
 
 
-fn _fn_substitute(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_substitute(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) < 3 or len(args) > 4:
         return cv_err(ERR_VALUE)
     var tv = _to_scalar(wb, st, ctx, args[0])
@@ -3067,7 +3067,7 @@ fn _fn_substitute(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[Cell
     return cv_text(_bs_str(obuf))
 
 
-fn _pow10_int(n: Int) -> Float64:
+def _pow10_int(n: Int) -> Float64:
     var p: Float64 = 1.0
     var k = n if n >= 0 else -n
     if k > 308:
@@ -3077,7 +3077,7 @@ fn _pow10_int(n: Int) -> Float64:
     return 1.0 / p if n < 0 else p
 
 
-fn _fn_round_directed(
+def _fn_round_directed(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if len(args) < 1 or len(args) > 2:
@@ -3119,7 +3119,7 @@ fn _fn_round_directed(
     return cv_num(out)
 
 
-fn _fn_sumproduct(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_sumproduct(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) == 0:
         return cv_err(ERR_VALUE)
     var arrays = List[CellValue]()
@@ -3174,7 +3174,7 @@ fn _fn_sumproduct(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[Cell
     return cv_num(total)
 
 
-fn _fn_sumifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_sumifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     var n = len(args)
     if n < 3 or (n - 1) % 2 != 0:
         return cv_err(ERR_VALUE)
@@ -3282,7 +3282,7 @@ fn _fn_sumifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValu
     return cv_num(total)
 
 
-fn _lookup_over_array(
+def _lookup_over_array(
     wb: Workbook,
     mut st: _EngineState,
     ctx: _Ctx,
@@ -3336,7 +3336,7 @@ fn _lookup_over_array(
     return _deref_cell(wb, st, target)
 
 
-fn _fn_lookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_lookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     """Vector-form LOOKUP: last value <= lookup in the (assumed sorted)
     lookup vector, result from the result vector (or the lookup vector). The
     2-argument ARRAY form searches the first column and answers from the last
@@ -3452,7 +3452,7 @@ fn _fn_lookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValu
     return _deref_cell(wb, st, target)
 
 
-fn _heap_sort_desc(mut a: List[Float64]):
+def _heap_sort_desc(mut a: List[Float64]):
     """In-place iterative heapsort, descending. New code in the new namespace
     because the frozen insertion_sort is O(n^2) and LARGE ranges reach 10^5
     cells; no recursion, O(n log n)."""
@@ -3471,7 +3471,7 @@ fn _heap_sort_desc(mut a: List[Float64]):
         end -= 1
 
 
-fn _sift_down_min(mut a: List[Float64], start: Int, end: Int):
+def _sift_down_min(mut a: List[Float64], start: Int, end: Int):
     var root = start
     while True:
         var child = 2 * root + 1
@@ -3488,7 +3488,7 @@ fn _sift_down_min(mut a: List[Float64], start: Int, end: Int):
             return
 
 
-fn _fn_large(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_large(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) != 2:
         return cv_err(ERR_VALUE)
     var agg = _Agg()
@@ -3514,7 +3514,7 @@ fn _fn_large(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue
     return cv_num(nums[k - 1])
 
 
-fn _fn_or(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_or(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     var seen = False
     var any_true = False
     for i in range(len(args)):
@@ -3562,7 +3562,7 @@ fn _fn_or(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) 
     return cv_bool(any_true)
 
 
-fn _or_probe(
+def _or_probe(
     wb: Workbook,
     mut st: _EngineState,
     v: CellValue,
@@ -3613,7 +3613,7 @@ fn _or_probe(
                 all_false = False
 
 
-fn _fn_rows(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_rows(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) != 1:
         return cv_err(ERR_VALUE)
     var a = args[0].copy()
@@ -3628,7 +3628,7 @@ fn _fn_rows(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]
     return cv_err(ERR_VALUE)
 
 
-fn _fn_is_kind(
+def _fn_is_kind(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     if len(args) != 1:
@@ -3651,7 +3651,7 @@ fn _fn_is_kind(
     return cv_bool(s.kind == VK_NUM)
 
 
-fn _fn_date(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
+def _fn_date(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     if len(args) != 3:
         return cv_err(ERR_VALUE)
     var parts = List[Int]()
@@ -3679,7 +3679,7 @@ fn _fn_date(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]
 
 
 # ── Array lifting of scalar-slot arguments ────────────────────────────────────
-fn _array_ctx_slot(fid: Int, i: Int) -> Bool:
+def _array_ctx_slot(fid: Int, i: Int) -> Bool:
     """True when slot `i` of `fid` is a VECTOR/REFERENCE slot: Excel performs
     NO implicit intersection there, so a computed operand inside it must stay
     an array. Without this, `LOOKUP(2,1/($A$3:$A7<>""),$A$3:$A7)` in a row
@@ -3695,7 +3695,7 @@ fn _array_ctx_slot(fid: Int, i: Int) -> Bool:
     return False
 
 
-fn _lift_slot(fid: Int, i: Int, argc: Int) -> Bool:
+def _lift_slot(fid: Int, i: Int, argc: Int) -> Bool:
     """True when argument slot `i` of `fid` is a SCALAR slot that broadcasts
     when given an array. Range-consuming slots (lookup tables, criteria
     ranges, aggregate ranges) never lift."""
@@ -3722,7 +3722,7 @@ fn _lift_slot(fid: Int, i: Int, argc: Int) -> Bool:
     return False
 
 
-fn _maybe_lift(
+def _maybe_lift(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, fid: Int, args: List[CellValue]
 ) -> CellValue:
     """When any liftable slot holds an array (or a >1-cell range that scalar
@@ -3798,7 +3798,7 @@ fn _maybe_lift(
     return outv^
 
 
-fn _match_over_array(
+def _match_over_array(
     wb: Workbook, mut st: _EngineState, ctx: _Ctx, lookup: CellValue, vec: CellValue,
     args: List[CellValue],
 ) -> CellValue:

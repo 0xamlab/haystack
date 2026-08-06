@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from virology import basic_reproduction_number, viral_doubling_time, plaque_forming_units, burst_size, eclipse_period, neutralisation_titre, antiviral_ic50, virus_decay_rate, infection_threshold, herd_immunity_threshold_viro
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

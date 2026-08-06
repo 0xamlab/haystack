@@ -43,7 +43,7 @@ def _assert_close(got: Float64, expected: Float64, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _ramp(width: Int, height: Int) -> List[List[Float64]]:
+def _ramp(width: Int, height: Int) -> List[List[Float64]]:
     """Grid where pixel(r,c) = r*width + c."""
     var g = List[List[Float64]]()
     for r in range(height):
@@ -54,7 +54,7 @@ fn _ramp(width: Int, height: Int) -> List[List[Float64]]:
     return g^
 
 
-fn _constant(width: Int, height: Int, value: Float64) -> List[List[Float64]]:
+def _constant(width: Int, height: Int, value: Float64) -> List[List[Float64]]:
     var g = List[List[Float64]]()
     for _ in range(height):
         var row = List[Float64]()

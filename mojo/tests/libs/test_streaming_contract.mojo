@@ -71,7 +71,7 @@ from streaming.contract import (
 comptime WRAP_FACTOR: Int = 6148914691236517206
 
 
-fn _close(got: Float64, want: Float64) -> Bool:
+def _close(got: Float64, want: Float64) -> Bool:
     """Equality within a tolerance scaled by THE JUDGED NUMBER's own magnitude."""
     var diff = got - want
     if diff < 0.0:
@@ -79,7 +79,7 @@ fn _close(got: Float64, want: Float64) -> Bool:
     return diff <= stm_tolerance(want, 0.0)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

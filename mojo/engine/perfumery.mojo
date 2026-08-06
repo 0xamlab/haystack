@@ -23,7 +23,7 @@ Public API:
 # ── concentration_parfum ─────────────────────────────────────────────────────
 
 
-fn concentration_parfum(
+def concentration_parfum(
     fragrance_oil_ml: Float64, total_ml: Float64
 ) -> Float64:
     """Fragrance concentration C = oil/total * 100 (percent)."""
@@ -33,7 +33,7 @@ fn concentration_parfum(
 # ── dilution_ratio ───────────────────────────────────────────────────────────
 
 
-fn dilution_ratio(
+def dilution_ratio(
     concentrate_ml: Float64, diluent_ml: Float64
 ) -> Float64:
     """Dilution ratio = concentrate / (concentrate + diluent)."""
@@ -43,7 +43,7 @@ fn dilution_ratio(
 # ── evaporation_rate_relative ────────────────────────────────────────────────
 
 
-fn evaporation_rate_relative(
+def evaporation_rate_relative(
     substance_rate: Float64, reference_rate: Float64
 ) -> Float64:
     """Relative evaporation rate RER = substance / reference."""
@@ -53,7 +53,7 @@ fn evaporation_rate_relative(
 # ── top_note_duration ────────────────────────────────────────────────────────
 
 
-fn top_note_duration() -> Float64:
+def top_note_duration() -> Float64:
     """Typical top note duration in minutes (~30 min)."""
     return 30.0
 
@@ -61,7 +61,7 @@ fn top_note_duration() -> Float64:
 # ── middle_note_duration ─────────────────────────────────────────────────────
 
 
-fn middle_note_duration() -> Float64:
+def middle_note_duration() -> Float64:
     """Typical middle (heart) note duration in minutes (~4 hours)."""
     return 240.0
 
@@ -69,7 +69,7 @@ fn middle_note_duration() -> Float64:
 # ── base_note_duration ───────────────────────────────────────────────────────
 
 
-fn base_note_duration() -> Float64:
+def base_note_duration() -> Float64:
     """Typical base note duration in minutes (~24 hours)."""
     return 1440.0
 
@@ -77,7 +77,7 @@ fn base_note_duration() -> Float64:
 # ── triangle_accord_balance ──────────────────────────────────────────────────
 
 
-fn triangle_accord_balance(
+def triangle_accord_balance(
     top_pct: Float64, mid_pct: Float64, base_pct: Float64
 ) -> Float64:
     """Triangle accord balance check.
@@ -96,7 +96,7 @@ fn triangle_accord_balance(
 # ── tenacity_hours ───────────────────────────────────────────────────────────
 
 
-fn tenacity_hours(
+def tenacity_hours(
     initial_intensity: Float64,
     final_intensity: Float64,
     hours: Float64,
@@ -108,7 +108,7 @@ fn tenacity_hours(
 # ── sillage_distance ────────────────────────────────────────────────────────
 
 
-fn sillage_distance(
+def sillage_distance(
     concentration: Float64, volatility_factor: Float64
 ) -> Float64:
     """Sillage (projection) distance ≈ concentration * volatility (a.u.)."""
@@ -118,7 +118,7 @@ fn sillage_distance(
 # ── cost_per_ml ──────────────────────────────────────────────────────────────
 
 
-fn cost_per_ml(total_cost: Float64, volume_ml: Float64) -> Float64:
+def cost_per_ml(total_cost: Float64, volume_ml: Float64) -> Float64:
     """Cost per milliliter CPM = cost / volume."""
     return total_cost / volume_ml
 
@@ -126,7 +126,7 @@ fn cost_per_ml(total_cost: Float64, volume_ml: Float64) -> Float64:
 # ── fragrance_strength_scale ─────────────────────────────────────────────────
 
 
-fn fragrance_strength_scale(concentration_pct: Float64) -> Int:
+def fragrance_strength_scale(concentration_pct: Float64) -> Int:
     """Fragrance strength on 0-4 scale based on concentration %.
     0 = none (0%), 1 = cologne (<5%), 2 = EDT (5-15%),
     3 = EDP (15-20%), 4 = parfum (>20%).
@@ -145,7 +145,7 @@ fn fragrance_strength_scale(concentration_pct: Float64) -> Int:
 # ── ingredient_proportion ────────────────────────────────────────────────────
 
 
-fn ingredient_proportion(
+def ingredient_proportion(
     ingredient_ml: Float64, total_formula_ml: Float64
 ) -> Float64:
     """Ingredient proportion = ingredient/total * 100 (percent)."""

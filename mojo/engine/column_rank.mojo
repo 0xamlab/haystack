@@ -16,7 +16,7 @@ struct ResidentColumnRankEntry(Copyable, Movable):
     var role_id: Int
     var normalized: String
 
-    fn __init__(
+    def __init__(
         out self,
         id: Int = -1,
         source: String = "",
@@ -31,7 +31,7 @@ struct ResidentColumnRankEntry(Copyable, Movable):
         self.role_id = role_id
         self.normalized = _normalize(column)
 
-    fn copy(self) -> ResidentColumnRankEntry:
+    def copy(self) -> ResidentColumnRankEntry:
         return ResidentColumnRankEntry(self.id, self.source, self.column, self.source_id, self.role_id)
 
 
@@ -44,7 +44,7 @@ struct RankedEntry(Copyable, Movable):
     var type_boost: Float64
     var confidence_gap: Float64
 
-    fn __init__(
+    def __init__(
         out self,
         id: Int = -1,
         source: String = "",
@@ -62,7 +62,7 @@ struct RankedEntry(Copyable, Movable):
         self.type_boost = type_boost
         self.confidence_gap = confidence_gap
 
-    fn copy(self) -> RankedEntry:
+    def copy(self) -> RankedEntry:
         return RankedEntry(
             self.id,
             self.source,
@@ -74,7 +74,7 @@ struct RankedEntry(Copyable, Movable):
         )
 
 
-fn _normalize(text: String) -> String:
+def _normalize(text: String) -> String:
     var lower = to_lower(text)
     var out = String("")
     var pending_space = False
@@ -93,7 +93,7 @@ fn _normalize(text: String) -> String:
     return out
 
 
-fn _token_overlap_boost(hint: String, candidate: String) -> Float64:
+def _token_overlap_boost(hint: String, candidate: String) -> Float64:
     var hint_norm = _normalize(hint)
     if len(hint_norm) == 0:
         return 0.0
@@ -115,7 +115,7 @@ fn _token_overlap_boost(hint: String, candidate: String) -> Float64:
     return 0.08 * Float64(matched) / Float64(total)
 
 
-fn _role_boost(query_role_id: Int, candidate_role_id: Int) -> Float64:
+def _role_boost(query_role_id: Int, candidate_role_id: Int) -> Float64:
     if query_role_id <= 0 or candidate_role_id <= 0:
         return 0.0
     if query_role_id == candidate_role_id:
@@ -123,7 +123,7 @@ fn _role_boost(query_role_id: Int, candidate_role_id: Int) -> Float64:
     return -0.04
 
 
-fn _source_boost(query_source_id: Int, candidate_source_id: Int) -> Float64:
+def _source_boost(query_source_id: Int, candidate_source_id: Int) -> Float64:
     if query_source_id <= 0 or candidate_source_id <= 0:
         return 0.0
     if query_source_id == candidate_source_id:
@@ -131,7 +131,7 @@ fn _source_boost(query_source_id: Int, candidate_source_id: Int) -> Float64:
     return -0.02
 
 
-fn _candidate_score(
+def _candidate_score(
     hint: String,
     query_source_id: Int,
     query_role_id: Int,
@@ -151,7 +151,7 @@ fn _candidate_score(
     return RankedEntry(entry.id, entry.source, entry.column, score, name_sim, type_boost, 0.0)
 
 
-fn _sort_ranked(mut ranked: List[RankedEntry]):
+def _sort_ranked(mut ranked: List[RankedEntry]):
     for i in range(1, len(ranked)):
         var key = ranked[i].copy()
         var j = i - 1
@@ -164,7 +164,7 @@ fn _sort_ranked(mut ranked: List[RankedEntry]):
         ranked[0].confidence_gap = top_gap
 
 
-fn _ranked_json(ranked: List[RankedEntry], top_k: Int) raises -> String:
+def _ranked_json(ranked: List[RankedEntry], top_k: Int) raises -> String:
     var json_m = Python.import_module("json")
     var rows = Python.evaluate("[]")
     var limit = top_k
@@ -186,15 +186,15 @@ fn _ranked_json(ranked: List[RankedEntry], top_k: Int) raises -> String:
 struct ResidentColumnRankState(Copyable, Movable):
     var entries: List[ResidentColumnRankEntry]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.entries = List[ResidentColumnRankEntry]()
 
-    fn copy(self) -> ResidentColumnRankState:
+    def copy(self) -> ResidentColumnRankState:
         var out = ResidentColumnRankState()
         out.entries = self.entries.copy()
         return out^
 
-    fn init_from_json(mut self, raw: String) raises -> String:
+    def init_from_json(mut self, raw: String) raises -> String:
         var json_m = Python.import_module("json")
         var builtins = Python.import_module("builtins")
         var payload = json_m.loads(raw)
@@ -213,7 +213,7 @@ struct ResidentColumnRankState(Copyable, Movable):
             )
         return '{"status":"ok","count":' + String(len(self.entries)) + "}"
 
-    fn _query_ranked(self, query: PythonObject) raises -> List[RankedEntry]:
+    def _query_ranked(self, query: PythonObject) raises -> List[RankedEntry]:
         var builtins = Python.import_module("builtins")
         var candidate_ids = query.get("candidate_ids", Python.evaluate("[]"))
         var top_k = fast_int(query.get("top_k", 5))
@@ -240,13 +240,13 @@ struct ResidentColumnRankState(Copyable, Movable):
             return trimmed^
         return ranked^
 
-    fn run_query(self, raw: String) raises -> String:
+    def run_query(self, raw: String) raises -> String:
         var json_m = Python.import_module("json")
         var payload = json_m.loads(raw)
         var ranked = self._query_ranked(payload)
         return '{"ranked":' + _ranked_json(ranked, len(ranked)) + ',"ambiguous":false,"gap":' + String(ranked[0].confidence_gap if len(ranked) > 0 else 0.0) + "}"
 
-    fn run_batch(self, raw: String) raises -> String:
+    def run_batch(self, raw: String) raises -> String:
         var json_m = Python.import_module("json")
         var builtins = Python.import_module("builtins")
         var payload = json_m.loads(raw)

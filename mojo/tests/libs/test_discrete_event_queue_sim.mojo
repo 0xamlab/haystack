@@ -72,7 +72,7 @@ from discrete_event.queue_sim import (
 )
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[discrete_event.queue_sim] known-value suite")

@@ -28,7 +28,7 @@ from model_abi import rope_theta_scale
 from model_interop import hf_rope_theta_scale
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 

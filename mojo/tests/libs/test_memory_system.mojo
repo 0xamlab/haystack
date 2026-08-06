@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from memory_system import pool_fragmentation_ratio, slab_alloc_waste, cache_line_padding_bytes, strided_access_penalty, activation_memory_bytes, gradient_memory_bytes, optimizer_state_bytes, peak_memory_estimate, memory_bandwidth_utilization, numa_locality_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

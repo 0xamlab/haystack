@@ -56,7 +56,7 @@ from streaming.drift import (
 )
 
 
-fn _close(got: Float64, want: Float64) -> Bool:
+def _close(got: Float64, want: Float64) -> Bool:
     """Equal within the package's own per-quantity allowance.
 
     `stm_tolerance(want, 0.0)` is `64 * DBL_EPSILON * |want|` -- scaled by THE NUMBER BEING
@@ -69,7 +69,7 @@ fn _close(got: Float64, want: Float64) -> Bool:
     return diff <= stm_tolerance(want, 0.0)
 
 
-fn _step_series() -> List[Float64]:
+def _step_series() -> List[Float64]:
     """Five zeros then five fours: the series whose Page-Hinkley trace is hand-computed above."""
     var out = List[Float64]()
     for _ in range(5):
@@ -79,7 +79,7 @@ fn _step_series() -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     print("Running streaming.drift known-value tests...")
     var passed = 0
     var failed = 0
@@ -399,6 +399,6 @@ fn main() raises:
         raise Error("test_streaming_drift: " + String(failed) + " failure(s)")
 
 
-fn _bad_state() -> PageHinkleyState:
+def _bad_state() -> PageHinkleyState:
     """A state marked invalid, the way every refusal in this module returns one."""
     return PageHinkleyState(0.0, 0.0, 0.0, 0.0, 0.0, 0, False, -1, 0.0, 373, False)

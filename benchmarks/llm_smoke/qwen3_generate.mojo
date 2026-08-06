@@ -112,12 +112,12 @@ comptime EOS_TOKEN_ID: Int = 151643
 checkpoint's own `config.json`/`generation_config.json` during the Prerequisite phase — not guessed."""
 
 
-fn _check(status: Int, ok: Int, ctx: String) raises:
+def _check(status: Int, ok: Int, ctx: String) raises:
     if status != ok:
         raise Error("qwen3_generate: " + ctx + " failed, status=" + String(status))
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -130,7 +130,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -139,7 +139,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -153,18 +153,18 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn _write_text(path: String, text: String) raises:
+def _write_text(path: String, text: String) raises:
     var f = open(path, "w")
     f.write_bytes(text.as_bytes())
     f.close()
 
 
-fn _row_slice(x: List[Float64], row: Int, width: Int) -> List[Float64]:
+def _row_slice(x: List[Float64], row: Int, width: Int) -> List[Float64]:
     """Copy one `[width]`-wide row out of a flat `[n, width]` buffer -- the last-prefill-position
     slice prefill needs before it can hand off to the decode loop's one-row-at-a-time shape."""
     var out = List[Float64](capacity=width)
@@ -174,7 +174,7 @@ fn _row_slice(x: List[Float64], row: Int, width: Int) -> List[Float64]:
     return out^
 
 
-fn _ms(ns: UInt) -> Float64:
+def _ms(ns: UInt) -> Float64:
     return Float64(Int(ns)) / 1.0e6
 
 
@@ -198,7 +198,7 @@ struct LayerWeights(Copyable, Movable):
     var down: List[Float64]
 
 
-fn _load_all_layers(blob_path: String, tensors_obj: String, n_layers: Int) raises -> List[LayerWeights]:
+def _load_all_layers(blob_path: String, tensors_obj: String, n_layers: Int) raises -> List[LayerWeights]:
     """Read every layer's weights from `weights.blob` exactly once. O(checkpoint size) disk I/O,
     O(1) per decode step afterward -- the residency this driver's own docstring is about."""
     var layers = List[LayerWeights]()

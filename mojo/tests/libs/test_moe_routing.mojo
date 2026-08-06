@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from moe_routing import noisy_top_k_gate, switch_transformer_gate, expert_parallel_shard_id, gshard_gate_weight, expert_dropout_mask, combined_jitter_noise, aux_loss_coefficient, expert_choice_gate, cosine_router_score, heterogeneous_expert_capacity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

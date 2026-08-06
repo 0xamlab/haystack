@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn dag_node_ready_score(
+def dag_node_ready_score(
     n_dependencies: Float64, n_completed_dependencies: Float64,
     blocked_by_resource: Float64
 ) -> Float64:
@@ -42,7 +42,7 @@ fn dag_node_ready_score(
     return 0.0
 
 
-fn retry_backoff_delay(
+def retry_backoff_delay(
     attempt_number: Float64, base_delay_ms: Float64,
     max_delay_ms: Float64, jitter_factor: Float64
 ) -> Float64:
@@ -65,7 +65,7 @@ fn retry_backoff_delay(
     return delay * (1.0 + jitter_factor * 0.5)
 
 
-fn conditional_branch_score(
+def conditional_branch_score(
     condition_probability: Float64, branch_value: Float64,
     branch_cost: Float64
 ) -> Float64:
@@ -84,7 +84,7 @@ fn conditional_branch_score(
     return condition_probability * branch_value - branch_cost
 
 
-fn pipeline_stage_throughput(
+def pipeline_stage_throughput(
     stage_compute_ms: Float64, stage_io_ms: Float64,
     parallelism: Float64
 ) -> Float64:
@@ -106,7 +106,7 @@ fn pipeline_stage_throughput(
     return parallelism / bottleneck
 
 
-fn workflow_completion_fraction(
+def workflow_completion_fraction(
     completed_nodes: Float64, total_nodes: Float64,
     failed_nodes: Float64
 ) -> Float64:
@@ -125,7 +125,7 @@ fn workflow_completion_fraction(
     return (completed_nodes - failed_nodes) / total_nodes
 
 
-fn step_timeout_remaining_ms(
+def step_timeout_remaining_ms(
     step_start_ms: Float64, current_ms: Float64,
     timeout_budget_ms: Float64
 ) -> Float64:
@@ -143,7 +143,7 @@ fn step_timeout_remaining_ms(
     return timeout_budget_ms - elapsed
 
 
-fn dependency_resolution_order(
+def dependency_resolution_order(
     n_downstream_nodes: Float64, critical_path_length: Float64,
     node_compute_cost: Float64
 ) -> Float64:
@@ -164,7 +164,7 @@ fn dependency_resolution_order(
     return n_downstream_nodes * critical_path_length / node_compute_cost
 
 
-fn parallel_step_efficiency(
+def parallel_step_efficiency(
     sequential_time_ms: Float64, parallel_time_ms: Float64,
     n_workers: Float64
 ) -> Float64:
@@ -185,7 +185,7 @@ fn parallel_step_efficiency(
     return sequential_time_ms / (parallel_time_ms * n_workers)
 
 
-fn workflow_cost_accumulator(
+def workflow_cost_accumulator(
     previous_cost: Float64, step_compute_cost: Float64,
     step_io_cost: Float64, step_api_cost: Float64
 ) -> Float64:
@@ -203,7 +203,7 @@ fn workflow_cost_accumulator(
     return previous_cost + step_compute_cost + step_io_cost + step_api_cost
 
 
-fn chain_output_compatibility(
+def chain_output_compatibility(
     output_schema_version: Float64, next_step_schema_version: Float64,
     output_type_code: Float64, expected_type_code: Float64
 ) -> Float64:

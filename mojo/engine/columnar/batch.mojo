@@ -27,14 +27,14 @@ struct Schema(Copyable, Movable):
     var names: List[String]
     var dtypes: List[Int]
 
-    fn __init__(out self, var names: List[String], var dtypes: List[Int]):
+    def __init__(out self, var names: List[String], var dtypes: List[Int]):
         self.names = names^
         self.dtypes = dtypes^
 
-    fn width(self) -> Int:
+    def width(self) -> Int:
         return len(self.names)
 
-    fn index_of(self, name: String) -> Int:
+    def index_of(self, name: String) -> Int:
         """Column index for `name`, or -1.
 
         Linear: schemas are a handful of columns, and a map would cost more to build
@@ -45,20 +45,20 @@ struct Schema(Copyable, Movable):
                 return i
         return -1
 
-    fn has(self, name: String) -> Bool:
+    def has(self, name: String) -> Bool:
         return self.index_of(name) >= 0
 
-    fn name_at(self, index: Int) -> String:
+    def name_at(self, index: Int) -> String:
         if index < 0 or index >= len(self.names):
             return ""
         return self.names[index]
 
-    fn dtype_at(self, index: Int) -> Int:
+    def dtype_at(self, index: Int) -> Int:
         if index < 0 or index >= len(self.dtypes):
             return DTYPE_FLOAT64
         return self.dtypes[index]
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         var out = String("")
         for i in range(len(self.names)):
             if i > 0:
@@ -67,7 +67,7 @@ struct Schema(Copyable, Movable):
         return out
 
 
-fn schema_of(var names: List[String]) -> Schema:
+def schema_of(var names: List[String]) -> Schema:
     """A schema of all-Float64 columns — the common case for now."""
     var dtypes = List[Int]()
     for _ in range(len(names)):
@@ -82,15 +82,15 @@ struct RecordBatch(Copyable, Movable):
     var columns: List[Float64Array]
     var n_rows: Int
 
-    fn __init__(out self, var schema: Schema, var columns: List[Float64Array], n_rows: Int):
+    def __init__(out self, var schema: Schema, var columns: List[Float64Array], n_rows: Int):
         self.schema = schema^
         self.columns = columns^
         self.n_rows = n_rows
 
-    fn width(self) -> Int:
+    def width(self) -> Int:
         return len(self.columns)
 
-    fn is_consistent(self) -> Bool:
+    def is_consistent(self) -> Bool:
         """True when every column is exactly `n_rows` long and the schema matches.
 
         Checked rather than assumed: a ragged batch otherwise yields results computed
@@ -104,10 +104,10 @@ struct RecordBatch(Copyable, Movable):
                 return False
         return True
 
-    fn column_index(self, name: String) -> Int:
+    def column_index(self, name: String) -> Int:
         return self.schema.index_of(name)
 
-    fn column(self, index: Int) -> Float64Array:
+    def column(self, index: Int) -> Float64Array:
         """Column by position. An out-of-range index yields an empty column.
 
         Empty rather than raising so an executor can report a missing column by name
@@ -119,10 +119,10 @@ struct RecordBatch(Copyable, Movable):
             return float64_with_nulls(empty_values^, empty_mask)
         return self.columns[index].copy()
 
-    fn column_by_name(self, name: String) -> Float64Array:
+    def column_by_name(self, name: String) -> Float64Array:
         return self.column(self.schema.index_of(name))
 
-    fn slice(self, start: Int, count: Int) -> RecordBatch:
+    def slice(self, start: Int, count: Int) -> RecordBatch:
         """A row window across every column — the chunking primitive."""
         var begin = start
         if begin < 0:
@@ -145,7 +145,7 @@ struct RecordBatch(Copyable, Movable):
             dtypes.append(self.schema.dtypes[i])
         return RecordBatch(Schema(names^, dtypes^), sliced^, take_n)
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         return (
             "RecordBatch("
             + String(self.n_rows)
@@ -157,7 +157,7 @@ struct RecordBatch(Copyable, Movable):
         )
 
 
-fn take_column(source: Float64Array, indices: List[Int]) -> Float64Array:
+def take_column(source: Float64Array, indices: List[Int]) -> Float64Array:
     """Gather rows by index. An out-of-range index yields a null, not a zero.
 
     Null rather than 0.0 because "this row does not exist" is an absence, and 0.0
@@ -184,7 +184,7 @@ fn take_column(source: Float64Array, indices: List[Int]) -> Float64Array:
     return float64_with_nulls(values^, mask)
 
 
-fn take(batch: RecordBatch, indices: List[Int]) -> RecordBatch:
+def take(batch: RecordBatch, indices: List[Int]) -> RecordBatch:
     """A new batch of the given rows, in the given order.
 
     The one primitive behind both filter and sort: a filter passes the surviving
@@ -202,7 +202,7 @@ fn take(batch: RecordBatch, indices: List[Int]) -> RecordBatch:
     return RecordBatch(Schema(names^, dtypes^), taken^, len(indices))
 
 
-fn indices_where(mask: List[Bool]) -> List[Int]:
+def indices_where(mask: List[Bool]) -> List[Int]:
     """Row indices where `mask` is true — a filter's selection vector."""
     var out = List[Int]()
     for i in range(len(mask)):
@@ -211,12 +211,12 @@ fn indices_where(mask: List[Bool]) -> List[Int]:
     return out^
 
 
-fn filter_batch(batch: RecordBatch, mask: List[Bool]) -> RecordBatch:
+def filter_batch(batch: RecordBatch, mask: List[Bool]) -> RecordBatch:
     """Keep the rows where `mask` is true, via `take`."""
     return take(batch, indices_where(mask))
 
 
-fn valid_mask(source: Float64Array) -> List[Bool]:
+def valid_mask(source: Float64Array) -> List[Bool]:
     """A column's validity as a Bool mask — for `filter_batch(b, valid_mask(c))`."""
     var out = List[Bool]()
     for i in range(source.length):

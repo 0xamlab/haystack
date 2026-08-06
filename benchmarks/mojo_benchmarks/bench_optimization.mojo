@@ -108,25 +108,25 @@ from optimization.model import SENSE_LE
 comptime WARMUP: Int = 3
 
 
-fn _ms(elapsed: UInt) -> Float64:
+def _ms(elapsed: UInt) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     return Float64(Int(elapsed)) / 1.0e6
 
 
-fn _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
+def _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
     if work <= 0 or reps <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(work * reps)
 
 
-fn _le(n: Int) -> List[Int]:
+def _le(n: Int) -> List[Int]:
     var out = List[Int]()
     for _ in range(n):
         out.append(SENSE_LE)
     return out^
 
 
-fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
+def _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
     """The empirical growth exponent `p` in `t ~ n^p`, from the two endpoints.
 
     Reported instead of a complexity claim: `p` is what was measured, and it is only two
@@ -140,7 +140,7 @@ fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Fl
 # ── 1. the shared two-variable program ────────────────────────────────────────
 
 
-fn _tangent_rows(m: Int) -> List[List[Float64]]:
+def _tangent_rows(m: Int) -> List[List[Float64]]:
     """`m` tangents to the unit circle in the first quadrant: `cos θ x + sin θ y <= 1`.
 
     Chosen over a family of padding rows on purpose. A padding row far outside the feasible
@@ -166,14 +166,14 @@ fn _tangent_rows(m: Int) -> List[List[Float64]]:
     return rows^
 
 
-fn _ones(m: Int) -> List[Float64]:
+def _ones(m: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(m):
         out.append(1.0)
     return out^
 
 
-fn _flatten(rows: List[List[Float64]], cols: Int) -> List[Float64]:
+def _flatten(rows: List[List[Float64]], cols: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(rows)):
         for j in range(cols):
@@ -184,7 +184,7 @@ fn _flatten(rows: List[List[Float64]], cols: Int) -> List[Float64]:
 # ── 2. the product cost matrix, whose two answers are both closed forms ───────
 
 
-fn _product_cost(n: Int) -> List[Float64]:
+def _product_cost(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n):
         for j in range(n):
@@ -192,7 +192,7 @@ fn _product_cost(n: Int) -> List[Float64]:
     return out^
 
 
-fn _lcg_cost(n: Int, seed: Int) -> List[Float64]:
+def _lcg_cost(n: Int, seed: Int) -> List[Float64]:
     """A deterministic pseudo-random matrix, for a generic-instance timing point."""
     var out = List[Float64]()
     var s = seed
@@ -205,7 +205,7 @@ fn _lcg_cost(n: Int, seed: Int) -> List[Float64]:
 # ── 3. Edmonds-Karp over `optimization.flow`'s own residual network ───────────
 
 
-fn _bipartite_unit(
+def _bipartite_unit(
     n: Int, mut src: List[Int], mut dst: List[Int], mut cap: List[Float64]
 ) -> Int:
     """`s -> L_i -> R_j -> t`, every capacity 1, three choices per left node.
@@ -232,7 +232,7 @@ fn _bipartite_unit(
     return sink + 1
 
 
-fn _ek_max_flow(
+def _ek_max_flow(
     mut net: FlowNetwork, source: Int, sink: Int,
     mut augmentations: Int, mut bfs_passes: Int,
 ) -> Float64:
@@ -301,21 +301,21 @@ fn _ek_max_flow(
 # ── 4. the knapsack both the tree and the frozen DP can express ──────────────
 
 
-fn _knap_weights(n: Int) -> List[Int]:
+def _knap_weights(n: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n):
         out.append(7 + (i * 13) % 29)
     return out^
 
 
-fn _knap_values(n: Int) -> List[Int]:
+def _knap_values(n: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n):
         out.append(11 + (i * 17) % 37)
     return out^
 
 
-fn _to_float(values: List[Int]) -> List[Float64]:
+def _to_float(values: List[Int]) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(values)):
         out.append(Float64(values[i]))
@@ -325,7 +325,7 @@ fn _to_float(values: List[Int]) -> List[Float64]:
 # ── 5. a dense square LP for the scaling arm ─────────────────────────────────
 
 
-fn _dense_lp_a(n: Int) -> List[Float64]:
+def _dense_lp_a(n: Int) -> List[Float64]:
     """Diagonally dominant, so every variable is worth using and the basis really fills.
 
     A matrix of comparable coefficients gives an optimum that loads one or two variables and
@@ -346,21 +346,21 @@ fn _dense_lp_a(n: Int) -> List[Float64]:
     return out^
 
 
-fn _dense_lp_b(n: Int) -> List[Float64]:
+def _dense_lp_b(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n):
         out.append(100.0 + Float64(i))
     return out^
 
 
-fn _dense_lp_c(n: Int) -> List[Float64]:
+def _dense_lp_c(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for j in range(n):
         out.append(1.0 + 0.5 * Float64(j % 3))
     return out^
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
 
     # ── 1. simplex vs the frozen 2-variable vertex enumerator ────────────────

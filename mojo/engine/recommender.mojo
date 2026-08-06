@@ -22,7 +22,7 @@ from std.math import sqrt
 # ── cosine_sim_users ──────────────────────────────────────────────────────────
 
 
-fn cosine_sim_users(
+def cosine_sim_users(
     ratings: List[List[Float64]], u1: Int, u2: Int
 ) -> Float64:
     """Cosine similarity between two users on co-rated items."""
@@ -51,7 +51,7 @@ fn cosine_sim_users(
 # ── predict_rating ────────────────────────────────────────────────────────────
 
 
-fn predict_rating(
+def predict_rating(
     ratings: List[List[Float64]], user: Int, item: Int, k: Int
 ) -> Float64:
     """KNN collaborative filter: weighted average of k most similar users."""
@@ -102,7 +102,7 @@ fn predict_rating(
 # ── popularity_ranking ────────────────────────────────────────────────────────
 
 
-fn popularity_ranking(ratings: List[List[Float64]]) -> List[Int]:
+def popularity_ranking(ratings: List[List[Float64]]) -> List[Int]:
     """Rank items by number of ratings (descending)."""
     var n_users = len(ratings)
     if n_users == 0:
@@ -134,7 +134,7 @@ fn popularity_ranking(ratings: List[List[Float64]]) -> List[Int]:
 # ── mean_rating_per_item ──────────────────────────────────────────────────────
 
 
-fn mean_rating_per_item(ratings: List[List[Float64]]) -> List[Float64]:
+def mean_rating_per_item(ratings: List[List[Float64]]) -> List[Float64]:
     """Average rating for each item (excluding 0s)."""
     var n_users = len(ratings)
     if n_users == 0:
@@ -158,7 +158,7 @@ fn mean_rating_per_item(ratings: List[List[Float64]]) -> List[Float64]:
 # ── mean_rating_per_user ──────────────────────────────────────────────────────
 
 
-fn mean_rating_per_user(ratings: List[List[Float64]]) -> List[Float64]:
+def mean_rating_per_user(ratings: List[List[Float64]]) -> List[Float64]:
     """Average rating per user (excluding 0s)."""
     var n_users = len(ratings)
     var result = List[Float64]()
@@ -180,7 +180,7 @@ fn mean_rating_per_user(ratings: List[List[Float64]]) -> List[Float64]:
 # ── top_n_items ───────────────────────────────────────────────────────────────
 
 
-fn top_n_items(item_scores: List[Float64], n: Int) -> List[Int]:
+def top_n_items(item_scores: List[Float64], n: Int) -> List[Int]:
     """Indices of top-n scored items."""
     var m = len(item_scores)
     var scores = List[Float64]()
@@ -209,7 +209,7 @@ fn top_n_items(item_scores: List[Float64], n: Int) -> List[Int]:
 # ── item_overlap ──────────────────────────────────────────────────────────────
 
 
-fn item_overlap(
+def item_overlap(
     ratings: List[List[Float64]], u1: Int, u2: Int
 ) -> Int:
     """Count items rated by both users."""
@@ -224,7 +224,7 @@ fn item_overlap(
 # ── cold_start_recommend ──────────────────────────────────────────────────────
 
 
-fn cold_start_recommend(
+def cold_start_recommend(
     ratings: List[List[Float64]], n: Int
 ) -> List[Int]:
     """Recommend top-n most popular items (cold start strategy)."""
@@ -239,7 +239,7 @@ fn cold_start_recommend(
 # ── rmse_ratings ──────────────────────────────────────────────────────────────
 
 
-fn rmse_ratings(
+def rmse_ratings(
     predicted: List[Float64], actual: List[Float64]
 ) -> Float64:
     """RMSE on non-zero actuals."""

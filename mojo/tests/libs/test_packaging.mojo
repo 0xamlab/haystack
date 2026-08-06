@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from packaging import box_volume, box_surface_area, cylinder_volume, cylinder_surface_area, material_utilization, compression_strength_mckee, stacking_load, cushion_curve_g, pallet_efficiency, fill_percentage, shelf_life_arrhenius, dimensional_weight
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

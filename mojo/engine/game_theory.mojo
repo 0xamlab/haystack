@@ -23,7 +23,7 @@ from std.math import abs as fabs
 # ── nash_2x2 ─────────────────────────────────────────────────────────────────
 
 
-fn nash_2x2(payoff_a: List[List[Float64]], payoff_b: List[List[Float64]]) -> List[Float64]:
+def nash_2x2(payoff_a: List[List[Float64]], payoff_b: List[List[Float64]]) -> List[Float64]:
     """Find mixed strategy Nash equilibrium for a 2×2 game.
 
     Uses indifference equations. Player 1 mixes so player 2 is indifferent,
@@ -84,7 +84,7 @@ fn nash_2x2(payoff_a: List[List[Float64]], payoff_b: List[List[Float64]]) -> Lis
 # ── minimax_value ─────────────────────────────────────────────────────────────
 
 
-fn minimax_value(payoff: List[List[Float64]]) -> Float64:
+def minimax_value(payoff: List[List[Float64]]) -> Float64:
     """Minimax value for a zero-sum game (row player's perspective).
 
     Row player maximizes the minimum payoff across columns.
@@ -116,7 +116,7 @@ fn minimax_value(payoff: List[List[Float64]]) -> Float64:
 # ── dominated_strategy_check ─────────────────────────────────────────────────
 
 
-fn dominated_strategy_check(payoff: List[List[Float64]]) -> List[Bool]:
+def dominated_strategy_check(payoff: List[List[Float64]]) -> List[Bool]:
     """Check if each row is strictly dominated by some other row.
 
     Args:
@@ -151,7 +151,7 @@ fn dominated_strategy_check(payoff: List[List[Float64]]) -> List[Bool]:
 # ── expected_payoff ───────────────────────────────────────────────────────────
 
 
-fn expected_payoff(payoff: List[List[Float64]], p_row: List[Float64], p_col: List[Float64]) -> Float64:
+def expected_payoff(payoff: List[List[Float64]], p_row: List[Float64], p_col: List[Float64]) -> Float64:
     """Expected payoff given mixed strategies for both players.
 
     Args:
@@ -182,7 +182,7 @@ fn expected_payoff(payoff: List[List[Float64]], p_row: List[Float64], p_col: Lis
 # ── prisoners_dilemma_payoff ──────────────────────────────────────────────────
 
 
-fn prisoners_dilemma_payoff(p1_cooperate: Bool, p2_cooperate: Bool) -> List[Float64]:
+def prisoners_dilemma_payoff(p1_cooperate: Bool, p2_cooperate: Bool) -> List[Float64]:
     """Standard Prisoner's Dilemma payoffs.
 
     CC=(3,3), CD=(0,5), DC=(5,0), DD=(1,1).
@@ -213,7 +213,7 @@ fn prisoners_dilemma_payoff(p1_cooperate: Bool, p2_cooperate: Bool) -> List[Floa
 # ── iterated_pd ───────────────────────────────────────────────────────────────
 
 
-fn iterated_pd(strategy1: Int, strategy2: Int, rounds: Int) -> List[Float64]:
+def iterated_pd(strategy1: Int, strategy2: Int, rounds: Int) -> List[Float64]:
     """Iterated Prisoner's Dilemma.
 
     Strategies: 0=always cooperate, 1=always defect, 2=tit-for-tat.
@@ -273,7 +273,7 @@ fn iterated_pd(strategy1: Int, strategy2: Int, rounds: Int) -> List[Float64]:
 # ── shapley_value_3player ─────────────────────────────────────────────────────
 
 
-fn shapley_value_3player(v: List[Float64]) -> List[Float64]:
+def shapley_value_3player(v: List[Float64]) -> List[Float64]:
     """Shapley value for 3-player cooperative game.
 
     v has 8 entries indexed by subset bitmask:
@@ -328,7 +328,7 @@ fn shapley_value_3player(v: List[Float64]) -> List[Float64]:
 # ── pareto_optimal_outcomes ───────────────────────────────────────────────────
 
 
-fn pareto_optimal_outcomes(payoffs_a: List[Float64], payoffs_b: List[Float64]) -> List[Bool]:
+def pareto_optimal_outcomes(payoffs_a: List[Float64], payoffs_b: List[Float64]) -> List[Bool]:
     """Mark Pareto optimal outcomes.
 
     An outcome i is Pareto optimal if no other outcome j exists where

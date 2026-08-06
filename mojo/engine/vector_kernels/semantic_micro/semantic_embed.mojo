@@ -17,7 +17,7 @@ from mojo.engine.vector_kernels.semantic_micro.semantic_types import (
 
 
 @always_inline
-fn embed_query_avg(
+def embed_query_avg(
     emb:         EmbeddingTable,
     token_ids:   UnsafePointer[UInt32],
     token_count: UInt16,
@@ -62,7 +62,7 @@ fn embed_query_avg(
 
 
 @always_inline
-fn embed_single_token(
+def embed_single_token(
     emb:     EmbeddingTable,
     tok_id:  UInt32,
     out_vec: UnsafePointer[Float32],
@@ -81,7 +81,7 @@ fn embed_single_token(
 
 
 @always_inline
-fn cosine_emb_dim(
+def cosine_emb_dim(
     a: UnsafePointer[Float32],
     b: UnsafePointer[Float32],
 ) -> Float32:

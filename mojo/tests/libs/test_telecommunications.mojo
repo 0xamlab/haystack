@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from telecommunications import shannon_capacity, erlang_b, bit_error_rate_bpsk, spectral_efficiency, link_margin, thermal_noise_power, signal_to_noise_ratio, snr_db, data_rate_nyquist, propagation_delay, throughput, availability_percentage
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

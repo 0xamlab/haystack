@@ -37,14 +37,14 @@ from embeddings import centroid
 from ml.classifiers import kmeans_cluster
 
 
-fn _mk(*values: Float64) -> List[Float64]:
+def _mk(*values: Float64) -> List[Float64]:
     var out = List[Float64]()
     for v in values:
         out.append(v)
     return out^
 
 
-fn _mk_list(*vecs: List[Float64]) -> List[List[Float64]]:
+def _mk_list(*vecs: List[Float64]) -> List[List[Float64]]:
     var out = List[List[Float64]]()
     for v in vecs:
         out.append(v.copy())

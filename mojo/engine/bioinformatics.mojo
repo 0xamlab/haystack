@@ -27,7 +27,7 @@ comptime LN10: Float64 = 2.302585092994046
 # ── gc_content ───────────────────────────────────────────────────────────────
 
 
-fn gc_content(gc_count: Float64, total_bases: Float64) -> Float64:
+def gc_content(gc_count: Float64, total_bases: Float64) -> Float64:
     """GC content percentage: GC% = (gc_count / total_bases) * 100.
 
     Args:
@@ -45,7 +45,7 @@ fn gc_content(gc_count: Float64, total_bases: Float64) -> Float64:
 # ── tm_basic ─────────────────────────────────────────────────────────────────
 
 
-fn tm_basic(a_count: Float64, t_count: Float64, g_count: Float64, c_count: Float64) -> Float64:
+def tm_basic(a_count: Float64, t_count: Float64, g_count: Float64, c_count: Float64) -> Float64:
     """Basic melting temperature (Wallace rule): Tm = 2*(A+T) + 4*(G+C).
 
     Args:
@@ -63,7 +63,7 @@ fn tm_basic(a_count: Float64, t_count: Float64, g_count: Float64, c_count: Float
 # ── tm_salt_adjusted ─────────────────────────────────────────────────────────
 
 
-fn tm_salt_adjusted(tm_basic_val: Float64, salt_mm: Float64) -> Float64:
+def tm_salt_adjusted(tm_basic_val: Float64, salt_mm: Float64) -> Float64:
     """Salt-adjusted melting temperature: Tm_adj = Tm + 16.6*log10(salt/1000).
 
     Args:
@@ -83,7 +83,7 @@ fn tm_salt_adjusted(tm_basic_val: Float64, salt_mm: Float64) -> Float64:
 # ── molecular_weight_dna ────────────────────────────────────────────────────
 
 
-fn molecular_weight_dna(n_bases: Float64, avg_mw: Float64 = 330.0) -> Float64:
+def molecular_weight_dna(n_bases: Float64, avg_mw: Float64 = 330.0) -> Float64:
     """Approximate molecular weight of single-stranded DNA: MW = n * avg.
 
     Args:
@@ -99,7 +99,7 @@ fn molecular_weight_dna(n_bases: Float64, avg_mw: Float64 = 330.0) -> Float64:
 # ── sequence_identity ────────────────────────────────────────────────────────
 
 
-fn sequence_identity(matches: Float64, alignment_length: Float64) -> Float64:
+def sequence_identity(matches: Float64, alignment_length: Float64) -> Float64:
     """Sequence identity: ID = (matches / alignment_length) * 100.
 
     Args:
@@ -117,7 +117,7 @@ fn sequence_identity(matches: Float64, alignment_length: Float64) -> Float64:
 # ── evalue_significance ──────────────────────────────────────────────────────
 
 
-fn evalue_significance(evalue: Float64, threshold: Float64) -> Bool:
+def evalue_significance(evalue: Float64, threshold: Float64) -> Bool:
     """Check E-value significance: returns True if evalue < threshold.
 
     Args:
@@ -133,7 +133,7 @@ fn evalue_significance(evalue: Float64, threshold: Float64) -> Bool:
 # ── coverage_depth ───────────────────────────────────────────────────────────
 
 
-fn coverage_depth(total_bases_sequenced: Float64, genome_size: Float64) -> Float64:
+def coverage_depth(total_bases_sequenced: Float64, genome_size: Float64) -> Float64:
     """Sequencing coverage depth: Coverage = total_bases / genome_size.
 
     Args:
@@ -151,7 +151,7 @@ fn coverage_depth(total_bases_sequenced: Float64, genome_size: Float64) -> Float
 # ── n50_from_values ──────────────────────────────────────────────────────────
 
 
-fn n50_from_values(total_assembly: Float64, half_total: Float64) -> Float64:
+def n50_from_values(total_assembly: Float64, half_total: Float64) -> Float64:
     """N50 approximation: returns pre-computed half_total value.
 
     In practice, N50 is the contig length at which 50% of assembly is covered.
@@ -170,7 +170,7 @@ fn n50_from_values(total_assembly: Float64, half_total: Float64) -> Float64:
 # ── phred_quality_to_error ───────────────────────────────────────────────────
 
 
-fn phred_quality_to_error(phred: Float64) -> Float64:
+def phred_quality_to_error(phred: Float64) -> Float64:
     """Convert Phred quality to error probability: P = 10^(-Q/10).
 
     Args:
@@ -186,7 +186,7 @@ fn phred_quality_to_error(phred: Float64) -> Float64:
 # ── error_to_phred_quality ───────────────────────────────────────────────────
 
 
-fn error_to_phred_quality(error_prob: Float64) -> Float64:
+def error_to_phred_quality(error_prob: Float64) -> Float64:
     """Convert error probability to Phred quality: Q = -10*log10(P).
 
     Args:
@@ -203,7 +203,7 @@ fn error_to_phred_quality(error_prob: Float64) -> Float64:
 # ── codon_count ──────────────────────────────────────────────────────────────
 
 
-fn codon_count(sequence_length: Int) -> Int:
+def codon_count(sequence_length: Int) -> Int:
     """Count codons: Codons = sequence_length / 3 (integer division).
 
     Args:
@@ -218,7 +218,7 @@ fn codon_count(sequence_length: Int) -> Int:
 # ── amino_acid_count ─────────────────────────────────────────────────────────
 
 
-fn amino_acid_count(codon_count_val: Int) -> Int:
+def amino_acid_count(codon_count_val: Int) -> Int:
     """Amino acid count for full ORF: AA = codons - 1 (minus stop codon).
 
     Args:

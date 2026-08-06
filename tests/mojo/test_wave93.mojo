@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < eps
 
 
-fn approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
+def approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
     if fabs(b) < 1e-12:
         return fabs(a) < 1e-12
     return fabs((a - b) / b) < rel
@@ -62,7 +62,7 @@ fn approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
 # ── Welding tests ────────────────────────────────────────────────────────────
 
 
-fn test_welding() raises:
+def test_welding() raises:
     # heat_input: V=25, I=200, speed=5 mm/s => 25*200/5 = 1000 J/mm
     assert_true(approx(heat_input(25.0, 200.0, 5.0), 1000.0), "heat_input basic")
 
@@ -128,7 +128,7 @@ fn test_welding() raises:
 # ── Apiculture tests ─────────────────────────────────────────────────────────
 
 
-fn test_apiculture() raises:
+def test_apiculture() raises:
     # honey_yield_per_hive: 200 kg / 10 hives = 20
     assert_true(approx(honey_yield_per_hive(200.0, 10.0), 20.0), "honey_yield")
 
@@ -189,7 +189,7 @@ fn test_apiculture() raises:
 # ── Color Science tests ──────────────────────────────────────────────────────
 
 
-fn test_color_science() raises:
+def test_color_science() raises:
     # delta_e_76: same color => 0
     assert_true(approx(delta_e_76(50.0, 20.0, -10.0, 50.0, 20.0, -10.0), 0.0), "delta_e zero")
 
@@ -286,7 +286,7 @@ fn test_color_science() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 93 tests — Welding, Apiculture, Color Science")
     test_welding()
     test_apiculture()

@@ -119,7 +119,7 @@ struct RadixSortReport(Copyable, Movable):
     var workers_used: Int
 
 
-fn _radix_key(x: Float64) -> UInt64:
+def _radix_key(x: Float64) -> UInt64:
     """Float64 -> UInt64 whose unsigned order is the IEEE-754 total order of the input."""
     var u = x.to_bits[DType.uint64]()
     # (u >> 63) is 0 or 1. Multiplying by all-ones turns 1 into the full mask and 0 into 0; the
@@ -128,13 +128,13 @@ fn _radix_key(x: Float64) -> UInt64:
     return u ^ mask
 
 
-fn _radix_unkey(k: UInt64) -> Float64:
+def _radix_unkey(k: UInt64) -> Float64:
     """Exact inverse of `_radix_key` on all 2^64 patterns."""
     var mask = (((k >> 63) ^ 1) * 0xFFFFFFFFFFFFFFFF) | 0x8000000000000000
     return bitcast[DType.float64, 1](k ^ mask)
 
 
-fn radix_sort_f64_roundtrip_ok(x: Float64) -> Bool:
+def radix_sort_f64_roundtrip_ok(x: Float64) -> Bool:
     """`_radix_unkey(_radix_key(x))` has the same bits as `x`.
 
     Exposed because it is the one property the whole module rests on and it is checkable on any
@@ -144,7 +144,7 @@ fn radix_sort_f64_roundtrip_ok(x: Float64) -> Bool:
     return _radix_unkey(_radix_key(x)).to_bits[DType.uint64]() == x.to_bits[DType.uint64]()
 
 
-fn radix_sort_f64(data: List[Float64]) -> List[Float64]:
+def radix_sort_f64(data: List[Float64]) -> List[Float64]:
     """Sorted ascending copy of `data`, by LSD radix over the transformed key. No comparisons.
 
     Returns a copy rather than sorting in place to match `sorting.quicksort`'s contract, so the
@@ -244,7 +244,7 @@ fn radix_sort_f64(data: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn radix_sort_f64_report(data: List[Float64]) -> RadixSortReport:
+def radix_sort_f64_report(data: List[Float64]) -> RadixSortReport:
     """The pass count `radix_sort_f64` would use, without the sort. Diagnostic only."""
     var n = len(data)
     if n <= 1:
@@ -266,7 +266,7 @@ fn radix_sort_f64_report(data: List[Float64]) -> RadixSortReport:
     return RadixSortReport(RADIX_OK, n, passes_run, 1)
 
 
-fn radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]:
+def radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]:
     """`radix_sort_f64` across `n_workers` threads. Identical output, same multiset, same order.
 
     How a scatter is parallelized without a lock
@@ -328,7 +328,7 @@ fn radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]
     var pw = workers
 
     @parameter
-    fn key_band(w: Int) capturing:
+    def key_band(w: Int) capturing:
         var lo = w * pband
         var hi = lo + pband
         if hi > pn:
@@ -357,7 +357,7 @@ fn radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]
             last_active = p
 
     @parameter
-    fn unkey_only(w: Int) capturing:
+    def unkey_only(w: Int) capturing:
         var lo = w * pband
         var hi = lo + pband
         if hi > pn:
@@ -393,7 +393,7 @@ fn radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]
     # parallel, immediately before pass p scatters. That costs one extra streaming read of 8 B per
     # element per pass after the first, and it is the price of a correct parallel LSD radix.
     @parameter
-    fn hist_band(w: Int) capturing:
+    def hist_band(w: Int) capturing:
         var lo = w * pband
         var hi = lo + pband
         if hi > pn:
@@ -403,7 +403,7 @@ fn radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]
             mine[Int((src[i] >> cur_shift) & RADIX_MASK)] += 1
 
     @parameter
-    fn scatter_band(w: Int) capturing:
+    def scatter_band(w: Int) capturing:
         var lo = w * pband
         var hi = lo + pband
         if hi > pn:
@@ -472,7 +472,7 @@ fn radix_sort_f64_parallel(data: List[Float64], n_workers: Int) -> List[Float64]
     return out^
 
 
-fn radix_sort_f64_auto(data: List[Float64]) -> List[Float64]:
+def radix_sort_f64_auto(data: List[Float64]) -> List[Float64]:
     """`radix_sort_f64_parallel` at every core, sequential below the measured crossover.
 
     The entry point a caller who does not want to think about thread counts should use. It exists

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from gradient_descent import sgd_update, sgd_momentum_update, adam_update, adamw_update, rmsprop_update, adagrad_update, lars_update, lion_update, gradient_clipping, lr_cosine_schedule
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

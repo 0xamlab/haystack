@@ -148,7 +148,7 @@ measured about 5x faster on this host. One-time cost either way, but the driver 
 number nobody would publish is a number worth fixing."""
 
 
-fn _ceil_div(a: Int, b: Int) -> Int:
+def _ceil_div(a: Int, b: Int) -> Int:
     return (a + b - 1) // b
 
 
@@ -298,7 +298,7 @@ struct _LayerGpuI8KVF16(Copyable, Movable):
     var cv: DeviceBuffer[DType.float16]
 
 
-fn _narrow_into(
+def _narrow_into(
     dst: DeviceBuffer[DType.float32], src: List[Float64], n: Int, dst_off: Int
 ) raises -> Int:
     """Narrow `n` Float64 elements into a device buffer at `dst_off`. No transpose.
@@ -315,7 +315,7 @@ fn _narrow_into(
     return RESIDENT_OK
 
 
-fn _narrow_transposed_into(
+def _narrow_transposed_into(
     dst: DeviceBuffer[DType.float32], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
 ) raises -> Int:
     """Narrow and TRANSPOSE `[k_in, n_out]` Float64 into `[n_out, k_in]` Float32 at row `row_off`.
@@ -351,7 +351,7 @@ fn _narrow_transposed_into(
     return RESIDENT_OK
 
 
-fn _narrow_into_f16(
+def _narrow_into_f16(
     dst: DeviceBuffer[DType.float16], src: List[Float64], n: Int, dst_off: Int
 ) raises -> Int:
     """The fp16 twin of `_narrow_into`: Float64 -> Float16, no transpose. Used only for the tied
@@ -367,7 +367,7 @@ fn _narrow_into_f16(
     return RESIDENT_OK
 
 
-fn _narrow_transposed_into_f16(
+def _narrow_transposed_into_f16(
     dst: DeviceBuffer[DType.float16], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
 ) raises -> Int:
     """The fp16 twin of `_narrow_transposed_into`: Float64 -> Float16, WITH the same blocked
@@ -403,7 +403,7 @@ comptime _I8_MAX: Float64 = 127.0
 Int8's full asymmetric range."""
 
 
-fn _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
+def _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
     """Round-half-away-from-zero, clamp to `[-127, 127]`. `inv_scale` is `1.0 / scale`, passed
     rather than dividing by `scale` at every call so the one division per row happens once, in the
     caller, not once per element."""
@@ -416,7 +416,7 @@ fn _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
     return Int8(r)
 
 
-fn _quantize_into_i8(
+def _quantize_into_i8(
     dst_w: DeviceBuffer[DType.int8], dst_scale: DeviceBuffer[DType.float32],
     src: List[Float64], n_rows: Int, width: Int, row_off: Int, scale_off: Int,
 ) raises -> Int:
@@ -453,7 +453,7 @@ fn _quantize_into_i8(
     return RESIDENT_OK
 
 
-fn _quantize_transposed_into_i8(
+def _quantize_transposed_into_i8(
     dst_w: DeviceBuffer[DType.int8], dst_scale: DeviceBuffer[DType.float32],
     src: List[Float64], k_in: Int, n_out: Int, row_off: Int, scale_off: Int,
 ) raises -> Int:
@@ -537,7 +537,7 @@ narrower range actually costs in per-element error against int8's (a real ~18.1x
 127/7 level-count ratio, NOT the "half the bits" ~2x a naive guess would predict)."""
 
 
-fn _quantize_nibble_i4(v: Float64, inv_scale: Float64) -> Int8:
+def _quantize_nibble_i4(v: Float64, inv_scale: Float64) -> Int8:
     """Round-half-away-from-zero, clamp to `[-7, 7]`. The int4 twin of `_quantize_row_i8`'s
     `_quantize_row_i8` helper, one bit width down — same rounding rule, narrower clamp. Returns a
     plain `Int8` (not yet packed into a nibble); `_pack_i4_byte` combines two of these into one
@@ -551,7 +551,7 @@ fn _quantize_nibble_i4(v: Float64, inv_scale: Float64) -> Int8:
     return Int8(r)
 
 
-fn _pack_i4_byte(lo: Int8, hi: Int8) -> UInt8:
+def _pack_i4_byte(lo: Int8, hi: Int8) -> UInt8:
     """Pack two already-clamped-to-`[-7, 7]` nibbles into one device byte: `lo` (the EVEN k-index
     element) in bits `[3:0]`, `hi` (the ODD k-index element) in bits `[7:4]`. `Int(lo) & 0xF` keeps
     only the low 4 bits of `lo`'s two's-complement representation, which for a value already inside
@@ -563,7 +563,7 @@ fn _pack_i4_byte(lo: Int8, hi: Int8) -> UInt8:
     return (hi_bits << 4) | lo_bits
 
 
-fn _quantize_transposed_into_i4(
+def _quantize_transposed_into_i4(
     dst_w: DeviceBuffer[DType.uint8], dst_scale: DeviceBuffer[DType.float32],
     src: List[Float64], k_in: Int, n_out: Int, row_off: Int, scale_off: Int,
 ) raises -> Int:
@@ -717,7 +717,7 @@ struct _ResidentQwen3(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -784,22 +784,22 @@ struct _ResidentQwen3(Movable):
 
         # Compiled once. See the module docstring: 180 us per launch through a held handle against
         # 390 us through the `enqueue_function[k, k]` parameter form.
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -828,7 +828,7 @@ struct _ResidentQwen3(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -882,12 +882,12 @@ struct _ResidentQwen3(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token: embed, `n_layers` fused layers, lm_head, argmax. Returns the greedy choice.
 
         `pos` is the absolute position of THIS token and also the KV-cache slot it writes. Attention
@@ -1075,7 +1075,7 @@ struct _ResidentQwen3F16(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -1133,22 +1133,22 @@ struct _ResidentQwen3F16(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_f16]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_f16]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_f16]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_f16]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_f16]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_f16]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_f16]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_f16]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_f16]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_f16]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -1174,7 +1174,7 @@ struct _ResidentQwen3F16(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -1224,12 +1224,12 @@ struct _ResidentQwen3F16(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to `_ResidentQwen3.step` — same six-per-layer, same
         fixed three, same budget. See that function's docstring; nothing about the SHAPE of the
         computation differs here, only which buffers a handful of the dispatches read from.
@@ -1397,7 +1397,7 @@ struct _ResidentQwen3I8(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -1461,22 +1461,22 @@ struct _ResidentQwen3I8(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i8]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i8]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -1502,7 +1502,7 @@ struct _ResidentQwen3I8(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -1556,12 +1556,12 @@ struct _ResidentQwen3I8(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to `_ResidentQwen3.step`/`_ResidentQwen3F16.step` —
         same six-per-layer, same fixed three, same budget. See that function's docstring; nothing
         about the SHAPE of the computation differs here, only which buffers a handful of the
@@ -1683,7 +1683,7 @@ struct _ResidentQwen3I8SDPASimd(Movable):
     alongside `_ResidentQwen3I8`: this struct is a NEW twin, `_ResidentQwen3I8` above is
     untouched. Unlike the batched-shim `metaldispatch.session._MBQwen3I8SDPASimd`, this session
     has no pipeline-name-discovery step to worry about — `f_sdpa` is a directly-typed struct
-    field holding its own `compile_function_unchecked[_sdpa_kernel_simd]()` handle, the same way
+    field holding its own `compile_function[_sdpa_kernel_simd]()` handle, the same way
     `_ResidentQwen3I8`'s own `f_sdpa` field holds `_sdpa_kernel`'s.
     """
 
@@ -1743,7 +1743,7 @@ struct _ResidentQwen3I8SDPASimd(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -1824,22 +1824,22 @@ struct _ResidentQwen3I8SDPASimd(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i8]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i8]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_simd]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -1865,7 +1865,7 @@ struct _ResidentQwen3I8SDPASimd(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -1919,12 +1919,12 @@ struct _ResidentQwen3I8SDPASimd(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to `_ResidentQwen3.step`/`_ResidentQwen3F16.step` —
         same six-per-layer, same fixed three, same budget. See that function's docstring; nothing
         about the SHAPE of the computation differs here, only which buffers a handful of the
@@ -2113,7 +2113,7 @@ struct _ResidentQwen3I8AllSimd(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -2194,22 +2194,22 @@ struct _ResidentQwen3I8AllSimd(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_simd]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -2235,7 +2235,7 @@ struct _ResidentQwen3I8AllSimd(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -2289,12 +2289,12 @@ struct _ResidentQwen3I8AllSimd(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to `_ResidentQwen3.step`/`_ResidentQwen3F16.step` —
         same six-per-layer, same fixed three, same budget. See that function's docstring; nothing
         about the SHAPE of the computation differs here, only which buffers a handful of the
@@ -2484,7 +2484,7 @@ struct _ResidentQwen3I8AllSimd2(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -2556,22 +2556,22 @@ struct _ResidentQwen3I8AllSimd2(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_simd]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -2597,7 +2597,7 @@ struct _ResidentQwen3I8AllSimd2(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -2651,12 +2651,12 @@ struct _ResidentQwen3I8AllSimd2(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to `_ResidentQwen3I8AllSimd.step` — same six-per-layer,
         same fixed three, same budget. See that function's docstring; nothing about the SHAPE of the
         computation differs here, only that the lm_head dispatch now reads from a different
@@ -2836,7 +2836,7 @@ struct _ResidentQwen3I4(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -2908,22 +2908,22 @@ struct _ResidentQwen3I4(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_i4]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_i4]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i4]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i4]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i4]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i4]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -2949,7 +2949,7 @@ struct _ResidentQwen3I4(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -3003,12 +3003,12 @@ struct _ResidentQwen3I4(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to every other arm's `step` — same six-per-layer,
         same fixed three, same budget. See `_ResidentQwen3I8.step`'s docstring; nothing about the
         SHAPE of the computation differs here, only which buffers the three GEMV-shaped
@@ -3183,7 +3183,7 @@ struct _ResidentQwen3I8KVF16(Movable):
         _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
     ]
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -3246,22 +3246,22 @@ struct _ResidentQwen3I8KVF16(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel_kvf16]()
-        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel_kvf16]()
-        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i8]()
+        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i8]()
+        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel_kvf16]()
+        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_kvf16]()
+        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
+        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
-    fn device_name(self) raises -> String:
+    def device_name(self) raises -> String:
         return self.ctx.name()
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return residentk_dispatch_budget(self.n_layers)
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -3287,7 +3287,7 @@ struct _ResidentQwen3I8KVF16(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -3342,12 +3342,12 @@ struct _ResidentQwen3I8KVF16(Movable):
             return s
         return RESIDENT_OK
 
-    fn seal(mut self) raises -> Int:
+    def seal(mut self) raises -> Int:
         """Drain every upload before the first step. One synchronize for the whole load."""
         self.ctx.synchronize()
         return RESIDENT_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE token, identical dispatch plan to `_ResidentQwen3I8.step` — same six-per-layer, same
         fixed three, same budget. Nothing about the SHAPE of the computation differs; only that the
         rope-write and sdpa dispatches read/write `ck`/`cv` through the fp16-cache kernel twins.
@@ -3450,7 +3450,7 @@ struct _ResidentQwen3I8KVF16(Movable):
             return _StepOut(tok, lg, issued, RESIDENT_OK)
 
 
-fn _resident_preflight(
+def _resident_preflight(
     d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
     n_layers: Int, n_prompt: Int, n_new: Int, max_ctx: Int, eps: Float64, scale: Float64,
 ) -> Int:

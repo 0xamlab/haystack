@@ -21,7 +21,7 @@ from std.math import sqrt, abs as fabs
 # ── cluster_sizes ─────────────────────────────────────────────────────────────
 
 
-fn cluster_sizes(labels: List[Int], k: Int) -> List[Int]:
+def cluster_sizes(labels: List[Int], k: Int) -> List[Int]:
     """Count the number of items assigned to each cluster 0..k-1."""
     var counts = List[Int]()
     for i in range(k):
@@ -36,7 +36,7 @@ fn cluster_sizes(labels: List[Int], k: Int) -> List[Int]:
 # ── cluster_centroids ─────────────────────────────────────────────────────────
 
 
-fn cluster_centroids(
+def cluster_centroids(
     data: List[List[Float64]], labels: List[Int], k: Int
 ) -> List[List[Float64]]:
     """Compute the centroid (mean) of each cluster."""
@@ -76,7 +76,7 @@ fn cluster_centroids(
 # ── _euclidean_dist ───────────────────────────────────────────────────────────
 
 
-fn _euclidean_dist(a: List[Float64], b: List[Float64]) -> Float64:
+def _euclidean_dist(a: List[Float64], b: List[Float64]) -> Float64:
     """Euclidean distance between two vectors."""
     var s: Float64 = 0.0
     var n = len(a)
@@ -89,7 +89,7 @@ fn _euclidean_dist(a: List[Float64], b: List[Float64]) -> Float64:
 # ── inertia ───────────────────────────────────────────────────────────────────
 
 
-fn inertia(
+def inertia(
     data: List[List[Float64]],
     labels: List[Int],
     centroids: List[List[Float64]],
@@ -118,7 +118,7 @@ fn inertia(
 # ── davies_bouldin ────────────────────────────────────────────────────────────
 
 
-fn davies_bouldin(
+def davies_bouldin(
     data: List[List[Float64]], labels: List[Int], k: Int
 ) -> Float64:
     """Davies-Bouldin index (lower is better).
@@ -165,7 +165,7 @@ fn davies_bouldin(
 # ── calinski_harabasz ─────────────────────────────────────────────────────────
 
 
-fn calinski_harabasz(
+def calinski_harabasz(
     data: List[List[Float64]], labels: List[Int], k: Int
 ) -> Float64:
     """Calinski-Harabasz index (higher is better).
@@ -220,7 +220,7 @@ fn calinski_harabasz(
 # ── contingency_matrix ────────────────────────────────────────────────────────
 
 
-fn contingency_matrix(
+def contingency_matrix(
     labels_true: List[Int],
     labels_pred: List[Int],
     n_true: Int,
@@ -250,7 +250,7 @@ fn contingency_matrix(
 # ── purity ────────────────────────────────────────────────────────────────────
 
 
-fn purity(
+def purity(
     labels_true: List[Int],
     labels_pred: List[Int],
     n_true: Int,
@@ -279,14 +279,14 @@ fn purity(
 # ── adjusted_rand_index ──────────────────────────────────────────────────────
 
 
-fn _comb2(n: Int) -> Int:
+def _comb2(n: Int) -> Int:
     """C(n, 2)."""
     if n < 2:
         return 0
     return n * (n - 1) // 2
 
 
-fn adjusted_rand_index(
+def adjusted_rand_index(
     labels_true: List[Int], labels_pred: List[Int]
 ) -> Float64:
     """Adjusted Rand Index: corrected-for-chance Rand index in [-1,1].

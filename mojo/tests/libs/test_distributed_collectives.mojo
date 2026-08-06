@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from distributed_collectives import ring_allreduce_step, reduce_scatter_element, all_gather_offset, broadcast_scale, gradient_compression_ratio, expert_dispatch_volume, peer_bandwidth_utilization, collective_latency_alpha_beta, overlap_compute_comm_ratio, allreduce_tree_step_count
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

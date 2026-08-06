@@ -45,12 +45,12 @@ from metrics_agg import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -58,7 +58,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Pattern tests ────────────────────────────────────────────────────────────
 
 
-fn test_pattern() raises:
+def test_pattern() raises:
     print("── Pattern tests ──")
     var passed = 0
 
@@ -195,7 +195,7 @@ fn test_pattern() raises:
 # ── Weighted graph tests ─────────────────────────────────────────────────────
 
 
-fn test_weighted_graph() raises:
+def test_weighted_graph() raises:
     print("── Weighted graph tests ──")
     var passed = 0
 
@@ -299,7 +299,7 @@ fn test_weighted_graph() raises:
 # ── Metrics tests ────────────────────────────────────────────────────────────
 
 
-fn test_metrics() raises:
+def test_metrics() raises:
     print("── Metrics tests ──")
     var passed = 0
 
@@ -441,7 +441,7 @@ fn test_metrics() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 36 Tests ===")
     test_pattern()
     test_weighted_graph()

@@ -31,7 +31,7 @@ struct ChainGreeksResult(Movable):
     var vega: List[Float64]
     var theta: List[Float64]
 
-    fn __init__(
+    def __init__(
         out self,
         var price: List[Float64],
         var delta: List[Float64],

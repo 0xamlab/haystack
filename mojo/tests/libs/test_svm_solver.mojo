@@ -10,11 +10,11 @@ from svm_solver import (
 from std.math import abs as fabs
 
 
-fn _close(a: Float64, b: Float64, eps: Float64) -> Bool:
+def _close(a: Float64, b: Float64, eps: Float64) -> Bool:
     return fabs(a - b) <= eps
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ svm_solver::" + name)
@@ -23,7 +23,7 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ svm_solver::" + name)
 
 
-fn _point(x0: Float64, x1: Float64, mut X: List[Float64]):
+def _point(x0: Float64, x1: Float64, mut X: List[Float64]):
     X.append(x0)
     X.append(x1)
 

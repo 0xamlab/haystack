@@ -49,11 +49,11 @@ from std.math import abs as fabs
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Refrigeration Tests ──────────────────────────────────────────────────────
 
 
-fn test_refrigeration() raises:
+def test_refrigeration() raises:
     # cop_refrigeration: 5000/2000 = 2.5
     assert_true(approx_eq(cop_refrigeration(5000.0, 2000.0), 2.5), "cop_ref 2.5")
     assert_true(approx_eq(cop_refrigeration(3000.0, 1000.0), 3.0), "cop_ref 3.0")
@@ -113,7 +113,7 @@ fn test_refrigeration() raises:
 # ── Cartography Tests ────────────────────────────────────────────────────────
 
 
-fn test_cartography() raises:
+def test_cartography() raises:
     # scale_factor: 1/50000 = 0.00002
     assert_true(approx_eq(scale_factor(1.0, 50000.0), 0.00002), "sf 1:50k")
     assert_true(approx_eq(scale_factor(1.0, 0.0), 0.0), "sf zero ground")
@@ -170,7 +170,7 @@ fn test_cartography() raises:
 # ── Bioinformatics Tests ─────────────────────────────────────────────────────
 
 
-fn test_bioinformatics() raises:
+def test_bioinformatics() raises:
     # gc_content: 40/100 = 40%
     assert_true(approx_eq(gc_content(40.0, 100.0), 40.0), "gc 40%")
     assert_true(approx_eq(gc_content(0.0, 100.0), 0.0), "gc 0%")
@@ -233,7 +233,7 @@ fn test_bioinformatics() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 88 tests — Refrigeration, Cartography, Bioinformatics")
     test_refrigeration()
     test_cartography()

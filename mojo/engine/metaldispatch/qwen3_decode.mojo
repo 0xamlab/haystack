@@ -128,11 +128,11 @@ struct Qwen3DecodeResult(Copyable, Movable):
     previously measured it at all."""
 
 
-fn _decode_err(status: Int, message: String) -> Qwen3DecodeResult:
+def _decode_err(status: Int, message: String) -> Qwen3DecodeResult:
     return Qwen3DecodeResult(status, message, List[Int](), 0, False, 0, 0.0, 0.0)
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -145,7 +145,7 @@ struct _TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> _TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> _TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -154,7 +154,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> _TensorLoc:
     return _TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -168,12 +168,12 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) -> Qwen3DecodeResult:
+def qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) -> Qwen3DecodeResult:
     """Greedy-decode a prompt already folded into `checkpoint_dir/manifest.json`'s own `input_ids`,
     through `_MBQwen3I8AllSimd7`, and return every generated token id.
 

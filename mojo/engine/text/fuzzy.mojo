@@ -17,7 +17,7 @@ Public API:
 # ── levenshtein_distance ──────────────────────────────────────────────────────
 
 
-fn levenshtein_distance(a: String, b: String) -> Int:
+def levenshtein_distance(a: String, b: String) -> Int:
     """Edit distance between two strings using Wagner-Fischer DP algorithm.
 
     Time: O(m*n), Space: O(min(m,n)) using two-row optimisation.
@@ -66,7 +66,7 @@ fn levenshtein_distance(a: String, b: String) -> Int:
 # ── normalized_levenshtein ────────────────────────────────────────────────────
 
 
-fn normalized_levenshtein(a: String, b: String) -> Float64:
+def normalized_levenshtein(a: String, b: String) -> Float64:
     """Normalized Levenshtein similarity: 1.0 - distance / max(len(a), len(b)).
 
     Returns value in [0, 1]. Returns 1.0 for identical strings.
@@ -86,7 +86,7 @@ fn normalized_levenshtein(a: String, b: String) -> Float64:
 # ── jaro_similarity ───────────────────────────────────────────────────────────
 
 
-fn jaro_similarity(a: String, b: String) -> Float64:
+def jaro_similarity(a: String, b: String) -> Float64:
     """Jaro similarity score in [0, 1].
 
     Uses the classic Jaro algorithm:
@@ -158,7 +158,7 @@ fn jaro_similarity(a: String, b: String) -> Float64:
 # ── jaro_winkler_similarity ──────────────────────────────────────────────────
 
 
-fn jaro_winkler_similarity(
+def jaro_winkler_similarity(
     a: String, b: String, prefix_weight: Float64 = 0.1
 ) -> Float64:
     """Jaro-Winkler similarity: Jaro + prefix bonus.
@@ -192,7 +192,7 @@ fn jaro_winkler_similarity(
 # ── hamming_distance ──────────────────────────────────────────────────────────
 
 
-fn hamming_distance(a: String, b: String) raises -> Int:
+def hamming_distance(a: String, b: String) raises -> Int:
     """Hamming distance — number of positions where characters differ.
 
     Raises if strings have different lengths.
@@ -214,7 +214,7 @@ fn hamming_distance(a: String, b: String) raises -> Int:
 # ── longest_common_subsequence ────────────────────────────────────────────────
 
 
-fn longest_common_subsequence(a: String, b: String) -> Int:
+def longest_common_subsequence(a: String, b: String) -> Int:
     """Length of the longest common subsequence via DP.
 
     Time: O(m*n), Space: O(min(m,n)) using two-row optimisation.
@@ -255,7 +255,7 @@ fn longest_common_subsequence(a: String, b: String) -> Int:
 # ── fuzzy_ratio ───────────────────────────────────────────────────────────────
 
 
-fn fuzzy_ratio(a: String, b: String) -> Float64:
+def fuzzy_ratio(a: String, b: String) -> Float64:
     """Fuzzy match ratio: 2 * LCS / (len(a) + len(b)), range [0, 1].
 
     Returns 1.0 for identical strings. Returns 0.0 if both are empty.

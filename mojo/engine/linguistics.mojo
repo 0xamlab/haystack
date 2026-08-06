@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs, exp, log, pow
 # ── type_token_ratio ──────────────────────────────────────────────────────────
 
 
-fn type_token_ratio(n_types: Float64, n_tokens: Float64) -> Float64:
+def type_token_ratio(n_types: Float64, n_tokens: Float64) -> Float64:
     """TTR = types / tokens."""
     return n_types / n_tokens
 
@@ -32,7 +32,7 @@ fn type_token_ratio(n_types: Float64, n_tokens: Float64) -> Float64:
 # ── hapax_legomena_ratio ──────────────────────────────────────────────────────
 
 
-fn hapax_legomena_ratio(hapax_count: Float64, n_tokens: Float64) -> Float64:
+def hapax_legomena_ratio(hapax_count: Float64, n_tokens: Float64) -> Float64:
     """Hapax legomena ratio = hapax / N."""
     return hapax_count / n_tokens
 
@@ -40,7 +40,7 @@ fn hapax_legomena_ratio(hapax_count: Float64, n_tokens: Float64) -> Float64:
 # ── yules_k ───────────────────────────────────────────────────────────────────
 
 
-fn yules_k(n_tokens: Float64, freq_spectrum_sum: Float64) -> Float64:
+def yules_k(n_tokens: Float64, freq_spectrum_sum: Float64) -> Float64:
     """Yule's K = 10000 * (M2 - N) / N².
 
     freq_spectrum_sum = Σ(i² * f_i), i.e. sum of (frequency² × count).
@@ -51,7 +51,7 @@ fn yules_k(n_tokens: Float64, freq_spectrum_sum: Float64) -> Float64:
 # ── heaps_law ─────────────────────────────────────────────────────────────────
 
 
-fn heaps_law(k: Float64, beta: Float64, n_tokens: Float64) -> Float64:
+def heaps_law(k: Float64, beta: Float64, n_tokens: Float64) -> Float64:
     """Heaps' law: V = K * N^β (expected vocabulary size)."""
     return k * exp(beta * log(n_tokens))
 
@@ -59,7 +59,7 @@ fn heaps_law(k: Float64, beta: Float64, n_tokens: Float64) -> Float64:
 # ── zipfs_frequency ───────────────────────────────────────────────────────────
 
 
-fn zipfs_frequency(
+def zipfs_frequency(
     rank: Float64, max_freq: Float64, s: Float64
 ) -> Float64:
     """Zipf's frequency: f(r) = f_max / r^s."""
@@ -69,7 +69,7 @@ fn zipfs_frequency(
 # ── flesch_reading_ease ───────────────────────────────────────────────────────
 
 
-fn flesch_reading_ease(
+def flesch_reading_ease(
     total_words: Float64,
     total_sentences: Float64,
     total_syllables: Float64,
@@ -83,7 +83,7 @@ fn flesch_reading_ease(
 # ── flesch_kincaid_grade ──────────────────────────────────────────────────────
 
 
-fn flesch_kincaid_grade(
+def flesch_kincaid_grade(
     total_words: Float64,
     total_sentences: Float64,
     total_syllables: Float64,
@@ -97,7 +97,7 @@ fn flesch_kincaid_grade(
 # ── gunning_fog_index ─────────────────────────────────────────────────────────
 
 
-fn gunning_fog_index(
+def gunning_fog_index(
     total_words: Float64,
     total_sentences: Float64,
     complex_words: Float64,
@@ -111,7 +111,7 @@ fn gunning_fog_index(
 # ── automated_readability_index ───────────────────────────────────────────────
 
 
-fn automated_readability_index(
+def automated_readability_index(
     total_chars: Float64,
     total_words: Float64,
     total_sentences: Float64,
@@ -123,7 +123,7 @@ fn automated_readability_index(
 # ── coleman_liau_index ────────────────────────────────────────────────────────
 
 
-fn coleman_liau_index(
+def coleman_liau_index(
     avg_letters_per_100w: Float64, avg_sentences_per_100w: Float64
 ) -> Float64:
     """Coleman-Liau = 0.0588*L - 0.296*S - 15.8."""
@@ -133,7 +133,7 @@ fn coleman_liau_index(
 # ── lexical_density ───────────────────────────────────────────────────────────
 
 
-fn lexical_density(content_words: Float64, total_words: Float64) -> Float64:
+def lexical_density(content_words: Float64, total_words: Float64) -> Float64:
     """LD = content_words / total_words."""
     return content_words / total_words
 
@@ -141,6 +141,6 @@ fn lexical_density(content_words: Float64, total_words: Float64) -> Float64:
 # ── mean_word_length ──────────────────────────────────────────────────────────
 
 
-fn mean_word_length(total_chars: Float64, total_words: Float64) -> Float64:
+def mean_word_length(total_chars: Float64, total_words: Float64) -> Float64:
     """MWL = total_chars / total_words."""
     return total_chars / total_words

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from signal_processing import hamming_window, hann_window, blackman_window, apply_window, peak_detect, zero_crossings, spectral_energy, spectral_centroid, spectral_flatness, signal_power
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

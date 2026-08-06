@@ -19,7 +19,7 @@ Public API:
 # ── Length (base: meters) ─────────────────────────────────────────────────────
 
 
-fn _length_factor(unit: String) -> Float64:
+def _length_factor(unit: String) -> Float64:
     """Return metres-per-unit for the given length unit."""
     if unit == "m":
         return 1.0
@@ -42,7 +42,7 @@ fn _length_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_length(value: Float64, from_unit: String, to_unit: String) -> Float64:
+def convert_length(value: Float64, from_unit: String, to_unit: String) -> Float64:
     """Convert between length units."""
     return value * (_length_factor(from_unit) / _length_factor(to_unit))
 
@@ -50,7 +50,7 @@ fn convert_length(value: Float64, from_unit: String, to_unit: String) -> Float64
 # ── Mass (base: kilograms) ───────────────────────────────────────────────────
 
 
-fn _mass_factor(unit: String) -> Float64:
+def _mass_factor(unit: String) -> Float64:
     """Return kg-per-unit for the given mass unit."""
     if unit == "kg":
         return 1.0
@@ -69,7 +69,7 @@ fn _mass_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_mass(value: Float64, from_unit: String, to_unit: String) -> Float64:
+def convert_mass(value: Float64, from_unit: String, to_unit: String) -> Float64:
     """Convert between mass units."""
     return value * (_mass_factor(from_unit) / _mass_factor(to_unit))
 
@@ -77,7 +77,7 @@ fn convert_mass(value: Float64, from_unit: String, to_unit: String) -> Float64:
 # ── Temperature (special handling) ────────────────────────────────────────────
 
 
-fn _to_celsius(value: Float64, unit: String) -> Float64:
+def _to_celsius(value: Float64, unit: String) -> Float64:
     """Convert any temperature unit to Celsius."""
     if unit == "C":
         return value
@@ -88,7 +88,7 @@ fn _to_celsius(value: Float64, unit: String) -> Float64:
     return value
 
 
-fn _from_celsius(value_c: Float64, unit: String) -> Float64:
+def _from_celsius(value_c: Float64, unit: String) -> Float64:
     """Convert Celsius to any temperature unit."""
     if unit == "C":
         return value_c
@@ -99,7 +99,7 @@ fn _from_celsius(value_c: Float64, unit: String) -> Float64:
     return value_c
 
 
-fn convert_temperature(
+def convert_temperature(
     value: Float64, from_unit: String, to_unit: String
 ) -> Float64:
     """Convert between temperature units (C, F, K)."""
@@ -110,7 +110,7 @@ fn convert_temperature(
 # ── Time (base: seconds) ─────────────────────────────────────────────────────
 
 
-fn _time_factor(unit: String) -> Float64:
+def _time_factor(unit: String) -> Float64:
     """Return seconds-per-unit."""
     if unit == "s":
         return 1.0
@@ -131,7 +131,7 @@ fn _time_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_time(value: Float64, from_unit: String, to_unit: String) -> Float64:
+def convert_time(value: Float64, from_unit: String, to_unit: String) -> Float64:
     """Convert between time units."""
     return value * (_time_factor(from_unit) / _time_factor(to_unit))
 
@@ -139,7 +139,7 @@ fn convert_time(value: Float64, from_unit: String, to_unit: String) -> Float64:
 # ── Area (base: m²) ──────────────────────────────────────────────────────────
 
 
-fn _area_factor(unit: String) -> Float64:
+def _area_factor(unit: String) -> Float64:
     """Return m²-per-unit."""
     if unit == "m2":
         return 1.0
@@ -154,7 +154,7 @@ fn _area_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_area(value: Float64, from_unit: String, to_unit: String) -> Float64:
+def convert_area(value: Float64, from_unit: String, to_unit: String) -> Float64:
     """Convert between area units."""
     return value * (_area_factor(from_unit) / _area_factor(to_unit))
 
@@ -162,7 +162,7 @@ fn convert_area(value: Float64, from_unit: String, to_unit: String) -> Float64:
 # ── Volume (base: litres) ────────────────────────────────────────────────────
 
 
-fn _volume_factor(unit: String) -> Float64:
+def _volume_factor(unit: String) -> Float64:
     """Return litres-per-unit."""
     if unit == "L":
         return 1.0
@@ -181,7 +181,7 @@ fn _volume_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_volume(
+def convert_volume(
     value: Float64, from_unit: String, to_unit: String
 ) -> Float64:
     """Convert between volume units."""
@@ -191,7 +191,7 @@ fn convert_volume(
 # ── Speed (base: m/s) ────────────────────────────────────────────────────────
 
 
-fn _speed_factor(unit: String) -> Float64:
+def _speed_factor(unit: String) -> Float64:
     """Return (m/s)-per-unit."""
     if unit == "m/s":
         return 1.0
@@ -206,7 +206,7 @@ fn _speed_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_speed(
+def convert_speed(
     value: Float64, from_unit: String, to_unit: String
 ) -> Float64:
     """Convert between speed units."""
@@ -216,7 +216,7 @@ fn convert_speed(
 # ── Data (base: bytes, binary 1024) ──────────────────────────────────────────
 
 
-fn _data_factor(unit: String) -> Float64:
+def _data_factor(unit: String) -> Float64:
     """Return bytes-per-unit (binary, 1024-based)."""
     if unit == "B":
         return 1.0
@@ -233,6 +233,6 @@ fn _data_factor(unit: String) -> Float64:
     return 1.0
 
 
-fn convert_data(value: Float64, from_unit: String, to_unit: String) -> Float64:
+def convert_data(value: Float64, from_unit: String, to_unit: String) -> Float64:
     """Convert between data size units (binary 1024-based)."""
     return value * (_data_factor(from_unit) / _data_factor(to_unit))

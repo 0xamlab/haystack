@@ -8,14 +8,14 @@ from gbdt import (
 )
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _next_unit(mut state: UInt64) -> Float64:
+def _next_unit(mut state: UInt64) -> Float64:
     """Deterministic xorshift64 uniform in [0, 1)."""
     state ^= state << 13
     state ^= state >> 7
@@ -23,20 +23,20 @@ fn _next_unit(mut state: UInt64) -> Float64:
     return Float64(state % UInt64(1048576)) / 1048576.0
 
 
-fn _row(a: Float64) -> List[Float64]:
+def _row(a: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     return out^
 
 
-fn _row2(a: Float64, b: Float64) -> List[Float64]:
+def _row2(a: Float64, b: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ gbdt::" + name)

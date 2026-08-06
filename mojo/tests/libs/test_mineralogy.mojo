@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from mineralogy import mineral_density, mohs_hardness_scratch, crystal_d_spacing, mineral_formula_weight, solubility_product, geochemical_activity, mineral_saturation_index, specific_gravity_ratio, thermal_conductivity_mixing, birefringence
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

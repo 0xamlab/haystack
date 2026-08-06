@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs
 # ── map_list ─────────────────────────────────────────────────────────────────
 
 
-fn map_list(data: List[Float64], op: Int) -> List[Float64]:
+def map_list(data: List[Float64], op: Int) -> List[Float64]:
     """Apply operation to each element.
 
     Args:
@@ -55,7 +55,7 @@ fn map_list(data: List[Float64], op: Int) -> List[Float64]:
 # ── filter_list ──────────────────────────────────────────────────────────────
 
 
-fn filter_list(
+def filter_list(
     data: List[Float64], op: Int, threshold: Float64
 ) -> List[Float64]:
     """Filter elements by comparison to threshold.
@@ -86,7 +86,7 @@ fn filter_list(
 # ── reduce_sum ───────────────────────────────────────────────────────────────
 
 
-fn reduce_sum(data: List[Float64]) -> Float64:
+def reduce_sum(data: List[Float64]) -> Float64:
     """Sum all elements. Returns 0.0 for empty list."""
     var s: Float64 = 0.0
     for i in range(len(data)):
@@ -97,7 +97,7 @@ fn reduce_sum(data: List[Float64]) -> Float64:
 # ── reduce_product ───────────────────────────────────────────────────────────
 
 
-fn reduce_product(data: List[Float64]) -> Float64:
+def reduce_product(data: List[Float64]) -> Float64:
     """Product of all elements. Returns 1.0 for empty list."""
     var p: Float64 = 1.0
     for i in range(len(data)):
@@ -108,7 +108,7 @@ fn reduce_product(data: List[Float64]) -> Float64:
 # ── reduce_min ───────────────────────────────────────────────────────────────
 
 
-fn reduce_min(data: List[Float64]) -> Float64:
+def reduce_min(data: List[Float64]) -> Float64:
     """Minimum element. Returns 1e308 for empty list."""
     if len(data) == 0:
         return 1e308
@@ -122,7 +122,7 @@ fn reduce_min(data: List[Float64]) -> Float64:
 # ── reduce_max ───────────────────────────────────────────────────────────────
 
 
-fn reduce_max(data: List[Float64]) -> Float64:
+def reduce_max(data: List[Float64]) -> Float64:
     """Maximum element. Returns -1e308 for empty list."""
     if len(data) == 0:
         return -1e308
@@ -136,7 +136,7 @@ fn reduce_max(data: List[Float64]) -> Float64:
 # ── chain_map_filter ─────────────────────────────────────────────────────────
 
 
-fn chain_map_filter(
+def chain_map_filter(
     data: List[Float64], map_op: Int, filter_op: Int, threshold: Float64
 ) -> List[Float64]:
     """Chain: first map, then filter.
@@ -157,7 +157,7 @@ fn chain_map_filter(
 # ── batch ────────────────────────────────────────────────────────────────────
 
 
-fn batch(data: List[Float64], batch_size: Int) -> List[List[Float64]]:
+def batch(data: List[Float64], batch_size: Int) -> List[List[Float64]]:
     """Split data into batches of given size (last batch may be smaller).
 
     Args:
@@ -188,7 +188,7 @@ fn batch(data: List[Float64], batch_size: Int) -> List[List[Float64]]:
 # ── flatten ──────────────────────────────────────────────────────────────────
 
 
-fn flatten(batches: List[List[Float64]]) -> List[Float64]:
+def flatten(batches: List[List[Float64]]) -> List[Float64]:
     """Flatten list of lists into single list."""
     var result = List[Float64]()
     for i in range(len(batches)):
@@ -200,7 +200,7 @@ fn flatten(batches: List[List[Float64]]) -> List[Float64]:
 # ── zip_lists ────────────────────────────────────────────────────────────────
 
 
-fn zip_lists(a: List[Float64], b: List[Float64]) -> List[List[Float64]]:
+def zip_lists(a: List[Float64], b: List[Float64]) -> List[List[Float64]]:
     """Zip two lists into pairs [a_i, b_i]. Length = min(len(a), len(b))."""
     var n = len(a)
     if len(b) < n:
@@ -217,7 +217,7 @@ fn zip_lists(a: List[Float64], b: List[Float64]) -> List[List[Float64]]:
 # ── window ───────────────────────────────────────────────────────────────────
 
 
-fn window(data: List[Float64], size: Int) -> List[List[Float64]]:
+def window(data: List[Float64], size: Int) -> List[List[Float64]]:
     """Sliding window of given size.
 
     Args:
@@ -242,7 +242,7 @@ fn window(data: List[Float64], size: Int) -> List[List[Float64]]:
 # ── unique_values ────────────────────────────────────────────────────────────
 
 
-fn unique_values(data: List[Float64]) -> List[Float64]:
+def unique_values(data: List[Float64]) -> List[Float64]:
     """Unique values preserving first-occurrence order (tolerance 1e-12)."""
     var result = List[Float64]()
     for i in range(len(data)):

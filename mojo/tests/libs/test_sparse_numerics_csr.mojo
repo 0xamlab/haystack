@@ -61,7 +61,7 @@ from sparse_numerics.csr import (
 )
 
 
-fn _ints(a: Int, b: Int, c: Int) -> List[Int]:
+def _ints(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -69,14 +69,14 @@ fn _ints(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _ints2(a: Int, b: Int) -> List[Int]:
+def _ints2(a: Int, b: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _ints4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _ints4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -85,7 +85,7 @@ fn _ints4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     return out^
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -94,7 +94,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality: every value here is a sum of small integers and halves, so a
     tolerance would hide a genuine mis-accumulation."""
     if len(a) != len(b):
@@ -105,7 +105,7 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _flatten(nested: List[List[Float64]]) -> List[Float64]:
+def _flatten(nested: List[List[Float64]]) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(nested)):
         for j in range(len(nested[i])):
@@ -113,7 +113,7 @@ fn _flatten(nested: List[List[Float64]]) -> List[Float64]:
     return out^
 
 
-fn _demo_coo() -> SparseMatrixCOO:
+def _demo_coo() -> SparseMatrixCOO:
     """A 3x4 COO with two duplicate pairs and four out-of-range coordinates.
 
     (0,1) appears twice (2 + 3 = 5) and (1,0) twice (-1 + 1.5 = 0.5). Rows 9 and -1 and
@@ -133,7 +133,7 @@ fn _demo_coo() -> SparseMatrixCOO:
     return coo^
 
 
-fn _oracle_coo() -> SparseMatrixCOO:
+def _oracle_coo() -> SparseMatrixCOO:
     """`_demo_coo` with only the in-range entries — the part that has a dense image."""
     var coo = SparseMatrixCOO(3, 4)
     coo.add_entry(0, 1, 2.0)
@@ -144,7 +144,7 @@ fn _oracle_coo() -> SparseMatrixCOO:
     return coo^
 
 
-fn _matrix_a() -> CSRMatrix:
+def _matrix_a() -> CSRMatrix:
     """A = [[1, 0, 2], [0, 3, 0]] as a 2x3 CSR with no flags claimed."""
     var indptr = _ints(0, 2, 3)
     var indices = _ints(0, 2, 1)
@@ -155,7 +155,7 @@ fn _matrix_a() -> CSRMatrix:
     return csr_from_arrays(indptr, indices, values, 2, 3)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

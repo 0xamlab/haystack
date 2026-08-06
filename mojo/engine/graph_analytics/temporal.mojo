@@ -164,7 +164,7 @@ comptime TEMPORAL_NO_PREDECESSOR: Int = -1
 comptime TEMPORAL_NO_EDGE: Int = -1
 
 
-fn temporal_status_name(code: Int) -> String:
+def temporal_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number.
     """
     if code == TEMPORAL_OK:
@@ -385,7 +385,7 @@ struct TemporalGap(Copyable, Movable):
 # ── validation ────────────────────────────────────────────────────────────────
 
 
-fn temporal_validate(
+def temporal_validate(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -423,7 +423,7 @@ fn temporal_validate(
     return TEMPORAL_OK
 
 
-fn temporal_validate_driver(
+def temporal_validate_driver(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -435,7 +435,7 @@ fn temporal_validate_driver(
     return temporal_status_name(temporal_validate(src, dst, weight, time, n_nodes))
 
 
-fn _window_status(window_start: Float64, window_end: Float64) -> Int:
+def _window_status(window_start: Float64, window_end: Float64) -> Int:
     """`TEMPORAL_OK` for a window that can contain events, else why it cannot.
 
     `start == end` is the legal empty window. A non-finite bound is refused rather than
@@ -451,7 +451,7 @@ fn _window_status(window_start: Float64, window_end: Float64) -> Int:
     return TEMPORAL_OK
 
 
-fn _in_range_edges(
+def _in_range_edges(
     src: List[Int], dst: List[Int], n_nodes: Int
 ) -> List[Int]:
     """Indices of the edges whose endpoints both exist. Callers index only through this.
@@ -466,7 +466,7 @@ fn _in_range_edges(
     return keep^
 
 
-fn _time_order(edge_index: List[Int], time: List[Float64]) -> List[Int]:
+def _time_order(edge_index: List[Int], time: List[Float64]) -> List[Int]:
     """`edge_index` reordered so `time` is non-decreasing, via the frozen min-heap.
 
     The heap carries the timestamps and a `HashIndex` bucket carries the identities; see
@@ -502,7 +502,7 @@ fn _time_order(edge_index: List[Int], time: List[Float64]) -> List[Int]:
 # ── earliest arrival ──────────────────────────────────────────────────────────
 
 
-fn _no_arrival(
+def _no_arrival(
     status: Int, n_nodes: Int, source: Int, start_time: Float64
 ) -> TemporalArrival:
     """No answer. Empty lists and zero counts, so an ignored status cannot read as one."""
@@ -523,7 +523,7 @@ fn _no_arrival(
     )
 
 
-fn _earliest_arrival_scan(
+def _earliest_arrival_scan(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -642,7 +642,7 @@ fn _earliest_arrival_scan(
     )
 
 
-fn temporal_earliest_arrival(
+def temporal_earliest_arrival(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -679,7 +679,7 @@ fn temporal_earliest_arrival(
     )
 
 
-fn temporal_earliest_arrival_instant(
+def temporal_earliest_arrival_instant(
     src: List[Int],
     dst: List[Int],
     time: List[Float64],
@@ -705,7 +705,7 @@ fn temporal_earliest_arrival_instant(
 # `apps/runtime/mojo_inventory.py` reads a signature with a ten-line lookahead and, when
 # the closing `)` falls outside it, drops the function from the runtime contract with no
 # error anywhere — the same silent-drop failure mode as returning another module's struct.
-fn temporal_earliest_arrival_window(
+def temporal_earliest_arrival_window(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -744,7 +744,7 @@ fn temporal_earliest_arrival_window(
     )
 
 
-fn _no_path(status: Int, source: Int, target: Int) -> TemporalPath:
+def _no_path(status: Int, source: Int, target: Int) -> TemporalPath:
     return TemporalPath(
         status,
         False,
@@ -760,7 +760,7 @@ fn _no_path(status: Int, source: Int, target: Int) -> TemporalPath:
     )
 
 
-fn _reconstruct(
+def _reconstruct(
     arr: TemporalArrival, target: Int, time: List[Float64]
 ) -> TemporalPath:
     """Walk the predecessor chain back from `target` and turn it into a journey.
@@ -830,7 +830,7 @@ fn _reconstruct(
     )
 
 
-fn temporal_earliest_arrival_path(
+def temporal_earliest_arrival_path(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -857,7 +857,7 @@ fn temporal_earliest_arrival_path(
 # ── fastest journeys ──────────────────────────────────────────────────────────
 
 
-fn _no_durations(status: Int, n_nodes: Int, source: Int) -> TemporalDurations:
+def _no_durations(status: Int, n_nodes: Int, source: Int) -> TemporalDurations:
     return TemporalDurations(
         status,
         n_nodes,
@@ -871,7 +871,7 @@ fn _no_durations(status: Int, n_nodes: Int, source: Int) -> TemporalDurations:
     )
 
 
-fn _source_departure_times(
+def _source_departure_times(
     src: List[Int], time: List[Float64], source: Int, order: List[Int]
 ) -> List[Float64]:
     """The distinct timestamps at which `source` has an out-edge, ascending.
@@ -891,7 +891,7 @@ fn _source_departure_times(
     return out^
 
 
-fn temporal_fastest_durations(
+def temporal_fastest_durations(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -970,7 +970,7 @@ fn temporal_fastest_durations(
     )
 
 
-fn temporal_fastest_path(
+def temporal_fastest_path(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1025,7 +1025,7 @@ fn temporal_fastest_path(
 # ── reachability ──────────────────────────────────────────────────────────────
 
 
-fn temporal_reachable_set(
+def temporal_reachable_set(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1053,7 +1053,7 @@ fn temporal_reachable_set(
     return TemporalIntsResult(TEMPORAL_OK, count, values^)
 
 
-fn temporal_reaches(
+def temporal_reaches(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1080,7 +1080,7 @@ fn temporal_reaches(
     return arr.reached[target]
 
 
-fn temporal_static_gap(
+def temporal_static_gap(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1133,7 +1133,7 @@ fn temporal_static_gap(
 # ── streams and windows ───────────────────────────────────────────────────────
 
 
-fn _no_stream(status: Int, n_nodes: Int) -> TemporalStream:
+def _no_stream(status: Int, n_nodes: Int) -> TemporalStream:
     return TemporalStream(
         status,
         n_nodes,
@@ -1151,7 +1151,7 @@ fn _no_stream(status: Int, n_nodes: Int) -> TemporalStream:
     )
 
 
-fn _stream_from_order(
+def _stream_from_order(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1193,7 +1193,7 @@ fn _stream_from_order(
     )
 
 
-fn temporal_sorted_by_time(
+def temporal_sorted_by_time(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1224,7 +1224,7 @@ fn temporal_sorted_by_time(
     )
 
 
-fn temporal_window_subgraph(
+def temporal_window_subgraph(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1286,7 +1286,7 @@ fn temporal_window_subgraph(
 # ── activity and burstiness ───────────────────────────────────────────────────
 
 
-fn _no_activity(status: Int) -> TemporalActivity:
+def _no_activity(status: Int) -> TemporalActivity:
     return TemporalActivity(
         status,
         0,
@@ -1312,7 +1312,7 @@ fn _no_activity(status: Int) -> TemporalActivity:
     )
 
 
-fn _activity_of(
+def _activity_of(
     time: List[Float64], order: List[Int], skipped: Int
 ) -> TemporalActivity:
     """Summarise the timestamps `order` selects, in that (ascending) order.
@@ -1395,7 +1395,7 @@ fn _activity_of(
     )
 
 
-fn temporal_activity_summary(
+def temporal_activity_summary(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1419,7 +1419,7 @@ fn temporal_activity_summary(
     return _activity_of(time, _time_order(keep, time), skipped)
 
 
-fn temporal_node_activity(
+def temporal_node_activity(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],

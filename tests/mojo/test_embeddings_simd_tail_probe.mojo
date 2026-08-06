@@ -60,7 +60,7 @@ from embeddings import (
 from tensorx.dtype import DT_F64, dtx_tol_for
 
 
-fn _mk(n: Int, seed: Float64, step: Float64) -> List[Float64]:
+def _mk(n: Int, seed: Float64, step: Float64) -> List[Float64]:
     """`n` values `seed, seed + step, seed + 2*step, ...` -- deterministic,
     comparable-magnitude, and independent of any embeddings.mojo internals."""
     var out = List[Float64](capacity=n)
@@ -69,7 +69,7 @@ fn _mk(n: Int, seed: Float64, step: Float64) -> List[Float64]:
     return out^
 
 
-fn _ref_dot(a: List[Float64], b: List[Float64]) -> Float64:
+def _ref_dot(a: List[Float64], b: List[Float64]) -> Float64:
     """Independent scalar reference: NOT a call into embeddings.mojo."""
     var s: Float64 = 0.0
     for i in range(len(a)):
@@ -77,7 +77,7 @@ fn _ref_dot(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn _ref_cosine(a: List[Float64], b: List[Float64]) -> Float64:
+def _ref_cosine(a: List[Float64], b: List[Float64]) -> Float64:
     var dot: Float64 = 0.0
     var sq_a: Float64 = 0.0
     var sq_b: Float64 = 0.0
@@ -90,7 +90,7 @@ fn _ref_cosine(a: List[Float64], b: List[Float64]) -> Float64:
     return dot / (sqrt(sq_a) * sqrt(sq_b))
 
 
-fn _ref_euclidean(a: List[Float64], b: List[Float64]) -> Float64:
+def _ref_euclidean(a: List[Float64], b: List[Float64]) -> Float64:
     var s: Float64 = 0.0
     for i in range(len(a)):
         var d = a[i] - b[i]
@@ -98,7 +98,7 @@ fn _ref_euclidean(a: List[Float64], b: List[Float64]) -> Float64:
     return sqrt(s)
 
 
-fn _ref_manhattan(a: List[Float64], b: List[Float64]) -> Float64:
+def _ref_manhattan(a: List[Float64], b: List[Float64]) -> Float64:
     var s: Float64 = 0.0
     for i in range(len(a)):
         var d = a[i] - b[i]
@@ -108,14 +108,14 @@ fn _ref_manhattan(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn _ref_magnitude(v: List[Float64]) -> Float64:
+def _ref_magnitude(v: List[Float64]) -> Float64:
     var s: Float64 = 0.0
     for i in range(len(v)):
         s += v[i] * v[i]
     return sqrt(s)
 
 
-fn _within_tol(got: Float64, want: Float64, n: Int) -> Bool:
+def _within_tol(got: Float64, want: Float64, n: Int) -> Bool:
     """`gemm.blocked.gemm_reference_delta_flat`'s exact tolerance shape:
     `dtx_tol_for(want, DT_F64, 0.0).relative_term`, scaled by the reduction
     length (rounding grows with it) times a small constant safety factor --

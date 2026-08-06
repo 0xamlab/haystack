@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from metallurgy import hall_petch, johnson_cook_flow_stress, hardness_to_tensile, carbon_equivalent, jominy_distance_to_hardness, avrami_fraction, quench_severity, tempering_parameter, density_of_alloy_rule_of_mixtures, thermal_conductivity_wiedemann_franz, strain_hardening_exponent_from_points, fatigue_life_basquin
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -22,7 +22,7 @@ Public API:
 # ── HTTP Status Codes ─────────────────────────────────────────────────────────
 
 
-fn http_status_text(code: Int) -> String:
+def http_status_text(code: Int) -> String:
     """Return the standard HTTP reason phrase for a status code."""
     if code == 100:
         return "Continue"
@@ -84,22 +84,22 @@ fn http_status_text(code: Int) -> String:
 # ── Status Code Classification ────────────────────────────────────────────────
 
 
-fn is_success(code: Int) -> Bool:
+def is_success(code: Int) -> Bool:
     """True if HTTP code is in 200-299 (success)."""
     return code >= 200 and code <= 299
 
 
-fn is_redirect(code: Int) -> Bool:
+def is_redirect(code: Int) -> Bool:
     """True if HTTP code is in 300-399 (redirect)."""
     return code >= 300 and code <= 399
 
 
-fn is_client_error(code: Int) -> Bool:
+def is_client_error(code: Int) -> Bool:
     """True if HTTP code is in 400-499 (client error)."""
     return code >= 400 and code <= 499
 
 
-fn is_server_error(code: Int) -> Bool:
+def is_server_error(code: Int) -> Bool:
     """True if HTTP code is in 500-599 (server error)."""
     return code >= 500 and code <= 599
 
@@ -107,7 +107,7 @@ fn is_server_error(code: Int) -> Bool:
 # ── MIME Types ────────────────────────────────────────────────────────────────
 
 
-fn mime_type(extension: String) -> String:
+def mime_type(extension: String) -> String:
     """Map a file extension (without dot) to its MIME type.
 
     Supports 20+ common types. Returns "application/octet-stream" for unknown.
@@ -166,7 +166,7 @@ fn mime_type(extension: String) -> String:
 # ── Content-Type Parsing ──────────────────────────────────────────────────────
 
 
-fn parse_content_type(header: String) -> String:
+def parse_content_type(header: String) -> String:
     """Extract the MIME type from a Content-Type header, stripping parameters.
 
     Example: "text/html; charset=utf-8" → "text/html"
@@ -200,7 +200,7 @@ fn parse_content_type(header: String) -> String:
     return result^
 
 
-fn is_json_type(mime: String) -> Bool:
+def is_json_type(mime: String) -> Bool:
     """Check if MIME type is JSON-compatible."""
     if mime == "application/json":
         return True
@@ -219,7 +219,7 @@ fn is_json_type(mime: String) -> Bool:
     return False
 
 
-fn is_text_type(mime: String) -> Bool:
+def is_text_type(mime: String) -> Bool:
     """Check if MIME type starts with 'text/'."""
     var b = mime.as_bytes()
     if len(b) < 5:
@@ -236,7 +236,7 @@ fn is_text_type(mime: String) -> Bool:
 # ── Query String ──────────────────────────────────────────────────────────────
 
 
-fn build_query_string(keys: List[String], values: List[String]) -> String:
+def build_query_string(keys: List[String], values: List[String]) -> String:
     """Build a URL query string: key1=val1&key2=val2.
 
     Keys and values lists must be same length.
@@ -252,7 +252,7 @@ fn build_query_string(keys: List[String], values: List[String]) -> String:
     return result^
 
 
-fn _extract_substring(s: String, start: Int, end: Int) -> String:
+def _extract_substring(s: String, start: Int, end: Int) -> String:
     """Extract a substring from s using byte positions."""
     var sb = s.as_bytes()
     var result = String("")
@@ -261,7 +261,7 @@ fn _extract_substring(s: String, start: Int, end: Int) -> String:
     return result^
 
 
-fn parse_query_string(query: String) -> List[List[String]]:
+def parse_query_string(query: String) -> List[List[String]]:
     """Parse a URL query string into [[key, value], ...] pairs.
 
     Example: "a=1&b=2" → [["a","1"], ["b","2"]]

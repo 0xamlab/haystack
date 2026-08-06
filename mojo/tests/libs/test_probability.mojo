@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from probability import bayes, joint_probability, total_probability, factorial, combinations, permutations, binomial_pmf, poisson_pmf, entropy, kl_divergence
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

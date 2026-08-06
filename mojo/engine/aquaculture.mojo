@@ -24,7 +24,7 @@ from std.math import log, exp
 # ── stocking_density ─────────────────────────────────────────────────────────
 
 
-fn stocking_density(biomass_kg: Float64, volume_m3: Float64) -> Float64:
+def stocking_density(biomass_kg: Float64, volume_m3: Float64) -> Float64:
     """Stocking density: SD = biomass / volume (kg/m³).
 
     Args:
@@ -40,7 +40,7 @@ fn stocking_density(biomass_kg: Float64, volume_m3: Float64) -> Float64:
 # ── feed_conversion_ratio ───────────────────────────────────────────────────
 
 
-fn feed_conversion_ratio(feed_kg: Float64, weight_gain_kg: Float64) -> Float64:
+def feed_conversion_ratio(feed_kg: Float64, weight_gain_kg: Float64) -> Float64:
     """Feed conversion ratio: FCR = feed / weight_gain.
 
     Args:
@@ -56,7 +56,7 @@ fn feed_conversion_ratio(feed_kg: Float64, weight_gain_kg: Float64) -> Float64:
 # ── specific_growth_rate ─────────────────────────────────────────────────────
 
 
-fn specific_growth_rate(w_final: Float64, w_initial: Float64, days: Float64) -> Float64:
+def specific_growth_rate(w_final: Float64, w_initial: Float64, days: Float64) -> Float64:
     """Specific growth rate: SGR = (ln(Wf) - ln(Wi)) / days * 100 (%/day).
 
     Args:
@@ -73,7 +73,7 @@ fn specific_growth_rate(w_final: Float64, w_initial: Float64, days: Float64) -> 
 # ── dissolved_oxygen_consumption ─────────────────────────────────────────────
 
 
-fn dissolved_oxygen_consumption(biomass_kg: Float64, rate_per_kg: Float64) -> Float64:
+def dissolved_oxygen_consumption(biomass_kg: Float64, rate_per_kg: Float64) -> Float64:
     """Dissolved oxygen consumption: DO = biomass * rate (mg/hr).
 
     Args:
@@ -89,7 +89,7 @@ fn dissolved_oxygen_consumption(biomass_kg: Float64, rate_per_kg: Float64) -> Fl
 # ── water_exchange_rate ──────────────────────────────────────────────────────
 
 
-fn water_exchange_rate(flow_rate: Float64, tank_volume: Float64) -> Float64:
+def water_exchange_rate(flow_rate: Float64, tank_volume: Float64) -> Float64:
     """Water exchange rate: ER = flow / volume * 100 (%/hr).
 
     Args:
@@ -105,7 +105,7 @@ fn water_exchange_rate(flow_rate: Float64, tank_volume: Float64) -> Float64:
 # ── ammonia_production ───────────────────────────────────────────────────────
 
 
-fn ammonia_production(feed_rate: Float64, protein_pct: Float64) -> Float64:
+def ammonia_production(feed_rate: Float64, protein_pct: Float64) -> Float64:
     """Ammonia production estimate: NH3 ≈ feed * protein/100 * 0.03.
 
     Args:
@@ -121,7 +121,7 @@ fn ammonia_production(feed_rate: Float64, protein_pct: Float64) -> Float64:
 # ── carrying_capacity ────────────────────────────────────────────────────────
 
 
-fn carrying_capacity(do_available: Float64, do_per_kg: Float64) -> Float64:
+def carrying_capacity(do_available: Float64, do_per_kg: Float64) -> Float64:
     """Carrying capacity: CC = DO_available / DO_per_kg (kg).
 
     Args:
@@ -137,7 +137,7 @@ fn carrying_capacity(do_available: Float64, do_per_kg: Float64) -> Float64:
 # ── harvest_weight ───────────────────────────────────────────────────────────
 
 
-fn harvest_weight(initial_weight: Float64, sgr: Float64, days: Float64) -> Float64:
+def harvest_weight(initial_weight: Float64, sgr: Float64, days: Float64) -> Float64:
     """Projected harvest weight: W = Wi * exp(SGR * days / 100).
 
     Args:
@@ -154,7 +154,7 @@ fn harvest_weight(initial_weight: Float64, sgr: Float64, days: Float64) -> Float
 # ── survival_rate ────────────────────────────────────────────────────────────
 
 
-fn survival_rate(final_count: Float64, initial_count: Float64) -> Float64:
+def survival_rate(final_count: Float64, initial_count: Float64) -> Float64:
     """Survival rate: SR = final / initial * 100 (%).
 
     Args:
@@ -170,7 +170,7 @@ fn survival_rate(final_count: Float64, initial_count: Float64) -> Float64:
 # ── production_per_cycle ─────────────────────────────────────────────────────
 
 
-fn production_per_cycle(harvest_weight_avg: Float64, count: Float64, survival: Float64) -> Float64:
+def production_per_cycle(harvest_weight_avg: Float64, count: Float64, survival: Float64) -> Float64:
     """Production per cycle: P = Wavg * count * survival / 100 (kg).
 
     Args:
@@ -187,7 +187,7 @@ fn production_per_cycle(harvest_weight_avg: Float64, count: Float64, survival: F
 # ── biofilter_capacity ───────────────────────────────────────────────────────
 
 
-fn biofilter_capacity(surface_area: Float64, nitrification_rate: Float64) -> Float64:
+def biofilter_capacity(surface_area: Float64, nitrification_rate: Float64) -> Float64:
     """Biofilter capacity: Cap = surface_area * nitrification_rate.
 
     Args:
@@ -203,7 +203,7 @@ fn biofilter_capacity(surface_area: Float64, nitrification_rate: Float64) -> Flo
 # ── cost_per_kg_produced ─────────────────────────────────────────────────────
 
 
-fn cost_per_kg_produced(total_cost: Float64, production_kg: Float64) -> Float64:
+def cost_per_kg_produced(total_cost: Float64, production_kg: Float64) -> Float64:
     """Cost per kg produced: Cost = total / production.
 
     Args:

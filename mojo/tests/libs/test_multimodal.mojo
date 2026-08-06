@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from multimodal import image_patch_embed, image_patch_count, spectrogram_mel_freq, spectrogram_stft_magnitude, audio_feature_norm, vision_attention_scale, cross_modal_similarity, image_token_count, ocr_confidence_score, multimodal_fusion_weight
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

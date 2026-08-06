@@ -13,7 +13,7 @@ from sheet.api import sheet_eval_cell, sheet_recalc_report
 from sheet.values import VK_ERR, VK_NUM, VK_TEXT
 
 
-fn _wb_head() -> String:
+def _wb_head() -> String:
     var t = String("SHEETWB\t1\nD\t0\nS\tS\nS\tS2\n")
     # data block: A1:A8 = 2,4,4,4,5,5,7,9 ; B1:B4 = text/mixed ; D1:E3 lookup
     t += "C\t0\tA1\tn\t2\nC\t0\tA2\tn\t4\nC\t0\tA3\tn\t4\nC\t0\tA4\tn\t4\n"
@@ -28,7 +28,7 @@ fn _wb_head() -> String:
     return t^
 
 
-fn _f(cell: String, formula: String, ct: String, cv: String) -> String:
+def _f(cell: String, formula: String, ct: String, cv: String) -> String:
     var t = String("F\t0\t")
     t += cell
     t += "\tn\t"
@@ -41,7 +41,7 @@ fn _f(cell: String, formula: String, ct: String, cv: String) -> String:
     return t^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

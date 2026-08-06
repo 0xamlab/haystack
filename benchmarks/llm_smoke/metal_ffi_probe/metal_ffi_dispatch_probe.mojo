@@ -75,7 +75,7 @@ struct MTLSize(Copyable, Movable):
     var depth: UInt64
 
 
-fn _gemv_kernel(
+def _gemv_kernel(
     y_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     x_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     w_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
@@ -94,7 +94,7 @@ fn _gemv_kernel(
     y_ptr[j] = acc
 
 
-fn _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
+def _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
     return s.unsafe_ptr()
 
 
@@ -107,23 +107,23 @@ fn _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
 # see write-up). A one-signature-per-C-symbol-name shim sidesteps both; every wrapper in
 # objc_shim.c is a one-line, argument-preserving forward to the real `objc_msgSend` / Metal /
 # libdispatch C functions -- no kernel logic, no Metal argument-layout knowledge lives there.
-fn sel(name: StaticString) -> OpaquePointer[MutAnyOrigin]:
+def sel(name: StaticString) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_sel", OpaquePointer[MutAnyOrigin], UnsafePointer[UInt8, origin=StaticConstantOrigin]](_cstr(name))
 
 
-fn msg0(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
+def msg0(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
     return external_call[
         "algenta_msg0", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
     ](recv, s)
 
 
-fn msg0_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]):
+def msg0_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]):
     external_call[
         "algenta_msg0_void", NoneType, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
     ](recv, s)
 
 
-fn msg1p(
+def msg1p(
     recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]
 ) -> OpaquePointer[MutAnyOrigin]:
     return external_call[
@@ -135,7 +135,7 @@ fn msg1p(
     ](recv, s, a0)
 
 
-fn msg1p_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]):
+def msg1p_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]):
     external_call[
         "algenta_msg1p_void",
         NoneType,
@@ -145,7 +145,7 @@ fn msg1p_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin],
     ](recv, s, a0)
 
 
-fn new_buffer(
+def new_buffer(
     dev: OpaquePointer[MutAnyOrigin], sel_new_buf: OpaquePointer[MutAnyOrigin], length: UInt64
 ) -> OpaquePointer[MutAnyOrigin]:
     # newBufferWithLength:options: , options=0 == MTLResourceStorageModeShared
@@ -159,7 +159,7 @@ fn new_buffer(
     ](dev, sel_new_buf, length, UInt64(0))
 
 
-fn set_buffer(
+def set_buffer(
     enc: OpaquePointer[MutAnyOrigin],
     s: OpaquePointer[MutAnyOrigin],
     buf: OpaquePointer[MutAnyOrigin],
@@ -177,7 +177,7 @@ fn set_buffer(
     ](enc, s, buf, offset, index)
 
 
-fn set_bytes(
+def set_bytes(
     enc: OpaquePointer[MutAnyOrigin],
     s: OpaquePointer[MutAnyOrigin],
     data: UnsafePointer[UInt8, origin=MutAnyOrigin],
@@ -195,7 +195,7 @@ fn set_bytes(
     ](enc, s, data, length, index)
 
 
-fn dispatch_threadgroups(
+def dispatch_threadgroups(
     enc: OpaquePointer[MutAnyOrigin],
     s: OpaquePointer[MutAnyOrigin],
     groups: MTLSize,
@@ -214,7 +214,7 @@ fn dispatch_threadgroups(
     ](enc, s, groups.width, groups.height, groups.depth, threads.width, threads.height, threads.depth)
 
 
-fn msg2p_err(
+def msg2p_err(
     recv: OpaquePointer[MutAnyOrigin],
     s: OpaquePointer[MutAnyOrigin],
     a0: OpaquePointer[MutAnyOrigin],
@@ -230,7 +230,7 @@ fn msg2p_err(
     ](recv, s, a0, err_out)
 
 
-fn msg1u_ret(
+def msg1u_ret(
     recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: UInt64
 ) -> OpaquePointer[MutAnyOrigin]:
     return external_call[
@@ -242,13 +242,13 @@ fn msg1u_ret(
     ](recv, s, a0)
 
 
-fn msg0_u64(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> UInt64:
+def msg0_u64(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> UInt64:
     return external_call[
         "algenta_msg0_u64", UInt64, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]
     ](recv, s)
 
 
-fn dispatch_data_from(ptr: UnsafePointer[UInt8, origin=MutAnyOrigin], length: UInt64) -> OpaquePointer[MutAnyOrigin]:
+def dispatch_data_from(ptr: UnsafePointer[UInt8, origin=MutAnyOrigin], length: UInt64) -> OpaquePointer[MutAnyOrigin]:
     return external_call[
         "algenta_dispatch_data_create",
         OpaquePointer[MutAnyOrigin],
@@ -261,12 +261,12 @@ struct MetallibBlob(Copyable, Movable):
     var ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
     var length: Int
 
-    fn __init__(out self, ptr: UnsafePointer[UInt8, origin=MutAnyOrigin], length: Int):
+    def __init__(out self, ptr: UnsafePointer[UInt8, origin=MutAnyOrigin], length: Int):
         self.ptr = ptr
         self.length = length
 
 
-fn find_embedded_metallib() raises -> MetallibBlob:
+def find_embedded_metallib() raises -> MetallibBlob:
     """Locates THIS process's own embedded Mojo-compiled metallib blob: `__TEXT,__const`, scanned
     for the `MTLB` magic, sized by the container's own self-declared length at byte offset +16
     (verified against Metal's real loader in the recon that grew this file -- see module doc)."""
@@ -309,7 +309,7 @@ fn find_embedded_metallib() raises -> MetallibBlob:
     return MetallibBlob(sect + magic_off, declared_len)
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1

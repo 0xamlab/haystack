@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from agent_runtime import tool_call_cost_estimate, retry_should_attempt, plan_step_dependency_ready, action_value_estimate, tool_selection_score, memory_retrieval_relevance, context_window_budget, agent_step_reward, structured_output_match, agent_cost_budget_remaining
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

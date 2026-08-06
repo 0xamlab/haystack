@@ -11,7 +11,7 @@ struct SobolGen:
     var v:     List[List[Int]]
     var state: List[Int]          # XOR accumulator per dimension
 
-    fn __init__(out self, dim: Int):
+    def __init__(out self, dim: Int):
         self.dim   = dim
         self.count = 0
         self.v     = List[List[Int]](capacity=dim)
@@ -51,7 +51,7 @@ struct SobolGen:
         while len(self.v) < dim:
             self.v.append(self.v[0].copy())
 
-    fn next_point(mut self) -> List[Float64]:
+    def next_point(mut self) -> List[Float64]:
         var n = self.count; self.count += 1
         # Gray-code: find position of rightmost zero bit of n
         var c = 0; var tmp = n

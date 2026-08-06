@@ -7,7 +7,7 @@ from json.parser import (
 )
 
 
-fn _unquote(s: String) -> String:
+def _unquote(s: String) -> String:
     var n = len(s)
     if n < 2:
         return s
@@ -40,7 +40,7 @@ fn _unquote(s: String) -> String:
     return result
 
 
-fn _parse_string_array(obj: String, key: String) -> List[String]:
+def _parse_string_array(obj: String, key: String) -> List[String]:
     var arr = json_get_array(obj, key)
     var count = json_array_len(arr)
     var values = List[String]()
@@ -51,14 +51,14 @@ fn _parse_string_array(obj: String, key: String) -> List[String]:
     return values^
 
 
-fn _contains(values: List[String], target: String) -> Bool:
+def _contains(values: List[String], target: String) -> Bool:
     for index in range(len(values)):
         if values[index] == target:
             return True
     return False
 
 
-fn _count_overlap(left: List[String], right: List[String]) -> Int:
+def _count_overlap(left: List[String], right: List[String]) -> Int:
     var hits = 0
     for left_index in range(len(left)):
         var token = left[left_index]
@@ -69,7 +69,7 @@ fn _count_overlap(left: List[String], right: List[String]) -> Int:
     return hits
 
 
-fn _better_candidate(
+def _better_candidate(
     score: Float64,
     rank: Int,
     best_score: Float64,
@@ -82,7 +82,7 @@ fn _better_candidate(
     return rank < best_rank
 
 
-fn run_repo_classifier(raw: String) raises -> String:
+def run_repo_classifier(raw: String) raises -> String:
     var top_k = Int(json_get_float(raw, "top_k", 4.0))
     if top_k <= 0:
         top_k = 4

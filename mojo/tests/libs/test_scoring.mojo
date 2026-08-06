@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from scoring import sigmoid, logit, log_odds_to_score, score_to_log_odds, woe, iv, gini_coefficient, ks_statistic, linear_score, normalize_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

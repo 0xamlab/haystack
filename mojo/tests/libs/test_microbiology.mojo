@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from microbiology import exponential_growth, doubling_time, monod_growth_rate, bacterial_generation_time, colony_forming_units, minimum_inhibitory_conc, biofilm_formation_index, inactivation_first_order, d_value, z_value
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

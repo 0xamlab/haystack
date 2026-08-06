@@ -19,7 +19,7 @@ Public API:
 """
 
 
-fn _ballots_valid(ballots: List[List[Int]], n_candidates: Int) -> Bool:
+def _ballots_valid(ballots: List[List[Int]], n_candidates: Int) -> Bool:
     """True when n_candidates > 0 and every ballot entry lies in [0, n_candidates).
 
     Ballot entries are used directly as indices into count/score/matrix lists;
@@ -38,7 +38,7 @@ fn _ballots_valid(ballots: List[List[Int]], n_candidates: Int) -> Bool:
 # ── pairwise_matrix ──────────────────────────────────────────────────────────
 
 
-fn pairwise_matrix(
+def pairwise_matrix(
     ballots: List[List[Int]], n_candidates: Int
 ) -> List[List[Int]]:
     """NxN matrix where [i][j] = number of ballots preferring i over j."""
@@ -68,7 +68,7 @@ fn pairwise_matrix(
 # ── plurality ────────────────────────────────────────────────────────────────
 
 
-fn plurality(ballots: List[List[Int]], n_candidates: Int) -> Int:
+def plurality(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Plurality voting: winner is candidate with most first-place votes."""
     if not _ballots_valid(ballots, n_candidates):
         return -1
@@ -92,7 +92,7 @@ fn plurality(ballots: List[List[Int]], n_candidates: Int) -> Int:
 # ── borda_count ──────────────────────────────────────────────────────────────
 
 
-fn borda_count(
+def borda_count(
     ballots: List[List[Int]], n_candidates: Int
 ) -> List[Float64]:
     """Borda count scores. Last place = 0, first = n-1 points."""
@@ -115,7 +115,7 @@ fn borda_count(
 # ── borda_winner ─────────────────────────────────────────────────────────────
 
 
-fn borda_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
+def borda_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Winner by Borda count."""
     if not _ballots_valid(ballots, n_candidates):
         return -1
@@ -132,7 +132,7 @@ fn borda_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
 # ── condorcet_winner ─────────────────────────────────────────────────────────
 
 
-fn condorcet_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
+def condorcet_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Condorcet winner (beats all others pairwise). Returns -1 if none."""
     if not _ballots_valid(ballots, n_candidates):
         return -1
@@ -154,7 +154,7 @@ fn condorcet_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
 # ── instant_runoff ───────────────────────────────────────────────────────────
 
 
-fn instant_runoff(ballots: List[List[Int]], n_candidates: Int) -> Int:
+def instant_runoff(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Instant runoff voting (IRV/ranked choice).
 
     Eliminate candidate with fewest first-place votes, redistribute, repeat.
@@ -215,7 +215,7 @@ fn instant_runoff(ballots: List[List[Int]], n_candidates: Int) -> Int:
 # ── approval_voting ──────────────────────────────────────────────────────────
 
 
-fn approval_voting(approvals: List[List[Int]], n_candidates: Int) -> Int:
+def approval_voting(approvals: List[List[Int]], n_candidates: Int) -> Int:
     """Approval voting: each ballot lists approved candidates.
 
     Winner = most approvals.
@@ -243,7 +243,7 @@ fn approval_voting(approvals: List[List[Int]], n_candidates: Int) -> Int:
 # ── copeland_scores ──────────────────────────────────────────────────────────
 
 
-fn copeland_scores(
+def copeland_scores(
     ballots: List[List[Int]], n_candidates: Int
 ) -> List[Float64]:
     """Copeland method: +1 for pairwise win, +0.5 for tie, 0 for loss."""

@@ -22,7 +22,7 @@ Public API:
 # ── dmft_index ───────────────────────────────────────────────────────────────
 
 
-fn dmft_index(decayed: Int, missing: Int, filled: Int) -> Int:
+def dmft_index(decayed: Int, missing: Int, filled: Int) -> Int:
     """DMFT index: DMFT = D + M + F.
 
     Args:
@@ -39,7 +39,7 @@ fn dmft_index(decayed: Int, missing: Int, filled: Int) -> Int:
 # ── dmft_prevalence ──────────────────────────────────────────────────────────
 
 
-fn dmft_prevalence(
+def dmft_prevalence(
     affected_individuals: Int, total_examined: Int
 ) -> Float64:
     """DMFT prevalence: P = affected / total * 100.
@@ -59,7 +59,7 @@ fn dmft_prevalence(
 # ── plaque_index_score ───────────────────────────────────────────────────────
 
 
-fn plaque_index_score(sum_scores: Float64, n_surfaces: Int) -> Float64:
+def plaque_index_score(sum_scores: Float64, n_surfaces: Int) -> Float64:
     """Plaque index: PI = sum / n_surfaces.
 
     Args:
@@ -77,7 +77,7 @@ fn plaque_index_score(sum_scores: Float64, n_surfaces: Int) -> Float64:
 # ── gingival_index ───────────────────────────────────────────────────────────
 
 
-fn gingival_index(sum_scores: Float64, n_sites: Int) -> Float64:
+def gingival_index(sum_scores: Float64, n_sites: Int) -> Float64:
     """Gingival index: GI = sum / n_sites.
 
     Args:
@@ -95,7 +95,7 @@ fn gingival_index(sum_scores: Float64, n_sites: Int) -> Float64:
 # ── attachment_loss ──────────────────────────────────────────────────────────
 
 
-fn attachment_loss(probing_depth: Float64, recession: Float64) -> Float64:
+def attachment_loss(probing_depth: Float64, recession: Float64) -> Float64:
     """Clinical attachment loss: CAL = PD + recession.
 
     Args:
@@ -111,7 +111,7 @@ fn attachment_loss(probing_depth: Float64, recession: Float64) -> Float64:
 # ── bone_loss_percentage ─────────────────────────────────────────────────────
 
 
-fn bone_loss_percentage(
+def bone_loss_percentage(
     original_height: Float64, current_height: Float64
 ) -> Float64:
     """Bone loss %: BL = (original - current) / original * 100.
@@ -131,7 +131,7 @@ fn bone_loss_percentage(
 # ── fluoride_concentration_ppm ───────────────────────────────────────────────
 
 
-fn fluoride_concentration_ppm(
+def fluoride_concentration_ppm(
     mass_mg: Float64, volume_l: Float64
 ) -> Float64:
     """Fluoride concentration: C = mass / volume (ppm = mg/L).
@@ -151,7 +151,7 @@ fn fluoride_concentration_ppm(
 # ── anesthesia_dose_mg ───────────────────────────────────────────────────────
 
 
-fn anesthesia_dose_mg(
+def anesthesia_dose_mg(
     carpules: Float64, mg_per_ml: Float64, ml_per_carpule: Float64
 ) -> Float64:
     """Anesthesia dose: Dose = carpules * mg_per_ml * ml_per_carpule.
@@ -170,7 +170,7 @@ fn anesthesia_dose_mg(
 # ── max_anesthesia_dose ──────────────────────────────────────────────────────
 
 
-fn max_anesthesia_dose(
+def max_anesthesia_dose(
     weight_kg: Float64, max_mg_per_kg: Float64
 ) -> Float64:
     """Maximum anesthesia dose: Max = weight * max_per_kg.
@@ -188,7 +188,7 @@ fn max_anesthesia_dose(
 # ── restoration_longevity_estimate ───────────────────────────────────────────
 
 
-fn restoration_longevity_estimate(
+def restoration_longevity_estimate(
     material_factor: Float64, load_factor: Float64
 ) -> Float64:
     """Restoration longevity: Years ≈ 10 * material_factor * (1 / load_factor).
@@ -208,7 +208,7 @@ fn restoration_longevity_estimate(
 # ── tooth_surface_area_estimate ──────────────────────────────────────────────
 
 
-fn tooth_surface_area_estimate(
+def tooth_surface_area_estimate(
     n_teeth: Int, avg_area_per_tooth: Float64
 ) -> Float64:
     """Tooth surface area estimate: Total = n * avg.
@@ -226,7 +226,7 @@ fn tooth_surface_area_estimate(
 # ── treatment_cost_estimate ──────────────────────────────────────────────────
 
 
-fn treatment_cost_estimate(
+def treatment_cost_estimate(
     n_units: Int, cost_per_unit: Float64, complexity_factor: Float64
 ) -> Float64:
     """Treatment cost: Cost = units * cost_per_unit * complexity_factor.

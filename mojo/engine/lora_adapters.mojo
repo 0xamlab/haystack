@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn lora_forward(
+def lora_forward(
     x: Float64, a_row: Float64, b_col: Float64,
     scaling: Float64
 ) -> Float64:
@@ -39,7 +39,7 @@ fn lora_forward(
     return x * a_row * b_col * scaling
 
 
-fn lora_merge_weight(
+def lora_merge_weight(
     base_weight: Float64, lora_a: Float64,
     lora_b: Float64, scaling: Float64
 ) -> Float64:
@@ -59,7 +59,7 @@ fn lora_merge_weight(
     return base_weight + lora_b * lora_a * scaling
 
 
-fn qlora_dequant_forward(
+def qlora_dequant_forward(
     quantized_weight: Float64, quant_scale: Float64, zero_point: Float64,
     lora_delta: Float64
 ) -> Float64:
@@ -80,7 +80,7 @@ fn qlora_dequant_forward(
     return dequant + lora_delta
 
 
-fn lora_gradient_a(
+def lora_gradient_a(
     upstream_grad: Float64, b_element: Float64,
     x_element: Float64, scaling: Float64
 ) -> Float64:
@@ -98,7 +98,7 @@ fn lora_gradient_a(
     return upstream_grad * b_element * x_element * scaling
 
 
-fn lora_gradient_b(
+def lora_gradient_b(
     upstream_grad: Float64, ax_element: Float64, scaling: Float64
 ) -> Float64:
     """Gradient w.r.t. LoRA B matrix: ∂L/∂B = ∂L/∂Y × (Ax)ᵀ.
@@ -114,7 +114,7 @@ fn lora_gradient_b(
     return upstream_grad * ax_element * scaling
 
 
-fn adapter_scaling_factor(alpha: Float64, rank: Float64) -> Float64:
+def adapter_scaling_factor(alpha: Float64, rank: Float64) -> Float64:
     """LoRA scaling factor: α/r.
 
     Args:
@@ -129,7 +129,7 @@ fn adapter_scaling_factor(alpha: Float64, rank: Float64) -> Float64:
     return alpha / rank
 
 
-fn prefix_tuning_key_aug(
+def prefix_tuning_key_aug(
     original_key: Float64, prefix_key: Float64,
     prefix_len: Float64, seq_len: Float64
 ) -> Float64:
@@ -149,7 +149,7 @@ fn prefix_tuning_key_aug(
     return original_key + prefix_key * prefix_len / (seq_len + prefix_len)
 
 
-fn prompt_tuning_embed(
+def prompt_tuning_embed(
     token_embed: Float64, soft_prompt_embed: Float64,
     position: Float64, n_soft_tokens: Float64
 ) -> Float64:
@@ -171,7 +171,7 @@ fn prompt_tuning_embed(
     return token_embed
 
 
-fn dora_magnitude_scale(
+def dora_magnitude_scale(
     weight_norm: Float64, lora_delta_norm: Float64,
     magnitude_param: Float64
 ) -> Float64:
@@ -194,7 +194,7 @@ fn dora_magnitude_scale(
     return magnitude_param / weight_norm
 
 
-fn adapter_param_efficiency(
+def adapter_param_efficiency(
     lora_params: Float64, total_params: Float64
 ) -> Float64:
     """Fraction of parameters that are trainable (adapter efficiency).

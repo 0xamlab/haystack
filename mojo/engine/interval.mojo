@@ -33,7 +33,7 @@ struct Interval(Copyable, Movable):
     var hi: Float64
     var empty: Bool
 
-    fn __init__(out self, lo: Float64, hi: Float64, empty: Bool):
+    def __init__(out self, lo: Float64, hi: Float64, empty: Bool):
         self.lo = lo
         self.hi = hi
         self.empty = empty
@@ -42,7 +42,7 @@ struct Interval(Copyable, Movable):
 # ── interval ─────────────────────────────────────────────────────────────────
 
 
-fn interval(lo: Float64, hi: Float64) -> Interval:
+def interval(lo: Float64, hi: Float64) -> Interval:
     """Create interval [lo, hi]. If lo > hi, returns empty interval.
 
     Args:
@@ -60,7 +60,7 @@ fn interval(lo: Float64, hi: Float64) -> Interval:
 # ── empty_interval ───────────────────────────────────────────────────────────
 
 
-fn empty_interval() -> Interval:
+def empty_interval() -> Interval:
     """Create an empty interval.
 
     Returns:
@@ -72,7 +72,7 @@ fn empty_interval() -> Interval:
 # ── interval_add ─────────────────────────────────────────────────────────────
 
 
-fn interval_add(a: Interval, b: Interval) -> Interval:
+def interval_add(a: Interval, b: Interval) -> Interval:
     """Add two intervals: [a.lo+b.lo, a.hi+b.hi].
 
     Args:
@@ -90,7 +90,7 @@ fn interval_add(a: Interval, b: Interval) -> Interval:
 # ── interval_sub ─────────────────────────────────────────────────────────────
 
 
-fn interval_sub(a: Interval, b: Interval) -> Interval:
+def interval_sub(a: Interval, b: Interval) -> Interval:
     """Subtract intervals: [a.lo-b.hi, a.hi-b.lo].
 
     Args:
@@ -108,7 +108,7 @@ fn interval_sub(a: Interval, b: Interval) -> Interval:
 # ── interval_mul ─────────────────────────────────────────────────────────────
 
 
-fn _min4(a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
+def _min4(a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
     """Return minimum of four Float64 values."""
     var m = a
     if b < m:
@@ -120,7 +120,7 @@ fn _min4(a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
     return m
 
 
-fn _max4(a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
+def _max4(a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
     """Return maximum of four Float64 values."""
     var m = a
     if b > m:
@@ -132,7 +132,7 @@ fn _max4(a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
     return m
 
 
-fn interval_mul(a: Interval, b: Interval) -> Interval:
+def interval_mul(a: Interval, b: Interval) -> Interval:
     """Multiply intervals: [min(products), max(products)] of all endpoints.
 
     Args:
@@ -154,7 +154,7 @@ fn interval_mul(a: Interval, b: Interval) -> Interval:
 # ── interval_div ─────────────────────────────────────────────────────────────
 
 
-fn interval_div(a: Interval, b: Interval) raises -> Interval:
+def interval_div(a: Interval, b: Interval) raises -> Interval:
     """Divide intervals: a * [1/b.hi, 1/b.lo].
 
     Raises if b contains 0.
@@ -180,7 +180,7 @@ fn interval_div(a: Interval, b: Interval) raises -> Interval:
 # ── interval_contains ────────────────────────────────────────────────────────
 
 
-fn interval_contains(iv: Interval, x: Float64) -> Bool:
+def interval_contains(iv: Interval, x: Float64) -> Bool:
     """Check if x ∈ [lo, hi].
 
     Args:
@@ -198,7 +198,7 @@ fn interval_contains(iv: Interval, x: Float64) -> Bool:
 # ── interval_overlaps ────────────────────────────────────────────────────────
 
 
-fn interval_overlaps(a: Interval, b: Interval) -> Bool:
+def interval_overlaps(a: Interval, b: Interval) -> Bool:
     """Check if two intervals overlap.
 
     Args:
@@ -216,7 +216,7 @@ fn interval_overlaps(a: Interval, b: Interval) -> Bool:
 # ── interval_intersection ────────────────────────────────────────────────────
 
 
-fn interval_intersection(a: Interval, b: Interval) -> Interval:
+def interval_intersection(a: Interval, b: Interval) -> Interval:
     """Intersection of two intervals (may be empty).
 
     Args:
@@ -242,7 +242,7 @@ fn interval_intersection(a: Interval, b: Interval) -> Interval:
 # ── interval_union_hull ──────────────────────────────────────────────────────
 
 
-fn interval_union_hull(a: Interval, b: Interval) -> Interval:
+def interval_union_hull(a: Interval, b: Interval) -> Interval:
     """Smallest interval containing both (convex hull).
 
     Args:
@@ -270,7 +270,7 @@ fn interval_union_hull(a: Interval, b: Interval) -> Interval:
 # ── interval_width ───────────────────────────────────────────────────────────
 
 
-fn interval_width(iv: Interval) -> Float64:
+def interval_width(iv: Interval) -> Float64:
     """Width of interval: hi - lo (0 for empty).
 
     Args:
@@ -287,7 +287,7 @@ fn interval_width(iv: Interval) -> Float64:
 # ── interval_midpoint ────────────────────────────────────────────────────────
 
 
-fn interval_midpoint(iv: Interval) -> Float64:
+def interval_midpoint(iv: Interval) -> Float64:
     """Midpoint of interval: (lo + hi) / 2.
 
     Args:
@@ -304,7 +304,7 @@ fn interval_midpoint(iv: Interval) -> Float64:
 # ── interval_radius ──────────────────────────────────────────────────────────
 
 
-fn interval_radius(iv: Interval) -> Float64:
+def interval_radius(iv: Interval) -> Float64:
     """Radius of interval: (hi - lo) / 2.
 
     Args:

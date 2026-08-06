@@ -104,7 +104,7 @@ struct QDelta(Copyable, Movable):
     var status: Int
 
 
-fn _q_shape_check(
+def _q_shape_check(
     n_codes: Int, n_scales: Int, elems: Int, block: Int
 ) -> Int:
     """Validate a blockwise-quantized operand: code count, block size, and scale count together.
@@ -124,7 +124,7 @@ fn _q_shape_check(
     return GEMM_OK
 
 
-fn gemv_nf4_flat(
+def gemv_nf4_flat(
     w_codes: List[Int], w_scales: List[Float64], x: List[Float64],
     m: Int, n: Int, block: Int
 ) -> QGemmResult:
@@ -200,7 +200,7 @@ fn gemv_nf4_flat(
     var qnw = nw
 
     @parameter
-    fn nf4_band(tid: Int) capturing:
+    def nf4_band(tid: Int) capturing:
         var rows_each = qm // qnw
         var lo = tid * rows_each
         var hi = lo + rows_each if tid < qnw - 1 else qm
@@ -240,7 +240,7 @@ fn gemv_nf4_flat(
     return QGemmResult(y^, m, 1, GEMM_BACKEND_CPU_SIMD, 2.0 * Float64(elems), GEMM_OK)
 
 
-fn gemm_nf4_flat(
+def gemm_nf4_flat(
     w_codes: List[Int], w_scales: List[Float64], x: List[Float64],
     m: Int, n: Int, k: Int, block: Int
 ) -> QGemmResult:
@@ -297,7 +297,7 @@ fn gemm_nf4_flat(
     )
 
 
-fn gemv_int_flat(
+def gemv_int_flat(
     w_codes: List[Int], w_scales: List[Float64], x: List[Float64],
     m: Int, n: Int, block: Int, bits: Int
 ) -> QGemmResult:
@@ -348,7 +348,7 @@ fn gemv_int_flat(
     return QGemmResult(y^, m, 1, GEMM_BACKEND_SCALAR, 2.0 * Float64(elems), GEMM_OK)
 
 
-fn quantized_gemv_golden_delta(
+def quantized_gemv_golden_delta(
     w_codes: List[Int], w_scales: List[Float64], x: List[Float64],
     m: Int, n: Int, block: Int
 ) -> QDelta:

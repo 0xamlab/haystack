@@ -31,7 +31,7 @@ from quantization import dequantize_symmetric
 from tensorx.pack import PACK_MAX_BLOCK, nf4_levels, quantize_blockwise, quantize_nf4
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 

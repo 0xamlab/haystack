@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from volcanology import vei_energy_estimate, lava_flow_velocity, eruption_column_height, tephra_fallout_thickness, magma_viscosity_estimate, effusion_rate, lahar_velocity, volcanic_gas_emission_rate, recurrence_interval, alert_level, pyroclastic_flow_runout, caldera_collapse_volume
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

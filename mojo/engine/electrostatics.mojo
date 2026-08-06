@@ -16,7 +16,7 @@ Public API:
 from std.math import cos, sqrt
 
 
-fn coulomb_force(q1: Float64, q2: Float64, r: Float64) -> Float64:
+def coulomb_force(q1: Float64, q2: Float64, r: Float64) -> Float64:
     """Coulomb's law: force between two point charges.
 
     Args:
@@ -33,7 +33,7 @@ fn coulomb_force(q1: Float64, q2: Float64, r: Float64) -> Float64:
     return k * q1 * q2 / (r * r)
 
 
-fn electric_field_point(q: Float64, r: Float64) -> Float64:
+def electric_field_point(q: Float64, r: Float64) -> Float64:
     """Electric field magnitude from a point charge.
 
     Args:
@@ -49,7 +49,7 @@ fn electric_field_point(q: Float64, r: Float64) -> Float64:
     return k * q / (r * r)
 
 
-fn electric_potential(q: Float64, r: Float64) -> Float64:
+def electric_potential(q: Float64, r: Float64) -> Float64:
     """Electric potential from a point charge.
 
     Args:
@@ -65,7 +65,7 @@ fn electric_potential(q: Float64, r: Float64) -> Float64:
     return k * q / r
 
 
-fn capacitance_parallel_plate(
+def capacitance_parallel_plate(
     area: Float64, separation: Float64, epsilon_r: Float64
 ) -> Float64:
     """Capacitance of a parallel-plate capacitor.
@@ -84,7 +84,7 @@ fn capacitance_parallel_plate(
     return epsilon0 * epsilon_r * area / separation
 
 
-fn energy_stored_capacitor(capacitance: Float64, voltage: Float64) -> Float64:
+def energy_stored_capacitor(capacitance: Float64, voltage: Float64) -> Float64:
     """Energy stored in a capacitor: U = ½CV².
 
     Args:
@@ -99,7 +99,7 @@ fn energy_stored_capacitor(capacitance: Float64, voltage: Float64) -> Float64:
     return 0.5 * capacitance * voltage * voltage
 
 
-fn electric_flux(field: Float64, area: Float64, angle_rad: Float64) -> Float64:
+def electric_flux(field: Float64, area: Float64, angle_rad: Float64) -> Float64:
     """Electric flux through a surface: Φ = E·A·cos(θ).
 
     Args:
@@ -113,7 +113,7 @@ fn electric_flux(field: Float64, area: Float64, angle_rad: Float64) -> Float64:
     return field * area * cos(angle_rad)
 
 
-fn surface_charge_density(charge: Float64, area: Float64) -> Float64:
+def surface_charge_density(charge: Float64, area: Float64) -> Float64:
     """Surface charge density: σ = Q/A.
 
     Args:
@@ -128,7 +128,7 @@ fn surface_charge_density(charge: Float64, area: Float64) -> Float64:
     return charge / area
 
 
-fn dielectric_polarization(epsilon_r: Float64, electric_field: Float64) -> Float64:
+def dielectric_polarization(epsilon_r: Float64, electric_field: Float64) -> Float64:
     """Electric polarization of a dielectric: P = ε₀(εr-1)E.
 
     Args:
@@ -142,7 +142,7 @@ fn dielectric_polarization(epsilon_r: Float64, electric_field: Float64) -> Float
     return epsilon0 * (epsilon_r - 1.0) * electric_field
 
 
-fn breakdown_voltage(dielectric_strength: Float64, thickness: Float64) -> Float64:
+def breakdown_voltage(dielectric_strength: Float64, thickness: Float64) -> Float64:
     """Dielectric breakdown voltage: V_bd = E_bd × d.
 
     Args:
@@ -157,7 +157,7 @@ fn breakdown_voltage(dielectric_strength: Float64, thickness: Float64) -> Float6
     return dielectric_strength * thickness
 
 
-fn image_charge_force(charge: Float64, height: Float64) -> Float64:
+def image_charge_force(charge: Float64, height: Float64) -> Float64:
     """Force on a charge above a grounded conductor (method of images).
 
     F = -k·q²/(4h²)

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from text.column_scorer import score_token_overlap, score_ngram_overlap, score_prefix_match, score_column_hint
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

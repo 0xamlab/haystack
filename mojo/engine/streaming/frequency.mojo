@@ -158,7 +158,7 @@ struct FrequencySketch(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         cells: List[Int],
         width: Int,
@@ -199,7 +199,7 @@ struct FrequencyEstimate(Copyable, Movable):
     var total: Int
     var status: Int
 
-    fn __init__(
+    def __init__(
         out self,
         count: Int,
         present: Bool,
@@ -237,29 +237,29 @@ struct FrequencyList(Copyable, Movable):
     var n_items: Int
     var status: Int
 
-    fn __init__(out self, items: List[Int], present: Bool, n_items: Int, status: Int):
+    def __init__(out self, items: List[Int], present: Bool, n_items: Int, status: Int):
         self.items = items.copy()
         self.present = present
         self.n_items = n_items
         self.status = status
 
 
-fn _invalid(status: Int) -> FrequencySketch:
+def _invalid(status: Int) -> FrequencySketch:
     """Not a sketch, with the reason."""
     return FrequencySketch(List[Int](), 0, 0, 0, 0, status, False)
 
 
-fn _no_list(status: Int) -> FrequencyList:
+def _no_list(status: Int) -> FrequencyList:
     """No list, with the reason. `items` is empty and that emptiness is NOT an answer."""
     return FrequencyList(List[Int](), False, 0, status)
 
 
-fn _absent(status: Int) -> FrequencyEstimate:
+def _absent(status: Int) -> FrequencyEstimate:
     """No estimate, with the reason. `count` is 0 and means nothing."""
     return FrequencyEstimate(0, False, 0.0, 0.0, 0.0, 0, status)
 
 
-fn _params_ok(width: Int, depth: Int, seed: Int) -> Int:
+def _params_ok(width: Int, depth: Int, seed: Int) -> Int:
     """`STM_OK`, or the status that refuses these parameters."""
     if width < 1 or width > FREQUENCY_MAX_WIDTH:
         return STM_ERR_WIDTH
@@ -272,7 +272,7 @@ fn _params_ok(width: Int, depth: Int, seed: Int) -> Int:
     return STM_OK
 
 
-fn _shape_ok(sketch: FrequencySketch) -> Int:
+def _shape_ok(sketch: FrequencySketch) -> Int:
     """`STM_OK`, or the status refusing this sketch's SHAPE. O(1), and every entry point calls it.
 
     THE STRUCT PATH IS A CALLER PATH. `FrequencySketch` is decoded from caller JSON by the
@@ -311,7 +311,7 @@ fn _shape_ok(sketch: FrequencySketch) -> Int:
     return STM_OK
 
 
-fn _cell_in_range(value: Int, total: Int) -> Bool:
+def _cell_in_range(value: Int, total: Int) -> Bool:
     """True when one counter cell is a possible counter value for this sketch's mass.
 
     A NEGATIVE cell would let the minimum over rows fall BELOW the true count and destroy the one
@@ -324,7 +324,7 @@ fn _cell_in_range(value: Int, total: Int) -> Bool:
     return value >= 0 and value <= total
 
 
-fn _cells_ok(sketch: FrequencySketch) -> Int:
+def _cells_ok(sketch: FrequencySketch) -> Int:
     """`STM_OK`, or the status refusing this sketch's cell VALUES. O(depth * width).
 
     Called only from the entry points that are already O(depth * width) -- the ones that copy or
@@ -340,7 +340,7 @@ fn _cells_ok(sketch: FrequencySketch) -> Int:
     return STM_OK
 
 
-fn frequency_empty(width: Int, depth: Int, seed: Int) -> FrequencySketch:
+def frequency_empty(width: Int, depth: Int, seed: Int) -> FrequencySketch:
     """An empty sketch of `depth` rows by `width` columns, keyed by `seed`.
 
     Valid, with `total == 0`. Every query against it answers 0 and is PRESENT, because
@@ -362,7 +362,7 @@ fn frequency_empty(width: Int, depth: Int, seed: Int) -> FrequencySketch:
     return FrequencySketch(cells^, width, depth, 0, seed, STM_OK, True)
 
 
-fn frequency_add(sketch: FrequencySketch, item: Int, count: Int) -> FrequencySketch:
+def frequency_add(sketch: FrequencySketch, item: Int, count: Int) -> FrequencySketch:
     """`sketch` with `count` more occurrences of `item`, as a new value.
 
     A negative `count` is refused rather than applied. Count-Min's one absolutely reliable
@@ -399,7 +399,7 @@ fn frequency_add(sketch: FrequencySketch, item: Int, count: Int) -> FrequencySke
     )
 
 
-fn frequency_ingest(
+def frequency_ingest(
     items: List[Int], width: Int, depth: Int, seed: Int
 ) -> FrequencySketch:
     """A sketch of every element of `items`, each counted once.
@@ -417,7 +417,7 @@ fn frequency_ingest(
     return frequency_ingest_prefix(items, len(items), width, depth, seed)
 
 
-fn frequency_ingest_prefix(
+def frequency_ingest_prefix(
     items: List[Int], n: Int, width: Int, depth: Int, seed: Int
 ) -> FrequencySketch:
     """A sketch of `items[0..n)`, for replaying a prefix of a stored stream.
@@ -460,7 +460,7 @@ fn frequency_ingest_prefix(
     return FrequencySketch(cells^, width, depth, n, seed, STM_OK, True)
 
 
-fn frequency_ingest_weighted(
+def frequency_ingest_weighted(
     items: List[Int], weights: List[Int], width: Int, depth: Int, seed: Int
 ) -> FrequencySketch:
     """A sketch of `items` with `weights[i]` occurrences of `items[i]`.
@@ -508,7 +508,7 @@ fn frequency_ingest_weighted(
     return FrequencySketch(cells^, width, depth, total, seed, STM_OK, True)
 
 
-fn frequency_merge(a: FrequencySketch, b: FrequencySketch) -> FrequencySketch:
+def frequency_merge(a: FrequencySketch, b: FrequencySketch) -> FrequencySketch:
     """Cell-wise sum of `a` and `b` — EXACTLY the sketch of `A ++ B`.
 
     Refuses when width, depth or seed differ: three different shapes and two different hash
@@ -549,7 +549,7 @@ fn frequency_merge(a: FrequencySketch, b: FrequencySketch) -> FrequencySketch:
     )
 
 
-fn frequency_query(sketch: FrequencySketch, item: Int) -> FrequencyEstimate:
+def frequency_query(sketch: FrequencySketch, item: Int) -> FrequencyEstimate:
     """Estimated count of `item`: the MINIMUM over the rows, with its bounds attached.
 
     The minimum is what makes the estimate never under-state: every row's cell for this item
@@ -591,7 +591,7 @@ fn frequency_query(sketch: FrequencySketch, item: Int) -> FrequencyEstimate:
     )
 
 
-fn frequency_query_many(
+def frequency_query_many(
     sketch: FrequencySketch, items: List[Int]
 ) -> FrequencyList:
     """Estimated counts for every element of `items`, in order, or a typed refusal.
@@ -621,7 +621,7 @@ fn frequency_query_many(
     return FrequencyList(out^, True, n, STM_OK)
 
 
-fn frequency_heavy_hitters(
+def frequency_heavy_hitters(
     sketch: FrequencySketch, candidates: List[Int], min_fraction: Float64
 ) -> FrequencyList:
     """Those `candidates` whose estimated count is at least `min_fraction * total`.
@@ -664,7 +664,7 @@ fn frequency_heavy_hitters(
     return FrequencyList(out^, True, n, STM_OK)
 
 
-fn frequency_cell(sketch: FrequencySketch, row: Int, col: Int) -> Int:
+def frequency_cell(sketch: FrequencySketch, row: Int, col: Int) -> Int:
     """One counter cell, or -1 when `(row, col)` is outside the table.
 
     `row` and `col` are SUBSCRIPTS, so both are guarded in both directions. A negative count
@@ -705,7 +705,7 @@ fn frequency_cell(sketch: FrequencySketch, row: Int, col: Int) -> Int:
     return value
 
 
-fn frequency_snapshot(sketch: FrequencySketch) -> List[Int]:
+def frequency_snapshot(sketch: FrequencySketch) -> List[Int]:
     """Flat snapshot: `[magic, width, depth, seed, total] ++ cells`.
 
     An unusable sketch snapshots as an EMPTY list, never as a header with no body: a
@@ -733,7 +733,7 @@ fn frequency_snapshot(sketch: FrequencySketch) -> List[Int]:
     return out^
 
 
-fn frequency_from_snapshot(snapshot: List[Int]) -> FrequencySketch:
+def frequency_from_snapshot(snapshot: List[Int]) -> FrequencySketch:
     """A sketch from a flat snapshot, or a refusal naming what was wrong with it.
 
     Validated against the header IN BAND, so a truncated payload is refused instead of read
@@ -780,7 +780,7 @@ fn frequency_from_snapshot(snapshot: List[Int]) -> FrequencySketch:
     return out^
 
 
-fn frequency_merge_snapshots(a: List[Int], b: List[Int]) -> FrequencySketch:
+def frequency_merge_snapshots(a: List[Int], b: List[Int]) -> FrequencySketch:
     """Merge two flat snapshots directly, for combining partials from two processes.
 
     @capability frequency_merge_snapshots
@@ -791,7 +791,7 @@ fn frequency_merge_snapshots(a: List[Int], b: List[Int]) -> FrequencySketch:
     return frequency_merge(frequency_from_snapshot(a), frequency_from_snapshot(b))
 
 
-fn frequency_suggested_depth(width: Int, n_items: Int) -> Int:
+def frequency_suggested_depth(width: Int, n_items: Int) -> Int:
     """Row count to use, from the frozen `bloom_counting.cb_optimal_hashes`.
 
     The frozen answer to "how many hash functions for this many cells and this many items"
@@ -816,7 +816,7 @@ fn frequency_suggested_depth(width: Int, n_items: Int) -> Int:
     return suggested
 
 
-fn frequency_frozen_row_collisions(items: List[Int], width: Int, depth: Int) -> Int:
+def frequency_frozen_row_collisions(items: List[Int], width: Int, depth: Int) -> Int:
     """How many of `items` have ALL `depth` frozen rows landing in the same column.
 
     The row seeds come from the frozen `sketch.create_cms(width, depth)` and the columns from
@@ -852,7 +852,7 @@ fn frequency_frozen_row_collisions(items: List[Int], width: Int, depth: Int) -> 
     return collisions
 
 
-fn frequency_keyed_row_collisions(
+def frequency_keyed_row_collisions(
     items: List[Int], width: Int, depth: Int, seed: Int
 ) -> Int:
     """The same measurement for the keyed columns this module actually uses.

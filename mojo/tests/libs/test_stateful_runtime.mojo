@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from stateful_runtime import session_memory_relevance, memory_decay_score, state_transition_validity, replay_buffer_priority, memory_consolidation_score, working_memory_capacity_used, long_term_retrieval_score, state_compression_ratio, replayability_score, session_continuity_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -11,7 +11,7 @@ from imbalance import (
 )
 
 
-fn _lists_equal_int(a: List[Int], b: List[Int]) -> Bool:
+def _lists_equal_int(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -20,7 +20,7 @@ fn _lists_equal_int(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _lists_equal_f64(a: List[Float64], b: List[Float64]) -> Bool:
+def _lists_equal_f64(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -29,11 +29,11 @@ fn _lists_equal_f64(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _approx(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _approx(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _on_segment_2d(
+def _on_segment_2d(
     sx: Float64, sy: Float64,
     ax: Float64, ay: Float64,
     bx: Float64, by: Float64,
@@ -53,7 +53,7 @@ fn _on_segment_2d(
     return t >= -1e-12 and t <= 1.0 + 1e-12
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ imbalance::" + name)

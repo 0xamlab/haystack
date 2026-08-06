@@ -76,7 +76,7 @@ comptime DELTA_MULTIPLE: Float64 = 8.0
 comptime WRAPPING_WIDTH: Int = 6148914691236517206
 
 
-fn _keys(n: Int, n_distinct: Int) -> List[Int]:
+def _keys(n: Int, n_distinct: Int) -> List[Int]:
     """A skewed stream: key `k` appears about `n / (n_distinct * (k + 1))` times, plus one.
 
     Deterministic, and skewed on purpose. A uniform stream spreads mass thinly and every cell
@@ -96,7 +96,7 @@ fn _keys(n: Int, n_distinct: Int) -> List[Int]:
     return out^
 
 
-fn _exact_count(items: List[Int], key: Int) -> Int:
+def _exact_count(items: List[Int], key: Int) -> Int:
     """The oracle: how many times `key` appears, by a scan. No sketch involved."""
     var seen = 0
     for i in range(len(items)):
@@ -105,7 +105,7 @@ fn _exact_count(items: List[Int], key: Int) -> Int:
     return seen
 
 
-fn _distinct_keys(items: List[Int]) -> List[Int]:
+def _distinct_keys(items: List[Int]) -> List[Int]:
     """Every distinct key, in first-appearance order, by an O(n^2) scan."""
     var out = List[Int]()
     for i in range(len(items)):
@@ -119,7 +119,7 @@ fn _distinct_keys(items: List[Int]) -> List[Int]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     print("Running streaming.frequency known-value tests...")
     var passed = 0
     var failed = 0

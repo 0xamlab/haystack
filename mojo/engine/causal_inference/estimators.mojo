@@ -161,7 +161,7 @@ struct ArmContrast(Copyable, Movable):
     var se: Float64
     var has_se: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_diff = False
         self.diff = 0.0
@@ -208,7 +208,7 @@ struct OutcomeModel(Copyable, Movable):
     var n_treated: Int
     var n_control: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_ate = False
         self.ate = 0.0
@@ -260,7 +260,7 @@ struct DrEstimate(Copyable, Movable):
     var ess_treated: Float64
     var ess_control: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_ate = False
         self.ate = 0.0
@@ -311,7 +311,7 @@ struct StrataAte(Copyable, Movable):
     var stratum_n: List[Int]
     var stratum_n_treated: List[Int]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_ate = False
         self.ate = 0.0
@@ -355,7 +355,7 @@ struct BootCI(Copyable, Movable):
     var n_replicates_dropped: Int
     var seed_used: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_ci = False
         self.point = 0.0
@@ -372,7 +372,7 @@ struct BootCI(Copyable, Movable):
 # ── shared internals: ONE implementation each (rule 3, inside the package too) ─
 
 
-fn _predict_flat(
+def _predict_flat(
     x: List[Float64], n_units: Int, p: Int, w: List[Float64], b: Float64
 ) -> List[Float64]:
     """`x . w + b` per row of a flat row-major `n_units x p` matrix.
@@ -392,7 +392,7 @@ fn _predict_flat(
     return out^
 
 
-fn _aipw_core(
+def _aipw_core(
     outcomes: List[Float64], treatment: List[Int], scores: List[Float64],
     mu0: List[Float64], mu1: List[Float64], trim_eps: Float64,
     threshold: Float64, use: List[Bool],
@@ -498,7 +498,7 @@ fn _aipw_core(
 # ── naive_ate ────────────────────────────────────────────────────────────────
 
 
-fn naive_ate(outcomes: List[Float64], treatment: List[Int]) -> ArmContrast:
+def naive_ate(outcomes: List[Float64], treatment: List[Int]) -> ArmContrast:
     """The unadjusted difference in arm means, with variances, counts and a Welch standard error.
 
     Deliberately NOT called an ATE without qualification: it is the average treatment effect
@@ -559,7 +559,7 @@ fn naive_ate(outcomes: List[Float64], treatment: List[Int]) -> ArmContrast:
 # Signature packing is load-bearing: `mojo_inventory` matches a signature inside a NINE-LINE
 # window and a signature closing on the tenth line is dropped from the contract and the dispatch
 # with no error anywhere. Four lines here leaves five of headroom.
-fn outcome_regression_ate(
+def outcome_regression_ate(
     x: List[Float64], n_units: Int, n_features: Int, treatment: List[Int],
     outcomes: List[Float64], l1: Float64, l2: Float64, max_iter: Int, tol: Float64,
 ) -> OutcomeModel:
@@ -671,7 +671,7 @@ fn outcome_regression_ate(
 # ── aipw_ate ─────────────────────────────────────────────────────────────────
 
 
-fn aipw_ate(
+def aipw_ate(
     outcomes: List[Float64], treatment: List[Int], scores: List[Float64],
     mu0: List[Float64], mu1: List[Float64], trim_eps: Float64,
     extreme_weight_threshold: Float64, z: Float64,
@@ -738,7 +738,7 @@ fn aipw_ate(
 # ── strata_ate ───────────────────────────────────────────────────────────────
 
 
-fn strata_ate(
+def strata_ate(
     outcomes: List[Float64], treatment: List[Int], strata: List[Int], n_strata: Int
 ) -> StrataAte:
     """Stratified ATE, reporting the strata it could not use instead of absorbing them.
@@ -839,7 +839,7 @@ fn strata_ate(
 # ── aipw_bootstrap_ci ────────────────────────────────────────────────────────
 
 
-fn aipw_bootstrap_ci(
+def aipw_bootstrap_ci(
     outcomes: List[Float64], treatment: List[Int], scores: List[Float64],
     mu0: List[Float64], mu1: List[Float64], n_replicates: Int,
     seed: Int, alpha: Float64,

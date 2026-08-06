@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from robotics import forward_kinematics_2dof, forward_kinematics_2dof_y, inverse_kinematics_2dof_theta2, jacobian_2dof_j11, pid_control, dead_reckoning_x, dead_reckoning_y, wheel_odometry_distance, differential_drive_omega, differential_drive_velocity, workspace_radius, manipulability_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -24,7 +24,7 @@ from std.math import abs as fabs
 # ── cycle_length_webster ─────────────────────────────────────────────────────
 
 
-fn cycle_length_webster(total_lost_time: Float64, critical_vc_ratio: Float64) -> Float64:
+def cycle_length_webster(total_lost_time: Float64, critical_vc_ratio: Float64) -> Float64:
     """Webster optimal cycle length: C = (1.5*L + 5) / (1 - Y).
 
     Args:
@@ -43,7 +43,7 @@ fn cycle_length_webster(total_lost_time: Float64, critical_vc_ratio: Float64) ->
 # ── effective_green ──────────────────────────────────────────────────────────
 
 
-fn effective_green(actual_green: Float64, start_loss: Float64, end_gain: Float64) -> Float64:
+def effective_green(actual_green: Float64, start_loss: Float64, end_gain: Float64) -> Float64:
     """Effective green time: g = G - start_loss + end_gain.
 
     Args:
@@ -60,7 +60,7 @@ fn effective_green(actual_green: Float64, start_loss: Float64, end_gain: Float64
 # ── green_ratio ──────────────────────────────────────────────────────────────
 
 
-fn green_ratio(effective_green_val: Float64, cycle_length: Float64) -> Float64:
+def green_ratio(effective_green_val: Float64, cycle_length: Float64) -> Float64:
     """Green ratio: g/C.
 
     Args:
@@ -76,7 +76,7 @@ fn green_ratio(effective_green_val: Float64, cycle_length: Float64) -> Float64:
 # ── capacity_lane ────────────────────────────────────────────────────────────
 
 
-fn capacity_lane(saturation_flow: Float64, green_ratio_val: Float64) -> Float64:
+def capacity_lane(saturation_flow: Float64, green_ratio_val: Float64) -> Float64:
     """Lane capacity: c = s * (g/C).
 
     Args:
@@ -92,7 +92,7 @@ fn capacity_lane(saturation_flow: Float64, green_ratio_val: Float64) -> Float64:
 # ── volume_to_capacity ───────────────────────────────────────────────────────
 
 
-fn volume_to_capacity(volume: Float64, capacity: Float64) -> Float64:
+def volume_to_capacity(volume: Float64, capacity: Float64) -> Float64:
     """Volume-to-capacity ratio: v/c.
 
     Args:
@@ -108,7 +108,7 @@ fn volume_to_capacity(volume: Float64, capacity: Float64) -> Float64:
 # ── delay_uniform ────────────────────────────────────────────────────────────
 
 
-fn delay_uniform(cycle: Float64, green_ratio_val: Float64, vc_ratio: Float64) -> Float64:
+def delay_uniform(cycle: Float64, green_ratio_val: Float64, vc_ratio: Float64) -> Float64:
     """Uniform delay (Webster/HCM d1 component):
     d1 = 0.5 * C * (1 - g/C)² / (1 - min(1, X) * g/C).
 
@@ -134,7 +134,7 @@ fn delay_uniform(cycle: Float64, green_ratio_val: Float64, vc_ratio: Float64) ->
 # ── pedestrian_crossing_time ─────────────────────────────────────────────────
 
 
-fn pedestrian_crossing_time(distance: Float64, walk_speed: Float64) -> Float64:
+def pedestrian_crossing_time(distance: Float64, walk_speed: Float64) -> Float64:
     """Pedestrian crossing time: t = d / v.
 
     Args:
@@ -150,7 +150,7 @@ fn pedestrian_crossing_time(distance: Float64, walk_speed: Float64) -> Float64:
 # ── yellow_interval ──────────────────────────────────────────────────────────
 
 
-fn yellow_interval(
+def yellow_interval(
     perception_time: Float64,
     velocity: Float64,
     deceleration: Float64,
@@ -174,7 +174,7 @@ fn yellow_interval(
 # ── all_red_interval ─────────────────────────────────────────────────────────
 
 
-fn all_red_interval(width: Float64, length: Float64, velocity: Float64) -> Float64:
+def all_red_interval(width: Float64, length: Float64, velocity: Float64) -> Float64:
     """All-red clearance interval: AR = (W + L) / v.
 
     Args:
@@ -191,7 +191,7 @@ fn all_red_interval(width: Float64, length: Float64, velocity: Float64) -> Float
 # ── level_of_service_delay ───────────────────────────────────────────────────
 
 
-fn level_of_service_delay(delay_sec: Float64) -> Int:
+def level_of_service_delay(delay_sec: Float64) -> Int:
     """Level of service from control delay (HCM signalized):
     A=1 (≤10), B=2 (10-20), C=3 (20-35), D=4 (35-55), E=5 (55-80), F=6 (>80).
 
@@ -217,7 +217,7 @@ fn level_of_service_delay(delay_sec: Float64) -> Int:
 # ── intersection_capacity_utilization ────────────────────────────────────────
 
 
-fn intersection_capacity_utilization(
+def intersection_capacity_utilization(
     sum_critical_vc: Float64,
     total_lost: Float64,
     cycle_length: Float64,
@@ -238,7 +238,7 @@ fn intersection_capacity_utilization(
 # ── peak_hour_factor ─────────────────────────────────────────────────────────
 
 
-fn peak_hour_factor(peak_volume: Float64, peak_15min_volume: Float64) -> Float64:
+def peak_hour_factor(peak_volume: Float64, peak_15min_volume: Float64) -> Float64:
     """Peak hour factor: PHF = V / (4 * V15).
 
     Args:

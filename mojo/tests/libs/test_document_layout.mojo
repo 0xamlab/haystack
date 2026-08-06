@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from document_layout import text_line_boxes_flat, line_count_flat, column_boxes_flat, column_count_flat, text_density_grid_flat, multi_column_score_flat, table_like_score_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -57,18 +57,18 @@ from residentk.kernels import (
 )
 
 
-fn _abs64(x: Float64) -> Float64:
+def _abs64(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo_vals(n: Int, seed: Int) -> List[Float64]:
+def _pseudo_vals(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 47)) / 19.0 - 1.2)
     return o^
 
 
-fn _pseudo_ids(n: Int, seed: Int) -> List[Int]:
+def _pseudo_ids(n: Int, seed: Int) -> List[Int]:
     """Deliberately NOT equal to position `i` — see the module docstring's tie-break section."""
     var o = List[Int](capacity=n)
     for i in range(n):
@@ -76,7 +76,7 @@ fn _pseudo_ids(n: Int, seed: Int) -> List[Int]:
     return o^
 
 
-fn _host_argmax(vals: List[Float64], idxs: List[Int], n: Int, mut out_val: List[Float64], mut out_idx: List[Int]):
+def _host_argmax(vals: List[Float64], idxs: List[Int], n: Int, mut out_val: List[Float64], mut out_idx: List[Int]):
     """Pure-host Float64 reference — the SAME tie-break-to-lowest-id combine both device kernels
     use, applied by scanning once left to right. See the module docstring for why this is a genuine
     total-order maximum (associative, commutative), so ANY reduction order must agree with it.

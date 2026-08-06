@@ -16,7 +16,7 @@ Public API:
 from std.math import log
 
 
-fn relative_risk(
+def relative_risk(
     incidence_exposed: Float64, incidence_unexposed: Float64
 ) -> Float64:
     """Relative risk from cohort study: RR = I_e / I_u.
@@ -33,7 +33,7 @@ fn relative_risk(
     return incidence_exposed / incidence_unexposed
 
 
-fn odds_ratio(
+def odds_ratio(
     cases_exposed: Float64, cases_unexposed: Float64,
     controls_exposed: Float64, controls_unexposed: Float64
 ) -> Float64:
@@ -56,7 +56,7 @@ fn odds_ratio(
     return (cases_exposed * controls_unexposed) / denom
 
 
-fn attributable_risk(
+def attributable_risk(
     incidence_exposed: Float64, incidence_unexposed: Float64
 ) -> Float64:
     """Attributable (absolute) risk: AR = I_e - I_u.
@@ -71,7 +71,7 @@ fn attributable_risk(
     return incidence_exposed - incidence_unexposed
 
 
-fn population_attributable_risk(
+def population_attributable_risk(
     exposure_prevalence: Float64, relative_risk: Float64
 ) -> Float64:
     """Population attributable risk fraction.
@@ -92,7 +92,7 @@ fn population_attributable_risk(
     return numerator / denom
 
 
-fn number_needed_to_treat(
+def number_needed_to_treat(
     control_event_rate: Float64, treatment_event_rate: Float64
 ) -> Float64:
     """Number needed to treat: NNT = 1 / ARR.
@@ -110,7 +110,7 @@ fn number_needed_to_treat(
     return 1.0 / arr
 
 
-fn sensitivity_test(true_positive: Float64, false_negative: Float64) -> Float64:
+def sensitivity_test(true_positive: Float64, false_negative: Float64) -> Float64:
     """Diagnostic sensitivity: Se = TP / (TP + FN).
 
     Args:
@@ -126,7 +126,7 @@ fn sensitivity_test(true_positive: Float64, false_negative: Float64) -> Float64:
     return true_positive / denom
 
 
-fn specificity_test(true_negative: Float64, false_positive: Float64) -> Float64:
+def specificity_test(true_negative: Float64, false_positive: Float64) -> Float64:
     """Diagnostic specificity: Sp = TN / (TN + FP).
 
     Args:
@@ -142,7 +142,7 @@ fn specificity_test(true_negative: Float64, false_positive: Float64) -> Float64:
     return true_negative / denom
 
 
-fn positive_predictive_value(
+def positive_predictive_value(
     sensitivity: Float64, specificity: Float64, prevalence: Float64
 ) -> Float64:
     """Positive predictive value from Bayes' theorem.
@@ -165,7 +165,7 @@ fn positive_predictive_value(
     return tp_rate / denom
 
 
-fn negative_predictive_value(
+def negative_predictive_value(
     sensitivity: Float64, specificity: Float64, prevalence: Float64
 ) -> Float64:
     """Negative predictive value from Bayes' theorem.
@@ -188,7 +188,7 @@ fn negative_predictive_value(
     return tn_rate / denom
 
 
-fn likelihood_ratio_positive(
+def likelihood_ratio_positive(
     sensitivity: Float64, specificity: Float64
 ) -> Float64:
     """Positive likelihood ratio: LR+ = sensitivity / (1 - specificity).

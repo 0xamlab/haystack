@@ -32,7 +32,7 @@ struct KMeansResult(Copyable, Movable):
     var inertia: Float64
     var iterations: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.centroids = List[List[Float64]]()
         self.labels = List[Int]()
         self.inertia = 0.0
@@ -42,7 +42,7 @@ struct KMeansResult(Copyable, Movable):
 # ── euclidean_distance ────────────────────────────────────────────────────────
 
 
-fn euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
     """Euclidean (L2) distance between two vectors."""
     var n = len(a)
     if len(b) < n:
@@ -57,7 +57,7 @@ fn euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
 # ── assign_cluster ────────────────────────────────────────────────────────────
 
 
-fn assign_cluster(point: List[Float64], centroids: List[List[Float64]]) -> Int:
+def assign_cluster(point: List[Float64], centroids: List[List[Float64]]) -> Int:
     """Return index of the nearest centroid to the given point."""
     var k = len(centroids)
     if k == 0:
@@ -75,7 +75,7 @@ fn assign_cluster(point: List[Float64], centroids: List[List[Float64]]) -> Int:
 # ── kmeans ────────────────────────────────────────────────────────────────────
 
 
-fn kmeans(
+def kmeans(
     data: List[List[Float64]],
     k: Int,
     max_iter: Int = 100,
@@ -198,7 +198,7 @@ fn kmeans(
 # ── silhouette_score ──────────────────────────────────────────────────────────
 
 
-fn silhouette_score(data: List[List[Float64]], labels: List[Int]) -> Float64:
+def silhouette_score(data: List[List[Float64]], labels: List[Int]) -> Float64:
     """Mean silhouette coefficient over all data points.
 
     For each point i:

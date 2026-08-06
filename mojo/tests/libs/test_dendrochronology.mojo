@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from dendrochronology import ring_width_index, basal_area_increment, standardise_negative_exp, sensitivity_coefficient, first_order_autocorrelation, expressed_population_signal, signal_free_mean, pointer_year_threshold, crossdating_t_value, temperature_response
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

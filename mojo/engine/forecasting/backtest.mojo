@@ -255,7 +255,7 @@ struct ErrorReport(Copyable, Movable):
     var status_name: String
 
 
-fn _no_backtest(
+def _no_backtest(
     status: Int, method_id: Int, horizon: Int, n_obs: Int, min_train: Int,
     step: Int, expanding: Bool, requested: Int, refused: Int
 ) -> BacktestReport:
@@ -269,7 +269,7 @@ fn _no_backtest(
     )
 
 
-fn _no_errors(status: Int, n_points: Int, period: Int) -> ErrorReport:
+def _no_errors(status: Int, n_points: Int, period: Int) -> ErrorReport:
     """A refusal: every measure absent, every count zero."""
     return ErrorReport(
         status, n_points, period, 0.0, False, 0.0, False, 0.0, False, 0, 0,
@@ -277,7 +277,7 @@ fn _no_errors(status: Int, n_points: Int, period: Int) -> ErrorReport:
     )
 
 
-fn backtest_origin_count(
+def backtest_origin_count(
     n_obs: Int, horizon: Int, min_train: Int, step: Int
 ) -> Int:
     """How many rolling origins a configuration admits. Pure arithmetic, no series needed.
@@ -311,7 +311,7 @@ fn backtest_origin_count(
     return room // step + 1
 
 
-fn _forecast_by_method(
+def _forecast_by_method(
     train: List[Float64], method_id: Int, horizon: Int, period: Int,
     ar_order: Int, alpha: Float64, beta: Float64, phi: Float64, theta: Float64
 ) -> PointForecast:
@@ -365,7 +365,7 @@ fn _forecast_by_method(
     return baseline_forecast(train, method_id, horizon, period)
 
 
-fn _reported(value: Float64, present: Bool) -> Float64:
+def _reported(value: Float64, present: Bool) -> Float64:
     """The value when it is present, and 0.0 when it is not -- never a raw non-finite.
 
     Every metric here is computed FIRST and flag-checked SECOND (`mae = abs_sum / n` then
@@ -386,7 +386,7 @@ fn _reported(value: Float64, present: Bool) -> Float64:
     return value if present else 0.0
 
 
-fn _per_origin_cost(
+def _per_origin_cost(
     n_obs: Int, horizon: Int, method_id: Int, period: Int, ar_order: Int
 ) -> Int:
     """Elementary operations one origin costs, or -1 when a FACTOR alone blows the budget.
@@ -412,7 +412,7 @@ fn _per_origin_cost(
     return n_obs + horizon
 
 
-fn backtest_flat(
+def backtest_flat(
     y: List[Float64], method_id: Int, horizon: Int, min_train: Int,
     step: Int, expanding: Bool, period: Int, ar_order: Int,
     alpha: Float64, beta: Float64, phi: Float64, theta: Float64
@@ -566,7 +566,7 @@ fn backtest_flat(
     )
 
 
-fn backtest_residuals_at_step(
+def backtest_residuals_at_step(
     error: List[Float64], n_origins: Int, horizon: Int, step_index: Int
 ) -> List[Float64]:
     """Column `step_index` of a row-major `n_origins x horizon` error matrix.
@@ -602,7 +602,7 @@ fn backtest_residuals_at_step(
     return out^
 
 
-fn forecast_errors_flat(
+def forecast_errors_flat(
     actual: List[Float64], forecast: List[Float64],
     train: List[Float64], period: Int
 ) -> ErrorReport:

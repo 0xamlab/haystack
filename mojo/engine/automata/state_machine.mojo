@@ -21,7 +21,7 @@ struct Transition(Copyable, Movable):
     var to_state: String
     var guard_value: Float64
 
-    fn __init__(
+    def __init__(
         out self,
         from_state: String,
         event: String,
@@ -46,7 +46,7 @@ struct StateMachine(Copyable, Movable):
     var history: List[String]
     var _initial_state: String
 
-    fn __init__(out self, initial_state: String):
+    def __init__(out self, initial_state: String):
         self.current_state = initial_state
         self._initial_state = initial_state
         self.states = List[String]()
@@ -54,7 +54,7 @@ struct StateMachine(Copyable, Movable):
         self.history = List[String]()
         self.history.append(initial_state)
 
-    fn add_state(mut self, name: String):
+    def add_state(mut self, name: String):
         """Register a state name."""
         # Avoid duplicates
         for i in range(len(self.states)):
@@ -62,7 +62,7 @@ struct StateMachine(Copyable, Movable):
                 return
         self.states.append(name)
 
-    fn add_transition(
+    def add_transition(
         mut self,
         from_s: String,
         event: String,
@@ -72,7 +72,7 @@ struct StateMachine(Copyable, Movable):
         """Add a transition rule."""
         self.transitions.append(Transition(from_s, event, to_s, guard))
 
-    fn _find_transition(
+    def _find_transition(
         self, event: String, value: Float64
     ) -> Int:
         """Find the index of a matching transition, or -1 if none."""
@@ -87,7 +87,7 @@ struct StateMachine(Copyable, Movable):
                 return i
         return -1
 
-    fn fire(mut self, event: String, value: Float64 = 0.0) -> Bool:
+    def fire(mut self, event: String, value: Float64 = 0.0) -> Bool:
         """Attempt to fire an event. Returns True if a transition occurred."""
         var idx = self._find_transition(event, value)
         if idx < 0:
@@ -96,11 +96,11 @@ struct StateMachine(Copyable, Movable):
         self.history.append(self.current_state)
         return True
 
-    fn can_fire(self, event: String, value: Float64 = 0.0) -> Bool:
+    def can_fire(self, event: String, value: Float64 = 0.0) -> Bool:
         """Check whether an event can fire from the current state."""
         return self._find_transition(event, value) >= 0
 
-    fn get_possible_events(self) -> List[String]:
+    def get_possible_events(self) -> List[String]:
         """Return list of events that can fire from the current state (ignoring guards)."""
         var events = List[String]()
         for i in range(len(self.transitions)):
@@ -117,16 +117,16 @@ struct StateMachine(Copyable, Movable):
                     events.append(t_event)
         return events^
 
-    fn reset(mut self):
+    def reset(mut self):
         """Reset to initial state, clear history."""
         self.current_state = self._initial_state
         self.history = List[String]()
         self.history.append(self._initial_state)
 
-    fn state_count(self) -> Int:
+    def state_count(self) -> Int:
         """Number of registered states."""
         return len(self.states)
 
-    fn transition_count(self) -> Int:
+    def transition_count(self) -> Int:
         """Number of registered transitions."""
         return len(self.transitions)

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn data_parallel_gradient_scale(
+def data_parallel_gradient_scale(
     world_size: Float64
 ) -> Float64:
     """Gradient scale factor for data parallelism: 1/world_size.
@@ -35,7 +35,7 @@ fn data_parallel_gradient_scale(
     return 1.0 / world_size
 
 
-fn tensor_parallel_split_dim(
+def tensor_parallel_split_dim(
     total_dim: Float64, tp_degree: Float64
 ) -> Float64:
     """Shard size for tensor parallelism.
@@ -54,7 +54,7 @@ fn tensor_parallel_split_dim(
     return total_dim / tp_degree
 
 
-fn pipeline_bubble_fraction(
+def pipeline_bubble_fraction(
     n_stages: Float64, n_microbatches: Float64
 ) -> Float64:
     """Pipeline parallel bubble fraction: (p-1)/(m+p-1).
@@ -72,7 +72,7 @@ fn pipeline_bubble_fraction(
     return (n_stages - 1.0) / total
 
 
-fn gradient_all_reduce_bytes(
+def gradient_all_reduce_bytes(
     n_parameters: Float64, dtype_bytes: Float64, world_size: Float64
 ) -> Float64:
     """All-reduce communication volume for gradient synchronisation.
@@ -92,7 +92,7 @@ fn gradient_all_reduce_bytes(
     return 2.0 * (world_size - 1.0) / world_size * n_parameters * dtype_bytes
 
 
-fn activation_checkpointing_ratio(
+def activation_checkpointing_ratio(
     n_checkpointed_layers: Float64, total_layers: Float64
 ) -> Float64:
     """Memory saved fraction by activation checkpointing select layers.
@@ -109,7 +109,7 @@ fn activation_checkpointing_ratio(
     return n_checkpointed_layers / total_layers
 
 
-fn pipeline_stage_assignment(
+def pipeline_stage_assignment(
     layer_id: Float64, total_layers: Float64, n_stages: Float64
 ) -> Float64:
     """Assign a transformer layer to a pipeline stage.
@@ -132,7 +132,7 @@ fn pipeline_stage_assignment(
     return stage
 
 
-fn microbatch_throughput(
+def microbatch_throughput(
     microbatch_size: Float64, n_microbatches: Float64,
     pipeline_time: Float64
 ) -> Float64:
@@ -151,7 +151,7 @@ fn microbatch_throughput(
     return microbatch_size * n_microbatches / (pipeline_time / 1000.0)
 
 
-fn zero_stage3_param_bytes(
+def zero_stage3_param_bytes(
     total_param_bytes: Float64, world_size: Float64
 ) -> Float64:
     """ZeRO Stage 3: parameter shard per device.
@@ -170,7 +170,7 @@ fn zero_stage3_param_bytes(
     return total_param_bytes / world_size
 
 
-fn communication_computation_ratio(
+def communication_computation_ratio(
     comm_bytes: Float64, bandwidth_gbs: Float64,
     compute_time_ms: Float64
 ) -> Float64:
@@ -192,7 +192,7 @@ fn communication_computation_ratio(
     return comm_time_ms / compute_time_ms
 
 
-fn ddp_sync_overhead(
+def ddp_sync_overhead(
     grad_sync_time_ms: Float64, step_time_ms: Float64
 ) -> Float64:
     """DDP gradient synchronisation overhead fraction.

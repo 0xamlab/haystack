@@ -30,7 +30,7 @@ comptime MAX_BINS: Int = 1000
 # ── column_mean ──────────────────────────────────────────────────────────────
 
 
-fn column_mean(data: List[List[Float64]]) -> List[Float64]:
+def column_mean(data: List[List[Float64]]) -> List[Float64]:
     """Mean of each column in the 2D data matrix."""
     var n = len(data)
     if n == 0:
@@ -48,7 +48,7 @@ fn column_mean(data: List[List[Float64]]) -> List[Float64]:
 # ── column_variance ──────────────────────────────────────────────────────────
 
 
-fn column_variance(data: List[List[Float64]]) -> List[Float64]:
+def column_variance(data: List[List[Float64]]) -> List[Float64]:
     """Compute variance of each column (population variance)."""
     var n = len(data)
     if n == 0:
@@ -68,7 +68,7 @@ fn column_variance(data: List[List[Float64]]) -> List[Float64]:
 # ── variance_threshold ───────────────────────────────────────────────────────
 
 
-fn variance_threshold(data: List[List[Float64]], threshold: Float64 = 0.0) -> List[Int]:
+def variance_threshold(data: List[List[Float64]], threshold: Float64 = 0.0) -> List[Int]:
     """Return column indices with variance > threshold."""
     var variances = column_variance(data)
     var selected = List[Int]()
@@ -81,7 +81,7 @@ fn variance_threshold(data: List[List[Float64]], threshold: Float64 = 0.0) -> Li
 # ── correlation_filter ───────────────────────────────────────────────────────
 
 
-fn correlation_filter(data: List[List[Float64]], max_corr: Float64 = 0.95) -> List[Int]:
+def correlation_filter(data: List[List[Float64]], max_corr: Float64 = 0.95) -> List[Int]:
     """Remove highly correlated features. Return selected column indices.
     For each pair with |corr| > max_corr, the later column is removed."""
     var n = len(data)
@@ -124,7 +124,7 @@ fn correlation_filter(data: List[List[Float64]], max_corr: Float64 = 0.95) -> Li
 # ── f_test_scores ────────────────────────────────────────────────────────────
 
 
-fn f_test_scores(X: List[List[Float64]], y: List[Float64]) -> List[Float64]:
+def f_test_scores(X: List[List[Float64]], y: List[Float64]) -> List[Float64]:
     """F-statistic for each feature vs target. Higher = more informative.
     Uses correlation-based F: F = r²*(n-2) / (1-r²)."""
     var n = len(X)
@@ -168,7 +168,7 @@ fn f_test_scores(X: List[List[Float64]], y: List[Float64]) -> List[Float64]:
 # ── select_k_best ────────────────────────────────────────────────────────────
 
 
-fn select_k_best(scores: List[Float64], k: Int) -> List[Int]:
+def select_k_best(scores: List[Float64], k: Int) -> List[Int]:
     """Return indices of top-k scoring features."""
     # Negative k would become a negative List capacity, an uncatchable abort.
     if k <= 0:
@@ -197,7 +197,7 @@ fn select_k_best(scores: List[Float64], k: Int) -> List[Int]:
 # ── forward_selection_greedy ─────────────────────────────────────────────────
 
 
-fn _compute_mse_with_features(X: List[List[Float64]], y: List[Float64], features: List[Int]) -> Float64:
+def _compute_mse_with_features(X: List[List[Float64]], y: List[Float64], features: List[Int]) -> Float64:
     """Compute MSE using selected features via simple regression."""
     var n = len(X)
     if n == 0 or len(features) == 0:
@@ -236,7 +236,7 @@ fn _compute_mse_with_features(X: List[List[Float64]], y: List[Float64], features
     return mse / Float64(n)
 
 
-fn forward_selection_greedy(X: List[List[Float64]], y: List[Float64], k: Int) -> List[Int]:
+def forward_selection_greedy(X: List[List[Float64]], y: List[Float64], k: Int) -> List[Int]:
     """Greedy forward selection: add feature that most reduces MSE, up to k features."""
     var n = len(X)
     if n == 0:
@@ -277,7 +277,7 @@ fn forward_selection_greedy(X: List[List[Float64]], y: List[Float64], k: Int) ->
 # ── information_gain ─────────────────────────────────────────────────────────
 
 
-fn information_gain(feature: List[Float64], target: List[Float64], n_bins: Int = 10) -> Float64:
+def information_gain(feature: List[Float64], target: List[Float64], n_bins: Int = 10) -> Float64:
     """Approximate mutual information via binned histogram.
     MI = H(target) + H(feature) - H(feature, target)."""
     var n = len(feature)
@@ -364,7 +364,7 @@ fn information_gain(feature: List[Float64], target: List[Float64], n_bins: Int =
 # ── feature_importance_permutation ───────────────────────────────────────────
 
 
-fn feature_importance_permutation(X: List[List[Float64]], y: List[Float64], n_permutations: Int = 5) -> List[Float64]:
+def feature_importance_permutation(X: List[List[Float64]], y: List[Float64], n_permutations: Int = 5) -> List[Float64]:
     """Simplified permutation importance: measure MSE increase when shuffling each feature.
     Uses a deterministic cyclic permutation for reproducibility."""
     var n = len(X)

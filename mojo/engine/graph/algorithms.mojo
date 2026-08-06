@@ -5,14 +5,14 @@ Adjacency list representation with weighted directed edges.
 
 Public API:
   struct Graph(Copyable, Movable) — directed weighted graph
-  fn graph_new(n: Int) -> Graph
-  fn graph_add_edge(mut g: Graph, from_node: Int, to_node: Int, weight: Float64)
-  fn dijkstra(g: Graph, source: Int) -> List[Float64]
-  fn bfs(g: Graph, source: Int) -> List[Int]
-  fn dfs(g: Graph, source: Int) -> List[Int]
-  fn topological_sort(g: Graph) -> List[Int]
-  fn connected_components(g: Graph) -> List[Int]
-  fn shortest_path(g: Graph, source: Int, target: Int) -> List[Int]
+  def graph_new(n: Int) -> Graph
+  def graph_add_edge(mut g: Graph, from_node: Int, to_node: Int, weight: Float64)
+  def dijkstra(g: Graph, source: Int) -> List[Float64]
+  def bfs(g: Graph, source: Int) -> List[Int]
+  def dfs(g: Graph, source: Int) -> List[Int]
+  def topological_sort(g: Graph) -> List[Int]
+  def connected_components(g: Graph) -> List[Int]
+  def shortest_path(g: Graph, source: Int, target: Int) -> List[Int]
 """
 
 
@@ -25,7 +25,7 @@ struct Edge(Copyable, Movable):
     var target: Int
     var weight: Float64
 
-    fn __init__(out self, target: Int, weight: Float64):
+    def __init__(out self, target: Int, weight: Float64):
         self.target = target
         self.weight = weight
 
@@ -48,7 +48,7 @@ struct Graph(Copyable, Movable):
     var _adj_targets: List[List[Int]]
     var _adj_weights: List[List[Float64]]
 
-    fn __init__(out self, n: Int):
+    def __init__(out self, n: Int):
         self.n_nodes = n
         self._adj_targets = List[List[Int]]()
         self._adj_weights = List[List[Float64]]()
@@ -60,12 +60,12 @@ struct Graph(Copyable, Movable):
 # ── graph_new ─────────────────────────────────────────────────────────────────
 
 
-fn graph_new(n: Int) -> Graph:
+def graph_new(n: Int) -> Graph:
     """Create a new graph with n nodes (0-indexed)."""
     return Graph(n)
 
 
-fn _graph_valid(g: Graph) -> Bool:
+def _graph_valid(g: Graph) -> Bool:
     """True when the adjacency structure matches n_nodes and every neighbor
     index lies in [0, n_nodes).
 
@@ -89,7 +89,7 @@ fn _graph_valid(g: Graph) -> Bool:
 # ── graph_add_edge ────────────────────────────────────────────────────────────
 
 
-fn graph_add_edge(mut g: Graph, from_node: Int, to_node: Int, weight: Float64):
+def graph_add_edge(mut g: Graph, from_node: Int, to_node: Int, weight: Float64):
     """Add a directed edge from from_node to to_node with given weight."""
     # from_node addresses the adjacency rows directly and to_node becomes a
     # neighbor index in later algorithms; refuse out-of-range endpoints.
@@ -110,7 +110,7 @@ struct _HeapEntry(Copyable, Movable):
     var dist: Float64
     var node: Int
 
-    fn __init__(out self, dist: Float64, node: Int):
+    def __init__(out self, dist: Float64, node: Int):
         self.dist = dist
         self.node = node
 
@@ -122,19 +122,19 @@ struct _DijkHeap:
     var _dist: List[Float64]
     var _node: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self._dist = List[Float64]()
         self._node = List[Int]()
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         return len(self._dist)
 
-    fn push(mut self, dist: Float64, node: Int):
+    def push(mut self, dist: Float64, node: Int):
         self._dist.append(dist)
         self._node.append(node)
         self._sift_up(len(self._dist) - 1)
 
-    fn pop(mut self) -> _HeapEntry:
+    def pop(mut self) -> _HeapEntry:
         """Pop the minimum (distance, node) pair."""
         var n = len(self._dist)
         if n == 0:
@@ -162,7 +162,7 @@ struct _DijkHeap:
         self._sift_down(0)
         return _HeapEntry(d, nd)
 
-    fn _sift_up(mut self, idx: Int):
+    def _sift_up(mut self, idx: Int):
         var i = idx
         while i > 0:
             var parent = (i - 1) // 2
@@ -178,7 +178,7 @@ struct _DijkHeap:
             else:
                 break
 
-    fn _sift_down(mut self, idx: Int):
+    def _sift_down(mut self, idx: Int):
         var n = len(self._dist)
         var i = idx
         while True:
@@ -204,7 +204,7 @@ struct _DijkHeap:
 # ── dijkstra ──────────────────────────────────────────────────────────────────
 
 
-fn dijkstra(g: Graph, source: Int) -> List[Float64]:
+def dijkstra(g: Graph, source: Int) -> List[Float64]:
     """Dijkstra's shortest path algorithm from source node.
 
     Returns a list of distances where dist[i] is the shortest distance
@@ -248,7 +248,7 @@ fn dijkstra(g: Graph, source: Int) -> List[Float64]:
 # ── bfs ───────────────────────────────────────────────────────────────────────
 
 
-fn bfs(g: Graph, source: Int) -> List[Int]:
+def bfs(g: Graph, source: Int) -> List[Int]:
     """Breadth-first traversal order starting from source."""
     var n = g.n_nodes
     if not _graph_valid(g) or source < 0 or source >= n:
@@ -283,7 +283,7 @@ fn bfs(g: Graph, source: Int) -> List[Int]:
 # ── dfs ───────────────────────────────────────────────────────────────────────
 
 
-fn dfs(g: Graph, source: Int) -> List[Int]:
+def dfs(g: Graph, source: Int) -> List[Int]:
     """Depth-first traversal order starting from source (iterative)."""
     var n = g.n_nodes
     if not _graph_valid(g) or source < 0 or source >= n:
@@ -322,7 +322,7 @@ fn dfs(g: Graph, source: Int) -> List[Int]:
 # ── topological_sort ──────────────────────────────────────────────────────────
 
 
-fn topological_sort(g: Graph) -> List[Int]:
+def topological_sort(g: Graph) -> List[Int]:
     """Topological sort of a DAG using Kahn's algorithm.
 
     Returns a valid topological ordering. If the graph has cycles,
@@ -369,7 +369,7 @@ fn topological_sort(g: Graph) -> List[Int]:
 # ── connected_components ──────────────────────────────────────────────────────
 
 
-fn connected_components(g: Graph) -> List[Int]:
+def connected_components(g: Graph) -> List[Int]:
     """Find connected components treating the graph as undirected.
 
     Returns a list where result[i] is the component label (0-based)
@@ -420,7 +420,7 @@ fn connected_components(g: Graph) -> List[Int]:
 # ── shortest_path ─────────────────────────────────────────────────────────────
 
 
-fn shortest_path(g: Graph, source: Int, target: Int) -> List[Int]:
+def shortest_path(g: Graph, source: Int, target: Int) -> List[Int]:
     """Find the actual shortest path from source to target.
 
     Returns the sequence of nodes from source to target inclusive.

@@ -92,7 +92,7 @@ struct TxReduction(Copyable, Movable):
     var status: Int
 
 
-fn _decode_checked(data: List[UInt8], n: Int, dtype: Int) -> List[Float64]:
+def _decode_checked(data: List[UInt8], n: Int, dtype: Int) -> List[Float64]:
     """The shared precondition check every public function below starts with: `n` in range, `dtype`
     self-contained, `data` long enough — THEN decode. Returning an empty list here always means one
     of those failed; the caller already knows which because it checked the same things itself before
@@ -110,7 +110,7 @@ fn _decode_checked(data: List[UInt8], n: Int, dtype: Int) -> List[Float64]:
     return decoded^
 
 
-fn _precondition_status(data: List[UInt8], n: Int, dtype: Int) -> Int:
+def _precondition_status(data: List[UInt8], n: Int, dtype: Int) -> Int:
     """Why `_decode_checked` would fail, named — so a public function can report a real status
     instead of guessing from an empty list."""
     if n < 0:
@@ -127,7 +127,7 @@ fn _precondition_status(data: List[UInt8], n: Int, dtype: Int) -> Int:
     return TX_OK
 
 
-fn _reduce_dispatch(op: Int, data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def _reduce_dispatch(op: Int, data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Shared implementation for every public reduction: check preconditions, decode wide (to
     Float64), reject on any non-finite live value, then call the matching frozen-in-spirit
     `numeric.reduce_*` and re-wrap its result in a same-file `TxReduction`.
@@ -163,7 +163,7 @@ fn _reduce_dispatch(op: Int, data: List[UInt8], n: Int, dtype: Int) -> TxReducti
     return TxReduction(r6.value, r6.present, r6.n, TX_OK)
 
 
-fn tx_reduce_sum(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def tx_reduce_sum(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Sum of `n` elements of `dtype`, decoded to `Float64` and accumulated there — never re-rounded
     to `dtype` between additions. Sum of zero elements is `0.0`, present — a real answer, per
     `numeric.reduce`'s policy.
@@ -177,7 +177,7 @@ fn tx_reduce_sum(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     return _reduce_dispatch(_RED_SUM, data, n, dtype)
 
 
-fn tx_reduce_mean(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def tx_reduce_mean(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Mean of `n` elements of `dtype`. Absent (not `0.0`) for zero elements — a mean of nothing
     does not exist.
 
@@ -190,7 +190,7 @@ fn tx_reduce_mean(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     return _reduce_dispatch(_RED_MEAN, data, n, dtype)
 
 
-fn tx_reduce_min(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def tx_reduce_min(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Minimum of `n` elements of `dtype`. Absent for zero elements.
 
     @capability tx_reduce_min
@@ -202,7 +202,7 @@ fn tx_reduce_min(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     return _reduce_dispatch(_RED_MIN, data, n, dtype)
 
 
-fn tx_reduce_max(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def tx_reduce_max(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Maximum of `n` elements of `dtype`. Absent for zero elements.
 
     @capability tx_reduce_max
@@ -214,7 +214,7 @@ fn tx_reduce_max(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     return _reduce_dispatch(_RED_MAX, data, n, dtype)
 
 
-fn tx_reduce_variance(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def tx_reduce_variance(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Sample variance (n-1) of `n` elements of `dtype`, via Welford. Absent below two elements — one
     observation has no spread to report.
 
@@ -227,7 +227,7 @@ fn tx_reduce_variance(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     return _reduce_dispatch(_RED_VAR, data, n, dtype)
 
 
-fn tx_reduce_stddev(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
+def tx_reduce_stddev(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     """Sample standard deviation of `n` elements of `dtype`. Absent below two elements.
 
     @capability tx_reduce_stddev
@@ -239,7 +239,7 @@ fn tx_reduce_stddev(data: List[UInt8], n: Int, dtype: Int) -> TxReduction:
     return _reduce_dispatch(_RED_STD, data, n, dtype)
 
 
-fn tx_reduce_sum_narrow_accum(data: List[UInt8], n: Int, dtype: Int) -> Float64:
+def tx_reduce_sum_narrow_accum(data: List[UInt8], n: Int, dtype: Int) -> Float64:
     """The counterfactual `tx_reduce_sum` deliberately does NOT compute: what the sum would be if the
     running accumulator itself were rounded back to `dtype` after every addition, the way an in-place
     same-width accumulator register works.

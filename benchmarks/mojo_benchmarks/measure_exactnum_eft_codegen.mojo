@@ -36,7 +36,7 @@ pair would agree and the check fails.
 """
 from sys import argv
 
-from memory import bitcast
+from std.memory import bitcast
 
 from exactnum.eft import (
     DD,
@@ -56,7 +56,7 @@ from exactnum.eft import (
 )
 
 
-fn hex_to_f64(s: StringSlice) raises -> Float64:
+def hex_to_f64(s: StringSlice) raises -> Float64:
     var acc: UInt64 = 0
     var raw = s.as_bytes()
     if len(raw) != 16:
@@ -76,7 +76,7 @@ fn hex_to_f64(s: StringSlice) raises -> Float64:
     return bitcast[DType.float64, 1](acc)
 
 
-fn f64_to_hex(v: Float64) -> String:
+def f64_to_hex(v: Float64) -> String:
     var u = v.to_bits()
     var out = String("")
     for i in range(16):
@@ -85,16 +85,16 @@ fn f64_to_hex(v: Float64) -> String:
     return out
 
 
-fn show(key: String, v: Float64):
+def show(key: String, v: Float64):
     print(key, f64_to_hex(v))
 
 
-fn show_dd(key: String, v: DD):
+def show_dd(key: String, v: DD):
     print(key + "_HI", f64_to_hex(v.hi))
     print(key + "_LO", f64_to_hex(v.lo))
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 4:
         print("usage: measure_exactnum_eft_codegen <a_hex> <b_hex> <c_hex>")

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from strategy.contract import strat_status_name, strat_status_is_ok, strat_verdict_name, strat_verdict_is_decided, strat_exactness_name, strat_policy_kind_name, strat_factor_kind_name, strat_draws_per_cell, strat_finite, strat_absent, strat_scaled_tol, strat_scaled_tol_additions, strat_agrees, strat_tolerance_status, strat_level_status, strat_discount_status, strat_all_finite, strat_ints_in_range, strat_distribution_status, strat_product_fits, strat_product3_fits, strat_product4_fits, strat_dims_fit, strat_policy_arity, strat_policy_block_status, strat_policy_row_start, strat_scenario_cells, strat_scenario_cell, strat_scenario_status, strat_rng_version, strat_crn_contract, strat_stream_scenario, strat_stream_policy, strat_stream_tiebreak, strat_stream_status, strat_coord_status, strat_crn_address, strat_crn_fold, strat_shape_status, strat_work_charge, strat_budget, strat_ceilings
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

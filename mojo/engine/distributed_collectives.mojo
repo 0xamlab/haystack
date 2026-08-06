@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn ring_allreduce_step(
+def ring_allreduce_step(
     local_chunk: Float64, recv_chunk: Float64,
     is_reduce_phase: Float64
 ) -> Float64:
@@ -39,7 +39,7 @@ fn ring_allreduce_step(
     return recv_chunk
 
 
-fn reduce_scatter_element(
+def reduce_scatter_element(
     grad_element: Float64, world_size: Float64
 ) -> Float64:
     """Reduce-scatter: divide element by world_size after reduction.
@@ -56,7 +56,7 @@ fn reduce_scatter_element(
     return grad_element / world_size
 
 
-fn all_gather_offset(
+def all_gather_offset(
     rank: Float64, shard_size: Float64
 ) -> Float64:
     """All-gather byte offset for rank's shard.
@@ -73,7 +73,7 @@ fn all_gather_offset(
     return rank * shard_size
 
 
-fn broadcast_scale(world_size: Float64) -> Float64:
+def broadcast_scale(world_size: Float64) -> Float64:
     """Normalisation factor after reduce-broadcast (1/N).
 
     Args:
@@ -87,7 +87,7 @@ fn broadcast_scale(world_size: Float64) -> Float64:
     return 1.0 / world_size
 
 
-fn gradient_compression_ratio(
+def gradient_compression_ratio(
     original_bytes: Float64, compressed_bytes: Float64
 ) -> Float64:
     """Gradient compression savings ratio.
@@ -109,7 +109,7 @@ fn gradient_compression_ratio(
     return ratio
 
 
-fn expert_dispatch_volume(
+def expert_dispatch_volume(
     tokens_per_expert: Float64, hidden_dim: Float64,
     dtype_bytes: Float64
 ) -> Float64:
@@ -128,7 +128,7 @@ fn expert_dispatch_volume(
     return tokens_per_expert * hidden_dim * dtype_bytes * 2.0
 
 
-fn peer_bandwidth_utilization(
+def peer_bandwidth_utilization(
     bytes_transferred: Float64, link_bandwidth_gbs: Float64,
     elapsed_ms: Float64
 ) -> Float64:
@@ -151,7 +151,7 @@ fn peer_bandwidth_utilization(
     return util
 
 
-fn collective_latency_alpha_beta(
+def collective_latency_alpha_beta(
     n_bytes: Float64, n_steps: Float64,
     alpha_us: Float64, beta_gbs: Float64
 ) -> Float64:
@@ -174,7 +174,7 @@ fn collective_latency_alpha_beta(
     return n_steps * (alpha_us + n_bytes * bw_us_per_byte)
 
 
-fn overlap_compute_comm_ratio(
+def overlap_compute_comm_ratio(
     compute_ms: Float64, comm_ms: Float64
 ) -> Float64:
     """Communication hidden by computation overlap efficiency.
@@ -197,7 +197,7 @@ fn overlap_compute_comm_ratio(
     return ratio
 
 
-fn allreduce_tree_step_count(world_size: Float64) -> Float64:
+def allreduce_tree_step_count(world_size: Float64) -> Float64:
     """Tree all-reduce step count: log2(world_size) × 2.
 
     Args:

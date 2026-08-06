@@ -48,7 +48,7 @@ comptime OP_LT: Int = 100
 comptime OP_COL_REF: Int = 130
 comptime OP_ADD: Int = 2
 
-fn _head(value: String, n: Int) -> String:
+def _head(value: String, n: Int) -> String:
     """The first `n` bytes, for error output. Uses the kernel's clamped substring."""
     return substring(value, 0, n)
 
@@ -81,15 +81,15 @@ comptime WINDOW_ROWS: String = (
 )
 
 
-fn _no_tables() -> NamedBatches:
+def _no_tables() -> NamedBatches:
     return NamedBatches()
 
 
-fn _empty_strings() -> List[String]:
+def _empty_strings() -> List[String]:
     return List[String]()
 
 
-fn _same_key_left(n: Int) -> String:
+def _same_key_left(n: Int) -> String:
     """`n` order rows all sharing customer_id 1 — the fan-out side of a blowup."""
     var out = String("[")
     for i in range(n):
@@ -100,7 +100,7 @@ fn _same_key_left(n: Int) -> String:
     return out
 
 
-fn _same_key_table(n: Int) -> String:
+def _same_key_table(n: Int) -> String:
     """A request whose one table holds `n` rows all sharing id 1."""
     var out = String('{"tables":[{"name":"big","columns":["id","tier"],"rows":[')
     for i in range(n):
@@ -111,7 +111,7 @@ fn _same_key_table(n: Int) -> String:
     return out
 
 
-fn _wide_rows(n_rows: Int, n_columns: Int, key: Float64) -> String:
+def _wide_rows(n_rows: Int, n_columns: Int, key: Float64) -> String:
     """`n_rows` rows of `n_columns` values, column 0 holding `key` on every row."""
     var out = String("[")
     for r in range(n_rows):
@@ -130,7 +130,7 @@ fn _wide_rows(n_rows: Int, n_columns: Int, key: Float64) -> String:
     return out
 
 
-fn _wide_header_array(prefix: String, n_columns: Int) -> String:
+def _wide_header_array(prefix: String, n_columns: Int) -> String:
     """Just the `columns` ARRAY, for embedding in a `tables` entry."""
     var out = String("[")
     for c in range(n_columns):
@@ -141,11 +141,11 @@ fn _wide_header_array(prefix: String, n_columns: Int) -> String:
     return out
 
 
-fn _wide_header(prefix: String, n_columns: Int) -> String:
+def _wide_header(prefix: String, n_columns: Int) -> String:
     return '{"columns":' + _wide_header_array(prefix, n_columns) + "}"
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from risk import value_at_risk, conditional_var, max_drawdown, drawdown_series, sortino_ratio, sharpe_ratio, beta, alpha, information_ratio, calmar_ratio, downside_deviation
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

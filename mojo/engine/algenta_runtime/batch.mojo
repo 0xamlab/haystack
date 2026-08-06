@@ -42,15 +42,15 @@ from algenta_runtime.session import (
     is_dataset_reference,
 )
 
-# The dispatcher is a compile-time parameter rather than a direct import of
+# The dispatcher is a generic callable parameter rather than a direct import of
 # `runtime_library_dispatch_generated`. Two reasons: this module stays independent
 # of the ~100k-line generated table (importing it would make every test that
 # touches batching JIT-compile the whole thing), and the batching contract becomes
-# testable against a stub. main.mojo binds the real dispatcher.
-alias Dispatcher = fn (String) raises -> String
+# testable against a stub. main.mojo binds the real dispatcher. (Mojo 1.x form: the
+# signature constraint lives on the generic parameter, not on a function-type alias.)
 
 
-fn _batch_error(code: String, message: String) -> String:
+def _batch_error(code: String, message: String) -> String:
     """Frame-level failure: the batch envelope itself was unusable."""
     return (
         '{"error":"'
@@ -65,7 +65,7 @@ fn _batch_error(code: String, message: String) -> String:
     )
 
 
-fn bind_dataset_references(
+def bind_dataset_references(
     request: String,
     datasets: ResidentDatasets,
 ) raises -> String:
@@ -114,7 +114,7 @@ fn bind_dataset_references(
     )
 
 
-fn response_is_error(response: String) -> Bool:
+def response_is_error(response: String) -> Bool:
     """True when a dispatch response carries an error_code.
 
     Keyed on `error_code` rather than a prefix check so it stays correct if the
@@ -123,7 +123,8 @@ fn response_is_error(response: String) -> Bool:
     return len(json_get_string(response, "error_code")) > 0
 
 
-fn run_batch_execute[dispatch: Dispatcher](
+def run_batch_execute[DispatchT: def(String) raises -> String](
+    dispatch: DispatchT,
     raw: String,
     datasets: ResidentDatasets,
 ) raises -> String:

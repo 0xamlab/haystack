@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp, cos
 
 
-fn loss_scale_adjust(
+def loss_scale_adjust(
     current_scale: Float64, overflow_occurred: Float64,
     scale_up_factor: Float64, scale_down_factor: Float64,
     growth_interval: Float64, steps_since_overflow: Float64
@@ -45,7 +45,7 @@ fn loss_scale_adjust(
     return current_scale
 
 
-fn is_finite_check(value: Float64) -> Float64:
+def is_finite_check(value: Float64) -> Float64:
     """Check if value is finite (not NaN or Inf).
 
     Uses the property that NaN != NaN and |Inf| > any finite bound.
@@ -64,7 +64,7 @@ fn is_finite_check(value: Float64) -> Float64:
     return 1.0
 
 
-fn gradient_accumulation_step(
+def gradient_accumulation_step(
     accumulated_grad: Float64, new_grad: Float64,
     accumulation_steps: Float64
 ) -> Float64:
@@ -85,7 +85,7 @@ fn gradient_accumulation_step(
     return accumulated_grad + new_grad / accumulation_steps
 
 
-fn warmup_lr_schedule(
+def warmup_lr_schedule(
     step: Float64, warmup_steps: Float64, target_lr: Float64
 ) -> Float64:
     """Linear learning rate warmup.
@@ -108,7 +108,7 @@ fn warmup_lr_schedule(
     return target_lr * ratio
 
 
-fn cosine_warmup_schedule(
+def cosine_warmup_schedule(
     step: Float64, warmup_steps: Float64,
     total_steps: Float64, lr_max: Float64, lr_min: Float64
 ) -> Float64:
@@ -136,7 +136,7 @@ fn cosine_warmup_schedule(
     return lr_min + 0.5 * (lr_max - lr_min) * (1.0 + cos(pi * t / decay_steps))
 
 
-fn ema_weight_update(
+def ema_weight_update(
     ema_param: Float64, model_param: Float64, decay: Float64
 ) -> Float64:
     """Exponential moving average of model weights (EMA model).
@@ -154,7 +154,7 @@ fn ema_weight_update(
     return decay * ema_param + (1.0 - decay) * model_param
 
 
-fn overflow_skip_step(
+def overflow_skip_step(
     has_overflow: Float64, optimizer_step_count: Float64
 ) -> Float64:
     """Return updated step count, skipping if overflow occurred.
@@ -171,7 +171,7 @@ fn overflow_skip_step(
     return optimizer_step_count + 1.0
 
 
-fn grad_norm_finite(
+def grad_norm_finite(
     grad_norm: Float64, max_allowed: Float64
 ) -> Float64:
     """Check gradient norm is finite and within reasonable range.
@@ -194,7 +194,7 @@ fn grad_norm_finite(
     return 1.0
 
 
-fn loss_spike_detector(
+def loss_spike_detector(
     current_loss: Float64, running_mean: Float64,
     spike_threshold: Float64
 ) -> Float64:
@@ -217,7 +217,7 @@ fn loss_spike_detector(
     return 0.0
 
 
-fn training_step_budget(
+def training_step_budget(
     compute_budget_flops: Float64, flops_per_step: Float64
 ) -> Float64:
     """Remaining training steps within Chinchilla compute budget.

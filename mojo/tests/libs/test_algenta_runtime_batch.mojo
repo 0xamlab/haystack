@@ -25,7 +25,7 @@ from algenta_runtime.batch import (
 )
 
 
-fn _stub_dispatch(raw: String) raises -> String:
+def _stub_dispatch(raw: String) raises -> String:
     """Echo the requested function, or fail for the sentinel `__boom__`.
 
     Mirrors the generated table's envelope shape exactly: `{"result":...}` on
@@ -42,11 +42,11 @@ fn _stub_dispatch(raw: String) raises -> String:
     return '{"result":"' + function + '"}'
 
 
-fn _req(function: String) -> String:
+def _req(function: String) -> String:
     return '{"module":"stub","function":"' + function + '","args":[]}'
 
 
-fn main() raises:
+def main() raises:
     # Empty registry: these suites exercise the DAG/batch contract, not residency.
     var _datasets = ResidentDatasets()
     var passed = 0
@@ -55,7 +55,7 @@ fn main() raises:
     # ── one item matches a direct dispatch byte-for-byte ─────────────────────
     var single = _req("alpha")
     var direct = _stub_dispatch(single)
-    var batched = run_batch_execute[_stub_dispatch]('{"type":"batch_execute","requests":[' + single + "]}", _datasets)
+    var batched = run_batch_execute(_stub_dispatch, '{"type":"batch_execute","requests":[' + single + "]}", _datasets)
     var results = json_get_array(batched, "results")
     if json_array_len(results) == 1 and json_array_get(results, 0) == direct:
         passed += 1
@@ -81,7 +81,7 @@ fn main() raises:
         + _req("third")
         + "]}"
     )
-    var out3 = run_batch_execute[_stub_dispatch](three, _datasets)
+    var out3 = run_batch_execute(_stub_dispatch, three, _datasets)
     var r3 = json_get_array(out3, "results")
     if (
         json_array_len(r3) == 3
@@ -105,7 +105,7 @@ fn main() raises:
         + _req("ok_two")
         + "]}"
     )
-    var out_mixed = run_batch_execute[_stub_dispatch](mixed, _datasets)
+    var out_mixed = run_batch_execute(_stub_dispatch, mixed, _datasets)
     var rm = json_get_array(out_mixed, "results")
     if (
         json_array_len(rm) == 3
@@ -131,7 +131,7 @@ fn main() raises:
         + _req("never_reached")
         + "]}"
     )
-    var out_strict = run_batch_execute[_stub_dispatch](strict, _datasets)
+    var out_strict = run_batch_execute(_stub_dispatch, strict, _datasets)
     if (
         json_array_len(json_get_array(out_strict, "results")) == 2
         and json_get_int(out_strict, "count", -1) == 2
@@ -154,7 +154,7 @@ fn main() raises:
 
     # ── a raising dispatcher is contained as a per-item error ────────────────
     var raiser = '{"type":"batch_execute","requests":[' + _req("__raise__") + "," + _req("after") + "]}"
-    var out_raise = run_batch_execute[_stub_dispatch](raiser, _datasets)
+    var out_raise = run_batch_execute(_stub_dispatch, raiser, _datasets)
     var rr = json_get_array(out_raise, "results")
     if (
         json_array_len(rr) == 2
@@ -168,7 +168,7 @@ fn main() raises:
         print("  ❌ raise not contained:", out_raise)
 
     # ── malformed envelope is a typed frame-level error, not a crash ─────────
-    var empty = run_batch_execute[_stub_dispatch]('{"type":"batch_execute"}', _datasets)
+    var empty = run_batch_execute(_stub_dispatch, '{"type":"batch_execute"}', _datasets)
     if response_is_error(empty):
         passed += 1
         print("  ✅ missing requests array → typed error")
@@ -177,7 +177,7 @@ fn main() raises:
         print("  ❌ missing requests array not rejected:", empty)
 
     # ── determinism: identical input, identical envelope ─────────────────────
-    if run_batch_execute[_stub_dispatch](three, _datasets) == out3:
+    if run_batch_execute(_stub_dispatch, three, _datasets) == out3:
         passed += 1
         print("  ✅ deterministic across identical invocations")
     else:
@@ -226,7 +226,7 @@ fn main() raises:
         print("  ❌ unknown @handle silently accepted")
 
     # ── end-to-end through run_batch_execute, not just the helper ────────────
-    var ds_batch = run_batch_execute[_stub_dispatch](
+    var ds_batch = run_batch_execute(_stub_dispatch, 
         '{"type":"batch_execute","requests":[{"module":"stub","function":"echo_args",'
         + '"args":["@'
         + handle

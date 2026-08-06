@@ -127,26 +127,26 @@ kernel actually did. The mean would carry every outlier into the ratio the gate 
 Repetitions do not weaken the gate: an O(n*h) defect is present in all seven."""
 
 
-fn per_unit_ns(elapsed: UInt, units: Int) -> Float64:
+def per_unit_ns(elapsed: UInt, units: Int) -> Float64:
     """Nanoseconds per unit of work. `perf_counter_ns` yields UInt, so it converts here."""
     if units <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(units)
 
 
-fn min_ns(a: UInt, b: UInt) -> UInt:
+def min_ns(a: UInt, b: UInt) -> UInt:
     """The smaller of two elapsed spans. See `BENCH_REPS` for why the minimum."""
     return a if a < b else b
 
 
-fn ratio(a: Float64, b: Float64) -> Float64:
+def ratio(a: Float64, b: Float64) -> Float64:
     """`max/min` of two positive costs; 0.0 when either is unmeasurable."""
     if a <= 0.0 or b <= 0.0:
         return 0.0
     return a / b if a > b else b / a
 
 
-fn declared_replicate_cost(n: Int, n_bins: Int) -> Int:
+def declared_replicate_cost(n: Int, n_bins: Int) -> Int:
     """What `eval_resample_work_fits` charges for ONE equal-width ECE replicate.
 
     Recovered from the predicate rather than restated: the largest `n_boot` it accepts is
@@ -175,7 +175,7 @@ fn declared_replicate_cost(n: Int, n_bins: Int) -> Int:
     return EVAL_MAX_RESAMPLE_WORK // lo
 
 
-fn synth_probs(n: Int, seed: UInt64) -> List[Float64]:
+def synth_probs(n: Int, seed: UInt64) -> List[Float64]:
     """`n` reproducible predictions in [0, 1] from the frozen keyed Philox kernel."""
     var out = List[Float64](capacity=n)
     for i in range(n):
@@ -183,7 +183,7 @@ fn synth_probs(n: Int, seed: UInt64) -> List[Float64]:
     return out^
 
 
-fn synth_labels(probs: List[Float64], n: Int, seed: UInt64) -> List[Float64]:
+def synth_labels(probs: List[Float64], n: Int, seed: UInt64) -> List[Float64]:
     """Labels drawn at each prediction's own rate, so the data is genuinely calibrated-ish.
 
     A label that is a deterministic function of the prediction would make every bin perfectly

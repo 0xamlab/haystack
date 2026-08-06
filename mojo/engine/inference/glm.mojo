@@ -232,7 +232,7 @@ struct GlmFit(Copyable, Movable):
     var separation_margin: Float64
 
 
-fn _glm_failure(
+def _glm_failure(
     code: Int, family: String, n: Int, p: Int, iters: Int, max_iter: Int,
     witnessed: Bool, margin: Float64,
 ) -> GlmFit:
@@ -243,7 +243,7 @@ fn _glm_failure(
     )
 
 
-fn glm_input_defect(
+def glm_input_defect(
     x: List[Float64], y: List[Float64], n: Int, p: Int,
     max_iter: Int, tol: Float64,
 ) -> Int:
@@ -290,7 +290,7 @@ fn glm_input_defect(
     return INF_OK
 
 
-fn _linear_predictors(
+def _linear_predictors(
     x: List[Float64], beta: List[Float64], intercept: Float64, n: Int, p: Int
 ) -> List[Float64]:
     """`eta_i = x_i . beta + intercept` for the flat row-major design matrix.
@@ -308,7 +308,7 @@ fn _linear_predictors(
     return eta^
 
 
-fn _separation_margin(eta: List[Float64], y: List[Float64], n: Int) -> Float64:
+def _separation_margin(eta: List[Float64], y: List[Float64], n: Int) -> Float64:
     """The separating margin of `eta` between the two label classes, or `GLM_MARGIN_ABSENT`.
 
     Returns `min{eta_i : y_i = 1} - max{eta_i : y_i = 0}` when that is strictly positive, and
@@ -350,7 +350,7 @@ fn _separation_margin(eta: List[Float64], y: List[Float64], n: Int) -> Float64:
     return GLM_MARGIN_ABSENT
 
 
-fn _wald(std_errors: List[Float64], coefficients: List[Float64], intercept: Float64) -> List[Float64]:
+def _wald(std_errors: List[Float64], coefficients: List[Float64], intercept: Float64) -> List[Float64]:
     """Wald z statistics in `std_errors` order: `[coef_0 .. coef_{p-1}, intercept]`.
 
     A zero or non-finite standard error yields an absent z (NaN) rather than an infinity: an
@@ -370,7 +370,7 @@ fn _wald(std_errors: List[Float64], coefficients: List[Float64], intercept: Floa
     return out^
 
 
-fn glm_logistic_fit_flat(
+def glm_logistic_fit_flat(
     x: List[Float64], y: List[Float64], n: Int, p: Int,
     l2: Float64, max_iter: Int, tol: Float64,
 ) -> GlmFit:
@@ -495,7 +495,7 @@ fn glm_logistic_fit_flat(
     )
 
 
-fn glm_poisson_fit_flat(
+def glm_poisson_fit_flat(
     x: List[Float64], y: List[Float64], n: Int, p: Int,
     l2: Float64, max_iter: Int, tol: Float64,
 ) -> GlmFit:
@@ -765,7 +765,7 @@ fn glm_poisson_fit_flat(
     )
 
 
-fn _inverse_diagonal_se(info: List[Float64], q: Int) -> List[Float64]:
+def _inverse_diagonal_se(info: List[Float64], q: Int) -> List[Float64]:
     """Standard errors `sqrt(diag(info^-1))`, or an EMPTY list if `info` is not invertible.
 
     One `wls_solve_flat` per unit basis vector, so the rank test, the symmetry test and the

@@ -23,7 +23,7 @@ from std.math import abs as fabs
 # ── first_price_sealed ───────────────────────────────────────────────────────
 
 
-fn first_price_sealed(bids: List[Float64], n: Int) -> List[Float64]:
+def first_price_sealed(bids: List[Float64], n: Int) -> List[Float64]:
     """First-price sealed-bid auction. Winner pays their own bid.
     Returns [winner_idx, price]. If n<=0, returns [-1, 0]."""
     if n <= 0:
@@ -46,7 +46,7 @@ fn first_price_sealed(bids: List[Float64], n: Int) -> List[Float64]:
 # ── second_price_sealed ──────────────────────────────────────────────────────
 
 
-fn second_price_sealed(bids: List[Float64], n: Int) -> List[Float64]:
+def second_price_sealed(bids: List[Float64], n: Int) -> List[Float64]:
     """Vickrey (second-price sealed-bid) auction. Winner pays 2nd-highest bid.
     Returns [winner_idx, price]. If n<=1, winner pays 0."""
     if n <= 0:
@@ -73,7 +73,7 @@ fn second_price_sealed(bids: List[Float64], n: Int) -> List[Float64]:
 # ── english_auction_revenue ──────────────────────────────────────────────────
 
 
-fn english_auction_revenue(bids: List[Float64], n: Int) -> Float64:
+def english_auction_revenue(bids: List[Float64], n: Int) -> Float64:
     """Revenue from ascending (English) auction = second-highest bid."""
     if n <= 0:
         return 0.0
@@ -93,7 +93,7 @@ fn english_auction_revenue(bids: List[Float64], n: Int) -> Float64:
 # ── dutch_auction_revenue ────────────────────────────────────────────────────
 
 
-fn dutch_auction_revenue(bids: List[Float64], n: Int) -> Float64:
+def dutch_auction_revenue(bids: List[Float64], n: Int) -> Float64:
     """Revenue from descending (Dutch) auction = highest bid."""
     if n <= 0:
         return 0.0
@@ -107,7 +107,7 @@ fn dutch_auction_revenue(bids: List[Float64], n: Int) -> Float64:
 # ── all_pay_revenue ──────────────────────────────────────────────────────────
 
 
-fn all_pay_revenue(bids: List[Float64], n: Int) -> Float64:
+def all_pay_revenue(bids: List[Float64], n: Int) -> Float64:
     """All-pay auction total revenue = sum of all bids."""
     var total: Float64 = 0.0
     for i in range(n):
@@ -118,7 +118,7 @@ fn all_pay_revenue(bids: List[Float64], n: Int) -> Float64:
 # ── revenue_equivalence_check ────────────────────────────────────────────────
 
 
-fn revenue_equivalence_check(bids: List[Float64], n: Int) -> Bool:
+def revenue_equivalence_check(bids: List[Float64], n: Int) -> Bool:
     """Check revenue equivalence: for uniform IPV, first-price and second-price
     expected revenues should be approximately equal. Returns True if within 20%
     or both revenues are near zero."""
@@ -135,7 +135,7 @@ fn revenue_equivalence_check(bids: List[Float64], n: Int) -> Bool:
 # ── vcg_payment ──────────────────────────────────────────────────────────────
 
 
-fn vcg_payment(values: List[Float64], n: Int, winner_idx: Int) -> Float64:
+def vcg_payment(values: List[Float64], n: Int, winner_idx: Int) -> Float64:
     """VCG mechanism payment for single item auction.
     Payment = max value of others (externality imposed by winner)."""
     var max_other: Float64 = 0.0
@@ -148,7 +148,7 @@ fn vcg_payment(values: List[Float64], n: Int, winner_idx: Int) -> Float64:
 # ── reserve_price_filter ─────────────────────────────────────────────────────
 
 
-fn reserve_price_filter(bids: List[Float64], n: Int, reserve: Float64) -> List[Float64]:
+def reserve_price_filter(bids: List[Float64], n: Int, reserve: Float64) -> List[Float64]:
     """Filter bids above reserve price. Returns [count_above, sum_above]."""
     var count: Float64 = 0.0
     var total: Float64 = 0.0
@@ -165,7 +165,7 @@ fn reserve_price_filter(bids: List[Float64], n: Int, reserve: Float64) -> List[F
 # ── bid_shading_optimal ──────────────────────────────────────────────────────
 
 
-fn bid_shading_optimal(value: Float64, n_bidders: Int) -> Float64:
+def bid_shading_optimal(value: Float64, n_bidders: Int) -> Float64:
     """Optimal bid in first-price auction with n bidders (uniform IPV).
     Bid = value * (n-1)/n."""
     if n_bidders <= 1:
@@ -176,7 +176,7 @@ fn bid_shading_optimal(value: Float64, n_bidders: Int) -> Float64:
 # ── expected_revenue_uniform ─────────────────────────────────────────────────
 
 
-fn expected_revenue_uniform(n_bidders: Int, max_val: Float64) -> Float64:
+def expected_revenue_uniform(n_bidders: Int, max_val: Float64) -> Float64:
     """Expected revenue with n uniform bidders on [0, max_val].
     E[revenue] = (n-1)/(n+1) * max_val."""
     if n_bidders <= 0:
@@ -187,7 +187,7 @@ fn expected_revenue_uniform(n_bidders: Int, max_val: Float64) -> Float64:
 # ── winners_curse_adjustment ─────────────────────────────────────────────────
 
 
-fn winners_curse_adjustment(estimate: Float64, n_bidders: Int) -> Float64:
+def winners_curse_adjustment(estimate: Float64, n_bidders: Int) -> Float64:
     """Shade estimate for common-value auction to avoid winner's curse.
     Adjusted = estimate * (n-1)/n."""
     if n_bidders <= 1:

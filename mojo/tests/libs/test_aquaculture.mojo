@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from aquaculture import stocking_density, feed_conversion_ratio, specific_growth_rate, dissolved_oxygen_consumption, water_exchange_rate, ammonia_production, carrying_capacity, harvest_weight, survival_rate, production_per_cycle, biofilter_capacity, cost_per_kg_produced
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

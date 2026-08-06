@@ -40,7 +40,7 @@ struct HMMForward(Copyable, Movable):
     var log_alpha: List[List[Float64]]
     var loglik: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.log_alpha = List[List[Float64]]()
         self.loglik = 0.0
 
@@ -57,7 +57,7 @@ struct HMMModel(Copyable, Movable):
     var pi: List[Float64]
     var loglik_history: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.a = List[List[Float64]]()
         self.b = List[List[Float64]]()
         self.pi = List[Float64]()
@@ -67,7 +67,7 @@ struct HMMModel(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -75,7 +75,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -91,7 +91,7 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_unit(mut state: UInt64) -> Float64:
+def _rand_unit(mut state: UInt64) -> Float64:
     """Uniform Float64 in [0, 1) from the caller's RNG state (53-bit)."""
     state = _xorshift64(state)
     return Float64(state >> 11) / 9007199254740992.0
@@ -103,7 +103,7 @@ fn _rand_unit(mut state: UInt64) -> Float64:
 # are accurate to ~1e-15 relative via exact frexp/ldexp range reduction.
 
 
-fn _ln(x: Float64) -> Float64:
+def _ln(x: Float64) -> Float64:
     """Natural log, ~1 ulp: frexp reduction + atanh series on [sqrt.5, sqrt2).
 
     ln(m) = 2*atanh(t), t = (m-1)/(m+1), |t| <= 0.1716; degree-10 Horner in
@@ -131,7 +131,7 @@ fn _ln(x: Float64) -> Float64:
     return Float64(e) * _LN2_HI + (2.0 * t * s + Float64(e) * _LN2_LO)
 
 
-fn _exp(x: Float64) -> Float64:
+def _exp(x: Float64) -> Float64:
     """exp(x), ~1 ulp: k = round(x/ln2), split-ln2 reduction + Taylor on r.
 
     |r| <= ln2/2 = 0.3466; degree-14 Horner leaves relative error ~4e-18.
@@ -165,7 +165,7 @@ fn _exp(x: Float64) -> Float64:
     return ldexp(s, k)
 
 
-fn _log_safe(x: Float64) -> Float64:
+def _log_safe(x: Float64) -> Float64:
     """log(x) with log(<=0) and non-finite x mapped to the finite _LOG_ZERO
     sentinel (NaN/inf probabilities must not reach the result wire)."""
     if x <= 0.0 or x - x != 0.0:
@@ -173,7 +173,7 @@ fn _log_safe(x: Float64) -> Float64:
     return _ln(x)
 
 
-fn _logsumexp(vals: List[Float64]) -> Float64:
+def _logsumexp(vals: List[Float64]) -> Float64:
     """Numerically stable log(sum(exp(vals))); _LOG_ZERO if empty/all-zero."""
     var n = len(vals)
     if n == 0:
@@ -190,7 +190,7 @@ fn _logsumexp(vals: List[Float64]) -> Float64:
     return m + _ln(s)
 
 
-fn _log_matrix(m: List[List[Float64]]) -> List[List[Float64]]:
+def _log_matrix(m: List[List[Float64]]) -> List[List[Float64]]:
     """Element-wise _log_safe of a probability matrix (precomputed once)."""
     var out = List[List[Float64]](capacity=len(m))
     for i in range(len(m)):
@@ -201,7 +201,7 @@ fn _log_matrix(m: List[List[Float64]]) -> List[List[Float64]]:
     return out^
 
 
-fn _log_emit(log_b: List[List[Float64]], state: Int, symbol: Int) -> Float64:
+def _log_emit(log_b: List[List[Float64]], state: Int, symbol: Int) -> Float64:
     """log_b[state][symbol]; out-of-range states/symbols emit with probability 0."""
     if state < 0 or state >= len(log_b):
         return _LOG_ZERO
@@ -210,7 +210,7 @@ fn _log_emit(log_b: List[List[Float64]], state: Int, symbol: Int) -> Float64:
     return log_b[state][symbol]
 
 
-fn _zeros_matrix(rows: Int, cols: Int) -> List[List[Float64]]:
+def _zeros_matrix(rows: Int, cols: Int) -> List[List[Float64]]:
     var m = List[List[Float64]](capacity=rows)
     for _ in range(rows):
         var row = List[Float64](capacity=cols)
@@ -220,7 +220,7 @@ fn _zeros_matrix(rows: Int, cols: Int) -> List[List[Float64]]:
     return m^
 
 
-fn _random_stochastic_row(cols: Int, mut rng: UInt64) -> List[Float64]:
+def _random_stochastic_row(cols: Int, mut rng: UInt64) -> List[Float64]:
     """Random row of positive probabilities summing to 1 (uniform + noise)."""
     var row = List[Float64](capacity=cols)
     var total = 0.0
@@ -236,7 +236,7 @@ fn _random_stochastic_row(cols: Int, mut rng: UInt64) -> List[Float64]:
 # ── hmm_forward ──────────────────────────────────────────────────────────────
 
 
-fn hmm_forward(
+def hmm_forward(
     obs: List[Int],
     a: List[List[Float64]],
     b: List[List[Float64]],
@@ -292,7 +292,7 @@ fn hmm_forward(
 # ── hmm_backward ─────────────────────────────────────────────────────────────
 
 
-fn hmm_backward(
+def hmm_backward(
     obs: List[Int],
     a: List[List[Float64]],
     b: List[List[Float64]],
@@ -345,7 +345,7 @@ fn hmm_backward(
 # ── hmm_viterbi ──────────────────────────────────────────────────────────────
 
 
-fn hmm_viterbi(
+def hmm_viterbi(
     obs: List[Int],
     a: List[List[Float64]],
     b: List[List[Float64]],
@@ -412,7 +412,7 @@ fn hmm_viterbi(
 # ── hmm_baum_welch ───────────────────────────────────────────────────────────
 
 
-fn hmm_baum_welch(
+def hmm_baum_welch(
     obs: List[Int],
     n_states: Int,
     n_symbols: Int,
@@ -473,7 +473,7 @@ fn hmm_baum_welch(
 # ── Baum-Welch internals (scaled forward-backward) ───────────────────────────
 
 
-fn _scaled_forward(
+def _scaled_forward(
     obs: List[Int],
     a: List[List[Float64]],
     b: List[List[Float64]],
@@ -520,7 +520,7 @@ fn _scaled_forward(
     return ll
 
 
-fn _scaled_backward(
+def _scaled_backward(
     obs: List[Int],
     a: List[List[Float64]],
     b: List[List[Float64]],
@@ -548,7 +548,7 @@ fn _scaled_backward(
                 beta[t][i] = 0.0
 
 
-fn _reestimate(
+def _reestimate(
     obs: List[Int],
     n: Int,
     n_symbols: Int,

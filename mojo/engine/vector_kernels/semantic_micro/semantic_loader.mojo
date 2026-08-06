@@ -26,7 +26,7 @@ from mojo.engine.vector_kernels.semantic_micro.semantic_types import (
 )
 
 
-fn _make_linear(
+def _make_linear(
     weight_ptr: UnsafePointer[Float32],
     bias_ptr:   UnsafePointer[Float32],
     in_d:       Int,
@@ -40,7 +40,7 @@ fn _make_linear(
     return l
 
 
-fn from_buffers(
+def from_buffers(
     # Embeddings
     emb_ptr:    UnsafePointer[Float32],
     vocab_size: UInt32,

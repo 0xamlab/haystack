@@ -43,7 +43,7 @@ from canonical.float_repr import (
 )
 
 
-fn _record(mut passed: Int, mut failed: Int, ok: Bool, label: String):
+def _record(mut passed: Int, mut failed: Int, ok: Bool, label: String):
     if ok:
         passed += 1
         print("  ✅", label)
@@ -52,21 +52,21 @@ fn _record(mut passed: Int, mut failed: Int, ok: Bool, label: String):
         print("  ❌", label)
 
 
-fn _bits(value: Float64) -> UInt64:
+def _bits(value: Float64) -> UInt64:
     return bitcast[DType.uint64](value)
 
 
-fn _of_bits(pattern: UInt64) -> Float64:
+def _of_bits(pattern: UInt64) -> Float64:
     return bitcast[DType.float64](pattern)
 
 
-fn _float_hex(value: Float64) -> String:
+def _float_hex(value: Float64) -> String:
     var out = List[UInt8]()
     write_float(out, value)
     return to_hex(out)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 
@@ -76,7 +76,7 @@ fn main() raises:
     var values = List[Float64]()
     var golden = List[String]()
 
-    fn add(mut values: List[Float64], mut golden: List[String], v: Float64, text: String):
+    def add(mut values: List[Float64], mut golden: List[String], v: Float64, text: String):
         values.append(v)
         golden.append(text)
 

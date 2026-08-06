@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from dentistry import dmft_index, dmft_prevalence, plaque_index_score, gingival_index, attachment_loss, bone_loss_percentage, fluoride_concentration_ppm, anesthesia_dose_mg, max_anesthesia_dose, restoration_longevity_estimate, tooth_surface_area_estimate, treatment_cost_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

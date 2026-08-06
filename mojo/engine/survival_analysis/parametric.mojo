@@ -216,7 +216,7 @@ comptime SA_LOG_TWO_PI: Float64 = 1.8378770664093456
 comptime SA_TRANSCENDENTAL_REL_FLOOR: Float64 = 1e-10
 
 
-fn _mills_ratio(z: Float64) -> Float64:
+def _mills_ratio(z: Float64) -> Float64:
     """`phi(z) / (1 - Phi(z))`, the inverse Mills ratio, without dividing by a rounded zero.
 
     Below `SA_MILLS_ASYMPTOTIC_Z` the frozen `math_ext.norm_pdf` / `norm_cdf` pair is used
@@ -240,7 +240,7 @@ fn _mills_ratio(z: Float64) -> Float64:
     return value
 
 
-fn _truncated_variance_factor(z: Float64, lam: Float64) -> Float64:
+def _truncated_variance_factor(z: Float64, lam: Float64) -> Float64:
     """`Var(Z | Z > z) = 1 + z*lambda - lambda^2` for a standard normal, without cancellation.
 
     The direct form subtracts two quantities that are both `~z^2` for large `z` to produce a
@@ -270,7 +270,7 @@ fn _truncated_variance_factor(z: Float64, lam: Float64) -> Float64:
     return value
 
 
-fn _log_upper_tail(z: Float64) -> Float64:
+def _log_upper_tail(z: Float64) -> Float64:
     """`log(1 - Phi(z))`, via `log phi(z) - log lambda(z)` above the cancellation threshold."""
     if z > SA_MILLS_ASYMPTOTIC_Z:
         var lam = _mills_ratio(z)
@@ -313,7 +313,7 @@ struct WeibullFit(Copyable, Movable):
     var ks_distance_vs_km: Float64
     var has_ks: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -331,7 +331,7 @@ struct WeibullFit(Copyable, Movable):
         self.has_ks = False
 
 
-fn _weibull_g(logt: List[Float64], max_log: Float64, mean_event_log: Float64, k: Float64) -> Float64:
+def _weibull_g(logt: List[Float64], max_log: Float64, mean_event_log: Float64, k: Float64) -> Float64:
     """`g(k) = 1/k + mean_event_log - (sum w_i l_i)/(sum w_i)` with `w_i = exp(k(l_i - max))`.
 
     The shift keeps every weight in (0, 1], so no power overflows for any `k` in the bracket,
@@ -350,7 +350,7 @@ fn _weibull_g(logt: List[Float64], max_log: Float64, mean_event_log: Float64, k:
     return 1.0 / k + mean_event_log - swl / sw
 
 
-fn weibull_mle(
+def weibull_mle(
     times: List[Float64], event: List[Int], max_iter: Int, tol: Float64
 ) -> WeibullFit:
     """Weibull shape and scale by maximum likelihood with right-censored observations.
@@ -521,7 +521,7 @@ struct LognormalFit(Copyable, Movable):
     var ks_distance_vs_km: Float64
     var has_ks: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -539,7 +539,7 @@ struct LognormalFit(Copyable, Movable):
         self.has_ks = False
 
 
-fn _lognormal_loglik(
+def _lognormal_loglik(
     logt: List[Float64], event: List[Int], mu: Float64, sigma: Float64
 ) -> List[Float64]:
     """Observed-data log-likelihood of the censored lognormal. Returns [value, ok, abs_scale].
@@ -587,7 +587,7 @@ fn _lognormal_loglik(
     return out^
 
 
-fn lognormal_mle(
+def lognormal_mle(
     times: List[Float64], event: List[Int], max_iter: Int, tol: Float64
 ) -> LognormalFit:
     """Lognormal `mu`, `sigma` by EM with right-censored observations.

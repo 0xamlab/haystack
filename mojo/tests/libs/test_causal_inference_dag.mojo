@@ -56,21 +56,21 @@ from causal_inference.dag import (
 )
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -79,15 +79,15 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _li5() -> List[Int]:
+def _li5() -> List[Int]:
     return _ints(1, 2, 3, 4, 5)
 
 
-fn _empty_int() -> List[Int]:
+def _empty_int() -> List[Int]:
     return List[Int]()
 
 
-fn _reaches(ef: List[Int], et: List[Int], n: Int, src: Int, dst: Int) -> Bool:
+def _reaches(ef: List[Int], et: List[Int], n: Int, src: Int, dst: Int) -> Bool:
     """Forward reachability computed HERE, so the cycle assertion does not use the code under
     test as its own oracle."""
     var seen = List[Bool]()
@@ -106,14 +106,14 @@ fn _reaches(ef: List[Int], et: List[Int], n: Int, src: Int, dst: Int) -> Bool:
     return seen[dst]
 
 
-fn _edge_exists(ef: List[Int], et: List[Int], u: Int, v: Int) -> Bool:
+def _edge_exists(ef: List[Int], et: List[Int], u: Int, v: Int) -> Bool:
     for k in range(len(ef)):
         if ef[k] == u and et[k] == v:
             return True
     return False
 
 
-fn _order_respects_edges(order: List[Int], ef: List[Int], et: List[Int], n: Int) -> Bool:
+def _order_respects_edges(order: List[Int], ef: List[Int], et: List[Int], n: Int) -> Bool:
     """Every edge must go forward in the reported order. Computed here rather than trusted."""
     if len(order) != n:
         return False
@@ -131,7 +131,7 @@ fn _order_respects_edges(order: List[Int], ef: List[Int], et: List[Int], n: Int)
     return True
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

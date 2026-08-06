@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn fused_attention_score(
+def fused_attention_score(
     q: Float64, k: Float64, head_dim: Float64,
     mask_value: Float64, is_masked: Float64
 ) -> Float64:
@@ -45,7 +45,7 @@ fn fused_attention_score(
     return score
 
 
-fn fused_softmax_mask(
+def fused_softmax_mask(
     logit: Float64, logit_max: Float64,
     sum_exp: Float64, is_valid: Float64
 ) -> Float64:
@@ -67,7 +67,7 @@ fn fused_softmax_mask(
     return exp(logit - logit_max) / sum_exp
 
 
-fn fused_layernorm_element(
+def fused_layernorm_element(
     x: Float64, mean: Float64, inv_std: Float64,
     gamma: Float64, beta: Float64
 ) -> Float64:
@@ -90,7 +90,7 @@ fn fused_layernorm_element(
     return gamma * (x - mean) * inv_std + beta
 
 
-fn fused_matmul_bias_relu(
+def fused_matmul_bias_relu(
     dot_product: Float64, bias: Float64
 ) -> Float64:
     """Fused linear layer + bias + ReLU.
@@ -110,7 +110,7 @@ fn fused_matmul_bias_relu(
     return 0.0
 
 
-fn fused_matmul_bias_gelu(
+def fused_matmul_bias_gelu(
     dot_product: Float64, bias: Float64
 ) -> Float64:
     """Fused linear + bias + GELU activation.
@@ -131,7 +131,7 @@ fn fused_matmul_bias_gelu(
     return 0.5 * x * (1.0 + tanh_val)
 
 
-fn fused_rope_attention(
+def fused_rope_attention(
     q: Float64, k: Float64, cos_val: Float64, sin_val: Float64,
     q_pair: Float64, k_pair: Float64, head_dim: Float64
 ) -> Float64:
@@ -158,7 +158,7 @@ fn fused_rope_attention(
     return q_rot * k_rot / sqrt(head_dim)
 
 
-fn fused_add_norm(
+def fused_add_norm(
     x: Float64, sublayer: Float64,
     mean: Float64, inv_std: Float64,
     gamma: Float64, beta: Float64
@@ -182,7 +182,7 @@ fn fused_add_norm(
     return gamma * (residual - mean) * inv_std + beta
 
 
-fn fused_scale_shift(
+def fused_scale_shift(
     x: Float64, scale: Float64, shift: Float64
 ) -> Float64:
     """Fused affine transform: y = scale × x + shift.
@@ -200,7 +200,7 @@ fn fused_scale_shift(
     return scale * x + shift
 
 
-fn fused_dropout_residual(
+def fused_dropout_residual(
     x: Float64, sublayer: Float64,
     keep_prob: Float64, is_kept: Float64
 ) -> Float64:
@@ -222,7 +222,7 @@ fn fused_dropout_residual(
     return x + sublayer / keep_prob
 
 
-fn kernel_fusion_savings(
+def kernel_fusion_savings(
     n_fused_ops: Float64, bytes_per_intermediate: Float64,
     n_elements: Float64
 ) -> Float64:

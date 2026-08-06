@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sedimentology import settling_velocity_stokes, shields_parameter, critical_shear_stress, bedload_transport, suspended_load_rouse, grain_size_phi, phi_to_mm, sorting_coefficient, skewness_folk_ward, sediment_budget
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

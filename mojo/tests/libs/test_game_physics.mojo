@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from game_physics import position_update, velocity_update, verlet_position, elastic_collision_1d, coefficient_of_restitution, kinetic_energy, gravitational_force, projectile_range, drag_force_quadratic, spring_force, angular_velocity_from_linear, moment_of_inertia_sphere
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

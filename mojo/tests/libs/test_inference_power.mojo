@@ -66,12 +66,12 @@ from inference.power import (
 )
 
 
-fn _no_power(r: PowerReport) -> Bool:
+def _no_power(r: PowerReport) -> Bool:
     """A refusal says so in a field, because 0.0 is a legitimate value of real power."""
     return r.status != INF_OK and not r.power_known and r.power == 0.0
 
 
-fn _no_size(r: SampleSizeReport) -> Bool:
+def _no_size(r: SampleSizeReport) -> Bool:
     """A refusal carries no sample size and no verification."""
     return (
         r.status != INF_OK
@@ -81,7 +81,7 @@ fn _no_size(r: SampleSizeReport) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

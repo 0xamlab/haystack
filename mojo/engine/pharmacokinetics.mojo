@@ -29,7 +29,7 @@ comptime LN2: Float64 = 0.6931471805599453
 # ── one_compartment_oral ──────────────────────────────────────────────────────
 
 
-fn one_compartment_oral(
+def one_compartment_oral(
     dose: Float64, ka: Float64, ke: Float64, vd: Float64, t: Float64,
 ) -> Float64:
     """C(t) = (dose*ka) / (vd*(ka-ke)) * (exp(-ke*t) - exp(-ka*t))."""
@@ -46,7 +46,7 @@ fn one_compartment_oral(
 # ── one_compartment_iv ────────────────────────────────────────────────────────
 
 
-fn one_compartment_iv(
+def one_compartment_iv(
     dose: Float64, ke: Float64, vd: Float64, t: Float64,
 ) -> Float64:
     """C(t) = (dose / vd) * exp(-ke * t)."""
@@ -56,7 +56,7 @@ fn one_compartment_iv(
 # ── half_life ─────────────────────────────────────────────────────────────────
 
 
-fn half_life(ke: Float64) -> Float64:
+def half_life(ke: Float64) -> Float64:
     """t½ = ln(2) / ke."""
     return LN2 / ke
 
@@ -64,7 +64,7 @@ fn half_life(ke: Float64) -> Float64:
 # ── elimination_rate ──────────────────────────────────────────────────────────
 
 
-fn elimination_rate(half_life_val: Float64) -> Float64:
+def elimination_rate(half_life_val: Float64) -> Float64:
     """ke = ln(2) / t½."""
     return LN2 / half_life_val
 
@@ -72,7 +72,7 @@ fn elimination_rate(half_life_val: Float64) -> Float64:
 # ── clearance ─────────────────────────────────────────────────────────────────
 
 
-fn clearance(ke: Float64, vd: Float64) -> Float64:
+def clearance(ke: Float64, vd: Float64) -> Float64:
     """Cl = ke * Vd."""
     return ke * vd
 
@@ -80,7 +80,7 @@ fn clearance(ke: Float64, vd: Float64) -> Float64:
 # ── bioavailability ───────────────────────────────────────────────────────────
 
 
-fn bioavailability(auc_oral: Float64, auc_iv: Float64) -> Float64:
+def bioavailability(auc_oral: Float64, auc_iv: Float64) -> Float64:
     """F = AUC_oral / AUC_iv."""
     return auc_oral / auc_iv
 
@@ -88,7 +88,7 @@ fn bioavailability(auc_oral: Float64, auc_iv: Float64) -> Float64:
 # ── loading_dose ──────────────────────────────────────────────────────────────
 
 
-fn loading_dose(css: Float64, vd: Float64) -> Float64:
+def loading_dose(css: Float64, vd: Float64) -> Float64:
     """LD = Css * Vd."""
     return css * vd
 
@@ -96,7 +96,7 @@ fn loading_dose(css: Float64, vd: Float64) -> Float64:
 # ── maintenance_dose ──────────────────────────────────────────────────────────
 
 
-fn maintenance_dose(css: Float64, cl: Float64, tau: Float64) -> Float64:
+def maintenance_dose(css: Float64, cl: Float64, tau: Float64) -> Float64:
     """MD = Css * Cl * τ."""
     return css * cl * tau
 
@@ -104,7 +104,7 @@ fn maintenance_dose(css: Float64, cl: Float64, tau: Float64) -> Float64:
 # ── steady_state_concentration ────────────────────────────────────────────────
 
 
-fn steady_state_concentration(
+def steady_state_concentration(
     dose: Float64, tau: Float64, cl: Float64,
 ) -> Float64:
     """Css = dose / (tau * Cl)."""
@@ -114,7 +114,7 @@ fn steady_state_concentration(
 # ── time_to_peak ──────────────────────────────────────────────────────────────
 
 
-fn time_to_peak(ka: Float64, ke: Float64) -> Float64:
+def time_to_peak(ka: Float64, ke: Float64) -> Float64:
     """tmax = ln(ka/ke) / (ka - ke)."""
     # Equal rates zero the denominator (0/0 -> NaN); zero or opposite-sign
     # rates degenerate the log to inf/NaN.
@@ -126,7 +126,7 @@ fn time_to_peak(ka: Float64, ke: Float64) -> Float64:
 # ── accumulation_factor ───────────────────────────────────────────────────────
 
 
-fn accumulation_factor(ke: Float64, tau: Float64) -> Float64:
+def accumulation_factor(ke: Float64, tau: Float64) -> Float64:
     """R = 1 / (1 - exp(-ke * tau))."""
     return 1.0 / (1.0 - exp(-ke * tau))
 
@@ -134,7 +134,7 @@ fn accumulation_factor(ke: Float64, tau: Float64) -> Float64:
 # ── drug_auc_trapezoidal ─────────────────────────────────────────────────────
 
 
-fn drug_auc_trapezoidal(
+def drug_auc_trapezoidal(
     c1: Float64, c2: Float64, t1: Float64, t2: Float64,
 ) -> Float64:
     """Trapezoidal AUC segment = (c1 + c2) / 2 * (t2 - t1)."""

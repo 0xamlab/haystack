@@ -20,13 +20,13 @@ comptime _B64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01
 # ── Encoding helpers ─────────────────────────────────────────────────────────
 
 @always_inline
-fn _b64_char_at(idx: Int) -> String:
+def _b64_char_at(idx: Int) -> String:
     """Return the Base64 character at the given index (0–63)."""
     return chr(Int(_B64_ALPHABET.as_bytes()[idx]))
 
 
 @always_inline
-fn _b64_decode_byte(b: UInt8) -> Int:
+def _b64_decode_byte(b: UInt8) -> Int:
     """Decode a single Base64 byte to its 6-bit value. Returns -1 on invalid."""
     var o = Int(b)
     if o >= 65 and o <= 90:    # A-Z
@@ -48,7 +48,7 @@ fn _b64_decode_byte(b: UInt8) -> Int:
 
 # ── Standard Base64 ─────────────────────────────────────────────────────────
 
-fn b64_encode(data: String) -> String:
+def b64_encode(data: String) -> String:
     """Encode a string to Base64 (RFC 4648). Returns the encoded string with '=' padding."""
     var n = len(data)
     if n == 0:
@@ -88,7 +88,7 @@ fn b64_encode(data: String) -> String:
     return result
 
 
-fn b64_decode(encoded: String) -> String:
+def b64_decode(encoded: String) -> String:
     """Decode a Base64 string (RFC 4648). Returns the decoded string."""
     var n = len(encoded)
     if n == 0:
@@ -120,7 +120,7 @@ fn b64_decode(encoded: String) -> String:
 
 # ── URL-safe Base64 ──────────────────────────────────────────────────────────
 
-fn b64_url_encode(data: String) -> String:
+def b64_url_encode(data: String) -> String:
     """URL-safe Base64 encode (+ → -, / → _, no padding). RFC 4648 §5."""
     var standard = b64_encode(data)
     var result = String("")
@@ -138,7 +138,7 @@ fn b64_url_encode(data: String) -> String:
     return result
 
 
-fn b64_url_decode(encoded: String) -> String:
+def b64_url_decode(encoded: String) -> String:
     """URL-safe Base64 decode. RFC 4648 §5."""
     # Convert URL-safe chars back to standard, then decode
     var standard = String("")

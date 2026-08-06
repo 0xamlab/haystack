@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from copula import norm_cdf_approx, norm_ppf_approx, gaussian_copula_sample, rank_correlation, kendall_tau
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

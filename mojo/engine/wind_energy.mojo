@@ -28,7 +28,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── wind_power_available ─────────────────────────────────────────────────────
 
 
-fn wind_power_available(
+def wind_power_available(
     density: Float64, area: Float64, velocity: Float64
 ) -> Float64:
     """Wind power available: P = 0.5 * ρ * A * v³.
@@ -47,7 +47,7 @@ fn wind_power_available(
 # ── betz_limit ───────────────────────────────────────────────────────────────
 
 
-fn betz_limit() -> Float64:
+def betz_limit() -> Float64:
     """Betz limit: maximum power coefficient = 16/27.
 
     Returns:
@@ -59,7 +59,7 @@ fn betz_limit() -> Float64:
 # ── power_coefficient ────────────────────────────────────────────────────────
 
 
-fn power_coefficient(
+def power_coefficient(
     actual_power: Float64, available_power: Float64
 ) -> Float64:
     """Power coefficient: Cp = P_actual / P_available.
@@ -79,7 +79,7 @@ fn power_coefficient(
 # ── tip_speed_ratio ──────────────────────────────────────────────────────────
 
 
-fn tip_speed_ratio(
+def tip_speed_ratio(
     omega: Float64, radius: Float64, wind_speed: Float64
 ) -> Float64:
     """Tip speed ratio: λ = ω * R / V.
@@ -100,7 +100,7 @@ fn tip_speed_ratio(
 # ── swept_area ───────────────────────────────────────────────────────────────
 
 
-fn swept_area(radius: Float64) -> Float64:
+def swept_area(radius: Float64) -> Float64:
     """Swept area: A = π * R².
 
     Args:
@@ -115,7 +115,7 @@ fn swept_area(radius: Float64) -> Float64:
 # ── annual_energy_production ─────────────────────────────────────────────────
 
 
-fn annual_energy_production(
+def annual_energy_production(
     power_kw: Float64, capacity_factor: Float64, hours: Float64
 ) -> Float64:
     """AEP = P * CF * hours.
@@ -134,7 +134,7 @@ fn annual_energy_production(
 # ── capacity_factor ──────────────────────────────────────────────────────────
 
 
-fn capacity_factor(
+def capacity_factor(
     actual_energy: Float64, rated_power: Float64, hours: Float64
 ) -> Float64:
     """Capacity factor: CF = E_actual / (P_rated * hours).
@@ -156,7 +156,7 @@ fn capacity_factor(
 # ── wind_shear_power_law ─────────────────────────────────────────────────────
 
 
-fn wind_shear_power_law(
+def wind_shear_power_law(
     v_ref: Float64,
     z: Float64,
     z_ref: Float64,
@@ -181,7 +181,7 @@ fn wind_shear_power_law(
 # ── weibull_mean_wind_speed ──────────────────────────────────────────────────
 
 
-fn weibull_mean_wind_speed(c: Float64, k: Float64) -> Float64:
+def weibull_mean_wind_speed(c: Float64, k: Float64) -> Float64:
     """Weibull mean wind speed: v_mean ≈ c * 0.886 (for k≈2).
 
     Uses Γ(1+1/k) ≈ 0.886 for k=2 (Rayleigh).
@@ -199,7 +199,7 @@ fn weibull_mean_wind_speed(c: Float64, k: Float64) -> Float64:
 # ── energy_density ───────────────────────────────────────────────────────────
 
 
-fn energy_density(density: Float64, velocity: Float64) -> Float64:
+def energy_density(density: Float64, velocity: Float64) -> Float64:
     """Wind energy density: ED = 0.5 * ρ * v³ (W/m²).
 
     Args:
@@ -215,7 +215,7 @@ fn energy_density(density: Float64, velocity: Float64) -> Float64:
 # ── rotor_thrust ─────────────────────────────────────────────────────────────
 
 
-fn rotor_thrust(
+def rotor_thrust(
     ct: Float64,
     density: Float64,
     area: Float64,
@@ -238,7 +238,7 @@ fn rotor_thrust(
 # ── wake_velocity ────────────────────────────────────────────────────────────
 
 
-fn wake_velocity(
+def wake_velocity(
     v0: Float64,
     ct: Float64,
     x: Float64,

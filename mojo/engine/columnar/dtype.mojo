@@ -20,7 +20,7 @@ comptime DTYPE_STRING: Int = 4
 comptime DTYPE_INVALID: Int = -1
 
 
-fn dtype_name(dtype: Int) -> String:
+def dtype_name(dtype: Int) -> String:
     if dtype == DTYPE_NULL:
         return "null"
     if dtype == DTYPE_BOOL:
@@ -34,7 +34,7 @@ fn dtype_name(dtype: Int) -> String:
     return "invalid"
 
 
-fn dtype_from_name(name: String) -> Int:
+def dtype_from_name(name: String) -> Int:
     if name == "null":
         return DTYPE_NULL
     if name == "bool":
@@ -48,7 +48,7 @@ fn dtype_from_name(name: String) -> Int:
     return DTYPE_INVALID
 
 
-fn is_numeric(dtype: Int) -> Bool:
+def is_numeric(dtype: Int) -> Bool:
     """True for types a value aggregation accepts.
 
     Bool is deliberately excluded. Treating `true` as 1 is exactly how the existing
@@ -58,7 +58,7 @@ fn is_numeric(dtype: Int) -> Bool:
     return dtype == DTYPE_INT64 or dtype == DTYPE_FLOAT64
 
 
-fn byte_width(dtype: Int) -> Int:
+def byte_width(dtype: Int) -> Int:
     """Fixed width per slot, or 0 for variable-width types."""
     if dtype == DTYPE_BOOL:
         return 1
@@ -69,11 +69,11 @@ fn byte_width(dtype: Int) -> Int:
     return 0  # string is offsets + bytes; null carries no data at all
 
 
-fn is_fixed_width(dtype: Int) -> Bool:
+def is_fixed_width(dtype: Int) -> Bool:
     return byte_width(dtype) > 0
 
 
-fn promote(a: Int, b: Int) -> Int:
+def promote(a: Int, b: Int) -> Int:
     """The type that holds both, or `DTYPE_INVALID` if none does.
 
     NULL promotes to whatever it meets: an all-null column has no type of its own, so
@@ -93,11 +93,11 @@ fn promote(a: Int, b: Int) -> Int:
     return DTYPE_INVALID
 
 
-fn can_promote(a: Int, b: Int) -> Bool:
+def can_promote(a: Int, b: Int) -> Bool:
     return promote(a, b) != DTYPE_INVALID
 
 
-fn promotion_loses_precision(a: Int, b: Int) -> Bool:
+def promotion_loses_precision(a: Int, b: Int) -> Bool:
     """True when promoting would silently lose precision, so callers can warn."""
     return (a == DTYPE_INT64 and b == DTYPE_FLOAT64) or (
         a == DTYPE_FLOAT64 and b == DTYPE_INT64

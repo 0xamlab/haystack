@@ -102,7 +102,7 @@ struct TxShape(Copyable, Movable):
     var status: Int
 
 
-fn tx_shape_status(dims: List[Int], rank: Int) -> Int:
+def tx_shape_status(dims: List[Int], rank: Int) -> Int:
     """Why `dims[0:rank]` is or is not a valid shape. `TX_OK` means every other function in this
     file will accept it.
 
@@ -129,7 +129,7 @@ fn tx_shape_status(dims: List[Int], rank: Int) -> Int:
     return TX_OK
 
 
-fn tx_shape_numel(dims: List[Int], rank: Int) -> Int:
+def tx_shape_numel(dims: List[Int], rank: Int) -> Int:
     """Element count of `dims[0:rank]`. `0` if the shape is invalid.
 
     `0` rather than `-1` here, unlike `tx_numel_checked`: every valid shape in THIS package has
@@ -150,7 +150,7 @@ fn tx_shape_numel(dims: List[Int], rank: Int) -> Int:
     return n if n > 0 else 0
 
 
-fn tx_shape_strides(dims: List[Int], rank: Int) -> List[Int]:
+def tx_shape_strides(dims: List[Int], rank: Int) -> List[Int]:
     """Contiguous row-major strides for `dims[0:rank]`. Empty list if the shape is invalid.
 
     The last axis has stride 1; each axis moving left multiplies by the dimension to its right. This
@@ -177,7 +177,7 @@ fn tx_shape_strides(dims: List[Int], rank: Int) -> List[Int]:
     return out^
 
 
-fn tx_shape_is_contiguous(dims: List[Int], strides: List[Int], rank: Int) -> Bool:
+def tx_shape_is_contiguous(dims: List[Int], strides: List[Int], rank: Int) -> Bool:
     """True when `strides[0:rank]` is EXACTLY the row-major contiguous layout for `dims[0:rank]`.
 
     Bounds `rank` against both `dims` and `strides` before reading either — a caller passing a
@@ -201,7 +201,7 @@ fn tx_shape_is_contiguous(dims: List[Int], strides: List[Int], rank: Int) -> Boo
     return True
 
 
-fn tx_shape_validate(dims: List[Int], rank: Int, data_len: Int) -> Int:
+def tx_shape_validate(dims: List[Int], rank: Int, data_len: Int) -> Int:
     """The N-dimensional `tx_shape_ok`: `dims[0:rank]`'s element count must equal `data_len` EXACTLY.
 
     A buffer longer than its declared shape means the caller and the kernel disagree about what the
@@ -223,7 +223,7 @@ fn tx_shape_validate(dims: List[Int], rank: Int, data_len: Int) -> Int:
     return TX_OK
 
 
-fn _padded_dim(dims: List[Int], rank: Int, result_rank: Int, axis_from_right: Int) -> Int:
+def _padded_dim(dims: List[Int], rank: Int, result_rank: Int, axis_from_right: Int) -> Int:
     """Dimension `axis_from_right` (0 = last axis) of a shape right-aligned into `result_rank` axes.
 
     Implements the implicit leading-1 padding NumPy's broadcasting rule uses for a shorter shape:
@@ -238,7 +238,7 @@ fn _padded_dim(dims: List[Int], rank: Int, result_rank: Int, axis_from_right: In
     return dims[idx]
 
 
-fn tx_shape_broadcast_status(
+def tx_shape_broadcast_status(
     dims_a: List[Int], rank_a: Int, dims_b: List[Int], rank_b: Int
 ) -> Int:
     """Why `dims_a[0:rank_a]` and `dims_b[0:rank_b]` do or do not broadcast together.
@@ -270,7 +270,7 @@ fn tx_shape_broadcast_status(
     return TX_OK
 
 
-fn tx_shape_broadcastable(
+def tx_shape_broadcastable(
     dims_a: List[Int], rank_a: Int, dims_b: List[Int], rank_b: Int
 ) -> Bool:
     """True when the two shapes can be combined by broadcasting. See `tx_shape_broadcast_status`
@@ -286,7 +286,7 @@ fn tx_shape_broadcastable(
     return tx_shape_broadcast_status(dims_a, rank_a, dims_b, rank_b) == TX_OK
 
 
-fn tx_shape_broadcast_dims(
+def tx_shape_broadcast_dims(
     dims_a: List[Int], rank_a: Int, dims_b: List[Int], rank_b: Int
 ) -> List[Int]:
     """The broadcast result shape, right-aligned, or an EMPTY list if the two shapes are not
@@ -321,7 +321,7 @@ fn tx_shape_broadcast_dims(
     return reversed_out^
 
 
-fn tx_shape_make(dims: List[Int], rank: Int) -> TxShape:
+def tx_shape_make(dims: List[Int], rank: Int) -> TxShape:
     """Build a `TxShape`: validated dims, contiguous strides, and element count, in one call.
 
     On any failure every field carrying data is empty and `numel` is 0 — a caller that forgets to

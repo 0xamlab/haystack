@@ -12,7 +12,7 @@ from net.unix_socket import encode_frame, decode_frame_length, encode_u32_be, de
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn _make_header(a: UInt8, b: UInt8, c: UInt8, d: UInt8) -> List[UInt8]:
+def _make_header(a: UInt8, b: UInt8, c: UInt8, d: UInt8) -> List[UInt8]:
     """Build a 4-byte List[UInt8] from individual bytes."""
     var h = List[UInt8](capacity=4)
     h.append(a)

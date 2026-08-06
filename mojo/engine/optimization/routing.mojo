@@ -344,7 +344,7 @@ comptime ROUTE_WORK_BUDGET: Int = 1 << 25
 comptime ROUTE_DEPOT: Int = 0
 
 
-fn route_status_name(code: Int) -> String:
+def route_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number.
 
     No fall-through to `model_status_name`: this module never forwards another module's
@@ -373,7 +373,7 @@ fn route_status_name(code: Int) -> String:
     return "unknown_status_" + String(code)
 
 
-fn route_node_ceiling() -> Int:
+def route_node_ceiling() -> Int:
     """The node ceiling, exposed so a caller and a test can assert it rather than infer it.
 
     Deterministic and zero-argument. `2 * route_node_ceiling()^2 <= MAX_CSR_DIM` is the
@@ -732,7 +732,7 @@ struct _RouteEval(Copyable, Movable):
 # ── tolerances ────────────────────────────────────────────────────────────────
 
 
-fn _accum_tol(scale: Float64, steps: Int) -> Float64:
+def _accum_tol(scale: Float64, steps: Int) -> Float64:
     """Rounding budget for a quantity accumulated over `steps` additions.
 
     Sized by `ROUTE_DBL_EPSILON` times the magnitude of the ONE quantity being judged, times
@@ -754,7 +754,7 @@ fn _accum_tol(scale: Float64, steps: Int) -> Float64:
     return steps_f * ROUTE_DBL_EPSILON * s
 
 
-fn _pair_tol(a: Float64, b: Float64, steps: Int) -> Float64:
+def _pair_tol(a: Float64, b: Float64, steps: Int) -> Float64:
     """`_accum_tol` at the larger magnitude of the two quantities being compared.
 
     A comparison `a > b` is judged at the scale of `a` and `b` and of nothing else — not of
@@ -766,7 +766,7 @@ fn _pair_tol(a: Float64, b: Float64, steps: Int) -> Float64:
     return _accum_tol(scale, steps)
 
 
-fn _move_tol(scale: Float64) -> Float64:
+def _move_tol(scale: Float64) -> Float64:
     """Rounding budget for one move delta, at the magnitude of its largest term."""
     var s = fabs(scale)
     if not _finite(s):
@@ -777,7 +777,7 @@ fn _move_tol(scale: Float64) -> Float64:
 # ── shape and content validation ──────────────────────────────────────────────
 
 
-fn _shape_defect(distance: List[Float64], n: Int) -> Int:
+def _shape_defect(distance: List[Float64], n: Int) -> Int:
     """Everything that must hold before a single cell is read.
 
     The ceiling is tested BEFORE `dims_fit` so "too big to allocate for" and "these numbers
@@ -794,7 +794,7 @@ fn _shape_defect(distance: List[Float64], n: Int) -> Int:
     return ROUTE_OK
 
 
-fn _distance_defect_index(distance: List[Float64], n: Int) -> Int:
+def _distance_defect_index(distance: List[Float64], n: Int) -> Int:
     """Flat index of the first cell that is not a usable distance, or -1.
 
     Safe to index: the caller has already established `len(distance) == n * n` through
@@ -824,7 +824,7 @@ fn _distance_defect_index(distance: List[Float64], n: Int) -> Int:
     return -1
 
 
-fn _dist(distance: List[Float64], n: Int, a: Int, b: Int) -> Float64:
+def _dist(distance: List[Float64], n: Int, a: Int, b: Int) -> Float64:
     """`d[a][b]` from the flat row-major matrix.
 
     Deliberately without a range check, and that is safe by construction rather than by
@@ -838,7 +838,7 @@ fn _dist(distance: List[Float64], n: Int, a: Int, b: Int) -> Float64:
     return distance[a * n + b]
 
 
-fn _nested(distance: List[Float64], n: Int) -> List[List[Float64]]:
+def _nested(distance: List[Float64], n: Int) -> List[List[Float64]]:
     """The nested form the frozen `tsp_greedy` / `tsp_tour_length` require.
 
     Built here and never exposed: `List[List[Float64]]` cannot be marshalled, so a public
@@ -853,7 +853,7 @@ fn _nested(distance: List[Float64], n: Int) -> List[List[Float64]]:
     return out^
 
 
-fn _asymmetry(distance: List[Float64], n: Int) -> Float64:
+def _asymmetry(distance: List[Float64], n: Int) -> Float64:
     """The largest `|d[i][j] - d[j][i]|`. 0.0 for a symmetric matrix."""
     var worst = 0.0
     for i in range(n):
@@ -864,7 +864,7 @@ fn _asymmetry(distance: List[Float64], n: Int) -> Float64:
     return worst
 
 
-fn _is_permutation(order: List[Int], n: Int) -> Bool:
+def _is_permutation(order: List[Int], n: Int) -> Bool:
     """True when `order` is exactly `0..n-1` in some sequence. O(n), no allocation reuse.
 
     Called after EVERY accepted move. A local search that corrupts the permutation and
@@ -886,7 +886,7 @@ fn _is_permutation(order: List[Int], n: Int) -> Bool:
     return True
 
 
-fn _closed(order: List[Int]) -> List[Int]:
+def _closed(order: List[Int]) -> List[Int]:
     """`order` with its first city appended, which is the frozen kernels' tour form."""
     var out = List[Int]()
     for k in range(len(order)):
@@ -896,7 +896,7 @@ fn _closed(order: List[Int]) -> List[Int]:
     return out^
 
 
-fn _length_of(nested: List[List[Float64]], order: List[Int]) -> Float64:
+def _length_of(nested: List[List[Float64]], order: List[Int]) -> Float64:
     """Tour length via the frozen `combinatorial.tsp_tour_length`, unchanged.
 
     THE evaluator for this module. Every reported length and every monotonicity decision
@@ -905,7 +905,7 @@ fn _length_of(nested: List[List[Float64]], order: List[Int]) -> Float64:
     return tsp_tour_length(nested, _closed(order))
 
 
-fn _skew_prefix(
+def _skew_prefix(
     distance: List[Float64], n: Int, order: List[Int], asymmetric: Bool
 ) -> List[Float64]:
     """Prefix sums of `d[next][prev] - d[prev][next]` along the tour.
@@ -933,7 +933,7 @@ fn _skew_prefix(
 # ── the local search ──────────────────────────────────────────────────────────
 
 
-fn _apply_two_opt(order: List[Int], i: Int, j: Int) -> List[Int]:
+def _apply_two_opt(order: List[Int], i: Int, j: Int) -> List[Int]:
     """`order` with positions `i..j` reversed. Position 0 is never inside the range."""
     var out = List[Int]()
     for k in range(len(order)):
@@ -949,7 +949,7 @@ fn _apply_two_opt(order: List[Int], i: Int, j: Int) -> List[Int]:
     return out^
 
 
-fn _apply_or_opt(order: List[Int], n: Int, i: Int, seg_len: Int, k: Int) -> List[Int]:
+def _apply_or_opt(order: List[Int], n: Int, i: Int, seg_len: Int, k: Int) -> List[Int]:
     """`order` with the segment at `i..i+seg_len-1` relocated to just after position `k`.
 
     Pure relocation: the segment keeps its direction, which is what makes the six-edge
@@ -978,7 +978,7 @@ fn _apply_or_opt(order: List[Int], n: Int, i: Int, seg_len: Int, k: Int) -> List
     return out^
 
 
-fn _local_search(
+def _local_search(
     distance: List[Float64], nested: List[List[Float64]], n: Int, start: List[Int],
     use_two_opt: Bool, use_or_opt: Bool, max_segment: Int, max_passes: Int,
     asymmetric: Bool, mut work: Int
@@ -1162,7 +1162,7 @@ fn _local_search(
     )
 
 
-fn _double_bridge(
+def _double_bridge(
     order: List[Int], n: Int, seed: UInt64, kick_index: Int
 ) -> List[Int]:
     """The classic double-bridge 4-opt kick: A C B D from A B C D.
@@ -1202,7 +1202,7 @@ fn _double_bridge(
 # ── TSP: rejections and the seed ──────────────────────────────────────────────
 
 
-fn _no_tour(status: Int, n: Int, seed: UInt64) -> RouteTour:
+def _no_tour(status: Int, n: Int, seed: UInt64) -> RouteTour:
     """A rejection: every list empty, every number flagged absent."""
     return RouteTour(
         status, n, False, False, 0.0, List[Int](), False, 0.0, ROUTE_ABSENT, False,
@@ -1210,7 +1210,7 @@ fn _no_tour(status: Int, n: Int, seed: UInt64) -> RouteTour:
     )
 
 
-fn _greedy_order(
+def _greedy_order(
     distance: List[Float64], nested: List[List[Float64]], n: Int
 ) -> List[Int]:
     """The frozen `combinatorial.tsp_greedy`'s tour as an OPEN order of `n` cities.
@@ -1234,7 +1234,7 @@ fn _greedy_order(
     return order^
 
 
-fn _tour_result(
+def _tour_result(
     n: Int, state: _SearchState, seed_length: Float64,
     use_two_opt: Bool, use_or_opt: Bool, max_segment: Int,
     kicks: Int, kicks_accepted: Int, asymmetry: Float64, seed: UInt64
@@ -1279,7 +1279,7 @@ fn _tour_result(
 # ── TSP: public drivers ───────────────────────────────────────────────────────
 
 
-fn distance_matrix_check(distance: List[Float64], n: Int) -> RouteMatrixCensus:
+def distance_matrix_check(distance: List[Float64], n: Int) -> RouteMatrixCensus:
     """The census of a distance matrix before anything is solved on it.
 
     Symmetry is REPORTED, never assumed: `max_asymmetry` and the cell that achieves it come
@@ -1363,7 +1363,7 @@ fn distance_matrix_check(distance: List[Float64], n: Int) -> RouteMatrixCensus:
     )
 
 
-fn tour_check(tour: List[Int], n: Int) -> RouteTourCheck:
+def tour_check(tour: List[Int], n: Int) -> RouteTourCheck:
     """Whether `tour` is a closed tour of `n` cities: `n + 1` entries, first `n` a permutation.
 
     Recomputed from scratch, so it is usable on a tour this module did not produce. The
@@ -1418,7 +1418,7 @@ fn tour_check(tour: List[Int], n: Int) -> RouteTourCheck:
     )
 
 
-fn tour_length_flat(
+def tour_length_flat(
     distance: List[Float64], n: Int, tour: List[Int]
 ) -> RouteScalar:
     """Length of `tour` under the flat matrix, via the frozen `tsp_tour_length`.
@@ -1451,7 +1451,7 @@ fn tour_length_flat(
     return RouteScalar(ROUTE_OK, True, value)
 
 
-fn tsp_greedy_flat(distance: List[Float64], n: Int) -> RouteTour:
+def tsp_greedy_flat(distance: List[Float64], n: Int) -> RouteTour:
     """The frozen `combinatorial.tsp_greedy`, validated, verified and priced.
 
     A window onto the frozen kernel, not a second implementation: the tour is its own. What
@@ -1490,7 +1490,7 @@ fn tsp_greedy_flat(distance: List[Float64], n: Int) -> RouteTour:
     )
 
 
-fn _search_driver(
+def _search_driver(
     distance: List[Float64], n: Int, max_passes: Int, use_two_opt: Bool,
     use_or_opt: Bool, max_segment: Int, n_kicks: Int, seed: UInt64
 ) -> RouteTour:
@@ -1595,7 +1595,7 @@ fn _search_driver(
     )
 
 
-fn tsp_two_opt(distance: List[Float64], n: Int, max_passes: Int) -> RouteTour:
+def tsp_two_opt(distance: List[Float64], n: Int, max_passes: Int) -> RouteTour:
     """2-opt local search seeded by the frozen greedy. Segment-reversal moves only.
 
     On a symmetric matrix a 2-opt local optimum has no crossing edges, so on points in
@@ -1612,7 +1612,7 @@ fn tsp_two_opt(distance: List[Float64], n: Int, max_passes: Int) -> RouteTour:
     return _search_driver(distance, n, max_passes, True, False, 1, 0, 0)
 
 
-fn tsp_or_opt(
+def tsp_or_opt(
     distance: List[Float64], n: Int, max_passes: Int, max_segment: Int
 ) -> RouteTour:
     """Or-opt local search seeded by the frozen greedy. Segment RELOCATION moves only.
@@ -1640,7 +1640,7 @@ fn tsp_or_opt(
     return _search_driver(distance, n, max_passes, False, True, max_segment, 0, 0)
 
 
-fn tsp_local_search(
+def tsp_local_search(
     distance: List[Float64], n: Int, max_passes: Int, use_two_opt: Bool,
     use_or_opt: Bool, max_segment: Int
 ) -> RouteTour:
@@ -1660,7 +1660,7 @@ fn tsp_local_search(
     )
 
 
-fn tsp_iterated_local_search(
+def tsp_iterated_local_search(
     distance: List[Float64], n: Int, max_passes: Int, max_segment: Int,
     n_kicks: Int, seed: UInt64
 ) -> RouteTour:
@@ -1686,7 +1686,7 @@ fn tsp_iterated_local_search(
     )
 
 
-fn tsp_perturb_double_bridge(
+def tsp_perturb_double_bridge(
     distance: List[Float64], n: Int, tour: List[Int], seed: UInt64, kick_index: Int
 ) -> RouteTour:
     """One double-bridge kick applied to `tour`, priced. The perturbation, exposed.
@@ -1751,7 +1751,7 @@ fn tsp_perturb_double_bridge(
 # ── vehicle routing: instance validation ──────────────────────────────────────
 
 
-fn _instance_defect(
+def _instance_defect(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     n_vehicles: Int, ready: List[Float64], due: List[Float64],
     service: List[Float64], windowed: Bool
@@ -1800,7 +1800,7 @@ fn _instance_defect(
     return ROUTE_OK
 
 
-fn _lower_bound_vehicles(demand: List[Float64], n: Int, capacity: Float64) -> Int:
+def _lower_bound_vehicles(demand: List[Float64], n: Int, capacity: Float64) -> Int:
     """`ceil(total demand / capacity)` — a true lower bound on vehicles, clamped.
 
     Every feasible routing induces a feasible packing of the demands into capacity-sized
@@ -1843,7 +1843,7 @@ fn _lower_bound_vehicles(demand: List[Float64], n: Int, capacity: Float64) -> In
     return Int(bound)
 
 
-fn _min_arc_into(distance: List[Float64], n: Int, c: Int) -> Float64:
+def _min_arc_into(distance: List[Float64], n: Int, c: Int) -> Float64:
     """`min` over every `p != c` of `d[p][c]`. 0.0 when there is no other node."""
     var best = 0.0
     var have = False
@@ -1857,7 +1857,7 @@ fn _min_arc_into(distance: List[Float64], n: Int, c: Int) -> Float64:
     return best
 
 
-fn _min_arc_out_of(distance: List[Float64], n: Int, c: Int) -> Float64:
+def _min_arc_out_of(distance: List[Float64], n: Int, c: Int) -> Float64:
     """`min` over every `q != c` of `d[c][q]`. 0.0 when there is no other node."""
     var best = 0.0
     var have = False
@@ -1871,7 +1871,7 @@ fn _min_arc_out_of(distance: List[Float64], n: Int, c: Int) -> Float64:
     return best
 
 
-fn _earliest_arrival_bound(
+def _earliest_arrival_bound(
     distance: List[Float64], n: Int, c: Int, depot_out: Float64
 ) -> Float64:
     """Sound lower bound on the travel time from leaving the depot to reaching `c`.
@@ -1905,7 +1905,7 @@ fn _earliest_arrival_bound(
     return detour
 
 
-fn _earliest_return_bound(
+def _earliest_return_bound(
     distance: List[Float64], n: Int, c: Int, depot_in: Float64
 ) -> Float64:
     """Sound lower bound on the travel time from finishing service at `c` to the depot.
@@ -1922,7 +1922,7 @@ fn _earliest_return_bound(
     return detour
 
 
-fn _customer_demands(demand: List[Float64], n: Int) -> List[Float64]:
+def _customer_demands(demand: List[Float64], n: Int) -> List[Float64]:
     """Demands of customers `1..n-1`, which is what the frozen bin packers take."""
     var out = List[Float64]()
     for c in range(1, n):
@@ -1930,7 +1930,7 @@ fn _customer_demands(demand: List[Float64], n: Int) -> List[Float64]:
     return out^
 
 
-fn vrp_vehicle_bound(demand: List[Float64], capacity: Float64) -> RouteVehicleBound:
+def vrp_vehicle_bound(demand: List[Float64], capacity: Float64) -> RouteVehicleBound:
     """Vehicle bounds for a demand list under one capacity, from the frozen bin packers.
 
     `demand` here is the CUSTOMER list — no depot entry — because that is what a packing is
@@ -1988,7 +1988,7 @@ fn vrp_vehicle_bound(demand: List[Float64], capacity: Float64) -> RouteVehicleBo
 # ── vehicle routing: evaluating one route ─────────────────────────────────────
 
 
-fn _eval_route(
+def _eval_route(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     ready: List[Float64], due: List[Float64], service: List[Float64],
     windowed: Bool, route: List[Int], mut work: Int
@@ -2093,7 +2093,7 @@ fn _eval_route(
     )
 
 
-fn _audit_core(
+def _audit_core(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     ready: List[Float64], due: List[Float64], service: List[Float64],
     windowed: Bool, stops: List[Int], route_start: List[Int], mut work: Int
@@ -2209,7 +2209,7 @@ fn _audit_core(
     )
 
 
-fn vrp_check(
+def vrp_check(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     ready: List[Float64], due: List[Float64], service: List[Float64],
     stops: List[Int], route_start: List[Int]
@@ -2261,7 +2261,7 @@ fn vrp_check(
 # ── vehicle routing: construction and improvement ─────────────────────────────
 
 
-fn _insert_at(route: List[Int], pos: Int, city: Int) -> List[Int]:
+def _insert_at(route: List[Int], pos: Int, city: Int) -> List[Int]:
     var out = List[Int]()
     for k in range(pos):
         out.append(route[k])
@@ -2271,7 +2271,7 @@ fn _insert_at(route: List[Int], pos: Int, city: Int) -> List[Int]:
     return out^
 
 
-fn _remove_at(route: List[Int], pos: Int) -> List[Int]:
+def _remove_at(route: List[Int], pos: Int) -> List[Int]:
     var out = List[Int]()
     for k in range(len(route)):
         if k == pos:
@@ -2280,7 +2280,7 @@ fn _remove_at(route: List[Int], pos: Int) -> List[Int]:
     return out^
 
 
-fn _reverse_span(route: List[Int], i: Int, j: Int) -> List[Int]:
+def _reverse_span(route: List[Int], i: Int, j: Int) -> List[Int]:
     var out = List[Int]()
     for k in range(len(route)):
         out.append(route[k])
@@ -2295,7 +2295,7 @@ fn _reverse_span(route: List[Int], i: Int, j: Int) -> List[Int]:
     return out^
 
 
-fn _insertion_order(
+def _insertion_order(
     demand: List[Float64], n: Int, due: List[Float64], windowed: Bool,
     restart: Int, seed: UInt64, mut work: Int
 ) -> List[Int]:
@@ -2355,7 +2355,7 @@ fn _insertion_order(
     return out^
 
 
-fn _build_routes(
+def _build_routes(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     ready: List[Float64], due: List[Float64], service: List[Float64],
     windowed: Bool, n_vehicles: Int, order: List[Int], mut work: Int
@@ -2430,7 +2430,7 @@ fn _build_routes(
     return routes^
 
 
-fn _improve_routes(
+def _improve_routes(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     ready: List[Float64], due: List[Float64], service: List[Float64],
     windowed: Bool, routes_in: List[List[Int]], max_passes: Int, mut work: Int
@@ -2642,7 +2642,7 @@ fn _improve_routes(
     return _ImproveResult(routes^, passes, moves, evaluated, local_opt)
 
 
-fn _layout_partitions(stops: List[Int], route_start: List[Int], n_routes: Int) -> Bool:
+def _layout_partitions(stops: List[Int], route_start: List[Int], n_routes: Int) -> Bool:
     """True when `route_start` is exactly `n_routes + 1` offsets that PARTITION `stops`.
 
     This is `RouteSolution`'s layout invariant, tested rather than assumed, and it is the check
@@ -2679,7 +2679,7 @@ fn _layout_partitions(stops: List[Int], route_start: List[Int], n_routes: Int) -
     return True
 
 
-fn _no_solution(
+def _no_solution(
     status: Int, n: Int, n_vehicles: Int, windowed: Bool, proven: Bool, lb: Int,
     ffd: Int, defect_node: Int, restarts: Int, seed: UInt64
 ) -> RouteSolution:
@@ -2699,7 +2699,7 @@ fn _no_solution(
     )
 
 
-fn _solve_core(
+def _solve_core(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     n_vehicles: Int, ready: List[Float64], due: List[Float64],
     service: List[Float64], windowed: Bool, max_passes: Int, n_restarts: Int,
@@ -2910,7 +2910,7 @@ fn _solve_core(
     )
 
 
-fn vrp_capacity_solve(
+def vrp_capacity_solve(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     n_vehicles: Int, max_passes: Int, n_restarts: Int, seed: UInt64
 ) -> RouteSolution:
@@ -2940,7 +2940,7 @@ fn vrp_capacity_solve(
     )
 
 
-fn vrp_time_window_solve(
+def vrp_time_window_solve(
     distance: List[Float64], n: Int, demand: List[Float64], capacity: Float64,
     n_vehicles: Int, ready: List[Float64], due: List[Float64], service: List[Float64],
     max_passes: Int, n_restarts: Int, seed: UInt64

@@ -65,12 +65,12 @@ d_model=1024 (gemm.contract's own per-buffer ceiling on `k * n`); 16384 is a rou
 under that with margin for any d_model this checkpoint family uses."""
 
 
-fn _check(status: Int, ok: Int, ctx: String) raises:
+def _check(status: Int, ok: Int, ctx: String) raises:
     if status != ok:
         raise Error("qwen3_forward: " + ctx + " failed, status=" + String(status))
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -83,7 +83,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -92,7 +92,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -106,12 +106,12 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn _dump_f64(path: String, values: List[Float64]) raises:
+def _dump_f64(path: String, values: List[Float64]) raises:
     var n = len(values)
     var bp = values.unsafe_ptr().bitcast[UInt8]()
     var raw = List[UInt8](capacity=n * 8)
@@ -122,7 +122,7 @@ fn _dump_f64(path: String, values: List[Float64]) raises:
     f.close()
 
 
-fn _ms(ns: UInt) -> Float64:
+def _ms(ns: UInt) -> Float64:
     return Float64(Int(ns)) / 1.0e6
 
 

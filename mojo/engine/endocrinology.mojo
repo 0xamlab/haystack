@@ -16,7 +16,7 @@ Public API:
 from std.math import cos, exp, log, pow
 
 
-fn hormone_clearance_rate(dose: Float64, auc: Float64) -> Float64:
+def hormone_clearance_rate(dose: Float64, auc: Float64) -> Float64:
     """Hormone metabolic clearance rate: CL = dose / AUC.
 
     Args:
@@ -31,7 +31,7 @@ fn hormone_clearance_rate(dose: Float64, auc: Float64) -> Float64:
     return dose / auc
 
 
-fn receptor_binding_bmax(
+def receptor_binding_bmax(
     bound: Float64, free_conc: Float64, kd: Float64
 ) -> Float64:
     """Maximum binding capacity Bmax from Scatchard analysis.
@@ -51,7 +51,7 @@ fn receptor_binding_bmax(
     return bound + bound * kd / free_conc
 
 
-fn feedback_gain(
+def feedback_gain(
     open_loop_gain: Float64, feedback_fraction: Float64
 ) -> Float64:
     """Closed-loop gain of a hormonal feedback axis.
@@ -71,7 +71,7 @@ fn feedback_gain(
     return open_loop_gain / denom
 
 
-fn hormone_pulsatility(
+def hormone_pulsatility(
     n_pulses: Float64, observation_hours: Float64
 ) -> Float64:
     """Pulse frequency of a pulsatile hormone.
@@ -90,7 +90,7 @@ fn hormone_pulsatility(
     return n_pulses / observation_hours
 
 
-fn cortisol_circadian(
+def cortisol_circadian(
     time_hours: Float64, peak_value: Float64, trough_value: Float64
 ) -> Float64:
     """Cortisol diurnal variation (cosine model, peak at 0800h).
@@ -111,7 +111,7 @@ fn cortisol_circadian(
     return mean + amplitude * cos(2.0 * pi * (time_hours - 8.0) / 24.0)
 
 
-fn insulin_sensitivity_index(
+def insulin_sensitivity_index(
     fasting_glucose_mmol: Float64, fasting_insulin_pmol: Float64
 ) -> Float64:
     """HOMA-IR insulin resistance index.
@@ -129,7 +129,7 @@ fn insulin_sensitivity_index(
     return fasting_glucose_mmol * insulin_uIU / 22.5
 
 
-fn thyroid_free_fraction(
+def thyroid_free_fraction(
     total_t4: Float64, tbg_conc: Float64, binding_constant: Float64
 ) -> Float64:
     """Free fraction of T4 from total and TBG.
@@ -150,7 +150,7 @@ fn thyroid_free_fraction(
     return 1.0 / denom
 
 
-fn growth_rate_igf(
+def growth_rate_igf(
     igf1_nmol: Float64, baseline_rate: Float64, sensitivity: Float64
 ) -> Float64:
     """Linear growth rate from IGF-1 stimulation.
@@ -168,7 +168,7 @@ fn growth_rate_igf(
     return baseline_rate + sensitivity * igf1_nmol
 
 
-fn testosterone_free(
+def testosterone_free(
     total_t: Float64, shbg: Float64, albumin: Float64
 ) -> Float64:
     """Free testosterone from total, SHBG and albumin (Vermeulen 1999).
@@ -192,7 +192,7 @@ fn testosterone_free(
     return total_t / denom
 
 
-fn negative_feedback_strength(
+def negative_feedback_strength(
     response_at_half_max: Float64, hill_n: Float64
 ) -> Float64:
     """Effective Hill coefficient for setpoint regulation strength.

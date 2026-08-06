@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from kv_cache import kv_cache_memory_per_layer, kv_cache_total_memory, kv_cache_utilization, paged_attention_block_count, prefix_cache_hit_bytes, kv_eviction_score_lru, kv_eviction_score_h2o, incremental_decode_kv_append, radix_cache_shared_prefix_len, kv_quantization_error
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

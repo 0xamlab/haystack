@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn quantize_symmetric(x: Float64, scale: Float64) -> Float64:
+def quantize_symmetric(x: Float64, scale: Float64) -> Float64:
     """Symmetric INT8 quantization: q = round(x / scale), clipped to [-127, 127].
 
     Args:
@@ -39,7 +39,7 @@ fn quantize_symmetric(x: Float64, scale: Float64) -> Float64:
     return Float64(Int64(q - 0.5))
 
 
-fn dequantize_symmetric(q: Float64, scale: Float64) -> Float64:
+def dequantize_symmetric(q: Float64, scale: Float64) -> Float64:
     """Dequantize symmetric INT8: x_hat = q × scale.
 
     Args:
@@ -52,7 +52,7 @@ fn dequantize_symmetric(q: Float64, scale: Float64) -> Float64:
     return q * scale
 
 
-fn quantize_asymmetric(
+def quantize_asymmetric(
     x: Float64, scale: Float64, zero_point: Float64
 ) -> Float64:
     """Asymmetric quantization: q = round(x/scale + zero_point), clipped to [0, 255].
@@ -75,7 +75,7 @@ fn quantize_asymmetric(
     return Float64(Int64(q + 0.5))
 
 
-fn dequantize_asymmetric(
+def dequantize_asymmetric(
     q: Float64, scale: Float64, zero_point: Float64
 ) -> Float64:
     """Asymmetric dequantization: x_hat = (q - zero_point) × scale.
@@ -91,7 +91,7 @@ fn dequantize_asymmetric(
     return (q - zero_point) * scale
 
 
-fn quantization_error(x: Float64, scale: Float64) -> Float64:
+def quantization_error(x: Float64, scale: Float64) -> Float64:
     """Quantization round-trip error for symmetric INT8.
 
     Args:
@@ -109,7 +109,7 @@ fn quantization_error(x: Float64, scale: Float64) -> Float64:
     return err
 
 
-fn scale_from_range(x_max: Float64, n_bits: Float64) -> Float64:
+def scale_from_range(x_max: Float64, n_bits: Float64) -> Float64:
     """Compute symmetric quantization scale from max absolute value.
 
     scale = x_max / (2^(n_bits-1) - 1)
@@ -129,7 +129,7 @@ fn scale_from_range(x_max: Float64, n_bits: Float64) -> Float64:
     return x_max / qmax
 
 
-fn zero_point_from_range(
+def zero_point_from_range(
     x_min: Float64, x_max: Float64, scale: Float64
 ) -> Float64:
     """Compute asymmetric quantization zero-point.
@@ -154,7 +154,7 @@ fn zero_point_from_range(
     return Float64(Int64(zp + 0.5))
 
 
-fn clamp_to_int8(x: Float64) -> Float64:
+def clamp_to_int8(x: Float64) -> Float64:
     """Clamp float to INT8 range [-128, 127].
 
     Args:
@@ -170,7 +170,7 @@ fn clamp_to_int8(x: Float64) -> Float64:
     return x
 
 
-fn fp16_to_fp32_scale(fp16_max: Float64) -> Float64:
+def fp16_to_fp32_scale(fp16_max: Float64) -> Float64:
     """FP16 dynamic range scale relative to FP32.
 
     FP16 max ≈ 65504; scale = fp16_value / 65504
@@ -187,7 +187,7 @@ fn fp16_to_fp32_scale(fp16_max: Float64) -> Float64:
     return fp16_max / fp16_abs_max
 
 
-fn int4_pack_error(x: Float64, scale: Float64) -> Float64:
+def int4_pack_error(x: Float64, scale: Float64) -> Float64:
     """INT4 quantization error estimate (4-bit: [-8, 7] range).
 
     Args:

@@ -21,7 +21,7 @@ from std.math import isnan, isinf
 from stat_tests import pearson_r, spearman_r, pearson_r_strict, spearman_r_strict
 
 
-fn _mk(*values: Float64) -> List[Float64]:
+def _mk(*values: Float64) -> List[Float64]:
     var out = List[Float64]()
     for v in values:
         out.append(v)

@@ -26,7 +26,7 @@ from std.math import abs as fabs, log, sqrt
 # ── log_transform ────────────────────────────────────────────────────────────
 
 
-fn log_transform(data: List[Float64]) raises -> List[Float64]:
+def log_transform(data: List[Float64]) raises -> List[Float64]:
     """Natural log of each value. Raises on non-positive values."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -39,7 +39,7 @@ fn log_transform(data: List[Float64]) raises -> List[Float64]:
 # ── log1p_transform ──────────────────────────────────────────────────────────
 
 
-fn log1p_transform(data: List[Float64]) raises -> List[Float64]:
+def log1p_transform(data: List[Float64]) raises -> List[Float64]:
     """log(1 + x) for each value. Raises if 1+x <= 0."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -53,7 +53,7 @@ fn log1p_transform(data: List[Float64]) raises -> List[Float64]:
 # ── box_cox ──────────────────────────────────────────────────────────────────
 
 
-fn box_cox(data: List[Float64], lmbda: Float64) raises -> List[Float64]:
+def box_cox(data: List[Float64], lmbda: Float64) raises -> List[Float64]:
     """Box-Cox transform: (x^λ - 1)/λ for λ≠0, log(x) for λ=0.
 
     All values must be positive.
@@ -71,7 +71,7 @@ fn box_cox(data: List[Float64], lmbda: Float64) raises -> List[Float64]:
     return result^
 
 
-fn _exp(x: Float64) -> Float64:
+def _exp(x: Float64) -> Float64:
     """Compute e^x using std.math."""
     # Use the identity: e^x = 2^(x / ln2) but simpler: Taylor or use log inverse
     # Actually we can use pow-like approach. Let's use a direct computation.
@@ -84,7 +84,7 @@ fn _exp(x: Float64) -> Float64:
 # ── standardize ──────────────────────────────────────────────────────────────
 
 
-fn standardize(data: List[Float64]) raises -> List[Float64]:
+def standardize(data: List[Float64]) raises -> List[Float64]:
     """Z-score normalization: (x - mean) / std.
 
     Raises if data is empty or std is zero.
@@ -112,7 +112,7 @@ fn standardize(data: List[Float64]) raises -> List[Float64]:
 # ── min_max_scale ────────────────────────────────────────────────────────────
 
 
-fn min_max_scale(
+def min_max_scale(
     data: List[Float64], new_min: Float64 = 0.0, new_max: Float64 = 1.0
 ) raises -> List[Float64]:
     """Scale data to [new_min, new_max]. Raises if data is empty or constant."""
@@ -139,7 +139,7 @@ fn min_max_scale(
 # ── robust_scale ─────────────────────────────────────────────────────────────
 
 
-fn _sorted_copy(data: List[Float64]) -> List[Float64]:
+def _sorted_copy(data: List[Float64]) -> List[Float64]:
     """Return a sorted copy of the data (insertion sort for simplicity)."""
     var s = List[Float64]()
     for i in range(len(data)):
@@ -155,7 +155,7 @@ fn _sorted_copy(data: List[Float64]) -> List[Float64]:
     return s^
 
 
-fn _percentile(sorted_data: List[Float64], p: Float64) -> Float64:
+def _percentile(sorted_data: List[Float64], p: Float64) -> Float64:
     """Percentile from sorted data using linear interpolation."""
     var n = len(sorted_data)
     if n == 1:
@@ -169,7 +169,7 @@ fn _percentile(sorted_data: List[Float64], p: Float64) -> Float64:
     return sorted_data[lo] * (1.0 - frac) + sorted_data[hi] * frac
 
 
-fn robust_scale(data: List[Float64]) raises -> List[Float64]:
+def robust_scale(data: List[Float64]) raises -> List[Float64]:
     """(x - median) / IQR. Robust to outliers.
 
     IQR = Q3 - Q1. Raises if data is empty or IQR is zero.
@@ -193,7 +193,7 @@ fn robust_scale(data: List[Float64]) raises -> List[Float64]:
 # ── quantile_transform ───────────────────────────────────────────────────────
 
 
-fn quantile_transform(data: List[Float64]) raises -> List[Float64]:
+def quantile_transform(data: List[Float64]) raises -> List[Float64]:
     """Map each value to its percentile rank in [0, 1].
 
     Ties get the average percentile. Raises if data is empty.
@@ -225,7 +225,7 @@ fn quantile_transform(data: List[Float64]) raises -> List[Float64]:
 # ── power_transform ──────────────────────────────────────────────────────────
 
 
-fn power_transform(data: List[Float64], power: Float64) -> List[Float64]:
+def power_transform(data: List[Float64], power: Float64) -> List[Float64]:
     """x^power for each value. Uses exp(power * log(|x|)) with sign preservation."""
     from std.math import exp
     var result = List[Float64]()
@@ -244,7 +244,7 @@ fn power_transform(data: List[Float64], power: Float64) -> List[Float64]:
 # ── clamp_values ─────────────────────────────────────────────────────────────
 
 
-fn clamp_values(data: List[Float64], lo: Float64, hi: Float64) -> List[Float64]:
+def clamp_values(data: List[Float64], lo: Float64, hi: Float64) -> List[Float64]:
     """Clamp each value to [lo, hi]."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -260,7 +260,7 @@ fn clamp_values(data: List[Float64], lo: Float64, hi: Float64) -> List[Float64]:
 # ── rank_transform ───────────────────────────────────────────────────────────
 
 
-fn rank_transform(data: List[Float64]) -> List[Float64]:
+def rank_transform(data: List[Float64]) -> List[Float64]:
     """Replace each value with its rank (1-based, average ties)."""
     var n = len(data)
     var result = List[Float64]()
@@ -281,7 +281,7 @@ fn rank_transform(data: List[Float64]) -> List[Float64]:
 # ── abs_transform ────────────────────────────────────────────────────────────
 
 
-fn abs_transform(data: List[Float64]) -> List[Float64]:
+def abs_transform(data: List[Float64]) -> List[Float64]:
     """Absolute value of each element."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -292,7 +292,7 @@ fn abs_transform(data: List[Float64]) -> List[Float64]:
 # ── reciprocal_transform ────────────────────────────────────────────────────
 
 
-fn reciprocal_transform(data: List[Float64]) raises -> List[Float64]:
+def reciprocal_transform(data: List[Float64]) raises -> List[Float64]:
     """1/x for each value. Raises on zero."""
     var result = List[Float64]()
     for i in range(len(data)):

@@ -124,7 +124,7 @@ comptime PATTERN_SCATTER: Int = 1
 comptime BAND_HALF: Int = 4
 
 
-fn mix64(p: UInt64) -> UInt64:
+def mix64(p: UInt64) -> UInt64:
     """splitmix64's finalizer over a position. Counter-based, so it vectorizes in numpy."""
     var z = p + 0x9E3779B97F4A7C15
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9
@@ -132,7 +132,7 @@ fn mix64(p: UInt64) -> UInt64:
     return z ^ (z >> 31)
 
 
-fn _unit(p: UInt64) -> Float64:
+def _unit(p: UInt64) -> Float64:
     """Position `p` mapped into [-1, 1).
 
     53 bits over 2^53 then scaled: both steps are exact in binary64, so numpy reproduces
@@ -141,7 +141,7 @@ fn _unit(p: UInt64) -> Float64:
     return Float64(Int(mix64(p) >> 11)) * (1.0 / 9007199254740992.0) * 2.0 - 1.0
 
 
-fn _value_at(i: Int, j: Int) -> Float64:
+def _value_at(i: Int, j: Int) -> Float64:
     """The stored value for coordinate (i, j). Indexed by POSITION, not by a running
     counter, so a pattern with ragged rows needs no prefix sum to reproduce."""
     return _unit(SEED_VAL + UInt64(i) * VAL_ROW_STRIDE + UInt64(j))
@@ -156,7 +156,7 @@ struct Case(Copyable, Movable):
     var dump: Bool
 
 
-fn _build(spec: Case) -> CSRMatrix:
+def _build(spec: Case) -> CSRMatrix:
     """The case's matrix in CSR. Sorted indices, no duplicates, by construction.
 
     `csr_from_arrays` sets `sorted_indices=False` regardless of what is handed to it, so
@@ -213,14 +213,14 @@ fn _build(spec: Case) -> CSRMatrix:
     return csr_from_arrays(indptr, indices, values, n, n)
 
 
-fn _build_x(n: Int) -> List[Float64]:
+def _build_x(n: Int) -> List[Float64]:
     var x = List[Float64](capacity=n)
     for j in range(n):
         x.append(_unit(SEED_X + UInt64(j)))
     return x^
 
 
-fn _dump(path: String, v: List[Float64], length: Int) raises:
+def _dump(path: String, v: List[Float64], length: Int) raises:
     """Write `v[0..length)` as decimal binary64 BIT PATTERNS, one per line.
 
     Bit patterns rather than formatted decimals: a correctness comparison is only as tight
@@ -253,7 +253,7 @@ struct Timing(Copyable, Movable):
     var reason: String
 
 
-fn _verdict(cold: Float64, warm: Float64, hot: Float64, worst: Float64) -> Timing:
+def _verdict(cold: Float64, warm: Float64, hot: Float64, worst: Float64) -> Timing:
     """Tiers plus the gate's verdict. The reason names only conditions that FAILED."""
     var spread = worst / hot if hot > 0.0 else 0.0
     var ordered = hot <= warm
@@ -270,7 +270,7 @@ fn _verdict(cold: Float64, warm: Float64, hot: Float64, worst: Float64) -> Timin
     return Timing(cold, warm, hot, worst, False, why)
 
 
-fn _fold(cold: Float64, warm: Float64, reps: List[Float64]) -> Timing:
+def _fold(cold: Float64, warm: Float64, reps: List[Float64]) -> Timing:
     var hot = 0.0
     var worst = 0.0
     for r in range(len(reps)):
@@ -282,19 +282,19 @@ fn _fold(cold: Float64, warm: Float64, reps: List[Float64]) -> Timing:
     return _verdict(cold, warm, hot, worst)
 
 
-fn _per_nnz(t: Float64, nnz: Int) -> Float64:
+def _per_nnz(t: Float64, nnz: Int) -> Float64:
     if nnz <= 0 or t <= 0.0:
         return 0.0
     return t / Float64(nnz)
 
 
-fn _nnz_per_s(t: Float64, nnz: Int) -> Float64:
+def _nnz_per_s(t: Float64, nnz: Int) -> Float64:
     if t <= 0.0:
         return 0.0
     return Float64(nnz) / (t / 1.0e9)
 
 
-fn _row(label: String, t: Timing, nnz: Int) -> String:
+def _row(label: String, t: Timing, nnz: Int) -> String:
     """One harness-parseable cold/warm/hot triple in ns per nonzero, or an INVALID line
     carrying no figure at all."""
     if not t.valid:
@@ -307,7 +307,7 @@ fn _row(label: String, t: Timing, nnz: Int) -> String:
     )
 
 
-fn main() raises:
+def main() raises:
     var cores = info.num_physical_cores()
     if cores < 1:
         cores = 1

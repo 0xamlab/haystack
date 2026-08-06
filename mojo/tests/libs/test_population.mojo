@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from population import exponential_growth, logistic_growth, logistic_simulate, lotka_volterra_step, lotka_volterra_simulate, carrying_capacity_estimate, growth_rate_estimate, competition_model, population_doubling_time, extinction_risk
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -38,11 +38,11 @@ from stat_tests import (
 )
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

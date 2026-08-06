@@ -165,7 +165,7 @@ struct NAFit(Copyable, Movable):
     var upper: List[Float64]
     var has_band: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -185,7 +185,7 @@ struct NAFit(Copyable, Movable):
         self.has_band = List[Bool]()
 
 
-fn na_fit(times: List[Float64], event: List[Int], conf_level: Float64) -> NAFit:
+def na_fit(times: List[Float64], event: List[Int], conf_level: Float64) -> NAFit:
     """Nelson-Aalen cumulative hazard, Aalen variance and a log-transformed band.
 
     `event[i]` is 1 for an event and 0 for a right-censored observation, and
@@ -312,7 +312,7 @@ struct SmoothedHazard(Copyable, Movable):
     var increment: List[Float64]
     var boundary: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.bandwidth = 0.0
         self.n_obs = 0
@@ -330,7 +330,7 @@ struct SmoothedHazard(Copyable, Movable):
         self.boundary = List[Bool]()
 
 
-fn na_smoothed_hazard(
+def na_smoothed_hazard(
     times: List[Float64], event: List[Int], bandwidth: Float64
 ) -> SmoothedHazard:
     """Epanechnikov kernel-smoothed hazard rate, Klein & Moeschberger eq. 6.2.1.

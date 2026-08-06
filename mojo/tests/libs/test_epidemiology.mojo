@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from epidemiology import sir_step, sir_simulate, seir_step, basic_reproduction_number, herd_immunity_threshold, effective_reproduction, doubling_time, attack_rate, case_fatality_rate, incidence_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

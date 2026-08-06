@@ -72,7 +72,7 @@ transposed pair of dimensions returns an error rather than running long enough t
 which from a caller's side is indistinguishable from rule 1's uncatchable abort."""
 
 
-fn norm_status_name(code: Int) -> String:
+def norm_status_name(code: Int) -> String:
     """Name a status code. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == NORM_OK:
         return String("ok")
@@ -93,7 +93,7 @@ fn norm_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn norm_work_fits(n_rows: Int, n_cols: Int, ceiling: Int) -> Bool:
+def norm_work_fits(n_rows: Int, n_cols: Int, ceiling: Int) -> Bool:
     """True when `n_rows * n_cols` fits in `ceiling`, computed WITHOUT forming the product.
 
     Grown by division, one factor at a time. A wrapping 64-bit multiply is how a product guard was
@@ -116,7 +116,7 @@ fn norm_work_fits(n_rows: Int, n_cols: Int, ceiling: Int) -> Bool:
     return n_cols <= ceiling // n_rows
 
 
-fn norm_eps_ok(eps: Float64) -> Bool:
+def norm_eps_ok(eps: Float64) -> Bool:
     """True when `eps` is finite and non-negative.
 
     Zero is allowed: it is the mathematically correct choice for a row that is known non-zero, and
@@ -127,7 +127,7 @@ fn norm_eps_ok(eps: Float64) -> Bool:
     return tx_finite(eps) and eps >= 0.0
 
 
-fn norm_dims_check(n_rows: Int, n_cols: Int, eps: Float64) -> Int:
+def norm_dims_check(n_rows: Int, n_cols: Int, eps: Float64) -> Int:
     """Validate a `[n_rows][n_cols]` normalization request and its epsilon.
 
     @capability norm_dims_check
@@ -148,7 +148,7 @@ fn norm_dims_check(n_rows: Int, n_cols: Int, eps: Float64) -> Int:
     return NORM_OK
 
 
-fn norm_tol_for(magnitude: Float64, n_cols: Int) -> Float64:
+def norm_tol_for(magnitude: Float64, n_cols: Int) -> Float64:
     """Tolerance for comparing two spellings of a normalized value of size `magnitude`.
 
     Rule 4b: the tolerance scales with the quantity being judged AND with the reduction that produced

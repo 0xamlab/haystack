@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from crypto.aes_sbox import aes_sbox, aes_inv_sbox, sub_bytes, inv_sub_bytes, shift_rows, inv_shift_rows, xor_bytes, add_round_key
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

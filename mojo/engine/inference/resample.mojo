@@ -135,7 +135,7 @@ comptime STAT_MEDIAN: Int = 1
 comptime STAT_STD: Int = 2
 
 
-fn resample_statistic_name(statistic: Int) -> String:
+def resample_statistic_name(statistic: Int) -> String:
     """Name for a statistic selector, so a rejected id surfaces as a word.
 
     Deterministic. Returns "unknown" for anything this module does not implement, which is
@@ -150,7 +150,7 @@ fn resample_statistic_name(statistic: Int) -> String:
     return "unknown"
 
 
-fn _statistic_of(values: List[Float64], statistic: Int) -> Float64:
+def _statistic_of(values: List[Float64], statistic: Int) -> Float64:
     """The selected statistic, straight from the frozen `stats_bootstrap` kernels.
 
     Called for the point estimate and once per resample, so this is the ONLY place a
@@ -164,7 +164,7 @@ fn _statistic_of(values: List[Float64], statistic: Int) -> Float64:
     return _mean(values)
 
 
-fn _percentile_index(fraction: Float64, b: Int) -> Int:
+def _percentile_index(fraction: Float64, b: Int) -> Int:
     """`floor(fraction * b)` clamped into `[0, b-1]`, with no `Float64(Int(v))` anywhere.
 
     Built on `optimization.model._floor_f` (i.e. `std.math.floor`), which is total over
@@ -229,7 +229,7 @@ struct BootstrapCI(Copyable, Movable):
     var hi_mc_halfwidth: Float64
 
 
-fn _ci_failure(
+def _ci_failure(
     code: Int, statistic: Int, n: Int, b: Int, seed: UInt64,
     stream: UInt64, confidence: Float64,
 ) -> BootstrapCI:
@@ -239,7 +239,7 @@ fn _ci_failure(
     )
 
 
-fn bootstrap_ci_flat(
+def bootstrap_ci_flat(
     values: List[Float64], n: Int, statistic: Int,
     n_resamples: Int, confidence: Float64,
     seed: UInt64, stream: UInt64,
@@ -354,7 +354,7 @@ fn bootstrap_ci_flat(
     )
 
 
-fn _halfwidth(sorted_stats: List[Float64], rank: Int, step: Int) -> Float64:
+def _halfwidth(sorted_stats: List[Float64], rank: Int, step: Int) -> Float64:
     """Half the spread of `sorted_stats` across `step` ranks either side of `rank`.
 
     Both indices are clamped into the array, so the value is a real half-spread even at the
@@ -404,7 +404,7 @@ struct PermutationTest(Copyable, Movable):
     var p_value_floor: Float64
 
 
-fn _perm_failure(
+def _perm_failure(
     code: Int, n1: Int, n2: Int, b: Int, seed: UInt64, stream: UInt64
 ) -> PermutationTest:
     return PermutationTest(
@@ -412,7 +412,7 @@ fn _perm_failure(
     )
 
 
-fn permutation_test_flat(
+def permutation_test_flat(
     values: List[Float64], n1: Int, n2: Int,
     n_permutations: Int, seed: UInt64, stream: UInt64,
 ) -> PermutationTest:

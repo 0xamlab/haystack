@@ -96,12 +96,12 @@ from evaluation.scores import (
 from loss_functions import binary_cross_entropy
 
 
-fn close(got: Float64, want: Float64) -> Bool:
+def close(got: Float64, want: Float64) -> Bool:
     """Within 8 ulps of `want` — that value's own magnitude, nothing else's."""
     return fabs(got - want) <= 8.0 * EVAL_DBL_EPSILON * fabs(want)
 
 
-fn close_log(got: Float64, want: Float64) -> Bool:
+def close_log(got: Float64, want: Float64) -> Bool:
     """Within 1e-8 relative — the frozen `std.math.log`'s measured accuracy, not slack.
 
     See the module docstring: `log(0.7)` on this toolchain is 2.5e-9 relative from the
@@ -110,7 +110,7 @@ fn close_log(got: Float64, want: Float64) -> Bool:
     return fabs(got - want) <= 1e-8 * fabs(want)
 
 
-fn pairs_a() -> List[Float64]:
+def pairs_a() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.1)
     out.append(0.3)
@@ -120,7 +120,7 @@ fn pairs_a() -> List[Float64]:
     return out^
 
 
-fn labels_a() -> List[Float64]:
+def labels_a() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.0)
     out.append(0.0)
@@ -130,7 +130,7 @@ fn labels_a() -> List[Float64]:
     return out^
 
 
-fn pairs_b() -> List[Float64]:
+def pairs_b() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.2)
     out.append(0.4)
@@ -139,7 +139,7 @@ fn pairs_b() -> List[Float64]:
     return out^
 
 
-fn labels_b() -> List[Float64]:
+def labels_b() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.0)
     out.append(1.0)
@@ -148,7 +148,7 @@ fn labels_b() -> List[Float64]:
     return out^
 
 
-fn two(first: Float64, second: Float64) -> List[Float64]:
+def two(first: Float64, second: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(first)
     out.append(second)

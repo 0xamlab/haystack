@@ -25,7 +25,7 @@ from std.math import sin, sqrt
 # ── Bearing capacity ─────────────────────────────────────────────────────────
 
 
-fn bearing_capacity_terzaghi(
+def bearing_capacity_terzaghi(
     c: Float64,
     gamma: Float64,
     d: Float64,
@@ -44,12 +44,12 @@ fn bearing_capacity_terzaghi(
 # ── Stress calculations ─────────────────────────────────────────────────────
 
 
-fn effective_stress(total_stress: Float64, pore_pressure: Float64) -> Float64:
+def effective_stress(total_stress: Float64, pore_pressure: Float64) -> Float64:
     """Effective stress: σ' = σ - u."""
     return total_stress - pore_pressure
 
 
-fn overburden_pressure(depth: Float64, unit_weight: Float64) -> Float64:
+def overburden_pressure(depth: Float64, unit_weight: Float64) -> Float64:
     """Vertical overburden pressure: σ_v = γ * z."""
     return unit_weight * depth
 
@@ -57,7 +57,7 @@ fn overburden_pressure(depth: Float64, unit_weight: Float64) -> Float64:
 # ── Earth pressure ───────────────────────────────────────────────────────────
 
 
-fn coefficient_of_earth_pressure_at_rest(phi: Float64) -> Float64:
+def coefficient_of_earth_pressure_at_rest(phi: Float64) -> Float64:
     """Jaky's at-rest earth pressure coefficient: K0 = 1 - sin(φ).
 
     phi in radians.
@@ -65,7 +65,7 @@ fn coefficient_of_earth_pressure_at_rest(phi: Float64) -> Float64:
     return 1.0 - sin(phi)
 
 
-fn rankine_ka(phi: Float64) -> Float64:
+def rankine_ka(phi: Float64) -> Float64:
     """Rankine active earth pressure coefficient.
 
     Ka = (1 - sin(φ)) / (1 + sin(φ)).  phi in radians.
@@ -73,7 +73,7 @@ fn rankine_ka(phi: Float64) -> Float64:
     return (1.0 - sin(phi)) / (1.0 + sin(phi))
 
 
-fn rankine_kp(phi: Float64) -> Float64:
+def rankine_kp(phi: Float64) -> Float64:
     """Rankine passive earth pressure coefficient.
 
     Kp = (1 + sin(φ)) / (1 - sin(φ)).  phi in radians.
@@ -81,7 +81,7 @@ fn rankine_kp(phi: Float64) -> Float64:
     return (1.0 + sin(phi)) / (1.0 - sin(phi))
 
 
-fn active_earth_pressure(
+def active_earth_pressure(
     ka: Float64, sigma_v: Float64, cohesion: Float64
 ) -> Float64:
     """Active earth pressure: σa = Ka*σv - 2*c*√Ka."""
@@ -91,7 +91,7 @@ fn active_earth_pressure(
 # ── Settlement ───────────────────────────────────────────────────────────────
 
 
-fn settlement_elastic(
+def settlement_elastic(
     load: Float64,
     width: Float64,
     modulus: Float64,
@@ -104,7 +104,7 @@ fn settlement_elastic(
 # ── Slope stability ──────────────────────────────────────────────────────────
 
 
-fn factor_of_safety_slope(
+def factor_of_safety_slope(
     resisting_force: Float64, driving_force: Float64
 ) -> Float64:
     """Factor of safety for slope stability: FS = R / D."""
@@ -114,7 +114,7 @@ fn factor_of_safety_slope(
 # ── Soil phase relationships ─────────────────────────────────────────────────
 
 
-fn void_ratio(porosity: Float64) -> Float64:
+def void_ratio(porosity: Float64) -> Float64:
     """Void ratio from porosity: e = n / (1 - n)."""
     # The denominator zeroes at n = 1 (inf cannot cross the result wire); the
     # self-comparison rejects NaN payloads.
@@ -123,12 +123,12 @@ fn void_ratio(porosity: Float64) -> Float64:
     return porosity / (1.0 - porosity)
 
 
-fn porosity_from_void_ratio(e: Float64) -> Float64:
+def porosity_from_void_ratio(e: Float64) -> Float64:
     """Porosity from void ratio: n = e / (1 + e)."""
     return e / (1.0 + e)
 
 
-fn degree_of_saturation(
+def degree_of_saturation(
     water_content: Float64, e: Float64, gs: Float64
 ) -> Float64:
     """Degree of saturation: S = w * Gs / e.

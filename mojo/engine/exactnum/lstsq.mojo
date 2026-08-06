@@ -156,7 +156,7 @@ Separate from `LSTSQ_MAX_COLS` because the Vandermonde construction raises `x` t
 wanting more columns than this can build the design matrix itself and use `dd_lstsq_flat`."""
 
 
-fn lstsq_status_name(code: Int) -> String:
+def lstsq_status_name(code: Int) -> String:
     """The `exactnum.lstsq` status vocabulary. One integer, one meaning (rule 4e)."""
     if code == LSTSQ_OK:
         return String("ok")
@@ -181,7 +181,7 @@ fn lstsq_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn lstsq_cells_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
+def lstsq_cells_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
     """`rows * cols <= ceiling`, by division so the product cannot wrap.
 
     `3 * 6148914691236517206 == 2` in wrapping 64-bit arithmetic, which is how a product
@@ -198,7 +198,7 @@ fn lstsq_cells_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
     return cols <= ceiling // rows
 
 
-fn lstsq_work_fits(rows: Int, cols: Int, ceiling: Int) -> Bool:
+def lstsq_work_fits(rows: Int, cols: Int, ceiling: Int) -> Bool:
     """`rows * cols * cols <= ceiling`, by division so the product cannot wrap.
 
     @capability lstsq_work_fits
@@ -251,11 +251,11 @@ struct DDLstsq(Copyable, Movable):
     var refine_steps: Int
 
 
-fn _empty_result(status: Int) -> DDLstsq:
+def _empty_result(status: Int) -> DDLstsq:
     return DDLstsq(List[Float64](), List[Float64](), status, 0, 0.0, 0.0, 0.0, 0)
 
 
-fn _dims_check(rows: Int, cols: Int, len_a: Int, len_b: Int) -> Int:
+def _dims_check(rows: Int, cols: Int, len_a: Int, len_b: Int) -> Int:
     """Every dimension against the real buffer lengths, before anything is indexed (rule 1)."""
     if rows <= 0 or cols <= 0:
         return LSTSQ_ERR_EMPTY_DIM
@@ -277,7 +277,7 @@ fn _dims_check(rows: Int, cols: Int, len_a: Int, len_b: Int) -> Int:
 # ── the compensated factorisation ─────────────────────────────────────────────
 
 
-fn _dd_qr_solve(
+def _dd_qr_solve(
     var a: List[DD], rows: Int, cols: Int, var b: List[DD], refine: Int
 ) -> DDLstsq:
     """Householder QR least squares in double-double. `a` is row-major `rows * cols`.
@@ -426,7 +426,7 @@ fn _dd_qr_solve(
     )
 
 
-fn _dd_apply_reflectors(
+def _dd_apply_reflectors(
     vv: List[DD], rows: Int, cols: Int, mut r: List[DD]
 ) -> None:
     """`r <- Q^T r` using the stored reflectors, in double-double."""
@@ -445,7 +445,7 @@ fn _dd_apply_reflectors(
             r[i] = dd_sub(r[i], dd_mul(f, vv[k * rows + i]))
 
 
-fn _dd_back_substitute(a: List[DD], cols: Int, qtb: List[DD]) -> List[DD]:
+def _dd_back_substitute(a: List[DD], cols: Int, qtb: List[DD]) -> List[DD]:
     """Solve `R x = qtb[0:cols]` in double-double. Empty list iff a pivot is exactly zero."""
     var x = List[DD]()
     for _ in range(cols):
@@ -465,7 +465,7 @@ fn _dd_back_substitute(a: List[DD], cols: Int, qtb: List[DD]) -> List[DD]:
 # ── the float64 control: identical algorithm, plain arithmetic ────────────────
 
 
-fn lstsq_pivot_floor(colnorm: Float64) -> Float64:
+def lstsq_pivot_floor(colnorm: Float64) -> Float64:
     """`2^-100 * colnorm` — double-double's own noise floor for a column of that magnitude.
 
     Written as 100 halvings rather than `colnorm * 2.0**-100` so it is exact for every finite
@@ -481,7 +481,7 @@ fn lstsq_pivot_floor(colnorm: Float64) -> Float64:
     return t
 
 
-fn _f64_qr_solve(
+def _f64_qr_solve(
     var a: List[Float64], rows: Int, cols: Int, var b: List[Float64]
 ) -> DDLstsq:
     """The same Householder QR least squares in plain float64.
@@ -583,7 +583,7 @@ fn _f64_qr_solve(
 # ── public drivers ────────────────────────────────────────────────────────────
 
 
-fn dd_lstsq_flat(
+def dd_lstsq_flat(
     a: List[Float64], rows: Int, cols: Int, b: List[Float64], refine: Int
 ) -> DDLstsq:
     """Compensated Householder QR least squares on a row-major float64 design matrix.
@@ -618,7 +618,7 @@ fn dd_lstsq_flat(
     return _dd_qr_solve(da^, rows, cols, db^, refine)
 
 
-fn f64_lstsq_flat(
+def f64_lstsq_flat(
     a: List[Float64], rows: Int, cols: Int, b: List[Float64]
 ) -> DDLstsq:
     """The float64 control for `dd_lstsq_flat`: identical algorithm, plain arithmetic.
@@ -650,7 +650,7 @@ fn f64_lstsq_flat(
     return _f64_qr_solve(ca^, rows, cols, cb^)
 
 
-fn _poly_dims_check(n: Int, lo_deg: Int, hi_deg: Int, lx: Int, ly: Int) -> Int:
+def _poly_dims_check(n: Int, lo_deg: Int, hi_deg: Int, lx: Int, ly: Int) -> Int:
     if n <= 0:
         return LSTSQ_ERR_EMPTY_DIM
     if lo_deg < 0 or hi_deg < lo_deg or hi_deg > LSTSQ_MAX_DEGREE:
@@ -660,7 +660,7 @@ fn _poly_dims_check(n: Int, lo_deg: Int, hi_deg: Int, lx: Int, ly: Int) -> Int:
     return _dims_check(n, hi_deg - lo_deg + 1, n * (hi_deg - lo_deg + 1), n)
 
 
-fn dd_poly_lstsq(
+def dd_poly_lstsq(
     x: List[Float64], y: List[Float64], n: Int,
     lo_deg: Int, hi_deg: Int, dd_powers: Bool, refine: Int
 ) -> DDLstsq:
@@ -725,7 +725,7 @@ fn dd_poly_lstsq(
     return _dd_qr_solve(a^, n, cols, b^, refine)
 
 
-fn f64_poly_lstsq(
+def f64_poly_lstsq(
     x: List[Float64], y: List[Float64], n: Int,
     lo_deg: Int, hi_deg: Int, dd_powers: Bool
 ) -> DDLstsq:
@@ -783,7 +783,7 @@ fn f64_poly_lstsq(
     return _f64_qr_solve(a^, n, cols, b^)
 
 
-fn dd_poly_lstsq_scaled(
+def dd_poly_lstsq_scaled(
     x: List[Float64], y: List[Float64], n: Int,
     hi_deg: Int, dd_powers: Bool, dd_mapback: Bool, refine: Int
 ) -> DDLstsq:

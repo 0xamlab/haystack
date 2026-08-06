@@ -22,7 +22,7 @@ from std.math import sqrt, abs as fabs
 # ── Equal weight ───────────────────────────────────────────────────────────────
 
 
-fn equal_weight(n_assets: Int) -> List[Float64]:
+def equal_weight(n_assets: Int) -> List[Float64]:
     """1/n allocation across n assets."""
     var w = List[Float64]()
     if n_assets <= 0:
@@ -36,7 +36,7 @@ fn equal_weight(n_assets: Int) -> List[Float64]:
 # ── Inverse variance ──────────────────────────────────────────────────────────
 
 
-fn inverse_variance(variances: List[Float64]) -> List[Float64]:
+def inverse_variance(variances: List[Float64]) -> List[Float64]:
     """Weight proportional to 1/variance. Higher variance → lower weight."""
     var n = len(variances)
     var w = List[Float64]()
@@ -59,7 +59,7 @@ fn inverse_variance(variances: List[Float64]) -> List[Float64]:
 # ── Risk parity (simple) ──────────────────────────────────────────────────────
 
 
-fn risk_parity_simple(variances: List[Float64]) -> List[Float64]:
+def risk_parity_simple(variances: List[Float64]) -> List[Float64]:
     """Weight proportional to 1/sqrt(variance) (risk parity approximation)."""
     var n = len(variances)
     var w = List[Float64]()
@@ -82,7 +82,7 @@ fn risk_parity_simple(variances: List[Float64]) -> List[Float64]:
 # ── Max Sharpe 2-asset ────────────────────────────────────────────────────────
 
 
-fn max_sharpe_2asset(
+def max_sharpe_2asset(
     r1: Float64,
     r2: Float64,
     s1: Float64,
@@ -117,7 +117,7 @@ fn max_sharpe_2asset(
 # ── Min variance 2-asset ──────────────────────────────────────────────────────
 
 
-fn min_variance_2asset(
+def min_variance_2asset(
     s1: Float64, s2: Float64, rho: Float64
 ) -> List[Float64]:
     """Minimum variance 2-asset weights.
@@ -144,7 +144,7 @@ fn min_variance_2asset(
 # ── Portfolio return ───────────────────────────────────────────────────────────
 
 
-fn portfolio_return(
+def portfolio_return(
     weights: List[Float64], returns: List[Float64]
 ) -> Float64:
     """Weighted portfolio return: Σ w_i * r_i."""
@@ -160,7 +160,7 @@ fn portfolio_return(
 # ── Portfolio variance 2-asset ─────────────────────────────────────────────────
 
 
-fn portfolio_variance_2asset(
+def portfolio_variance_2asset(
     w1: Float64, s1: Float64, s2: Float64, rho: Float64
 ) -> Float64:
     """Portfolio variance: w1²s1² + (1-w1)²s2² + 2w1(1-w1)ρs1s2."""
@@ -175,7 +175,7 @@ fn portfolio_variance_2asset(
 # ── Kelly criterion ───────────────────────────────────────────────────────────
 
 
-fn kelly_criterion(win_prob: Float64, win_ratio: Float64) -> Float64:
+def kelly_criterion(win_prob: Float64, win_ratio: Float64) -> Float64:
     """Kelly fraction: p - (1-p)/b where b = win_ratio.
 
     Returns the optimal fraction of capital to bet.
@@ -188,7 +188,7 @@ fn kelly_criterion(win_prob: Float64, win_ratio: Float64) -> Float64:
 # ── Efficient frontier 2-asset ─────────────────────────────────────────────────
 
 
-fn efficient_frontier_2asset(
+def efficient_frontier_2asset(
     r1: Float64,
     r2: Float64,
     s1: Float64,
@@ -224,7 +224,7 @@ fn efficient_frontier_2asset(
 # ── Rebalance threshold ───────────────────────────────────────────────────────
 
 
-fn rebalance_threshold(
+def rebalance_threshold(
     current_weights: List[Float64],
     target_weights: List[Float64],
     threshold: Float64,

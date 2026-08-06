@@ -23,7 +23,7 @@ from std.math import log, abs as fabs, min as fmin
 # ── logistic_map ─────────────────────────────────────────────────────────────
 
 
-fn logistic_map(r: Float64, x0: Float64, n_steps: Int) -> List[Float64]:
+def logistic_map(r: Float64, x0: Float64, n_steps: Int) -> List[Float64]:
     """Iterate the logistic map: x_{n+1} = r*x_n*(1-x_n).
 
     Args:
@@ -46,7 +46,7 @@ fn logistic_map(r: Float64, x0: Float64, n_steps: Int) -> List[Float64]:
 # ── lorenz_step ──────────────────────────────────────────────────────────────
 
 
-fn lorenz_step(
+def lorenz_step(
     x: Float64,
     y: Float64,
     z: Float64,
@@ -80,7 +80,7 @@ fn lorenz_step(
 # ── lorenz_simulate ──────────────────────────────────────────────────────────
 
 
-fn lorenz_simulate(
+def lorenz_simulate(
     x0: Float64,
     y0: Float64,
     z0: Float64,
@@ -132,7 +132,7 @@ fn lorenz_simulate(
 # ── lyapunov_exponent_logistic ───────────────────────────────────────────────
 
 
-fn lyapunov_exponent_logistic(
+def lyapunov_exponent_logistic(
     r: Float64, n_iter: Int, n_transient: Int
 ) -> Float64:
     """Lyapunov exponent for the logistic map.
@@ -167,7 +167,7 @@ fn lyapunov_exponent_logistic(
 # ── henon_map ────────────────────────────────────────────────────────────────
 
 
-fn henon_map(
+def henon_map(
     a: Float64, b: Float64, x0: Float64, y0: Float64, n_steps: Int
 ) -> List[List[Float64]]:
     """Hénon map: x_{n+1} = 1 - a*x_n² + y_n, y_{n+1} = b*x_n.
@@ -204,7 +204,7 @@ fn henon_map(
 # ── tent_map ─────────────────────────────────────────────────────────────────
 
 
-fn tent_map(mu: Float64, x0: Float64, n_steps: Int) -> List[Float64]:
+def tent_map(mu: Float64, x0: Float64, n_steps: Int) -> List[Float64]:
     """Tent map: x_{n+1} = mu * min(x, 1-x).
 
     Args:
@@ -227,7 +227,7 @@ fn tent_map(mu: Float64, x0: Float64, n_steps: Int) -> List[Float64]:
 # ── bifurcation_diagram ─────────────────────────────────────────────────────
 
 
-fn bifurcation_diagram(
+def bifurcation_diagram(
     r_start: Float64,
     r_end: Float64,
     n_r: Int,
@@ -272,7 +272,7 @@ fn bifurcation_diagram(
 # ── sensitivity_to_initial ───────────────────────────────────────────────────
 
 
-fn sensitivity_to_initial(
+def sensitivity_to_initial(
     r: Float64, x1: Float64, x2: Float64, n_steps: Int
 ) -> List[Float64]:
     """Track divergence |x1_n - x2_n| of two logistic map trajectories.
@@ -300,7 +300,7 @@ fn sensitivity_to_initial(
 # ── feigenbaum_ratio ─────────────────────────────────────────────────────────
 
 
-fn feigenbaum_ratio(r1: Float64, r2: Float64, r3: Float64) -> Float64:
+def feigenbaum_ratio(r1: Float64, r2: Float64, r3: Float64) -> Float64:
     """Feigenbaum ratio: δ = (r2-r1)/(r3-r2).
 
     Args:
@@ -320,7 +320,7 @@ fn feigenbaum_ratio(r1: Float64, r2: Float64, r3: Float64) -> Float64:
 # ── is_chaotic ───────────────────────────────────────────────────────────────
 
 
-fn is_chaotic(lyapunov: Float64) -> Bool:
+def is_chaotic(lyapunov: Float64) -> Bool:
     """Determine if system is chaotic based on Lyapunov exponent.
 
     Args:

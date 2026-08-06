@@ -25,7 +25,7 @@ comptime AGG_MEDIAN: Int = 7
 comptime ACCEPTED_TOKENS: String = "sum, avg (alias mean), min, max, count, var, std, median"
 
 
-fn parse_aggregation(token: String) -> Int:
+def parse_aggregation(token: String) -> Int:
     """Opcode for an aggregation token, or `AGG_UNKNOWN`.
 
     `mean` is accepted as an alias for `avg` so callers written against either
@@ -51,7 +51,7 @@ fn parse_aggregation(token: String) -> Int:
     return AGG_UNKNOWN
 
 
-fn aggregation_token(opcode: Int) -> String:
+def aggregation_token(opcode: Int) -> String:
     """The canonical spelling for an opcode — one name out, whatever came in."""
     if opcode == AGG_SUM:
         return "sum"
@@ -72,11 +72,11 @@ fn aggregation_token(opcode: Int) -> String:
     return "unknown"
 
 
-fn is_valid_aggregation(token: String) -> Bool:
+def is_valid_aggregation(token: String) -> Bool:
     return parse_aggregation(token) != AGG_UNKNOWN
 
 
-fn unknown_aggregation_error(token: String) -> String:
+def unknown_aggregation_error(token: String) -> String:
     """The error for an unrecognised token — names the accepted set."""
     return (
         '{"error":"unknown_aggregation: '
@@ -89,7 +89,7 @@ fn unknown_aggregation_error(token: String) -> String:
     )
 
 
-fn empty_yields_null(opcode: Int) -> Bool:
+def empty_yields_null(opcode: Int) -> Bool:
     """True when an empty input has no answer, as opposed to a zero.
 
     `count` of nothing is 0 and `sum` of nothing is 0 — those are real answers. The
@@ -100,6 +100,6 @@ fn empty_yields_null(opcode: Int) -> Bool:
     return opcode != AGG_COUNT and opcode != AGG_SUM
 
 
-fn requires_two_values(opcode: Int) -> Bool:
+def requires_two_values(opcode: Int) -> Bool:
     """True for reductions undefined below two observations (sample var/std)."""
     return opcode == AGG_VAR or opcode == AGG_STD

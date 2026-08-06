@@ -36,7 +36,7 @@ from tensorx.reduce import (
 )
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 

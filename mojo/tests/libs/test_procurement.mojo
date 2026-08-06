@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from procurement import total_cost_of_ownership, price_variance, purchase_price_variance_pct, inventory_turnover, days_inventory_outstanding, economic_order_quantity, reorder_point, safety_stock, supplier_score_weighted, savings_percentage, maverick_spend_ratio, payment_discount_annualized
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

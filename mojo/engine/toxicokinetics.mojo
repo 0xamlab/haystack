@@ -17,7 +17,7 @@ Public API:
 from std.math import log, exp
 
 
-fn internal_dose(
+def internal_dose(
     external_dose: Float64, bioavailability: Float64
 ) -> Float64:
     """Internal (absorbed) dose: ID = D_ext × F.
@@ -32,7 +32,7 @@ fn internal_dose(
     return external_dose * bioavailability
 
 
-fn peak_plasma_concentration(
+def peak_plasma_concentration(
     dose_mg: Float64, volume_of_distribution_l: Float64
 ) -> Float64:
     """Theoretical peak plasma concentration at t=0 (IV bolus).
@@ -51,7 +51,7 @@ fn peak_plasma_concentration(
     return dose_mg / volume_of_distribution_l
 
 
-fn time_to_peak(
+def time_to_peak(
     absorption_rate: Float64, elimination_rate: Float64
 ) -> Float64:
     """Time to peak plasma concentration for one-compartment oral model.
@@ -70,7 +70,7 @@ fn time_to_peak(
     return log(absorption_rate / elimination_rate) / (absorption_rate - elimination_rate)
 
 
-fn plasma_auc(
+def plasma_auc(
     c1: Float64, c2: Float64, t1: Float64, t2: Float64
 ) -> Float64:
     """Trapezoidal AUC between two time points.
@@ -91,7 +91,7 @@ fn plasma_auc(
     return (c1 + c2) / 2.0 * (t2 - t1)
 
 
-fn apparent_volume_distribution(
+def apparent_volume_distribution(
     dose_mg: Float64, c0_mg_per_l: Float64
 ) -> Float64:
     """Apparent volume of distribution: Vd = dose / C0.
@@ -108,7 +108,7 @@ fn apparent_volume_distribution(
     return dose_mg / c0_mg_per_l
 
 
-fn elimination_half_life(elimination_rate: Float64) -> Float64:
+def elimination_half_life(elimination_rate: Float64) -> Float64:
     """Elimination half-life: t½ = ln2 / ke.
 
     Args:
@@ -122,7 +122,7 @@ fn elimination_half_life(elimination_rate: Float64) -> Float64:
     return log(2.0) / elimination_rate
 
 
-fn systemic_clearance(
+def systemic_clearance(
     elimination_rate: Float64, volume_of_distribution: Float64
 ) -> Float64:
     """Total systemic clearance: CL = ke × Vd.
@@ -137,7 +137,7 @@ fn systemic_clearance(
     return elimination_rate * volume_of_distribution
 
 
-fn bioconcentration_factor(
+def bioconcentration_factor(
     tissue_conc: Float64, water_conc: Float64
 ) -> Float64:
     """Bioconcentration factor: BCF = C_tissue / C_water.
@@ -154,7 +154,7 @@ fn bioconcentration_factor(
     return tissue_conc / water_conc
 
 
-fn toxic_equivalency_factor(
+def toxic_equivalency_factor(
     congener_conc: Float64, tef: Float64
 ) -> Float64:
     """Toxic equivalency: TEQ = concentration × TEF.
@@ -169,7 +169,7 @@ fn toxic_equivalency_factor(
     return congener_conc * tef
 
 
-fn margin_of_exposure(
+def margin_of_exposure(
     noael_mg_per_kg: Float64, human_dose_mg_per_kg: Float64
 ) -> Float64:
     """Margin of exposure: MOE = NOAEL / human exposure.

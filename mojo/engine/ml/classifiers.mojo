@@ -20,7 +20,7 @@ from std.random import random_float64
 # ── Distance functions ────────────────────────────────────────────────────────
 
 
-fn euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
     """Euclidean (L2) distance between two vectors."""
     var n = len(a)
     if len(b) < n:
@@ -32,7 +32,7 @@ fn euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
     return sqrt(s)
 
 
-fn manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
     """Manhattan (L1) distance between two vectors."""
     var n = len(a)
     if len(b) < n:
@@ -43,7 +43,7 @@ fn manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
+def cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
     """Cosine similarity: dot(a,b) / (||a|| * ||b||).
 
     Returns 0.0 if either vector has zero norm.
@@ -69,7 +69,7 @@ fn cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
 # ── Activation functions ──────────────────────────────────────────────────────
 
 
-fn logistic_sigmoid(x: Float64) -> Float64:
+def logistic_sigmoid(x: Float64) -> Float64:
     """Logistic sigmoid: σ(x) = 1 / (1 + exp(-x))."""
     if x >= 500.0:
         return 1.0
@@ -78,7 +78,7 @@ fn logistic_sigmoid(x: Float64) -> Float64:
     return 1.0 / (1.0 + exp(-x))
 
 
-fn softmax(values: List[Float64]) -> List[Float64]:
+def softmax(values: List[Float64]) -> List[Float64]:
     """Softmax: exp(x_i - max) / Σ exp(x_j - max).
 
     Numerically stable via max-subtraction.
@@ -112,7 +112,7 @@ fn softmax(values: List[Float64]) -> List[Float64]:
 # ── KNN prediction ────────────────────────────────────────────────────────────
 
 
-fn knn_predict(
+def knn_predict(
     train_x: List[List[Float64]],
     train_y: List[Float64],
     test_point: List[Float64],
@@ -182,7 +182,7 @@ fn knn_predict(
 # ── K-Means clustering ───────────────────────────────────────────────────────
 
 
-fn kmeans_cluster(
+def kmeans_cluster(
     data: List[List[Float64]], k: Int, max_iter: Int = 100
 ) raises -> List[Int]:
     """K-means clustering (Lloyd's algorithm).

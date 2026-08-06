@@ -2646,19 +2646,19 @@ def _python_result_summary(value: Any, *, lib: str, function: str) -> str | None
 
 def _emit_mojo_summary_helpers(include_vector_kernels_table_helpers: bool) -> list[str]:
     lines = [
-        "fn _summary_hash_string(value: String) -> Int:",
+        "def _summary_hash_string(value: String) -> Int:",
         "    var h = 7",
         "    var bytes = value.as_bytes()",
         "    for i in range(len(bytes)):",
         "        h = (h * 131 + Int(bytes[i])) % 2147483647",
         "    return h",
         "",
-        "fn _summary_float64(value: Float64) -> String:",
+        "def _summary_float64(value: Float64) -> String:",
         '    if isnan(value): return "float:nan"',
         '    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"',
         '    return "float:" + String(value)',
         "",
-        "fn _summary_float64_rounded6(value: Float64) -> String:",
+        "def _summary_float64_rounded6(value: Float64) -> String:",
         '    if isnan(value): return "float:nan"',
         '    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"',
         "    var scaled = value * 1000000.0",

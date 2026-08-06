@@ -130,7 +130,7 @@ comptime MLP_MAX_VOCAB: Int = 1 << 22
 comptime MLP_MAX_WORK_CELLS: Int = 1 << 38
 
 
-fn mlp_status_name(code: Int) -> String:
+def mlp_status_name(code: Int) -> String:
     """Name a status code. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == MLP_OK:
         return String("ok")
@@ -153,7 +153,7 @@ fn mlp_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn mlp_backend_name(code: Int) -> String:
+def mlp_backend_name(code: Int) -> String:
     """Name a backend tag. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == MLP_BACKEND_CPU_SIMD:
         return String("cpu_simd")
@@ -162,7 +162,7 @@ fn mlp_backend_name(code: Int) -> String:
     return String("unknown_backend")
 
 
-fn mlp_work_fits(n_tok: Int, d_model: Int, d_ff: Int, ceiling: Int) -> Bool:
+def mlp_work_fits(n_tok: Int, d_model: Int, d_ff: Int, ceiling: Int) -> Bool:
     """True when `n_tok * d_model * d_ff` fits in `ceiling`, computed WITHOUT forming the product.
 
     Three factors, grown one at a time by division. A wrapping 64-bit multiply is how a product guard
@@ -190,7 +190,7 @@ fn mlp_work_fits(n_tok: Int, d_model: Int, d_ff: Int, ceiling: Int) -> Bool:
     return d_ff <= remaining
 
 
-fn mlp_dims_check(n_tok: Int, d_model: Int, d_ff: Int) -> Int:
+def mlp_dims_check(n_tok: Int, d_model: Int, d_ff: Int) -> Int:
     """Validate a feed-forward shape.
 
     @capability mlp_dims_check
@@ -210,7 +210,7 @@ fn mlp_dims_check(n_tok: Int, d_model: Int, d_ff: Int) -> Int:
     return MLP_OK
 
 
-fn mlp_vocab_check(n_tok: Int, vocab: Int, d_model: Int) -> Int:
+def mlp_vocab_check(n_tok: Int, vocab: Int, d_model: Int) -> Int:
     """Validate an embedding shape.
 
     The vocabulary is checked separately from `d_ff` because it is the one dimension a caller does
@@ -236,7 +236,7 @@ fn mlp_vocab_check(n_tok: Int, vocab: Int, d_model: Int) -> Int:
     return MLP_OK
 
 
-fn mlp_activation_known(kind: Int) -> Bool:
+def mlp_activation_known(kind: Int) -> Bool:
     """True for a selector this package implements.
 
     An unknown activation is refused rather than defaulted. Defaulting to SwiGLU would be right for
@@ -245,12 +245,12 @@ fn mlp_activation_known(kind: Int) -> Bool:
     return kind == MLP_ACT_SWIGLU or kind == MLP_ACT_GEGLU_TANH or kind == MLP_ACT_GEGLU_ERF
 
 
-fn mlp_scalars_ok(value: Float64) -> Bool:
+def mlp_scalars_ok(value: Float64) -> Bool:
     """True when a scalar is finite. Checked before it can turn a whole tensor into NaN."""
     return tx_finite(value)
 
 
-fn mlp_tol_for(magnitude: Float64, reduction_width: Int) -> Float64:
+def mlp_tol_for(magnitude: Float64, reduction_width: Int) -> Float64:
     """Tolerance for comparing two spellings of a value of size `magnitude` (rule 4b).
 
     Scales with the quantity judged AND with the reduction that produced it: a feed-forward output is
@@ -262,7 +262,7 @@ fn mlp_tol_for(magnitude: Float64, reduction_width: Int) -> Float64:
     return 1.0e-14 * (1.0 + mag) * (1.0 + width)
 
 
-fn mlp_pair_ok(n: Int, a: List[Float64], b: List[Float64]) -> Int:
+def mlp_pair_ok(n: Int, a: List[Float64], b: List[Float64]) -> Int:
     """Validate a flat elementwise pair: `n` positive, in budget, and not past either buffer's end.
 
     This is the count-relation guard a gated activation needs: `n` travels as a caller-supplied
@@ -288,7 +288,7 @@ fn mlp_pair_ok(n: Int, a: List[Float64], b: List[Float64]) -> Int:
     return MLP_OK
 
 
-fn mlp_block_dims_ok(
+def mlp_block_dims_ok(
     tokens: Int, d_model: Int, d_ff: Int,
     x: List[Float64], wg: List[Float64], wu: List[Float64], wd: List[Float64],
 ) -> Int:
@@ -320,7 +320,7 @@ fn mlp_block_dims_ok(
     return MLP_OK
 
 
-fn mlp_workers_for(n: Int, requested: Int, physical_cores: Int) -> Int:
+def mlp_workers_for(n: Int, requested: Int, physical_cores: Int) -> Int:
     """Clamp a worker request to `[1, min(physical_cores, n)]`, with the measured small-size floor.
 
     `requested <= 0` means "auto": one worker below `MLP_PARALLEL_MIN_ELEMS`, every physical core

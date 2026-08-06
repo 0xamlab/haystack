@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log
 
 
-fn ethanol_yield(glucose_g: Float64) -> Float64:
+def ethanol_yield(glucose_g: Float64) -> Float64:
     """Theoretical ethanol yield from glucose fermentation.
 
     C6H12O6 → 2 C2H5OH + 2 CO2
@@ -31,7 +31,7 @@ fn ethanol_yield(glucose_g: Float64) -> Float64:
     return 0.511 * glucose_g
 
 
-fn alcohol_by_volume(original_gravity: Float64, final_gravity: Float64) -> Float64:
+def alcohol_by_volume(original_gravity: Float64, final_gravity: Float64) -> Float64:
     """Alcohol by volume from hydrometer readings (simplified).
 
     ABV ≈ (OG - FG) × 131.25
@@ -46,7 +46,7 @@ fn alcohol_by_volume(original_gravity: Float64, final_gravity: Float64) -> Float
     return (original_gravity - final_gravity) * 131.25
 
 
-fn carbon_dioxide_produced(glucose_g: Float64) -> Float64:
+def carbon_dioxide_produced(glucose_g: Float64) -> Float64:
     """CO2 produced during alcoholic fermentation.
 
     Yield = 0.489 g CO2 / g glucose
@@ -60,7 +60,7 @@ fn carbon_dioxide_produced(glucose_g: Float64) -> Float64:
     return 0.489 * glucose_g
 
 
-fn yeast_growth_rate(
+def yeast_growth_rate(
     mu_max: Float64, substrate_conc: Float64, ks: Float64, ethanol_conc: Float64
 ) -> Float64:
     """Yeast-specific growth rate with ethanol inhibition.
@@ -84,7 +84,7 @@ fn yeast_growth_rate(
     return mu_max * monod * inhibition
 
 
-fn substrate_consumption(
+def substrate_consumption(
     growth_rate: Float64, biomass_conc: Float64, yield_factor: Float64
 ) -> Float64:
     """Substrate consumption rate (simplified, growth-associated).
@@ -104,7 +104,7 @@ fn substrate_consumption(
     return (growth_rate / yield_factor) * biomass_conc
 
 
-fn volumetric_productivity(
+def volumetric_productivity(
     product_conc: Float64, fermentation_time: Float64
 ) -> Float64:
     """Volumetric product productivity.
@@ -123,7 +123,7 @@ fn volumetric_productivity(
     return product_conc / fermentation_time
 
 
-fn fermentation_efficiency(
+def fermentation_efficiency(
     actual_yield: Float64, theoretical_yield: Float64
 ) -> Float64:
     """Fermentation efficiency relative to theoretical maximum.
@@ -142,7 +142,7 @@ fn fermentation_efficiency(
     return actual_yield / theoretical_yield * 100.0
 
 
-fn dissolved_oxygen_kla(
+def dissolved_oxygen_kla(
     kla: Float64, o2_saturation: Float64, o2_actual: Float64
 ) -> Float64:
     """Oxygen transfer rate: OTR = kLa·(C* - C).
@@ -161,7 +161,7 @@ fn dissolved_oxygen_kla(
     return kla * deficit
 
 
-fn ph_buffer_capacity(
+def ph_buffer_capacity(
     acid_base_concentration: Float64, pka: Float64, ph: Float64
 ) -> Float64:
     """Buffer capacity near pKa (van Slyke equation).
@@ -185,7 +185,7 @@ fn ph_buffer_capacity(
     return 2.303 * ka * acid_base_concentration / denom
 
 
-fn heat_generation_rate(
+def heat_generation_rate(
     oxygen_uptake_rate: Float64, heat_of_combustion: Float64
 ) -> Float64:
     """Metabolic heat generation in a fermenter.

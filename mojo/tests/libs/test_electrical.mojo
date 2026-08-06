@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from electrical import ohms_law_v, ohms_law_i, ohms_law_r, power_dc, series_resistance, parallel_resistance, rc_time_constant, rc_voltage, rlc_resonance, impedance_magnitude, power_factor, capacitive_reactance, inductive_reactance, voltage_divider
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

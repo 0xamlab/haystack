@@ -3,7 +3,7 @@ from std.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 
-fn _k(o: UnsafePointer[Float32, origin=MutAnyOrigin]):
+def _k(o: UnsafePointer[Float32, origin=MutAnyOrigin]):
     if o[0] == Float32(999999.0):
         o[0] = Float32(1.0)
 

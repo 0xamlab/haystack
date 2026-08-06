@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from env import env_get, env_get_int, env_get_float, env_get_bool, env_is_set
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

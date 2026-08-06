@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from lora_adapters import lora_forward, lora_merge_weight, qlora_dequant_forward, lora_gradient_a, lora_gradient_b, adapter_scaling_factor, prefix_tuning_key_aug, prompt_tuning_embed, dora_magnitude_scale, adapter_param_efficiency
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

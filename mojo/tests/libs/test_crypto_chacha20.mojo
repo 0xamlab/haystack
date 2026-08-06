@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from crypto.chacha20 import rotl32, chacha20_init_state, add_states, xor_states, chacha20_block, chacha20_encrypt, chacha20_decrypt
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

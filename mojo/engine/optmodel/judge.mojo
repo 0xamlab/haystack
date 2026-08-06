@@ -134,11 +134,11 @@ struct PlaneVerdict(Copyable, Movable):
     var message: String
 
 
-fn _no_judge(status: Int, objective: Float64, truth: Float64) -> JudgeReport:
+def _no_judge(status: Int, objective: Float64, truth: Float64) -> JudgeReport:
     return JudgeReport(status, False, objective, truth, 0.0, 0.0, False, 0.0, 0.0, False)
 
 
-fn judge_objective(
+def judge_objective(
     objective: Float64, ground_truth: Float64,
     strict_rel_tol: Float64, lineage_rel_tol: Float64,
 ) -> JudgeReport:
@@ -184,7 +184,7 @@ fn judge_objective(
     )
 
 
-fn _verdict_of(matched: Bool) -> Int:
+def _verdict_of(matched: Bool) -> Int:
     if matched:
         return OPTM_VERDICT_VERIFIED
     return OPTM_VERDICT_WRONG
@@ -192,7 +192,7 @@ fn _verdict_of(matched: Bool) -> Int:
 
 # PACKING IS LOAD-BEARING: `mojo_inventory` follows a signature a bounded number of
 # lines past its first and silently drops what does not close in the window.
-fn formulation_verdict_flat(
+def formulation_verdict_flat(
     n_vars: Int, n_cons: Int, maximize: Bool, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],
@@ -253,7 +253,7 @@ fn formulation_verdict_flat(
     )
 
 
-fn _refused_verdict(status: Int, ground_truth: Float64) -> PlaneVerdict:
+def _refused_verdict(status: Int, ground_truth: Float64) -> PlaneVerdict:
     return PlaneVerdict(
         status, OPTM_VERDICT_REFUSED, OPTM_VERDICT_REFUSED,
         False, True, False, status, False, 0.0, ground_truth, 0.0, 0.0,
@@ -262,7 +262,7 @@ fn _refused_verdict(status: Int, ground_truth: Float64) -> PlaneVerdict:
     )
 
 
-fn formulation_verdict_default(
+def formulation_verdict_default(
     n_vars: Int, n_cons: Int, maximize: Bool, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],

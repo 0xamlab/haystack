@@ -23,7 +23,7 @@ from std.math import exp, log, abs as fabs
 # ── prospect_theory_value ────────────────────────────────────────────────────
 
 
-fn prospect_theory_value(
+def prospect_theory_value(
     x: Float64, alpha: Float64, lambda_loss: Float64
 ) -> Float64:
     """Prospect theory value function: v(x) = x^α if x≥0, else -λ*(-x)^α.
@@ -50,7 +50,7 @@ fn prospect_theory_value(
 # ── probability_weighting ────────────────────────────────────────────────────
 
 
-fn probability_weighting(p: Float64, gamma: Float64) -> Float64:
+def probability_weighting(p: Float64, gamma: Float64) -> Float64:
     """Prelec probability weighting: w(p) = p^γ / (p^γ + (1-p)^γ)^(1/γ).
 
     Args:
@@ -80,7 +80,7 @@ fn probability_weighting(p: Float64, gamma: Float64) -> Float64:
 # ── hyperbolic_discount ──────────────────────────────────────────────────────
 
 
-fn hyperbolic_discount(
+def hyperbolic_discount(
     value: Float64, k: Float64, delay: Float64
 ) -> Float64:
     """Hyperbolic discount: PV = V / (1 + k*t).
@@ -99,7 +99,7 @@ fn hyperbolic_discount(
 # ── quasi_hyperbolic_discount ────────────────────────────────────────────────
 
 
-fn quasi_hyperbolic_discount(
+def quasi_hyperbolic_discount(
     value: Float64, beta: Float64, delta: Float64, period: Float64
 ) -> Float64:
     """Quasi-hyperbolic discount: PV = β*δ^t*V for t>0, V for t=0.
@@ -123,7 +123,7 @@ fn quasi_hyperbolic_discount(
 # ── anchoring_adjusted_estimate ──────────────────────────────────────────────
 
 
-fn anchoring_adjusted_estimate(
+def anchoring_adjusted_estimate(
     anchor: Float64, adjustment: Float64, adjustment_factor: Float64
 ) -> Float64:
     """Anchoring-adjusted estimate: Est = anchor + adjustment * factor.
@@ -142,7 +142,7 @@ fn anchoring_adjusted_estimate(
 # ── endowment_effect_wta_wtp_ratio ──────────────────────────────────────────
 
 
-fn endowment_effect_wta_wtp_ratio(
+def endowment_effect_wta_wtp_ratio(
     wta: Float64, wtp: Float64
 ) -> Float64:
     """Endowment effect WTA/WTP ratio: Ratio = WTA / WTP.
@@ -162,7 +162,7 @@ fn endowment_effect_wta_wtp_ratio(
 # ── loss_aversion_coefficient ────────────────────────────────────────────────
 
 
-fn loss_aversion_coefficient(
+def loss_aversion_coefficient(
     loss_impact: Float64, gain_impact: Float64
 ) -> Float64:
     """Loss aversion coefficient: λ = |loss_impact| / gain_impact.
@@ -182,7 +182,7 @@ fn loss_aversion_coefficient(
 # ── mental_accounting_total ──────────────────────────────────────────────────
 
 
-fn mental_accounting_total(
+def mental_accounting_total(
     gains: Float64, losses: Float64
 ) -> Float64:
     """Mental accounting: Net = gains + losses (segregation).
@@ -200,7 +200,7 @@ fn mental_accounting_total(
 # ── status_quo_bias ──────────────────────────────────────────────────────────
 
 
-fn status_quo_bias(
+def status_quo_bias(
     switching_cost: Float64, switching_benefit: Float64
 ) -> Float64:
     """Status quo bias: Bias = cost - benefit. Positive means stay.
@@ -218,7 +218,7 @@ fn status_quo_bias(
 # ── sunk_cost_ratio ──────────────────────────────────────────────────────────
 
 
-fn sunk_cost_ratio(
+def sunk_cost_ratio(
     sunk: Float64, total_budget: Float64
 ) -> Float64:
     """Sunk cost ratio: SCR = sunk / total.
@@ -238,7 +238,7 @@ fn sunk_cost_ratio(
 # ── fairness_ultimatum_threshold ─────────────────────────────────────────────
 
 
-fn fairness_ultimatum_threshold(
+def fairness_ultimatum_threshold(
     offer: Float64, total: Float64
 ) -> Float64:
     """Fairness in ultimatum game: Fair% = (offer/total) * 100.
@@ -258,7 +258,7 @@ fn fairness_ultimatum_threshold(
 # ── nudge_effectiveness ──────────────────────────────────────────────────────
 
 
-fn nudge_effectiveness(
+def nudge_effectiveness(
     treated_rate: Float64, control_rate: Float64
 ) -> Float64:
     """Nudge effectiveness: Effect = treated_rate - control_rate.

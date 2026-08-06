@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from geomorphology import stream_power, shear_stress_flow, shields_parameter, settling_velocity_stokes, erosion_rate_spl, hillslope_diffusion, drainage_density, relief_ratio, sinuosity, hack_law_length, ruggedness_number, hypsometric_integral
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

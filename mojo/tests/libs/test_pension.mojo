@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pension import replacement_ratio, defined_benefit_pension, defined_contribution_value, annuity_factor, pension_lump_sum_from_annuity, funding_ratio, contribution_rate_required, inflation_adjusted_pension, pension_gap, social_security_bend_points, years_to_full_vesting, withdrawal_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -23,7 +23,7 @@ from std.random import random_float64
 # ── Sorting helper ────────────────────────────────────────────────────────────
 
 
-fn _sort_copy(data: List[Float64]) -> List[Float64]:
+def _sort_copy(data: List[Float64]) -> List[Float64]:
     """Return a sorted copy (insertion sort)."""
     var out = data.copy()
     var n = len(out)
@@ -40,7 +40,7 @@ fn _sort_copy(data: List[Float64]) -> List[Float64]:
 # ── percentile ────────────────────────────────────────────────────────────────
 
 
-fn percentile(data: List[Float64], p: Float64) -> Float64:
+def percentile(data: List[Float64], p: Float64) -> Float64:
     """Percentile (0-100) using linear interpolation.
 
     Sorts the data, then interpolates between the two nearest ranks.
@@ -63,7 +63,7 @@ fn percentile(data: List[Float64], p: Float64) -> Float64:
 # ── median ────────────────────────────────────────────────────────────────────
 
 
-fn median(data: List[Float64]) -> Float64:
+def median(data: List[Float64]) -> Float64:
     """Median value of a list."""
     var n = len(data)
     if n == 0:
@@ -77,7 +77,7 @@ fn median(data: List[Float64]) -> Float64:
 # ── mad ───────────────────────────────────────────────────────────────────────
 
 
-fn mad(data: List[Float64]) -> Float64:
+def mad(data: List[Float64]) -> Float64:
     """Median Absolute Deviation = median(|x_i - median(x)|)."""
     var n = len(data)
     if n == 0:
@@ -92,7 +92,7 @@ fn mad(data: List[Float64]) -> Float64:
 # ── zscore_detect ─────────────────────────────────────────────────────────────
 
 
-fn zscore_detect(data: List[Float64], threshold: Float64 = 3.0) -> List[Bool]:
+def zscore_detect(data: List[Float64], threshold: Float64 = 3.0) -> List[Bool]:
     """Z-score anomaly detection. Returns True where |z| > threshold."""
     var n = len(data)
     var flags = List[Bool]()
@@ -128,7 +128,7 @@ fn zscore_detect(data: List[Float64], threshold: Float64 = 3.0) -> List[Bool]:
 # ── iqr_detect ────────────────────────────────────────────────────────────────
 
 
-fn iqr_detect(data: List[Float64], factor: Float64 = 1.5) -> List[Bool]:
+def iqr_detect(data: List[Float64], factor: Float64 = 1.5) -> List[Bool]:
     """IQR-based outlier detection.
 
     Outlier if value < Q1 - factor*IQR or value > Q3 + factor*IQR.
@@ -154,7 +154,7 @@ fn iqr_detect(data: List[Float64], factor: Float64 = 1.5) -> List[Bool]:
 # ── modified_zscore_detect ────────────────────────────────────────────────────
 
 
-fn modified_zscore_detect(
+def modified_zscore_detect(
     data: List[Float64], threshold: Float64 = 3.5
 ) -> List[Bool]:
     """Modified Z-score using median and MAD.
@@ -186,7 +186,7 @@ fn modified_zscore_detect(
 # ── isolation_score ───────────────────────────────────────────────────────────
 
 
-fn _avg_path_length(n: Float64) -> Float64:
+def _avg_path_length(n: Float64) -> Float64:
     """Average path length of unsuccessful search in BST of size n."""
     if n <= 1.0:
         return 0.0
@@ -197,7 +197,7 @@ fn _avg_path_length(n: Float64) -> Float64:
     return 2.0 * h - 2.0 * (n - 1.0) / n
 
 
-fn isolation_score(
+def isolation_score(
     data: List[Float64],
     point: Float64,
     n_trees: Int = 100,
@@ -285,7 +285,7 @@ fn isolation_score(
     return score
 
 
-fn exp_approx(x: Float64) -> Float64:
+def exp_approx(x: Float64) -> Float64:
     """Fast exp approximation via Taylor series."""
     # Clamp to avoid overflow
     var clamped = x
@@ -304,7 +304,7 @@ fn exp_approx(x: Float64) -> Float64:
 # ── grubbs_test_statistic ─────────────────────────────────────────────────────
 
 
-fn grubbs_test_statistic(data: List[Float64]) -> Float64:
+def grubbs_test_statistic(data: List[Float64]) -> Float64:
     """Grubbs test statistic G = max|x_i - mean| / std."""
     var n = len(data)
     if n < 3:
@@ -335,7 +335,7 @@ fn grubbs_test_statistic(data: List[Float64]) -> Float64:
 # ── count_anomalies ───────────────────────────────────────────────────────────
 
 
-fn count_anomalies(flags: List[Bool]) -> Int:
+def count_anomalies(flags: List[Bool]) -> Int:
     """Count True values in a flag list."""
     var count: Int = 0
     for i in range(len(flags)):

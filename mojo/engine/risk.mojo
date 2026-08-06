@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs
 # ── Sorting helper ────────────────────────────────────────────────────────────
 
 
-fn _sort_copy(data: List[Float64]) -> List[Float64]:
+def _sort_copy(data: List[Float64]) -> List[Float64]:
     """Return a sorted copy (insertion sort)."""
     var out = data.copy()
     var n = len(out)
@@ -41,7 +41,7 @@ fn _sort_copy(data: List[Float64]) -> List[Float64]:
 # ── Stats helpers ─────────────────────────────────────────────────────────────
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     var n = len(data)
     if n == 0:
         return 0.0
@@ -51,7 +51,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _std(data: List[Float64]) -> Float64:
+def _std(data: List[Float64]) -> Float64:
     var n = len(data)
     if n < 2:
         return 0.0
@@ -63,7 +63,7 @@ fn _std(data: List[Float64]) -> Float64:
     return sqrt(ss / Float64(n))
 
 
-fn _cov(a: List[Float64], b: List[Float64]) -> Float64:
+def _cov(a: List[Float64], b: List[Float64]) -> Float64:
     var n = len(a)
     if n < 2:
         return 0.0
@@ -75,7 +75,7 @@ fn _cov(a: List[Float64], b: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _var(data: List[Float64]) -> Float64:
+def _var(data: List[Float64]) -> Float64:
     var n = len(data)
     if n < 2:
         return 0.0
@@ -90,7 +90,7 @@ fn _var(data: List[Float64]) -> Float64:
 # ── value_at_risk ─────────────────────────────────────────────────────────────
 
 
-fn value_at_risk(returns: List[Float64], confidence: Float64) -> Float64:
+def value_at_risk(returns: List[Float64], confidence: Float64) -> Float64:
     """Historical VaR at given confidence level (e.g. 0.95).
 
     Returns the loss at the (1-confidence) percentile of returns.
@@ -113,7 +113,7 @@ fn value_at_risk(returns: List[Float64], confidence: Float64) -> Float64:
 # ── conditional_var ───────────────────────────────────────────────────────────
 
 
-fn conditional_var(returns: List[Float64], confidence: Float64) -> Float64:
+def conditional_var(returns: List[Float64], confidence: Float64) -> Float64:
     """CVaR (Expected Shortfall): average of returns below VaR threshold."""
     var n = len(returns)
     if n == 0:
@@ -134,7 +134,7 @@ fn conditional_var(returns: List[Float64], confidence: Float64) -> Float64:
 # ── max_drawdown ──────────────────────────────────────────────────────────────
 
 
-fn max_drawdown(values: List[Float64]) -> Float64:
+def max_drawdown(values: List[Float64]) -> Float64:
     """Maximum drawdown from peak to trough (as fraction)."""
     var n = len(values)
     if n < 2:
@@ -153,7 +153,7 @@ fn max_drawdown(values: List[Float64]) -> Float64:
 # ── drawdown_series ───────────────────────────────────────────────────────────
 
 
-fn drawdown_series(values: List[Float64]) -> List[Float64]:
+def drawdown_series(values: List[Float64]) -> List[Float64]:
     """Drawdown at each point (fraction below running peak)."""
     var n = len(values)
     var result = List[Float64]()
@@ -171,7 +171,7 @@ fn drawdown_series(values: List[Float64]) -> List[Float64]:
 # ── sortino_ratio ─────────────────────────────────────────────────────────────
 
 
-fn sortino_ratio(returns: List[Float64], target: Float64 = 0.0) -> Float64:
+def sortino_ratio(returns: List[Float64], target: Float64 = 0.0) -> Float64:
     """Sortino ratio: (mean - target) / downside_std."""
     var m = _mean(returns)
     var dd = downside_deviation(returns, target)
@@ -183,7 +183,7 @@ fn sortino_ratio(returns: List[Float64], target: Float64 = 0.0) -> Float64:
 # ── sharpe_ratio ──────────────────────────────────────────────────────────────
 
 
-fn sharpe_ratio(returns: List[Float64], risk_free: Float64 = 0.0) -> Float64:
+def sharpe_ratio(returns: List[Float64], risk_free: Float64 = 0.0) -> Float64:
     """Sharpe ratio: (mean - rf) / std."""
     var m = _mean(returns)
     var s = _std(returns)
@@ -195,7 +195,7 @@ fn sharpe_ratio(returns: List[Float64], risk_free: Float64 = 0.0) -> Float64:
 # ── beta ──────────────────────────────────────────────────────────────────────
 
 
-fn beta(asset_returns: List[Float64], market_returns: List[Float64]) -> Float64:
+def beta(asset_returns: List[Float64], market_returns: List[Float64]) -> Float64:
     """Beta = cov(asset, market) / var(market)."""
     var v = _var(market_returns)
     if v < 1e-15:
@@ -206,7 +206,7 @@ fn beta(asset_returns: List[Float64], market_returns: List[Float64]) -> Float64:
 # ── alpha ─────────────────────────────────────────────────────────────────────
 
 
-fn alpha(
+def alpha(
     asset_returns: List[Float64],
     market_returns: List[Float64],
     risk_free: Float64 = 0.0,
@@ -221,7 +221,7 @@ fn alpha(
 # ── information_ratio ─────────────────────────────────────────────────────────
 
 
-fn information_ratio(returns: List[Float64], benchmark: List[Float64]) -> Float64:
+def information_ratio(returns: List[Float64], benchmark: List[Float64]) -> Float64:
     """Information ratio: mean(excess) / std(excess)."""
     var n = len(returns)
     if n == 0 or len(benchmark) != n:
@@ -239,7 +239,7 @@ fn information_ratio(returns: List[Float64], benchmark: List[Float64]) -> Float6
 # ── calmar_ratio ──────────────────────────────────────────────────────────────
 
 
-fn calmar_ratio(returns: List[Float64], values: List[Float64]) -> Float64:
+def calmar_ratio(returns: List[Float64], values: List[Float64]) -> Float64:
     """Calmar ratio: annualized_return / max_drawdown. Annualize = mean*252."""
     var mdd = max_drawdown(values)
     if mdd < 1e-15:
@@ -251,7 +251,7 @@ fn calmar_ratio(returns: List[Float64], values: List[Float64]) -> Float64:
 # ── downside_deviation ────────────────────────────────────────────────────────
 
 
-fn downside_deviation(returns: List[Float64], target: Float64 = 0.0) -> Float64:
+def downside_deviation(returns: List[Float64], target: Float64 = 0.0) -> Float64:
     """Downside deviation: sqrt(mean(min(r-target, 0)²))."""
     var n = len(returns)
     if n == 0:

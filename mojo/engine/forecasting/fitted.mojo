@@ -317,7 +317,7 @@ struct FittedForecast(Copyable, Movable):
     var init_status_name: String
 
 
-fn _no_fitted(status: Int, method_id: Int, horizon: Int, n_train: Int) -> FittedForecast:
+def _no_fitted(status: Int, method_id: Int, horizon: Int, n_train: Int) -> FittedForecast:
     """A refusal: no path, no parameter estimates, every presence flag cleared."""
     return FittedForecast(
         status, method_id, horizon, n_train, List[Float64](), False,
@@ -326,7 +326,7 @@ fn _no_fitted(status: Int, method_id: Int, horizon: Int, n_train: Int) -> Fitted
     )
 
 
-fn _clean_pass(
+def _clean_pass(
     y: List[Float64], alpha: Float64, beta: Float64, phi: Float64,
     l0: Float64, b0: Float64,
 ) -> List[Float64]:
@@ -361,7 +361,7 @@ fn _clean_pass(
     return out^
 
 
-fn _objective(
+def _objective(
     y: List[Float64], alpha: Float64, beta: Float64, phi: Float64,
     l0: Float64, b0: Float64,
 ) -> Float64:
@@ -384,7 +384,7 @@ fn _objective(
     return n * log(sse + 1.0e-8)
 
 
-fn _aaa_pass(
+def _aaa_pass(
     y: List[Float64], m: Int, alpha: Float64, beta: Float64, gamma: Float64,
     l0: Float64, b0: Float64, s_init: List[Float64],
 ) -> List[Float64]:
@@ -448,7 +448,7 @@ fn _aaa_pass(
     return out^
 
 
-fn _seasonal_decompose_state(y: List[Float64], m: Int) -> List[Float64]:
+def _seasonal_decompose_state(y: List[Float64], m: Int) -> List[Float64]:
     """`[l0, b0, s_1..s_(m-1)]` — the reference `initstate` for a seasonal additive
     model, from the record itself.
 
@@ -531,7 +531,7 @@ fn _seasonal_decompose_state(y: List[Float64], m: Int) -> List[Float64]:
     return out^
 
 
-fn fitted_init_solve(
+def fitted_init_solve(
     y: List[Float64], alpha: Float64, beta: Float64, phi: Float64
 ) -> InitSolve:
     """The exact SSE-optimal initial state (l0, b0) for fixed (alpha, beta, phi).
@@ -635,7 +635,7 @@ fn fitted_init_solve(
     return InitSolve(FC_OK, True, True, l0, b0, pass_[0], det, fc_status_name(FC_OK))
 
 
-fn _heuristic_state(y: List[Float64]) -> List[Float64]:
+def _heuristic_state(y: List[Float64]) -> List[Float64]:
     """`[l0, b0]` — OLS over the first min(10, n) observations against t = 1..maxn.
 
     The reference `initstate` for a non-seasonal additive-trend model, reproduced
@@ -671,7 +671,7 @@ fn _heuristic_state(y: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _nm_objective_at(
+def _nm_objective_at(
     y: List[Float64], x: List[Float64], damped: Bool, m: Int, dotm: Bool = False
 ) -> Float64:
     """The joint objective at a Nelder-Mead vertex: unpack, then `n*log(SSE)`.
@@ -714,7 +714,7 @@ fn _nm_objective_at(
     return _objective(y, x[0], x[1], 1.0, x[2], x[3])
 
 
-fn _nm_clamp(mut x: List[Float64], lower: List[Float64], upper: List[Float64]):
+def _nm_clamp(mut x: List[Float64], lower: List[Float64], upper: List[Float64]):
     """Coordinate-wise clamp to the box, the reference bounds handling."""
     for i in range(len(x)):
         if x[i] < lower[i]:
@@ -723,7 +723,7 @@ fn _nm_clamp(mut x: List[Float64], lower: List[Float64], upper: List[Float64]):
             x[i] = upper[i]
 
 
-fn _nm_run(
+def _nm_run(
     y: List[Float64], x0: List[Float64], lower: List[Float64],
     upper: List[Float64], damped: Bool, m: Int, dotm: Bool = False,
 ) -> List[Float64]:
@@ -912,7 +912,7 @@ fn _nm_run(
     return out^
 
 
-fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
+def _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
     """`[alpha, beta, phi, l0, b0]` fitted by the reference Nelder-Mead, or empty.
 
     The non-seasonal builder over `_nm_run`: reference starting point (`initparam`'s
@@ -964,7 +964,7 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
     return out^
 
 
-fn _fit_nelder_mead_aaa(y: List[Float64], m: Int) -> List[Float64]:
+def _fit_nelder_mead_aaa(y: List[Float64], m: Int) -> List[Float64]:
     """`[alpha, beta, gamma, l0, b0, s_0..s_(m-1)]` jointly fitted, or empty.
 
     The seasonal builder over `_nm_run`, reproducing the reference exactly:
@@ -1023,7 +1023,7 @@ fn _fit_nelder_mead_aaa(y: List[Float64], m: Int) -> List[Float64]:
     return out^
 
 
-fn _fitted_driver(
+def _fitted_driver(
     y: List[Float64], horizon: Int, damped: Bool, method_id: Int
 ) -> FittedForecast:
     """Shared body of `holt_fitted` / `damped_fitted`: validate, fit, extrapolate."""
@@ -1075,7 +1075,7 @@ fn _fitted_driver(
     )
 
 
-fn holt_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
+def holt_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
     """ETS(A,A,N) with FITTED (alpha, beta, l0, b0) — the M4 Holt defect, closed.
 
     Everything is estimated from the record: the smoothing parameters by the reference
@@ -1094,7 +1094,7 @@ fn holt_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
     return _fitted_driver(y, horizon, False, FC_METHOD_ETS_AAN)
 
 
-fn damped_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
+def damped_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
     """ETS(A,Ad,N) with FITTED (alpha, beta, phi, l0, b0); phi bounded [0.8, 0.98].
 
     The damped sibling of `holt_fitted`: phi is a fifth fitted coordinate with the
@@ -1111,7 +1111,7 @@ fn damped_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
     return _fitted_driver(y, horizon, True, FC_METHOD_ETS_AAN)
 
 
-fn ets_aaa_fitted(y: List[Float64], period: Int, horizon: Int) -> FittedForecast:
+def ets_aaa_fitted(y: List[Float64], period: Int, horizon: Int) -> FittedForecast:
     """ETS(A,A,A) with the WHOLE state fitted: level, trend AND the seasonal indices.
 
     The joint fit the module docstring's controlled experiment demands:
@@ -1288,7 +1288,7 @@ struct ThetaFit(Copyable, Movable):
     var status_name: String
 
 
-fn _no_theta_fit(status: Int, horizon: Int, n_train: Int) -> ThetaFit:
+def _no_theta_fit(status: Int, horizon: Int, n_train: Int) -> ThetaFit:
     """A refusal: no path, no parameter estimates."""
     return ThetaFit(
         status, horizon, n_train, List[Float64](), False,
@@ -1296,7 +1296,7 @@ fn _no_theta_fit(status: Int, horizon: Int, n_train: Int) -> ThetaFit:
     )
 
 
-fn _theta_ses_sse_mae(z: List[Float64], alpha: Float64) -> List[Float64]:
+def _theta_ses_sse_mae(z: List[Float64], alpha: Float64) -> List[Float64]:
     """`[sse, mae]` of one-step errors under the engine SES recursion, `s_0 = z[0]`.
 
     OP-IDENTICAL to `select._ses_sse_mae` — same recursion, same accumulation order —
@@ -1322,7 +1322,7 @@ fn _theta_ses_sse_mae(z: List[Float64], alpha: Float64) -> List[Float64]:
     return out^
 
 
-fn _theta_golden_alpha(z: List[Float64]) -> Float64:
+def _theta_golden_alpha(z: List[Float64]) -> Float64:
     """Golden-section argmin of the SES one-step SSE over [0.01, 0.99].
 
     OP-IDENTICAL to `select._golden_ses_alpha` (same bracket updates, same 28
@@ -1347,7 +1347,7 @@ fn _theta_golden_alpha(z: List[Float64]) -> Float64:
     return 0.5 * (lo + hi)
 
 
-fn _theta_line_at(
+def _theta_line_at(
     y: List[Float64], intercept: Float64, slope: Float64, theta: Float64
 ) -> List[Float64]:
     """`Z_t = theta*y_t + (1-theta)*(a + b*t)`, or empty on a non-finite value.
@@ -1367,7 +1367,7 @@ fn _theta_line_at(
     return out^
 
 
-fn _theta_profile(
+def _theta_profile(
     y: List[Float64], intercept: Float64, slope: Float64, theta: Float64
 ) -> List[Float64]:
     """`[alpha, method_sse, method_mae]` at one theta, or empty on a non-finite fit.
@@ -1392,7 +1392,7 @@ fn _theta_profile(
     return out^
 
 
-fn theta_fitted_at(y: List[Float64], theta: Float64, horizon: Int) -> ThetaFit:
+def theta_fitted_at(y: List[Float64], theta: Float64, horizon: Int) -> ThetaFit:
     """Classical Theta at a CALLER-CHOSEN theta, with alpha fitted on the theta line.
 
     The building block `theta_fitted` optimises over, public because it is the anchor:
@@ -1441,7 +1441,7 @@ fn theta_fitted_at(y: List[Float64], theta: Float64, horizon: Int) -> ThetaFit:
     )
 
 
-fn theta_fitted(y: List[Float64], horizon: Int) -> ThetaFit:
+def theta_fitted(y: List[Float64], horizon: Int) -> ThetaFit:
     """Optimized Theta: theta fitted per series by golden section on the profile SSE.
 
     Outer golden section on theta over [FIT_THETA_LO, FIT_THETA_HI]; each probe fits
@@ -1573,7 +1573,7 @@ struct DotmFit(Copyable, Movable):
     var status_name: String
 
 
-fn _no_dotm(status: Int, horizon: Int, n_train: Int) -> DotmFit:
+def _no_dotm(status: Int, horizon: Int, n_train: Int) -> DotmFit:
     """A refusal: no path, no parameter estimates."""
     return DotmFit(
         status, horizon, n_train, List[Float64](), False,
@@ -1581,7 +1581,7 @@ fn _no_dotm(status: Int, horizon: Int, n_train: Int) -> DotmFit:
     )
 
 
-fn _dotm_pass(
+def _dotm_pass(
     y: List[Float64], l0: Float64, alpha: Float64, theta: Float64
 ) -> List[Float64]:
     """`[objective, level, meany, A, B, sse_from_t1, sae_from_t1]`, or empty.
@@ -1642,7 +1642,7 @@ fn _dotm_pass(
     return out^
 
 
-fn _dotm_forecast_path(
+def _dotm_forecast_path(
     n: Int, horizon: Int, alpha: Float64, theta: Float64,
     lev0: Float64, meany0: Float64, a0: Float64, b0: Float64,
 ) -> List[Float64]:
@@ -1675,7 +1675,7 @@ fn _dotm_forecast_path(
     return out^
 
 
-fn dotm_fitted(y: List[Float64], horizon: Int) -> DotmFit:
+def dotm_fitted(y: List[Float64], horizon: Int) -> DotmFit:
     """DOTM: (l0, alpha, theta) fitted by the reference Nelder-Mead, then extrapolated.
 
     The dynamic sibling of `theta_fitted` — see the section comment for the model,

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from state_space_models import ssm_discretize_zoh, ssm_discretize_b, ssm_recurrence_step, ssm_output_step, mamba_selective_scan_step, mamba_delta_softplus, hippo_legt_update, s4_kernel_element, ssm_shift_register_step, retnet_decay
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -38,17 +38,17 @@ from query.window import (
 )
 
 
-fn _batch(
+def _batch(
     var names: List[String], var cols: List[Float64Array], n: Int
 ) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     return Float64(0.0) / Float64(0.0)
 
 
-fn _sales() -> RecordBatch:
+def _sales() -> RecordBatch:
     """Two regions, deliberately interleaved so a boundary bug shows up.
 
         row  region  month  amount
@@ -80,7 +80,7 @@ fn _sales() -> RecordBatch:
     return _batch(names^, cols^, 6)
 
 
-fn _partitions(batch: RecordBatch) -> Partitions:
+def _partitions(batch: RecordBatch) -> Partitions:
     var by = List[Int]()
     by.append(0)  # region
     var order = List[Int]()
@@ -90,7 +90,7 @@ fn _partitions(batch: RecordBatch) -> Partitions:
     return partition_rows(batch, by, order, desc, True)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var sales = _sales()

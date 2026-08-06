@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from polynomial import poly_eval, poly_add, poly_multiply, poly_derivative, poly_integral, poly_degree, quadratic_roots, poly_scale, poly_compose, poly_from_roots
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

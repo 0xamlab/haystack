@@ -51,11 +51,11 @@ from std.math import abs as fabs, sqrt, log, exp
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < eps
 
 
-fn approx_rel(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
+def approx_rel(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
     if fabs(b) < 1e-12:
         return fabs(a) < eps
     return fabs((a - b) / b) < eps
@@ -64,7 +64,7 @@ fn approx_rel(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
 # ── Structural Engineering Tests ─────────────────────────────────────────────
 
 
-fn test_structural() raises:
+def test_structural() raises:
     print("Testing structural engineering...")
 
     # 1. bending_stress: σ = M/S
@@ -142,7 +142,7 @@ fn test_structural() raises:
 # ── Entomology Tests ─────────────────────────────────────────────────────────
 
 
-fn test_entomology() raises:
+def test_entomology() raises:
     print("Testing entomology...")
 
     # 23. degree_days: normal case
@@ -220,7 +220,7 @@ fn test_entomology() raises:
 # ── Perfumery Tests ──────────────────────────────────────────────────────────
 
 
-fn test_perfumery() raises:
+def test_perfumery() raises:
     print("Testing perfumery...")
 
     # 48. concentration_parfum: oil/total * 100
@@ -298,7 +298,7 @@ fn test_perfumery() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=" * 60)
     print("Wave 89 Tests — Structural, Entomology, Perfumery")
     print("=" * 60)

@@ -167,7 +167,7 @@ struct EvalBins(Copyable, Movable):
     var mean_prob: List[Float64]
     var mean_label: List[Float64]
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.n = n
         self.n_bins = n_bins
@@ -200,7 +200,7 @@ struct BinCounts(Copyable, Movable):
     var hi: List[Float64]
     var count: List[Int]
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.n = n
         self.n_bins = n_bins
@@ -225,7 +225,7 @@ struct BinAssignment(Copyable, Movable):
     var occupied: Int
     var index: List[Int]
 
-    fn __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
+    def __init__(out self, status: Int, n: Int, n_bins: Int, policy: Int):
         self.status = status
         self.n = n
         self.n_bins = n_bins
@@ -234,7 +234,7 @@ struct BinAssignment(Copyable, Movable):
         self.index = List[Int]()
 
 
-fn _equal_width_index(p: Float64, n_bins: Int) -> Int:
+def _equal_width_index(p: Float64, n_bins: Int) -> Int:
     """The frozen equal-width assignment rule, restated once for this package.
 
     A byte-faithful restatement of `calibration.calibration_curve`'s own three lines: clamp
@@ -267,7 +267,7 @@ fn _equal_width_index(p: Float64, n_bins: Int) -> Int:
     return idx
 
 
-fn _ulp_step(x: Float64, up: Bool) -> Float64:
+def _ulp_step(x: Float64, up: Bool) -> Float64:
     """The adjacent Float64 above (`up`) or below `x`, for `x` strictly inside (0, 1).
 
     IEEE-754 orders the bit patterns of the positive finite doubles the same way it orders
@@ -283,7 +283,7 @@ fn _ulp_step(x: Float64, up: Bool) -> Float64:
     return bitcast[DType.float64](bits)
 
 
-fn _equal_width_edge(b: Int, n_bins: Int) -> Float64:
+def _equal_width_edge(b: Int, n_bins: Int) -> Float64:
     """The lower boundary of equal-width bin `b`: the smallest Float64 in that bin.
 
     Not `b / h`, and emphatically not `b * (1/h)`. The partition is whatever
@@ -317,7 +317,7 @@ fn _equal_width_edge(b: Int, n_bins: Int) -> Float64:
     return edge
 
 
-fn _equal_width_edges(n_bins: Int) -> List[Float64]:
+def _equal_width_edges(n_bins: Int) -> List[Float64]:
     """All `n_bins + 1` equal-width boundaries, ascending, from `_equal_width_edge`.
 
     One source for every equal-width edge in the package: `eval_bins_build`,
@@ -331,7 +331,7 @@ fn _equal_width_edges(n_bins: Int) -> List[Float64]:
     return out^
 
 
-fn _truncate(values: List[Float64], n: Int) -> List[Float64]:
+def _truncate(values: List[Float64], n: Int) -> List[Float64]:
     """First `n` values as an owned copy. `n` is already known `<= len(values)`.
 
     Needed because the frozen `calibration_curve` takes whole lists and derives its own
@@ -344,7 +344,7 @@ fn _truncate(values: List[Float64], n: Int) -> List[Float64]:
     return out^
 
 
-fn _quantile_edges(sorted_probs: List[Float64], n: Int, n_bins: Int) -> List[Float64]:
+def _quantile_edges(sorted_probs: List[Float64], n: Int, n_bins: Int) -> List[Float64]:
     """The `n_bins - 1` interior edges of an equal-count partition.
 
     Edge `b` (0-based, for b in [0, n_bins-2]) is the order statistic that STARTS bin
@@ -361,7 +361,7 @@ fn _quantile_edges(sorted_probs: List[Float64], n: Int, n_bins: Int) -> List[Flo
     return edges^
 
 
-fn _edge_bin(edges: List[Float64], p: Float64) -> Int:
+def _edge_bin(edges: List[Float64], p: Float64) -> Int:
     """Bin index for `p`: the number of edges `e` with `p >= e`, by binary search.
 
     O(log h), not O(h). A linear scan here would make a pass over the data O(n * h) while
@@ -379,7 +379,7 @@ fn _edge_bin(edges: List[Float64], p: Float64) -> Int:
     return lo
 
 
-fn eval_bins_build(
+def eval_bins_build(
     probs: List[Float64], labels: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> EvalBins:
     """Partition the first `n` predictions into `n_bins` bins under `policy`.
@@ -473,7 +473,7 @@ fn eval_bins_build(
     return out^
 
 
-fn eval_bin_counts_flat(
+def eval_bin_counts_flat(
     scores: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> BinCounts:
     """Histogram the first `n` scores into `n_bins` bins under `policy`.
@@ -534,7 +534,7 @@ fn eval_bin_counts_flat(
     return out^
 
 
-fn eval_bin_assign_flat(
+def eval_bin_assign_flat(
     probs: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> BinAssignment:
     """Per-sample bin index, for a caller aggregating something this package does not.
@@ -586,7 +586,7 @@ fn eval_bin_assign_flat(
     return out^
 
 
-fn eval_bin_edges_flat(
+def eval_bin_edges_flat(
     probs: List[Float64], n: Int, n_bins: Int, policy: Int
 ) -> List[Float64]:
     """The `n_bins + 1` bin boundaries, ascending — an axis for a reliability plot.

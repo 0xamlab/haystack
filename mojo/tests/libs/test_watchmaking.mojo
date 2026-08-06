@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from watchmaking import gear_ratio, gear_train_ratio, beats_per_hour, frequency_from_bph, mainspring_torque, power_reserve_hours, balance_wheel_period, escapement_error_spd, jewel_count_minimum, water_resistance_atm, case_diameter_mm, crown_winding_turns
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

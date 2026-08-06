@@ -202,7 +202,7 @@ per worker and the hash engines stop losing."""
 
 
 @always_inline
-fn dense_supports_opcode(opcode: Int) -> Bool:
+def dense_supports_opcode(opcode: Int) -> Bool:
     """Whether the packed record can hold everything `opcode` reads.
 
     SUM (count+total), AVG (count+mean), MIN/MAX (count+extremum) and COUNT
@@ -222,12 +222,12 @@ fn dense_supports_opcode(opcode: Int) -> Bool:
 
 
 @always_inline
-fn _pad64(n_slots: Int) -> Int:
+def _pad64(n_slots: Int) -> Int:
     """`n_slots` Float64s rounded up to a whole 64-byte cache line."""
     return ((n_slots + 7) // 8) * 8
 
 
-fn dense_record_stride(n_aggs: Int, shared_count: Bool) -> Int:
+def dense_record_stride(n_aggs: Int, shared_count: Bool) -> Int:
     """Float64 slots per group record, in ONE place because the scan, the merge
     and the byte budget all index with it and they have to agree.
 
@@ -251,7 +251,7 @@ fn dense_record_stride(n_aggs: Int, shared_count: Bool) -> Int:
     return 1 + n_aggs
 
 
-fn dense_state_bytes(cardinality: Int, n_aggs: Int, workers: Int, shared_count: Bool) -> Int:
+def dense_state_bytes(cardinality: Int, n_aggs: Int, workers: Int, shared_count: Bool) -> Int:
     """Total bytes `group_by_coded_dense_parallel` will allocate, exactly.
 
     Public because the bound it feeds is the reason a caller can trust the
@@ -266,7 +266,7 @@ fn dense_state_bytes(cardinality: Int, n_aggs: Int, workers: Int, shared_count: 
     return acc + order + seen
 
 
-fn dense_route_status(
+def dense_route_status(
     cardinality: Int,
     value_columns: List[Int],
     opcodes: List[Int],
@@ -297,7 +297,7 @@ fn dense_route_status(
 
 
 @always_inline
-fn _dense_code(k: Float64, bound: Float64) -> Int:
+def _dense_code(k: Float64, bound: Float64) -> Int:
     """The code `k` denotes, or -1 when `k` is not one — the ONLY place this
     module decides that, so the guard cannot be enforced at two strengths.
 
@@ -317,7 +317,7 @@ fn _dense_code(k: Float64, bound: Float64) -> Int:
 
 
 @always_inline
-fn _dense_min_fold(current: Float64, value: Float64) -> Float64:
+def _dense_min_fold(current: Float64, value: Float64) -> Float64:
     """Running minimum where `current` is the canonical NaN until an ordered
     value has arrived — `observe_min`'s answer with no `seen` field and no
     first-value branch.
@@ -347,7 +347,7 @@ fn _dense_min_fold(current: Float64, value: Float64) -> Float64:
 
 
 @always_inline
-fn _dense_max_fold(current: Float64, value: Float64) -> Float64:
+def _dense_max_fold(current: Float64, value: Float64) -> Float64:
     """`_dense_min_fold` with `>`; equal to `group_max_update` under the same
     sentinel discipline, and pinned by the same suite block."""
     var ordered = value == value
@@ -357,7 +357,7 @@ fn _dense_max_fold(current: Float64, value: Float64) -> Float64:
     return current
 
 
-fn _dense_min_reference(current: Float64, seen: Bool, value: Float64) -> Float64:
+def _dense_min_reference(current: Float64, seen: Bool, value: Float64) -> Float64:
     """`observe_min`'s extremum update spelled with the frozen primitive and an
     explicit `seen` flag — the reference `_dense_min_fold` is proven against.
 
@@ -372,7 +372,7 @@ fn _dense_min_reference(current: Float64, seen: Bool, value: Float64) -> Float64
     return group_min_update(current, value)
 
 
-fn _dense_max_reference(current: Float64, seen: Bool, value: Float64) -> Float64:
+def _dense_max_reference(current: Float64, seen: Bool, value: Float64) -> Float64:
     """`_dense_min_reference` with `group_max_update`."""
     if value != value:
         return current
@@ -414,14 +414,14 @@ struct _BandOutcome(Copyable, Movable):
     var nulls: Int
     var bad: Bool
 
-    fn __init__(out self, olen: Int, nulls: Int, bad: Bool):
+    def __init__(out self, olen: Int, nulls: Int, bad: Bool):
         self.olen = olen
         self.nulls = nulls
         self.bad = bad
 
 
 @always_inline
-fn _apply[op: Int](current: Float64, value: Float64, count: Float64) -> Float64:
+def _apply[op: Int](current: Float64, value: Float64, count: Float64) -> Float64:
     """One aggregate's payload update, selected at COMPILE time.
 
     Every arm is the frozen primitive `observe_op` would have used for that
@@ -443,7 +443,7 @@ fn _apply[op: Int](current: Float64, value: Float64, count: Float64) -> Float64:
 
 
 @always_inline
-fn _apply_dyn(op: Int, current: Float64, value: Float64, count: Float64) -> Float64:
+def _apply_dyn(op: Int, current: Float64, value: Float64, count: Float64) -> Float64:
     """`_apply` reached with a RUNTIME opcode, for the mixed-request scans.
 
     A thin dispatch onto the same compile-time arms rather than a second copy
@@ -465,7 +465,7 @@ fn _apply_dyn(op: Int, current: Float64, value: Float64, count: Float64) -> Floa
 
 
 @always_inline
-fn _scan_shared[
+def _scan_shared[
     op: Int, na: Int
 ](
     lo: Int,
@@ -529,7 +529,7 @@ fn _scan_shared[
 
 
 @always_inline
-fn _scan_shared_vec[
+def _scan_shared_vec[
     op: Int, na: Int
 ](
     lo: Int,
@@ -631,7 +631,7 @@ fn _scan_shared_vec[
 
 
 @always_inline
-fn _dispatch_na_vec[
+def _dispatch_na_vec[
     op: Int
 ](
     n_aggs: Int,
@@ -663,7 +663,7 @@ fn _dispatch_na_vec[
 
 
 @always_inline
-fn _dispatch_na[
+def _dispatch_na[
     op: Int
 ](
     n_aggs: Int,
@@ -692,7 +692,7 @@ fn _dispatch_na[
     )
 
 
-fn _scan_shared_dyn(
+def _scan_shared_dyn(
     lo: Int,
     hi: Int,
     accw: _RawF64,
@@ -735,7 +735,7 @@ fn _scan_shared_dyn(
     return _BandOutcome(olen, nulls, False)
 
 
-fn _scan_percol(
+def _scan_percol(
     lo: Int,
     hi: Int,
     accw: _RawF64,
@@ -784,7 +784,7 @@ fn _scan_percol(
     return _BandOutcome(olen, nulls, False)
 
 
-fn group_by_coded_dense(
+def group_by_coded_dense(
     batch: RecordBatch,
     key_column: Int,
     cardinality: Int,
@@ -809,7 +809,7 @@ fn group_by_coded_dense(
     )
 
 
-fn group_by_coded_dense_parallel(
+def group_by_coded_dense_parallel(
     batch: RecordBatch,
     key_column: Int,
     cardinality: Int,
@@ -926,7 +926,7 @@ fn group_by_coded_dense_parallel(
     var kp = key_col.values[].unsafe_ptr() + key_col.offset
 
     @parameter
-    fn dense_worker(w: Int):
+    def dense_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:

@@ -286,7 +286,7 @@ struct ClipResult(Copyable, Movable):
 # ── shared internals ──────────────────────────────────────────────────────────
 
 
-fn _is_left(x0: Float64, y0: Float64, x1: Float64, y1: Float64, px: Float64, py: Float64) -> Float64:
+def _is_left(x0: Float64, y0: Float64, x1: Float64, y1: Float64, px: Float64, py: Float64) -> Float64:
     """`> 0` when (px, py) is strictly left of the directed segment (x0,y0) -> (x1,y1).
 
     The orientation determinant itself is the frozen `geometry.cross_product_2d` and is NOT
@@ -304,7 +304,7 @@ fn _is_left(x0: Float64, y0: Float64, x1: Float64, y1: Float64, px: Float64, py:
     return cross_product_2d(Point(x0, y0), Point(x1, y1), Point(px, py))
 
 
-fn _in_closed_box(
+def _in_closed_box(
     px: Float64, py: Float64, x0: Float64, y0: Float64, x1: Float64, y1: Float64
 ) -> Bool:
     """Whether (px, py) is inside the CLOSED bounding box of the segment's two endpoints.
@@ -325,7 +325,7 @@ fn _in_closed_box(
     return px >= lo_x and px <= hi_x and py >= lo_y and py <= hi_y
 
 
-fn _point_on_segment(
+def _point_on_segment(
     px: Float64, py: Float64, x0: Float64, y0: Float64, x1: Float64, y1: Float64
 ) -> Bool:
     """Whether (px, py) lies EXACTLY on the closed segment. Collinear plus in the box.
@@ -339,7 +339,7 @@ fn _point_on_segment(
     return _in_closed_box(px, py, x0, y0, x1, y1)
 
 
-fn _points_of(xs: List[Float64], ys: List[Float64], n: Int) -> List[Point]:
+def _points_of(xs: List[Float64], ys: List[Float64], n: Int) -> List[Point]:
     """The first `n` pairs as frozen `geometry.Point`s, so the frozen kernels can be called.
 
     This glue is the missing driver: every polygon kernel in the frozen tree takes
@@ -353,7 +353,7 @@ fn _points_of(xs: List[Float64], ys: List[Float64], n: Int) -> List[Point]:
     return out^
 
 
-fn _frozen_trapezoid_sum(xs: List[Float64], ys: List[Float64], n: Int) -> Float64:
+def _frozen_trapezoid_sum(xs: List[Float64], ys: List[Float64], n: Int) -> Float64:
     """The frozen shoelace accumulation, WITHOUT the `fabs` — the sign is all that is taken.
 
     Byte-for-byte the loop inside `geometry.polygon_area`: the same `(x_j + x_i) *
@@ -375,7 +375,7 @@ fn _frozen_trapezoid_sum(xs: List[Float64], ys: List[Float64], n: Int) -> Float6
     return total
 
 
-fn _orientation_of_sum(total: Float64) -> Int:
+def _orientation_of_sum(total: Float64) -> Int:
     """`GEO_ORIENT_CCW` / `_CW` / `_DEGENERATE` from the frozen trapezoid sum.
 
     The frozen accumulation runs `(x_j + x_i) * (y_j - y_i)` from `j = n - 1`, which is the
@@ -390,7 +390,7 @@ fn _orientation_of_sum(total: Float64) -> Int:
     return GEO_ORIENT_DEGENERATE
 
 
-fn ring_planar_defect_flat(
+def ring_planar_defect_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int
 ) -> Int:
     """`GEO_OK` when this ring may be treated as a planar ring in its own frame.
@@ -431,7 +431,7 @@ fn ring_planar_defect_flat(
     return GEO_OK
 
 
-fn _segments_cross(
+def _segments_cross(
     ax0: Float64, ay0: Float64, ax1: Float64, ay1: Float64,
     bx0: Float64, by0: Float64, bx1: Float64, by1: Float64,
 ) -> Bool:
@@ -471,7 +471,7 @@ struct _Simplicity(Copyable, Movable):
     var edge_b: Int
 
 
-fn _ring_simplicity(xs: List[Float64], ys: List[Float64], n: Int) -> _Simplicity:
+def _ring_simplicity(xs: List[Float64], ys: List[Float64], n: Int) -> _Simplicity:
     """The O(n^2) simplicity test: does any pair of the ring's edges share a point?
 
     ONE definition, called by `ring_report_flat` (which reports it) and by
@@ -534,7 +534,7 @@ fn _ring_simplicity(xs: List[Float64], ys: List[Float64], n: Int) -> _Simplicity
 # ── ring report ───────────────────────────────────────────────────────────────
 
 
-fn ring_report_flat(
+def ring_report_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int
 ) -> RingReport:
     """Everything structural about a ring: orientation, area, simplicity, convexity, extent.
@@ -670,7 +670,7 @@ fn ring_report_flat(
 # ── point in ring ─────────────────────────────────────────────────────────────
 
 
-fn _classify_point(
+def _classify_point(
     px: Float64, py: Float64, xs: List[Float64], ys: List[Float64], n: Int
 ) -> PipResult:
     """The classification itself, with validation already done by the caller.
@@ -731,7 +731,7 @@ fn _classify_point(
     )
 
 
-fn point_in_ring_flat(
+def point_in_ring_flat(
     px: Float64, py: Float64, xs: List[Float64], ys: List[Float64], n: Int, frame: Int
 ) -> PipResult:
     """Where one point lies relative to one ring: INSIDE, OUTSIDE or exactly ON the boundary.
@@ -767,7 +767,7 @@ fn point_in_ring_flat(
     return _classify_point(px, py, xs, ys, n)
 
 
-fn _no_codes(status: Int) -> RingClassification:
+def _no_codes(status: Int) -> RingClassification:
     """A refusal with an EMPTY `codes` list. `GEO_PIP_OUTSIDE` is 0, so a zero-filled list
     would read as "every point is outside" — the exact absence-is-not-zero defect."""
     var empty = List[Int]()
@@ -777,7 +777,7 @@ fn _no_codes(status: Int) -> RingClassification:
 # The parameter PACKING below is load-bearing, not style: `mojo_inventory` parses a signature
 # inside a TEN-LINE lookahead window and silently drops any function whose signature closes
 # later. Do not reflow.
-fn points_in_ring_flat(
+def points_in_ring_flat(
     pxs: List[Float64], pys: List[Float64], n_points: Int,
     xs: List[Float64], ys: List[Float64], n_vertices: Int, frame: Int,
 ) -> RingClassification:
@@ -834,7 +834,7 @@ fn points_in_ring_flat(
 # ── area ──────────────────────────────────────────────────────────────────────
 
 
-fn ring_area_flat(
+def ring_area_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int
 ) -> RingArea:
     """Area of a ring in SQUARE METRES, projecting a degree ring first and saying so.
@@ -927,7 +927,7 @@ fn ring_area_flat(
 # ── intersection ──────────────────────────────────────────────────────────────
 
 
-fn _turn_signs_consistent(xs: List[Float64], ys: List[Float64], n: Int) -> Bool:
+def _turn_signs_consistent(xs: List[Float64], ys: List[Float64], n: Int) -> Bool:
     """Whether every turn around the ring has the same sign (collinear turns allowed).
 
     NOT a convexity test on its own. A pentagram turns consistently and is not convex, so
@@ -954,7 +954,7 @@ fn _turn_signs_consistent(xs: List[Float64], ys: List[Float64], n: Int) -> Bool:
     return not (positive and negative)
 
 
-fn _no_clip(status: Int, subject_convex: Bool, clip_convex: Bool) -> ClipResult:
+def _no_clip(status: Int, subject_convex: Bool, clip_convex: Bool) -> ClipResult:
     """A clip refusal: both coordinate lists empty, `is_empty` False because no intersection
     was computed at all. `is_empty` True with `GEO_OK` is the real "they do not overlap"."""
     var ex = List[Float64]()
@@ -965,7 +965,7 @@ fn _no_clip(status: Int, subject_convex: Bool, clip_convex: Bool) -> ClipResult:
 
 
 # Packing is load-bearing — see the note above `points_in_ring_flat`.
-fn ring_intersect_convex_flat(
+def ring_intersect_convex_flat(
     sxs: List[Float64], sys: List[Float64], n_subject: Int,
     cxs: List[Float64], cys: List[Float64], n_clip: Int, frame: Int,
 ) -> ClipResult:

@@ -33,14 +33,14 @@ from sheet.formula import (
 from sheet.values import ERR_NA
 
 
-fn _sheets() -> List[String]:
+def _sheets() -> List[String]:
     var s = List[String]()
     s.append(String("Sheet1"))
     s.append(String("My Data"))
     return s^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var nodes = List[FNode]()

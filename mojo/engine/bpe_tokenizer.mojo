@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn bpe_merge_score(
+def bpe_merge_score(
     pair_frequency: Float64, vocab_frequency_a: Float64, vocab_frequency_b: Float64
 ) -> Float64:
     """BPE merge candidate score: pair_freq / (freq_a × freq_b).
@@ -38,7 +38,7 @@ fn bpe_merge_score(
     return pair_frequency / denom
 
 
-fn bpe_pair_frequency(
+def bpe_pair_frequency(
     joint_count: Float64, total_pairs: Float64
 ) -> Float64:
     """Normalised bigram frequency for BPE pair selection.
@@ -55,7 +55,7 @@ fn bpe_pair_frequency(
     return joint_count / total_pairs
 
 
-fn subword_log_probability(
+def subword_log_probability(
     token_count: Float64, total_tokens: Float64
 ) -> Float64:
     """Unigram language model log-probability for a subword.
@@ -74,7 +74,7 @@ fn subword_log_probability(
     return log(token_count / total_tokens)
 
 
-fn sentencepiece_vocab_size_est(
+def sentencepiece_vocab_size_est(
     char_coverage: Float64, corpus_chars: Float64, target_coverage: Float64
 ) -> Float64:
     """Estimated vocab size to achieve target character coverage.
@@ -95,7 +95,7 @@ fn sentencepiece_vocab_size_est(
     return corpus_chars / ratio
 
 
-fn byte_fallback_encode(
+def byte_fallback_encode(
     text_bytes: Float64
 ) -> Float64:
     """Number of byte-fallback tokens for raw bytes (3 per byte in some SPM).
@@ -109,7 +109,7 @@ fn byte_fallback_encode(
     return text_bytes
 
 
-fn tokenization_compression_ratio(
+def tokenization_compression_ratio(
     n_chars: Float64, n_tokens: Float64
 ) -> Float64:
     """Text compression ratio: characters per token.
@@ -128,7 +128,7 @@ fn tokenization_compression_ratio(
     return n_chars / n_tokens
 
 
-fn vocab_fertility(n_tokens: Float64, n_words: Float64) -> Float64:
+def vocab_fertility(n_tokens: Float64, n_words: Float64) -> Float64:
     """Tokenizer fertility: average tokens per word.
 
     Args:
@@ -143,7 +143,7 @@ fn vocab_fertility(n_tokens: Float64, n_words: Float64) -> Float64:
     return n_tokens / n_words
 
 
-fn oov_rate(oov_tokens: Float64, total_tokens: Float64) -> Float64:
+def oov_rate(oov_tokens: Float64, total_tokens: Float64) -> Float64:
     """Out-of-vocabulary rate (fraction of UNK tokens).
 
     Args:
@@ -158,7 +158,7 @@ fn oov_rate(oov_tokens: Float64, total_tokens: Float64) -> Float64:
     return oov_tokens / total_tokens
 
 
-fn bpe_merge_rank_score(
+def bpe_merge_rank_score(
     frequency: Float64, rank: Float64
 ) -> Float64:
     """Priority score for BPE merge queue: frequency / (rank + 1).
@@ -173,7 +173,7 @@ fn bpe_merge_rank_score(
     return frequency / (rank + 1.0)
 
 
-fn streaming_token_boundary(
+def streaming_token_boundary(
     char_code: Float64, prev_char_code: Float64
 ) -> Float64:
     """Detect likely token boundary in streaming context.

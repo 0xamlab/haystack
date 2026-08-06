@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from petri_net import is_transition_enabled_2p, fire_transition_2p, token_count_3p, is_deadlocked_1t_2p, is_deadlocked_2t_2p, reachable_from_firing, place_bounded, is_live_transition, coverability_check, incidence_value, siphon_empty_3p, is_transition_enabled_list, fire_transition_list
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

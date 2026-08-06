@@ -24,7 +24,7 @@ Public API (scalar-friendly for small nets):
 # ── is_transition_enabled_2p ─────────────────────────────────────────────────
 
 
-fn is_transition_enabled_2p(
+def is_transition_enabled_2p(
     m0: Int, m1: Int, in0: Int, in1: Int
 ) -> Bool:
     """Check if transition can fire in a 2-place net.
@@ -37,7 +37,7 @@ fn is_transition_enabled_2p(
 # ── fire_transition_2p ───────────────────────────────────────────────────────
 
 
-fn fire_transition_2p(
+def fire_transition_2p(
     m0: Int, m1: Int,
     in0: Int, in1: Int,
     out0: Int, out1: Int,
@@ -51,7 +51,7 @@ fn fire_transition_2p(
 # ── token_count_3p ───────────────────────────────────────────────────────────
 
 
-fn token_count_3p(m0: Int, m1: Int, m2: Int) -> Int:
+def token_count_3p(m0: Int, m1: Int, m2: Int) -> Int:
     """Total tokens in a 3-place net."""
     return m0 + m1 + m2
 
@@ -59,7 +59,7 @@ fn token_count_3p(m0: Int, m1: Int, m2: Int) -> Int:
 # ── is_deadlocked_1t_2p ─────────────────────────────────────────────────────
 
 
-fn is_deadlocked_1t_2p(m0: Int, m1: Int, in0: Int, in1: Int) -> Bool:
+def is_deadlocked_1t_2p(m0: Int, m1: Int, in0: Int, in1: Int) -> Bool:
     """Check deadlock for 1-transition 2-place net.
     Deadlocked if the single transition is NOT enabled.
     """
@@ -69,7 +69,7 @@ fn is_deadlocked_1t_2p(m0: Int, m1: Int, in0: Int, in1: Int) -> Bool:
 # ── is_deadlocked_2t_2p ─────────────────────────────────────────────────────
 
 
-fn is_deadlocked_2t_2p(
+def is_deadlocked_2t_2p(
     m0: Int, m1: Int,
     t0_in0: Int, t0_in1: Int,
     t1_in0: Int, t1_in1: Int,
@@ -85,7 +85,7 @@ fn is_deadlocked_2t_2p(
 # ── reachable_from_firing ────────────────────────────────────────────────────
 
 
-fn reachable_from_firing(
+def reachable_from_firing(
     marking_sum: Int, input_sum: Int, output_sum: Int
 ) -> Int:
     """New total tokens after firing = marking_sum - input_sum + output_sum."""
@@ -95,7 +95,7 @@ fn reachable_from_firing(
 # ── place_bounded ────────────────────────────────────────────────────────────
 
 
-fn place_bounded(max_tokens: Int, bound: Int) -> Bool:
+def place_bounded(max_tokens: Int, bound: Int) -> Bool:
     """Check if a place never exceeds its bound."""
     return max_tokens <= bound
 
@@ -103,7 +103,7 @@ fn place_bounded(max_tokens: Int, bound: Int) -> Bool:
 # ── is_live_transition ───────────────────────────────────────────────────────
 
 
-fn is_live_transition(enabled_count: Int, total_markings: Int) -> Float64:
+def is_live_transition(enabled_count: Int, total_markings: Int) -> Float64:
     """Ratio of markings where transition is enabled (liveness metric)."""
     if total_markings == 0:
         return 0.0
@@ -113,7 +113,7 @@ fn is_live_transition(enabled_count: Int, total_markings: Int) -> Float64:
 # ── coverability_check ───────────────────────────────────────────────────────
 
 
-fn coverability_check(marking_val: Int, target_val: Int) -> Bool:
+def coverability_check(marking_val: Int, target_val: Int) -> Bool:
     """Check if marking covers (>=) target for a single place."""
     return marking_val >= target_val
 
@@ -121,7 +121,7 @@ fn coverability_check(marking_val: Int, target_val: Int) -> Bool:
 # ── incidence_value ──────────────────────────────────────────────────────────
 
 
-fn incidence_value(output_weight: Int, input_weight: Int) -> Int:
+def incidence_value(output_weight: Int, input_weight: Int) -> Int:
     """Net effect of transition on a place = output_weight - input_weight."""
     return output_weight - input_weight
 
@@ -129,7 +129,7 @@ fn incidence_value(output_weight: Int, input_weight: Int) -> Int:
 # ── siphon_empty_3p ──────────────────────────────────────────────────────────
 
 
-fn siphon_empty_3p(
+def siphon_empty_3p(
     t0: Int, t1: Int, t2: Int,
     s0: Bool, s1: Bool, s2: Bool,
 ) -> Bool:
@@ -149,7 +149,7 @@ fn siphon_empty_3p(
 # ── Generic list-based variants ──────────────────────────────────────────────
 
 
-fn is_transition_enabled_list(
+def is_transition_enabled_list(
     marking: List[Int], input_arcs: List[Int], n_places: Int
 ) -> Bool:
     """Check if transition can fire (all input places have enough tokens)."""
@@ -159,7 +159,7 @@ fn is_transition_enabled_list(
     return True
 
 
-fn fire_transition_list(
+def fire_transition_list(
     marking: List[Int],
     input_arcs: List[Int],
     output_arcs: List[Int],

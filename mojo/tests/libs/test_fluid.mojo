@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fluid import reynolds_number, is_turbulent, bernoulli_velocity, friction_factor_laminar, darcy_weisbach, flow_rate, pipe_velocity, hydraulic_diameter, mach_number, drag_force, buoyancy_force, stokes_drag
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

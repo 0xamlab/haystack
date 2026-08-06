@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from transformer_attention import scaled_dot_product_attention, attention_softmax_stable, multi_head_split, causal_mask_value, attention_entropy, kv_cache_memory_bytes, flash_attention_block_score, rope_rotation_angle, pow_approx, relative_position_bias, cross_attention_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

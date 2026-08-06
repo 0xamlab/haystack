@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, pow
 
 
-fn hill_equation(
+def hill_equation(
     emax: Float64, concentration: Float64, ec50: Float64, hill_n: Float64
 ) -> Float64:
     """Hill (sigmoidal Emax) dose-response equation.
@@ -39,7 +39,7 @@ fn hill_equation(
     return emax * cn / (ec50n + cn)
 
 
-fn therapeutic_index(td50: Float64, ed50: Float64) -> Float64:
+def therapeutic_index(td50: Float64, ed50: Float64) -> Float64:
     """Therapeutic index: TI = TD50 / ED50.
 
     Args:
@@ -54,7 +54,7 @@ fn therapeutic_index(td50: Float64, ed50: Float64) -> Float64:
     return td50 / ed50
 
 
-fn drug_bioavailability(
+def drug_bioavailability(
     auc_oral: Float64, auc_iv: Float64, dose_oral: Float64, dose_iv: Float64
 ) -> Float64:
     """Absolute bioavailability from AUC comparison.
@@ -75,7 +75,7 @@ fn drug_bioavailability(
     return (auc_oral / auc_iv) * (dose_iv / dose_oral)
 
 
-fn receptor_occupancy(drug_conc: Float64, kd: Float64) -> Float64:
+def receptor_occupancy(drug_conc: Float64, kd: Float64) -> Float64:
     """Receptor occupancy fraction: RO = [D] / (Kd + [D]).
 
     Args:
@@ -91,7 +91,7 @@ fn receptor_occupancy(drug_conc: Float64, kd: Float64) -> Float64:
     return drug_conc / denom
 
 
-fn drug_protein_binding(bound_fraction: Float64) -> Float64:
+def drug_protein_binding(bound_fraction: Float64) -> Float64:
     """Free (unbound) fraction of drug in plasma.
 
     Args:
@@ -105,7 +105,7 @@ fn drug_protein_binding(bound_fraction: Float64) -> Float64:
     return 1.0 - bound_fraction
 
 
-fn volume_of_distribution(dose: Float64, c_plasma_zero: Float64) -> Float64:
+def volume_of_distribution(dose: Float64, c_plasma_zero: Float64) -> Float64:
     """Apparent volume of distribution: Vd = Dose / C₀.
 
     Args:
@@ -120,7 +120,7 @@ fn volume_of_distribution(dose: Float64, c_plasma_zero: Float64) -> Float64:
     return dose / c_plasma_zero
 
 
-fn clearance_from_halflife(volume_of_dist: Float64, half_life: Float64) -> Float64:
+def clearance_from_halflife(volume_of_dist: Float64, half_life: Float64) -> Float64:
     """Drug clearance from half-life and Vd.
 
     CL = 0.693 · Vd / t½
@@ -137,7 +137,7 @@ fn clearance_from_halflife(volume_of_dist: Float64, half_life: Float64) -> Float
     return 0.693 * volume_of_dist / half_life
 
 
-fn steady_state_concentration(
+def steady_state_concentration(
     bioavailability: Float64, dose: Float64, clearance: Float64, tau: Float64
 ) -> Float64:
     """Average steady-state plasma concentration.
@@ -159,7 +159,7 @@ fn steady_state_concentration(
     return bioavailability * dose / denom
 
 
-fn loading_dose(volume_of_dist: Float64, target_conc: Float64) -> Float64:
+def loading_dose(volume_of_dist: Float64, target_conc: Float64) -> Float64:
     """Loading dose to achieve target plasma concentration.
 
     LD = Vd · Css_target
@@ -174,7 +174,7 @@ fn loading_dose(volume_of_dist: Float64, target_conc: Float64) -> Float64:
     return volume_of_dist * target_conc
 
 
-fn drug_interaction_index(
+def drug_interaction_index(
     dose_a: Float64, dm_a: Float64, dose_b: Float64, dm_b: Float64
 ) -> Float64:
     """Combination index (Chou-Talalay method).

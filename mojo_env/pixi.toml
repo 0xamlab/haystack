@@ -1,6 +1,8 @@
 [workspace]
 authors = ["Angel Marinov <angel@eplane.com>"]
-channels = ["https://conda.modular.com/max-nightly", "conda-forge"]
+# max-nightly was retired upstream (its repodata is now empty), so the pin below moved to
+# the stable max channel, which is also what mojolang.org/install documents.
+channels = ["https://conda.modular.com/max/", "conda-forge"]
 name = "mojo_env"
 platforms = ["osx-arm64", "linux-64"]
 version = "0.1.0"
@@ -9,7 +11,7 @@ version = "0.1.0"
 
 [dependencies]
 python = ">=3.14,<3.15"
-mojo = ">=0.26.3.0.dev2026032005,<0.27"
+mojo = "==1.0.0b2"
 
 [pypi-dependencies]
 # Keep the repository test and verification lane inside the repo-local

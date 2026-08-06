@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from autograd_ops import grad_add, grad_mul, grad_exp, grad_log, grad_relu, grad_sigmoid, grad_tanh, grad_pow, chain_rule, grad_softmax_diag
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

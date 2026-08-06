@@ -25,7 +25,7 @@ Public API:
 # ── bool_and ─────────────────────────────────────────────────────────────────
 
 
-fn bool_and(a: Bool, b: Bool) -> Bool:
+def bool_and(a: Bool, b: Bool) -> Bool:
     """Logical AND."""
     return a and b
 
@@ -33,7 +33,7 @@ fn bool_and(a: Bool, b: Bool) -> Bool:
 # ── bool_or ──────────────────────────────────────────────────────────────────
 
 
-fn bool_or(a: Bool, b: Bool) -> Bool:
+def bool_or(a: Bool, b: Bool) -> Bool:
     """Logical OR."""
     return a or b
 
@@ -41,7 +41,7 @@ fn bool_or(a: Bool, b: Bool) -> Bool:
 # ── bool_not ─────────────────────────────────────────────────────────────────
 
 
-fn bool_not(a: Bool) -> Bool:
+def bool_not(a: Bool) -> Bool:
     """Logical NOT."""
     return not a
 
@@ -49,7 +49,7 @@ fn bool_not(a: Bool) -> Bool:
 # ── bool_xor ─────────────────────────────────────────────────────────────────
 
 
-fn bool_xor(a: Bool, b: Bool) -> Bool:
+def bool_xor(a: Bool, b: Bool) -> Bool:
     """Logical XOR."""
     return a != b
 
@@ -57,7 +57,7 @@ fn bool_xor(a: Bool, b: Bool) -> Bool:
 # ── bool_implies ─────────────────────────────────────────────────────────────
 
 
-fn bool_implies(a: Bool, b: Bool) -> Bool:
+def bool_implies(a: Bool, b: Bool) -> Bool:
     """Implication: a → b = ¬a ∨ b."""
     return (not a) or b
 
@@ -65,7 +65,7 @@ fn bool_implies(a: Bool, b: Bool) -> Bool:
 # ── bool_iff ─────────────────────────────────────────────────────────────────
 
 
-fn bool_iff(a: Bool, b: Bool) -> Bool:
+def bool_iff(a: Bool, b: Bool) -> Bool:
     """Biconditional: a ↔ b."""
     return a == b
 
@@ -73,7 +73,7 @@ fn bool_iff(a: Bool, b: Bool) -> Bool:
 # ── _apply_op_2 ─────────────────────────────────────────────────────────────
 
 
-fn _apply_op_2(a: Bool, b: Bool, op: Int) -> Bool:
+def _apply_op_2(a: Bool, b: Bool, op: Int) -> Bool:
     """Apply a 2-variable operation by index.
     0=AND, 1=OR, 2=XOR, 3=IMPLIES, 4=IFF.
     """
@@ -93,7 +93,7 @@ fn _apply_op_2(a: Bool, b: Bool, op: Int) -> Bool:
 # ── truth_table_2 ───────────────────────────────────────────────────────────
 
 
-fn truth_table_2(op: Int) -> List[List[Bool]]:
+def truth_table_2(op: Int) -> List[List[Bool]]:
     """Generate truth table for 2 variables.
     op: 0=AND, 1=OR, 2=XOR, 3=IMPLIES, 4=IFF.
     Returns [[a, b, result], ...] for all 4 input combinations.
@@ -119,7 +119,7 @@ fn truth_table_2(op: Int) -> List[List[Bool]]:
 # ── eval_dnf ─────────────────────────────────────────────────────────────────
 
 
-fn eval_dnf(values: List[Bool], clauses: List[List[Int]]) -> Bool:
+def eval_dnf(values: List[Bool], clauses: List[List[Int]]) -> Bool:
     """Evaluate DNF (OR of ANDs).
     Each clause is a list of variable indices (negative index = NOT that var).
     DNF is satisfied if ANY clause is satisfied.
@@ -154,7 +154,7 @@ fn eval_dnf(values: List[Bool], clauses: List[List[Int]]) -> Bool:
 # ── eval_cnf ─────────────────────────────────────────────────────────────────
 
 
-fn eval_cnf(values: List[Bool], clauses: List[List[Int]]) -> Bool:
+def eval_cnf(values: List[Bool], clauses: List[List[Int]]) -> Bool:
     """Evaluate CNF (AND of ORs).
     Each clause is a list of variable indices (negative index = NOT that var).
     CNF is satisfied if ALL clauses are satisfied.
@@ -188,7 +188,7 @@ fn eval_cnf(values: List[Bool], clauses: List[List[Int]]) -> Bool:
 # ── is_tautology_2var ────────────────────────────────────────────────────────
 
 
-fn is_tautology_2var(op: Int) -> Bool:
+def is_tautology_2var(op: Int) -> Bool:
     """Check if a 2-variable operation is a tautology (True for all inputs)."""
     var table = truth_table_2(op)
     for i in range(len(table)):
@@ -200,7 +200,7 @@ fn is_tautology_2var(op: Int) -> Bool:
 # ── count_satisfying_2var ────────────────────────────────────────────────────
 
 
-fn count_satisfying_2var(op: Int) -> Int:
+def count_satisfying_2var(op: Int) -> Int:
     """Count satisfying assignments for 2-variable operation."""
     var table = truth_table_2(op)
     var count = 0
@@ -213,7 +213,7 @@ fn count_satisfying_2var(op: Int) -> Int:
 # ── majority_vote ────────────────────────────────────────────────────────────
 
 
-fn majority_vote(values: List[Bool]) -> Bool:
+def majority_vote(values: List[Bool]) -> Bool:
     """True if more than half of the values are True."""
     var count = 0
     var n = len(values)
@@ -226,7 +226,7 @@ fn majority_vote(values: List[Bool]) -> Bool:
 # ── parity ───────────────────────────────────────────────────────────────────
 
 
-fn parity(values: List[Bool]) -> Bool:
+def parity(values: List[Bool]) -> Bool:
     """XOR of all values (True if odd number of True)."""
     var result = False
     for i in range(len(values)):

@@ -54,7 +54,7 @@ from embeddings import dot_product, cosine_similarity, euclidean_distance
 comptime DIMS_LEN: Int = 3
 
 
-fn _dims() -> List[Int]:
+def _dims() -> List[Int]:
     var out = List[Int]()
     out.append(384)
     out.append(768)
@@ -70,7 +70,7 @@ comptime REPS: Int = 200_000
 comptime TRIALS: Int = 5
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic, non-integer values in roughly [-1, 1] -- reproducible
     across runs/machines, and explicitly NOT integer-valued so this is a
     realistic embedding-component distribution rather than the small
@@ -87,14 +87,14 @@ fn _pseudo(n: Int, seed: Int) -> List[Float64]:
 # avoid colliding with the real (now-SIMD) names on import above. ──────────
 
 
-fn _scalar_pre_simd_min_len(a: List[Float64], b: List[Float64]) -> Int:
+def _scalar_pre_simd_min_len(a: List[Float64], b: List[Float64]) -> Int:
     var n = len(a)
     if len(b) < n:
         n = len(b)
     return n
 
 
-fn _scalar_pre_simd_dot_product(a: List[Float64], b: List[Float64]) -> Float64:
+def _scalar_pre_simd_dot_product(a: List[Float64], b: List[Float64]) -> Float64:
     var s: Float64 = 0.0
     var n = _scalar_pre_simd_min_len(a, b)
     for i in range(n):
@@ -102,7 +102,7 @@ fn _scalar_pre_simd_dot_product(a: List[Float64], b: List[Float64]) -> Float64:
     return s
 
 
-fn _scalar_pre_simd_cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
+def _scalar_pre_simd_cosine_similarity(a: List[Float64], b: List[Float64]) -> Float64:
     var dot: Float64 = 0.0
     var sq_a: Float64 = 0.0
     var sq_b: Float64 = 0.0
@@ -118,7 +118,7 @@ fn _scalar_pre_simd_cosine_similarity(a: List[Float64], b: List[Float64]) -> Flo
     return dot / (sqrt(sq_a) * sqrt(sq_b))
 
 
-fn _scalar_pre_simd_euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def _scalar_pre_simd_euclidean_distance(a: List[Float64], b: List[Float64]) -> Float64:
     var s: Float64 = 0.0
     var n = _scalar_pre_simd_min_len(a, b)
     for i in range(n):
@@ -127,7 +127,7 @@ fn _scalar_pre_simd_euclidean_distance(a: List[Float64], b: List[Float64]) -> Fl
     return sqrt(s)
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from psychometrics import item_difficulty, item_discrimination, point_biserial, kuder_richardson_20, cronbach_alpha, spearman_brown_prophecy, standard_error_of_measurement, z_score, t_score, stanine, irt_1pl_probability, irt_2pl_probability
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

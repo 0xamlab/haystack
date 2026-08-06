@@ -242,7 +242,7 @@ comptime CRN_N_STATES: Int = 0
 comptime CRN_INDEP_Z_BAND: Float64 = 4.0
 
 
-fn crn_contract_id() -> String:
+def crn_contract_id() -> String:
     """The CRN coordinate assignment this module implements. Deterministic, zero-argument.
 
     Delegates to `strat_crn_contract()` rather than restating the string: two spellings of the
@@ -257,7 +257,7 @@ fn crn_contract_id() -> String:
     return strat_crn_contract()
 
 
-fn crn_generator_version() -> String:
+def crn_generator_version() -> String:
     """The frozen generator behind every draw. Deterministic, zero-argument.
 
     @capability crn_generator_version
@@ -268,7 +268,7 @@ fn crn_generator_version() -> String:
     return strat_rng_version()
 
 
-fn crn_environment_id() -> String:
+def crn_environment_id() -> String:
     """The versioned identifier of the payoff model. Deterministic, zero-argument.
 
     A payoff is meaningless without the environment that produced it, and a stored comparison
@@ -286,7 +286,7 @@ fn crn_environment_id() -> String:
     )
 
 
-fn crn_scenario_stream() -> Int:
+def crn_scenario_stream() -> Int:
     """The stream every environment draw is made on. Deterministic, zero-argument.
 
     Delegated from the contract so a suite can assert that the tape really is drawn here and not
@@ -300,7 +300,7 @@ fn crn_scenario_stream() -> Int:
     return strat_stream_scenario()
 
 
-fn crn_policy_stream() -> Int:
+def crn_policy_stream() -> Int:
     """The stream a MIXED policy's own coin is drawn on. Deterministic, zero-argument.
 
     Separate from the scenario stream, and that separation is why a randomised policy does not
@@ -314,7 +314,7 @@ fn crn_policy_stream() -> Int:
     return strat_stream_policy()
 
 
-fn crn_policy_arity(policy_kind: Int, n_factors: Int) -> Int:
+def crn_policy_arity(policy_kind: Int, n_factors: Int) -> Int:
     """How many Float64 parameters one policy of this kind needs IN THIS ENVIRONMENT, or -1.
 
     Delegates to `strat_policy_arity` with this environment's own action and state counts, so the
@@ -335,7 +335,7 @@ fn crn_policy_arity(policy_kind: Int, n_factors: Int) -> Int:
     return strat_policy_arity(policy_kind, n_factors, CRN_N_ACTIONS, CRN_N_STATES)
 
 
-fn crn_factor_status(factor_kind: Int, factor_param: Float64) -> Int:
+def crn_factor_status(factor_kind: Int, factor_param: Float64) -> Int:
     """`STRAT_OK` when this factor distribution can be sampled with this parameter.
 
     `STRAT_ERR_NON_FINITE` for a non-finite `factor_param` under EVERY kind, including the two
@@ -370,7 +370,7 @@ fn crn_factor_status(factor_kind: Int, factor_param: Float64) -> Int:
     return STRAT_OK
 
 
-fn crn_policy_status(policy_kind: Int, n_factors: Int, arity: Int) -> Int:
+def crn_policy_status(policy_kind: Int, n_factors: Int, arity: Int) -> Int:
     """`STRAT_OK` when this policy kind is evaluable here at the declared arity.
 
     Three distinct refusals, three codes:
@@ -410,7 +410,7 @@ fn crn_policy_status(policy_kind: Int, n_factors: Int, arity: Int) -> Int:
     return STRAT_OK
 
 
-fn crn_request_status(
+def crn_request_status(
     n_strategies: Int, n_scenarios: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64, policy_kind: Int, arity: Int,
     cost: Float64, gamma: Float64,
@@ -451,7 +451,7 @@ fn crn_request_status(
 # ── one draw, and one scenario tape ───────────────────────────────────────────
 
 
-fn _factor_draw(
+def _factor_draw(
     seed: UInt64, family: UInt64, scen: UInt64, step: UInt64, factor: UInt64,
     stream: UInt64, factor_kind: Int, factor_param: Float64,
 ) -> Float64:
@@ -494,7 +494,7 @@ struct CellDraw(Copyable, Movable):
     var cell: Int
 
 
-fn crn_cell_draw(
+def crn_cell_draw(
     master_seed: Int, scenario_family: Int, scenario: Int, step: Int, factor: Int,
     n_factors: Int, factor_kind: Int, factor_param: Float64,
 ) -> CellDraw:
@@ -543,7 +543,7 @@ fn crn_cell_draw(
     return CellDraw(STRAT_OK, True, value, stream, dpc, step * n_factors + factor)
 
 
-fn _tape_coord_status(
+def _tape_coord_status(
     master_seed: Int, scenario_family: Int, scenario: Int, horizon: Int, n_factors: Int,
     factor_kind: Int,
 ) -> Int:
@@ -568,7 +568,7 @@ fn _tape_coord_status(
     )
 
 
-fn crn_scenario_tape(
+def crn_scenario_tape(
     master_seed: Int, scenario_family: Int, scenario: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64,
 ) -> List[Float64]:
@@ -620,7 +620,7 @@ fn crn_scenario_tape(
     return out^
 
 
-fn crn_scenario_digest(
+def crn_scenario_digest(
     master_seed: Int, scenario_family: Int, scenario: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64,
 ) -> Int:
@@ -676,11 +676,11 @@ struct PolicyOutcome(Copyable, Movable):
     var digest: Int
 
 
-fn _outcome_refusal(code: Int, policy_kind: Int, strategy: Int) -> PolicyOutcome:
+def _outcome_refusal(code: Int, policy_kind: Int, strategy: Int) -> PolicyOutcome:
     return PolicyOutcome(code, False, 0.0, 0, 0, policy_kind, strategy, False, -1)
 
 
-fn _row_status(
+def _row_status(
     policy_kind: Int, params: List[Float64], base: Int, n_factors: Int
 ) -> Int:
     """`STRAT_OK` when strategy row `base` is a legal policy of this kind.
@@ -707,7 +707,7 @@ fn _row_status(
     return STRAT_OK
 
 
-fn _evaluate_row(
+def _evaluate_row(
     tape: List[Float64], horizon: Int, n_factors: Int, policy_kind: Int,
     params: List[Float64], base: Int, cost: Float64, gamma: Float64,
     master_seed: Int, scenario_family: Int, scenario: Int, strategy: Int,
@@ -769,7 +769,7 @@ fn _evaluate_row(
     )
 
 
-fn crn_evaluate_on_tape(
+def crn_evaluate_on_tape(
     tape: List[Float64], horizon: Int, n_factors: Int, policy_kind: Int,
     params: List[Float64], n_strategies: Int, arity: Int, strategy: Int,
     cost: Float64, gamma: Float64, master_seed: Int, scenario_family: Int, scenario: Int,
@@ -888,7 +888,7 @@ struct PolicySetRun(Copyable, Movable):
     var last_digest: Int
 
 
-fn _set_refusal(code: Int) -> PolicySetRun:
+def _set_refusal(code: Int) -> PolicySetRun:
     return PolicySetRun(
         code, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0,
         List[Float64](), List[Bool](), List[Int](),
@@ -896,7 +896,7 @@ fn _set_refusal(code: Int) -> PolicySetRun:
     )
 
 
-fn crn_evaluate_policies(
+def crn_evaluate_policies(
     master_seed: Int, scenario_family: Int, n_scenarios: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64, cost: Float64, policy_kind: Int,
     params: List[Float64], n_strategies: Int, arity: Int, gamma: Float64,
@@ -1081,7 +1081,7 @@ struct PolicyRun(Copyable, Movable):
     var last_digest: Int
 
 
-fn crn_evaluate_policy(
+def crn_evaluate_policy(
     master_seed: Int, scenario_family: Int, n_scenarios: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64, cost: Float64, policy_kind: Int,
     params: List[Float64], arity: Int, gamma: Float64,
@@ -1188,7 +1188,7 @@ struct PairingAudit(Copyable, Movable):
     var conclusions_differ: Bool
 
 
-fn _audit_refusal(code: Int) -> PairingAudit:
+def _audit_refusal(code: Int) -> PairingAudit:
     return PairingAudit(
         code, 0, 0, 0, 0, 0, 0, 0, 0.0, -1, 0, -1, -1, False,
         False, 0.0, 0.0, False, 0.0, 0.0, False, False, 0.0,
@@ -1197,7 +1197,7 @@ fn _audit_refusal(code: Int) -> PairingAudit:
     )
 
 
-fn _two_sided_p(mean: Float64, variance: Float64, n: Int) -> Float64:
+def _two_sided_p(mean: Float64, variance: Float64, n: Int) -> Float64:
     """The two-sided t p-value for `mean == 0` on `n - 1` degrees of freedom, or -1.0 for absent.
 
     A ZERO variance is a real case here and has a defined answer, so it is not left to divide by
@@ -1226,7 +1226,7 @@ fn _two_sided_p(mean: Float64, variance: Float64, n: Int) -> Float64:
     return p
 
 
-fn crn_pairing_audit(
+def crn_pairing_audit(
     master_seed: Int, scenario_family: Int, n_scenarios: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64, cost: Float64, policy_kind: Int,
     params: List[Float64], n_strategies: Int, arity: Int, strategy_a: Int, strategy_b: Int,
@@ -1485,14 +1485,14 @@ struct IndependenceAudit(Copyable, Movable):
     var indistinguishable_from_zero: Bool
 
 
-fn _independence_refusal(code: Int) -> IndependenceAudit:
+def _independence_refusal(code: Int) -> IndependenceAudit:
     return IndependenceAudit(
         code, 0, 0, 0, 0, 0, 0, 0, -1, False, 0.0, False, 0.0, False, 0.0, False, 0.0,
         CRN_INDEP_Z_BAND, False,
     )
 
 
-fn crn_independence_audit(
+def crn_independence_audit(
     master_seed: Int, scenario_family: Int, n_scenarios: Int, horizon: Int, n_factors: Int,
     factor_kind: Int, factor_param: Float64, lag: Int,
 ) -> IndependenceAudit:

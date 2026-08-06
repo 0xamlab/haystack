@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn batch_padding_mask(
+def batch_padding_mask(
     token_pos: Float64, sequence_length: Float64
 ) -> Float64:
     """Padding mask: 1.0 if valid token, 0.0 if padding.
@@ -34,7 +34,7 @@ fn batch_padding_mask(
     return 0.0
 
 
-fn dynamic_batching_priority(
+def dynamic_batching_priority(
     wait_time: Float64, sequence_length: Float64,
     sla_deadline: Float64
 ) -> Float64:
@@ -57,7 +57,7 @@ fn dynamic_batching_priority(
     return (wait_time / sequence_length) * urgency
 
 
-fn kv_cache_hit_ratio(
+def kv_cache_hit_ratio(
     cache_hits: Float64, total_requests: Float64
 ) -> Float64:
     """KV-cache hit ratio for prefix caching.
@@ -74,7 +74,7 @@ fn kv_cache_hit_ratio(
     return cache_hits / total_requests
 
 
-fn latency_percentile_estimate(
+def latency_percentile_estimate(
     mean_latency: Float64, std_latency: Float64, percentile: Float64
 ) -> Float64:
     """Estimate latency percentile assuming log-normal distribution.
@@ -99,7 +99,7 @@ fn latency_percentile_estimate(
     return mean_latency + z * std_latency
 
 
-fn throughput_tokens_per_sec(
+def throughput_tokens_per_sec(
     batch_size: Float64, tokens_per_request: Float64, latency_ms: Float64
 ) -> Float64:
     """Throughput in tokens/second.
@@ -119,7 +119,7 @@ fn throughput_tokens_per_sec(
     return batch_size * tokens_per_request / (latency_ms / 1000.0)
 
 
-fn speculative_decode_accept_rate(
+def speculative_decode_accept_rate(
     draft_accepted: Float64, draft_tokens: Float64
 ) -> Float64:
     """Speculative decoding acceptance rate α.
@@ -138,7 +138,7 @@ fn speculative_decode_accept_rate(
     return draft_accepted / draft_tokens
 
 
-fn continuous_batching_capacity(
+def continuous_batching_capacity(
     gpu_memory_bytes: Float64, kv_cache_per_token_bytes: Float64,
     model_weights_bytes: Float64
 ) -> Float64:
@@ -162,7 +162,7 @@ fn continuous_batching_capacity(
     return available / kv_cache_per_token_bytes
 
 
-fn quantized_inference_speedup(
+def quantized_inference_speedup(
     fp32_flops: Float64, int8_throughput_ratio: Float64,
     memory_bandwidth_ratio: Float64
 ) -> Float64:
@@ -183,7 +183,7 @@ fn quantized_inference_speedup(
     return memory_bandwidth_ratio
 
 
-fn prefill_time_estimate(
+def prefill_time_estimate(
     n_tokens: Float64, n_layers: Float64,
     d_model: Float64, flops_per_second: Float64
 ) -> Float64:
@@ -207,7 +207,7 @@ fn prefill_time_estimate(
     return flops / flops_per_second * 1000.0
 
 
-fn decode_time_per_token(
+def decode_time_per_token(
     n_layers: Float64, d_model: Float64, flops_per_second: Float64
 ) -> Float64:
     """Decode step time per token (ms).

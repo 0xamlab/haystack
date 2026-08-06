@@ -31,7 +31,7 @@ def _assert_true(cond: Bool, label: String) raises:
 
 
 @always_inline
-fn _char_at(s: String, idx: Int) -> String:
+def _char_at(s: String, idx: Int) -> String:
     """Get the character at a given byte index as a String."""
     return chr(Int(s.as_bytes()[idx]))
 

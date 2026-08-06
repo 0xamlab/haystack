@@ -25,7 +25,7 @@ Public API:
 # ── basis_weight ─────────────────────────────────────────────────────────────
 
 
-fn basis_weight(mass_g: Float64, area_m2: Float64) -> Float64:
+def basis_weight(mass_g: Float64, area_m2: Float64) -> Float64:
     """BW = mass / area  (g/m², GSM)."""
     return mass_g / area_m2
 
@@ -33,7 +33,7 @@ fn basis_weight(mass_g: Float64, area_m2: Float64) -> Float64:
 # ── caliper_to_density ───────────────────────────────────────────────────────
 
 
-fn caliper_to_density(basis_weight_gsm: Float64, caliper_mm: Float64) -> Float64:
+def caliper_to_density(basis_weight_gsm: Float64, caliper_mm: Float64) -> Float64:
     """Density = BW / (caliper * 1000)  (g/cm³)."""
     return basis_weight_gsm / (caliper_mm * 1000.0)
 
@@ -41,7 +41,7 @@ fn caliper_to_density(basis_weight_gsm: Float64, caliper_mm: Float64) -> Float64
 # ── bulk ─────────────────────────────────────────────────────────────────────
 
 
-fn bulk(caliper_mm: Float64, basis_weight_gsm: Float64) -> Float64:
+def bulk(caliper_mm: Float64, basis_weight_gsm: Float64) -> Float64:
     """Bulk = caliper * 1000 / BW  (cm³/g)."""
     return caliper_mm * 1000.0 / basis_weight_gsm
 
@@ -49,7 +49,7 @@ fn bulk(caliper_mm: Float64, basis_weight_gsm: Float64) -> Float64:
 # ── tearing_resistance_index ─────────────────────────────────────────────────
 
 
-fn tearing_resistance_index(tear_mn: Float64, basis_weight_gsm: Float64) -> Float64:
+def tearing_resistance_index(tear_mn: Float64, basis_weight_gsm: Float64) -> Float64:
     """Tearing index = tear / BW  (mN·m²/g)."""
     return tear_mn / basis_weight_gsm
 
@@ -57,7 +57,7 @@ fn tearing_resistance_index(tear_mn: Float64, basis_weight_gsm: Float64) -> Floa
 # ── tensile_index ────────────────────────────────────────────────────────────
 
 
-fn tensile_index(tensile_kn_m: Float64, basis_weight_gsm: Float64) -> Float64:
+def tensile_index(tensile_kn_m: Float64, basis_weight_gsm: Float64) -> Float64:
     """Tensile index = tensile*1000 / BW  (N·m/g)."""
     return tensile_kn_m * 1000.0 / basis_weight_gsm
 
@@ -65,7 +65,7 @@ fn tensile_index(tensile_kn_m: Float64, basis_weight_gsm: Float64) -> Float64:
 # ── burst_index ──────────────────────────────────────────────────────────────
 
 
-fn burst_index(burst_kpa: Float64, basis_weight_gsm: Float64) -> Float64:
+def burst_index(burst_kpa: Float64, basis_weight_gsm: Float64) -> Float64:
     """Burst index = burst / BW  (kPa·m²/g)."""
     return burst_kpa / basis_weight_gsm
 
@@ -73,7 +73,7 @@ fn burst_index(burst_kpa: Float64, basis_weight_gsm: Float64) -> Float64:
 # ── freeness_csf ─────────────────────────────────────────────────────────────
 
 
-fn freeness_csf(drainage_ml: Float64) -> Float64:
+def freeness_csf(drainage_ml: Float64) -> Float64:
     """Returns drainage value directly (CSF mL)."""
     return drainage_ml
 
@@ -81,7 +81,7 @@ fn freeness_csf(drainage_ml: Float64) -> Float64:
 # ── kappa_number_to_lignin ───────────────────────────────────────────────────
 
 
-fn kappa_number_to_lignin(kappa: Float64) -> Float64:
+def kappa_number_to_lignin(kappa: Float64) -> Float64:
     """Lignin% ≈ kappa * 0.15."""
     return kappa * 0.15
 
@@ -89,7 +89,7 @@ fn kappa_number_to_lignin(kappa: Float64) -> Float64:
 # ── pulp_yield ───────────────────────────────────────────────────────────────
 
 
-fn pulp_yield(pulp_mass: Float64, wood_mass: Float64) -> Float64:
+def pulp_yield(pulp_mass: Float64, wood_mass: Float64) -> Float64:
     """Yield = pulp / wood * 100  (%)."""
     return pulp_mass / wood_mass * 100.0
 
@@ -97,7 +97,7 @@ fn pulp_yield(pulp_mass: Float64, wood_mass: Float64) -> Float64:
 # ── moisture_content_paper ───────────────────────────────────────────────────
 
 
-fn moisture_content_paper(wet_mass: Float64, dry_mass: Float64) -> Float64:
+def moisture_content_paper(wet_mass: Float64, dry_mass: Float64) -> Float64:
     """Moisture content = (wet - dry) / wet * 100  (%)."""
     return (wet_mass - dry_mass) / wet_mass * 100.0
 
@@ -105,7 +105,7 @@ fn moisture_content_paper(wet_mass: Float64, dry_mass: Float64) -> Float64:
 # ── stiffness_index ──────────────────────────────────────────────────────────
 
 
-fn stiffness_index(bending_stiffness: Float64, basis_weight_gsm: Float64) -> Float64:
+def stiffness_index(bending_stiffness: Float64, basis_weight_gsm: Float64) -> Float64:
     """Stiffness index = stiffness / BW^3  (simplified)."""
     var bw3 = basis_weight_gsm * basis_weight_gsm * basis_weight_gsm
     return bending_stiffness / bw3
@@ -114,6 +114,6 @@ fn stiffness_index(bending_stiffness: Float64, basis_weight_gsm: Float64) -> Flo
 # ── recycled_fiber_content ───────────────────────────────────────────────────
 
 
-fn recycled_fiber_content(recycled: Float64, total: Float64) -> Float64:
+def recycled_fiber_content(recycled: Float64, total: Float64) -> Float64:
     """Recycled fiber content = recycled / total * 100  (%)."""
     return recycled / total * 100.0

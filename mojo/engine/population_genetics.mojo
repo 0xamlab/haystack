@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log
 
 
-fn hardy_weinberg_freq(p: Float64) -> Float64:
+def hardy_weinberg_freq(p: Float64) -> Float64:
     """Hardy-Weinberg heterozygote frequency: H = 2·p·(1-p).
 
     Args:
@@ -30,7 +30,7 @@ fn hardy_weinberg_freq(p: Float64) -> Float64:
     return 2.0 * p * (1.0 - p)
 
 
-fn allele_frequency_drift(
+def allele_frequency_drift(
     p: Float64, effective_pop_size: Float64
 ) -> Float64:
     """Standard deviation of allele frequency change per generation from drift.
@@ -50,7 +50,7 @@ fn allele_frequency_drift(
     return sqrt(p * q / (2.0 * effective_pop_size))
 
 
-fn selection_coefficient(
+def selection_coefficient(
     p: Float64, s: Float64, h: Float64
 ) -> Float64:
     """Change in allele frequency Δp per generation from selection.
@@ -71,7 +71,7 @@ fn selection_coefficient(
     return s * p * q * (p + h * q)
 
 
-fn effective_population_size(n_female: Float64, n_male: Float64) -> Float64:
+def effective_population_size(n_female: Float64, n_male: Float64) -> Float64:
     """Effective population size from census counts.
 
     Ne = 4·Nf·Nm / (Nf + Nm)
@@ -89,7 +89,7 @@ fn effective_population_size(n_female: Float64, n_male: Float64) -> Float64:
     return 4.0 * n_female * n_male / denom
 
 
-fn nucleotide_diversity(
+def nucleotide_diversity(
     n_sequences: Float64, pairwise_differences: Float64
 ) -> Float64:
     """Nucleotide diversity π from average pairwise differences.
@@ -109,7 +109,7 @@ fn nucleotide_diversity(
     return pairwise_differences / n_pairs
 
 
-fn tajimas_d_simplified(
+def tajimas_d_simplified(
     n: Float64, seg_sites: Float64, avg_pairwise_diff: Float64
 ) -> Float64:
     """Simplified Tajima's D (ignores variance correction factors).
@@ -138,7 +138,7 @@ fn tajimas_d_simplified(
     return (avg_pairwise_diff - theta_w) / norm
 
 
-fn fst_wright(
+def fst_wright(
     ht: Float64, hs: Float64
 ) -> Float64:
     """Wright's FST from total and subpopulation heterozygosity.
@@ -160,7 +160,7 @@ fn fst_wright(
     return fst
 
 
-fn inbreeding_coefficient(
+def inbreeding_coefficient(
     p: Float64, observed_het: Float64
 ) -> Float64:
     """Inbreeding coefficient F from observed vs. expected heterozygosity.
@@ -180,7 +180,7 @@ fn inbreeding_coefficient(
     return 1.0 - observed_het / h_exp
 
 
-fn mutation_load(
+def mutation_load(
     mutation_rate: Float64, dominance_h: Float64
 ) -> Float64:
     """Genetic load from deleterious mutations (Haldane's principle).
@@ -202,7 +202,7 @@ fn mutation_load(
     return mutation_rate / (2.0 * dominance_h)
 
 
-fn linkage_disequilibrium(
+def linkage_disequilibrium(
     p_ab: Float64, p_a: Float64, p_b: Float64
 ) -> Float64:
     """Linkage disequilibrium D = p_AB - p_A·p_B.

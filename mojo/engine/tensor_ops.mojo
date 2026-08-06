@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn matmul_element(
+def matmul_element(
     a_row_sum: Float64, b_col_element: Float64
 ) -> Float64:
     """One accumulation step in matrix multiplication C = A × B.
@@ -34,7 +34,7 @@ fn matmul_element(
     return a_row_sum + b_col_element
 
 
-fn broadcast_index(
+def broadcast_index(
     idx: Float64, dim_size: Float64
 ) -> Float64:
     """NumPy-style broadcast: map index to 0 if dim_size == 1.
@@ -51,7 +51,7 @@ fn broadcast_index(
     return idx
 
 
-fn stride_from_shape(
+def stride_from_shape(
     dim_size: Float64, next_stride: Float64
 ) -> Float64:
     """Row-major stride for a dimension: stride = next_stride × dim_size.
@@ -68,7 +68,7 @@ fn stride_from_shape(
     return dim_size * next_stride
 
 
-fn flatten_index(
+def flatten_index(
     row: Float64, col: Float64, n_cols: Float64
 ) -> Float64:
     """2D row-major flat index: row × n_cols + col.
@@ -84,7 +84,7 @@ fn flatten_index(
     return row * n_cols + col
 
 
-fn unflatten_index_dim(
+def unflatten_index_dim(
     flat_idx: Float64, stride: Float64, dim_size: Float64
 ) -> Float64:
     """Extract dimension index from flat index.
@@ -104,7 +104,7 @@ fn unflatten_index_dim(
     return Float64(Int64(flat_idx / stride) % Int64(dim_size))
 
 
-fn transpose_index(
+def transpose_index(
     row: Float64, col: Float64, n_rows: Float64
 ) -> Float64:
     """Flat index after 2D transpose: col × n_rows + row.
@@ -120,7 +120,7 @@ fn transpose_index(
     return col * n_rows + row
 
 
-fn outer_product_element(a_i: Float64, b_j: Float64) -> Float64:
+def outer_product_element(a_i: Float64, b_j: Float64) -> Float64:
     """Outer product element: (a ⊗ b)[i,j] = a_i × b_j.
 
     Args:
@@ -133,7 +133,7 @@ fn outer_product_element(a_i: Float64, b_j: Float64) -> Float64:
     return a_i * b_j
 
 
-fn tensor_norm_contribution(x: Float64) -> Float64:
+def tensor_norm_contribution(x: Float64) -> Float64:
     """L2 norm contribution: x².
 
     Sum these across elements then sqrt to get L2 norm.
@@ -147,7 +147,7 @@ fn tensor_norm_contribution(x: Float64) -> Float64:
     return x * x
 
 
-fn softmax_stable_element(
+def softmax_stable_element(
     x_i: Float64, x_max: Float64, sum_exp: Float64
 ) -> Float64:
     """Numerically stable softmax element: exp(x_i - max) / Σexp(x_j - max).
@@ -165,7 +165,7 @@ fn softmax_stable_element(
     return exp(x_i - x_max) / sum_exp
 
 
-fn tensor_dot_contribution(
+def tensor_dot_contribution(
     a: Float64, b: Float64, axis_size: Float64
 ) -> Float64:
     """Generalised tensor dot: one a×b term normalised by axis size.

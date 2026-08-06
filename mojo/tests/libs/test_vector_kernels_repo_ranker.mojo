@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from vector_kernels.repo_ranker import run_repo_rank
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

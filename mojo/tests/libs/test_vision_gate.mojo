@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from vision_gate import should_use_cache, needs_clearer_image, is_text_heavy, quality_gate_passed, route_image_request
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -205,7 +205,7 @@ struct _DemandEvents(Copyable, Movable):
     var intervals: List[Float64]
 
 
-fn _demand_events(y: List[Float64]) -> _DemandEvents:
+def _demand_events(y: List[Float64]) -> _DemandEvents:
     """Split a demand series into positive sizes and inter-demand intervals. O(n)."""
     var sizes = List[Float64]()
     var intervals = List[Float64]()
@@ -218,7 +218,7 @@ fn _demand_events(y: List[Float64]) -> _DemandEvents:
     return _DemandEvents(sizes^, intervals^)
 
 
-fn _bias_factor(variant: Int, alpha_interval: Float64) -> Float64:
+def _bias_factor(variant: Int, alpha_interval: Float64) -> Float64:
     """The variant's multiplicative correction, or -1.0 for an unknown variant.
 
     -1.0 rather than 1.0 for the unknown case: 1.0 is the CLASSIC factor, so defaulting to it
@@ -238,7 +238,7 @@ fn _bias_factor(variant: Int, alpha_interval: Float64) -> Float64:
     return -1.0
 
 
-fn croston_variant_name(variant: Int) -> String:
+def croston_variant_name(variant: Int) -> String:
     """Name for a Croston variant id. Unknown ids are named, not defaulted."""
     if variant == FC_CROSTON_CLASSIC:
         return "croston"
@@ -249,7 +249,7 @@ fn croston_variant_name(variant: Int) -> String:
     return "unknown"
 
 
-fn demand_class_name(demand_class: Int) -> String:
+def demand_class_name(demand_class: Int) -> String:
     """Name for a demand class. FC_DEMAND_UNCLASSIFIED is a real answer with a real name."""
     if demand_class == FC_DEMAND_SMOOTH:
         return "smooth"
@@ -264,7 +264,7 @@ fn demand_class_name(demand_class: Int) -> String:
     return "unknown"
 
 
-fn _no_intermittent(
+def _no_intermittent(
     status: Int, variant: Int, horizon: Int, n_periods: Int, n_nonzero: Int
 ) -> IntermittentForecast:
     """A refusal that still carries the census, because the census IS the explanation."""
@@ -279,7 +279,7 @@ fn _no_intermittent(
     )
 
 
-fn croston_forecast(
+def croston_forecast(
     y: List[Float64], alpha_demand: Float64, alpha_interval: Float64,
     variant: Int, horizon: Int
 ) -> IntermittentForecast:
@@ -365,7 +365,7 @@ fn croston_forecast(
     )
 
 
-fn demand_classify(y: List[Float64]) -> DemandProfile:
+def demand_classify(y: List[Float64]) -> DemandProfile:
     """Syntetos-Boylan-Croston quadrant, with ADI and CV-squared reported separately.
 
     `adi = mean(intervals)` via the frozen `stats.compute_mean`; `cv2 = var(sizes) /

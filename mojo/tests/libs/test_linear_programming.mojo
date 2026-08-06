@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from linear_programming import line_intersection_2d, objective_value
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

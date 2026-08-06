@@ -44,21 +44,21 @@ struct TomlNode(Copyable, Movable):
     # List: child node indices
     var list_vals: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.kind = _TOML_SCALAR
         self.scalar = String("")
         self.map_keys = List[String]()
         self.map_vals = List[Int]()
         self.list_vals = List[Int]()
 
-    fn __init__(out self, kind: Int, scalar: String):
+    def __init__(out self, kind: Int, scalar: String):
         self.kind = kind
         self.scalar = scalar
         self.map_keys = List[String]()
         self.map_vals = List[Int]()
         self.list_vals = List[Int]()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.kind = copy.kind
         self.scalar = copy.scalar
         self.map_keys = copy.map_keys.copy()
@@ -74,28 +74,28 @@ struct _TomlPool(Copyable, Movable):
     """Flat storage for TOML nodes. Nodes reference children by index."""
     var nodes: List[TomlNode]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.nodes = List[TomlNode]()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.nodes = copy.nodes.copy()
 
-    fn add_scalar(mut self, value: String) -> Int:
+    def add_scalar(mut self, value: String) -> Int:
         var idx = len(self.nodes)
         self.nodes.append(TomlNode(_TOML_SCALAR, value))
         return idx
 
-    fn add_map(mut self) -> Int:
+    def add_map(mut self) -> Int:
         var idx = len(self.nodes)
         self.nodes.append(TomlNode(_TOML_MAP, String("")))
         return idx
 
-    fn add_list(mut self) -> Int:
+    def add_list(mut self) -> Int:
         var idx = len(self.nodes)
         self.nodes.append(TomlNode(_TOML_LIST, String("")))
         return idx
 
-    fn map_set(mut self, map_idx: Int, key: String, val_idx: Int):
+    def map_set(mut self, map_idx: Int, key: String, val_idx: Int):
         """Set key in a map node. Overwrites if key already exists."""
         for i in range(len(self.nodes[map_idx].map_keys)):
             if self.nodes[map_idx].map_keys[i] == key:
@@ -104,14 +104,14 @@ struct _TomlPool(Copyable, Movable):
         self.nodes[map_idx].map_keys.append(key)
         self.nodes[map_idx].map_vals.append(val_idx)
 
-    fn map_get(self, map_idx: Int, key: String) -> Int:
+    def map_get(self, map_idx: Int, key: String) -> Int:
         """Get a child index from a map node. Returns -1 if not found."""
         for i in range(len(self.nodes[map_idx].map_keys)):
             if self.nodes[map_idx].map_keys[i] == key:
                 return self.nodes[map_idx].map_vals[i]
         return -1
 
-    fn ensure_sub_map(mut self, parent_idx: Int, key: String) -> Int:
+    def ensure_sub_map(mut self, parent_idx: Int, key: String) -> Int:
         """Get or create a sub-map under parent for the given key."""
         var existing = self.map_get(parent_idx, key)
         if existing >= 0 and self.nodes[existing].kind == _TOML_MAP:
@@ -124,7 +124,7 @@ struct _TomlPool(Copyable, Movable):
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
 
-fn _toml_strip(s: String) -> String:
+def _toml_strip(s: String) -> String:
     """Strip leading and trailing whitespace."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -146,7 +146,7 @@ fn _toml_strip(s: String) -> String:
     return result
 
 
-fn _toml_substring(s: String, start: Int, end: Int) -> String:
+def _toml_substring(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var result = String("")
@@ -156,7 +156,7 @@ fn _toml_substring(s: String, start: Int, end: Int) -> String:
     return result
 
 
-fn _toml_split_lines(content: String) -> List[String]:
+def _toml_split_lines(content: String) -> List[String]:
     """Split string by newline."""
     var lines = List[String]()
     var bs = content.as_bytes()
@@ -177,7 +177,7 @@ fn _toml_split_lines(content: String) -> List[String]:
     return lines^
 
 
-fn _toml_starts_with(s: String, prefix: String) -> Bool:
+def _toml_starts_with(s: String, prefix: String) -> Bool:
     """Check if s starts with prefix."""
     if len(prefix) > len(s):
         return False
@@ -189,7 +189,7 @@ fn _toml_starts_with(s: String, prefix: String) -> Bool:
     return True
 
 
-fn _toml_ends_with(s: String, suffix: String) -> Bool:
+def _toml_ends_with(s: String, suffix: String) -> Bool:
     """Check if s ends with suffix."""
     if len(suffix) > len(s):
         return False
@@ -202,7 +202,7 @@ fn _toml_ends_with(s: String, suffix: String) -> Bool:
     return True
 
 
-fn _toml_find_char(s: String, c: Int) -> Int:
+def _toml_find_char(s: String, c: Int) -> Int:
     """Find first occurrence of character. Returns -1 if not found."""
     var bs = s.as_bytes()
     for i in range(len(s)):
@@ -211,7 +211,7 @@ fn _toml_find_char(s: String, c: Int) -> Int:
     return -1
 
 
-fn _toml_split_dot(path: String) -> List[String]:
+def _toml_split_dot(path: String) -> List[String]:
     """Split a dot-notation path into segments."""
     var parts = List[String]()
     var bs = path.as_bytes()
@@ -225,7 +225,7 @@ fn _toml_split_dot(path: String) -> List[String]:
     return parts^
 
 
-fn _toml_unquote(s: String) -> String:
+def _toml_unquote(s: String) -> String:
     """Remove surrounding quotes if present."""
     var n = len(s)
     if n < 2:
@@ -238,12 +238,12 @@ fn _toml_unquote(s: String) -> String:
     return s
 
 
-fn _toml_is_digit(c: Int) -> Bool:
+def _toml_is_digit(c: Int) -> Bool:
     """Check if char code is a digit."""
     return c >= 48 and c <= 57
 
 
-fn _toml_parse_value(mut pool: _TomlPool, raw: String) -> Int:
+def _toml_parse_value(mut pool: _TomlPool, raw: String) -> Int:
     """Parse a TOML value string and add to pool. Returns node index."""
     var val = _toml_strip(raw)
     var vlen = len(val)
@@ -272,7 +272,7 @@ fn _toml_parse_value(mut pool: _TomlPool, raw: String) -> Int:
     return pool.add_scalar(val)
 
 
-fn _toml_parse_array(mut pool: _TomlPool, raw: String) -> Int:
+def _toml_parse_array(mut pool: _TomlPool, raw: String) -> Int:
     """Parse a TOML array like [1, 2, 3] or ["a", "b"]. Returns list node index."""
     var list_idx = pool.add_list()
     # Strip surrounding brackets
@@ -318,15 +318,15 @@ struct TomlDoc(Copyable, Movable):
     var pool: _TomlPool
     var root: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.pool = _TomlPool()
         self.root = 0
 
-    fn __init__(out self, pool: _TomlPool, root: Int):
+    def __init__(out self, pool: _TomlPool, root: Int):
         self.pool = pool.copy()
         self.root = root
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.pool = copy.pool.copy()
         self.root = copy.root
 
@@ -334,7 +334,7 @@ struct TomlDoc(Copyable, Movable):
 # ── Public API: toml_parse ───────────────────────────────────────────────────
 
 
-fn toml_parse(content: String) -> TomlDoc:
+def toml_parse(content: String) -> TomlDoc:
     """Parse TOML content string into a TomlDoc tree.
 
     Supports: [section], [section.sub], key = value, # comments.
@@ -418,7 +418,7 @@ fn toml_parse(content: String) -> TomlDoc:
 # ── Public API: dot-notation accessors ────────────────────────────────────────
 
 
-fn _toml_resolve(doc: TomlDoc, path: String) -> Int:
+def _toml_resolve(doc: TomlDoc, path: String) -> Int:
     """Resolve a dot-notation path to a node index. Returns -1 if not found."""
     var parts = _toml_split_dot(path)
     var n_nodes = len(doc.pool.nodes)
@@ -450,7 +450,7 @@ fn _toml_resolve(doc: TomlDoc, path: String) -> Int:
     return current
 
 
-fn toml_get_string(doc: TomlDoc, path: String) -> String:
+def toml_get_string(doc: TomlDoc, path: String) -> String:
     """Get a string value by dot-notation path. Returns '' if not found."""
     var idx = _toml_resolve(doc, path)
     if idx < 0:
@@ -460,7 +460,7 @@ fn toml_get_string(doc: TomlDoc, path: String) -> String:
     return String("")
 
 
-fn toml_get_int(doc: TomlDoc, path: String, default: Int) -> Int:
+def toml_get_int(doc: TomlDoc, path: String, default: Int) -> Int:
     """Get an integer value by dot-notation path. Returns default if not found."""
     var s = toml_get_string(doc, path)
     if len(s) == 0:
@@ -471,7 +471,7 @@ fn toml_get_int(doc: TomlDoc, path: String, default: Int) -> Int:
         return default
 
 
-fn toml_get_float(doc: TomlDoc, path: String, default: Float64) -> Float64:
+def toml_get_float(doc: TomlDoc, path: String, default: Float64) -> Float64:
     """Get a float value by dot-notation path. Returns default if not found."""
     var s = toml_get_string(doc, path)
     if len(s) == 0:
@@ -482,7 +482,7 @@ fn toml_get_float(doc: TomlDoc, path: String, default: Float64) -> Float64:
         return default
 
 
-fn toml_get_bool(doc: TomlDoc, path: String, default: Bool) -> Bool:
+def toml_get_bool(doc: TomlDoc, path: String, default: Bool) -> Bool:
     """Get a boolean value by dot-notation path. Returns default if not found."""
     var s = toml_get_string(doc, path)
     if len(s) == 0:

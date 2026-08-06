@@ -101,7 +101,7 @@ struct TxBuffer(Copyable, Movable):
     var status: Int
 
 
-fn tx_buf_element_width_bytes(dtype: Int) -> Int:
+def tx_buf_element_width_bytes(dtype: Int) -> Int:
     """Byte width of ONE element for a self-contained dtype. `0` for `int4`/`nf4` (sub-byte, and not
     addressable this way — see the module docstring) and for any unsupported code.
     """
@@ -118,7 +118,7 @@ fn tx_buf_element_width_bytes(dtype: Int) -> Int:
     return 0
 
 
-fn tx_buf_required_bytes_flat(n: Int, dtype: Int) -> Int:
+def tx_buf_required_bytes_flat(n: Int, dtype: Int) -> Int:
     """Exact byte length needed for `n` self-contained elements of `dtype`. `-1` if `n` is negative,
     exceeds the package ceiling, or `dtype` cannot be held this way.
     """
@@ -130,7 +130,7 @@ fn tx_buf_required_bytes_flat(n: Int, dtype: Int) -> Int:
     return n * width
 
 
-fn tx_buf_required_bytes(dims: List[Int], rank: Int, dtype: Int) -> Int:
+def tx_buf_required_bytes(dims: List[Int], rank: Int, dtype: Int) -> Int:
     """The shaped version of `tx_buf_required_bytes_flat`: element count comes from `tensorx.shape`
     rather than being taken on faith from a caller-supplied `n`.
 
@@ -146,7 +146,7 @@ fn tx_buf_required_bytes(dims: List[Int], rank: Int, dtype: Int) -> Int:
     return tx_buf_required_bytes_flat(n, dtype)
 
 
-fn _encode_one(value: Float64, dtype: Int, mut out: List[UInt8]) -> Bool:
+def _encode_one(value: Float64, dtype: Int, mut out: List[UInt8]) -> Bool:
     """Append the little-endian byte encoding of one value to `out`. False (nothing appended) if
     `dtype` is not self-contained.
     """
@@ -197,7 +197,7 @@ fn _encode_one(value: Float64, dtype: Int, mut out: List[UInt8]) -> Bool:
     return False
 
 
-fn _decode_one(data: List[UInt8], offset: Int, dtype: Int) -> Float64:
+def _decode_one(data: List[UInt8], offset: Int, dtype: Int) -> Float64:
     """Decode one little-endian element of `dtype` starting at byte `offset`. Caller guarantees
     `offset + width <= len(data)`; this helper only assembles bytes it is handed.
     """
@@ -228,7 +228,7 @@ fn _decode_one(data: List[UInt8], offset: Int, dtype: Int) -> Float64:
     return 0.0
 
 
-fn tx_buf_encode_flat(values: List[Float64], n: Int, dtype: Int) -> List[UInt8]:
+def tx_buf_encode_flat(values: List[Float64], n: Int, dtype: Int) -> List[UInt8]:
     """Encode the first `n` entries of `values` into raw little-endian bytes of `dtype`.
 
     Empty on a negative or out-of-range `n`, on a dtype this buffer cannot hold as values (`int4`,
@@ -254,7 +254,7 @@ fn tx_buf_encode_flat(values: List[Float64], n: Int, dtype: Int) -> List[UInt8]:
     return out^
 
 
-fn tx_buf_decode_flat(data: List[UInt8], n: Int, dtype: Int) -> List[Float64]:
+def tx_buf_decode_flat(data: List[UInt8], n: Int, dtype: Int) -> List[Float64]:
     """Decode `n` elements of `dtype` from `data`, starting at byte 0.
 
     Empty if `n` is negative or out of range, if `dtype` cannot be held as values, or if `data` is
@@ -277,7 +277,7 @@ fn tx_buf_decode_flat(data: List[UInt8], n: Int, dtype: Int) -> List[Float64]:
     return out^
 
 
-fn tx_buf_make(
+def tx_buf_make(
     values: List[Float64], n: Int, dims: List[Int], rank: Int, dtype: Int
 ) -> TxBuffer:
     """Build a `TxBuffer` from `n` flat values reshaped to `dims[0:rank]`.
@@ -312,7 +312,7 @@ fn tx_buf_make(
     return TxBuffer(encoded^, out_dims^, rank, dtype, TX_OK)
 
 
-fn tx_buf_to_values(buf: TxBuffer) -> List[Float64]:
+def tx_buf_to_values(buf: TxBuffer) -> List[Float64]:
     """Decode a whole `TxBuffer` back to a flat `List[Float64]`, in the buffer's own row-major order.
 
     Same-file struct parameter, per rule 2 — this function and `TxBuffer` are both declared here.

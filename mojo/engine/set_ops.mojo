@@ -24,7 +24,7 @@ Public API:
 # ── set_union ────────────────────────────────────────────────────────────────
 
 
-fn set_union(a: List[Int], b: List[Int]) -> List[Int]:
+def set_union(a: List[Int], b: List[Int]) -> List[Int]:
     """Union of two sorted lists (merge without duplicates)."""
     var result = List[Int]()
     var i = 0
@@ -54,7 +54,7 @@ fn set_union(a: List[Int], b: List[Int]) -> List[Int]:
 # ── set_intersection ─────────────────────────────────────────────────────────
 
 
-fn set_intersection(a: List[Int], b: List[Int]) -> List[Int]:
+def set_intersection(a: List[Int], b: List[Int]) -> List[Int]:
     """Intersection of two sorted lists."""
     var result = List[Int]()
     var i = 0
@@ -76,7 +76,7 @@ fn set_intersection(a: List[Int], b: List[Int]) -> List[Int]:
 # ── set_difference ───────────────────────────────────────────────────────────
 
 
-fn set_difference(a: List[Int], b: List[Int]) -> List[Int]:
+def set_difference(a: List[Int], b: List[Int]) -> List[Int]:
     """Elements in a but not in b (both sorted)."""
     var result = List[Int]()
     var i = 0
@@ -101,7 +101,7 @@ fn set_difference(a: List[Int], b: List[Int]) -> List[Int]:
 # ── set_symmetric_difference ─────────────────────────────────────────────────
 
 
-fn set_symmetric_difference(a: List[Int], b: List[Int]) -> List[Int]:
+def set_symmetric_difference(a: List[Int], b: List[Int]) -> List[Int]:
     """Elements in either a or b but not both (both sorted)."""
     var result = List[Int]()
     var i = 0
@@ -130,7 +130,7 @@ fn set_symmetric_difference(a: List[Int], b: List[Int]) -> List[Int]:
 # ── is_subset ────────────────────────────────────────────────────────────────
 
 
-fn is_subset(a: List[Int], b: List[Int]) -> Bool:
+def is_subset(a: List[Int], b: List[Int]) -> Bool:
     """Check if a ⊆ b (every element in a is in b). Both sorted."""
     var i = 0
     var j = 0
@@ -150,7 +150,7 @@ fn is_subset(a: List[Int], b: List[Int]) -> Bool:
 # ── is_superset ──────────────────────────────────────────────────────────────
 
 
-fn is_superset(a: List[Int], b: List[Int]) -> Bool:
+def is_superset(a: List[Int], b: List[Int]) -> Bool:
     """Check if a ⊇ b (a contains every element of b). Both sorted."""
     return is_subset(b, a)
 
@@ -158,7 +158,7 @@ fn is_superset(a: List[Int], b: List[Int]) -> Bool:
 # ── set_equals ───────────────────────────────────────────────────────────────
 
 
-fn set_equals(a: List[Int], b: List[Int]) -> Bool:
+def set_equals(a: List[Int], b: List[Int]) -> Bool:
     """Check if two sorted sets are equal."""
     var na = len(a)
     var nb = len(b)
@@ -173,7 +173,7 @@ fn set_equals(a: List[Int], b: List[Int]) -> Bool:
 # ── power_set_size ───────────────────────────────────────────────────────────
 
 
-fn power_set_size(n: Int) -> Int:
+def power_set_size(n: Int) -> Int:
     """Size of power set: 2^n. Uses bit shift."""
     if n < 0:
         return 0
@@ -185,7 +185,7 @@ fn power_set_size(n: Int) -> Int:
 # ── jaccard_index ────────────────────────────────────────────────────────────
 
 
-fn jaccard_index(a: List[Int], b: List[Int]) -> Float64:
+def jaccard_index(a: List[Int], b: List[Int]) -> Float64:
     """|A∩B| / |A∪B|. Returns 1.0 for two empty sets."""
     var inter = set_intersection(a, b)
     var uni = set_union(a, b)
@@ -198,7 +198,7 @@ fn jaccard_index(a: List[Int], b: List[Int]) -> Float64:
 # ── to_set ───────────────────────────────────────────────────────────────────
 
 
-fn to_set(data: List[Int]) -> List[Int]:
+def to_set(data: List[Int]) -> List[Int]:
     """Sort and deduplicate a list of ints (insertion sort for simplicity)."""
     var n = len(data)
     if n == 0:
@@ -227,7 +227,7 @@ fn to_set(data: List[Int]) -> List[Int]:
 # ── set_contains ─────────────────────────────────────────────────────────────
 
 
-fn set_contains(s: List[Int], element: Int) -> Bool:
+def set_contains(s: List[Int], element: Int) -> Bool:
     """Binary search membership test on sorted list."""
     var lo = 0
     var hi = len(s) - 1
@@ -245,6 +245,6 @@ fn set_contains(s: List[Int], element: Int) -> Bool:
 # ── set_cardinality ──────────────────────────────────────────────────────────
 
 
-fn set_cardinality(s: List[Int]) -> Int:
+def set_cardinality(s: List[Int]) -> Int:
     """Number of elements in the set."""
     return len(s)

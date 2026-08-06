@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from thermodynamics import ideal_gas_pressure, ideal_gas_volume, carnot_efficiency, entropy_change, heat_capacity, adiabatic_process, work_isothermal, stefan_boltzmann, thermal_conductivity_flux, gibbs_free_energy, clausius_clapeyron
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

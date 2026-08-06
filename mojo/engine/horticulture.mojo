@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt
 
 
-fn photosynthesis_rate(
+def photosynthesis_rate(
     light_intensity: Float64, pmax: Float64, light_saturation: Float64
 ) -> Float64:
     """Net photosynthesis from light-response curve (rectangular hyperbola).
@@ -37,7 +37,7 @@ fn photosynthesis_rate(
     return pmax * light_intensity / denom
 
 
-fn crop_growth_rate(
+def crop_growth_rate(
     net_assimilation_rate: Float64, leaf_area_index: Float64
 ) -> Float64:
     """Crop growth rate: CGR = NAR × LAI.
@@ -52,7 +52,7 @@ fn crop_growth_rate(
     return net_assimilation_rate * leaf_area_index
 
 
-fn net_assimilation_rate(
+def net_assimilation_rate(
     biomass_2: Float64, biomass_1: Float64,
     lai_2: Float64, lai_1: Float64, days: Float64
 ) -> Float64:
@@ -78,7 +78,7 @@ fn net_assimilation_rate(
     return (biomass_2 - biomass_1) / (mean_lai * days)
 
 
-fn specific_leaf_area(
+def specific_leaf_area(
     leaf_area_cm2: Float64, leaf_dry_mass_g: Float64
 ) -> Float64:
     """Specific leaf area: SLA = leaf area / leaf dry mass.
@@ -95,7 +95,7 @@ fn specific_leaf_area(
     return leaf_area_cm2 / leaf_dry_mass_g
 
 
-fn transplant_shock_index(
+def transplant_shock_index(
     root_damage_fraction: Float64, stomatal_conductance_ratio: Float64
 ) -> Float64:
     """Transplant shock index (combined root damage and stomatal closure).
@@ -112,7 +112,7 @@ fn transplant_shock_index(
     return root_damage_fraction * (1.0 - stomatal_conductance_ratio)
 
 
-fn fertigation_dose(
+def fertigation_dose(
     target_conc_mg_l: Float64, flow_rate_l_h: Float64, stock_conc_g_l: Float64
 ) -> Float64:
     """Fertigation injection rate to achieve target nutrient concentration.
@@ -133,7 +133,7 @@ fn fertigation_dose(
     return target_conc_mg_l * flow_rate_l_h / stock_conc_g_l
 
 
-fn vpd_plant(leaf_temp: Float64, air_temp: Float64, relative_humidity: Float64) -> Float64:
+def vpd_plant(leaf_temp: Float64, air_temp: Float64, relative_humidity: Float64) -> Float64:
     """Leaf-to-air vapour pressure deficit for plant stress assessment.
 
     VPD_leaf = es(T_leaf) - es(T_air) * RH/100
@@ -153,7 +153,7 @@ fn vpd_plant(leaf_temp: Float64, air_temp: Float64, relative_humidity: Float64) 
     return es_leaf - es_air * relative_humidity / 100.0
 
 
-fn chilling_requirement(
+def chilling_requirement(
     daily_temps: Float64, threshold_temp: Float64, days: Float64
 ) -> Float64:
     """Accumulated chill hours below threshold (simplified).
@@ -174,7 +174,7 @@ fn chilling_requirement(
     return days * 24.0
 
 
-fn pruning_efficiency(
+def pruning_efficiency(
     pre_prune_lai: Float64, target_lai: Float64
 ) -> Float64:
     """Pruning efficiency in improving canopy light distribution.
@@ -196,7 +196,7 @@ fn pruning_efficiency(
     return i_before - i_after
 
 
-fn rooting_hormone_index(
+def rooting_hormone_index(
     auxin_concentration: Float64, optimal_conc: Float64
 ) -> Float64:
     """Rooting efficiency from auxin dose-response (bell curve).

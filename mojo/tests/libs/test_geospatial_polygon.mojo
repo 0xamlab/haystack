@@ -66,7 +66,7 @@ from geospatial.polygon import (
 comptime REF_DEG_BOX_M2: Float64 = 12363840916.385195
 
 
-fn _square() -> List[Float64]:
+def _square() -> List[Float64]:
     """The unit square, counter-clockwise, as x0,y0,x1,y1,... — split by the caller."""
     var v = List[Float64]()
     v.append(0.0)
@@ -76,7 +76,7 @@ fn _square() -> List[Float64]:
     return v^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[geospatial.polygon]")

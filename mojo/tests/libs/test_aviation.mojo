@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from aviation import lift_force, drag_force, lift_to_drag_ratio, thrust_required, range_breguet, endurance_breguet, indicated_airspeed, true_airspeed, mach_number, rate_of_climb
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

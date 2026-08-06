@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from radar import radar_range_equation, doppler_frequency, doppler_velocity, range_from_time, pulse_repetition_interval, max_unambiguous_range, max_unambiguous_velocity, range_resolution, antenna_gain_from_area, radar_cross_section_sphere, noise_power, signal_to_clutter
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

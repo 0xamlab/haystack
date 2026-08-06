@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn local_window_mask(
+def local_window_mask(
     query_pos: Float64, key_pos: Float64,
     window_left: Float64, window_right: Float64
 ) -> Float64:
@@ -38,7 +38,7 @@ fn local_window_mask(
     return -1e9
 
 
-fn longformer_global_score(
+def longformer_global_score(
     query: Float64, key: Float64, head_dim: Float64,
     is_global: Float64
 ) -> Float64:
@@ -60,7 +60,7 @@ fn longformer_global_score(
     return query * key / sqrt(head_dim)
 
 
-fn bigbird_random_block_select(
+def bigbird_random_block_select(
     block_id: Float64, n_blocks: Float64,
     random_seed: Float64, n_random: Float64
 ) -> Float64:
@@ -83,7 +83,7 @@ fn bigbird_random_block_select(
     return 0.0
 
 
-fn streaming_llm_sink_score(
+def streaming_llm_sink_score(
     position: Float64, n_sink_tokens: Float64,
     window_size: Float64, seq_len: Float64
 ) -> Float64:
@@ -107,7 +107,7 @@ fn streaming_llm_sink_score(
     return 0.0
 
 
-fn landmark_token_score(
+def landmark_token_score(
     landmark_attention: Float64, block_attention: Float64,
     is_landmark: Float64
 ) -> Float64:
@@ -126,7 +126,7 @@ fn landmark_token_score(
     return landmark_attention * block_attention
 
 
-fn chunk_cross_attention_weight(
+def chunk_cross_attention_weight(
     chunk_query: Float64, chunk_key: Float64,
     n_chunks: Float64, head_dim: Float64
 ) -> Float64:
@@ -146,7 +146,7 @@ fn chunk_cross_attention_weight(
     return chunk_query * chunk_key / sqrt(head_dim * n_chunks)
 
 
-fn linear_attention_kernel(x: Float64) -> Float64:
+def linear_attention_kernel(x: Float64) -> Float64:
     """Linear attention feature map φ(x) = elu(x) + 1.
 
     Replaces softmax for O(N) attention complexity.
@@ -162,7 +162,7 @@ fn linear_attention_kernel(x: Float64) -> Float64:
     return exp(x)  # ELU(x) + 1 = exp(x) for x < 0
 
 
-fn recurrent_memory_update(
+def recurrent_memory_update(
     memory: Float64, new_key: Float64,
     new_value: Float64, decay: Float64
 ) -> Float64:
@@ -182,7 +182,7 @@ fn recurrent_memory_update(
     return decay * memory + new_key * new_value
 
 
-fn block_sparse_density(
+def block_sparse_density(
     n_attended_blocks: Float64, total_blocks: Float64
 ) -> Float64:
     """Block-sparse attention density (fraction of blocks attended).
@@ -199,7 +199,7 @@ fn block_sparse_density(
     return n_attended_blocks / total_blocks
 
 
-fn hyper_attention_estimate(
+def hyper_attention_estimate(
     high_attn_score: Float64, random_sample_score: Float64,
     n_high: Float64, n_random: Float64, seq_len: Float64
 ) -> Float64:

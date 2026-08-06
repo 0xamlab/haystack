@@ -97,7 +97,7 @@ comptime SN_MAX_FRAME_BYTES: Int = 64 * 1024 * 1024
 send any 32-bit value, and `recv_exact` would otherwise pre-size a 4 GiB list from four bytes."""
 
 
-fn _is_darwin() -> Bool:
+def _is_darwin() -> Bool:
     """True when compiling for macOS.
 
     Read once here rather than at each use so the two sockaddr layouts sit side by side in
@@ -106,15 +106,15 @@ fn _is_darwin() -> Bool:
     return CompilationTarget.is_macos()
 
 
-fn _sun_path_max() -> Int:
+def _sun_path_max() -> Int:
     return SUN_PATH_MAX_DARWIN if _is_darwin() else SUN_PATH_MAX_LINUX
 
 
-fn _sun_size() -> Int:
+def _sun_size() -> Int:
     return SUN_LEN_DARWIN if _is_darwin() else SUN_LEN_LINUX
 
 
-fn _cstr(s: String) -> List[UInt8]:
+def _cstr(s: String) -> List[UInt8]:
     """Copy a String into an owned NUL-terminated byte buffer.
 
     Stops at the first embedded NUL: a caller-supplied path containing one would otherwise be passed
@@ -130,13 +130,13 @@ fn _cstr(s: String) -> List[UInt8]:
     return out^
 
 
-fn _cstr_len(c: List[UInt8]) -> Int:
+def _cstr_len(c: List[UInt8]) -> Int:
     """Length of a `_cstr` buffer excluding its terminator."""
     var n = len(c)
     return n - 1 if n > 0 else 0
 
 
-fn _sockaddr_un(path: String) -> List[UInt8]:
+def _sockaddr_un(path: String) -> List[UInt8]:
     """Build a platform-correct `sockaddr_un` for `path`.
 
     Returns an empty list when the path is empty or does not fit `sun_path`; every caller checks for
@@ -169,7 +169,7 @@ fn _sockaddr_un(path: String) -> List[UInt8]:
 # ── frame encoding (pure byte manipulation) ───────────────────────────────────
 
 
-fn sn_encode_u32_be(value: Int) -> List[UInt8]:
+def sn_encode_u32_be(value: Int) -> List[UInt8]:
     """Encode an Int as 4 big-endian bytes. Byte-identical to `net.unix_socket.encode_u32_be`."""
     var result = List[UInt8](capacity=4)
     result.append(UInt8((value >> 24) & 0xFF))
@@ -179,7 +179,7 @@ fn sn_encode_u32_be(value: Int) -> List[UInt8]:
     return result^
 
 
-fn sn_decode_u32_be(data: List[UInt8]) -> Int:
+def sn_decode_u32_be(data: List[UInt8]) -> Int:
     """Decode 4 big-endian bytes to Int. Returns -1 on a short buffer rather than indexing past it.
 
     The frozen twin indexes `data[0..3]` unguarded, which is correct for its own call sites but is an
@@ -196,7 +196,7 @@ fn sn_decode_u32_be(data: List[UInt8]) -> Int:
     )
 
 
-fn sn_encode_frame(payload: String) -> List[UInt8]:
+def sn_encode_frame(payload: String) -> List[UInt8]:
     """Encode a string into a length-prefixed frame: [4-byte BE length][UTF-8 payload]."""
     var payload_bytes = payload.as_bytes()
     var payload_len = len(payload_bytes)
@@ -213,7 +213,7 @@ fn sn_encode_frame(payload: String) -> List[UInt8]:
     return frame^
 
 
-fn sn_decode_frame_length(header: List[UInt8]) -> Int:
+def sn_decode_frame_length(header: List[UInt8]) -> Int:
     """Decode a 4-byte header into a payload length. -1 on a short header."""
     return sn_decode_u32_be(header)
 
@@ -221,7 +221,7 @@ fn sn_decode_frame_length(header: List[UInt8]) -> Int:
 # ── socket primitives ─────────────────────────────────────────────────────────
 
 
-fn sn_socket_unix() -> Int:
+def sn_socket_unix() -> Int:
     """Create an AF_UNIX SOCK_STREAM socket. Returns the fd, or -1."""
     var fd = external_call["socket", Int32](
         Int32(AF_UNIX), Int32(SOCK_STREAM), Int32(0)
@@ -229,7 +229,7 @@ fn sn_socket_unix() -> Int:
     return Int(fd)
 
 
-fn sn_bind_unix(fd: Int, path: String) -> Int:
+def sn_bind_unix(fd: Int, path: String) -> Int:
     """Bind `fd` to a Unix socket path. Returns 0 on success, a negative status otherwise."""
     if fd < 0:
         return -SN_ERR_BAD_FD
@@ -245,7 +245,7 @@ fn sn_bind_unix(fd: Int, path: String) -> Int:
     return Int(rc) if Int(rc) == 0 else -SN_ERR_SYSCALL
 
 
-fn sn_listen(fd: Int, backlog: Int) -> Int:
+def sn_listen(fd: Int, backlog: Int) -> Int:
     """Mark `fd` as accepting connections. Returns 0 on success."""
     if fd < 0:
         return -SN_ERR_BAD_FD
@@ -254,7 +254,7 @@ fn sn_listen(fd: Int, backlog: Int) -> Int:
     return Int(rc) if Int(rc) == 0 else -SN_ERR_SYSCALL
 
 
-fn sn_accept(fd: Int) -> Int:
+def sn_accept(fd: Int) -> Int:
     """Accept one connection. Returns the new fd, or -1.
 
     The peer address is discarded (NULL, NULL): an AF_UNIX server socket bound to a path Algenta
@@ -263,12 +263,12 @@ fn sn_accept(fd: Int) -> Int:
     """
     if fd < 0:
         return -1
-    var nullptr = UnsafePointer[UInt8]()
+    var nullptr = UnsafePointer[UInt8](unsafe_from_address=0)
     var conn = external_call["accept", Int32](Int32(fd), nullptr, nullptr)
     return Int(conn)
 
 
-fn sn_close(fd: Int) -> Int:
+def sn_close(fd: Int) -> Int:
     """Close a file descriptor. Returns 0 on success. Closing an invalid fd is not an error here."""
     if fd < 0:
         return 0
@@ -276,7 +276,7 @@ fn sn_close(fd: Int) -> Int:
     return Int(rc) if Int(rc) == 0 else -SN_ERR_SYSCALL
 
 
-fn sn_unlink(path: String) -> Int:
+def sn_unlink(path: String) -> Int:
     """Remove a filesystem entry. Returns 0 on success; a missing path is not an error."""
     var c = _cstr(path)
     if _cstr_len(c) == 0:
@@ -285,7 +285,7 @@ fn sn_unlink(path: String) -> Int:
     return 0 if Int(rc) == 0 else 0
 
 
-fn sn_path_exists(path: String) -> Bool:
+def sn_path_exists(path: String) -> Bool:
     """True when `path` exists, via access(F_OK)."""
     var c = _cstr(path)
     if _cstr_len(c) == 0:
@@ -294,7 +294,7 @@ fn sn_path_exists(path: String) -> Bool:
     return Int(rc) == 0
 
 
-fn sn_recv(fd: Int, mut buf: List[UInt8], count: Int) -> Int:
+def sn_recv(fd: Int, mut buf: List[UInt8], count: Int) -> Int:
     """Read up to `count` bytes into `buf`. Returns bytes read, 0 at EOF, negative on error.
 
     `count` is validated against the real length of `buf` before the call. The frozen twin writes
@@ -311,7 +311,7 @@ fn sn_recv(fd: Int, mut buf: List[UInt8], count: Int) -> Int:
     return Int(n)
 
 
-fn sn_send(fd: Int, buf: List[UInt8], count: Int) -> Int:
+def sn_send(fd: Int, buf: List[UInt8], count: Int) -> Int:
     """Write `count` bytes from `buf`. Returns bytes sent, negative on error."""
     if fd < 0:
         return -SN_ERR_BAD_FD
@@ -326,7 +326,7 @@ fn sn_send(fd: Int, buf: List[UInt8], count: Int) -> Int:
 # ── framed I/O ────────────────────────────────────────────────────────────────
 
 
-fn sn_recv_exact(fd: Int, n: Int) -> List[UInt8]:
+def sn_recv_exact(fd: Int, n: Int) -> List[UInt8]:
     """Read exactly `n` bytes. Returns an empty list on EOF, error, or an out-of-range `n`.
 
     Loops because a stream socket may return a short read at any point; a single `recv` that happens
@@ -355,7 +355,7 @@ fn sn_recv_exact(fd: Int, n: Int) -> List[UInt8]:
     return out^
 
 
-fn sn_recv_frame(fd: Int) -> String:
+def sn_recv_frame(fd: Int) -> String:
     """Read one length-prefixed frame. Returns "" on close, malformed header, or oversize length."""
     var header = sn_recv_exact(fd, 4)
     if len(header) < 4:
@@ -378,7 +378,7 @@ fn sn_recv_frame(fd: Int) -> String:
     return out^
 
 
-fn sn_send_frame(fd: Int, payload: String) -> Int:
+def sn_send_frame(fd: Int, payload: String) -> Int:
     """Write one length-prefixed frame. Returns bytes sent, negative on error.
 
     Loops on partial writes for the same reason `sn_recv_exact` loops on partial reads.

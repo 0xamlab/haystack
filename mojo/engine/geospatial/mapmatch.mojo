@@ -251,11 +251,11 @@ struct GeoMatch(Copyable, Movable):
 # ── refusals ──────────────────────────────────────────────────────────────────
 
 
-fn _no_segment(status: Int) -> SegmentDistance:
+def _no_segment(status: Int) -> SegmentDistance:
     return SegmentDistance(status, False, 0.0, GEO_FOOT_INTERIOR, False, 0.0, 0.0, False, 0.0, False, 0.0)
 
 
-fn _no_match(status: Int, n_track: Int, n_lines: Int, first_unmatched: Int) -> GeoMatch:
+def _no_match(status: Int, n_track: Int, n_lines: Int, first_unmatched: Int) -> GeoMatch:
     var a = List[Int]()
     var b = List[Int]()
     var c = List[Float64]()
@@ -267,7 +267,7 @@ fn _no_match(status: Int, n_track: Int, n_lines: Int, first_unmatched: Int) -> G
     )
 
 
-fn _metric_defect_here(frame: Int, metric: Int) -> Int:
+def _metric_defect_here(frame: Int, metric: Int) -> Int:
     """`GEO_OK` for a metric this module can clamp a segment under.
 
     `GEO_METRIC_VINCENTY` is refused with `GEO_ERR_METRIC_UNSUPPORTED_HERE`: the clamp is
@@ -291,7 +291,7 @@ fn _metric_defect_here(frame: Int, metric: Int) -> Int:
 # The parameter PACKING below is load-bearing, not style. `mojo_inventory` parses a
 # signature inside a TEN-LINE lookahead window and silently drops a function whose signature
 # closes later — no error, the function simply is not in the contract. Do not reflow.
-fn point_to_segment_flat(
+def point_to_segment_flat(
     px: Float64, py: Float64,
     ax: Float64, ay: Float64, bx: Float64, by: Float64,
     frame: Int, metric: Int,
@@ -456,7 +456,7 @@ fn point_to_segment_flat(
 # ── map matching ──────────────────────────────────────────────────────────────
 
 
-fn _cand_insert(
+def _cand_insert(
     mut seg: List[Int],
     mut cost: List[Float64],
     mut fx: List[Float64],
@@ -499,7 +499,7 @@ fn _cand_insert(
 
 
 # Packing is load-bearing — see the note above `point_to_segment_flat`.
-fn map_match_flat(
+def map_match_flat(
     txs: List[Float64], tys: List[Float64], n_track: Int,
     nxs: List[Float64], nys: List[Float64],
     line_offsets: List[Int], n_lines: Int,

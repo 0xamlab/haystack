@@ -20,7 +20,7 @@ from forecast_metrics import (
 )
 
 
-fn approx(a: Float64, b: Float64, tol: Float64) -> Bool:
+def approx(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d

@@ -37,7 +37,7 @@ from numeric.contract import AGG_AVG, AGG_SUM, AGG_COUNT
 from query.composed import group_by_composed_parallel
 
 
-fn _approx(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _approx(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d

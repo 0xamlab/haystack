@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn methylation_index(
+def methylation_index(
     methylated_reads: Float64, total_reads: Float64
 ) -> Float64:
     """Average CpG methylation level (β-value).
@@ -35,7 +35,7 @@ fn methylation_index(
     return methylated_reads / total_reads
 
 
-fn dna_methylation_age(
+def dna_methylation_age(
     beta_value: Float64, intercept: Float64, slope: Float64
 ) -> Float64:
     """Simplified epigenetic clock age estimate (Horvath-style linear model).
@@ -53,7 +53,7 @@ fn dna_methylation_age(
     return intercept + slope * beta_value
 
 
-fn histone_acetylation_ratio(
+def histone_acetylation_ratio(
     acetylated_signal: Float64, total_histone_signal: Float64
 ) -> Float64:
     """Fraction of histone H3/H4 that is acetylated.
@@ -70,7 +70,7 @@ fn histone_acetylation_ratio(
     return acetylated_signal / total_histone_signal
 
 
-fn chromatin_accessibility(
+def chromatin_accessibility(
     atac_reads: Float64, background_reads: Float64, library_size: Float64
 ) -> Float64:
     """Normalised chromatin accessibility score from ATAC-seq.
@@ -90,7 +90,7 @@ fn chromatin_accessibility(
     return (atac_reads - background_reads) / sqrt(library_size)
 
 
-fn imprinting_ratio(
+def imprinting_ratio(
     maternal_expr: Float64, paternal_expr: Float64
 ) -> Float64:
     """Allelic expression ratio for imprinted gene analysis.
@@ -110,7 +110,7 @@ fn imprinting_ratio(
     return maternal_expr / total
 
 
-fn cpg_observed_expected(
+def cpg_observed_expected(
     cpg_count: Float64, c_count: Float64, g_count: Float64, length: Float64
 ) -> Float64:
     """CpG observed/expected ratio for island detection.
@@ -132,7 +132,7 @@ fn cpg_observed_expected(
     return (cpg_count * length) / denom
 
 
-fn gene_silencing_efficiency(
+def gene_silencing_efficiency(
     control_expression: Float64, treated_expression: Float64
 ) -> Float64:
     """Gene silencing efficiency from reporter or RT-qPCR.
@@ -154,7 +154,7 @@ fn gene_silencing_efficiency(
     return eff
 
 
-fn enhancer_activity_index(
+def enhancer_activity_index(
     h3k27ac_signal: Float64, h3k4me3_signal: Float64
 ) -> Float64:
     """Enhancer vs promoter index from histone marks.
@@ -174,7 +174,7 @@ fn enhancer_activity_index(
     return h3k27ac_signal / total
 
 
-fn polycomb_enrichment(
+def polycomb_enrichment(
     h3k27me3_chip: Float64, h3k27me3_input: Float64
 ) -> Float64:
     """Polycomb repression enrichment: H3K27me3 fold over input.
@@ -191,7 +191,7 @@ fn polycomb_enrichment(
     return h3k27me3_chip / h3k27me3_input
 
 
-fn transcription_factor_occupancy(
+def transcription_factor_occupancy(
     chip_enrichment: Float64, motif_score: Float64, accessibility: Float64
 ) -> Float64:
     """Composite TF occupancy score from ChIP, motif, and accessibility.

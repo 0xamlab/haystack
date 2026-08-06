@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from museum import lux_hours_annual, uv_exposure, relative_humidity_from_temps, moisture_content_equilibrium, time_weighted_preservation_index, light_damage_reciprocity, climate_stability_score, storage_density, collection_growth_rate, insurance_value_appreciation, visitor_density, conservation_priority_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

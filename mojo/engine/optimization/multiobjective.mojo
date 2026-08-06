@@ -432,7 +432,7 @@ comptime MO_REL_B_DOMINATES: Int = 2
 comptime MO_REL_INCOMPARABLE: Int = 3
 
 
-fn mo_status_name(code: Int) -> String:
+def mo_status_name(code: Int) -> String:
     """Name for a multi-objective status, falling through to `milp_status_name`.
 
     The fall-through is what keeps one vocabulary: a code this module never issues but
@@ -815,7 +815,7 @@ struct LexResult(Copyable, Movable):
 # the only reason having it is defensible.
 
 
-fn _strictly_dominates(
+def _strictly_dominates(
     f: List[Float64], n_obj: Int, i: Int, j: Int
 ) -> Bool:
     """True when point `i` strictly dominates point `j`, minimising every objective.
@@ -837,7 +837,7 @@ fn _strictly_dominates(
     return strictly_better
 
 
-fn _weakly_dominates(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Bool:
+def _weakly_dominates(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Bool:
     """True when point `i` is no worse than point `j` in EVERY objective.
 
     A different relation from `_strictly_dominates`, not a weaker copy of it: both directions
@@ -851,7 +851,7 @@ fn _weakly_dominates(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Bool:
     return True
 
 
-fn _frozen_dominates(
+def _frozen_dominates(
     f: List[Float64], n_obj: Int, i: Int, j: Int
 ) -> Bool:
     """`multi_objective.is_dominated` asking whether point `i` dominates point `j`.
@@ -870,7 +870,7 @@ fn _frozen_dominates(
     return is_dominated(a, b, mask)
 
 
-fn _classify(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Int:
+def _classify(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Int:
     """One of the four `MO_REL_*` cases. Exhaustive for finite values.
 
     Equality is checked first so it is never confused with mutual weak dominance, which it
@@ -893,7 +893,7 @@ fn _classify(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Int:
 # ── shape and resource validation ─────────────────────────────────────────────
 
 
-fn _pair_work_fits(n_points: Int, n_obj: Int) -> Bool:
+def _pair_work_fits(n_points: Int, n_obj: Int) -> Bool:
     """True when `n_points^2 * n_obj * MO_SORT_PAIR_PASSES` fits `MO_MAX_WORK`.
 
     Written with DIVISIONS throughout. `n_points * n_points` is a wrapping 64-bit multiply, so
@@ -909,7 +909,7 @@ fn _pair_work_fits(n_points: Int, n_obj: Int) -> Bool:
     return n_points <= budget // n_points
 
 
-fn mo_matrix_defect(f: List[Float64], n_points: Int, n_obj: Int) -> Int:
+def mo_matrix_defect(f: List[Float64], n_points: Int, n_obj: Int) -> Int:
     """`MODEL_OK` when `f` is a usable `n_points x n_obj` objective matrix, else the defect.
 
     The one door every driver in this file goes through, so a rejection means the same thing
@@ -941,7 +941,7 @@ fn mo_matrix_defect(f: List[Float64], n_points: Int, n_obj: Int) -> Int:
 # ── a stable index sort ───────────────────────────────────────────────────────
 
 
-fn _stable_index_sort(keys: List[Float64], idx: List[Int]) -> List[Int]:
+def _stable_index_sort(keys: List[Float64], idx: List[Int]) -> List[Int]:
     """`idx` reordered so `keys[idx[t]]` ascends. Stable, iterative, bottom-up merge.
 
     No frozen kernel sorts INDICES: `sorting.insertion_sort`, `sorting.mergesort` and
@@ -1001,7 +1001,7 @@ fn _stable_index_sort(keys: List[Float64], idx: List[Int]) -> List[Int]:
 # ── front decomposition ───────────────────────────────────────────────────────
 
 
-fn _front_ranks(
+def _front_ranks(
     f: List[Float64], n_obj: Int, idx: List[Int], mut rank: List[Int]
 ) -> Int:
     """Deb's fast non-dominated sort over the points `idx` names. Returns the front count.
@@ -1068,7 +1068,7 @@ fn _front_ranks(
     return r + 1
 
 
-fn _rank0_subset(f: List[Float64], n_points: Int, n_obj: Int) -> List[Int]:
+def _rank0_subset(f: List[Float64], n_points: Int, n_obj: Int) -> List[Int]:
     """The strictly non-dominated points, ascending index. Duplicates all survive.
 
     Used where only the first front matters — hypervolume, where a dominated point cannot add
@@ -1090,7 +1090,7 @@ fn _rank0_subset(f: List[Float64], n_points: Int, n_obj: Int) -> List[Int]:
     return out^
 
 
-fn nondominated_sort(
+def nondominated_sort(
     f: List[Float64], n_points: Int, n_obj: Int
 ) -> FrontSort:
     """Rank every point by front, minimising all objectives, and verify the ranks.
@@ -1174,14 +1174,14 @@ fn nondominated_sort(
     )
 
 
-fn _no_front(status: Int, n_points: Int, n_obj: Int) -> FrontSort:
+def _no_front(status: Int, n_points: Int, n_obj: Int) -> FrontSort:
     return FrontSort(
         status, False, n_points, n_obj, 0, 0, -1, -1,
         List[Int](), List[Int](), List[Int](), List[Int](),
     )
 
 
-fn pareto_certify(
+def pareto_certify(
     f: List[Float64], n_points: Int, n_obj: Int, claimed: List[Int]
 ) -> ParetoCertificate:
     """Check a claimed Pareto set against the point data, condition by condition.
@@ -1292,7 +1292,7 @@ fn pareto_certify(
     )
 
 
-fn _pareto_front_frozen(
+def _pareto_front_frozen(
     objectives: List[List[Float64]], maximize: List[Bool]
 ) -> List[Int]:
     """The frozen `multi_objective.pareto_front`, behind a name that says whose code it is.
@@ -1309,7 +1309,7 @@ fn _pareto_front_frozen(
 # ── crowding distance ─────────────────────────────────────────────────────────
 
 
-fn _crowding_for_subset(
+def _crowding_for_subset(
     f: List[Float64], n_obj: Int, idx: List[Int],
     mut distance: List[Float64], mut boundary: List[Bool],
 ) -> Int:
@@ -1359,7 +1359,7 @@ fn _crowding_for_subset(
     return degenerate
 
 
-fn _crowding_order(
+def _crowding_order(
     idx: List[Int], distance: List[Float64], boundary: List[Bool]
 ) -> List[Int]:
     """Positions into `idx`, ordered boundary-first then descending distance then index.
@@ -1396,7 +1396,7 @@ fn _crowding_order(
     return out^
 
 
-fn crowding_distance(
+def crowding_distance(
     f: List[Float64], n_points: Int, n_obj: Int
 ) -> Crowding:
     """Crowding distance and the NSGA-II ranking order over ONE front.
@@ -1436,7 +1436,7 @@ fn crowding_distance(
 # ── environmental selection ───────────────────────────────────────────────────
 
 
-fn _select_by_rank(
+def _select_by_rank(
     f: List[Float64], n_obj: Int, rank: List[Int], count: Int,
     n_fronts: Int, n_select: Int,
 ) -> List[Int]:
@@ -1481,7 +1481,7 @@ fn _select_by_rank(
     return out^
 
 
-fn nsga2_select(
+def nsga2_select(
     f: List[Float64], n_points: Int, n_obj: Int, n_select: Int
 ) -> Selection:
     """The NSGA-II survival step: best `n_select` points by front rank then crowding.
@@ -1562,7 +1562,7 @@ fn nsga2_select(
 # ── reference points, ideal and nadir ─────────────────────────────────────────
 
 
-fn _nested_rows(f: List[Float64], n_points: Int, n_obj: Int) -> List[List[Float64]]:
+def _nested_rows(f: List[Float64], n_points: Int, n_obj: Int) -> List[List[Float64]]:
     """The nested form the frozen `multi_objective` kernels take. Internal only.
 
     A nested list cannot cross the wire (rule 2), so it never appears in a public signature
@@ -1578,7 +1578,7 @@ fn _nested_rows(f: List[Float64], n_points: Int, n_obj: Int) -> List[List[Float6
     return nested^
 
 
-fn mo_reference_point(
+def mo_reference_point(
     f: List[Float64], n_points: Int, n_obj: Int, margin: Float64
 ) -> List[Float64]:
     """A hypervolume reference point every solution dominates: nadir + `margin` * range.
@@ -1624,7 +1624,7 @@ fn mo_reference_point(
 # ── hypervolume ───────────────────────────────────────────────────────────────
 
 
-fn _no_hypervolume(
+def _no_hypervolume(
     status: Int, n_points: Int, n_obj: Int, samples: Int
 ) -> Hypervolume:
     return Hypervolume(
@@ -1633,7 +1633,7 @@ fn _no_hypervolume(
     )
 
 
-fn _box_volume(
+def _box_volume(
     f: List[Float64], n_obj: Int, i: Int, reference: List[Float64]
 ) -> Float64:
     """The volume of point `i`'s own dominated box against the reference. Exact.
@@ -1648,7 +1648,7 @@ fn _box_volume(
     return volume
 
 
-fn _hypervolume_2d(
+def _hypervolume_2d(
     f: List[Float64], n_obj: Int, front: List[Int], reference: List[Float64]
 ) -> Float64:
     """Exact hypervolume of a two-objective front by the staircase sweep.
@@ -1679,7 +1679,7 @@ fn _hypervolume_2d(
     return total
 
 
-fn hypervolume(
+def hypervolume(
     f: List[Float64], n_points: Int, n_obj: Int,
     reference: List[Float64], samples: Int, seed: UInt64,
 ) -> Hypervolume:
@@ -1927,7 +1927,7 @@ fn hypervolume(
     )
 
 
-fn hypervolume_default(
+def hypervolume_default(
     f: List[Float64], n_points: Int, n_obj: Int, reference: List[Float64]
 ) -> Hypervolume:
     """`hypervolume` with this module's stated default sample count and seed.
@@ -1943,7 +1943,7 @@ fn hypervolume_default(
 # ── linear-model plumbing shared by both solvers ──────────────────────────────
 
 
-fn _linear_defect(
+def _linear_defect(
     c: List[Float64], n_obj: Int, n_vars: Int,
     a: List[Float64], rows: Int, senses: List[Int], rhs: List[Float64],
 ) -> Int:
@@ -1981,14 +1981,14 @@ fn _linear_defect(
     return MODEL_OK
 
 
-fn _row_of(a: List[Float64], n_vars: Int, i: Int) -> List[Float64]:
+def _row_of(a: List[Float64], n_vars: Int, i: Int) -> List[Float64]:
     var row = List[Float64]()
     for t in range(n_vars):
         row.append(a[i * n_vars + t])
     return row^
 
 
-fn _row_budget(
+def _row_budget(
     row: List[Float64], x: List[Float64], rhs: Float64, feasibility_tol: Float64
 ) -> Float64:
     """The slack row `i` gets, from its OWN magnitude and nothing else.
@@ -2019,7 +2019,7 @@ fn _row_budget(
     return budget + MO_ULP_BUDGET * LP_DBL_EPSILON * scale
 
 
-fn _total_violation(
+def _total_violation(
     a: List[Float64], rows: Int, n_vars: Int, senses: List[Int], rhs: List[Float64],
     x: List[Float64], feasibility_tol: Float64,
 ) -> Float64:
@@ -2047,7 +2047,7 @@ fn _total_violation(
     return total
 
 
-fn _max_violation(
+def _max_violation(
     a: List[Float64], rows: Int, n_vars: Int, senses: List[Int], rhs: List[Float64],
     x: List[Float64], feasibility_tol: Float64,
 ) -> Float64:
@@ -2071,7 +2071,7 @@ fn _max_violation(
     return worst
 
 
-fn _augment_box(
+def _augment_box(
     a: List[Float64], rows: Int, n_vars: Int, senses: List[Int], rhs: List[Float64],
     lower: List[Float64], upper: List[Float64],
     mut out_senses: List[Int], mut out_rhs: List[Float64],
@@ -2106,7 +2106,7 @@ fn _augment_box(
 # ── lexicographic optimisation ────────────────────────────────────────────────
 
 
-fn _no_lex(
+def _no_lex(
     status: Int, n_vars: Int, n_obj: Int, stages: Int, failed: Int, stage_status: Int,
     var optima: List[Float64], var slack: List[Float64], var locked: List[Bool],
 ) -> LexResult:
@@ -2120,7 +2120,7 @@ fn _no_lex(
 # PACKING IS LOAD-BEARING: `mojo_inventory` matches a signature inside a NINE-line lookahead
 # and drops the function from the contract and from dispatch silently when it does not close
 # in time. Six lines here leaves three of headroom; do not spread these one per line.
-fn lexicographic_linear(
+def lexicographic_linear(
     c: List[Float64], n_obj: Int, n_vars: Int, a: List[Float64], rows: Int,
     senses: List[Int], rhs: List[Float64], tolerance: Float64,
     max_iterations: Int, feasibility_tol: Float64, optimality_tol: Float64,
@@ -2303,7 +2303,7 @@ fn lexicographic_linear(
     )
 
 
-fn lexicographic_linear_default(
+def lexicographic_linear_default(
     c: List[Float64], n_obj: Int, n_vars: Int, a: List[Float64], rows: Int,
     senses: List[Int], rhs: List[Float64], tolerance: Float64,
 ) -> LexResult:
@@ -2317,7 +2317,7 @@ fn lexicographic_linear_default(
 # ── NSGA-II over a linear model ───────────────────────────────────────────────
 
 
-fn _no_nsga2(
+def _no_nsga2(
     status: Int, n_vars: Int, n_obj: Int, stage_status: Int, failed: Int,
     has_ideal: Bool, var ideal: List[Float64],
 ) -> Nsga2Result:
@@ -2328,7 +2328,7 @@ fn _no_nsga2(
     )
 
 
-fn _clip(v: Float64, lo: Float64, hi: Float64) -> Float64:
+def _clip(v: Float64, lo: Float64, hi: Float64) -> Float64:
     if v < lo:
         return lo
     if v > hi:
@@ -2337,7 +2337,7 @@ fn _clip(v: Float64, lo: Float64, hi: Float64) -> Float64:
 
 
 # PACKING IS LOAD-BEARING: six lines, three of headroom under the nine-line lookahead.
-fn nsga2_linear(
+def nsga2_linear(
     c: List[Float64], n_obj: Int, n_vars: Int, a: List[Float64], rows: Int,
     senses: List[Int], rhs: List[Float64], lower: List[Float64], upper: List[Float64],
     pop_size: Int, generations: Int, crossover_p: Float64, mutation_p: Float64,
@@ -2567,7 +2567,7 @@ fn nsga2_linear(
     return result^
 
 
-fn nsga2_linear_default(
+def nsga2_linear_default(
     c: List[Float64], n_obj: Int, n_vars: Int, a: List[Float64], rows: Int,
     senses: List[Int], rhs: List[Float64], lower: List[Float64], upper: List[Float64],
     max_front: Int, seed: UInt64,
@@ -2580,7 +2580,7 @@ fn nsga2_linear_default(
     )
 
 
-fn _objectives_of(
+def _objectives_of(
     obj_rows: List[List[Float64]], x: List[Float64], mut out: List[Float64], at: Int
 ) -> Bool:
     """Write the `k` objective values of `x` into `out[at : at+k]`. False on an overflow.
@@ -2597,7 +2597,7 @@ fn _objectives_of(
     return True
 
 
-fn _rank_population(
+def _rank_population(
     fvals: List[Float64], n_obj: Int, count: Int,
     feasible: List[Bool], alive: List[Bool], violation: List[Float64],
     mut rank: List[Int],
@@ -2645,7 +2645,7 @@ fn _rank_population(
     return tiers
 
 
-fn _better(
+def _better(
     i: Int, j: Int, rank: List[Int], distance: List[Float64], boundary: List[Bool]
 ) -> Bool:
     """True when individual `i` wins a tournament against `j`. Total and deterministic.
@@ -2665,7 +2665,7 @@ fn _better(
 
 # PACKING IS LOAD-BEARING: seven lines, two of headroom. This one is private (the leading
 # underscore keeps it out of the contract) but the lookahead does not care.
-fn _evolve(
+def _evolve(
     c: List[Float64], n_obj: Int, n_vars: Int, a: List[Float64], rows: Int,
     senses: List[Int], rhs: List[Float64], lower: List[Float64], upper: List[Float64],
     seeds: List[List[Float64]], pop_size: Int, generations: Int,
@@ -2944,7 +2944,7 @@ fn _evolve(
     )
 
 
-fn _same_individual(
+def _same_individual(
     xs: List[Float64], fs: List[Float64], n_vars: Int, n_obj: Int, i: Int, j: Int
 ) -> Bool:
     """Bit-identical decision AND objective vectors — the same solution twice over."""
@@ -2957,7 +2957,7 @@ fn _same_individual(
     return True
 
 
-fn _place(
+def _place(
     mut xs: List[Float64], mut fs: List[Float64], mut feasible: List[Bool],
     mut alive: List[Bool], mut violation: List[Float64], slot: Int,
     point: List[Float64], obj_rows: List[List[Float64]], n_obj: Int, n_vars: Int,
@@ -2998,7 +2998,7 @@ fn _place(
     violation[slot] = total
 
 
-fn _crowding_by_tier(
+def _crowding_by_tier(
     fvals: List[Float64], n_obj: Int, count: Int, rank: List[Int], tiers: Int,
     mut distance: List[Float64], mut boundary: List[Bool],
 ):
@@ -3031,7 +3031,7 @@ fn _crowding_by_tier(
 # ── the pairwise relation, as a public driver ────────────────────────────────
 
 
-fn mo_dominance(
+def mo_dominance(
     a: List[Float64], b: List[Float64], n_obj: Int
 ) -> DominanceCheck:
     """The complete dominance relation between two objective vectors, minimising all.

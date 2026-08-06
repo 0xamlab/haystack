@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, pow
 
 
-fn moisture_content(wet_mass: Float64, dry_mass: Float64) -> Float64:
+def moisture_content(wet_mass: Float64, dry_mass: Float64) -> Float64:
     """Wood moisture content: MC = (m_wet - m_dry) / m_dry × 100%.
 
     Args:
@@ -31,7 +31,7 @@ fn moisture_content(wet_mass: Float64, dry_mass: Float64) -> Float64:
     return (wet_mass - dry_mass) / dry_mass * 100.0
 
 
-fn fiber_saturation_point(basic_density: Float64) -> Float64:
+def fiber_saturation_point(basic_density: Float64) -> Float64:
     """Estimated fiber saturation point from basic density.
 
     FSP ≈ 30 - 5·(ρ - 0.4)  (approximate empirical fit)
@@ -45,7 +45,7 @@ fn fiber_saturation_point(basic_density: Float64) -> Float64:
     return 30.0 - 5.0 * (basic_density - 0.4)
 
 
-fn shrinkage_coefficient(
+def shrinkage_coefficient(
     dim_change: Float64, original_dim: Float64, mc_change: Float64
 ) -> Float64:
     """Dimensional shrinkage coefficient.
@@ -66,7 +66,7 @@ fn shrinkage_coefficient(
     return dim_change / denom
 
 
-fn modulus_of_rupture(
+def modulus_of_rupture(
     load_at_break: Float64, span: Float64, width: Float64, depth: Float64
 ) -> Float64:
     """Modulus of rupture from three-point bending test.
@@ -88,7 +88,7 @@ fn modulus_of_rupture(
     return 3.0 * load_at_break * span / denom
 
 
-fn modulus_of_elasticity(
+def modulus_of_elasticity(
     load: Float64, span: Float64, width: Float64, depth: Float64, deflection: Float64
 ) -> Float64:
     """Modulus of elasticity from three-point bending.
@@ -111,7 +111,7 @@ fn modulus_of_elasticity(
     return load * pow(span, 3.0) / denom
 
 
-fn wood_density_at_mc(
+def wood_density_at_mc(
     basic_density: Float64, moisture_content_pct: Float64
 ) -> Float64:
     """Wood density at a given moisture content.
@@ -132,7 +132,7 @@ fn wood_density_at_mc(
     return basic_density * (1.0 + moisture_content_pct / 100.0) / denom
 
 
-fn thermal_conductivity_wood(
+def thermal_conductivity_wood(
     density_kg_m3: Float64, moisture_content_pct: Float64
 ) -> Float64:
     """Thermal conductivity of wood (MacLean's approximation).
@@ -149,7 +149,7 @@ fn thermal_conductivity_wood(
     return 0.01864e-3 * density_kg_m3 * (1.0 + 0.024 * moisture_content_pct)
 
 
-fn charring_rate(
+def charring_rate(
     duration_min: Float64, charring_coeff: Float64
 ) -> Float64:
     """Char depth in fire exposure (power law model).
@@ -168,7 +168,7 @@ fn charring_rate(
     return charring_coeff * pow(duration_min, 0.813)
 
 
-fn section_modulus(width: Float64, depth: Float64) -> Float64:
+def section_modulus(width: Float64, depth: Float64) -> Float64:
     """Elastic section modulus of a rectangular beam.
 
     Z = b·h² / 6
@@ -183,7 +183,7 @@ fn section_modulus(width: Float64, depth: Float64) -> Float64:
     return width * depth * depth / 6.0
 
 
-fn wood_hardness_janka(density_g_cm3: Float64) -> Float64:
+def wood_hardness_janka(density_g_cm3: Float64) -> Float64:
     """Estimated Janka hardness from wood density.
 
     Janka ≈ 6139 · ρ² − 766 · ρ + 35  (approximate, ρ in g/cm³)

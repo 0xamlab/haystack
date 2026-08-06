@@ -129,7 +129,7 @@ struct OptModelSolve(Copyable, Movable):
     var lp_iterations: Int
 
 
-fn _refusal(
+def _refusal(
     status: Int, underlying: Int, is_discrete: Bool, lowered_rows: Int
 ) -> OptModelSolve:
     return OptModelSolve(
@@ -139,7 +139,7 @@ fn _refusal(
     )
 
 
-fn _core_refusal(
+def _core_refusal(
     lowered: LoweredForm, is_discrete: Bool, underlying: Int,
     max_iterations: Int, feasibility_tol: Float64, optimality_tol: Float64,
 ) -> OptModelSolve:
@@ -166,7 +166,7 @@ fn _core_refusal(
     )
 
 
-fn _objective_agree_budget(
+def _objective_agree_budget(
     feasibility_tol: Float64, c: List[Float64], c0: Float64, x: List[Float64]
 ) -> Float64:
     """Rounding allowance for 'the audit recomputed the same objective'.
@@ -191,7 +191,7 @@ fn _objective_agree_budget(
 
 # PACKING IS LOAD-BEARING: `mojo_inventory` follows a signature a bounded number of
 # lines past its first and silently drops what does not close in the window.
-fn formulation_solve_flat(
+def formulation_solve_flat(
     n_vars: Int, n_cons: Int, maximize: Bool, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],
@@ -336,7 +336,7 @@ fn formulation_solve_flat(
     return _refusal(OPTM_REFUSED_UNCERTIFIED, lp.status, False, lowered.rows)
 
 
-fn _certified(
+def _certified(
     n_vars: Int, n_cons: Int, c: List[Float64], c0: Float64, a: List[Float64],
     senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],
@@ -367,7 +367,7 @@ fn _certified(
     )
 
 
-fn formulation_solve_default(
+def formulation_solve_default(
     n_vars: Int, n_cons: Int, maximize: Bool, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
     var_lower: List[Float64], var_upper: List[Float64], var_flags: List[Int],

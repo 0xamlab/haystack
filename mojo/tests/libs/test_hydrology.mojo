@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hydrology import manning_velocity, manning_discharge, hydraulic_radius, froude_number, reynolds_number_pipe, darcy_weisbach_head_loss, rational_method_peak_flow, time_of_concentration_kirpich, curve_number_runoff, evapotranspiration_hargreaves, specific_yield, darcy_groundwater_velocity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

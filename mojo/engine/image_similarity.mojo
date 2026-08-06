@@ -17,23 +17,23 @@ Public API:
 from std.math import log as _log, sqrt
 
 
-fn _pixel_count(width: Int, height: Int) -> Int:
+def _pixel_count(width: Int, height: Int) -> Int:
     if width <= 0 or height <= 0:
         return 0
     return width * height
 
 
-fn _pixel_value(flat: List[Float64], index: Int) -> Float64:
+def _pixel_value(flat: List[Float64], index: Int) -> Float64:
     if index < 0 or index >= len(flat):
         return 0.0
     return flat[index]
 
 
-fn _abs(v: Float64) -> Float64:
+def _abs(v: Float64) -> Float64:
     return -v if v < 0.0 else v
 
 
-fn _clamp01(v: Float64) -> Float64:
+def _clamp01(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 1.0:
@@ -41,7 +41,7 @@ fn _clamp01(v: Float64) -> Float64:
     return v
 
 
-fn mean_squared_error_flat(
+def mean_squared_error_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int
 ) -> Float64:
     """Average squared pixel error."""
@@ -55,7 +55,7 @@ fn mean_squared_error_flat(
     return total / Float64(pixels)
 
 
-fn mean_abs_error_flat(
+def mean_abs_error_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int
 ) -> Float64:
     """Average absolute pixel error."""
@@ -68,7 +68,7 @@ fn mean_abs_error_flat(
     return total / Float64(pixels)
 
 
-fn psnr_flat(
+def psnr_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, max_value: Float64
 ) -> Float64:
     """Peak signal-to-noise ratio in dB. Identical images return 99.0."""
@@ -78,7 +78,7 @@ fn psnr_flat(
     if mse <= 1e-12:
         return 99.0
     return 10.0 * (_log((max_value * max_value) / mse) / _log(10.0))
-fn normalized_cross_correlation_flat(
+def normalized_cross_correlation_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int
 ) -> Float64:
     """Pearson-style normalized cross-correlation in [-1, 1]."""
@@ -106,7 +106,7 @@ fn normalized_cross_correlation_flat(
     if denom <= 1e-12:
         return 1.0 if mean_abs_error_flat(flat_a, flat_b, width, height) <= 1e-12 else 0.0
     return numerator / denom
-fn ssim_global_flat(
+def ssim_global_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int
 ) -> Float64:
     """Global SSIM approximation using full-image statistics."""
@@ -143,7 +143,7 @@ fn ssim_global_flat(
         (mean_a * mean_a + mean_b * mean_b + c1)
         * (var_a + var_b + c2)
     )
-fn diff_fraction_flat(
+def diff_fraction_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, diff_threshold: Float64
 ) -> Float64:
     """Fraction of pixels whose absolute difference exceeds diff_threshold."""
@@ -155,7 +155,7 @@ fn diff_fraction_flat(
         if _abs(_pixel_value(flat_a, index) - _pixel_value(flat_b, index)) > diff_threshold:
             count += 1
     return Float64(count) / Float64(pixels)
-fn crop_region_similarity_flat(
+def crop_region_similarity_flat(
     flat_a: List[Float64], flat_b: List[Float64],
     width: Int, height: Int, x0: Int, y0: Int, x1: Int, y1: Int,
 ) -> Float64:
@@ -185,7 +185,7 @@ fn crop_region_similarity_flat(
     if count <= 0:
         return 0.0
     return _clamp01(1.0 - (total / Float64(count)) / 255.0)
-fn duplicate_score_flat(
+def duplicate_score_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int
 ) -> Float64:
     """Weighted duplicate score in [0, 1] from SSIM, NCC, and low-diff stability."""

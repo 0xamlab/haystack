@@ -39,7 +39,7 @@ from conv import parse_float64
 
 # ── String helper ─────────────────────────────────────────────────────────────
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes = s.as_bytes()
     var n = len(s)
@@ -53,7 +53,7 @@ fn _substr(s: String, start: Int, end: Int) -> String:
 
 # ── djb2 hash ─────────────────────────────────────────────────────────────────
 
-fn _djb2(s: String) -> Int:
+def _djb2(s: String) -> Int:
     var h: Int = 5381
     var bytes = s.as_bytes()
     for i in range(len(s)):
@@ -65,7 +65,7 @@ fn _djb2(s: String) -> Int:
 
 # ── String value array extractor ──────────────────────────────────────────────
 
-fn _extract_values(col_json: String) -> List[String]:
+def _extract_values(col_json: String) -> List[String]:
     """Extract 'values' array from column JSON object (handles strings and numbers)."""
     var result = List[String]()
     var vpos = col_json.find('"values"')
@@ -113,13 +113,13 @@ fn _extract_values(col_json: String) -> List[String]:
     return result^
 
 
-fn _extract_unique_ratio(col_json: String) -> Float64:
+def _extract_unique_ratio(col_json: String) -> Float64:
     return json_get_float(col_json, "unique_ratio", 0.5)
 
 
 # ── Overlap via hashing ───────────────────────────────────────────────────────
 
-fn _jaccard_str_lists(a: List[String], b: List[String]) -> Float64:
+def _jaccard_str_lists(a: List[String], b: List[String]) -> Float64:
     """Jaccard overlap between two string value lists via djb2 hash + set_ops."""
     if len(a) == 0 or len(b) == 0:
         return 0.0
@@ -140,7 +140,7 @@ fn _jaccard_str_lists(a: List[String], b: List[String]) -> Float64:
     return jaccard_index(set_a, set_b)
 
 
-fn _cardinality(ur_a: Float64, ur_b: Float64) -> String:
+def _cardinality(ur_a: Float64, ur_b: Float64) -> String:
     var h_a = ur_a > 0.85
     var h_b = ur_b > 0.85
     if h_a and h_b:
@@ -153,7 +153,7 @@ fn _cardinality(ur_a: Float64, ur_b: Float64) -> String:
         return "N:N"
 
 
-fn _name_sim(a: String, b: String) -> Float64:
+def _name_sim(a: String, b: String) -> Float64:
     var la = to_lower(a)
     var lb = to_lower(b)
     if la == lb:
@@ -170,7 +170,7 @@ struct ColEntry(Copyable, Movable):
     var values: List[String]
     var unique_ratio: Float64
 
-    fn __init__(out self, full_name: String, source: String, field: String,
+    def __init__(out self, full_name: String, source: String, field: String,
                 values: List[String], unique_ratio: Float64):
         self.full_name = full_name
         self.source = source
@@ -179,7 +179,7 @@ struct ColEntry(Copyable, Movable):
         self.unique_ratio = unique_ratio
 
 
-fn _split_dot(full: String) -> List[String]:
+def _split_dot(full: String) -> List[String]:
     """Split "source.FIELD" → ["source", "FIELD"]. No dot → ["", full]."""
     var dot = full.find(".")
     var result = List[String]()
@@ -194,7 +194,7 @@ fn _split_dot(full: String) -> List[String]:
 
 # ── Parse columns object ──────────────────────────────────────────────────────
 
-fn _parse_columns(raw: String) -> List[ColEntry]:
+def _parse_columns(raw: String) -> List[ColEntry]:
     """Walk the 'columns' JSON object and parse each entry."""
     var result = List[ColEntry]()
 
@@ -270,7 +270,7 @@ fn _parse_columns(raw: String) -> List[ColEntry]:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-fn run_join_detect(raw: String) raises -> String:
+def run_join_detect(raw: String) raises -> String:
     """Detect join key relationships between columns from different sources."""
     var min_conf: Float64 = json_get_float(raw, "min_confidence", 0.5)
 

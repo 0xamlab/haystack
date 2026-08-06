@@ -24,7 +24,7 @@ from esrnn.bias_correction import esrnn_apply_bias, esrnn_bias_mean
 from esrnn.global_residual import esrnn_residual
 
 
-fn _same_values(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_values(a: List[Float64], b: List[Float64]) -> Bool:
     """Elementwise `==` over two value lists — `List[Float64]` has no `__eq__` here, so
     every bit-exact comparison in this suite goes through this helper, never `a == b`."""
     if len(a) != len(b):
@@ -35,7 +35,7 @@ fn _same_values(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[esrnn.bias_correction] hand-written known-value suite")

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from acoustics import sound_pressure_level, sound_intensity_level, sound_power_level, inverse_square_law_pressure, wavelength, resonant_frequency_pipe_open, resonant_frequency_pipe_closed, doppler_frequency, reverberation_time_sabine, noise_reduction_coefficient, decibel_sum_2, distance_doubling_attenuation
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

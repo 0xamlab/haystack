@@ -91,7 +91,7 @@ from discrete_event.contract import (
 # ── the ordering ──────────────────────────────────────────────────────────────
 
 
-fn de_key_less(
+def de_key_less(
     time_a: Float64, priority_a: Int, sequence_a: Int,
     time_b: Float64, priority_b: Int, sequence_b: Int,
 ) -> Bool:
@@ -150,7 +150,7 @@ struct _EventHeap(Copyable, Movable):
     var kind: List[Int]
     var ent: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.t = List[Float64]()
         self.pri = List[Int]()
         self.seq = List[Int]()
@@ -158,11 +158,11 @@ struct _EventHeap(Copyable, Movable):
         self.ent = List[Int]()
 
 
-fn _heap_size(h: _EventHeap) -> Int:
+def _heap_size(h: _EventHeap) -> Int:
     return len(h.t)
 
 
-fn _heap_swap(mut h: _EventHeap, i: Int, j: Int):
+def _heap_swap(mut h: _EventHeap, i: Int, j: Int):
     """Swap two heap slots. Callers only ever pass indices below `len(h.t)`."""
     var t = h.t[i]; h.t[i] = h.t[j]; h.t[j] = t
     var p = h.pri[i]; h.pri[i] = h.pri[j]; h.pri[j] = p
@@ -171,7 +171,7 @@ fn _heap_swap(mut h: _EventHeap, i: Int, j: Int):
     var e = h.ent[i]; h.ent[i] = h.ent[j]; h.ent[j] = e
 
 
-fn _heap_sift_up(mut h: _EventHeap, start: Int):
+def _heap_sift_up(mut h: _EventHeap, start: Int):
     var pos = start
     while pos > 0:
         var parent = (pos - 1) // 2
@@ -184,7 +184,7 @@ fn _heap_sift_up(mut h: _EventHeap, start: Int):
             break
 
 
-fn _heap_sift_down(mut h: _EventHeap, start: Int):
+def _heap_sift_down(mut h: _EventHeap, start: Int):
     var n = _heap_size(h)
     var pos = start
     while True:
@@ -206,7 +206,7 @@ fn _heap_sift_down(mut h: _EventHeap, start: Int):
             break
 
 
-fn _heap_push(
+def _heap_push(
     mut h: _EventHeap, time: Float64, priority: Int, sequence: Int, kind: Int, entity: Int
 ):
     """Append then sift up — one heap depth of comparisons, which is what the work budget
@@ -219,7 +219,7 @@ fn _heap_push(
     _heap_sift_up(h, _heap_size(h) - 1)
 
 
-fn _heap_drop_root(mut h: _EventHeap):
+def _heap_drop_root(mut h: _EventHeap):
     """Remove the minimum. The caller reads slot 0 BEFORE calling this.
 
     Split that way on purpose: returning five values would need a struct, and a struct declared
@@ -245,7 +245,7 @@ fn _heap_drop_root(mut h: _EventHeap):
     _heap_sift_down(h, 0)
 
 
-fn _heap_replace_root(
+def _heap_replace_root(
     mut h: _EventHeap, time: Float64, priority: Int, sequence: Int, kind: Int, entity: Int
 ):
     """Overwrite the minimum with a new entry, in ONE sift. The caller reads slot 0 first.
@@ -335,7 +335,7 @@ struct CalendarTrace(Copyable, Movable):
     var pop_entity: List[Int]
 
 
-fn _trace_refusal(code: Int) -> CalendarTrace:
+def _trace_refusal(code: Int) -> CalendarTrace:
     """A refusal carries no numbers at all — not zeros that look like a run of length zero."""
     return CalendarTrace(
         code, 0, 0, 0, 0, False, False,
@@ -364,14 +364,14 @@ struct OrderAudit(Copyable, Movable):
     var n_priority_ties: Int
 
 
-fn _audit_refusal(code: Int) -> OrderAudit:
+def _audit_refusal(code: Int) -> OrderAudit:
     return OrderAudit(code, 0, False, False, -1, 0, 0, 0)
 
 
 # ── drivers ───────────────────────────────────────────────────────────────────
 
 
-fn calendar_replay_flat(
+def calendar_replay_flat(
     time: List[Float64], priority: List[Int], kind: List[Int], entity: List[Int],
     n_events: Int,
 ) -> CalendarTrace:
@@ -463,7 +463,7 @@ fn calendar_replay_flat(
     )
 
 
-fn calendar_order_audit(
+def calendar_order_audit(
     time: List[Float64], priority: List[Int], sequence: List[Int], n: Int
 ) -> OrderAudit:
     """Check that the first `n` entries are in `de_event_order()`, and say where they are not.
@@ -521,7 +521,7 @@ fn calendar_order_audit(
     return OrderAudit(DE_OK, n, ordered, not ordered, first, dups, time_ties, pri_ties)
 
 
-fn calendar_stress_flat(n_events: Int, distinct_times: Int, n_priorities: Int) -> CalendarTrace:
+def calendar_stress_flat(n_events: Int, distinct_times: Int, n_priorities: Int) -> CalendarTrace:
     """Build `n_events` events that COLLIDE on purpose, then replay them.
 
     `time = i % distinct_times`, `priority = i % n_priorities`, `kind = entity = i`. With

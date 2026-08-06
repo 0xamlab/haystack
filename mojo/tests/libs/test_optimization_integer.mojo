@@ -103,28 +103,28 @@ from optimization.model import (
 )
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
+def _exact(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Used only where every value is a small integer or a dyadic
     fraction, so a tolerance there would hide a genuine mis-accumulation."""
     if len(a) != len(b):
@@ -135,7 +135,7 @@ fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _all_integral(x: List[Float64]) -> Bool:
+def _all_integral(x: List[Float64]) -> Bool:
     """Every coordinate is EXACTLY on the integer grid, not merely near it.
 
     Asserted rather than assumed: the incumbent is snapped before it is accepted, so a
@@ -150,7 +150,7 @@ fn _all_integral(x: List[Float64]) -> Bool:
     return True
 
 
-fn _census_consistent(
+def _census_consistent(
     explored: Int, pruned: Int, infeasible: Int, integral: Int,
     branched: Int, open_nodes: Int
 ) -> Bool:
@@ -179,19 +179,19 @@ fn _census_consistent(
 # relaxation is already integral would not exercise a single branch.
 
 
-fn _c_wolsey() -> List[Float64]:
+def _c_wolsey() -> List[Float64]:
     return _floats(5.0, 8.0)
 
 
-fn _a_wolsey() -> List[Float64]:
+def _a_wolsey() -> List[Float64]:
     return _floats(1.0, 1.0, 5.0, 9.0)
 
 
-fn _b_wolsey() -> List[Float64]:
+def _b_wolsey() -> List[Float64]:
     return _floats(6.0, 45.0)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

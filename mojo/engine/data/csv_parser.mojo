@@ -13,15 +13,15 @@ struct CSVRow(Copyable, Movable):
     var fields: List[String]
     var n_fields: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.fields = List[String]()
         self.n_fields = 0
 
-    fn __init__(out self, fields: List[String]):
+    def __init__(out self, fields: List[String]):
         self.fields = fields.copy()
         self.n_fields = len(fields)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.fields = copy.fields.copy()
         self.n_fields = copy.n_fields
 
@@ -31,15 +31,15 @@ struct CSVResult(Copyable, Movable):
     var headers: List[String]
     var rows: List[CSVRow]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.headers = List[String]()
         self.rows = List[CSVRow]()
 
-    fn __init__(out self, headers: List[String], rows: List[CSVRow]):
+    def __init__(out self, headers: List[String], rows: List[CSVRow]):
         self.headers = headers.copy()
         self.rows = rows.copy()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.headers = copy.headers.copy()
         self.rows = copy.rows.copy()
 
@@ -56,14 +56,14 @@ comptime _SPACE = UInt8(32)
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _try_parse_float(s: String) -> Float64:
+def _try_parse_float(s: String) -> Float64:
     try:
         return atof(s)
     except:
         return 0.0
 
 
-fn _can_parse_float(s: String) -> Bool:
+def _can_parse_float(s: String) -> Bool:
     if len(s) == 0:
         return False
     var bs = s.as_bytes()
@@ -106,14 +106,14 @@ fn _can_parse_float(s: String) -> Bool:
     return has_digit and i == len(s)
 
 
-fn _try_parse_int(s: String) -> Int:
+def _try_parse_int(s: String) -> Int:
     try:
         return atol(s)
     except:
         return 0
 
 
-fn _can_parse_int(s: String) -> Bool:
+def _can_parse_int(s: String) -> Bool:
     if len(s) == 0:
         return False
     var bs = s.as_bytes()
@@ -145,7 +145,7 @@ fn _can_parse_int(s: String) -> Bool:
 # ── Core CSV parsing (state machine) ─────────────────────────────────────────
 
 
-fn _parse_fields(line: String, delim_byte: UInt8) -> List[String]:
+def _parse_fields(line: String, delim_byte: UInt8) -> List[String]:
     """Parse a single CSV record into fields using RFC 4180 state machine."""
     var fields = List[String]()
     var bs = line.as_bytes()
@@ -208,7 +208,7 @@ fn _parse_fields(line: String, delim_byte: UInt8) -> List[String]:
     return fields^
 
 
-fn _split_csv_records(content: String) -> List[String]:
+def _split_csv_records(content: String) -> List[String]:
     """Split CSV content into records, respecting quoted fields with embedded newlines."""
     var records = List[String]()
     var bs = content.as_bytes()
@@ -243,7 +243,7 @@ fn _split_csv_records(content: String) -> List[String]:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-fn parse_csv(content: String, delimiter: String = ",", has_header: Bool = True) -> CSVResult:
+def parse_csv(content: String, delimiter: String = ",", has_header: Bool = True) -> CSVResult:
     """Parse CSV content into CSVResult with .headers and .rows."""
     var delim_byte = UInt8(ord(","))
     if len(delimiter) > 0:
@@ -270,7 +270,7 @@ fn parse_csv(content: String, delimiter: String = ",", has_header: Bool = True) 
     return result^
 
 
-fn parse_csv_row(line: String, delimiter: String = ",") -> CSVRow:
+def parse_csv_row(line: String, delimiter: String = ",") -> CSVRow:
     """Parse a single CSV line into fields."""
     var delim_byte = UInt8(ord(","))
     if len(delimiter) > 0:
@@ -279,14 +279,14 @@ fn parse_csv_row(line: String, delimiter: String = ",") -> CSVRow:
     return CSVRow(fields)
 
 
-fn csv_get_field(row: CSVRow, index: Int) -> String:
+def csv_get_field(row: CSVRow, index: Int) -> String:
     """Get field at index from a parsed row. Returns "" if out of bounds."""
     if index < 0 or index >= row.n_fields:
         return String("")
     return row.fields[index]
 
 
-fn csv_get_float(row: CSVRow, index: Int, default: Float64 = 0.0) -> Float64:
+def csv_get_float(row: CSVRow, index: Int, default: Float64 = 0.0) -> Float64:
     """Get field as Float64. Returns default if not numeric or out of bounds."""
     if index < 0 or index >= row.n_fields:
         return default
@@ -296,7 +296,7 @@ fn csv_get_float(row: CSVRow, index: Int, default: Float64 = 0.0) -> Float64:
     return _try_parse_float(s)
 
 
-fn csv_get_int(row: CSVRow, index: Int, default: Int = 0) -> Int:
+def csv_get_int(row: CSVRow, index: Int, default: Int = 0) -> Int:
     """Get field as Int. Returns default if not numeric or out of bounds."""
     if index < 0 or index >= row.n_fields:
         return default
@@ -306,7 +306,7 @@ fn csv_get_int(row: CSVRow, index: Int, default: Int = 0) -> Int:
     return _try_parse_int(s)
 
 
-fn _escape_json_string(s: String) -> String:
+def _escape_json_string(s: String) -> String:
     """Escape a string for JSON output."""
     var result = String("")
     var bs = s.as_bytes()
@@ -327,7 +327,7 @@ fn _escape_json_string(s: String) -> String:
     return result
 
 
-fn csv_to_json_array(headers: List[String], rows: List[CSVRow]) -> String:
+def csv_to_json_array(headers: List[String], rows: List[CSVRow]) -> String:
     """Convert parsed CSV to JSON array of objects."""
     var result = String("[")
     var n_headers = len(headers)

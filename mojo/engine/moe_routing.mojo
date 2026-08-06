@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn noisy_top_k_gate(
+def noisy_top_k_gate(
     logit: Float64, noise: Float64, epsilon: Float64
 ) -> Float64:
     """Noisy top-k gating: logit + noise × softplus(W_noise).
@@ -36,7 +36,7 @@ fn noisy_top_k_gate(
     return logit + noise * softplus_eps
 
 
-fn switch_transformer_gate(
+def switch_transformer_gate(
     logit: Float64, max_logit: Float64, sum_exp: Float64
 ) -> Float64:
     """Switch Transformer top-1 gating: softmax probability.
@@ -56,7 +56,7 @@ fn switch_transformer_gate(
     return exp(logit - max_logit) / sum_exp
 
 
-fn expert_parallel_shard_id(
+def expert_parallel_shard_id(
     expert_id: Float64, n_devices: Float64
 ) -> Float64:
     """Map expert to device for expert parallelism.
@@ -75,7 +75,7 @@ fn expert_parallel_shard_id(
     return Float64(Int64(expert_id) % Int64(n_devices))
 
 
-fn gshard_gate_weight(
+def gshard_gate_weight(
     gate_score: Float64, threshold: Float64, is_top1: Float64
 ) -> Float64:
     """GShard smooth top-2 gating: gate weight with threshold smoothing.
@@ -98,7 +98,7 @@ fn gshard_gate_weight(
     return 0.0
 
 
-fn expert_dropout_mask(
+def expert_dropout_mask(
     expert_id: Float64, dropout_rate: Float64, random_val: Float64
 ) -> Float64:
     """Training-time expert dropout: drop expert with probability p.
@@ -116,7 +116,7 @@ fn expert_dropout_mask(
     return 1.0
 
 
-fn combined_jitter_noise(
+def combined_jitter_noise(
     base_logit: Float64, noise_std: Float64, noise_sample: Float64
 ) -> Float64:
     """Jitter noise for MoE exploration during training.
@@ -134,7 +134,7 @@ fn combined_jitter_noise(
     return base_logit * (1.0 + noise_std * noise_sample)
 
 
-fn aux_loss_coefficient(
+def aux_loss_coefficient(
     step: Float64, warmup_steps: Float64, target_coeff: Float64
 ) -> Float64:
     """Dynamic auxiliary loss coefficient: linearly warm up.
@@ -157,7 +157,7 @@ fn aux_loss_coefficient(
     return target_coeff * ratio
 
 
-fn expert_choice_gate(
+def expert_choice_gate(
     token_score: Float64, capacity: Float64, n_tokens: Float64
 ) -> Float64:
     """Expert-choice routing: expert selects top-k tokens.
@@ -177,7 +177,7 @@ fn expert_choice_gate(
     return Float64(Int64(capacity * n_tokens + 0.5))
 
 
-fn cosine_router_score(
+def cosine_router_score(
     token_dot_expert: Float64, token_norm: Float64, expert_norm: Float64
 ) -> Float64:
     """Cosine-similarity router: route to most similar expert.
@@ -198,7 +198,7 @@ fn cosine_router_score(
     return token_dot_expert / denom
 
 
-fn heterogeneous_expert_capacity(
+def heterogeneous_expert_capacity(
     base_capacity: Float64, expert_speed_ratio: Float64
 ) -> Float64:
     """Variable capacity for heterogeneous experts (different hardware).

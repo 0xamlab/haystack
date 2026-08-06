@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from timber import board_feet, moisture_content, allowable_stress, modulus_of_rupture_adjusted, section_modulus_beam, moment_capacity, column_slenderness, wood_density_from_sg, shrinkage_estimate, fire_char_rate, remaining_section, log_volume_doyle
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

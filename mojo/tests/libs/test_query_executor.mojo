@@ -40,11 +40,11 @@ from types import ExprNode
 comptime OP_SQRT_FROZEN: Int = 12  # a frozen transcendental the evaluator omits
 
 
-fn _named(var names: List[String], var cols: List[Float64Array], n: Int) -> RecordBatch:
+def _named(var names: List[String], var cols: List[Float64Array], n: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _sales() -> RecordBatch:
+def _sales() -> RecordBatch:
     """region=[1,2,1,3,2] amount=[10,50,30,null,50] units=[1,2,3,4,5]."""
     var region = List[Float64]()
     region.append(1.0)
@@ -81,7 +81,7 @@ fn _sales() -> RecordBatch:
     return _named(names^, cols^, 5)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var sales = _sales()

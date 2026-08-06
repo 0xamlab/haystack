@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from checksum import adler32, fletcher16, luhn_check, luhn_checksum, isbn10_check, isbn13_check, xor_checksum, modular_sum, parity_bit, internet_checksum, verhoeff_check
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

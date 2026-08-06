@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from image_features import color_histogram, histogram_intersection, histogram_chi_square, histogram_correlation, dominant_colors, edge_density_flat, most_salient_cell_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

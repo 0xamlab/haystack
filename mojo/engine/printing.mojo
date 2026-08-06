@@ -26,7 +26,7 @@ from std.math import sqrt, abs as fabs
 # ── dpi_to_lpi ───────────────────────────────────────────────────────────────
 
 
-fn dpi_to_lpi(dpi: Float64, screen_factor: Float64) -> Float64:
+def dpi_to_lpi(dpi: Float64, screen_factor: Float64) -> Float64:
     """LPI = DPI / screen_factor (typical factor ≈ 2)."""
     if screen_factor == 0.0:
         return 0.0
@@ -36,7 +36,7 @@ fn dpi_to_lpi(dpi: Float64, screen_factor: Float64) -> Float64:
 # ── pixel_count ──────────────────────────────────────────────────────────────
 
 
-fn pixel_count(width_inches: Float64, height_inches: Float64, dpi: Float64) -> Float64:
+def pixel_count(width_inches: Float64, height_inches: Float64, dpi: Float64) -> Float64:
     """Total pixels = (W * DPI) * (H * DPI)."""
     return (width_inches * dpi) * (height_inches * dpi)
 
@@ -44,7 +44,7 @@ fn pixel_count(width_inches: Float64, height_inches: Float64, dpi: Float64) -> F
 # ── file_size_uncompressed ───────────────────────────────────────────────────
 
 
-fn file_size_uncompressed(
+def file_size_uncompressed(
     width_px: Float64, height_px: Float64, bit_depth: Float64, channels: Float64
 ) -> Float64:
     """Bytes = W * H * (bit_depth/8) * channels."""
@@ -54,7 +54,7 @@ fn file_size_uncompressed(
 # ── bleed_area ───────────────────────────────────────────────────────────────
 
 
-fn bleed_area(trim_width: Float64, trim_height: Float64, bleed_mm: Float64) -> Float64:
+def bleed_area(trim_width: Float64, trim_height: Float64, bleed_mm: Float64) -> Float64:
     """Area = (W + 2*bleed) * (H + 2*bleed)."""
     return (trim_width + 2.0 * bleed_mm) * (trim_height + 2.0 * bleed_mm)
 
@@ -62,7 +62,7 @@ fn bleed_area(trim_width: Float64, trim_height: Float64, bleed_mm: Float64) -> F
 # ── spine_width ──────────────────────────────────────────────────────────────
 
 
-fn spine_width(pages: Float64, paper_thickness_mm: Float64) -> Float64:
+def spine_width(pages: Float64, paper_thickness_mm: Float64) -> Float64:
     """Spine = pages * thickness / 2  (sheets = pages/2)."""
     return pages * paper_thickness_mm / 2.0
 
@@ -70,7 +70,7 @@ fn spine_width(pages: Float64, paper_thickness_mm: Float64) -> Float64:
 # ── ink_coverage ─────────────────────────────────────────────────────────────
 
 
-fn ink_coverage(cmyk_c: Float64, cmyk_m: Float64, cmyk_y: Float64, cmyk_k: Float64) -> Float64:
+def ink_coverage(cmyk_c: Float64, cmyk_m: Float64, cmyk_y: Float64, cmyk_k: Float64) -> Float64:
     """Total ink coverage = C + M + Y + K (max typically 300-400%)."""
     return cmyk_c + cmyk_m + cmyk_y + cmyk_k
 
@@ -78,7 +78,7 @@ fn ink_coverage(cmyk_c: Float64, cmyk_m: Float64, cmyk_y: Float64, cmyk_k: Float
 # ── paper_weight_gsm_to_lb ──────────────────────────────────────────────────
 
 
-fn paper_weight_gsm_to_lb(gsm: Float64) -> Float64:
+def paper_weight_gsm_to_lb(gsm: Float64) -> Float64:
     """lb = gsm * 0.67 / 10  (bond basis, approximate)."""
     return gsm * 0.67 / 10.0
 
@@ -86,7 +86,7 @@ fn paper_weight_gsm_to_lb(gsm: Float64) -> Float64:
 # ── sheets_per_ream ──────────────────────────────────────────────────────────
 
 
-fn sheets_per_ream() -> Int:
+def sheets_per_ream() -> Int:
     """Returns 500 (standard ream)."""
     return 500
 
@@ -94,7 +94,7 @@ fn sheets_per_ream() -> Int:
 # ── cost_per_page ────────────────────────────────────────────────────────────
 
 
-fn cost_per_page(total_cost: Float64, total_pages: Float64) -> Float64:
+def cost_per_page(total_cost: Float64, total_pages: Float64) -> Float64:
     """CPP = total_cost / total_pages."""
     if total_pages == 0.0:
         return 0.0
@@ -104,7 +104,7 @@ fn cost_per_page(total_cost: Float64, total_pages: Float64) -> Float64:
 # ── imposition_pages ─────────────────────────────────────────────────────────
 
 
-fn imposition_pages(finished_pages: Float64, pages_per_sheet: Float64) -> Float64:
+def imposition_pages(finished_pages: Float64, pages_per_sheet: Float64) -> Float64:
     """Sheets needed = finished_pages / pages_per_sheet."""
     if pages_per_sheet == 0.0:
         return 0.0
@@ -114,7 +114,7 @@ fn imposition_pages(finished_pages: Float64, pages_per_sheet: Float64) -> Float6
 # ── color_delta_e ────────────────────────────────────────────────────────────
 
 
-fn color_delta_e(
+def color_delta_e(
     l1: Float64, a1: Float64, b1: Float64,
     l2: Float64, a2: Float64, b2: Float64,
 ) -> Float64:
@@ -128,6 +128,6 @@ fn color_delta_e(
 # ── dot_gain_apparent ────────────────────────────────────────────────────────
 
 
-fn dot_gain_apparent(measured_tone: Float64, actual_tone: Float64) -> Float64:
+def dot_gain_apparent(measured_tone: Float64, actual_tone: Float64) -> Float64:
     """Dot gain = measured_tone - actual_tone."""
     return measured_tone - actual_tone

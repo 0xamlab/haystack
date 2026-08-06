@@ -20,13 +20,13 @@ from image_regions import connected_component_boxes_flat
 from video_ops import frame_count_from_flat
 
 
-fn _frame_stride(width: Int, height: Int, channels: Int) -> Int:
+def _frame_stride(width: Int, height: Int, channels: Int) -> Int:
     if width <= 0 or height <= 0 or channels <= 0:
         return 0
     return width * height * channels
 
 
-fn _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
+def _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
     if channels <= 0:
         return 0.0
     var total: Float64 = 0.0
@@ -35,11 +35,11 @@ fn _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
     return total / Float64(channels)
 
 
-fn _abs(value: Float64) -> Float64:
+def _abs(value: Float64) -> Float64:
     return -value if value < 0.0 else value
 
 
-fn _foreground_count(mask_flat: List[Float64], fg_threshold: Float64) -> Int:
+def _foreground_count(mask_flat: List[Float64], fg_threshold: Float64) -> Int:
     var count = 0
     for value in mask_flat:
         if value >= fg_threshold:
@@ -47,7 +47,7 @@ fn _foreground_count(mask_flat: List[Float64], fg_threshold: Float64) -> Int:
     return count
 
 
-fn _mask_bbox(mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64) -> List[Int]:
+def _mask_bbox(mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64) -> List[Int]:
     var out = List[Int]()
     if width <= 0 or height <= 0:
         return out^
@@ -80,7 +80,7 @@ fn _mask_bbox(mask_flat: List[Float64], width: Int, height: Int, fg_threshold: F
     return out^
 
 
-fn _diff_mask_between_frames(
+def _diff_mask_between_frames(
     flat_frames: List[Float64],
     width: Int,
     height: Int,
@@ -111,7 +111,7 @@ fn _diff_mask_between_frames(
     return out^
 
 
-fn frame_diff_mask_flat(
+def frame_diff_mask_flat(
     flat_frames: List[Float64],
     width: Int,
     height: Int,
@@ -132,7 +132,7 @@ fn frame_diff_mask_flat(
     )
 
 
-fn motion_boxes_between_frames(
+def motion_boxes_between_frames(
     flat_frames: List[Float64],
     width: Int,
     height: Int,
@@ -163,7 +163,7 @@ fn motion_boxes_between_frames(
     )
 
 
-fn largest_motion_box_between_frames(
+def largest_motion_box_between_frames(
     flat_frames: List[Float64],
     width: Int,
     height: Int,
@@ -189,7 +189,7 @@ fn largest_motion_box_between_frames(
     return out^
 
 
-fn temporal_motion_area_series(
+def temporal_motion_area_series(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, diff_threshold: Float64
 ) -> List[Float64]:
     """Per-transition motion-area ratios in [0, 1]."""
@@ -212,7 +212,7 @@ fn temporal_motion_area_series(
     return out^
 
 
-fn peak_motion_box_flat(
+def peak_motion_box_flat(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, diff_threshold: Float64
 ) -> List[Int]:
     """Largest motion box from the transition with the most moving pixels."""
@@ -242,7 +242,7 @@ fn peak_motion_box_flat(
     return out^
 
 
-fn temporal_union_motion_box_flat(
+def temporal_union_motion_box_flat(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, diff_threshold: Float64
 ) -> List[Int]:
     """Bounding box and area of all pixels that move at least once across the clip."""
@@ -271,7 +271,7 @@ fn temporal_union_motion_box_flat(
     return _mask_bbox(union_mask, width, height, 128.0)
 
 
-fn motion_coverage_ratio_flat(
+def motion_coverage_ratio_flat(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, diff_threshold: Float64
 ) -> Float64:
     """Fraction of pixels that move at least once across the clip."""

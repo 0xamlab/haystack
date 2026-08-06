@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from music_theory import frequency_from_midi, midi_from_frequency, cents_between, semitones_between, note_in_scale, interval_ratio_just, beat_frequency, tempo_to_beat_duration, measures_duration, transpose_midi, octave_from_midi, is_enharmonic
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

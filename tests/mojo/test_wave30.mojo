@@ -41,12 +41,12 @@ from reliability import (
 from std.math import abs as fabs, exp, sqrt
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -54,26 +54,26 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Helper: build lists ─────────────────────────────────────────────────────
 
 
-fn _li3(a: Int, b: Int, c: Int) -> List[Int]:
+def _li3(a: Int, b: Int, c: Int) -> List[Int]:
     var v = List[Int]()
     v.append(a); v.append(b); v.append(c)
     return v^
 
 
-fn _li4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _li4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var v = List[Int]()
     v.append(a); v.append(b); v.append(c); v.append(d)
     return v^
 
 
-fn _li9(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: Int, i: Int) -> List[Int]:
+def _li9(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: Int, i: Int) -> List[Int]:
     var v = List[Int]()
     v.append(a); v.append(b); v.append(c); v.append(d); v.append(e)
     v.append(f); v.append(g); v.append(h); v.append(i)
     return v^
 
 
-fn _lf(elements: List[Float64]) -> List[Float64]:
+def _lf(elements: List[Float64]) -> List[Float64]:
     """Identity helper for readability."""
     return List[Float64](copy=elements)
 
@@ -81,7 +81,7 @@ fn _lf(elements: List[Float64]) -> List[Float64]:
 # ── Constraint tests ─────────────────────────────────────────────────────────
 
 
-fn test_all_different() raises:
+def test_all_different() raises:
     var v1 = _li3(1, 2, 3)
     _assert(all_different(v1), "all_different([1,2,3]) should be True")
     print("  ✓ all_different unique")
@@ -100,7 +100,7 @@ fn test_all_different() raises:
     print("  ✓ all_different empty")
 
 
-fn test_n_queens_4() raises:
+def test_n_queens_4() raises:
     var sol = solve_n_queens(4)
     _assert(len(sol) == 4, "solve_n_queens(4) should have length 4")
     print("  ✓ n_queens(4) length")
@@ -109,7 +109,7 @@ fn test_n_queens_4() raises:
     print("  ✓ n_queens(4) valid placement")
 
 
-fn test_n_queens_8() raises:
+def test_n_queens_8() raises:
     var sol = solve_n_queens(8)
     _assert(len(sol) == 8, "solve_n_queens(8) should have length 8")
     print("  ✓ n_queens(8) length")
@@ -118,7 +118,7 @@ fn test_n_queens_8() raises:
     print("  ✓ n_queens(8) valid placement")
 
 
-fn test_n_queens_check_invalid() raises:
+def test_n_queens_check_invalid() raises:
     var bad = _li4(0, 0, 0, 0)
     _assert(not n_queens_check(bad), "same column should be invalid")
     print("  ✓ n_queens_check invalid same column")
@@ -128,7 +128,7 @@ fn test_n_queens_check_invalid() raises:
     print("  ✓ n_queens_check invalid diagonal")
 
 
-fn test_count_solutions_nqueens() raises:
+def test_count_solutions_nqueens() raises:
     var c4 = count_solutions_nqueens(4)
     _assert(c4 == 2, "count_solutions_nqueens(4) should be 2, got " + String(c4))
     print("  ✓ count_solutions_nqueens(4) == 2")
@@ -138,7 +138,7 @@ fn test_count_solutions_nqueens() raises:
     print("  ✓ count_solutions_nqueens(5) == 10")
 
 
-fn test_graph_coloring() raises:
+def test_graph_coloring() raises:
     # Triangle graph: 3 nodes, each connected to the other two
     var adj = List[List[Int]]()
     var n0 = List[Int](); n0.append(1); n0.append(2)
@@ -166,7 +166,7 @@ fn test_graph_coloring() raises:
     print("  ✓ graph_coloring triangle 2 colors no solution")
 
 
-fn test_sudoku_valid() raises:
+def test_sudoku_valid() raises:
     # Known valid (partially filled) Sudoku board
     var board = List[List[Int]]()
     board.append(_li9(5, 3, 0, 0, 7, 0, 0, 0, 0))
@@ -196,7 +196,7 @@ fn test_sudoku_valid() raises:
     print("  ✓ sudoku_valid invalid duplicate")
 
 
-fn test_magic_square() raises:
+def test_magic_square() raises:
     # Classic 3x3 magic square
     var sq = List[List[Int]]()
     sq.append(_li3(2, 7, 6))
@@ -214,7 +214,7 @@ fn test_magic_square() raises:
     print("  ✓ magic_square_check invalid")
 
 
-fn test_solve_backtrack() raises:
+def test_solve_backtrack() raises:
     # Simple CSP: 2 vars, domain [0,1], must be not_equal
     var domains = List[List[Int]]()
     var d0 = List[Int](); d0.append(0); d0.append(1)
@@ -231,7 +231,7 @@ fn test_solve_backtrack() raises:
 # ── Filter tests ─────────────────────────────────────────────────────────────
 
 
-fn test_lowpass_ema() raises:
+def test_lowpass_ema() raises:
     var data = List[Float64]()
     data.append(10.0); data.append(10.0); data.append(50.0); data.append(10.0)
     data.append(10.0); data.append(50.0); data.append(10.0); data.append(10.0)
@@ -256,7 +256,7 @@ fn test_lowpass_ema() raises:
     print("  ✓ lowpass_ema reduces variance")
 
 
-fn test_highpass_ema() raises:
+def test_highpass_ema() raises:
     var data = List[Float64]()
     data.append(100.0); data.append(101.0); data.append(99.0); data.append(100.0)
     data.append(102.0); data.append(98.0); data.append(100.0); data.append(101.0)
@@ -271,7 +271,7 @@ fn test_highpass_ema() raises:
     print("  ✓ highpass_ema removes DC")
 
 
-fn test_median_filter() raises:
+def test_median_filter() raises:
     var data = List[Float64]()
     data.append(1.0); data.append(1.0); data.append(1.0); data.append(100.0)
     data.append(1.0); data.append(1.0); data.append(1.0)
@@ -281,7 +281,7 @@ fn test_median_filter() raises:
     print("  ✓ median_filter removes spike")
 
 
-fn test_moving_average_filter() raises:
+def test_moving_average_filter() raises:
     var data = List[Float64]()
     data.append(1.0); data.append(2.0); data.append(3.0)
     data.append(4.0); data.append(5.0)
@@ -292,7 +292,7 @@ fn test_moving_average_filter() raises:
     print("  ✓ moving_average_filter correct length and values")
 
 
-fn test_diff_filter() raises:
+def test_diff_filter() raises:
     var data = List[Float64]()
     data.append(1.0); data.append(3.0); data.append(6.0); data.append(10.0)
     var d = diff_filter(data)
@@ -303,7 +303,7 @@ fn test_diff_filter() raises:
     print("  ✓ diff_filter([1,3,6,10]) == [2,3,4]")
 
 
-fn test_integrate_diff_roundtrip() raises:
+def test_integrate_diff_roundtrip() raises:
     var data = List[Float64]()
     data.append(0.0); data.append(1.0); data.append(3.0)
     data.append(6.0); data.append(10.0)
@@ -313,7 +313,7 @@ fn test_integrate_diff_roundtrip() raises:
     print("  ✓ integrate_filter(diff_filter) roundtrip")
 
 
-fn test_iir_filter_1st() raises:
+def test_iir_filter_1st() raises:
     var data = List[Float64]()
     data.append(1.0); data.append(0.0); data.append(0.0)
     data.append(0.0); data.append(0.0)
@@ -325,7 +325,7 @@ fn test_iir_filter_1st() raises:
     print("  ✓ iir_filter_1st stable decay")
 
 
-fn test_rms() raises:
+def test_rms() raises:
     var data = List[Float64]()
     data.append(3.0); data.append(4.0)
     var r = rms(data)
@@ -333,7 +333,7 @@ fn test_rms() raises:
     print("  ✓ rms([3,4]) ≈ 3.536")
 
 
-fn test_snr() raises:
+def test_snr() raises:
     var signal_data = List[Float64]()
     signal_data.append(10.0); signal_data.append(10.0)
     signal_data.append(10.0); signal_data.append(10.0)
@@ -346,7 +346,7 @@ fn test_snr() raises:
     print("  ✓ snr positive dB value (" + String(s) + " dB)")
 
 
-fn test_savitzky_golay_3() raises:
+def test_savitzky_golay_3() raises:
     var data = List[Float64]()
     data.append(0.0); data.append(1.0); data.append(5.0)
     data.append(10.0); data.append(5.0); data.append(1.0); data.append(0.0)
@@ -356,7 +356,7 @@ fn test_savitzky_golay_3() raises:
     print("  ✓ savitzky_golay_3 smooths without shifting peak too much")
 
 
-fn test_bandpass() raises:
+def test_bandpass() raises:
     var data = List[Float64]()
     data.append(1.0); data.append(2.0); data.append(1.0); data.append(2.0)
     data.append(1.0); data.append(2.0); data.append(1.0); data.append(2.0)
@@ -368,7 +368,7 @@ fn test_bandpass() raises:
 # ── Reliability tests ────────────────────────────────────────────────────────
 
 
-fn test_exponential_reliability() raises:
+def test_exponential_reliability() raises:
     _assert_close(exponential_reliability(0.0, 0.01), 1.0, 1e-12,
                   "exp_rel(0)")
     print("  ✓ exponential_reliability(0, 0.01) == 1.0")
@@ -378,7 +378,7 @@ fn test_exponential_reliability() raises:
     print("  ✓ exponential_reliability(100, 0.01) ≈ 0.368")
 
 
-fn test_weibull_reliability() raises:
+def test_weibull_reliability() raises:
     _assert_close(weibull_reliability(0.0, 2.0, 100.0), 1.0, 1e-12,
                   "weibull_rel(0)")
     print("  ✓ weibull_reliability(0, 2, 100) == 1.0")
@@ -389,7 +389,7 @@ fn test_weibull_reliability() raises:
     print("  ✓ weibull_reliability(100, 1, 100) ≈ 0.368 (matches exp)")
 
 
-fn test_weibull_failure_rate() raises:
+def test_weibull_failure_rate() raises:
     # When beta=1, failure rate = 1/eta = constant
     var h = weibull_failure_rate(50.0, 1.0, 100.0)
     _assert_close(h, 0.01, 1e-6, "weibull h(t) with beta=1")
@@ -402,19 +402,19 @@ fn test_weibull_failure_rate() raises:
     print("  ✓ weibull_failure_rate increasing when beta=2")
 
 
-fn test_mtbf() raises:
+def test_mtbf() raises:
     _assert_close(mtbf(0.001), 1000.0, 1e-6, "mtbf(0.001)")
     print("  ✓ mtbf(0.001) == 1000.0")
 
 
-fn test_availability() raises:
+def test_availability() raises:
     var a = availability(1000.0, 10.0)
     _assert_close(a, 1000.0 / 1010.0, 1e-6, "availability(1000, 10)")
     _assert(a > 0.989 and a < 0.991, "availability ≈ 0.990")
     print("  ✓ availability(1000, 10) ≈ 0.990")
 
 
-fn test_series_reliability() raises:
+def test_series_reliability() raises:
     var rels = List[Float64]()
     rels.append(0.99); rels.append(0.99); rels.append(0.99)
     var sr = series_reliability(rels)
@@ -422,7 +422,7 @@ fn test_series_reliability() raises:
     print("  ✓ series_reliability([0.99, 0.99, 0.99]) ≈ 0.970")
 
 
-fn test_parallel_reliability() raises:
+def test_parallel_reliability() raises:
     var rels = List[Float64]()
     rels.append(0.9); rels.append(0.9)
     var pr = parallel_reliability(rels)
@@ -430,7 +430,7 @@ fn test_parallel_reliability() raises:
     print("  ✓ parallel_reliability([0.9, 0.9]) ≈ 0.99")
 
 
-fn test_k_of_n_reliability() raises:
+def test_k_of_n_reliability() raises:
     var kr = k_of_n_reliability(2, 3, 0.9)
     _assert(kr > 0.729, "k_of_n > series")
     _assert(kr < 0.999, "k_of_n < parallel")
@@ -439,7 +439,7 @@ fn test_k_of_n_reliability() raises:
     print("  ✓ k_of_n_reliability(2, 3, 0.9) ≈ 0.972")
 
 
-fn test_bathtub_rate() raises:
+def test_bathtub_rate() raises:
     var rate_early = bathtub_rate(1.0, 0.5, 0.001, 2.0, 100.0, 500.0)
     var rate_mid = bathtub_rate(250.0, 0.5, 0.001, 2.0, 100.0, 500.0)
     _assert(rate_early > rate_mid, "infant mortality: early rate > mid rate")
@@ -450,14 +450,14 @@ fn test_bathtub_rate() raises:
     print("  ✓ bathtub_rate late > mid (wearout)")
 
 
-fn test_mission_reliability() raises:
+def test_mission_reliability() raises:
     var mr = mission_reliability(100.0, 0.001)
     _assert_close(mr, exp(-0.1), 1e-6, "mission_reliability")
     _assert(mr > 0.904 and mr < 0.906, "mission_reliability ≈ 0.905")
     print("  ✓ mission_reliability(100, 0.001) ≈ 0.905")
 
 
-fn test_exponential_failure_rate() raises:
+def test_exponential_failure_rate() raises:
     _assert_close(exponential_failure_rate(0.05), 0.05, 1e-12, "exp_failure_rate")
     print("  ✓ exponential_failure_rate constant")
 
@@ -465,7 +465,7 @@ fn test_exponential_failure_rate() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=" * 60)
     print("Wave 30 — Constraint Satisfaction, Digital Filters, Reliability")
     print("🎯 100 LIBRARY MILESTONE!")

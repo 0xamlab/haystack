@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from astrobiology import habitable_zone_inner, habitable_zone_outer, stellar_luminosity, planetary_equilibrium_temp, water_activity, radiation_dose_rate, metabolism_rate_q10, pressure_tolerance_depth, uv_penetration_depth, panspermia_survival_fraction
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

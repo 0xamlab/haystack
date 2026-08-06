@@ -29,7 +29,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── tex_to_denier ────────────────────────────────────────────────────────────
 
 
-fn tex_to_denier(tex: Float64) -> Float64:
+def tex_to_denier(tex: Float64) -> Float64:
     """Convert tex to denier: D = tex * 9.
 
     Args:
@@ -44,7 +44,7 @@ fn tex_to_denier(tex: Float64) -> Float64:
 # ── denier_to_tex ────────────────────────────────────────────────────────────
 
 
-fn denier_to_tex(denier: Float64) -> Float64:
+def denier_to_tex(denier: Float64) -> Float64:
     """Convert denier to tex: tex = denier / 9.
 
     Args:
@@ -59,7 +59,7 @@ fn denier_to_tex(denier: Float64) -> Float64:
 # ── yarn_count_ne ────────────────────────────────────────────────────────────
 
 
-fn yarn_count_ne(length_hanks: Float64, weight_grains: Float64) -> Float64:
+def yarn_count_ne(length_hanks: Float64, weight_grains: Float64) -> Float64:
     """English cotton yarn count (simplified): Ne = L / W.
 
     Full formula: Ne = (length_hanks * 840) / weight_grains.
@@ -80,7 +80,7 @@ fn yarn_count_ne(length_hanks: Float64, weight_grains: Float64) -> Float64:
 # ── tex_from_diameter_density ────────────────────────────────────────────────
 
 
-fn tex_from_diameter_density(
+def tex_from_diameter_density(
     diameter_mm: Float64, density: Float64
 ) -> Float64:
     """Tex from fibre diameter and density (simplified).
@@ -100,7 +100,7 @@ fn tex_from_diameter_density(
 # ── twist_per_meter ──────────────────────────────────────────────────────────
 
 
-fn twist_per_meter(tpi: Float64) -> Float64:
+def twist_per_meter(tpi: Float64) -> Float64:
     """Convert twists per inch to twists per meter: TPM = TPI * 39.37.
 
     Args:
@@ -115,7 +115,7 @@ fn twist_per_meter(tpi: Float64) -> Float64:
 # ── twist_multiplier ─────────────────────────────────────────────────────────
 
 
-fn twist_multiplier(tpi: Float64, count_ne: Float64) -> Float64:
+def twist_multiplier(tpi: Float64, count_ne: Float64) -> Float64:
     """Twist multiplier: TM = TPI / sqrt(Ne).
 
     Args:
@@ -133,7 +133,7 @@ fn twist_multiplier(tpi: Float64, count_ne: Float64) -> Float64:
 # ── fabric_gsm ───────────────────────────────────────────────────────────────
 
 
-fn fabric_gsm(weight_g: Float64, area_m2: Float64) -> Float64:
+def fabric_gsm(weight_g: Float64, area_m2: Float64) -> Float64:
     """Fabric weight in GSM (grams per square meter).
 
     Args:
@@ -151,7 +151,7 @@ fn fabric_gsm(weight_g: Float64, area_m2: Float64) -> Float64:
 # ── fabric_cover_factor ──────────────────────────────────────────────────────
 
 
-fn fabric_cover_factor(
+def fabric_cover_factor(
     threads_per_cm: Float64, yarn_count: Float64
 ) -> Float64:
     """Fabric cover factor: CF = threads / sqrt(count).
@@ -171,7 +171,7 @@ fn fabric_cover_factor(
 # ── pilling_resistance_score ─────────────────────────────────────────────────
 
 
-fn pilling_resistance_score(cycles: Int, grade: Float64) -> Float64:
+def pilling_resistance_score(cycles: Int, grade: Float64) -> Float64:
     """Normalized pilling resistance score: grade / 5.0.
 
     Args:
@@ -187,7 +187,7 @@ fn pilling_resistance_score(cycles: Int, grade: Float64) -> Float64:
 # ── moisture_regain ──────────────────────────────────────────────────────────
 
 
-fn moisture_regain(wet_weight: Float64, dry_weight: Float64) -> Float64:
+def moisture_regain(wet_weight: Float64, dry_weight: Float64) -> Float64:
     """Moisture regain: MR = (wet - dry) / dry * 100.
 
     Args:
@@ -205,7 +205,7 @@ fn moisture_regain(wet_weight: Float64, dry_weight: Float64) -> Float64:
 # ── shrinkage_percentage ─────────────────────────────────────────────────────
 
 
-fn shrinkage_percentage(
+def shrinkage_percentage(
     original_length: Float64, final_length: Float64
 ) -> Float64:
     """Shrinkage percentage: S = (L0 - Lf) / L0 * 100.
@@ -225,7 +225,7 @@ fn shrinkage_percentage(
 # ── breaking_tenacity ────────────────────────────────────────────────────────
 
 
-fn breaking_tenacity(breaking_force_n: Float64, tex_val: Float64) -> Float64:
+def breaking_tenacity(breaking_force_n: Float64, tex_val: Float64) -> Float64:
     """Breaking tenacity: T = F / tex (cN/tex when F in cN).
 
     Args:

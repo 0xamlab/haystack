@@ -23,7 +23,7 @@ from std.math import pow, exp
 # ── stream_power ─────────────────────────────────────────────────────────────
 
 
-fn stream_power(
+def stream_power(
     discharge: Float64, slope: Float64, density: Float64, g: Float64
 ) -> Float64:
     """Stream power per unit channel length: Ω = ρ*g*Q*S (W/m).
@@ -43,7 +43,7 @@ fn stream_power(
 # ── shear_stress_flow ────────────────────────────────────────────────────────
 
 
-fn shear_stress_flow(
+def shear_stress_flow(
     density: Float64, g: Float64, depth: Float64, slope: Float64
 ) -> Float64:
     """Bed shear stress: τ = ρ*g*d*S.
@@ -63,7 +63,7 @@ fn shear_stress_flow(
 # ── shields_parameter ────────────────────────────────────────────────────────
 
 
-fn shields_parameter(
+def shields_parameter(
     shear_stress: Float64,
     density_s: Float64,
     density_f: Float64,
@@ -93,7 +93,7 @@ fn shields_parameter(
 # ── settling_velocity_stokes ─────────────────────────────────────────────────
 
 
-fn settling_velocity_stokes(
+def settling_velocity_stokes(
     density_s: Float64,
     density_f: Float64,
     g: Float64,
@@ -118,7 +118,7 @@ fn settling_velocity_stokes(
 # ── erosion_rate_spl ─────────────────────────────────────────────────────────
 
 
-fn erosion_rate_spl(
+def erosion_rate_spl(
     k: Float64, area: Float64, slope: Float64, m: Float64, n: Float64
 ) -> Float64:
     """Stream Power Law erosion rate: E = K * A^m * S^n.
@@ -139,7 +139,7 @@ fn erosion_rate_spl(
 # ── hillslope_diffusion ─────────────────────────────────────────────────────
 
 
-fn hillslope_diffusion(kd: Float64, curvature: Float64) -> Float64:
+def hillslope_diffusion(kd: Float64, curvature: Float64) -> Float64:
     """Hillslope diffusive sediment flux: qs = Kd * curvature.
 
     Args:
@@ -155,7 +155,7 @@ fn hillslope_diffusion(kd: Float64, curvature: Float64) -> Float64:
 # ── drainage_density ─────────────────────────────────────────────────────────
 
 
-fn drainage_density(total_stream_length: Float64, basin_area: Float64) -> Float64:
+def drainage_density(total_stream_length: Float64, basin_area: Float64) -> Float64:
     """Drainage density: Dd = ΣL / A (1/m).
 
     Args:
@@ -171,7 +171,7 @@ fn drainage_density(total_stream_length: Float64, basin_area: Float64) -> Float6
 # ── relief_ratio ─────────────────────────────────────────────────────────────
 
 
-fn relief_ratio(relief: Float64, basin_length: Float64) -> Float64:
+def relief_ratio(relief: Float64, basin_length: Float64) -> Float64:
     """Relief ratio: Rr = H / L.
 
     Args:
@@ -187,7 +187,7 @@ fn relief_ratio(relief: Float64, basin_length: Float64) -> Float64:
 # ── sinuosity ────────────────────────────────────────────────────────────────
 
 
-fn sinuosity(channel_length: Float64, valley_length: Float64) -> Float64:
+def sinuosity(channel_length: Float64, valley_length: Float64) -> Float64:
     """Channel sinuosity: S = Lc / Lv.
 
     Args:
@@ -203,7 +203,7 @@ fn sinuosity(channel_length: Float64, valley_length: Float64) -> Float64:
 # ── hack_law_length ──────────────────────────────────────────────────────────
 
 
-fn hack_law_length(c: Float64, area: Float64, h: Float64) -> Float64:
+def hack_law_length(c: Float64, area: Float64, h: Float64) -> Float64:
     """Hack's law: L = c * A^h (stream length vs catchment area).
 
     Args:
@@ -220,7 +220,7 @@ fn hack_law_length(c: Float64, area: Float64, h: Float64) -> Float64:
 # ── ruggedness_number ────────────────────────────────────────────────────────
 
 
-fn ruggedness_number(relief: Float64, drainage_density_val: Float64) -> Float64:
+def ruggedness_number(relief: Float64, drainage_density_val: Float64) -> Float64:
     """Ruggedness number: Rn = H * Dd.
 
     Args:
@@ -236,7 +236,7 @@ fn ruggedness_number(relief: Float64, drainage_density_val: Float64) -> Float64:
 # ── hypsometric_integral ─────────────────────────────────────────────────────
 
 
-fn hypsometric_integral(
+def hypsometric_integral(
     mean_elev: Float64, min_elev: Float64, max_elev: Float64
 ) -> Float64:
     """Hypsometric integral: HI = (mean - min) / (max - min).

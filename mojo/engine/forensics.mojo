@@ -25,7 +25,7 @@ from std.math import log, exp, abs as fabs, asin
 # ── time_of_death_newton ─────────────────────────────────────────────────────
 
 
-fn time_of_death_newton(
+def time_of_death_newton(
     t_body: Float64, t_ambient: Float64, t_normal: Float64, k: Float64
 ) -> Float64:
     """Newton's cooling law: hours since death.
@@ -55,7 +55,7 @@ fn time_of_death_newton(
 # ── algor_mortis_rate ────────────────────────────────────────────────────────
 
 
-fn algor_mortis_rate(body_temp: Float64, ambient_temp: Float64) -> Float64:
+def algor_mortis_rate(body_temp: Float64, ambient_temp: Float64) -> Float64:
     """Simplified Henssge cooling rate.
 
     rate ≈ (body - ambient) / 10 °C/hr
@@ -73,7 +73,7 @@ fn algor_mortis_rate(body_temp: Float64, ambient_temp: Float64) -> Float64:
 # ── blood_alcohol_widmark ────────────────────────────────────────────────────
 
 
-fn blood_alcohol_widmark(
+def blood_alcohol_widmark(
     alcohol_g: Float64, body_weight_kg: Float64, r_factor: Float64
 ) -> Float64:
     """Widmark BAC formula: BAC = A / (W * r).
@@ -95,7 +95,7 @@ fn blood_alcohol_widmark(
 # ── alcohol_elimination_rate ─────────────────────────────────────────────────
 
 
-fn alcohol_elimination_rate(
+def alcohol_elimination_rate(
     bac: Float64, elapsed_hours: Float64, beta: Float64
 ) -> Float64:
     """BAC after linear elimination.
@@ -119,7 +119,7 @@ fn alcohol_elimination_rate(
 # ── rigor_mortis_stage ───────────────────────────────────────────────────────
 
 
-fn rigor_mortis_stage(hours_since_death: Float64) -> Int:
+def rigor_mortis_stage(hours_since_death: Float64) -> Int:
     """Stage of rigor mortis based on hours post-mortem.
 
     0 = none (<2h), 1 = onset (2-6h), 2 = full (6-12h),
@@ -146,7 +146,7 @@ fn rigor_mortis_stage(hours_since_death: Float64) -> Int:
 # ── ballistic_drop ───────────────────────────────────────────────────────────
 
 
-fn ballistic_drop(
+def ballistic_drop(
     velocity: Float64, distance: Float64, gravity: Float64
 ) -> Float64:
     """Bullet drop: drop = 0.5 * g * (d/v)².
@@ -168,7 +168,7 @@ fn ballistic_drop(
 # ── bloodstain_impact_angle ──────────────────────────────────────────────────
 
 
-fn bloodstain_impact_angle(width: Float64, length: Float64) -> Float64:
+def bloodstain_impact_angle(width: Float64, length: Float64) -> Float64:
     """Impact angle from bloodstain: θ = asin(width/length).
 
     Args:
@@ -191,7 +191,7 @@ fn bloodstain_impact_angle(width: Float64, length: Float64) -> Float64:
 # ── dna_match_probability ────────────────────────────────────────────────────
 
 
-fn dna_match_probability(
+def dna_match_probability(
     allele_freq1: Float64, allele_freq2: Float64
 ) -> Float64:
     """Hardy-Weinberg heterozygous match probability: P = 2*p1*p2.
@@ -209,7 +209,7 @@ fn dna_match_probability(
 # ── fingerprint_minutiae_score ───────────────────────────────────────────────
 
 
-fn fingerprint_minutiae_score(
+def fingerprint_minutiae_score(
     matching_points: Float64, total_points: Float64
 ) -> Float64:
     """Minutiae matching score: score = matching / total.
@@ -229,7 +229,7 @@ fn fingerprint_minutiae_score(
 # ── glass_refractive_index_match ─────────────────────────────────────────────
 
 
-fn glass_refractive_index_match(
+def glass_refractive_index_match(
     ri1: Float64, ri2: Float64, tolerance: Float64
 ) -> Bool:
     """Check if two refractive indices match within tolerance.
@@ -248,7 +248,7 @@ fn glass_refractive_index_match(
 # ── decomposition_add ────────────────────────────────────────────────────────
 
 
-fn decomposition_add(
+def decomposition_add(
     accumulated_degree_days: Float64, temp: Float64, hours: Float64
 ) -> Float64:
     """Update accumulated degree-days (ADD).
@@ -270,7 +270,7 @@ fn decomposition_add(
 # ── toxicology_lethal_dose ───────────────────────────────────────────────────
 
 
-fn toxicology_lethal_dose(ld50: Float64, body_weight: Float64) -> Float64:
+def toxicology_lethal_dose(ld50: Float64, body_weight: Float64) -> Float64:
     """Estimated lethal dose: dose = LD50 * body_weight.
 
     Args:

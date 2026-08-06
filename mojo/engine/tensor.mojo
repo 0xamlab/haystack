@@ -22,37 +22,37 @@ struct Tensor1D(Copyable, Movable):
     var data: List[Float64]
     var size: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         """Create an empty 1D tensor."""
         self.data = List[Float64]()
         self.size = 0
 
-    fn __init__(out self, data: List[Float64]):
+    def __init__(out self, data: List[Float64]):
         """Create a 1D tensor from a list of Float64 values."""
         self.data = List[Float64]()
         for i in range(len(data)):
             self.data.append(data[i])
         self.size = len(data)
 
-    fn __init__(out self, size: Int, fill: Float64):
+    def __init__(out self, size: Int, fill: Float64):
         """Create a 1D tensor of given size filled with a constant."""
         self.data = List[Float64]()
         self.size = size
         for i in range(size):
             self.data.append(fill)
 
-    fn get(self, i: Int) -> Float64:
+    def get(self, i: Int) -> Float64:
         """Get element at index i."""
         if i >= 0 and i < self.size:
             return self.data[i]
         return 0.0
 
-    fn set(mut self, i: Int, val: Float64):
+    def set(mut self, i: Int, val: Float64):
         """Set element at index i."""
         if i >= 0 and i < self.size:
             self.data[i] = val
 
-    fn to_string(self) -> String:
+    def to_string(self) -> String:
         """Return string representation."""
         var s = String("Tensor1D([")
         for i in range(self.size):
@@ -66,22 +66,22 @@ struct Tensor1D(Copyable, Movable):
 # ── Factory functions ─────────────────────────────────────────────────────────
 
 
-fn zeros(n: Int) -> Tensor1D:
+def zeros(n: Int) -> Tensor1D:
     """Create a 1D tensor of n zeros."""
     return Tensor1D(n, 0.0)
 
 
-fn ones(n: Int) -> Tensor1D:
+def ones(n: Int) -> Tensor1D:
     """Create a 1D tensor of n ones."""
     return Tensor1D(n, 1.0)
 
 
-fn full(n: Int, val: Float64) -> Tensor1D:
+def full(n: Int, val: Float64) -> Tensor1D:
     """Create a 1D tensor of n copies of val."""
     return Tensor1D(n, val)
 
 
-fn arange(start: Float64, stop: Float64, step: Float64) -> Tensor1D:
+def arange(start: Float64, stop: Float64, step: Float64) -> Tensor1D:
     """Create a 1D tensor with values from start to stop (exclusive) by step.
 
     Similar to numpy.arange.
@@ -100,7 +100,7 @@ fn arange(start: Float64, stop: Float64, step: Float64) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn linspace(start: Float64, stop: Float64, n: Int) -> Tensor1D:
+def linspace(start: Float64, stop: Float64, n: Int) -> Tensor1D:
     """Create a 1D tensor with n evenly spaced values from start to stop (inclusive)."""
     var data = List[Float64]()
     if n <= 0:
@@ -117,7 +117,7 @@ fn linspace(start: Float64, stop: Float64, n: Int) -> Tensor1D:
 # ── Element-wise arithmetic ───────────────────────────────────────────────────
 
 
-fn add(a: Tensor1D, b: Tensor1D) -> Tensor1D:
+def add(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     """Element-wise addition. Tensors must have same size."""
     var n = a.size
     if b.size < n:
@@ -128,7 +128,7 @@ fn add(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn sub(a: Tensor1D, b: Tensor1D) -> Tensor1D:
+def sub(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     """Element-wise subtraction."""
     var n = a.size
     if b.size < n:
@@ -139,7 +139,7 @@ fn sub(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn mul(a: Tensor1D, b: Tensor1D) -> Tensor1D:
+def mul(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     """Element-wise multiplication (Hadamard product)."""
     var n = a.size
     if b.size < n:
@@ -150,7 +150,7 @@ fn mul(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn div_t(a: Tensor1D, b: Tensor1D) -> Tensor1D:
+def div_t(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     """Element-wise division. Division by zero yields 0.0."""
     var n = a.size
     if b.size < n:
@@ -164,7 +164,7 @@ fn div_t(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn scale(a: Tensor1D, s: Float64) -> Tensor1D:
+def scale(a: Tensor1D, s: Float64) -> Tensor1D:
     """Multiply every element by scalar s."""
     var data = List[Float64]()
     for i in range(a.size):
@@ -172,7 +172,7 @@ fn scale(a: Tensor1D, s: Float64) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn neg(a: Tensor1D) -> Tensor1D:
+def neg(a: Tensor1D) -> Tensor1D:
     """Negate every element."""
     return scale(a, -1.0)
 
@@ -180,7 +180,7 @@ fn neg(a: Tensor1D) -> Tensor1D:
 # ── Reduction operations ──────────────────────────────────────────────────────
 
 
-fn dot(a: Tensor1D, b: Tensor1D) -> Float64:
+def dot(a: Tensor1D, b: Tensor1D) -> Float64:
     """Dot product of two 1D tensors."""
     var n = a.size
     if b.size < n:
@@ -191,7 +191,7 @@ fn dot(a: Tensor1D, b: Tensor1D) -> Float64:
     return s
 
 
-fn sum_t(a: Tensor1D) -> Float64:
+def sum_t(a: Tensor1D) -> Float64:
     """Sum of all elements."""
     var s: Float64 = 0.0
     for i in range(a.size):
@@ -199,14 +199,14 @@ fn sum_t(a: Tensor1D) -> Float64:
     return s
 
 
-fn mean_t(a: Tensor1D) -> Float64:
+def mean_t(a: Tensor1D) -> Float64:
     """Mean of all elements."""
     if a.size == 0:
         return 0.0
     return sum_t(a) / Float64(a.size)
 
 
-fn max_t(a: Tensor1D) -> Float64:
+def max_t(a: Tensor1D) -> Float64:
     """Maximum element."""
     if a.size == 0:
         return 0.0
@@ -217,7 +217,7 @@ fn max_t(a: Tensor1D) -> Float64:
     return m
 
 
-fn min_t(a: Tensor1D) -> Float64:
+def min_t(a: Tensor1D) -> Float64:
     """Minimum element."""
     if a.size == 0:
         return 0.0
@@ -228,7 +228,7 @@ fn min_t(a: Tensor1D) -> Float64:
     return m
 
 
-fn argmax(a: Tensor1D) -> Int:
+def argmax(a: Tensor1D) -> Int:
     """Index of the maximum element."""
     if a.size == 0:
         return -1
@@ -241,7 +241,7 @@ fn argmax(a: Tensor1D) -> Int:
     return best_idx
 
 
-fn argmin(a: Tensor1D) -> Int:
+def argmin(a: Tensor1D) -> Int:
     """Index of the minimum element."""
     if a.size == 0:
         return -1
@@ -254,12 +254,12 @@ fn argmin(a: Tensor1D) -> Int:
     return best_idx
 
 
-fn norm(a: Tensor1D) -> Float64:
+def norm(a: Tensor1D) -> Float64:
     """L2 norm (Euclidean length)."""
     return sqrt(dot(a, a))
 
 
-fn prod_t(a: Tensor1D) -> Float64:
+def prod_t(a: Tensor1D) -> Float64:
     """Product of all elements."""
     if a.size == 0:
         return 0.0
@@ -272,7 +272,7 @@ fn prod_t(a: Tensor1D) -> Float64:
 # ── Functional transforms ────────────────────────────────────────────────────
 
 
-fn apply_fn(a: Tensor1D, fn_name: String) -> Tensor1D:
+def apply_fn(a: Tensor1D, fn_name: String) -> Tensor1D:
     """Apply a named function element-wise.
 
     Supported fn_name values:
@@ -334,7 +334,7 @@ fn apply_fn(a: Tensor1D, fn_name: String) -> Tensor1D:
 # ── Slicing and reshaping ────────────────────────────────────────────────────
 
 
-fn concat(a: Tensor1D, b: Tensor1D) -> Tensor1D:
+def concat(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     """Concatenate two 1D tensors."""
     var data = List[Float64]()
     for i in range(a.size):
@@ -344,7 +344,7 @@ fn concat(a: Tensor1D, b: Tensor1D) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn slice_t(a: Tensor1D, start: Int, end: Int) -> Tensor1D:
+def slice_t(a: Tensor1D, start: Int, end: Int) -> Tensor1D:
     """Slice tensor from start (inclusive) to end (exclusive).
 
     Negative indices not supported; out of bounds silently clamped.
@@ -364,7 +364,7 @@ fn slice_t(a: Tensor1D, start: Int, end: Int) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn reverse(a: Tensor1D) -> Tensor1D:
+def reverse(a: Tensor1D) -> Tensor1D:
     """Return a reversed copy of the tensor."""
     var data = List[Float64]()
     for i in range(a.size - 1, -1, -1):
@@ -372,7 +372,7 @@ fn reverse(a: Tensor1D) -> Tensor1D:
     return Tensor1D(data)
 
 
-fn clip(a: Tensor1D, lo: Float64, hi: Float64) -> Tensor1D:
+def clip(a: Tensor1D, lo: Float64, hi: Float64) -> Tensor1D:
     """Clip (clamp) all elements to [lo, hi]."""
     var data = List[Float64]()
     for i in range(a.size):
@@ -388,7 +388,7 @@ fn clip(a: Tensor1D, lo: Float64, hi: Float64) -> Tensor1D:
 # ── Comparison / mask operations ──────────────────────────────────────────────
 
 
-fn equal(a: Tensor1D, b: Tensor1D) -> Bool:
+def equal(a: Tensor1D, b: Tensor1D) -> Bool:
     """Check if two tensors are element-wise equal."""
     if a.size != b.size:
         return False
@@ -398,7 +398,7 @@ fn equal(a: Tensor1D, b: Tensor1D) -> Bool:
     return True
 
 
-fn allclose(a: Tensor1D, b: Tensor1D, atol: Float64 = 1e-8) -> Bool:
+def allclose(a: Tensor1D, b: Tensor1D, atol: Float64 = 1e-8) -> Bool:
     """Check if two tensors are element-wise close within tolerance."""
     if a.size != b.size:
         return False
@@ -408,7 +408,7 @@ fn allclose(a: Tensor1D, b: Tensor1D, atol: Float64 = 1e-8) -> Bool:
     return True
 
 
-fn where_gt(a: Tensor1D, threshold: Float64) -> List[Int]:
+def where_gt(a: Tensor1D, threshold: Float64) -> List[Int]:
     """Return indices where a[i] > threshold."""
     var indices = List[Int]()
     for i in range(a.size):
@@ -417,7 +417,7 @@ fn where_gt(a: Tensor1D, threshold: Float64) -> List[Int]:
     return indices^
 
 
-fn count_nonzero(a: Tensor1D) -> Int:
+def count_nonzero(a: Tensor1D) -> Int:
     """Count number of non-zero elements."""
     var count = 0
     for i in range(a.size):

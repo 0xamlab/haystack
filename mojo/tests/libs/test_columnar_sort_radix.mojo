@@ -23,7 +23,7 @@ from columnar.sort_radix import (
 )
 
 
-fn _sorted_ok(data: List[Float64]) -> Bool:
+def _sorted_ok(data: List[Float64]) -> Bool:
     for i in range(1, len(data)):
         if data[i] < data[i - 1]:
             return False
@@ -38,7 +38,7 @@ struct Fingerprint(Copyable, Movable):
     var wrapping_sum: UInt64
 
 
-fn _fingerprint(data: List[Float64]) -> Fingerprint:
+def _fingerprint(data: List[Float64]) -> Fingerprint:
     """xor and wrapping sum of the raw bits: two permutation invariants."""
     var x: UInt64 = 0
     var s: UInt64 = 0
@@ -49,7 +49,7 @@ fn _fingerprint(data: List[Float64]) -> Fingerprint:
     return Fingerprint(x, s)
 
 
-fn _same_multiset(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_multiset(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     var fa = _fingerprint(a)
@@ -57,14 +57,14 @@ fn _same_multiset(a: List[Float64], b: List[Float64]) -> Bool:
     return fa.xor == fb.xor and fa.wrapping_sum == fb.wrapping_sum
 
 
-fn _xorshift(mut s: UInt64) -> UInt64:
+def _xorshift(mut s: UInt64) -> UInt64:
     s ^= s << 13
     s ^= s >> 7
     s ^= s << 17
     return s
 
 
-fn _random_doubles(n: Int, seed: UInt64) -> List[Float64]:
+def _random_doubles(n: Int, seed: UInt64) -> List[Float64]:
     var out = List[Float64](unsafe_uninit_length=n)
     var s = seed
     for i in range(n):
@@ -74,7 +74,7 @@ fn _random_doubles(n: Int, seed: UInt64) -> List[Float64]:
     return out^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
 

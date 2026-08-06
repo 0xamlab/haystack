@@ -13,11 +13,11 @@ from attnk.mask import mask_causal_flat
 from attnk.sdpa import sdpa_forward_flat, sdpa_scores_flat, sdpa_softmax_rows_flat
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64]()
     var s = seed
     for _ in range(n):

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from graph_decision import multi_constraint_relax, flow_residual_capacity, flow_augment_amount, dynamic_edge_weight_decay, probabilistic_route_score, resource_constrained_cost, temporal_edge_validity, network_criticality, supply_chain_slack, decision_graph_utility
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

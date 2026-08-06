@@ -144,14 +144,14 @@ def sample_hypergeometric(N: Float64, K: Float64, n: Float64) -> Float64:
 # These use xorshift64 state — suitable for parallel hot loops.
 
 @always_inline
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state; s ^= s << 13; s ^= s >> 7; s ^= s << 17; return s
 
 @always_inline
-fn _xr_f64(state: UInt64) -> Float64:
+def _xr_f64(state: UInt64) -> Float64:
     return Float64(state >> 11) * (1.0 / 9007199254740992.0)
 
-fn sample_normal_simd4(mut s: UInt64, mean: Float64, std: Float64) -> SIMD[DType.float64, 4]:
+def sample_normal_simd4(mut s: UInt64, mean: Float64, std: Float64) -> SIMD[DType.float64, 4]:
     """
     Sample 4 normal(mean, std) values using Box-Muller transform with xorshift64.
     Returns SIMD[float64, 4] — 4x throughput vs scalar path in parallel MC workers.
@@ -174,7 +174,7 @@ fn sample_normal_simd4(mut s: UInt64, mean: Float64, std: Float64) -> SIMD[DType
         mean + std * z2, mean + std * z3
     )
 
-fn sample_uniform_simd4(mut s: UInt64, low: Float64, high: Float64) -> SIMD[DType.float64, 4]:
+def sample_uniform_simd4(mut s: UInt64, low: Float64, high: Float64) -> SIMD[DType.float64, 4]:
     """
     Sample 4 uniform(low, high) values using xorshift64.
     Returns SIMD[float64, 4].
@@ -192,7 +192,7 @@ fn sample_uniform_simd4(mut s: UInt64, low: Float64, high: Float64) -> SIMD[DTyp
 
 # ── Scalar gamma helper using xorshift64 (for fn contexts) ────────────────────
 
-fn _gamma_xr(mut s: UInt64, shape: Float64, scale: Float64) -> Float64:
+def _gamma_xr(mut s: UInt64, shape: Float64, scale: Float64) -> Float64:
     """Marsaglia-Tsang gamma sampler using xorshift64 RNG (no stdlib random)."""
     var shape_adj = shape
     var boost: Float64 = 1.0
@@ -224,7 +224,7 @@ fn _gamma_xr(mut s: UInt64, shape: Float64, scale: Float64) -> Float64:
 
 # ── SIMD4 batch samplers for 8 additional distributions ───────────────────────
 
-fn sample_triangular_simd4(mut s: UInt64, low: Float64, mode: Float64, high: Float64) -> SIMD[DType.float64, 4]:
+def sample_triangular_simd4(mut s: UInt64, low: Float64, mode: Float64, high: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 triangular(low, mode, high) values using xorshift64 ICDF."""
     var rng = high - low
     if rng == 0.0:
@@ -251,7 +251,7 @@ fn sample_triangular_simd4(mut s: UInt64, low: Float64, mode: Float64, high: Flo
     else:       r3 = high - sqrt((1.0 - u3) * hm)
     return SIMD[DType.float64, 4](r0, r1, r2, r3)
 
-fn sample_lognormal_simd4(mut s: UInt64, mu: Float64, sigma: Float64) -> SIMD[DType.float64, 4]:
+def sample_lognormal_simd4(mut s: UInt64, mu: Float64, sigma: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 lognormal(mu, sigma) values. Box-Muller normals then exp()."""
     var normals = sample_normal_simd4(s, mu, sigma)
     return SIMD[DType.float64, 4](
@@ -259,7 +259,7 @@ fn sample_lognormal_simd4(mut s: UInt64, mu: Float64, sigma: Float64) -> SIMD[DT
         exp(normals[2]), exp(normals[3])
     )
 
-fn sample_exponential_simd4(mut s: UInt64, rate: Float64) -> SIMD[DType.float64, 4]:
+def sample_exponential_simd4(mut s: UInt64, rate: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 exponential(rate) values. -ln(u)/rate, fully vectorizable."""
     s = _xorshift64(s); var u0 = _xr_f64(s) + 1e-300
     s = _xorshift64(s); var u1 = _xr_f64(s) + 1e-300
@@ -271,7 +271,7 @@ fn sample_exponential_simd4(mut s: UInt64, rate: Float64) -> SIMD[DType.float64,
         -log(u2) * inv_rate, -log(u3) * inv_rate
     )
 
-fn sample_bernoulli_simd4(mut s: UInt64, p: Float64) -> SIMD[DType.float64, 4]:
+def sample_bernoulli_simd4(mut s: UInt64, p: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 bernoulli(p) values. 1.0 if u < p else 0.0."""
     s = _xorshift64(s); var u0 = _xr_f64(s)
     s = _xorshift64(s); var u1 = _xr_f64(s)
@@ -283,7 +283,7 @@ fn sample_bernoulli_simd4(mut s: UInt64, p: Float64) -> SIMD[DType.float64, 4]:
     var r3: Float64 = 1.0 if u3 < p else 0.0
     return SIMD[DType.float64, 4](r0, r1, r2, r3)
 
-fn sample_gamma_simd4(mut s: UInt64, shape: Float64, scale: Float64) -> SIMD[DType.float64, 4]:
+def sample_gamma_simd4(mut s: UInt64, shape: Float64, scale: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 gamma(shape, scale) values using Marsaglia-Tsang with xorshift64.
     Uses 4 independent scalar calls (rejection sampling limits SIMD benefit)."""
     var r0 = _gamma_xr(s, shape, scale)
@@ -292,7 +292,7 @@ fn sample_gamma_simd4(mut s: UInt64, shape: Float64, scale: Float64) -> SIMD[DTy
     var r3 = _gamma_xr(s, shape, scale)
     return SIMD[DType.float64, 4](r0, r1, r2, r3)
 
-fn sample_beta_simd4(mut s: UInt64, alpha: Float64, beta: Float64) -> SIMD[DType.float64, 4]:
+def sample_beta_simd4(mut s: UInt64, alpha: Float64, beta: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 beta(alpha, beta) values using gamma ratio method with xorshift64.
     x = gamma(alpha,1), y = gamma(beta,1), result = x/(x+y)."""
     var x0 = _gamma_xr(s, alpha, 1.0); var y0 = _gamma_xr(s, beta, 1.0)
@@ -307,7 +307,7 @@ fn sample_beta_simd4(mut s: UInt64, alpha: Float64, beta: Float64) -> SIMD[DType
         x3 / t3 if t3 != 0.0 else 0.5
     )
 
-fn sample_weibull_simd4(mut s: UInt64, shape: Float64, scale: Float64) -> SIMD[DType.float64, 4]:
+def sample_weibull_simd4(mut s: UInt64, shape: Float64, scale: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 weibull(shape, scale) values. scale * (-ln(u))^(1/shape)."""
     s = _xorshift64(s); var u0 = _xr_f64(s) + 1e-300
     s = _xorshift64(s); var u1 = _xr_f64(s) + 1e-300
@@ -319,7 +319,7 @@ fn sample_weibull_simd4(mut s: UInt64, shape: Float64, scale: Float64) -> SIMD[D
         scale * pow(-log(u2), inv_shape), scale * pow(-log(u3), inv_shape)
     )
 
-fn sample_pert_simd4(mut s: UInt64, low: Float64, likely: Float64, high: Float64, gamma: Float64) -> SIMD[DType.float64, 4]:
+def sample_pert_simd4(mut s: UInt64, low: Float64, likely: Float64, high: Float64, gamma: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 pert(low, likely, high, gamma) values via beta-based method."""
     var r = high - low
     if r == 0.0:
@@ -336,7 +336,7 @@ fn sample_pert_simd4(mut s: UInt64, low: Float64, likely: Float64, high: Float64
 
 # ── SIMD4 universal dispatcher ────────────────────────────────────────────────
 
-fn sample_one_simd4(mut s: UInt64, dt: Int, p0: Float64, p1: Float64, p2: Float64, p3: Float64) -> SIMD[DType.float64, 4]:
+def sample_one_simd4(mut s: UInt64, dt: Int, p0: Float64, p1: Float64, p2: Float64, p3: Float64) -> SIMD[DType.float64, 4]:
     """SIMD4 universal sampler for the top 10 distribution types.
     Returns 4 samples per call. Falls back to p0 for unsupported types."""
     if dt == 0:    return sample_normal_simd4(s, p0, p1)

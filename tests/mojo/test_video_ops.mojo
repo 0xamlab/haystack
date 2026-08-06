@@ -41,7 +41,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _clip_three_frames() -> List[Float64]:
+def _clip_three_frames() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(16):
         flat.append(10.0)

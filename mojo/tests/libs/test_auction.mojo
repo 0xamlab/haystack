@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from auction import first_price_sealed, second_price_sealed, english_auction_revenue, dutch_auction_revenue, all_pay_revenue, revenue_equivalence_check, vcg_payment, reserve_price_filter, bid_shading_optimal, expected_revenue_uniform, winners_curse_adjustment
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

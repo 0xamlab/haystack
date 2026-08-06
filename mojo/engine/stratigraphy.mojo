@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn sedimentation_rate(thickness_m: Float64, duration_my: Float64) -> Float64:
+def sedimentation_rate(thickness_m: Float64, duration_my: Float64) -> Float64:
     """Sedimentation rate: SR = thickness / time.
 
     Args:
@@ -31,7 +31,7 @@ fn sedimentation_rate(thickness_m: Float64, duration_my: Float64) -> Float64:
     return thickness_m / duration_my
 
 
-fn age_from_depth(
+def age_from_depth(
     depth_m: Float64, surface_age_ma: Float64, sed_rate: Float64
 ) -> Float64:
     """Age at a given depth below surface.
@@ -51,7 +51,7 @@ fn age_from_depth(
     return surface_age_ma + depth_m / sed_rate
 
 
-fn radiometric_age(
+def radiometric_age(
     parent_to_daughter_ratio: Float64, decay_constant: Float64
 ) -> Float64:
     """Radiometric age from parent/daughter isotope ratio.
@@ -70,7 +70,7 @@ fn radiometric_age(
     return log(1.0 + parent_to_daughter_ratio) / decay_constant
 
 
-fn radiocarbon_age(
+def radiocarbon_age(
     activity_fraction: Float64
 ) -> Float64:
     """Radiocarbon age from fraction of modern carbon (F14C).
@@ -88,7 +88,7 @@ fn radiocarbon_age(
     return -8267.0 * log(activity_fraction)
 
 
-fn stratigraphic_column_depth(
+def stratigraphic_column_depth(
     layer_thickness1: Float64, layer_thickness2: Float64, n_layers: Float64
 ) -> Float64:
     """Total depth of a stratigraphic column from repeated layer pairs.
@@ -106,7 +106,7 @@ fn stratigraphic_column_depth(
     return (layer_thickness1 + layer_thickness2) * n_layers / 2.0
 
 
-fn isotope_fractionation(
+def isotope_fractionation(
     sample_ratio: Float64, standard_ratio: Float64
 ) -> Float64:
     """Isotope delta notation: δ = (R_sample/R_standard - 1) × 1000.
@@ -123,7 +123,7 @@ fn isotope_fractionation(
     return (sample_ratio / standard_ratio - 1.0) * 1000.0
 
 
-fn unconformity_gap(
+def unconformity_gap(
     section_above_age: Float64, section_below_age: Float64
 ) -> Float64:
     """Time gap at an unconformity.
@@ -143,7 +143,7 @@ fn unconformity_gap(
     return gap
 
 
-fn thermal_maturity_vitrinite(max_temperature: Float64, duration_my: Float64) -> Float64:
+def thermal_maturity_vitrinite(max_temperature: Float64, duration_my: Float64) -> Float64:
     """Vitrinite reflectance from peak burial temperature (simplified).
 
     Ro ≈ exp(0.0078 * T_max - 1.2) + 0.2  (approximate Barker 1988)
@@ -162,7 +162,7 @@ fn thermal_maturity_vitrinite(max_temperature: Float64, duration_my: Float64) ->
     return ro
 
 
-fn compaction_correction(
+def compaction_correction(
     observed_thickness: Float64, initial_porosity: Float64, current_porosity: Float64
 ) -> Float64:
     """Decompacted (original) thickness of a sediment layer.
@@ -183,7 +183,7 @@ fn compaction_correction(
     return observed_thickness * (1.0 - current_porosity) / denom
 
 
-fn sea_level_proxy(
+def sea_level_proxy(
     d18o_benthic: Float64, d18o_reference: Float64, ice_volume_factor: Float64
 ) -> Float64:
     """Relative sea-level change from benthic δ¹⁸O record.

@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt
 
 
-fn interception_loss(
+def interception_loss(
     rainfall: Float64, canopy_storage_mm: Float64, evaporation_rate: Float64
 ) -> Float64:
     """Rutter/Gash canopy interception loss.
@@ -38,7 +38,7 @@ fn interception_loss(
     return direct + evap_additional
 
 
-fn transpiration_priestley_taylor(
+def transpiration_priestley_taylor(
     net_radiation_w_m2: Float64, soil_heat_w_m2: Float64,
     temperature_c: Float64, alpha: Float64
 ) -> Float64:
@@ -62,7 +62,7 @@ fn transpiration_priestley_taylor(
     return alpha * delta / (delta + gamma) * rn_g / lambda_v
 
 
-fn root_water_uptake(
+def root_water_uptake(
     soil_moisture: Float64, field_capacity: Float64,
     wilting_point: Float64, max_uptake: Float64
 ) -> Float64:
@@ -90,7 +90,7 @@ fn root_water_uptake(
     return max_uptake * frac
 
 
-fn streamflow_baseflow_index(
+def streamflow_baseflow_index(
     baseflow_mm: Float64, total_streamflow_mm: Float64
 ) -> Float64:
     """Baseflow Index: BFI = baseflow / total streamflow.
@@ -107,7 +107,7 @@ fn streamflow_baseflow_index(
     return baseflow_mm / total_streamflow_mm
 
 
-fn wetland_retention_time(
+def wetland_retention_time(
     volume_m3: Float64, inflow_m3_per_day: Float64
 ) -> Float64:
     """Wetland hydraulic retention time.
@@ -126,7 +126,7 @@ fn wetland_retention_time(
     return volume_m3 / inflow_m3_per_day
 
 
-fn riparian_buffer_efficiency(
+def riparian_buffer_efficiency(
     width_m: Float64, slope: Float64, saturated_conductivity: Float64
 ) -> Float64:
     """Nitrate removal efficiency in riparian buffer (first-order decay model).
@@ -151,7 +151,7 @@ fn riparian_buffer_efficiency(
     return eff
 
 
-fn ecohydrological_stress(
+def ecohydrological_stress(
     soil_moisture: Float64, field_capacity: Float64, wilting_point: Float64
 ) -> Float64:
     """Water stress factor for GPP reduction (linear model).
@@ -177,7 +177,7 @@ fn ecohydrological_stress(
     return beta
 
 
-fn flood_pulse_benefit(
+def flood_pulse_benefit(
     flood_duration_days: Float64, nutrient_input: Float64, productivity_rate: Float64
 ) -> Float64:
     """Floodplain productivity bonus from flood pulse (Junk et al.).
@@ -195,7 +195,7 @@ fn flood_pulse_benefit(
     return flood_duration_days * nutrient_input * productivity_rate / 365.0
 
 
-fn water_table_depth_et(
+def water_table_depth_et(
     water_table_m: Float64, extinction_depth_m: Float64, pet: Float64
 ) -> Float64:
     """ET from shallow groundwater, declining with depth (linear extinction).
@@ -218,7 +218,7 @@ fn water_table_depth_et(
     return pet * factor
 
 
-fn catchment_runoff_ratio(
+def catchment_runoff_ratio(
     annual_runoff_mm: Float64, annual_precipitation_mm: Float64
 ) -> Float64:
     """Annual runoff coefficient (Q/P).

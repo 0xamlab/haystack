@@ -9,7 +9,7 @@ from automl import (
 )
 
 
-fn _rounds_equal(
+def _rounds_equal(
     rounds: List[HalvingRound], ns: List[Int], bs: List[Int]
 ) -> Bool:
     if len(rounds) != len(ns) or len(ns) != len(bs):
@@ -20,7 +20,7 @@ fn _rounds_equal(
     return True
 
 
-fn _ints_equal(a: List[Int], b: List[Int]) -> Bool:
+def _ints_equal(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -29,7 +29,7 @@ fn _ints_equal(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ automl::" + name)

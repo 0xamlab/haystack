@@ -120,7 +120,7 @@ struct CeAgreement(Copyable, Movable):
     var status: Int
 
 
-fn ce_peak_logit_cells(n_tok: Int, vocab: Int, chunk: Int) -> CeMemory:
+def ce_peak_logit_cells(n_tok: Int, vocab: Int, chunk: Int) -> CeMemory:
     """What a chunked call will hold, against what the materialized form would.
 
     Reported rather than asserted. The ratio is the entire argument for this module, and a caller
@@ -151,7 +151,7 @@ fn ce_peak_logit_cells(n_tok: Int, vocab: Int, chunk: Int) -> CeMemory:
     return CeMemory(chunked, full, full / chunked, n_chunks, LOSS_OK)
 
 
-fn ce_from_logits_flat(
+def ce_from_logits_flat(
     logits: List[Float64], targets: List[Int], n_tok: Int, vocab: Int
 ) -> CeOut:
     """Cross-entropy from an ALREADY materialized `[n_tok][vocab]` logit tensor. The reference.
@@ -191,7 +191,7 @@ fn ce_from_logits_flat(
     return CeOut(total / Float64(n_tok), total, n_tok, n_tok * vocab, LOSS_OK)
 
 
-fn fused_linear_ce_flat(
+def fused_linear_ce_flat(
     hidden: List[Float64], weight: List[Float64], targets: List[Int],
     n_tok: Int, d_model: Int, vocab: Int, chunk: Int
 ) -> CeOut:
@@ -265,7 +265,7 @@ fn fused_linear_ce_flat(
     return CeOut(total / Float64(n_tok), total, n_tok, span * vocab, LOSS_OK)
 
 
-fn fused_linear_ce_bwd_flat(
+def fused_linear_ce_bwd_flat(
     hidden: List[Float64], weight: List[Float64], targets: List[Int],
     n_tok: Int, d_model: Int, vocab: Int
 ) -> CeGrad:
@@ -333,7 +333,7 @@ fn fused_linear_ce_bwd_flat(
     return CeGrad(d_hidden^, d_weight^, n_tok, d_model, LOSS_OK)
 
 
-fn ce_chunk_invariance_flat(
+def ce_chunk_invariance_flat(
     hidden: List[Float64], weight: List[Float64], targets: List[Int],
     n_tok: Int, d_model: Int, vocab: Int
 ) -> CeAgreement:

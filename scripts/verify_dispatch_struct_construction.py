@@ -92,7 +92,7 @@ def _render_probe(targets: list[tuple[str, str, list[tuple[str, str]]]]) -> str:
     ]
     for module, name, _fields in targets:
         lines.append(f"from {module} import {name}")
-    lines += ["", "fn main() raises:"]
+    lines += ["", "def main() raises:"]
     for index, (_module, name, fields) in enumerate(targets):
         var = f"v{index}"
         lines.append(f"    var {var} = {name}()")

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from chaos import logistic_map, lorenz_step, lorenz_simulate, lyapunov_exponent_logistic, henon_map, tent_map, bifurcation_diagram, sensitivity_to_initial, feigenbaum_ratio, is_chaotic
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

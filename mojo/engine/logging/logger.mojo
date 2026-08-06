@@ -12,14 +12,14 @@ Log levels:
 
 Public API:
   struct Logger:
-    fn __init__(out self, name: String, level: Int = 1)
-    fn debug(self, msg: String, extra: String = "")
-    fn info(self, msg: String, extra: String = "")
-    fn warning(self, msg: String, extra: String = "")
-    fn error(self, msg: String, extra: String = "")
-    fn log(self, level: Int, msg: String, extra: String = "")
+    def __init__(out self, name: String, level: Int = 1)
+    def debug(self, msg: String, extra: String = "")
+    def info(self, msg: String, extra: String = "")
+    def warning(self, msg: String, extra: String = "")
+    def error(self, msg: String, extra: String = "")
+    def log(self, level: Int, msg: String, extra: String = "")
 
-  fn get_logger(name: String) -> Logger
+  def get_logger(name: String) -> Logger
 """
 
 from json.writer import json_escape_string
@@ -36,7 +36,7 @@ comptime LOG_ERROR = 3
 # ── Level name lookup ────────────────────────────────────────────────────────
 
 
-fn _level_name(level: Int) -> String:
+def _level_name(level: Int) -> String:
     """Convert numeric level to string name."""
     if level == LOG_DEBUG:
         return "debug"
@@ -64,7 +64,7 @@ struct Logger:
     var name: String
     var level: Int
 
-    fn __init__(out self, name: String, level: Int = 1):
+    def __init__(out self, name: String, level: Int = 1):
         """Create a new Logger.
 
         Args:
@@ -74,23 +74,23 @@ struct Logger:
         self.name = name
         self.level = level
 
-    fn debug(self, msg: String, extra: String = ""):
+    def debug(self, msg: String, extra: String = ""):
         """Log at DEBUG level (0)."""
         self.log(LOG_DEBUG, msg, extra)
 
-    fn info(self, msg: String, extra: String = ""):
+    def info(self, msg: String, extra: String = ""):
         """Log at INFO level (1)."""
         self.log(LOG_INFO, msg, extra)
 
-    fn warning(self, msg: String, extra: String = ""):
+    def warning(self, msg: String, extra: String = ""):
         """Log at WARNING level (2)."""
         self.log(LOG_WARNING, msg, extra)
 
-    fn error(self, msg: String, extra: String = ""):
+    def error(self, msg: String, extra: String = ""):
         """Log at ERROR level (3)."""
         self.log(LOG_ERROR, msg, extra)
 
-    fn log(self, level: Int, msg: String, extra: String = ""):
+    def log(self, level: Int, msg: String, extra: String = ""):
         """Emit a structured JSON log line if level >= self.level.
 
         Output format:
@@ -123,7 +123,7 @@ struct Logger:
 # ── Factory function ─────────────────────────────────────────────────────────
 
 
-fn get_logger(name: String) -> Logger:
+def get_logger(name: String) -> Logger:
     """Create a Logger with INFO level.
 
     Args:

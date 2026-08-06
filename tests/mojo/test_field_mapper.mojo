@@ -122,7 +122,7 @@ def main() raises:
     print("✅ All field mapper tests passed")
 
 
-fn assert_equal(got: Int, expected: Int, label: String) raises:
+def assert_equal(got: Int, expected: Int, label: String) raises:
     """Assert two integers are equal."""
     if got != expected:
         print("❌ FAIL: " + label)
@@ -131,7 +131,7 @@ fn assert_equal(got: Int, expected: Int, label: String) raises:
         raise Error("Assertion failed: " + label)
 
 
-fn assert_true(cond: Bool, label: String) raises:
+def assert_true(cond: Bool, label: String) raises:
     """Assert a condition is true."""
     if not cond:
         print("❌ FAIL: " + label)

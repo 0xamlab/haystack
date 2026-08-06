@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from dosimetry import absorbed_dose, equivalent_dose, effective_dose, dose_rate, activity_decay, specific_activity, tenth_value_layer, buildup_factor, kerma, radiation_weighting
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -154,7 +154,7 @@ def test_build_runtime_library_worker_request_validates_struct_arguments(
                 "    var id: Int",
                 "    var threshold: Float64",
                 "",
-                "fn upsert(config: OrderConfig) -> Int:",
+                "def upsert(config: OrderConfig) -> Int:",
                 "    return config.id",
             ]
         ),
@@ -208,7 +208,7 @@ def test_parse_runtime_library_worker_response_decodes_struct_and_mutable_roundt
                 "    var values: List[Int]",
                 "    var hits: Int",
                 "",
-                "fn cache_push(mut cache: Cache, value: Int) -> Bool:",
+                "def cache_push(mut cache: Cache, value: Int) -> Bool:",
                 "    return True",
             ]
         ),

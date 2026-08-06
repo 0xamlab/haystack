@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ergonomics import niosh_rwl, lifting_index, metabolic_rate_walking, heat_stress_index, decibel_addition, noise_dose, cumulative_noise_dose_2, visual_angle_minutes, fitts_law_movement_time, hicks_law_reaction_time, comfort_temperature_pmv_simplified, body_mass_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

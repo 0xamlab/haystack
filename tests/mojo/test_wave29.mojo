@@ -37,12 +37,12 @@ from crypto.pbkdf2 import (
 from std.math import abs as fabs, log
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -50,7 +50,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Control tests ────────────────────────────────────────────────────────────
 
 
-fn test_create_pid() raises:
+def test_create_pid() raises:
     var state = create_pid(1.0, 0.1, 0.01)
     _assert_close(state.kp, 1.0, 1e-12, "create_pid kp")
     _assert_close(state.ki, 0.1, 1e-12, "create_pid ki")
@@ -60,7 +60,7 @@ fn test_create_pid() raises:
     print("  ✓ create_pid")
 
 
-fn test_pid_update() raises:
+def test_pid_update() raises:
     var state = create_pid(1.0, 0.0, 0.0)
     var u1 = pid_update(state, 10.0, 0.0, 0.1)
     # P-only: output = kp * error = 1.0 * 10.0 = 10.0
@@ -73,7 +73,7 @@ fn test_pid_update() raises:
     print("  ✓ pid_update")
 
 
-fn test_pid_simulate() raises:
+def test_pid_simulate() raises:
     var traj = pid_simulate(2.0, 0.5, 0.1, 100.0, 0.0, 1.0, 0.01, 500)
     _assert(len(traj) == 501, "pid_simulate trajectory length")
     _assert_close(traj[0], 0.0, 1e-12, "pid_simulate starts at initial")
@@ -83,7 +83,7 @@ fn test_pid_simulate() raises:
     print("  ✓ pid_simulate")
 
 
-fn test_bang_bang() raises:
+def test_bang_bang() raises:
     # Below threshold
     _assert_close(bang_bang(100.0, 90.0, 5.0), 1.0, 1e-12, "bang_bang below")
     # Above threshold
@@ -96,7 +96,7 @@ fn test_bang_bang() raises:
     print("  ✓ bang_bang")
 
 
-fn test_step_response() raises:
+def test_step_response() raises:
     var resp = step_response(10.0, 1.0, 0.01, 1000)
     _assert(len(resp) == 1000, "step_response length")
     _assert_close(resp[0], 0.0, 1e-12, "step_response starts at 0")
@@ -111,7 +111,7 @@ fn test_step_response() raises:
     print("  ✓ step_response")
 
 
-fn test_ramp_response() raises:
+def test_ramp_response() raises:
     var resp = ramp_response(1.0, 1.0, 0.1, 100)
     _assert(len(resp) == 100, "ramp_response length")
     _assert_close(resp[0], 0.0, 1e-12, "ramp_response starts at 0")
@@ -120,7 +120,7 @@ fn test_ramp_response() raises:
     print("  ✓ ramp_response")
 
 
-fn test_settling_time() raises:
+def test_settling_time() raises:
     var resp = step_response(1.0, 0.5, 0.01, 1000)
     var st = settling_time(resp, 1.0, 0.02)
     _assert(st >= 0.0, "settling_time non-negative")
@@ -128,7 +128,7 @@ fn test_settling_time() raises:
     print("  ✓ settling_time")
 
 
-fn test_overshoot() raises:
+def test_overshoot() raises:
     # Aggressive PID should produce overshoot
     var traj = pid_simulate(5.0, 1.0, 0.1, 10.0, 0.0, 1.0, 0.01, 500)
     var os_val = overshoot(traj, 10.0)
@@ -136,7 +136,7 @@ fn test_overshoot() raises:
     print("  ✓ overshoot")
 
 
-fn test_steady_state_error() raises:
+def test_steady_state_error() raises:
     # PID with integral term should have ~0 steady state error
     var traj = pid_simulate(2.0, 1.0, 0.1, 10.0, 0.0, 1.0, 0.01, 1000)
     var sse = steady_state_error(traj, 10.0)
@@ -147,7 +147,7 @@ fn test_steady_state_error() raises:
 # ── Scoring tests ────────────────────────────────────────────────────────────
 
 
-fn test_sigmoid() raises:
+def test_sigmoid() raises:
     _assert_close(sigmoid(0.0), 0.5, 1e-12, "sigmoid(0) = 0.5")
     _assert(sigmoid(100.0) > 0.999, "sigmoid(100) ≈ 1.0")
     _assert(sigmoid(-100.0) < 0.001, "sigmoid(-100) ≈ 0.0")
@@ -156,7 +156,7 @@ fn test_sigmoid() raises:
     print("  ✓ sigmoid")
 
 
-fn test_logit() raises:
+def test_logit() raises:
     _assert_close(logit(0.5), 0.0, 1e-12, "logit(0.5) = 0")
     # Roundtrip: logit(sigmoid(x)) ≈ x
     _assert_close(logit(sigmoid(1.5)), 1.5, 1e-9, "logit(sigmoid(1.5)) roundtrip")
@@ -164,7 +164,7 @@ fn test_logit() raises:
     print("  ✓ logit")
 
 
-fn test_log_odds_score() raises:
+def test_log_odds_score() raises:
     # At log_odds=0, score = base_score
     _assert_close(log_odds_to_score(0.0), 600.0, 1e-9, "log_odds_to_score(0) = 600")
     # Roundtrip
@@ -177,7 +177,7 @@ fn test_log_odds_score() raises:
     print("  ✓ log_odds_to_score / score_to_log_odds")
 
 
-fn test_woe() raises:
+def test_woe() raises:
     # Equal distributions: woe ≈ 0
     var w = woe(10, 10, 100, 100)
     _assert_close(w, 0.0, 1e-9, "woe equal distributions")
@@ -187,7 +187,7 @@ fn test_woe() raises:
     print("  ✓ woe")
 
 
-fn test_iv() raises:
+def test_iv() raises:
     var woe_vals = List[Float64]()
     woe_vals.append(0.5)
     woe_vals.append(-0.3)
@@ -204,7 +204,7 @@ fn test_iv() raises:
     print("  ✓ iv")
 
 
-fn test_gini_ks() raises:
+def test_gini_ks() raises:
     # Perfect predictor
     var actual = List[Float64]()
     actual.append(0.0); actual.append(0.0); actual.append(1.0); actual.append(1.0)
@@ -218,7 +218,7 @@ fn test_gini_ks() raises:
     print("  ✓ gini_coefficient / ks_statistic")
 
 
-fn test_linear_score() raises:
+def test_linear_score() raises:
     var features = List[Float64]()
     features.append(1.0); features.append(2.0); features.append(3.0)
     var weights = List[Float64]()
@@ -229,14 +229,14 @@ fn test_linear_score() raises:
     print("  ✓ linear_score")
 
 
-fn test_normalize_score() raises:
+def test_normalize_score() raises:
     _assert_close(normalize_score(75.0, 50.0, 100.0), 0.5, 1e-12, "normalize 75 in [50,100]")
     _assert_close(normalize_score(50.0, 50.0, 100.0), 0.0, 1e-12, "normalize min")
     _assert_close(normalize_score(100.0, 50.0, 100.0), 1.0, 1e-12, "normalize max")
     print("  ✓ normalize_score")
 
 
-fn test_score_band() raises:
+def test_score_band() raises:
     var boundaries = List[Float64]()
     boundaries.append(300.0); boundaries.append(500.0); boundaries.append(700.0)
     var labels = List[String]()
@@ -251,7 +251,7 @@ fn test_score_band() raises:
 # ── PBKDF2 / Crypto tests ───────────────────────────────────────────────────
 
 
-fn test_bytes_from_string() raises:
+def test_bytes_from_string() raises:
     var b = bytes_from_string("abc")
     _assert(len(b) == 3, "bytes_from_string length")
     _assert(b[0] == 97, "bytes_from_string a=97")
@@ -260,7 +260,7 @@ fn test_bytes_from_string() raises:
     print("  ✓ bytes_from_string")
 
 
-fn test_bytes_to_hex() raises:
+def test_bytes_to_hex() raises:
     var data = List[Int]()
     data.append(0); data.append(255)
     _assert(bytes_to_hex(data) == "00ff", "bytes_to_hex [0,255]")
@@ -270,7 +270,7 @@ fn test_bytes_to_hex() raises:
     print("  ✓ bytes_to_hex")
 
 
-fn test_xor_byte_lists() raises:
+def test_xor_byte_lists() raises:
     var a = List[Int]()
     a.append(1); a.append(2); a.append(3)
     var b = List[Int]()
@@ -282,7 +282,7 @@ fn test_xor_byte_lists() raises:
     print("  ✓ xor_byte_lists")
 
 
-fn test_int_to_bytes_be() raises:
+def test_int_to_bytes_be() raises:
     var b = int_to_bytes_be(1, 4)
     _assert(b[0] == 0, "int_to_bytes_be [0]=0")
     _assert(b[1] == 0, "int_to_bytes_be [1]=0")
@@ -294,7 +294,7 @@ fn test_int_to_bytes_be() raises:
     print("  ✓ int_to_bytes_be")
 
 
-fn test_sha256_bytes_empty() raises:
+def test_sha256_bytes_empty() raises:
     var empty = List[Int]()
     var h = sha256_bytes(empty)
     _assert(len(h) == 32, "sha256_bytes empty length = 32")
@@ -305,7 +305,7 @@ fn test_sha256_bytes_empty() raises:
     print("  ✓ sha256_bytes empty")
 
 
-fn test_sha256_bytes_abc() raises:
+def test_sha256_bytes_abc() raises:
     var data = bytes_from_string("abc")
     var h = sha256_bytes(data)
     var hex = bytes_to_hex(h)
@@ -315,7 +315,7 @@ fn test_sha256_bytes_abc() raises:
     print("  ✓ sha256_bytes abc")
 
 
-fn test_hmac_sha256_bytes() raises:
+def test_hmac_sha256_bytes() raises:
     var key = bytes_from_string("key")
     var msg = bytes_from_string("message")
     var h = hmac_sha256_bytes(key, msg)
@@ -332,7 +332,7 @@ fn test_hmac_sha256_bytes() raises:
     print("  ✓ hmac_sha256_bytes")
 
 
-fn test_pbkdf2() raises:
+def test_pbkdf2() raises:
     var password = bytes_from_string("password")
     var salt = bytes_from_string("salt")
     var dk1 = pbkdf2_hmac_sha256(password, salt, 1, 32)
@@ -350,7 +350,7 @@ fn test_pbkdf2() raises:
     print("  ✓ pbkdf2_hmac_sha256")
 
 
-fn test_pbkdf2_short_key() raises:
+def test_pbkdf2_short_key() raises:
     var password = bytes_from_string("pass")
     var salt = bytes_from_string("sa")
     var dk = pbkdf2_hmac_sha256(password, salt, 3, 16)
@@ -364,7 +364,7 @@ fn test_pbkdf2_short_key() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 29 Tests: PID Control, Scoring Models, PBKDF2 ===")
     var count = 0
 

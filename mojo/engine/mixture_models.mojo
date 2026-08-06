@@ -51,7 +51,7 @@ struct GMMResult(Copyable, Movable):
     var iterations: Int
     var converged: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.weights = List[Float64]()
         self.means = List[Float64]()
         self.vars = List[Float64]()
@@ -78,7 +78,7 @@ struct GMMResultND(Copyable, Movable):
     var iterations: Int
     var converged: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.weights = List[Float64]()
         self.means = List[Float64]()
         self.vars = List[Float64]()
@@ -92,7 +92,7 @@ struct GMMResultND(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -100,7 +100,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -116,13 +116,13 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
 
 
-fn _rand_unit(mut state: UInt64) -> Float64:
+def _rand_unit(mut state: UInt64) -> Float64:
     """Uniform Float64 in [0, 1)."""
     state = _xorshift64(state)
     return Float64(state >> 11) * (1.0 / 9007199254740992.0)
@@ -131,7 +131,7 @@ fn _rand_unit(mut state: UInt64) -> Float64:
 # ── internal helpers ─────────────────────────────────────────────────────────
 
 
-fn _log_gauss_diag(
+def _log_gauss_diag(
     X: List[Float64], row: Int, cols: Int,
     means: List[Float64], vars: List[Float64], comp: Int,
 ) -> Float64:
@@ -146,7 +146,7 @@ fn _log_gauss_diag(
     return acc
 
 
-fn _kmeanspp_means(
+def _kmeanspp_means(
     X: List[Float64], rows: Int, cols: Int, k: Int, seed: Int
 ) -> List[Float64]:
     """Seeded k-means++ pick of k initial component means (flat k x cols)."""
@@ -194,7 +194,7 @@ fn _kmeanspp_means(
     return means^
 
 
-fn _sort_components(mut out: GMMResultND, k: Int):
+def _sort_components(mut out: GMMResultND, k: Int):
     """Reorder components by first mean coordinate ascending (stable)."""
     var cols = out.cols
     var order = List[Int](capacity=k)
@@ -226,7 +226,7 @@ fn _sort_components(mut out: GMMResultND, k: Int):
 # ── gmm_fit_nd ───────────────────────────────────────────────────────────────
 
 
-fn gmm_fit_nd(
+def gmm_fit_nd(
     X: List[Float64], rows: Int, cols: Int,
     k: Int, max_iter: Int, tol: Float64, seed: Int,
 ) -> GMMResultND:
@@ -357,7 +357,7 @@ fn gmm_fit_nd(
 # ── gmm_fit ──────────────────────────────────────────────────────────────────
 
 
-fn gmm_fit(
+def gmm_fit(
     x: List[Float64], k: Int, max_iter: Int, tol: Float64, seed: Int
 ) -> GMMResult:
     """Fit a k-component 1D Gaussian mixture via EM.
@@ -382,7 +382,7 @@ fn gmm_fit(
 # ── gmm_responsibilities ─────────────────────────────────────────────────────
 
 
-fn gmm_responsibilities_nd(
+def gmm_responsibilities_nd(
     X: List[Float64], rows: Int, cols: Int,
     weights: List[Float64], means: List[Float64], vars: List[Float64],
 ) -> List[Float64]:
@@ -423,7 +423,7 @@ fn gmm_responsibilities_nd(
     return out^
 
 
-fn gmm_responsibilities(
+def gmm_responsibilities(
     x: List[Float64],
     weights: List[Float64], means: List[Float64], vars: List[Float64],
 ) -> List[Float64]:
@@ -439,7 +439,7 @@ fn gmm_responsibilities(
 # ── gmm_bic ──────────────────────────────────────────────────────────────────
 
 
-fn gmm_bic(loglik: Float64, n: Int, k: Int, dims: Int) -> Float64:
+def gmm_bic(loglik: Float64, n: Int, k: Int, dims: Int) -> Float64:
     """BIC for a k-component diagonal-covariance GMM over n points.
 
     Free parameters p = k * (2 * dims + 1) - 1 (weights sum to 1;

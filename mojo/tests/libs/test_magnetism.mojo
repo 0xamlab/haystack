@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from magnetism import biot_savart_infinite_wire, magnetic_force_wire, solenoid_field, toroid_field, magnetic_flux, inductance_solenoid, magnetic_energy_density, cyclotron_radius, larmor_frequency, hall_voltage
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

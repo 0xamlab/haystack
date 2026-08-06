@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, pow
 
 
-fn shear_stress(force: Float64, area: Float64) -> Float64:
+def shear_stress(force: Float64, area: Float64) -> Float64:
     """Shear stress: τ = F/A.
 
     Args:
@@ -31,7 +31,7 @@ fn shear_stress(force: Float64, area: Float64) -> Float64:
     return force / area
 
 
-fn shear_rate(velocity: Float64, gap: Float64) -> Float64:
+def shear_rate(velocity: Float64, gap: Float64) -> Float64:
     """Shear rate in simple shear: γ̇ = v/h.
 
     Args:
@@ -46,7 +46,7 @@ fn shear_rate(velocity: Float64, gap: Float64) -> Float64:
     return velocity / gap
 
 
-fn dynamic_viscosity(shear_stress_pa: Float64, shear_rate_s: Float64) -> Float64:
+def dynamic_viscosity(shear_stress_pa: Float64, shear_rate_s: Float64) -> Float64:
     """Dynamic (Newtonian) viscosity: η = τ/γ̇.
 
     Args:
@@ -61,7 +61,7 @@ fn dynamic_viscosity(shear_stress_pa: Float64, shear_rate_s: Float64) -> Float64
     return shear_stress_pa / shear_rate_s
 
 
-fn power_law_viscosity(
+def power_law_viscosity(
     consistency_k: Float64, shear_rate_s: Float64, flow_index_n: Float64
 ) -> Float64:
     """Apparent viscosity of a power-law fluid: η = K·γ̇^(n-1).
@@ -79,7 +79,7 @@ fn power_law_viscosity(
     return consistency_k * pow(shear_rate_s, flow_index_n - 1.0)
 
 
-fn bingham_yield_stress(
+def bingham_yield_stress(
     total_stress: Float64, plastic_viscosity: Float64, shear_rate_s: Float64
 ) -> Float64:
     """Bingham plastic yield stress: τ_y = τ - η_pl·γ̇.
@@ -98,7 +98,7 @@ fn bingham_yield_stress(
     return ty
 
 
-fn reynolds_number_non_newton(
+def reynolds_number_non_newton(
     density: Float64, velocity: Float64, diameter: Float64,
     consistency_k: Float64, flow_index_n: Float64
 ) -> Float64:
@@ -122,7 +122,7 @@ fn reynolds_number_non_newton(
             * pow(diameter, flow_index_n) / consistency_k)
 
 
-fn creep_compliance(
+def creep_compliance(
     j0: Float64, time: Float64, retardation_time: Float64
 ) -> Float64:
     """Viscoelastic creep compliance: J(t) = J0·(1 - exp(-t/τ)).
@@ -140,7 +140,7 @@ fn creep_compliance(
     return j0 * (1.0 - exp(-time / retardation_time))
 
 
-fn stress_relaxation_modulus(
+def stress_relaxation_modulus(
     g0: Float64, time: Float64, relaxation_time: Float64
 ) -> Float64:
     """Maxwell stress relaxation: G(t) = G0·exp(-t/τ).
@@ -158,7 +158,7 @@ fn stress_relaxation_modulus(
     return g0 * exp(-time / relaxation_time)
 
 
-fn viscosity_arrhenius(
+def viscosity_arrhenius(
     eta0: Float64, activation_energy: Float64, temperature: Float64
 ) -> Float64:
     """Temperature dependence of viscosity (Arrhenius model).
@@ -179,7 +179,7 @@ fn viscosity_arrhenius(
     return eta0 * exp(activation_energy / (R * temperature))
 
 
-fn thixotropy_index(
+def thixotropy_index(
     viscosity_low_shear: Float64, viscosity_high_shear: Float64
 ) -> Float64:
     """Thixotropy index: ratio of low to high shear viscosity.

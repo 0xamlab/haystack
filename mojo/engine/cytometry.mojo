@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn percent_positive_gate(
+def percent_positive_gate(
     positive_events: Float64, total_events: Float64
 ) -> Float64:
     """Percentage of cells within a positive gate.
@@ -33,7 +33,7 @@ fn percent_positive_gate(
     return positive_events / total_events * 100.0
 
 
-fn median_fluorescence_intensity(
+def median_fluorescence_intensity(
     sample_mfi: Float64, control_mfi: Float64
 ) -> Float64:
     """MFI ratio: sample relative to unstained control.
@@ -50,7 +50,7 @@ fn median_fluorescence_intensity(
     return sample_mfi / control_mfi
 
 
-fn staining_index(
+def staining_index(
     positive_mfi: Float64, negative_mfi: Float64, negative_sd: Float64
 ) -> Float64:
     """Staining index: separation between positive and negative populations.
@@ -71,7 +71,7 @@ fn staining_index(
     return (positive_mfi - negative_mfi) / denom
 
 
-fn coefficient_of_variation_peak(
+def coefficient_of_variation_peak(
     std_dev: Float64, mean_mfi: Float64
 ) -> Float64:
     """CV% for flow cytometry peak width assessment.
@@ -90,7 +90,7 @@ fn coefficient_of_variation_peak(
     return (std_dev / mean_mfi) * 100.0
 
 
-fn cell_cycle_g1_fraction(
+def cell_cycle_g1_fraction(
     g1_events: Float64, s_events: Float64, g2m_events: Float64
 ) -> Float64:
     """G1 fraction from DNA content histogram.
@@ -109,7 +109,7 @@ fn cell_cycle_g1_fraction(
     return g1_events / total
 
 
-fn apoptosis_annexin_pi(
+def apoptosis_annexin_pi(
     annexin_only: Float64, annexin_pi: Float64, total: Float64
 ) -> Float64:
     """Combined apoptosis percentage (early + late).
@@ -127,7 +127,7 @@ fn apoptosis_annexin_pi(
     return (annexin_only + annexin_pi) / total * 100.0
 
 
-fn lymphocyte_subset_ratio(
+def lymphocyte_subset_ratio(
     cd4_count: Float64, cd8_count: Float64
 ) -> Float64:
     """CD4:CD8 T cell ratio (HIV monitoring).
@@ -144,7 +144,7 @@ fn lymphocyte_subset_ratio(
     return cd4_count / cd8_count
 
 
-fn absolute_count(
+def absolute_count(
     relative_percent: Float64, total_leukocytes_ul: Float64
 ) -> Float64:
     """Absolute cell count from relative percentage and WBC count.
@@ -161,7 +161,7 @@ fn absolute_count(
     return relative_percent * total_leukocytes_ul / 100.0
 
 
-fn compensation_spillover(
+def compensation_spillover(
     detector_signal: Float64, spillover_fraction: Float64,
     reference_signal: Float64
 ) -> Float64:
@@ -178,7 +178,7 @@ fn compensation_spillover(
     return detector_signal - spillover_fraction * reference_signal
 
 
-fn sensitivity_lod_cytometry(
+def sensitivity_lod_cytometry(
     blank_mean: Float64, blank_sd: Float64, n_sigma: Float64
 ) -> Float64:
     """Limit of detection for cytometry assay.

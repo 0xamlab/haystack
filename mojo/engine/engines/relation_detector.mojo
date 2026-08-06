@@ -51,7 +51,7 @@ from dimensions import (
 
 # ── String helper ─────────────────────────────────────────────────────────────
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes = s.as_bytes()
     var n = len(s)
@@ -69,14 +69,14 @@ struct ColVector(Copyable, Movable):
     var name: String
     var values: List[Float64]
 
-    fn __init__(out self, name: String, values: List[Float64]):
+    def __init__(out self, name: String, values: List[Float64]):
         self.name = name
         self.values = values.copy()
 
 
 # ── Float array parser ────────────────────────────────────────────────────────
 
-fn _parse_float_array(arr_str: String) -> List[Float64]:
+def _parse_float_array(arr_str: String) -> List[Float64]:
     """Parse a JSON numeric array like [1, 2.5, -3, 1e4] → List[Float64]."""
     var result = List[Float64]()
     var n = len(arr_str)
@@ -128,7 +128,7 @@ fn _parse_float_array(arr_str: String) -> List[Float64]:
 
 # ── Parse columns object (field_name → float array) ──────────────────────────
 
-fn _parse_columns(raw: String) -> List[ColVector]:
+def _parse_columns(raw: String) -> List[ColVector]:
     """Walk 'columns' JSON object: each key → float array."""
     var result = List[ColVector]()
 
@@ -204,7 +204,7 @@ fn _parse_columns(raw: String) -> List[ColVector]:
 
 # ── Statistical helpers ────────────────────────────────────────────────────────
 
-fn _pearson_r(a: List[Float64], b: List[Float64], n: Int) -> Float64:
+def _pearson_r(a: List[Float64], b: List[Float64], n: Int) -> Float64:
     var mean_a: Float64 = 0.0
     var mean_b: Float64 = 0.0
     for i in range(n):
@@ -229,7 +229,7 @@ fn _pearson_r(a: List[Float64], b: List[Float64], n: Int) -> Float64:
     return num / den
 
 
-fn _check_approx(predicted: List[Float64], actual: List[Float64], n: Int) -> Bool:
+def _check_approx(predicted: List[Float64], actual: List[Float64], n: Int) -> Bool:
     """≥85% of non-zero rows within 5% relative error."""
     var valid = 0
     var matches = 0
@@ -247,14 +247,14 @@ fn _check_approx(predicted: List[Float64], actual: List[Float64], n: Int) -> Boo
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-fn _mean(v: List[Float64], n: Int) -> Float64:
+def _mean(v: List[Float64], n: Int) -> Float64:
     var s: Float64 = 0.0
     for i in range(n):
         s += v[i]
     return s / Float64(n)
 
 
-fn run_relation_detect(raw: String) raises -> String:
+def run_relation_detect(raw: String) raises -> String:
     """
     Detect A×B≈C and A+B≈C across all numeric column triples.
 

@@ -45,11 +45,11 @@ from tensorx.dtype import (
 )
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _one(v: Float64) -> List[Float64]:
+def _one(v: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(v)
     return out^

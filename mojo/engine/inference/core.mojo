@@ -260,7 +260,7 @@ comptime INF_PI: Float64 = 3.141592653589793
 comptime INF_INV_SQRT_2PI: Float64 = 0.3989422804014327
 
 
-fn inference_status_name(code: Int) -> String:
+def inference_status_name(code: Int) -> String:
     """Name for a status code, so an error surfaces the defect and not a bare number."""
     if code == INF_OK:
         return "ok"
@@ -305,7 +305,7 @@ fn inference_status_name(code: Int) -> String:
     return "unknown"
 
 
-fn inference_finite(v: Float64) -> Bool:
+def inference_finite(v: Float64) -> Bool:
     """True for a real number: neither NaN nor +-inf.
 
     PUBLIC on purpose, and the SINGLE definition of "finite" for this package — every other
@@ -318,7 +318,7 @@ fn inference_finite(v: Float64) -> Bool:
     return not (isnan(v) or isinf(v))
 
 
-fn inference_absent() -> Float64:
+def inference_absent() -> Float64:
     """The value that means "this number does not exist": a quiet NaN.
 
     Used only by the SCALAR tail functions here, where there is no room for a status field.
@@ -331,7 +331,7 @@ fn inference_absent() -> Float64:
     return zero / zero
 
 
-fn inference_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
+def inference_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
     """`abs_tol + 256 * DBL_EPSILON * |quantity_magnitude|` — rule 4b, in one place.
 
     `quantity_magnitude` must be the magnitude of THE ONE QUANTITY BEING JUDGED, never a
@@ -342,7 +342,7 @@ fn inference_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float6
     return inference_scaled_tol_ulps(quantity_magnitude, abs_tol, 0.0)
 
 
-fn inference_scaled_tol_ulps(
+def inference_scaled_tol_ulps(
     quantity_magnitude: Float64, abs_tol: Float64, extra_ulps: Float64
 ) -> Float64:
     """`abs_tol + (256 + extra_ulps) * DBL_EPSILON * |quantity_magnitude|`.
@@ -369,7 +369,7 @@ fn inference_scaled_tol_ulps(
     return abs_tol + ulps * INF_DBL_EPSILON * fabs(quantity_magnitude)
 
 
-fn inference_product_fits(a: Int, b: Int, limit: Int) -> Bool:
+def inference_product_fits(a: Int, b: Int, limit: Int) -> Bool:
     """True when `a * b <= limit`, decided with a DIVISION so nothing multiplies.
 
     `a * b` is a wrapping 64-bit multiply, so comparing the product to a limit is not a
@@ -384,7 +384,7 @@ fn inference_product_fits(a: Int, b: Int, limit: Int) -> Bool:
     return a <= limit // b
 
 
-fn inference_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
+def inference_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
     """True when `a * b * c <= limit`, growing the product factor by factor.
 
     Never forms a product larger than `limit`: if `a * b` already exceeds it the answer is
@@ -399,7 +399,7 @@ fn inference_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
     return a * b <= limit // c
 
 
-fn inference_dims_fit(n_rows: Int, n_cols: Int, length: Int) -> Bool:
+def inference_dims_fit(n_rows: Int, n_cols: Int, length: Int) -> Bool:
     """True when a flat row-major design matrix of `length` cells really is `n_rows x n_cols`.
 
     Delegates the wrapping-safe product to the frozen `sparse_numerics.csr.dims_fit` and
@@ -414,7 +414,7 @@ fn inference_dims_fit(n_rows: Int, n_cols: Int, length: Int) -> Bool:
     return dims_fit(n_rows, n_cols, length)
 
 
-fn inference_ceilings() -> List[Int]:
+def inference_ceilings() -> List[Int]:
     """Every ceiling this package enforces, so a caller can read them instead of guessing.
 
     Order: obs, params, resamples, assume_obs, tests, sample_size, irls_work,
@@ -438,7 +438,7 @@ fn inference_ceilings() -> List[Int]:
 # ── tail probabilities ───────────────────────────────────────────────────────
 
 
-fn inference_beta_inc(x: Float64, a: Float64, b: Float64) -> Float64:
+def inference_beta_inc(x: Float64, a: Float64, b: Float64) -> Float64:
     """The regularized incomplete beta `I_x(a, b)`, or `inference_absent()`.
 
     ADDITIVE, correct, and now — as of this session — independently corroborating rather
@@ -530,7 +530,7 @@ fn inference_beta_inc(x: Float64, a: Float64, b: Float64) -> Float64:
     return value
 
 
-fn _t_density_at_zero(df: Float64) -> Float64:
+def _t_density_at_zero(df: Float64) -> Float64:
     """`f_df(0) = Gamma((df+1)/2) / (sqrt(df pi) Gamma(df/2))`, or `inference_absent()`.
 
     TWO routes, because each one is destroyed at the other's end of the range and there is
@@ -564,7 +564,7 @@ fn _t_density_at_zero(df: Float64) -> Float64:
     return v
 
 
-fn _normal_cdf_clamped(t: Float64) -> Float64:
+def _normal_cdf_clamped(t: Float64) -> Float64:
     """`Phi(t)` from the frozen `math_ext.norm_cdf`, or `inference_absent()`.
 
     The same frozen kernel `inference_norm_sf_two_sided` calls, imported at function scope
@@ -587,7 +587,7 @@ fn _normal_cdf_clamped(t: Float64) -> Float64:
     return p
 
 
-fn inference_t_tail_region(t: Float64, df: Float64) -> Int:
+def inference_t_tail_region(t: Float64, df: Float64) -> Int:
     """Which of the three regions `(t, df)` falls in — the t tails' branch geometry, exported.
 
     PUBLIC so the region is a value a caller (and the suite) can assert, rather than a
@@ -647,7 +647,7 @@ fn inference_t_tail_region(t: Float64, df: Float64) -> Int:
     return T_REGION_CENTRAL
 
 
-fn _t_central_mass(at: Float64, df: Float64) -> Float64:
+def _t_central_mass(at: Float64, df: Float64) -> Float64:
     """`P(0 <= T <= at)` for `at >= 0`, from the CENTRAL series, or `inference_absent()`.
 
     Not the incomplete beta and not the normal: the t density's own Taylor series, which
@@ -730,7 +730,7 @@ fn _t_central_mass(at: Float64, df: Float64) -> Float64:
     return mass
 
 
-fn inference_t_cdf(t: Float64, df: Float64) -> Float64:
+def inference_t_cdf(t: Float64, df: Float64) -> Float64:
     """`P(T <= t)` for Student's t on `df` degrees of freedom, or `inference_absent()`.
 
     `I_{df/(df+t^2)}(df/2, 1/2)` is the two-tail mass, halved and oriented by the sign of
@@ -768,7 +768,7 @@ fn inference_t_cdf(t: Float64, df: Float64) -> Float64:
     return 0.5 * two_tail
 
 
-fn inference_t_sf_two_sided(t: Float64, df: Float64) -> Float64:
+def inference_t_sf_two_sided(t: Float64, df: Float64) -> Float64:
     """`P(|T| >= |t|)` — the two-sided t p-value, or `inference_absent()`.
 
     Returned as `I_{df/(df+t^2)}(df/2, 1/2)` DIRECTLY rather than as
@@ -799,7 +799,7 @@ fn inference_t_sf_two_sided(t: Float64, df: Float64) -> Float64:
     return inference_beta_inc(df / (df + t * t), df / 2.0, 0.5)
 
 
-fn inference_f_sf(f: Float64, df1: Float64, df2: Float64) -> Float64:
+def inference_f_sf(f: Float64, df1: Float64, df2: Float64) -> Float64:
     """Upper tail `P(F >= f)` for `F(df1, df2)`, or `inference_absent()`.
 
     `I_{df2/(df2 + df1 f)}(df2/2, df1/2)`, with the `df1 = 1` degenerate region routed
@@ -878,7 +878,7 @@ fn inference_f_sf(f: Float64, df1: Float64, df2: Float64) -> Float64:
     return inference_beta_inc(df2 / (df2 + df1 * f), df2 / 2.0, df1 / 2.0)
 
 
-fn inference_norm_sf_two_sided(z: Float64) -> Float64:
+def inference_norm_sf_two_sided(z: Float64) -> Float64:
     """`P(|Z| >= |z|)` for a standard normal, from the frozen `math_ext.norm_cdf`.
 
     Used for every Wald p-value in this package. `math_ext.norm_cdf` is the tree's most
@@ -897,7 +897,7 @@ fn inference_norm_sf_two_sided(z: Float64) -> Float64:
     return p
 
 
-fn inference_t_quantile(p: Float64, df: Float64) -> Float64:
+def inference_t_quantile(p: Float64, df: Float64) -> Float64:
     """The `p`-quantile of Student's t on `df` degrees of freedom, or `inference_absent()`.
 
     Genuinely missing from the tree: there is no t quantile anywhere, and `power`'s t lane
@@ -969,7 +969,7 @@ struct CdfAgreement(Copyable, Movable):
     var agree: Bool
 
 
-fn t_cdf_agreement(t: Float64, df: Float64) -> CdfAgreement:
+def t_cdf_agreement(t: Float64, df: Float64) -> CdfAgreement:
     """Compare `stat_tests._t_cdf` with `inference_t_cdf` at one point.
 
     `agree` is decided with `inference_scaled_tol(corrected, 1e-6)`: the quantity judged
@@ -1039,11 +1039,11 @@ struct WlsSolution(Copyable, Movable):
     var verified: Bool
 
 
-fn _wls_failure(code: Int) -> WlsSolution:
+def _wls_failure(code: Int) -> WlsSolution:
     return WlsSolution(code, List[Float64](), False, -1.0, False)
 
 
-fn wls_solve_flat(
+def wls_solve_flat(
     a: List[Float64], b: List[Float64], p: Int
 ) -> WlsSolution:
     """Solve the `p x p` symmetric positive-definite system `a beta = b`, or refuse.

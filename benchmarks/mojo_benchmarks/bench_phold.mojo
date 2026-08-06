@@ -347,7 +347,7 @@ struct PholdRun(Copyable, Movable):
     var trace_event_id: List[Int]
 
 
-fn _phold_refusal(code: Int) -> PholdRun:
+def _phold_refusal(code: Int) -> PholdRun:
     """A refusal carries no counters — not zeros that read as a run of length zero. Nor a trace:
     an empty `List`, the same "absent" shape `capture_trace=False` produces on a real run."""
     return PholdRun(
@@ -359,7 +359,7 @@ fn _phold_refusal(code: Int) -> PholdRun:
     )
 
 
-fn phold_work_charge(n_events: Int, pending: Int) -> Int:
+def phold_work_charge(n_events: Int, pending: Int) -> Int:
     """Charged operations for a PHOLD run, or -1 when the charge does not fit `DE_MAX_WORK`.
 
     PHOLD needs its OWN charge model and cannot borrow `de_heap_work`. That function charges
@@ -383,7 +383,7 @@ fn phold_work_charge(n_events: Int, pending: Int) -> Int:
     return 2 * n_events * levels
 
 
-fn _dest_of(u: Float64, source: Int, n_lps: Int) -> Int:
+def _dest_of(u: Float64, source: Int, n_lps: Int) -> Int:
     """Map a uniform on [0,1) to an LP that is NOT `source`, uniformly over the other `n_lps - 1`.
 
     `k = floor(u * (n_lps - 1))` indexes the others in order, and `k < source ? k : k + 1` skips
@@ -402,7 +402,7 @@ fn _dest_of(u: Float64, source: Int, n_lps: Int) -> Int:
 
 
 @no_inline
-fn phold_run(
+def phold_run(
     n_lps: Int,
     init_per_lp: Int,
     n_events: Int,
@@ -630,20 +630,20 @@ fn phold_run(
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _rate(n_events: Int, ns: Int) -> Float64:
+def _rate(n_events: Int, ns: Int) -> Float64:
     """Events per second from an event count and a nanosecond duration."""
     if ns <= 0:
         return 0.0
     return Float64(n_events) * 1.0e9 / Float64(ns)
 
 
-fn _ratio(lo: Float64, hi: Float64) -> Float64:
+def _ratio(lo: Float64, hi: Float64) -> Float64:
     if lo <= 0.0:
         return 0.0
     return hi / lo
 
 
-fn _sqrt_newton(x: Float64) -> Float64:
+def _sqrt_newton(x: Float64) -> Float64:
     """Square root by Newton iteration, so this file needs nothing from `std.math` but `log`.
 
     Used only to size the statistical bands in section 1, where a relative error far below 1e-12
@@ -659,12 +659,12 @@ fn _sqrt_newton(x: Float64) -> Float64:
     return g
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return x if x >= 0.0 else -x
 
 
 @no_inline
-fn _phold_once(
+def _phold_once(
     n_lps: Int, init_per_lp: Int, n_events: Int, p_remote: Float64
 ) -> List[Float64]:
     """ONE timed run, returning [loop_ns, status, n_events, pending, setup_ns, invariants_held].
@@ -716,7 +716,7 @@ fn _phold_once(
 
 
 @no_inline
-fn _bench_cold_warm_hot(mut cold_out: List[Float64], mut adv: List[Int]) -> Int:
+def _bench_cold_warm_hot(mut cold_out: List[Float64], mut adv: List[Int]) -> Int:
     """Section 1 — the headline rate, and the FIRST timed call in the process.
 
     Any earlier `phold_run` would pay the driver's first-call compilation and the cold reading
@@ -816,7 +816,7 @@ fn _bench_cold_warm_hot(mut cold_out: List[Float64], mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_fidelity(mut adv: List[Int]) -> Int:
+def _bench_fidelity(mut adv: List[Int]) -> Int:
     """Section 2 — is this actually PHOLD, and is the generator wired correctly?
 
     Every gate here is an integer identity, a bit-exact digest or a statistical band that is a
@@ -944,7 +944,7 @@ fn _bench_fidelity(mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_lp_sweep(mut pend: List[Float64], mut nsper: List[Float64], mut adv: List[Int]) -> Int:
+def _bench_lp_sweep(mut pend: List[Float64], mut nsper: List[Float64], mut adv: List[Int]) -> Int:
     """Section 3 — events/sec against LP count. THE SHAPE GATE.
 
     `init_per_lp` is held at the reference 16 and the event count is held fixed, so the only thing
@@ -1059,7 +1059,7 @@ fn _bench_lp_sweep(mut pend: List[Float64], mut nsper: List[Float64], mut adv: L
 
 
 @no_inline
-fn _bench_remote_sweep(mut adv: List[Int]) -> Int:
+def _bench_remote_sweep(mut adv: List[Int]) -> Int:
     """Section 4 — events/sec against `p_remote`, the shape of Warp Speed's Figure 3.
 
     That paper's CCNI Blue Gene/Q figure reports peak event rate falling monotonically as the
@@ -1144,7 +1144,7 @@ fn _bench_remote_sweep(mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_pending_control(mut adv: List[Int]) -> Int:
+def _bench_pending_control(mut adv: List[Int]) -> Int:
     """Section 5 — is the cost a function of the PENDING COUNT, or of the LP count?
 
     Two configurations reach the same pending population by different routes: 1024 LPs holding 16
@@ -1204,7 +1204,7 @@ fn _bench_pending_control(mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_log_fit(pend: List[Float64], nsper: List[Float64], mut adv: List[Int]) -> Int:
+def _bench_log_fit(pend: List[Float64], nsper: List[Float64], mut adv: List[Int]) -> Int:
     """Section 6 — IS event scheduling O(log n) in the pending count? Measured, not assumed.
 
     Reuses section 3's measurements rather than re-timing them, so the two sections cannot
@@ -1315,7 +1315,7 @@ fn _bench_log_fit(pend: List[Float64], nsper: List[Float64], mut adv: List[Int])
 
 
 @no_inline
-fn _bench_generator_cost(nsper: List[Float64], mut adv: List[Int]) -> Int:
+def _bench_generator_cost(nsper: List[Float64], mut adv: List[Int]) -> Int:
     """Section 7 — how much of an event is the GENERATOR rather than the calendar?
 
     This is the caveat that has to travel with any comparison of our event rate to a published
@@ -1390,7 +1390,7 @@ fn _bench_generator_cost(nsper: List[Float64], mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_published_anchor(mut adv: List[Int]) -> Int:
+def _bench_published_anchor(mut adv: List[Int]) -> Int:
     """Section 8 — the published figures this rate may and may not be compared against.
 
     Printed into the log rather than left in a report, because the single easiest way to make a
@@ -1484,7 +1484,7 @@ fn _bench_published_anchor(mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_calendar_operation(mut adv: List[Int]) -> Int:
+def _bench_calendar_operation(mut adv: List[Int]) -> Int:
     """Section 9 — the two calendar operations, interleaved, with correctness gated not assumed.
 
     `_heap_replace_root` was added to `discrete_event.calendar` because of the measurement in this
@@ -1575,7 +1575,7 @@ fn _bench_calendar_operation(mut adv: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_trace_mode(mut adv: List[Int]) -> Int:
+def _bench_trace_mode(mut adv: List[Int]) -> Int:
     """Section 10 — `capture_trace`: the opt-in event trace, and its two proofs.
 
     Prior finding: this driver returned counters and invariants only, with no way to see WHICH
@@ -1735,7 +1735,7 @@ fn _bench_trace_mode(mut adv: List[Int]) -> Int:
     return 0
 
 
-fn main() raises:
+def main() raises:
     print("\n=== bench_phold: PHOLD, the standard PDES benchmark, on discrete_event.calendar ===")
     print("Metric: EVENTS PER SECOND, sequential protocol, one core, no rollback and no GVT.")
     print("HARD gates are integer identities and bit-exact digests, with ONE wall-clock exception")

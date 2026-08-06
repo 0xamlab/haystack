@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn kv_cache_memory_per_layer(
+def kv_cache_memory_per_layer(
     batch_size: Float64, seq_len: Float64,
     n_heads: Float64, head_dim: Float64, dtype_bytes: Float64
 ) -> Float64:
@@ -38,7 +38,7 @@ fn kv_cache_memory_per_layer(
     return 2.0 * batch_size * seq_len * n_heads * head_dim * dtype_bytes
 
 
-fn kv_cache_total_memory(
+def kv_cache_total_memory(
     per_layer_bytes: Float64, n_layers: Float64
 ) -> Float64:
     """Total KV cache across all transformer layers.
@@ -53,7 +53,7 @@ fn kv_cache_total_memory(
     return per_layer_bytes * n_layers
 
 
-fn kv_cache_utilization(
+def kv_cache_utilization(
     cached_tokens: Float64, max_tokens: Float64
 ) -> Float64:
     """Fraction of KV cache slots currently occupied.
@@ -73,7 +73,7 @@ fn kv_cache_utilization(
     return util
 
 
-fn paged_attention_block_count(
+def paged_attention_block_count(
     seq_len: Float64, block_size: Float64
 ) -> Float64:
     """Number of paged attention blocks for a sequence.
@@ -92,7 +92,7 @@ fn paged_attention_block_count(
     return Float64(Int64((seq_len + block_size - 1.0) / block_size))
 
 
-fn prefix_cache_hit_bytes(
+def prefix_cache_hit_bytes(
     shared_prefix_len: Float64, n_heads: Float64, head_dim: Float64,
     n_layers: Float64, dtype_bytes: Float64
 ) -> Float64:
@@ -111,7 +111,7 @@ fn prefix_cache_hit_bytes(
     return 2.0 * shared_prefix_len * n_heads * head_dim * n_layers * dtype_bytes
 
 
-fn kv_eviction_score_lru(
+def kv_eviction_score_lru(
     last_access_time: Float64, current_time: Float64
 ) -> Float64:
     """LRU eviction score: time since last access (evict highest).
@@ -126,7 +126,7 @@ fn kv_eviction_score_lru(
     return current_time - last_access_time
 
 
-fn kv_eviction_score_h2o(
+def kv_eviction_score_h2o(
     attention_sum: Float64, recency_weight: Float64
 ) -> Float64:
     """H2O (Heavy-Hitter Oracle) KV eviction score.
@@ -144,7 +144,7 @@ fn kv_eviction_score_h2o(
     return attention_sum * recency_weight
 
 
-fn incremental_decode_kv_append(
+def incremental_decode_kv_append(
     current_len: Float64
 ) -> Float64:
     """KV pairs appended per autoregressive decode step.
@@ -160,7 +160,7 @@ fn incremental_decode_kv_append(
     return current_len + 1.0
 
 
-fn radix_cache_shared_prefix_len(
+def radix_cache_shared_prefix_len(
     prefix_a_len: Float64, prefix_b_len: Float64, match_len: Float64
 ) -> Float64:
     """Shared prefix length for radix tree KV cache.
@@ -179,7 +179,7 @@ fn radix_cache_shared_prefix_len(
     return match_len
 
 
-fn kv_quantization_error(
+def kv_quantization_error(
     value: Float64, scale: Float64, zero_point: Float64
 ) -> Float64:
     """Round-trip error from INT8 KV cache quantization.

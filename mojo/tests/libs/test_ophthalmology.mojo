@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ophthalmology import visual_acuity_decimal, refractive_error_spherical, lens_power, intraocular_pressure, corneal_radius_from_keratometry, retinal_image_size, depth_of_focus, critical_flicker_frequency, contrast_sensitivity, dark_adaptation_kinetics
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

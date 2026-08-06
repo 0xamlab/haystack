@@ -23,7 +23,7 @@ from std.math import exp, abs as fabs
 # ── shore_a_to_youngs_modulus ────────────────────────────────────────────────
 
 
-fn shore_a_to_youngs_modulus(shore_a: Float64) -> Float64:
+def shore_a_to_youngs_modulus(shore_a: Float64) -> Float64:
     """Approximate Young's modulus from Shore A hardness.
 
     Uses simplified relation: E ≈ 0.5 * exp(0.04 * shore_a) (MPa).
@@ -40,7 +40,7 @@ fn shore_a_to_youngs_modulus(shore_a: Float64) -> Float64:
 # ── mooney_viscosity_index ───────────────────────────────────────────────────
 
 
-fn mooney_viscosity_index(
+def mooney_viscosity_index(
     ml_value: Float64, temperature: Float64
 ) -> Float64:
     """Mooney viscosity standardized index.
@@ -60,7 +60,7 @@ fn mooney_viscosity_index(
 # ── tensile_set ──────────────────────────────────────────────────────────────
 
 
-fn tensile_set(
+def tensile_set(
     stretched_length: Float64,
     original_length: Float64,
     recovered_length: Float64,
@@ -84,7 +84,7 @@ fn tensile_set(
 # ── compression_set ──────────────────────────────────────────────────────────
 
 
-fn compression_set(
+def compression_set(
     original_thickness: Float64,
     compressed_thickness: Float64,
     recovered_thickness: Float64,
@@ -108,7 +108,7 @@ fn compression_set(
 # ── elongation_at_break ──────────────────────────────────────────────────────
 
 
-fn elongation_at_break(
+def elongation_at_break(
     final_length: Float64, original_length: Float64
 ) -> Float64:
     """Elongation at break: EB = (final - original) / original * 100.
@@ -128,7 +128,7 @@ fn elongation_at_break(
 # ── tear_strength ────────────────────────────────────────────────────────────
 
 
-fn tear_strength(force: Float64, thickness: Float64) -> Float64:
+def tear_strength(force: Float64, thickness: Float64) -> Float64:
     """Tear strength: TS = F / t.
 
     Args:
@@ -146,7 +146,7 @@ fn tear_strength(force: Float64, thickness: Float64) -> Float64:
 # ── resilience_rebound ───────────────────────────────────────────────────────
 
 
-fn resilience_rebound(
+def resilience_rebound(
     drop_height: Float64, rebound_height: Float64
 ) -> Float64:
     """Resilience: R = rebound / drop * 100.
@@ -166,7 +166,7 @@ fn resilience_rebound(
 # ── hardness_change_aging ────────────────────────────────────────────────────
 
 
-fn hardness_change_aging(
+def hardness_change_aging(
     initial_hardness: Float64, aged_hardness: Float64
 ) -> Float64:
     """Hardness change after aging: ΔH = aged - initial.
@@ -184,7 +184,7 @@ fn hardness_change_aging(
 # ── swelling_percentage ──────────────────────────────────────────────────────
 
 
-fn swelling_percentage(
+def swelling_percentage(
     swollen_volume: Float64, original_volume: Float64
 ) -> Float64:
     """Swelling %: S = (swollen - original) / original * 100.
@@ -204,7 +204,7 @@ fn swelling_percentage(
 # ── crosslink_density_estimate ───────────────────────────────────────────────
 
 
-fn crosslink_density_estimate(
+def crosslink_density_estimate(
     modulus: Float64, temperature_k: Float64, r: Float64
 ) -> Float64:
     """Crosslink density: ν = E / (3 * R * T).
@@ -226,7 +226,7 @@ fn crosslink_density_estimate(
 # ── abrasion_loss_volume ─────────────────────────────────────────────────────
 
 
-fn abrasion_loss_volume(mass_loss: Float64, density: Float64) -> Float64:
+def abrasion_loss_volume(mass_loss: Float64, density: Float64) -> Float64:
     """Abrasion loss volume: V = mass / density.
 
     Args:
@@ -244,7 +244,7 @@ fn abrasion_loss_volume(mass_loss: Float64, density: Float64) -> Float64:
 # ── heat_buildup ─────────────────────────────────────────────────────────────
 
 
-fn heat_buildup(
+def heat_buildup(
     hysteresis_loss: Float64, frequency: Float64, time: Float64
 ) -> Float64:
     """Heat buildup (simplified): ΔT ≈ hysteresis * freq * time / 1000.

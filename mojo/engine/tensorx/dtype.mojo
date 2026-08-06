@@ -137,12 +137,12 @@ struct TxTolerance(Copyable, Movable):
     var status: Int
 
 
-fn dtx_is_supported(code: Int) -> Bool:
+def dtx_is_supported(code: Int) -> Bool:
     """True for a dtype this module knows. `DT_INVALID` and anything out of range are not."""
     return code >= DT_FIRST and code <= DT_LAST
 
 
-fn dtx_dtype_name(code: Int) -> String:
+def dtx_dtype_name(code: Int) -> String:
     """Canonical name for a dtype code, or "invalid"."""
     if code == DT_F64:
         return String("float64")
@@ -167,7 +167,7 @@ fn dtx_dtype_name(code: Int) -> String:
     return String("invalid")
 
 
-fn dtx_dtype_from_name(name: String) -> Int:
+def dtx_dtype_from_name(name: String) -> Int:
     """Parse a canonical dtype name. Returns `DT_INVALID` for anything unrecognised.
 
     `DT_INVALID` rather than a default: silently resolving an unknown name to float32 would let a
@@ -196,7 +196,7 @@ fn dtx_dtype_from_name(name: String) -> Int:
     return DT_INVALID
 
 
-fn dtx_bits(code: Int) -> Int:
+def dtx_bits(code: Int) -> Int:
     """Storage width in BITS. 0 for an unknown dtype.
 
     Bits rather than bytes so int4 and nf4 are expressible as 4 rather than as a fractional byte.
@@ -214,7 +214,7 @@ fn dtx_bits(code: Int) -> Int:
     return 0
 
 
-fn dtx_bytes_per_1024(code: Int) -> Int:
+def dtx_bytes_per_1024(code: Int) -> Int:
     """Bytes occupied by 1024 elements. Exact integer arithmetic for every supported dtype.
 
     Per-1024 rather than per-element so a 4-bit dtype has an exact integer answer (512) instead of a
@@ -226,7 +226,7 @@ fn dtx_bytes_per_1024(code: Int) -> Int:
     return (bits * 1024) // 8
 
 
-fn dtx_is_float(code: Int) -> Bool:
+def dtx_is_float(code: Int) -> Bool:
     """True for the IEEE-style float formats (NF4 is a quantile codebook, not a float)."""
     return (
         code == DT_F64
@@ -238,12 +238,12 @@ fn dtx_is_float(code: Int) -> Bool:
     )
 
 
-fn dtx_is_sub_byte(code: Int) -> Bool:
+def dtx_is_sub_byte(code: Int) -> Bool:
     """True when two elements share a byte, so a buffer length is not an element count."""
     return code == DT_I4 or code == DT_NF4
 
 
-fn dtx_eps(code: Int) -> Float64:
+def dtx_eps(code: Int) -> Float64:
     """Machine epsilon: the gap between 1.0 and the next representable value.
 
     This is the number a relative tolerance is built from (rule 4b), which is why it is a first-class
@@ -265,7 +265,7 @@ fn dtx_eps(code: Int) -> Float64:
     return 0.0
 
 
-fn dtx_max_finite(code: Int) -> Float64:
+def dtx_max_finite(code: Int) -> Float64:
     """Largest finite magnitude representable. 0.0 for an unknown dtype."""
     if code == DT_F64:
         return 1.7976931348623157e308
@@ -290,7 +290,7 @@ fn dtx_max_finite(code: Int) -> Float64:
     return 0.0
 
 
-fn dtx_accum_dtype(code: Int) -> Int:
+def dtx_accum_dtype(code: Int) -> Int:
     """The dtype to accumulate in when the storage dtype is `code`. The package's single policy.
 
     Everything below f32 accumulates in f32; f64 stays f64. Accumulating a dot product in bf16 loses
@@ -304,7 +304,7 @@ fn dtx_accum_dtype(code: Int) -> Int:
     return DT_F32
 
 
-fn dtx_round_trip(value: Float64, code: Int) -> Float64:
+def dtx_round_trip(value: Float64, code: Int) -> Float64:
     """Push one value through `code` and back to f64, using the compiler's own conversion.
 
     Non-finite input is returned unchanged rather than cast: a NaN's payload is not the caller's
@@ -333,7 +333,7 @@ fn dtx_round_trip(value: Float64, code: Int) -> Float64:
     return value
 
 
-fn dtx_bf16_frozen_delta(value: Float64) -> Float64:
+def dtx_bf16_frozen_delta(value: Float64) -> Float64:
     """`native_bf16(value) - quantization_stack.bf16_to_fp32_round(value)`.
 
     Exists so the difference between this module's round-to-nearest-even contract and the frozen
@@ -345,7 +345,7 @@ fn dtx_bf16_frozen_delta(value: Float64) -> Float64:
     return dtx_round_trip(value, DT_BF16) - bf16_to_fp32_round(value)
 
 
-fn dtx_tol_for(quantity: Float64, code: Int, abs_tol: Float64) -> TxTolerance:
+def dtx_tol_for(quantity: Float64, code: Int, abs_tol: Float64) -> TxTolerance:
     """Build a comparison tolerance for ONE quantity: `abs_tol + eps(dtype) * |quantity|`.
 
     The package's single tolerance constructor, and the shape matters more than the code. Rule 4b
@@ -370,7 +370,7 @@ fn dtx_tol_for(quantity: Float64, code: Int, abs_tol: Float64) -> TxTolerance:
     return TxTolerance(absolute + rel, rel, absolute, TX_OK)
 
 
-fn dtx_round_trip_list(
+def dtx_round_trip_list(
     values: List[Float64], n: Int, code: Int
 ) -> DtypeCast:
     """Round-trip the first `n` entries of `values` through `code`, reporting what was lost.

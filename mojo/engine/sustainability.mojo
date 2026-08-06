@@ -24,74 +24,74 @@ Public API:
 # ── public API ───────────────────────────────────────────────────────────────
 
 
-fn carbon_footprint_transport(distance_km: Float64, emission_factor: Float64) -> Float64:
+def carbon_footprint_transport(distance_km: Float64, emission_factor: Float64) -> Float64:
     """CO2 emissions from transport in kgCO2 = distance_km * emission_factor."""
     return distance_km * emission_factor
 
 
-fn energy_intensity(energy_kwh: Float64, revenue: Float64) -> Float64:
+def energy_intensity(energy_kwh: Float64, revenue: Float64) -> Float64:
     """Energy intensity = energy (kWh) / revenue ($)."""
     if revenue == 0.0:
         return 0.0
     return energy_kwh / revenue
 
 
-fn water_intensity(water_m3: Float64, production_units: Float64) -> Float64:
+def water_intensity(water_m3: Float64, production_units: Float64) -> Float64:
     """Water intensity = water (m³) / production units."""
     if production_units == 0.0:
         return 0.0
     return water_m3 / production_units
 
 
-fn waste_diversion_rate(recycled: Float64, total_waste: Float64) -> Float64:
+def waste_diversion_rate(recycled: Float64, total_waste: Float64) -> Float64:
     """Waste diversion rate (%) = recycled / total_waste * 100."""
     if total_waste == 0.0:
         return 0.0
     return recycled / total_waste * 100.0
 
 
-fn renewable_energy_fraction(renewable: Float64, total_energy: Float64) -> Float64:
+def renewable_energy_fraction(renewable: Float64, total_energy: Float64) -> Float64:
     """Renewable energy fraction (%) = renewable / total_energy * 100."""
     if total_energy == 0.0:
         return 0.0
     return renewable / total_energy * 100.0
 
 
-fn ghg_scope1(direct_emissions: Float64) -> Float64:
+def ghg_scope1(direct_emissions: Float64) -> Float64:
     """GHG Scope 1 = direct emissions (pass-through)."""
     return direct_emissions
 
 
-fn ghg_scope2(purchased_energy_kwh: Float64, grid_factor: Float64) -> Float64:
+def ghg_scope2(purchased_energy_kwh: Float64, grid_factor: Float64) -> Float64:
     """GHG Scope 2 = purchased_energy_kwh * grid_factor (kgCO2/kWh)."""
     return purchased_energy_kwh * grid_factor
 
 
-fn ghg_scope3_estimate(revenue: Float64, intensity_factor: Float64) -> Float64:
+def ghg_scope3_estimate(revenue: Float64, intensity_factor: Float64) -> Float64:
     """GHG Scope 3 estimate ≈ revenue * intensity_factor."""
     return revenue * intensity_factor
 
 
-fn carbon_offset_cost(tonnes_co2: Float64, price_per_tonne: Float64) -> Float64:
+def carbon_offset_cost(tonnes_co2: Float64, price_per_tonne: Float64) -> Float64:
     """Carbon offset cost = tonnes_co2 * price_per_tonne."""
     return tonnes_co2 * price_per_tonne
 
 
-fn circular_economy_index(reused_material: Float64, total_material: Float64) -> Float64:
+def circular_economy_index(reused_material: Float64, total_material: Float64) -> Float64:
     """Circular economy index (%) = reused_material / total_material * 100."""
     if total_material == 0.0:
         return 0.0
     return reused_material / total_material * 100.0
 
 
-fn social_return_on_investment(social_value: Float64, investment: Float64) -> Float64:
+def social_return_on_investment(social_value: Float64, investment: Float64) -> Float64:
     """SROI = social_value / investment."""
     if investment == 0.0:
         return 0.0
     return social_value / investment
 
 
-fn esg_composite_score(
+def esg_composite_score(
     e_score: Float64,
     s_score: Float64,
     g_score: Float64,

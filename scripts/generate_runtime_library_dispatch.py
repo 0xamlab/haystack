@@ -264,7 +264,7 @@ def _emit_scalar_parse_function(type_name: str) -> list[str]:
     fn_name = _parse_fn_name(type_name)
     if type_name == "Bool":
         return [
-            f"fn {fn_name}(token: String) raises -> Bool:",
+            f"def {fn_name}(token: String) raises -> Bool:",
             f'{INDENT}if token == "true":',
             f"{INDENT * 2}return True",
             f'{INDENT}if token == "false":',
@@ -274,13 +274,13 @@ def _emit_scalar_parse_function(type_name: str) -> list[str]:
         ]
     if type_name == "String":
         return [
-            f"fn {fn_name}(token: String) raises -> String:",
+            f"def {fn_name}(token: String) raises -> String:",
             f"{INDENT}return _unquote_json_string(token)",
             "",
         ]
     if type_name == "Int":
         return [
-            f"fn {fn_name}(token: String) raises -> Int:",
+            f"def {fn_name}(token: String) raises -> Int:",
             f"{INDENT}return parse_int(token)",
             "",
         ]
@@ -296,7 +296,7 @@ def _emit_scalar_parse_function(type_name: str) -> list[str]:
         # and `quantile`/`percentile`/`median` funnel through it, so real non-finite data must keep
         # flowing through the list and packed-buffer paths.
         return [
-            f"fn {fn_name}(token: String) raises -> Float64:",
+            f"def {fn_name}(token: String) raises -> Float64:",
             f"{INDENT}var parsed = parse_float64(token)",
             f"{INDENT}if not _is_finite_f64(parsed):",
             f'{INDENT * 2}raise Error("non_finite_argument")',
@@ -305,7 +305,7 @@ def _emit_scalar_parse_function(type_name: str) -> list[str]:
         ]
     if type_name == "Float32":
         return [
-            f"fn {fn_name}(token: String) raises -> Float32:",
+            f"def {fn_name}(token: String) raises -> Float32:",
             f"{INDENT}var parsed = parse_float64(token)",
             f"{INDENT}if not _is_finite_f64(parsed):",
             f'{INDENT * 2}raise Error("non_finite_argument")',
@@ -314,7 +314,7 @@ def _emit_scalar_parse_function(type_name: str) -> list[str]:
         ]
     if type_name in {"UInt8", "UInt16", "UInt32", "UInt64"}:
         return [
-            f"fn {fn_name}(token: String) raises -> {type_name}:",
+            f"def {fn_name}(token: String) raises -> {type_name}:",
             f"{INDENT}var parsed = parse_int(token)",
             f"{INDENT}if parsed < 0:",
             (
@@ -338,12 +338,12 @@ def _emit_list_parse_function(type_name: str) -> list[str]:
     # list type pays the old O(n^2) `json_array_get(arr, i)`-per-index re-scan.
     if type_name == "List[Float64]":
         return [
-            f"fn {fn_name}(token: String) raises -> {type_name}:",
+            f"def {fn_name}(token: String) raises -> {type_name}:",
             f"{INDENT}return json_parse_float64_list(token)",
             "",
         ]
     return [
-        f"fn {fn_name}(token: String) raises -> {type_name}:",
+        f"def {fn_name}(token: String) raises -> {type_name}:",
         f'{INDENT}var wrapped = "{{\\"v\\":" + token + "}}"',
         f'{INDENT}var array_json = json_get_array(wrapped, "v")',
         f"{INDENT}var _elem_tokens = json_array_tokens(array_json)",
@@ -364,7 +364,7 @@ def _emit_struct_parse_function(
     spec = struct_specs[type_name]
     fn_name = _parse_fn_name(type_name)
     lines = [
-        f"fn {fn_name}(token: String) raises -> {type_name}:",
+        f"def {fn_name}(token: String) raises -> {type_name}:",
         f'{INDENT}var values_json = json_get_array(token, "{_STRUCT_ENVELOPE_VALUES_KEY}")',
         f"{INDENT}if json_array_len(values_json) != {len(spec.fields)}:",
         (
@@ -423,19 +423,19 @@ def _emit_scalar_to_json_function(type_name: str) -> list[str]:
     fn_name = _to_json_fn_name(type_name)
     if type_name == "Bool":
         return [
-            f"fn {fn_name}(value: Bool) raises -> String:",
+            f"def {fn_name}(value: Bool) raises -> String:",
             f'{INDENT}return "true" if value else "false"',
             "",
         ]
     if type_name == "String":
         return [
-            f"fn {fn_name}(value: String) raises -> String:",
+            f"def {fn_name}(value: String) raises -> String:",
             f'{INDENT}return "\\"" + _escape_json_string(value) + "\\""',
             "",
         ]
     if type_name == "None":
         return [
-            f"fn {fn_name}() raises -> String:",
+            f"def {fn_name}() raises -> String:",
             f'{INDENT}return "null"',
             "",
         ]
@@ -452,7 +452,7 @@ def _emit_scalar_to_json_function(type_name: str) -> list[str]:
         # arguments -- 5488 emitted result sites in total -- rather than only bare returns.
         finite_fn = "_is_finite_f64" if type_name == "Float64" else "_is_finite_f32"
         return [
-            f"fn {fn_name}(value: {type_name}) raises -> String:",
+            f"def {fn_name}(value: {type_name}) raises -> String:",
             f"{INDENT}if not {finite_fn}(value):",
             f'{INDENT * 2}raise Error("non_finite_result")',
             f"{INDENT}return String(value)",
@@ -460,7 +460,7 @@ def _emit_scalar_to_json_function(type_name: str) -> list[str]:
         ]
     if type_name in {"Int", "UInt8", "UInt16", "UInt32", "UInt64"}:
         return [
-            f"fn {fn_name}(value: {type_name}) raises -> String:",
+            f"def {fn_name}(value: {type_name}) raises -> String:",
             f"{INDENT}return String(value)",
             "",
         ]
@@ -472,7 +472,7 @@ def _emit_list_to_json_function(type_name: str) -> list[str]:
     inner_json = _to_json_fn_name(inner_type)
     fn_name = _to_json_fn_name(type_name)
     return [
-        f"fn {fn_name}(value: {type_name}) raises -> String:",
+        f"def {fn_name}(value: {type_name}) raises -> String:",
         f'{INDENT}var result = String("[")',
         f"{INDENT}for i in range(len(value)):",
         f"{INDENT * 2}if i > 0:",
@@ -494,7 +494,7 @@ def _emit_struct_to_json_function(
     fn_name = _to_json_fn_name(type_name)
     display = (display_names or {}).get(type_name, type_name)
     lines = [
-        f"fn {fn_name}(value: {type_name}) raises -> String:",
+        f"def {fn_name}(value: {type_name}) raises -> String:",
         f'{INDENT}var result = String("{{\\"{_STRUCT_ENVELOPE_TYPE_KEY}\\":\\"{display}\\",\\"{_STRUCT_ENVELOPE_VALUES_KEY}\\":[")',
     ]
     for index, field in enumerate(spec.fields):
@@ -552,7 +552,7 @@ def _emit_imports(modules: tuple[RuntimeLibraryModule, ...]) -> list[str]:
 def _emit_module_dispatch(module: RuntimeLibraryModule) -> list[str]:
     helper_name = f"_dispatch_{_module_dispatch_name(module.import_path)}"
     lines = [
-        f"fn {helper_name}(function_name: String, args_array: String) raises -> String:",
+        f"def {helper_name}(function_name: String, args_array: String) raises -> String:",
         f"{INDENT}var arg_count = json_array_len(args_array)",
     ]
     for function in module.functions:
@@ -828,7 +828,7 @@ def render_dispatch_source(
         lines.append("")
     lines.extend(
         [
-            "fn _unquote_json_string(token: String) -> String:",
+            "def _unquote_json_string(token: String) -> String:",
             f"{INDENT}var n = len(token)",
             f"{INDENT}if n < 2:",
             f"{INDENT * 2}return token",
@@ -860,7 +860,7 @@ def render_dispatch_source(
             f"{INDENT * 2}i += 1",
             f"{INDENT}return result",
             "",
-            "fn _escape_json_string(value: String) -> String:",
+            "def _escape_json_string(value: String) -> String:",
             f'{INDENT}var result = String("")',
             f"{INDENT}var bytes = value.as_bytes()",
             f"{INDENT}for i in range(len(value)):",
@@ -885,18 +885,18 @@ def render_dispatch_source(
             f"{INDENT * 3}result += chr(Int(b))",
             f"{INDENT}return result",
             "",
-            "fn _json_hex_digit(v: Int) -> String:",
+            "def _json_hex_digit(v: Int) -> String:",
             f"{INDENT}if v < 10:",
             f"{INDENT * 2}return chr(48 + v)",
             f"{INDENT}return chr(55 + v)",
             "",
-            "fn _success_json(result_json: String) -> String:",
+            "def _success_json(result_json: String) -> String:",
             f'{INDENT}return "{{\\"result\\":" + result_json + "}}"',
             "",
-            "fn _success_with_mutated_args_json(result_json: String, mutated_args_json: String) -> String:",
+            "def _success_with_mutated_args_json(result_json: String, mutated_args_json: String) -> String:",
             f'{INDENT}return "{{\\"result\\":" + result_json + ",\\"mutated_args\\":" + mutated_args_json + "}}"',
             "",
-            "fn _error_json(code: String, message: String) -> String:",
+            "def _error_json(code: String, message: String) -> String:",
             (
                 f'{INDENT}return "{{\\"error\\":\\"" + code + ": " + _escape_json_string(message) '
                 '+ "\\",\\"error_code\\":\\"" + code + "\\",\\"error_message\\":\\"" '
@@ -909,10 +909,10 @@ def render_dispatch_source(
             "# a non-finite value anywhere in a frame destroys the WHOLE frame rather than the one",
             "# field holding it. Measured on a compiled worker: the client's json.loads raised, the",
             "# session layer terminated the process, and every resident dataset went with it.",
-            "fn _is_finite_f64(value: Float64) -> Bool:",
+            "def _is_finite_f64(value: Float64) -> Bool:",
             f"{INDENT}return (value - value) == 0.0",
             "",
-            "fn _is_finite_f32(value: Float32) -> Bool:",
+            "def _is_finite_f32(value: Float32) -> Bool:",
             f"{INDENT}return (value - value) == Float32(0.0)",
             "",
         ]
@@ -933,7 +933,7 @@ def render_dispatch_source(
         lines.extend(_emit_module_dispatch(module))
     lines.extend(
         [
-            "fn dispatch_runtime_library(raw: String) raises -> String:",
+            "def dispatch_runtime_library(raw: String) raises -> String:",
             f'{INDENT}var module_name = json_get_string(raw, "module")',
             f"{INDENT}if len(module_name) == 0:",
             (

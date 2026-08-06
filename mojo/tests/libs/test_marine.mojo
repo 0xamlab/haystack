@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from marine import seawater_density, wave_speed_deep, wave_speed_shallow, wave_period, significant_wave_height, tidal_range, mixed_layer_depth_estimate, ekman_depth, coriolis_parameter, buoyancy_frequency, salinity_from_conductivity, ocean_pressure_at_depth
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

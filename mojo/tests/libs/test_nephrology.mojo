@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from nephrology import gfr_ckd_epi, creatinine_clearance_cockroft, fractional_excretion_sodium, urine_anion_gap, transtubular_potassium_gradient, renal_plasma_flow, filtration_fraction, osmolar_clearance, free_water_clearance, protein_creatinine_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

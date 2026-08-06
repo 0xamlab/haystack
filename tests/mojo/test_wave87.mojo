@@ -49,11 +49,11 @@ from std.math import abs as fabs
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Distillation Tests ───────────────────────────────────────────────────────
 
 
-fn test_distillation() raises:
+def test_distillation() raises:
     # relative_volatility: y=0.6, x=0.4 → α = (0.6/0.4)/(0.4/0.6) = 1.5/0.6667 = 2.25
     assert_true(approx_eq(relative_volatility(0.6, 0.4), 2.25), "rel vol 0.6/0.4")
     # y=0.5, x=0.5 → α = 1.0
@@ -127,7 +127,7 @@ fn test_distillation() raises:
 # ── LiDAR Tests ──────────────────────────────────────────────────────────────
 
 
-fn test_lidar() raises:
+def test_lidar() raises:
     # range_from_tof: t=1e-6s, c=3e8 → R = 150m
     assert_true(approx_eq(range_from_tof(1.0e-6), 150.0), "tof 1us = 150m")
     assert_true(approx_eq(range_from_tof(2.0e-6), 300.0), "tof 2us = 300m")
@@ -185,7 +185,7 @@ fn test_lidar() raises:
 # ── Archaeology Tests ────────────────────────────────────────────────────────
 
 
-fn test_archaeology() raises:
+def test_archaeology() raises:
     # radiocarbon_age_bp: ratio=0.5 → Age = -ln(0.5)/1.21e-4 ≈ 5730 years
     var age = radiocarbon_age_bp(0.5)
     assert_true(age > 5700.0 and age < 5760.0, "c14 half-life")
@@ -243,7 +243,7 @@ fn test_archaeology() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 87 tests — Distillation, LiDAR, Archaeology")
     test_distillation()
     test_lidar()

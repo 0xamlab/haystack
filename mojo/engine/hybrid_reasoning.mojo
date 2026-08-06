@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn ml_simulation_blend(
+def ml_simulation_blend(
     ml_prediction: Float64, simulation_output: Float64,
     ml_confidence: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn ml_simulation_blend(
     return ml_confidence * ml_prediction + (1.0 - ml_confidence) * simulation_output
 
 
-fn optimization_objective_gate(
+def optimization_objective_gate(
     ml_feasibility_score: Float64, feasibility_threshold: Float64,
     objective_value: Float64
 ) -> Float64:
@@ -57,7 +57,7 @@ fn optimization_objective_gate(
     return objective_value
 
 
-fn rule_violation_penalty(
+def rule_violation_penalty(
     constraint_value: Float64, constraint_limit: Float64,
     penalty_coefficient: Float64
 ) -> Float64:
@@ -79,7 +79,7 @@ fn rule_violation_penalty(
     return penalty_coefficient * violation * violation
 
 
-fn simulation_rollout_value(
+def simulation_rollout_value(
     immediate_reward: Float64, rollout_return: Float64,
     discount: Float64, ml_value_estimate: Float64,
     blend_weight: Float64
@@ -102,7 +102,7 @@ fn simulation_rollout_value(
     return blend_weight * sim_value + (1.0 - blend_weight) * ml_value_estimate
 
 
-fn ml_confidence_simulation_cost(
+def ml_confidence_simulation_cost(
     ml_confidence: Float64, simulation_cost: Float64,
     expected_gain_from_simulation: Float64
 ) -> Float64:
@@ -121,7 +121,7 @@ fn ml_confidence_simulation_cost(
     return (1.0 - ml_confidence) * expected_gain_from_simulation - simulation_cost
 
 
-fn counterfactual_reasoning_score(
+def counterfactual_reasoning_score(
     factual_outcome: Float64, counterfactual_outcome: Float64,
     intervention_cost: Float64
 ) -> Float64:
@@ -140,7 +140,7 @@ fn counterfactual_reasoning_score(
     return (counterfactual_outcome - factual_outcome) / (intervention_cost + 1.0)
 
 
-fn symbolic_constraint_score(
+def symbolic_constraint_score(
     predicate_value: Float64, lower_bound: Float64,
     upper_bound: Float64
 ) -> Float64:
@@ -164,7 +164,7 @@ fn symbolic_constraint_score(
     return exp(-dist)
 
 
-fn reasoning_chain_coherence(
+def reasoning_chain_coherence(
     step_confidence: Float64, n_steps: Float64,
     dependency_strength: Float64
 ) -> Float64:
@@ -187,7 +187,7 @@ fn reasoning_chain_coherence(
     return chain_prob * dependency_strength
 
 
-fn hybrid_uncertainty_estimate(
+def hybrid_uncertainty_estimate(
     epistemic_uncertainty: Float64, aleatoric_uncertainty: Float64,
     model_disagreement: Float64
 ) -> Float64:
@@ -208,7 +208,7 @@ fn hybrid_uncertainty_estimate(
     return combined + model_disagreement
 
 
-fn meta_reasoning_switch(
+def meta_reasoning_switch(
     problem_complexity: Float64, time_budget_ms: Float64,
     ml_latency_ms: Float64, sim_latency_ms: Float64
 ) -> Float64:

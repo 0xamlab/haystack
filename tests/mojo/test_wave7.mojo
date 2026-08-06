@@ -21,7 +21,7 @@ from net.url import (
 )
 
 
-fn _abs(v: Float64) -> Float64:
+def _abs(v: Float64) -> Float64:
     if v < 0.0:
         return -v
     return v

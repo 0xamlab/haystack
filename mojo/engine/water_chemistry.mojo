@@ -16,11 +16,11 @@ Public API:
 from std.math import log, exp, pow
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
-fn ph_from_hydrogen_ion(h_concentration: Float64) -> Float64:
+def ph_from_hydrogen_ion(h_concentration: Float64) -> Float64:
     """pH from hydrogen ion concentration.
 
     pH = -log10([H+])
@@ -36,7 +36,7 @@ fn ph_from_hydrogen_ion(h_concentration: Float64) -> Float64:
     return -_log10(h_concentration)
 
 
-fn hydrogen_ion_from_ph(ph: Float64) -> Float64:
+def hydrogen_ion_from_ph(ph: Float64) -> Float64:
     """[H+] from pH value: [H+] = 10^(-pH).
 
     Args:
@@ -48,7 +48,7 @@ fn hydrogen_ion_from_ph(ph: Float64) -> Float64:
     return pow(10.0, -ph)
 
 
-fn water_hardness(
+def water_hardness(
     calcium_mg_l: Float64, magnesium_mg_l: Float64
 ) -> Float64:
     """Total hardness as CaCO3 equivalent.
@@ -65,7 +65,7 @@ fn water_hardness(
     return 2.497 * calcium_mg_l + 4.118 * magnesium_mg_l
 
 
-fn alkalinity_as_caco3(
+def alkalinity_as_caco3(
     bicarbonate_mg_l: Float64, carbonate_mg_l: Float64, hydroxide_mg_l: Float64
 ) -> Float64:
     """Total alkalinity as CaCO3.
@@ -83,7 +83,7 @@ fn alkalinity_as_caco3(
     return 0.82 * bicarbonate_mg_l + 1.67 * carbonate_mg_l + 2.94 * hydroxide_mg_l
 
 
-fn langelier_saturation_index(
+def langelier_saturation_index(
     ph: Float64, ph_saturation: Float64
 ) -> Float64:
     """Langelier Saturation Index: LSI = pH - pHs.
@@ -98,7 +98,7 @@ fn langelier_saturation_index(
     return ph - ph_saturation
 
 
-fn turbidity_ntu_to_sdd(turbidity_ntu: Float64) -> Float64:
+def turbidity_ntu_to_sdd(turbidity_ntu: Float64) -> Float64:
     """Estimate Secchi disk depth from turbidity.
 
     Approximate empirical relationship: SDD ≈ 1.13 / NTU^0.59
@@ -114,7 +114,7 @@ fn turbidity_ntu_to_sdd(turbidity_ntu: Float64) -> Float64:
     return 1.13 / pow(turbidity_ntu, 0.59)
 
 
-fn chlorine_demand(
+def chlorine_demand(
     chlorine_applied: Float64, chlorine_residual: Float64
 ) -> Float64:
     """Chlorine demand of a water sample.
@@ -134,7 +134,7 @@ fn chlorine_demand(
     return demand
 
 
-fn dissolved_oxygen_deficit(do_saturation: Float64, do_actual: Float64) -> Float64:
+def dissolved_oxygen_deficit(do_saturation: Float64, do_actual: Float64) -> Float64:
     """Dissolved oxygen deficit from saturation.
 
     D = DO_sat - DO_actual
@@ -152,7 +152,7 @@ fn dissolved_oxygen_deficit(do_saturation: Float64, do_actual: Float64) -> Float
     return deficit
 
 
-fn conductivity_tds(conductivity_us_cm: Float64, conversion_factor: Float64) -> Float64:
+def conductivity_tds(conductivity_us_cm: Float64, conversion_factor: Float64) -> Float64:
     """Total dissolved solids estimate from electrical conductivity.
 
     TDS = EC × f  (f typically 0.55–0.75)
@@ -169,7 +169,7 @@ fn conductivity_tds(conductivity_us_cm: Float64, conversion_factor: Float64) -> 
     return conductivity_us_cm * conversion_factor
 
 
-fn bod_removal(
+def bod_removal(
     influent_bod: Float64, effluent_bod: Float64
 ) -> Float64:
     """BOD removal efficiency of a treatment system.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from anomaly import percentile, median, mad, zscore_detect, iqr_detect, modified_zscore_detect, isolation_score, exp_approx, grubbs_test_statistic, count_anomalies
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

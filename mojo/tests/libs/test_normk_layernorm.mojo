@@ -28,11 +28,11 @@ from normk.layernorm import (
 )
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic values in roughly [-1, 1] so a failure reproduces exactly."""
     var o = List[Float64](capacity=n)
     for i in range(n):

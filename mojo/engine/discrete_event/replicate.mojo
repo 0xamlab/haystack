@@ -128,14 +128,14 @@ struct ReplicationCI(Copyable, Movable):
     var half_width: Float64
 
 
-fn _ci_refusal(code: Int, n_reps: Int, level: Float64) -> ReplicationCI:
+def _ci_refusal(code: Int, n_reps: Int, level: Float64) -> ReplicationCI:
     return ReplicationCI(
         code, n_reps, level, False, 0.0, False, 0.0, False, 0.0, False, 0.0, False, 0.0, 0.0,
         False, 0.0,
     )
 
 
-fn _ci_of(estimates: List[Float64], level: Float64) -> ReplicationCI:
+def _ci_of(estimates: List[Float64], level: Float64) -> ReplicationCI:
     """The interval over ALL of `estimates`, used internally so the four metrics share one path.
 
     Takes the whole list rather than a count, which removes the count/length relation entirely
@@ -186,7 +186,7 @@ fn _ci_of(estimates: List[Float64], level: Float64) -> ReplicationCI:
     )
 
 
-fn replicate_ci_flat(
+def replicate_ci_flat(
     estimates: List[Float64], n_reps: Int, level: Float64
 ) -> ReplicationCI:
     """A Student-t interval over the first `n_reps` per-replication estimates.
@@ -283,7 +283,7 @@ struct Mm1Validation(Copyable, Movable):
     var work_charged: Int
 
 
-fn _validation_refusal(code: Int) -> Mm1Validation:
+def _validation_refusal(code: Int) -> Mm1Validation:
     return Mm1Validation(
         code, 0, 0, 0, 0, 0, 0, 0.0, False, 0.0, 0, 0, 0, 0,
         0.0, 0.0, 0.0, 0.0,
@@ -295,7 +295,7 @@ fn _validation_refusal(code: Int) -> Mm1Validation:
     )
 
 
-fn _covers(ci: ReplicationCI, target: Float64) -> Bool:
+def _covers(ci: ReplicationCI, target: Float64) -> Bool:
     """True when a finite `target` lies inside a computed interval.
 
     No tolerance: interval membership is exact, and widening it by an epsilon would report
@@ -308,7 +308,7 @@ fn _covers(ci: ReplicationCI, target: Float64) -> Bool:
     return target >= ci.ci_lower and target <= ci.ci_upper
 
 
-fn replicate_mm1_flat(
+def replicate_mm1_flat(
     arrival_rate: Float64, service_rate: Float64, n_customers: Int, capacity: Int,
     n_reps: Int, seed: Int, level: Float64, batch_size: Int,
 ) -> Mm1Validation:

@@ -109,11 +109,11 @@ comptime EPS: Float64 = 1.0e-6
 comptime THETA: Float64 = 10000.0
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo(n: Int, seed: Int, amp: Float64) -> List[Float64]:
+def _pseudo(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     """Deterministic small values. Two coprime multipliers so a wrong stride does not alias into a
     pattern that happens to give the same dot product."""
     var o = List[Float64](capacity=n)
@@ -124,7 +124,7 @@ fn _pseudo(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     return o^
 
 
-fn _gains(n: Int, seed: Int) -> List[Float64]:
+def _gains(n: Int, seed: Int) -> List[Float64]:
     """Norm gains near 1.0 — a real checkpoint's are, and a gain of 0 would hide a wrong index."""
     var o = List[Float64](capacity=n)
     for i in range(n):
@@ -132,14 +132,14 @@ fn _gains(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
-fn _row(table: List[Float64], row: Int, width: Int) -> List[Float64]:
+def _row(table: List[Float64], row: Int, width: Int) -> List[Float64]:
     var o = List[Float64](capacity=width)
     for i in range(width):
         o.append(table[row * width + i])
     return o^
 
 
-fn _add(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def _add(a: List[Float64], b: List[Float64]) -> List[Float64]:
     var o = List[Float64](capacity=len(a))
     for i in range(len(a)):
         o.append(a[i] + b[i])
@@ -155,7 +155,7 @@ struct _Ref(Copyable, Movable):
     var ok: Bool
 
 
-fn _cpu_reference(
+def _cpu_reference(
     embed: List[Float64], final_norm: List[Float64],
     ln1: List[List[Float64]], ln2: List[List[Float64]],
     qn: List[List[Float64]], kn: List[List[Float64]],

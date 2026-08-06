@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from llm_sampling import temperature_scale, top_k_threshold, top_p_cumulative, greedy_token_id, beam_score_update, repetition_penalty_scale, length_penalty, pow_approx, min_p_threshold, typical_p_score, token_frequency_penalty
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

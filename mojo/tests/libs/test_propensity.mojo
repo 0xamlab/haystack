@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from propensity import nearest_neighbor_match, caliper_match, matched_ate, balance_check, propensity_overlap, trimmed_sample, stratified_estimate, match_quality
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -16,33 +16,33 @@ Public API:
 """
 
 
-fn _clamp_non_negative_int(value: Int) -> Int:
+def _clamp_non_negative_int(value: Int) -> Int:
     if value < 0:
         return 0
     return value
 
 
-fn _clamp_non_negative_float(value: Float64) -> Float64:
+def _clamp_non_negative_float(value: Float64) -> Float64:
     if value < 0.0:
         return 0.0
     return value
 
 
-fn _ceil_positive_ratio(numerator: Int, denominator: Float64) -> Int:
+def _ceil_positive_ratio(numerator: Int, denominator: Float64) -> Int:
     if numerator <= 0 or denominator <= 0.0:
         return 0
     return Int((Float64(numerator) + denominator - 1.0) / denominator)
 
 
-fn prompt_token_estimate(char_count: Int, chars_per_token: Float64) -> Int:
+def prompt_token_estimate(char_count: Int, chars_per_token: Float64) -> Int:
     return _ceil_positive_ratio(char_count, chars_per_token)
 
 
-fn completion_token_estimate(char_count: Int, chars_per_token: Float64) -> Int:
+def completion_token_estimate(char_count: Int, chars_per_token: Float64) -> Int:
     return _ceil_positive_ratio(char_count, chars_per_token)
 
 
-fn kv_cache_bytes(
+def kv_cache_bytes(
     batch_size: Int,
     sequence_length: Int,
     num_layers: Int,
@@ -64,7 +64,7 @@ fn kv_cache_bytes(
     )
 
 
-fn attention_flops(
+def attention_flops(
     batch_size: Int,
     sequence_length: Int,
     num_layers: Int,
@@ -87,7 +87,7 @@ fn attention_flops(
     )
 
 
-fn prefill_latency_estimate(
+def prefill_latency_estimate(
     prompt_tokens: Int,
     tokens_per_second: Float64,
     fixed_overhead_ms: Float64,
@@ -99,7 +99,7 @@ fn prefill_latency_estimate(
     return safe_overhead + Float64(safe_prompt_tokens) * 1000.0 / tokens_per_second
 
 
-fn decode_latency_estimate(
+def decode_latency_estimate(
     completion_tokens: Int,
     tokens_per_second: Float64,
     fixed_overhead_ms: Float64,
@@ -111,7 +111,7 @@ fn decode_latency_estimate(
     return safe_overhead + Float64(safe_completion_tokens) * 1000.0 / tokens_per_second
 
 
-fn request_cost_estimate(
+def request_cost_estimate(
     prompt_tokens: Int,
     completion_tokens: Int,
     prompt_price_per_1k: Float64,
@@ -127,7 +127,7 @@ fn request_cost_estimate(
     ) / 1000.0
 
 
-fn cost_latency_frontier_score(
+def cost_latency_frontier_score(
     cost_usd: Float64,
     latency_ms: Float64,
     cost_weight: Float64,
@@ -140,7 +140,7 @@ fn cost_latency_frontier_score(
     return 1.0 / (1.0 + safe_cost * safe_cost_weight + safe_latency * safe_latency_weight)
 
 
-fn batch_efficiency_estimate(batch_size: Int, saturation_batch_size: Int) -> Float64:
+def batch_efficiency_estimate(batch_size: Int, saturation_batch_size: Int) -> Float64:
     var safe_batch = _clamp_non_negative_int(batch_size)
     var safe_saturation = _clamp_non_negative_int(saturation_batch_size)
     if safe_batch == 0 or safe_saturation == 0:
@@ -151,7 +151,7 @@ fn batch_efficiency_estimate(batch_size: Int, saturation_batch_size: Int) -> Flo
     return ratio
 
 
-fn queue_delay_estimate(queue_depth: Int, service_rate_rps: Float64, concurrency: Int) -> Float64:
+def queue_delay_estimate(queue_depth: Int, service_rate_rps: Float64, concurrency: Int) -> Float64:
     var safe_queue = _clamp_non_negative_int(queue_depth)
     var safe_concurrency = _clamp_non_negative_int(concurrency)
     if safe_queue == 0 or safe_concurrency == 0 or service_rate_rps <= 0.0:
@@ -159,7 +159,7 @@ fn queue_delay_estimate(queue_depth: Int, service_rate_rps: Float64, concurrency
     return Float64(safe_queue) * 1000.0 / (service_rate_rps * Float64(safe_concurrency))
 
 
-fn speculative_decode_gain_estimate(
+def speculative_decode_gain_estimate(
     acceptance_rate: Float64,
     draft_tokens_per_step: Int,
     base_decode_tps: Float64,

@@ -19,7 +19,7 @@ Public API:
 # ── AES Forward S-Box (256 entries) ──────────────────────────────────────────
 
 
-fn _build_sbox() -> List[Int]:
+def _build_sbox() -> List[Int]:
     """Build the standard AES forward S-Box table."""
     var s = List[Int](capacity=256)
     s.append(0x63); s.append(0x7C); s.append(0x77); s.append(0x7B)
@@ -89,7 +89,7 @@ fn _build_sbox() -> List[Int]:
     return s^
 
 
-fn _build_inv_sbox() -> List[Int]:
+def _build_inv_sbox() -> List[Int]:
     """Build the AES inverse S-Box by inverting the forward S-Box."""
     var fwd = _build_sbox()
     var inv = List[Int](capacity=256)
@@ -103,21 +103,21 @@ fn _build_inv_sbox() -> List[Int]:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-fn aes_sbox(byte: Int) -> Int:
+def aes_sbox(byte: Int) -> Int:
     """AES forward S-Box lookup for a single byte (0–255)."""
     var table = _build_sbox()
     var idx = byte & 0xFF
     return table[idx]
 
 
-fn aes_inv_sbox(byte: Int) -> Int:
+def aes_inv_sbox(byte: Int) -> Int:
     """AES inverse S-Box lookup for a single byte (0–255)."""
     var table = _build_inv_sbox()
     var idx = byte & 0xFF
     return table[idx]
 
 
-fn sub_bytes(state: List[Int]) -> List[Int]:
+def sub_bytes(state: List[Int]) -> List[Int]:
     """Apply forward S-Box to each byte of a 16-byte state."""
     var table = _build_sbox()
     var out = List[Int](capacity=len(state))
@@ -126,7 +126,7 @@ fn sub_bytes(state: List[Int]) -> List[Int]:
     return out^
 
 
-fn inv_sub_bytes(state: List[Int]) -> List[Int]:
+def inv_sub_bytes(state: List[Int]) -> List[Int]:
     """Apply inverse S-Box to each byte of a 16-byte state."""
     var table = _build_inv_sbox()
     var out = List[Int](capacity=len(state))
@@ -135,7 +135,7 @@ fn inv_sub_bytes(state: List[Int]) -> List[Int]:
     return out^
 
 
-fn shift_rows(state: List[Int]) -> List[Int]:
+def shift_rows(state: List[Int]) -> List[Int]:
     """AES ShiftRows on 4×4 state (row-major, 16 bytes).
 
     Row 0: no shift
@@ -161,7 +161,7 @@ fn shift_rows(state: List[Int]) -> List[Int]:
     return out^
 
 
-fn inv_shift_rows(state: List[Int]) -> List[Int]:
+def inv_shift_rows(state: List[Int]) -> List[Int]:
     """Inverse ShiftRows on 4×4 state (row-major, 16 bytes).
 
     Row 0: no shift
@@ -187,7 +187,7 @@ fn inv_shift_rows(state: List[Int]) -> List[Int]:
     return out^
 
 
-fn xor_bytes(a: List[Int], b: List[Int]) -> List[Int]:
+def xor_bytes(a: List[Int], b: List[Int]) -> List[Int]:
     """XOR two byte lists element-wise."""
     var n = len(a)
     if len(b) < n:
@@ -198,6 +198,6 @@ fn xor_bytes(a: List[Int], b: List[Int]) -> List[Int]:
     return out^
 
 
-fn add_round_key(state: List[Int], key: List[Int]) -> List[Int]:
+def add_round_key(state: List[Int], key: List[Int]) -> List[Int]:
     """XOR state with round key (same as xor_bytes for AES)."""
     return xor_bytes(state, key)

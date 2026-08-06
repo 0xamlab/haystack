@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from image_palette import dominant_palette_rgb255, palette_size_estimate, palette_entropy, mean_saturation_rgb255, warm_color_ratio_rgb255, palette_contrast_score, accent_color_hex, is_monochrome_palette
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -268,7 +268,7 @@ struct PolicyAudit(Copyable, Movable):
     var max_row_error: Float64
 
 
-fn _audit_refusal(
+def _audit_refusal(
     code: Int, kind: Int, arity: Int, n_factors: Int, n_actions: Int, n_states: Int
 ) -> PolicyAudit:
     return PolicyAudit(
@@ -304,7 +304,7 @@ struct PolicyAction(Copyable, Movable):
     var n_tied: Int
 
 
-fn _action_refusal(code: Int, kind: Int) -> PolicyAction:
+def _action_refusal(code: Int, kind: Int) -> PolicyAction:
     return PolicyAction(code, kind, -1, -1, False, POLICY_NO_ACTION, False, 0.0, False, 0)
 
 
@@ -333,7 +333,7 @@ struct PolicyTable(Copyable, Movable):
     var actions: List[Int]
 
 
-fn _table_refusal(code: Int) -> PolicyTable:
+def _table_refusal(code: Int) -> PolicyTable:
     return PolicyTable(code, STRAT_EXACT_UNKNOWN, 0, 0, False, List[Int]())
 
 
@@ -362,7 +362,7 @@ struct LinearScore(Copyable, Movable):
     var scores: List[Float64]
 
 
-fn _linear_refusal(code: Int) -> LinearScore:
+def _linear_refusal(code: Int) -> LinearScore:
     return LinearScore(
         code, 0, 0, False, POLICY_NO_ACTION, False, 0, False, 0.0, List[Float64]()
     )
@@ -402,14 +402,14 @@ struct PolicyValues(Copyable, Movable):
     var work_charged: Int
 
 
-fn _values_refusal(code: Int) -> PolicyValues:
+def _values_refusal(code: Int) -> PolicyValues:
     return PolicyValues(
         code, STRAT_EXACT_UNKNOWN, 0, 0, 0.0, 0.0, False, False, 0.0, False,
         List[Float64](), -1,
     )
 
 
-fn policy_tie_rule() -> String:
+def policy_tie_rule() -> String:
     """The tie conventions this module resolves by. Deterministic, zero-argument.
 
     `argmax:lowest_index;threshold:closed_at_threshold/v1`
@@ -430,7 +430,7 @@ fn policy_tie_rule() -> String:
     return String("argmax:lowest_index;threshold:closed_at_threshold/v1")
 
 
-fn _action_from_param(v: Float64, n_actions: Int) -> Int:
+def _action_from_param(v: Float64, n_actions: Int) -> Int:
     """Decode a parameter cell as an action index, or -1 if it is not one of this environment's.
 
     The range test comes FIRST and the conversion second, deliberately: `Int(1e300)` is not a
@@ -448,7 +448,7 @@ fn _action_from_param(v: Float64, n_actions: Int) -> Int:
     return a
 
 
-fn policy_validate_flat(
+def policy_validate_flat(
     params: List[Float64], n_strategies: Int, kind: Int, n_factors: Int,
     n_actions: Int, n_states: Int, abs_tol: Float64,
 ) -> PolicyAudit:
@@ -582,7 +582,7 @@ fn policy_validate_flat(
     )
 
 
-fn policy_action_flat(
+def policy_action_flat(
     params: List[Float64], n_strategies: Int, strategy: Int, kind: Int,
     factors: List[Float64], n_factors: Int, state: Int, n_actions: Int,
     n_states: Int, abs_tol: Float64,
@@ -707,7 +707,7 @@ fn policy_action_flat(
     )
 
 
-fn policy_tabular_actions(
+def policy_tabular_actions(
     params: List[Float64], n_strategies: Int, strategy: Int, n_actions: Int,
     n_states: Int,
 ) -> PolicyTable:
@@ -756,7 +756,7 @@ fn policy_tabular_actions(
     )
 
 
-fn policy_linear_action(
+def policy_linear_action(
     weights: List[Float64], n_actions: Int, n_factors: Int,
     factors: List[Float64], abs_tol: Float64,
 ) -> LinearScore:
@@ -827,7 +827,7 @@ fn policy_linear_action(
     )
 
 
-fn policy_sample_mixed(
+def policy_sample_mixed(
     params: List[Float64], n_strategies: Int, strategy: Int, n_actions: Int,
     master_seed: Int, scenario_family: Int, scenario: Int, step: Int,
     abs_tol: Float64,
@@ -912,7 +912,7 @@ fn policy_sample_mixed(
     )
 
 
-fn policy_from_q_flat(q_flat: List[Float64], n_states: Int, n_actions: Int) -> PolicyTable:
+def policy_from_q_flat(q_flat: List[Float64], n_states: Int, n_actions: Int) -> PolicyTable:
     """The greedy policy of a Q-table, through the FROZEN `reinforcement.policy_from_q`.
 
     Not reimplemented. This function is the guard and the flattening: the frozen kernel takes a
@@ -963,7 +963,7 @@ fn policy_from_q_flat(q_flat: List[Float64], n_states: Int, n_actions: Int) -> P
     )
 
 
-fn policy_evaluate_tabular(
+def policy_evaluate_tabular(
     actions: List[Int], n_states: Int, n_actions: Int,
     rewards_flat: List[Float64], transitions_flat: List[Int], gamma: Float64,
     tol: Float64,

@@ -52,7 +52,7 @@ from geospatial.join import (
 from geospatial.polygon import GEO_PIP_BOUNDARY, GEO_PIP_INSIDE, GEO_PIP_OUTSIDE
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[geospatial.join]")

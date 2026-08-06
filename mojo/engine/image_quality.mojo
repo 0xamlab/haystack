@@ -33,11 +33,11 @@ from image_resize import reshape_to_grid
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _clamp01(x: Float64) -> Float64:
+def _clamp01(x: Float64) -> Float64:
     if x < 0.0:
         return 0.0
     if x > 1.0:
@@ -45,7 +45,7 @@ fn _clamp01(x: Float64) -> Float64:
     return x
 
 
-fn _laplacian_kernel() -> List[List[Float64]]:
+def _laplacian_kernel() -> List[List[Float64]]:
     """4-neighbour Laplacian [[0,1,0],[1,-4,1],[0,1,0]]."""
     var k = List[List[Float64]]()
     var r0 = List[Float64]()
@@ -58,7 +58,7 @@ fn _laplacian_kernel() -> List[List[Float64]]:
     return k^
 
 
-fn _median(values: List[Float64]) -> Float64:
+def _median(values: List[Float64]) -> Float64:
     var n = len(values)
     if n == 0:
         return 0.0
@@ -80,7 +80,7 @@ fn _median(values: List[Float64]) -> Float64:
 # ── blur / sharpness ────────────────────────────────────────────────────────────
 
 
-fn blur_score(image: List[List[Float64]]) -> Float64:
+def blur_score(image: List[List[Float64]]) -> Float64:
     """Variance of the Laplacian response. Higher = sharper, lower = blurrier."""
     var lap = convolve_2d(image, _laplacian_kernel())
     var n = 0
@@ -100,7 +100,7 @@ fn blur_score(image: List[List[Float64]]) -> Float64:
     return acc / Float64(n)
 
 
-fn is_blurry(image: List[List[Float64]], threshold: Float64) -> Bool:
+def is_blurry(image: List[List[Float64]], threshold: Float64) -> Bool:
     """True if the Laplacian variance is below threshold (e.g. ~100 for 0-255)."""
     return blur_score(image) < threshold
 
@@ -108,12 +108,12 @@ fn is_blurry(image: List[List[Float64]], threshold: Float64) -> Bool:
 # ── brightness / contrast ───────────────────────────────────────────────────────
 
 
-fn brightness_mean(image: List[List[Float64]]) -> Float64:
+def brightness_mean(image: List[List[Float64]]) -> Float64:
     """Average pixel value (0-255)."""
     return mean_pixel(image)
 
 
-fn contrast_std(image: List[List[Float64]]) -> Float64:
+def contrast_std(image: List[List[Float64]]) -> Float64:
     """Population standard deviation of pixel values."""
     var n = 0
     var s: Float64 = 0.0
@@ -135,7 +135,7 @@ fn contrast_std(image: List[List[Float64]]) -> Float64:
 # ── entropy / uniformity / blankness ────────────────────────────────────────────
 
 
-fn shannon_entropy(image: List[List[Float64]]) -> Float64:
+def shannon_entropy(image: List[List[Float64]]) -> Float64:
     """256-bin intensity entropy in bits (0 = flat, up to 8 = uniform spread)."""
     var bins = histogram(image, 256)
     var total = 0
@@ -152,12 +152,12 @@ fn shannon_entropy(image: List[List[Float64]]) -> Float64:
     return ent
 
 
-fn is_near_blank(image: List[List[Float64]], std_threshold: Float64) -> Bool:
+def is_near_blank(image: List[List[Float64]], std_threshold: Float64) -> Bool:
     """True if pixel variation is below threshold (mostly uniform / empty)."""
     return contrast_std(image) < std_threshold
 
 
-fn uniformity(image: List[List[Float64]]) -> Float64:
+def uniformity(image: List[List[Float64]]) -> Float64:
     """Fraction of pixels falling in the single most-populated 16-bin bucket."""
     var bins = histogram(image, 16)
     var total = 0
@@ -174,7 +174,7 @@ fn uniformity(image: List[List[Float64]]) -> Float64:
 # ── noise ───────────────────────────────────────────────────────────────────────
 
 
-fn noise_estimate(image: List[List[Float64]]) -> Float64:
+def noise_estimate(image: List[List[Float64]]) -> Float64:
     """Robust noise sigma: 1.4826 × MAD of the Laplacian response."""
     var lap = convolve_2d(image, _laplacian_kernel())
     var vals = List[Float64]()
@@ -193,7 +193,7 @@ fn noise_estimate(image: List[List[Float64]]) -> Float64:
 # ── exposure / composite ──────────────────────────────────────────────────────
 
 
-fn is_over_or_under_exposed(
+def is_over_or_under_exposed(
     image: List[List[Float64]], low: Float64, high: Float64
 ) -> Bool:
     """True if mean brightness falls outside [low, high]."""
@@ -201,7 +201,7 @@ fn is_over_or_under_exposed(
     return m < low or m > high
 
 
-fn quality_score(image: List[List[Float64]]) -> Float64:
+def quality_score(image: List[List[Float64]]) -> Float64:
     """Composite usability score in [0,1]: 40% sharpness, 30% exposure, 30% entropy."""
     var b = mean_pixel(image)
     var exposure = 1.0 - _abs(b - 128.0) / 128.0
@@ -219,35 +219,35 @@ fn quality_score(image: List[List[Float64]]) -> Float64:
 # unbounded grid, so refuse it with the module's degenerate score.
 
 
-fn blur_score_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def blur_score_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     var npix = len(flat)
     if width <= 0 or height <= 0 or width > npix // height:
         return 0.0
     return blur_score(reshape_to_grid(flat, width, height))
 
 
-fn brightness_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def brightness_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     var npix = len(flat)
     if width <= 0 or height <= 0 or width > npix // height:
         return 0.0
     return brightness_mean(reshape_to_grid(flat, width, height))
 
 
-fn entropy_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def entropy_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     var npix = len(flat)
     if width <= 0 or height <= 0 or width > npix // height:
         return 0.0
     return shannon_entropy(reshape_to_grid(flat, width, height))
 
 
-fn contrast_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def contrast_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     var npix = len(flat)
     if width <= 0 or height <= 0 or width > npix // height:
         return 0.0
     return contrast_std(reshape_to_grid(flat, width, height))
 
 
-fn quality_score_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+def quality_score_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
     var npix = len(flat)
     if width <= 0 or height <= 0 or width > npix // height:
         return 0.0

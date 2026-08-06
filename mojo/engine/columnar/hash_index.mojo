@@ -77,7 +77,7 @@ comptime _FNV_PRIME: UInt64 = 0x100000001B3
 
 
 @always_inline
-fn fnv_fold(h0: UInt64, bits: UInt64) -> UInt64:
+def fnv_fold(h0: UInt64, bits: UInt64) -> UInt64:
     """Fold eight bytes into a running FNV-1a state, low byte first.
 
     This is THE byte loop `hash_bits`, `hash_composite` and `hash_indices` have
@@ -95,7 +95,7 @@ fn fnv_fold(h0: UInt64, bits: UInt64) -> UInt64:
     return h
 
 
-fn normalize_bits(value: Float64) -> UInt64:
+def normalize_bits(value: Float64) -> UInt64:
     """The bit pattern used for hashing and equality, `-0.0` and NaN normalized."""
     if value != value:
         return CANONICAL_NAN_BITS
@@ -105,7 +105,7 @@ fn normalize_bits(value: Float64) -> UInt64:
     return bitcast[DType.uint64](value)
 
 
-fn hash_bits(bits: UInt64) -> UInt64:
+def hash_bits(bits: UInt64) -> UInt64:
     """FNV-1a over the eight bytes of a normalized bit pattern.
 
     FNV-1a rather than a multiply-shift mixer to stay consistent with
@@ -116,11 +116,11 @@ fn hash_bits(bits: UInt64) -> UInt64:
     return fnv_fold(FNV_OFFSET_BASIS, bits)
 
 
-fn hash_float(value: Float64) -> UInt64:
+def hash_float(value: Float64) -> UInt64:
     return hash_bits(normalize_bits(value))
 
 
-fn hash_composite(key: List[Float64], width: Int) -> UInt64:
+def hash_composite(key: List[Float64], width: Int) -> UInt64:
     """One FNV-1a hash over a `width`-wide key tuple, elements normalized.
 
     This is THE hash `CompositeKeyIndex` probes with — its `_hash_key` delegates
@@ -141,7 +141,7 @@ fn hash_composite(key: List[Float64], width: Int) -> UInt64:
     return h
 
 
-fn _next_power_of_two(n: Int) -> Int:
+def _next_power_of_two(n: Int) -> Int:
     var cap = 1
     while cap < n:
         cap = cap << 1
@@ -160,7 +160,7 @@ struct HashIndex(Copyable, Movable):
     var mask: Int
     var count: Int
 
-    fn __init__(out self, initial_capacity: Int = DEFAULT_CAPACITY):
+    def __init__(out self, initial_capacity: Int = DEFAULT_CAPACITY):
         var cap = _next_power_of_two(initial_capacity if initial_capacity > 4 else 4)
         self.slots = List[Int]()
         self.slot_keys = List[UInt64]()
@@ -170,13 +170,13 @@ struct HashIndex(Copyable, Movable):
         self.mask = cap - 1
         self.count = 0
 
-    fn capacity(self) -> Int:
+    def capacity(self) -> Int:
         return len(self.slots)
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         return self.count
 
-    fn _probe(self, bits: UInt64) -> Int:
+    def _probe(self, bits: UInt64) -> Int:
         """Table position holding `bits`, or the first empty position for it.
 
         One function for lookup and insert so the two can never walk different probe
@@ -189,7 +189,7 @@ struct HashIndex(Copyable, Movable):
             pos = (pos + 1) & self.mask
         return pos
 
-    fn find(self, key: Float64) -> Int:
+    def find(self, key: Float64) -> Int:
         """Slot for `key`, or -1. Never inserts."""
         var bits = normalize_bits(key)
         var pos = self._probe(bits)
@@ -197,7 +197,7 @@ struct HashIndex(Copyable, Movable):
             return -1
         return self.slots[pos]
 
-    fn find_bits(self, bits: UInt64, h: UInt64) -> Int:
+    def find_bits(self, bits: UInt64, h: UInt64) -> Int:
         """`find` for a caller that already normalized and hashed. Never inserts.
 
         `bits` MUST be `normalize_bits(key)` and `h` MUST be `hash_bits(bits)` —
@@ -220,10 +220,10 @@ struct HashIndex(Copyable, Movable):
             pos = (pos + 1) & self.mask
         return -1
 
-    fn contains(self, key: Float64) -> Bool:
+    def contains(self, key: Float64) -> Bool:
         return self.find(key) >= 0
 
-    fn _grow(mut self):
+    def _grow(mut self):
         """Double and rehash. Every live key is reinserted, none dropped."""
         var old_slots = self.slots.copy()
         var old_keys = self.slot_keys.copy()
@@ -243,7 +243,7 @@ struct HashIndex(Copyable, Movable):
             self.slots[pos] = old_slots[i]
             self.slot_keys[pos] = old_keys[i]
 
-    fn get_or_assign(mut self, key: Float64, next_slot: Int) -> Int:
+    def get_or_assign(mut self, key: Float64, next_slot: Int) -> Int:
         """The existing slot for `key`, or `next_slot` after assigning it.
 
         The caller supplies the slot number rather than the index generating one, so
@@ -261,7 +261,7 @@ struct HashIndex(Copyable, Movable):
             self._grow()
         return next_slot
 
-    fn get_or_assign_bits(mut self, bits: UInt64, h: UInt64, next_slot: Int) -> Int:
+    def get_or_assign_bits(mut self, bits: UInt64, h: UInt64, next_slot: Int) -> Int:
         """`get_or_assign` for a caller that already normalized and hashed.
 
         `bits` MUST be `normalize_bits(key)` and `h` MUST be `hash_bits(bits)`;
@@ -284,7 +284,7 @@ struct HashIndex(Copyable, Movable):
         return next_slot
 
 
-fn hash_indices(values: List[Float64], indices: List[Int]) -> UInt64:
+def hash_indices(values: List[Float64], indices: List[Int]) -> UInt64:
     """One hash over several positions of a flat list — a composite key, no concat.
 
     `indices` are ABSOLUTE positions into `values`. For a column-major buffer where
@@ -308,7 +308,7 @@ fn hash_indices(values: List[Float64], indices: List[Int]) -> UInt64:
     return h
 
 
-fn row_indices(columns: List[Int], row: Int, n_rows: Int) -> List[Int]:
+def row_indices(columns: List[Int], row: Int, n_rows: Int) -> List[Int]:
     """Absolute positions of `row`'s cells for `columns`, in a column-major buffer.
 
     Pairs with `hash_indices`. Split out so the row arithmetic is visible and testable
@@ -322,7 +322,7 @@ fn row_indices(columns: List[Int], row: Int, n_rows: Int) -> List[Int]:
     return out^
 
 
-fn hash_row(
+def hash_row(
     values: List[Float64], columns: List[Int], row: Int, n_rows: Int
 ) -> UInt64:
     """Composite hash of one row of a column-major buffer. Now actually uses `row`."""
@@ -345,7 +345,7 @@ struct CompositeKeyIndex(Copyable, Movable):
     var mask: Int
     var count: Int
 
-    fn __init__(out self, key_width: Int, initial_capacity: Int = DEFAULT_CAPACITY):
+    def __init__(out self, key_width: Int, initial_capacity: Int = DEFAULT_CAPACITY):
         var cap = _next_power_of_two(initial_capacity if initial_capacity > 4 else 4)
         self.slots = List[Int]()
         self.slot_hashes = List[UInt64]()
@@ -357,18 +357,18 @@ struct CompositeKeyIndex(Copyable, Movable):
         self.mask = cap - 1
         self.count = 0
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         return self.count
 
-    fn capacity(self) -> Int:
+    def capacity(self) -> Int:
         return len(self.slots)
 
-    fn _hash_key(self, key: List[Float64]) -> UInt64:
+    def _hash_key(self, key: List[Float64]) -> UInt64:
         # Delegates to the module-level `hash_composite` so the table and any
         # hash-router (the radix aggregate path) cannot disagree about a key's hash.
         return hash_composite(key, self.key_width)
 
-    fn _keys_equal(self, slot: Int, key: List[Float64]) -> Bool:
+    def _keys_equal(self, slot: Int, key: List[Float64]) -> Bool:
         var base = slot * self.key_width
         for i in range(self.key_width):
             var stored = self.key_store[base + i]
@@ -377,7 +377,7 @@ struct CompositeKeyIndex(Copyable, Movable):
                 return False
         return True
 
-    fn find(self, key: List[Float64]) -> Int:
+    def find(self, key: List[Float64]) -> Int:
         var h = self._hash_key(key)
         var pos = Int(h) & self.mask
         while self.slots[pos] != EMPTY_SLOT:
@@ -386,7 +386,7 @@ struct CompositeKeyIndex(Copyable, Movable):
             pos = (pos + 1) & self.mask
         return -1
 
-    fn _grow(mut self):
+    def _grow(mut self):
         var old_slots = self.slots.copy()
         var old_hashes = self.slot_hashes.copy()
         var new_cap = len(old_slots) << 1
@@ -405,10 +405,10 @@ struct CompositeKeyIndex(Copyable, Movable):
             self.slots[pos] = old_slots[i]
             self.slot_hashes[pos] = old_hashes[i]
 
-    fn get_or_assign(mut self, key: List[Float64], next_slot: Int) -> Int:
+    def get_or_assign(mut self, key: List[Float64], next_slot: Int) -> Int:
         return self.get_or_assign_hashed(key, self._hash_key(key), next_slot)
 
-    fn get_or_assign_hashed(mut self, key: List[Float64], h: UInt64, next_slot: Int) -> Int:
+    def get_or_assign_hashed(mut self, key: List[Float64], h: UInt64, next_slot: Int) -> Int:
         """`get_or_assign` for a caller that already ran `hash_composite`.
 
         `h` MUST be `hash_composite(key, self.key_width)` — the batched hasher
@@ -432,7 +432,7 @@ struct CompositeKeyIndex(Copyable, Movable):
             self._grow()
         return next_slot
 
-    fn key_at(self, slot: Int) -> List[Float64]:
+    def key_at(self, slot: Int) -> List[Float64]:
         """The key tuple for a slot — how a result names its groups."""
         var out = List[Float64]()
         if slot < 0:
@@ -444,7 +444,7 @@ struct CompositeKeyIndex(Copyable, Movable):
         return out^
 
 
-fn hash_int64(key: Int) -> UInt64:
+def hash_int64(key: Int) -> UInt64:
     """FNV-1a over `key`'s zigzag encoding — `Int64HashIndex`'s probe hash.
 
     `zigzag` (from `canonical.encode`, frozen) is the one signed-Int-to-UInt64 mapping
@@ -480,7 +480,7 @@ struct Int64HashIndex(Copyable, Movable):
     var mask: Int
     var count: Int
 
-    fn __init__(out self, initial_capacity: Int = DEFAULT_CAPACITY):
+    def __init__(out self, initial_capacity: Int = DEFAULT_CAPACITY):
         var cap = _next_power_of_two(initial_capacity if initial_capacity > 4 else 4)
         self.slots = List[Int]()
         self.slot_keys = List[Int]()
@@ -490,13 +490,13 @@ struct Int64HashIndex(Copyable, Movable):
         self.mask = cap - 1
         self.count = 0
 
-    fn capacity(self) -> Int:
+    def capacity(self) -> Int:
         return len(self.slots)
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         return self.count
 
-    fn _probe(self, key: Int, h: UInt64) -> Int:
+    def _probe(self, key: Int, h: UInt64) -> Int:
         """Table position holding `key`, or the first empty position for it.
 
         One function for lookup and insert, same reason as `HashIndex._probe`: the two
@@ -509,17 +509,17 @@ struct Int64HashIndex(Copyable, Movable):
             pos = (pos + 1) & self.mask
         return pos
 
-    fn find(self, key: Int) -> Int:
+    def find(self, key: Int) -> Int:
         """Slot for `key`, or -1. Never inserts."""
         var pos = self._probe(key, hash_int64(key))
         if self.slots[pos] == EMPTY_SLOT:
             return -1
         return self.slots[pos]
 
-    fn contains(self, key: Int) -> Bool:
+    def contains(self, key: Int) -> Bool:
         return self.find(key) >= 0
 
-    fn _grow(mut self):
+    def _grow(mut self):
         """Double and rehash. Every live key is reinserted, none dropped."""
         var old_slots = self.slots.copy()
         var old_keys = self.slot_keys.copy()
@@ -539,7 +539,7 @@ struct Int64HashIndex(Copyable, Movable):
             self.slots[pos] = old_slots[i]
             self.slot_keys[pos] = old_keys[i]
 
-    fn get_or_assign(mut self, key: Int, next_slot: Int) -> Int:
+    def get_or_assign(mut self, key: Int, next_slot: Int) -> Int:
         """The existing slot for `key`, or `next_slot` after assigning it.
 
         Same contract as `HashIndex.get_or_assign`: the caller supplies the slot

@@ -49,14 +49,14 @@ from std.math import abs as fabs, sqrt, exp, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < tol
 
 
 # ── Polymer Science Tests ────────────────────────────────────────────────────
 
 
-fn test_polymer() raises:
+def test_polymer() raises:
     print("== Polymer Science ==")
 
     # degree_of_polymerization: DP = 100000 / 104 ≈ 961.538
@@ -135,7 +135,7 @@ fn test_polymer() raises:
 # ── Sports Analytics Tests ───────────────────────────────────────────────────
 
 
-fn test_sports_analytics() raises:
+def test_sports_analytics() raises:
     print("== Sports Analytics ==")
 
     # batting_average: BA = 180/540 ≈ 0.3333
@@ -219,7 +219,7 @@ fn test_sports_analytics() raises:
 # ── Wastewater Treatment Tests ───────────────────────────────────────────────
 
 
-fn test_wastewater() raises:
+def test_wastewater() raises:
     print("== Wastewater Treatment ==")
 
     # bod_removal_efficiency: η = (200-20)/200*100 = 90%
@@ -290,7 +290,7 @@ fn test_wastewater() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 77 Tests: Polymer, Sports Analytics, Wastewater")
     test_polymer()
     test_sports_analytics()

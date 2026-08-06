@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from astronomy import julian_date, modified_julian_date, sidereal_time, solar_declination, sunrise_hour_angle, day_length, parallax_correction, kepler_equation, orbital_period, apparent_magnitude, distance_from_magnitude, ecliptic_to_equatorial
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

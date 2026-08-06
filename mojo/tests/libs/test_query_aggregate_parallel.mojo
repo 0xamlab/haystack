@@ -39,11 +39,11 @@ from query.aggregate import (
 )
 
 
-fn _lcg_next(state: UInt64) -> UInt64:
+def _lcg_next(state: UInt64) -> UInt64:
     return state * 6364136223846793005 + 1442695040888963407
 
 
-fn _batch_random_ints(n_rows: Int, n_groups: Int, with_nulls: Bool) -> RecordBatch:
+def _batch_random_ints(n_rows: Int, n_groups: Int, with_nulls: Bool) -> RecordBatch:
     """`key` in 0..n_groups-1, `value` an integer in 0..999 — sums stay exact.
 
     With `with_nulls`, every 97th key and every 13th value is null, so the
@@ -72,7 +72,7 @@ fn _batch_random_ints(n_rows: Int, n_groups: Int, with_nulls: Bool) -> RecordBat
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _batch_continuous(n_rows: Int, n_groups: Int) -> RecordBatch:
+def _batch_continuous(n_rows: Int, n_groups: Int) -> RecordBatch:
     """Continuous values in [0, 1) — the Welford tolerance case."""
     var state: UInt64 = 0xDEADBEEFCAFEF00D
     var keys = List[Float64]()
@@ -92,7 +92,7 @@ fn _batch_continuous(n_rows: Int, n_groups: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _grouped_identical_exact(a: GroupedResult, b: GroupedResult) -> Bool:
+def _grouped_identical_exact(a: GroupedResult, b: GroupedResult) -> Bool:
     """Same groups, same ORDER, bit-equal values/counts, same null tally."""
     if a.n_groups() != b.n_groups() or a.null_key_rows != b.null_key_rows:
         return False
@@ -108,7 +108,7 @@ fn _grouped_identical_exact(a: GroupedResult, b: GroupedResult) -> Bool:
     return True
 
 
-fn _grouped_close(a: GroupedResult, b: GroupedResult, rel_tol: Float64) -> Bool:
+def _grouped_close(a: GroupedResult, b: GroupedResult, rel_tol: Float64) -> Bool:
     """Same groups/order/counts exactly; values within relative tolerance."""
     if a.n_groups() != b.n_groups() or a.null_key_rows != b.null_key_rows:
         return False
@@ -128,7 +128,7 @@ fn _grouped_close(a: GroupedResult, b: GroupedResult, rel_tol: Float64) -> Bool:
     return True
 
 
-fn _multi_identical_exact(a: MultiGroupedResult, b: MultiGroupedResult) -> Bool:
+def _multi_identical_exact(a: MultiGroupedResult, b: MultiGroupedResult) -> Bool:
     if a.n_groups() != b.n_groups() or a.key_width != b.key_width:
         return False
     if a.null_key_rows != b.null_key_rows:
@@ -144,7 +144,7 @@ fn _multi_identical_exact(a: MultiGroupedResult, b: MultiGroupedResult) -> Bool:
     return True
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

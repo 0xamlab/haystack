@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from vector_kernels.table import source_id_of, role_id_of, build_table_json
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

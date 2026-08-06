@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from blockchain import block_reward_halving, hash_rate_to_difficulty, transaction_fee_priority, gas_cost, confirmations_security, merkle_tree_depth, tps_throughput, block_size_utilization, staking_apy, validator_uptime, finality_time_pbft, token_inflation_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bryology import sphagnum_water_holding, moss_growth_rate, carbon_accumulation_peatland, bryophyte_desiccation_recovery, nitrogen_deposition_effect, moss_photosynthesis_rate, peat_accumulation_rate, sphagnum_acidity, patch_colonisation_probability, biomass_to_litter_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

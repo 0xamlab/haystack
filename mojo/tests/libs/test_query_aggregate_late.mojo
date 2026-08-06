@@ -89,26 +89,26 @@ sends the batch to BANDED and the engine correctly refuses it — which would ma
 every comparison below vacuous."""
 
 
-fn _bits(x: Float64) -> UInt64:
+def _bits(x: Float64) -> UInt64:
     return bitcast[DType.uint64](x)
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _ints(var xs: List[Int]) -> List[Int]:
+def _ints(var xs: List[Int]) -> List[Int]:
     return xs^
 
 
-fn _one(v: Int) -> List[Int]:
+def _one(v: Int) -> List[Int]:
     var out = List[Int]()
     out.append(v)
     return out^
 
 
-fn _identical(
+def _identical(
     mut failed: Int, label: String, a: ManyGroupedResult, b: ManyGroupedResult, n_aggs: Int
 ) -> Bool:
     """Bit-for-bit on shape, order, keys, values, presence and counts."""
@@ -160,7 +160,7 @@ fn _identical(
     return True
 
 
-fn _cmp(
+def _cmp(
     mut passed: Int,
     mut failed: Int,
     label: String,
@@ -203,7 +203,7 @@ fn _cmp(
         passed += 1
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("=== query.aggregate_late — late-materialized radix ===")

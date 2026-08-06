@@ -33,7 +33,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── ohms_law_v ───────────────────────────────────────────────────────────────
 
 
-fn ohms_law_v(I: Float64, R: Float64) -> Float64:
+def ohms_law_v(I: Float64, R: Float64) -> Float64:
     """Voltage: V = I·R."""
     return I * R
 
@@ -41,7 +41,7 @@ fn ohms_law_v(I: Float64, R: Float64) -> Float64:
 # ── ohms_law_i ───────────────────────────────────────────────────────────────
 
 
-fn ohms_law_i(V: Float64, R: Float64) -> Float64:
+def ohms_law_i(V: Float64, R: Float64) -> Float64:
     """Current: I = V/R."""
     return V / R
 
@@ -49,7 +49,7 @@ fn ohms_law_i(V: Float64, R: Float64) -> Float64:
 # ── ohms_law_r ───────────────────────────────────────────────────────────────
 
 
-fn ohms_law_r(V: Float64, I: Float64) -> Float64:
+def ohms_law_r(V: Float64, I: Float64) -> Float64:
     """Resistance: R = V/I."""
     return V / I
 
@@ -57,7 +57,7 @@ fn ohms_law_r(V: Float64, I: Float64) -> Float64:
 # ── power_dc ─────────────────────────────────────────────────────────────────
 
 
-fn power_dc(V: Float64, I: Float64) -> Float64:
+def power_dc(V: Float64, I: Float64) -> Float64:
     """DC power: P = V·I."""
     return V * I
 
@@ -65,7 +65,7 @@ fn power_dc(V: Float64, I: Float64) -> Float64:
 # ── series_resistance ────────────────────────────────────────────────────────
 
 
-fn series_resistance(resistors: List[Float64]) -> Float64:
+def series_resistance(resistors: List[Float64]) -> Float64:
     """Total series resistance: R_total = ΣR."""
     var total: Float64 = 0.0
     for i in range(len(resistors)):
@@ -76,7 +76,7 @@ fn series_resistance(resistors: List[Float64]) -> Float64:
 # ── parallel_resistance ──────────────────────────────────────────────────────
 
 
-fn parallel_resistance(resistors: List[Float64]) -> Float64:
+def parallel_resistance(resistors: List[Float64]) -> Float64:
     """Total parallel resistance: 1/R_total = Σ(1/Ri)."""
     var inv_total: Float64 = 0.0
     for i in range(len(resistors)):
@@ -89,7 +89,7 @@ fn parallel_resistance(resistors: List[Float64]) -> Float64:
 # ── rc_time_constant ────────────────────────────────────────────────────────
 
 
-fn rc_time_constant(R: Float64, C: Float64) -> Float64:
+def rc_time_constant(R: Float64, C: Float64) -> Float64:
     """RC time constant: τ = R·C."""
     return R * C
 
@@ -97,7 +97,7 @@ fn rc_time_constant(R: Float64, C: Float64) -> Float64:
 # ── rc_voltage ───────────────────────────────────────────────────────────────
 
 
-fn rc_voltage(V0: Float64, R: Float64, C: Float64, t: Float64) -> Float64:
+def rc_voltage(V0: Float64, R: Float64, C: Float64, t: Float64) -> Float64:
     """Charging voltage: V(t) = V0·(1 - e^(-t/(RC)))."""
     var tau = R * C
     return V0 * (1.0 - exp(-t / tau))
@@ -106,7 +106,7 @@ fn rc_voltage(V0: Float64, R: Float64, C: Float64, t: Float64) -> Float64:
 # ── rlc_resonance ────────────────────────────────────────────────────────────
 
 
-fn rlc_resonance(L: Float64, C: Float64) -> Float64:
+def rlc_resonance(L: Float64, C: Float64) -> Float64:
     """Resonant frequency: f₀ = 1/(2π√(LC))."""
     return 1.0 / (2.0 * PI * sqrt(L * C))
 
@@ -114,7 +114,7 @@ fn rlc_resonance(L: Float64, C: Float64) -> Float64:
 # ── impedance_magnitude ──────────────────────────────────────────────────────
 
 
-fn impedance_magnitude(R: Float64, X: Float64) -> Float64:
+def impedance_magnitude(R: Float64, X: Float64) -> Float64:
     """Impedance magnitude: |Z| = √(R² + X²)."""
     return sqrt(R * R + X * X)
 
@@ -122,7 +122,7 @@ fn impedance_magnitude(R: Float64, X: Float64) -> Float64:
 # ── power_factor ─────────────────────────────────────────────────────────────
 
 
-fn power_factor(real_power: Float64, apparent_power: Float64) -> Float64:
+def power_factor(real_power: Float64, apparent_power: Float64) -> Float64:
     """Power factor: PF = P/S."""
     return real_power / apparent_power
 
@@ -130,7 +130,7 @@ fn power_factor(real_power: Float64, apparent_power: Float64) -> Float64:
 # ── capacitive_reactance ─────────────────────────────────────────────────────
 
 
-fn capacitive_reactance(C: Float64, f: Float64) -> Float64:
+def capacitive_reactance(C: Float64, f: Float64) -> Float64:
     """Capacitive reactance: Xc = 1/(2πfC)."""
     return 1.0 / (2.0 * PI * f * C)
 
@@ -138,7 +138,7 @@ fn capacitive_reactance(C: Float64, f: Float64) -> Float64:
 # ── inductive_reactance ──────────────────────────────────────────────────────
 
 
-fn inductive_reactance(L: Float64, f: Float64) -> Float64:
+def inductive_reactance(L: Float64, f: Float64) -> Float64:
     """Inductive reactance: Xl = 2πfL."""
     return 2.0 * PI * f * L
 
@@ -146,6 +146,6 @@ fn inductive_reactance(L: Float64, f: Float64) -> Float64:
 # ── voltage_divider ──────────────────────────────────────────────────────────
 
 
-fn voltage_divider(V_in: Float64, R1: Float64, R2: Float64) -> Float64:
+def voltage_divider(V_in: Float64, R1: Float64, R2: Float64) -> Float64:
     """Voltage divider: V_out = V_in·R2/(R1+R2)."""
     return V_in * R2 / (R1 + R2)

@@ -36,14 +36,14 @@ struct LogisticResult(Copyable, Movable):
     var n_iter: Int
     var log_likelihood: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.weights = List[Float64]()
         self.bias = 0.0
         self.converged = False
         self.n_iter = 0
         self.log_likelihood = 0.0
 
-    fn __init__(
+    def __init__(
         out self,
         weights: List[Float64],
         bias: Float64,
@@ -66,13 +66,13 @@ struct ElasticNetResult(Copyable, Movable):
     var converged: Bool
     var n_iter: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.weights = List[Float64]()
         self.bias = 0.0
         self.converged = False
         self.n_iter = 0
 
-    fn __init__(
+    def __init__(
         out self,
         weights: List[Float64],
         bias: Float64,
@@ -88,7 +88,7 @@ struct ElasticNetResult(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _sigmoid(z: Float64) -> Float64:
+def _sigmoid(z: Float64) -> Float64:
     """Numerically stable logistic sigmoid."""
     if z >= 0.0:
         var e = exp(-z)
@@ -97,7 +97,7 @@ fn _sigmoid(z: Float64) -> Float64:
     return e / (1.0 + e)
 
 
-fn _soft_threshold(a: Float64, t: Float64) -> Float64:
+def _soft_threshold(a: Float64, t: Float64) -> Float64:
     """Soft-thresholding operator S(a, t) = sign(a) * max(|a| - t, 0)."""
     if a > t:
         return a - t
@@ -106,7 +106,7 @@ fn _soft_threshold(a: Float64, t: Float64) -> Float64:
     return 0.0
 
 
-fn _solve_linear_system(
+def _solve_linear_system(
     A: List[List[Float64]], b: List[Float64]
 ) -> List[Float64]:
     """Solve A x = b via Gaussian elimination with partial pivoting.
@@ -154,7 +154,7 @@ fn _solve_linear_system(
     return x^
 
 
-fn _invert_matrix(A: List[List[Float64]]) -> List[List[Float64]]:
+def _invert_matrix(A: List[List[Float64]]) -> List[List[Float64]]:
     """Invert a square matrix via Gauss-Jordan with partial pivoting.
 
     Returns an empty list if the matrix is (numerically) singular.
@@ -203,7 +203,7 @@ fn _invert_matrix(A: List[List[Float64]]) -> List[List[Float64]]:
     return inv^
 
 
-fn _log_likelihood(
+def _log_likelihood(
     X: List[Float64],
     y: List[Int],
     n: Int,
@@ -228,7 +228,7 @@ fn _log_likelihood(
     return ll
 
 
-fn _penalized_ll(
+def _penalized_ll(
     X: List[Float64],
     y: List[Int],
     n: Int,
@@ -246,7 +246,7 @@ fn _penalized_ll(
 # ── logistic_fit ─────────────────────────────────────────────────────────────
 
 
-fn logistic_fit(
+def logistic_fit(
     X: List[Float64],
     y: List[Int],
     l2: Float64,
@@ -363,7 +363,7 @@ fn logistic_fit(
 # ── logistic_predict_proba ───────────────────────────────────────────────────
 
 
-fn logistic_predict_proba(
+def logistic_predict_proba(
     X: List[Float64], weights: List[Float64], bias: Float64
 ) -> List[Float64]:
     """P(y=1) = sigmoid(X·w + bias) per row of flat row-major X.
@@ -387,7 +387,7 @@ fn logistic_predict_proba(
 # ── logistic_std_errors ──────────────────────────────────────────────────────
 
 
-fn logistic_std_errors(
+def logistic_std_errors(
     X: List[Float64],
     y: List[Int],
     weights: List[Float64],
@@ -444,7 +444,7 @@ fn logistic_std_errors(
 # ── elasticnet_fit ───────────────────────────────────────────────────────────
 
 
-fn elasticnet_fit(
+def elasticnet_fit(
     X: List[Float64],
     y: List[Float64],
     l1: Float64,

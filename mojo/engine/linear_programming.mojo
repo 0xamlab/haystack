@@ -13,14 +13,14 @@ from std.math import abs as fabs, isnan, isinf
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _inf() -> Float64:
+def _inf() -> Float64:
     return 1e308
 
 
 # ── Line Intersection ─────────────────────────────────────────────────────────
 
 
-fn line_intersection_2d(
+def line_intersection_2d(
     a1: Float64, b1: Float64, c1: Float64,
     a2: Float64, b2: Float64, c2: Float64,
 ) -> List[Float64]:
@@ -40,7 +40,7 @@ fn line_intersection_2d(
 # ── Feasibility ───────────────────────────────────────────────────────────────
 
 
-fn is_feasible(
+def is_feasible(
     x: List[Float64],
     A: List[List[Float64]],
     b: List[Float64],
@@ -69,7 +69,7 @@ fn is_feasible(
 # ── Objective Value ───────────────────────────────────────────────────────────
 
 
-fn objective_value(c: List[Float64], x: List[Float64]) -> Float64:
+def objective_value(c: List[Float64], x: List[Float64]) -> Float64:
     """Compute c·x."""
     var s: Float64 = 0.0
     var n = len(c)
@@ -82,7 +82,7 @@ fn objective_value(c: List[Float64], x: List[Float64]) -> Float64:
 # ── Vertex Enumeration ────────────────────────────────────────────────────────
 
 
-fn enumerate_vertices_2d(
+def enumerate_vertices_2d(
     A: List[List[Float64]],
     b: List[Float64],
 ) -> List[List[Float64]]:
@@ -143,7 +143,7 @@ fn enumerate_vertices_2d(
 # ── LP Solver (2-var) ─────────────────────────────────────────────────────────
 
 
-fn lp_solve_2var(
+def lp_solve_2var(
     c: List[Float64],
     A: List[List[Float64]],
     b: List[Float64],
@@ -172,7 +172,7 @@ fn lp_solve_2var(
 # ── Dual Value (weak duality bound) ──────────────────────────────────────────
 
 
-fn dual_value(
+def dual_value(
     A: List[List[Float64]],
     b: List[Float64],
     c: List[Float64],
@@ -188,7 +188,7 @@ fn dual_value(
 # ── Sensitivity Analysis ─────────────────────────────────────────────────────
 
 
-fn sensitivity_rhs(
+def sensitivity_rhs(
     c: List[Float64],
     A: List[List[Float64]],
     b: List[Float64],
@@ -219,7 +219,7 @@ fn sensitivity_rhs(
 # ── Transportation Cost (Northwest Corner) ───────────────────────────────────
 
 
-fn transportation_cost(
+def transportation_cost(
     supply: List[Float64],
     demand: List[Float64],
     costs: List[List[Float64]],

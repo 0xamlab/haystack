@@ -32,18 +32,18 @@ comptime WGS84_F: Float64 = 1.0 / 298.257223563 # flattening
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _deg2rad(d: Float64) -> Float64:
+def _deg2rad(d: Float64) -> Float64:
     return d * PI / 180.0
 
 
-fn _rad2deg(r: Float64) -> Float64:
+def _rad2deg(r: Float64) -> Float64:
     return r * 180.0 / PI
 
 
 # ── haversine_distance ───────────────────────────────────────────────────────
 
 
-fn haversine_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def haversine_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Great-circle distance in km using haversine formula."""
     var p1 = _deg2rad(lat1)
     var p2 = _deg2rad(lat2)
@@ -59,7 +59,7 @@ fn haversine_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64
 # ── vincenty_distance ────────────────────────────────────────────────────────
 
 
-fn vincenty_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def vincenty_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Vincenty geodesic distance in km (iterative formula on WGS84 ellipsoid)."""
     var u1 = atan2((1.0 - WGS84_F) * sin(_deg2rad(lat1)), cos(_deg2rad(lat1)))
     var u2 = atan2((1.0 - WGS84_F) * sin(_deg2rad(lat2)), cos(_deg2rad(lat2)))
@@ -112,7 +112,7 @@ fn vincenty_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64)
 # ── initial_bearing ──────────────────────────────────────────────────────────
 
 
-fn initial_bearing(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def initial_bearing(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Forward azimuth in degrees [0, 360)."""
     var p1 = _deg2rad(lat1)
     var p2 = _deg2rad(lat2)
@@ -130,7 +130,7 @@ fn initial_bearing(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -
 # ── destination_point ────────────────────────────────────────────────────────
 
 
-fn destination_point(lat: Float64, lon: Float64, bearing_deg: Float64, distance_km: Float64) -> List[Float64]:
+def destination_point(lat: Float64, lon: Float64, bearing_deg: Float64, distance_km: Float64) -> List[Float64]:
     """Point at distance (km) along bearing (deg). Returns [lat, lon]."""
     var p1 = _deg2rad(lat)
     var l1 = _deg2rad(lon)
@@ -147,7 +147,7 @@ fn destination_point(lat: Float64, lon: Float64, bearing_deg: Float64, distance_
 # ── midpoint ─────────────────────────────────────────────────────────────────
 
 
-fn midpoint(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> List[Float64]:
+def midpoint(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> List[Float64]:
     """Geographic midpoint [lat, lon] in degrees."""
     var p1 = _deg2rad(lat1)
     var p2 = _deg2rad(lat2)
@@ -166,7 +166,7 @@ fn midpoint(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> List[
 # ── cross_track_distance ────────────────────────────────────────────────────
 
 
-fn cross_track_distance(lat: Float64, lon: Float64, start_lat: Float64, start_lon: Float64, end_lat: Float64, end_lon: Float64) -> Float64:
+def cross_track_distance(lat: Float64, lon: Float64, start_lat: Float64, start_lon: Float64, end_lat: Float64, end_lon: Float64) -> Float64:
     """Distance in km from point to great-circle path (start→end). Absolute value."""
     var d13 = haversine_distance(start_lat, start_lon, lat, lon) / EARTH_RADIUS_KM  # angular
     var b13 = _deg2rad(initial_bearing(start_lat, start_lon, lat, lon))
@@ -178,7 +178,7 @@ fn cross_track_distance(lat: Float64, lon: Float64, start_lat: Float64, start_lo
 # ── along_track_distance ────────────────────────────────────────────────────
 
 
-fn along_track_distance(lat: Float64, lon: Float64, start_lat: Float64, start_lon: Float64, end_lat: Float64, end_lon: Float64) -> Float64:
+def along_track_distance(lat: Float64, lon: Float64, start_lat: Float64, start_lon: Float64, end_lat: Float64, end_lon: Float64) -> Float64:
     """Distance in km along great-circle path to point nearest to (lat, lon)."""
     var d13 = haversine_distance(start_lat, start_lon, lat, lon) / EARTH_RADIUS_KM
     var dxt = cross_track_distance(lat, lon, start_lat, start_lon, end_lat, end_lon) / EARTH_RADIUS_KM
@@ -192,7 +192,7 @@ fn along_track_distance(lat: Float64, lon: Float64, start_lat: Float64, start_lo
 # ── geodetic_to_ecef ─────────────────────────────────────────────────────────
 
 
-fn geodetic_to_ecef(lat: Float64, lon: Float64, alt: Float64) -> List[Float64]:
+def geodetic_to_ecef(lat: Float64, lon: Float64, alt: Float64) -> List[Float64]:
     """Convert geodetic (lat, lon, alt_m) to ECEF [x, y, z] in meters."""
     var p = _deg2rad(lat)
     var l = _deg2rad(lon)
@@ -210,7 +210,7 @@ fn geodetic_to_ecef(lat: Float64, lon: Float64, alt: Float64) -> List[Float64]:
 # ── ecef_to_geodetic ─────────────────────────────────────────────────────────
 
 
-fn ecef_to_geodetic(x: Float64, y: Float64, z: Float64) -> List[Float64]:
+def ecef_to_geodetic(x: Float64, y: Float64, z: Float64) -> List[Float64]:
     """Convert ECEF (x,y,z meters) to geodetic [lat, lon, alt]. Iterative."""
     var e2 = 1.0 - (WGS84_B * WGS84_B) / (WGS84_A * WGS84_A)
     var lon = atan2(y, x)
@@ -238,7 +238,7 @@ fn ecef_to_geodetic(x: Float64, y: Float64, z: Float64) -> List[Float64]:
 # ── rhumb_distance ───────────────────────────────────────────────────────────
 
 
-fn rhumb_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def rhumb_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Distance along rhumb line (constant bearing) in km."""
     var p1 = _deg2rad(lat1)
     var p2 = _deg2rad(lat2)

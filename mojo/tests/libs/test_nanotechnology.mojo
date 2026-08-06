@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from nanotechnology import surface_to_volume_sphere, nanoparticle_surface_area, nanoparticle_volume, specific_surface_area, quantum_confinement_energy, mean_free_path, knudsen_number, van_der_waals_force, diffusion_coefficient_stokes_einstein, zeta_potential_mobility, aspect_ratio, packing_fraction_fcc
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -29,7 +29,7 @@ comptime CONST3: Int = 0x6B206574
 # ── rotl32 ───────────────────────────────────────────────────────────────────
 
 
-fn rotl32(value: Int, shift: Int) -> Int:
+def rotl32(value: Int, shift: Int) -> Int:
     """32-bit left rotation."""
     var v = value & MASK32
     var s = shift & 31
@@ -39,7 +39,7 @@ fn rotl32(value: Int, shift: Int) -> Int:
 # ── quarter_round ────────────────────────────────────────────────────────────
 
 
-fn quarter_round(mut state: List[Int], a: Int, b: Int, c: Int, d: Int):
+def quarter_round(mut state: List[Int], a: Int, b: Int, c: Int, d: Int):
     """ChaCha20 quarter round on 32-bit state words."""
     state[a] = (state[a] + state[b]) & MASK32
     state[d] = rotl32(state[d] ^ state[a], 16)
@@ -54,7 +54,7 @@ fn quarter_round(mut state: List[Int], a: Int, b: Int, c: Int, d: Int):
 # ── chacha20_init_state ──────────────────────────────────────────────────────
 
 
-fn chacha20_init_state(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
+def chacha20_init_state(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
     """Initialize 16-word state with constants, key, counter, nonce.
     key = 8 words, nonce = 3 words."""
     # Fixed-size readers below: key must supply 8 words, nonce 3.
@@ -76,7 +76,7 @@ fn chacha20_init_state(key: List[Int], counter: Int, nonce: List[Int]) -> List[I
 # ── add_states ───────────────────────────────────────────────────────────────
 
 
-fn add_states(a: List[Int], b: List[Int]) -> List[Int]:
+def add_states(a: List[Int], b: List[Int]) -> List[Int]:
     """Element-wise addition mod 2^32."""
     var n = len(a)
     if len(b) != n:
@@ -90,7 +90,7 @@ fn add_states(a: List[Int], b: List[Int]) -> List[Int]:
 # ── xor_states ───────────────────────────────────────────────────────────────
 
 
-fn xor_states(a: List[Int], b: List[Int]) -> List[Int]:
+def xor_states(a: List[Int], b: List[Int]) -> List[Int]:
     """Element-wise XOR."""
     var n = len(a)
     if len(b) != n:
@@ -104,7 +104,7 @@ fn xor_states(a: List[Int], b: List[Int]) -> List[Int]:
 # ── chacha20_block ───────────────────────────────────────────────────────────
 
 
-fn chacha20_block(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
+def chacha20_block(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
     """Generate one 64-byte keystream block. key=8 words, nonce=3 words.
     Returns 16 words of keystream."""
     if len(key) < 8 or len(nonce) < 3:
@@ -130,7 +130,7 @@ fn chacha20_block(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
 # ── _words_to_bytes ──────────────────────────────────────────────────────────
 
 
-fn _words_to_bytes(words: List[Int]) -> List[Int]:
+def _words_to_bytes(words: List[Int]) -> List[Int]:
     """Convert list of 32-bit words to list of bytes (little-endian)."""
     var result = List[Int](capacity=len(words) * 4)
     for i in range(len(words)):
@@ -145,7 +145,7 @@ fn _words_to_bytes(words: List[Int]) -> List[Int]:
 # ── chacha20_encrypt ─────────────────────────────────────────────────────────
 
 
-fn chacha20_encrypt(plaintext: List[Int], key: List[Int], nonce: List[Int]) -> List[Int]:
+def chacha20_encrypt(plaintext: List[Int], key: List[Int], nonce: List[Int]) -> List[Int]:
     """Encrypt plaintext bytes by XOR with keystream."""
     # Bad key/nonce would yield empty blocks and spin the loop below forever.
     if len(key) < 8 or len(nonce) < 3:
@@ -172,6 +172,6 @@ fn chacha20_encrypt(plaintext: List[Int], key: List[Int], nonce: List[Int]) -> L
 # ── chacha20_decrypt ─────────────────────────────────────────────────────────
 
 
-fn chacha20_decrypt(ciphertext: List[Int], key: List[Int], nonce: List[Int]) -> List[Int]:
+def chacha20_decrypt(ciphertext: List[Int], key: List[Int], nonce: List[Int]) -> List[Int]:
     """Decrypt (same as encrypt for XOR cipher)."""
     return chacha20_encrypt(ciphertext, key, nonce)

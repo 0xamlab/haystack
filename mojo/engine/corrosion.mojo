@@ -25,7 +25,7 @@ from std.math import abs as fabs, log
 # ── Corrosion rate from weight loss ──────────────────────────────────────────
 
 
-fn corrosion_rate_mpy(
+def corrosion_rate_mpy(
     weight_loss: Float64,
     density: Float64,
     area: Float64,
@@ -40,7 +40,7 @@ fn corrosion_rate_mpy(
     return (534.0 * weight_loss) / (density * area * time_hours)
 
 
-fn corrosion_rate_mmpy(
+def corrosion_rate_mmpy(
     weight_loss: Float64,
     density: Float64,
     area: Float64,
@@ -58,12 +58,12 @@ fn corrosion_rate_mmpy(
 # ── Pitting analysis ────────────────────────────────────────────────────────
 
 
-fn pitting_rate(max_pit_depth: Float64, time: Float64) -> Float64:
+def pitting_rate(max_pit_depth: Float64, time: Float64) -> Float64:
     """Pitting penetration rate PR = depth / time."""
     return max_pit_depth / time
 
 
-fn pitting_factor(max_pit_depth: Float64, avg_penetration: Float64) -> Float64:
+def pitting_factor(max_pit_depth: Float64, avg_penetration: Float64) -> Float64:
     """Pitting factor PF = max_pit_depth / avg_penetration."""
     return max_pit_depth / avg_penetration
 
@@ -71,12 +71,12 @@ fn pitting_factor(max_pit_depth: Float64, avg_penetration: Float64) -> Float64:
 # ── Galvanic / electrochemistry ──────────────────────────────────────────────
 
 
-fn galvanic_potential_difference(e1: Float64, e2: Float64) -> Float64:
+def galvanic_potential_difference(e1: Float64, e2: Float64) -> Float64:
     """Galvanic potential difference ΔE = |E1 - E2| volts."""
     return fabs(e1 - e2)
 
 
-fn nernst_potential(
+def nernst_potential(
     e0: Float64,
     n: Float64,
     q_ratio: Float64,
@@ -92,14 +92,14 @@ fn nernst_potential(
     return e0 - (r * temperature / (n * f)) * log(q_ratio)
 
 
-fn passivation_current_density(
+def passivation_current_density(
     current: Float64, area: Float64
 ) -> Float64:
     """Passivation current density i = I / A  (A/cm²)."""
     return current / area
 
 
-fn tafel_overpotential(
+def tafel_overpotential(
     a: Float64, b: Float64, current_density: Float64
 ) -> Float64:
     """Tafel equation: η = a + b * log10(i).
@@ -113,26 +113,26 @@ fn tafel_overpotential(
 # ── Metal loss & service life ────────────────────────────────────────────────
 
 
-fn metal_loss_from_rate(rate_mmpy: Float64, years: Float64) -> Float64:
+def metal_loss_from_rate(rate_mmpy: Float64, years: Float64) -> Float64:
     """Metal loss (mm) = rate (mm/yr) * years."""
     return rate_mmpy * years
 
 
-fn remaining_wall_thickness(
+def remaining_wall_thickness(
     original: Float64, loss: Float64
 ) -> Float64:
     """Remaining wall thickness t_rem = original - loss (mm)."""
     return original - loss
 
 
-fn cathodic_protection_current(
+def cathodic_protection_current(
     area: Float64, current_density: Float64
 ) -> Float64:
     """Required cathodic-protection current I = A * i_cp (A)."""
     return area * current_density
 
 
-fn service_life_estimate(
+def service_life_estimate(
     wall_thickness: Float64, corrosion_rate: Float64
 ) -> Float64:
     """Estimated service life (years) = wall_thickness / corrosion_rate."""

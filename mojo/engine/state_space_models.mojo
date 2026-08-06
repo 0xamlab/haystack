@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn ssm_discretize_zoh(a: Float64, delta: Float64) -> Float64:
+def ssm_discretize_zoh(a: Float64, delta: Float64) -> Float64:
     """Zero-order hold discretisation of SSM A matrix element.
 
     Ā = exp(Δ × A)
@@ -32,7 +32,7 @@ fn ssm_discretize_zoh(a: Float64, delta: Float64) -> Float64:
     return exp(delta * a)
 
 
-fn ssm_discretize_b(
+def ssm_discretize_b(
     a: Float64, b: Float64, delta: Float64
 ) -> Float64:
     """ZOH discretised B element.
@@ -53,7 +53,7 @@ fn ssm_discretize_b(
     return (a_bar - 1.0) / a * b
 
 
-fn ssm_recurrence_step(
+def ssm_recurrence_step(
     h_prev: Float64, a_bar: Float64, b_bar: Float64, x: Float64
 ) -> Float64:
     """Linear SSM recurrence: h_t = Ā h_{t-1} + B̄ x_t.
@@ -70,7 +70,7 @@ fn ssm_recurrence_step(
     return a_bar * h_prev + b_bar * x
 
 
-fn ssm_output_step(c: Float64, h: Float64) -> Float64:
+def ssm_output_step(c: Float64, h: Float64) -> Float64:
     """SSM output projection: y = C h (single element).
 
     Args:
@@ -83,7 +83,7 @@ fn ssm_output_step(c: Float64, h: Float64) -> Float64:
     return c * h
 
 
-fn mamba_selective_scan_step(
+def mamba_selective_scan_step(
     h_prev: Float64, a: Float64, b: Float64,
     x: Float64, delta: Float64
 ) -> Float64:
@@ -107,7 +107,7 @@ fn mamba_selective_scan_step(
     return a_bar * h_prev + b_bar * x
 
 
-fn mamba_delta_softplus(delta_raw: Float64) -> Float64:
+def mamba_delta_softplus(delta_raw: Float64) -> Float64:
     """Softplus activation for Mamba's Δ (ensures Δ > 0).
 
     softplus(x) = log(1 + exp(x))
@@ -121,7 +121,7 @@ fn mamba_delta_softplus(delta_raw: Float64) -> Float64:
     return log(1.0 + exp(delta_raw))
 
 
-fn hippo_legt_update(
+def hippo_legt_update(
     h_n: Float64, h_prev_n: Float64,
     x: Float64, n: Float64, t: Float64
 ) -> Float64:
@@ -145,7 +145,7 @@ fn hippo_legt_update(
     return h_n - a_nn * h_n + (2.0 * n + 1.0) / t * x
 
 
-fn s4_kernel_element(
+def s4_kernel_element(
     c: Float64, a_power: Float64, b: Float64
 ) -> Float64:
     """S4 convolution kernel element: K_l = C A^l B.
@@ -161,7 +161,7 @@ fn s4_kernel_element(
     return c * a_power * b
 
 
-fn ssm_shift_register_step(
+def ssm_shift_register_step(
     state: Float64, decay: Float64, input_val: Float64
 ) -> Float64:
     """Simple exponential decay shift-register SSM step.
@@ -179,7 +179,7 @@ fn ssm_shift_register_step(
     return decay * state + input_val
 
 
-fn retnet_decay(
+def retnet_decay(
     dim: Float64, n_dims: Float64
 ) -> Float64:
     """RetNet exponential decay factor γ for dimension d.

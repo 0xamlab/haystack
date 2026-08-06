@@ -76,21 +76,21 @@ from optmodel.formulation import (
 )
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
@@ -98,39 +98,39 @@ fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
 
 
 # The production LP everything below mutates: max 3x + 2y, x + y <= 4, x + 3y <= 6.
-fn _c2() -> List[Float64]:
+def _c2() -> List[Float64]:
     return _floats(3.0, 2.0)
 
 
-fn _a2() -> List[Float64]:
+def _a2() -> List[Float64]:
     return _floats(1.0, 1.0, 1.0, 3.0)
 
 
-fn _b2() -> List[Float64]:
+def _b2() -> List[Float64]:
     return _floats(4.0, 6.0)
 
 
-fn _le2() -> List[Int]:
+def _le2() -> List[Int]:
     return _ints(SENSE_LE, SENSE_LE)
 
 
-fn _cont2() -> List[Int]:
+def _cont2() -> List[Int]:
     return _ints(VAR_CONTINUOUS, VAR_CONTINUOUS)
 
 
-fn _lower2() -> List[Float64]:
+def _lower2() -> List[Float64]:
     return _floats(0.0, 0.0)
 
 
-fn _pad2() -> List[Float64]:
+def _pad2() -> List[Float64]:
     return _floats(0.0, 0.0)
 
 
-fn _haslow2() -> List[Int]:
+def _haslow2() -> List[Int]:
     return _ints(VAR_FLAG_HAS_LOWER, VAR_FLAG_HAS_LOWER)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

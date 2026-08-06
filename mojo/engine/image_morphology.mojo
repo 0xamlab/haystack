@@ -18,23 +18,23 @@ Public API:
 """
 
 
-fn _pixel_count(width: Int, height: Int) -> Int:
+def _pixel_count(width: Int, height: Int) -> Int:
     if width <= 0 or height <= 0:
         return 0
     return width * height
 
 
-fn _pixel_value(flat: List[Float64], index: Int) -> Float64:
+def _pixel_value(flat: List[Float64], index: Int) -> Float64:
     if index < 0 or index >= len(flat):
         return 0.0
     return flat[index]
 
 
-fn _is_foreground(flat: List[Float64], index: Int, fg_threshold: Float64) -> Bool:
+def _is_foreground(flat: List[Float64], index: Int, fg_threshold: Float64) -> Bool:
     return _pixel_value(flat, index) >= fg_threshold
 
 
-fn _normalized_kernel_size(kernel_size: Int) -> Int:
+def _normalized_kernel_size(kernel_size: Int) -> Int:
     var size = kernel_size
     if size <= 0:
         size = 1
@@ -43,11 +43,11 @@ fn _normalized_kernel_size(kernel_size: Int) -> Int:
     return size
 
 
-fn _binary_output_value(is_foreground: Bool) -> Float64:
+def _binary_output_value(is_foreground: Bool) -> Float64:
     return 255.0 if is_foreground else 0.0
 
 
-fn binary_erode_flat(
+def binary_erode_flat(
     flat: List[Float64], width: Int, height: Int, kernel_size: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Binary erosion with a square kernel. Even kernel sizes round up to the next odd size."""
@@ -80,7 +80,7 @@ fn binary_erode_flat(
     return out^
 
 
-fn binary_dilate_flat(
+def binary_dilate_flat(
     flat: List[Float64], width: Int, height: Int, kernel_size: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Binary dilation with a square kernel. Even kernel sizes round up to the next odd size."""
@@ -111,7 +111,7 @@ fn binary_dilate_flat(
     return out^
 
 
-fn binary_open_flat(
+def binary_open_flat(
     flat: List[Float64], width: Int, height: Int, kernel_size: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Binary opening: erosion followed by dilation."""
@@ -124,7 +124,7 @@ fn binary_open_flat(
     )
 
 
-fn binary_close_flat(
+def binary_close_flat(
     flat: List[Float64], width: Int, height: Int, kernel_size: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Binary closing: dilation followed by erosion."""
@@ -137,7 +137,7 @@ fn binary_close_flat(
     )
 
 
-fn binary_fill_holes_flat(
+def binary_fill_holes_flat(
     flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Float64]:
     """Fill interior background holes while preserving border-connected background."""
@@ -200,7 +200,7 @@ fn binary_fill_holes_flat(
     return out^
 
 
-fn connected_components_4_flat(
+def connected_components_4_flat(
     flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Int]:
     """4-connected component labels for foreground pixels. Background pixels remain 0."""
@@ -247,7 +247,7 @@ fn connected_components_4_flat(
     return labels^
 
 
-fn largest_component_bbox_flat(
+def largest_component_bbox_flat(
     flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Int]:
     """Largest 4-connected foreground component as [x0, y0, x1, y1, area]."""
@@ -327,7 +327,7 @@ fn largest_component_bbox_flat(
     return out^
 
 
-fn distance_transform_cityblock_flat(
+def distance_transform_cityblock_flat(
     flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> List[Int]:
     """Foreground city-block distance to the nearest background pixel; background pixels stay 0."""
@@ -369,7 +369,7 @@ fn distance_transform_cityblock_flat(
     return out^
 
 
-fn foreground_area_ratio_flat(
+def foreground_area_ratio_flat(
     flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> Float64:
     """Foreground pixel fraction in [0, 1]."""
