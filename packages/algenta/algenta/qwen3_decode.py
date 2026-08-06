@@ -39,6 +39,7 @@ Usage
     )
     result.token_ids            # prompt ids followed by every generated id
     result.decode_tokens_per_sec
+    result.prefill_tokens_per_sec
 
 Checkpoint conversion, and why it is a separate, inspectable step
 ------------------------------------------------------------------
@@ -142,6 +143,7 @@ class Qwen3DecodeResult:
     stopped_on_eos: bool
     dispatches_per_token: int
     decode_tokens_per_sec: float
+    prefill_tokens_per_sec: float
 
 
 def _describe_architecture(config: dict[str, Any]) -> str:
@@ -396,6 +398,7 @@ def qwen3_i8_allsimd7_decode(
         stopped_on_eos=bool(result.get("stopped_on_eos")),
         dispatches_per_token=int(result.get("dispatches_per_token") or 0),
         decode_tokens_per_sec=float(result.get("decode_tokens_per_sec") or 0.0),
+        prefill_tokens_per_sec=float(result.get("prefill_tokens_per_sec") or 0.0),
     )
 
 

@@ -1,6 +1,6 @@
 """test_residentk_contract.mojo — auto-generated tests for residentk.contract."""
 from std.math import isnan, isinf
-from residentk.contract import residentk_status_name, residentk_dims_check, residentk_context_check, residentk_cache_elements, residentk_dispatch_budget, residentk_weight_elems, residentk_scalars_ok, residentk_splitk_should_split, residentk_splitk_max_n_splits, residentk_splitk_policy
+from residentk.contract import residentk_status_name, residentk_dims_check, residentk_context_check, residentk_cache_elements, residentk_dispatch_budget, residentk_dispatch_budget_deep, residentk_weight_elems, residentk_scalars_ok, residentk_splitk_should_split, residentk_splitk_max_n_splits, residentk_splitk_policy
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -52,6 +52,8 @@ def main() raises:
     passed += 1; print("  ✅ residentk.contract::residentk_cache_elements")
     _ = residentk_dispatch_budget(5)
     passed += 1; print("  ✅ residentk.contract::residentk_dispatch_budget")
+    _ = residentk_dispatch_budget_deep(5)
+    passed += 1; print("  ✅ residentk.contract::residentk_dispatch_budget_deep")
     _ = residentk_weight_elems(5, 5, 5, 5, 5, 5, 5, 5)
     passed += 1; print("  ✅ residentk.contract::residentk_weight_elems")
     _ = residentk_scalars_ok(0.5, 0.5)

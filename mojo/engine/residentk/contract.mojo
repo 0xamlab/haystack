@@ -54,6 +54,8 @@ Public API:
   residentk_context_check(pos, n_new, max_ctx)                   — does the whole run fit the cache,
                                                                     and is max_ctx itself sane
   residentk_dispatch_budget(n_layers)                            — GPU dispatches for ONE token
+  residentk_dispatch_budget_deep(n_layers)                       — GPU dispatches for ONE token
+                                                                    on the split-K deep path
   residentk_cache_elements(n_layers, h_kv, d_head, max_ctx)      — KV-cache Float32 count at max_ctx
   residentk_weight_elems(d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx=512)
                                                                   — resident Float32 count
@@ -356,6 +358,29 @@ fn residentk_dispatch_budget(n_layers: Int) -> Int:
     if n_layers < 1 or n_layers > RESIDENT_MAX_LAYERS:
         return 0
     return n_layers * RESIDENT_DISPATCH_PER_LAYER + RESIDENT_DISPATCH_FIXED
+
+
+fn residentk_dispatch_budget_deep(n_layers: Int) -> Int:
+    """GPU dispatches ONE token costs once `residentk_splitk_should_split(n_keys)` is true for that
+    token's `n_keys` — the SDPA role becomes a partial-plus-merge dispatch PAIR instead of one
+    dispatch, so this is `residentk_dispatch_budget(n_layers)` plus exactly one extra dispatch per
+    layer, restated as its own formula (`1 + n_layers * 7 + 2`) to match the exact arithmetic every
+    `_MBQwen3I8...AllSimd*` session struct's own `n_descriptors_deep` field already computes — see
+    `metaldispatch.session`'s deep-path structs for that arithmetic's derivation.
+
+    Exported for the same reason `residentk_dispatch_budget` is: a caller validating a real step's
+    dispatch count needs to know WHICH of the two budgets applies, and get it from one named place
+    rather than re-deriving `n_layers * 7 + 3` at every call site.
+
+    @capability residentk_dispatch_budget_deep
+    complexity: O(1)
+    counts:
+    - dim n_layers <= RESIDENT_MAX_LAYERS [kernel_validated]
+    @endcapability
+    """
+    if n_layers < 1 or n_layers > RESIDENT_MAX_LAYERS:
+        return 0
+    return 1 + n_layers * 7 + 2
 
 
 fn residentk_weight_elems(

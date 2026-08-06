@@ -68,7 +68,11 @@ from std.time import perf_counter_ns
 from json.parser import json_get_array, json_get_float, json_get_int, json_get_object, json_array_tokens
 from conv import parse_int
 from attnk.rope import rope_table
-from residentk.contract import RESIDENT_DEFAULT_CONTEXT
+from residentk.contract import (
+    RESIDENT_DEFAULT_CONTEXT,
+    residentk_dispatch_budget_deep,
+    residentk_splitk_should_split,
+)
 from metaldispatch.contract import (
     MB_ERR_CHECKPOINT_UNREADABLE,
     MB_ERR_DISPATCH_COUNT_MISMATCH,
@@ -117,10 +121,15 @@ struct Qwen3DecodeResult(Copyable, Movable):
     var stopped_on_eos: Bool
     var dispatches_per_token: Int
     var decode_tokens_per_sec: Float64
+    var prefill_tokens_per_sec: Float64
+    """Additive field (see this file's module docstring history): the prefill phase pays the exact
+    same per-token dispatch cost as decode, one `step()` call per prompt token, so this number is not
+    a different code path being timed -- it is the SAME loop, timed separately, because nothing
+    previously measured it at all."""
 
 
 fn _decode_err(status: Int, message: String) -> Qwen3DecodeResult:
-    return Qwen3DecodeResult(status, message, List[Int](), 0, False, 0, 0.0)
+    return Qwen3DecodeResult(status, message, List[Int](), 0, False, 0, 0.0, 0.0)
 
 
 fn _read_text_file(path: String) raises -> String:
@@ -336,6 +345,7 @@ fn qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) ->
 
             var dispatches_per_token = 0
             var first_tok = -1
+            var t_prefill_start = perf_counter_ns()
             for t in range(n_prompt):
                 var r = s.step(prompt_ids[t], t)
                 if r.status != MB_OK:
@@ -346,13 +356,31 @@ fn qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) ->
                     )
                 dispatches_per_token = r.dispatches
                 first_tok = r.token_id
+            var t_prefill_end = perf_counter_ns()
 
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            # The LAST prefill step's own n_keys decides which of the two budgets applies -- see
+            # `_MBQwen3I8AllSimd7.step`: `n_keys = pos + 1`, and at the last prefill iteration
+            # `pos = n_prompt - 1`, so `n_keys = n_prompt` there. A prompt of more than
+            # `RESIDENT_SPLITK_NO_SPLIT_MAX_KEYS` (32) tokens crosses the split-K gate DURING
+            # prefill itself, not only once decode runs deep -- this check used to assume the
+            # shallow budget unconditionally, which made it fail on any prompt over ~32 tokens even
+            # though the session was behaving exactly as designed. Never exercised before prefill
+            # timing existed to prompt testing a real prompt longer than the fixed 5-token one.
             var expected_budget = metaldispatch_dispatch_budget(n_layers)
+            if n_prompt > 0 and residentk_splitk_should_split(n_prompt):
+                expected_budget = residentk_dispatch_budget_deep(n_layers)
             if dispatches_per_token != expected_budget:
                 return _decode_err(
                     MB_ERR_DISPATCH_COUNT_MISMATCH,
                     "the session issued " + String(dispatches_per_token) + " dispatches but "
-                    + "metaldispatch_dispatch_budget says " + String(expected_budget)
+                    + "the expected budget for n_prompt=" + String(n_prompt) + " says "
+                    + String(expected_budget)
                     + " -- the design and the code disagree",
                 )
 
@@ -386,7 +414,8 @@ fn qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) ->
                     tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
 
             return Qwen3DecodeResult(
-                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token, tok_per_sec
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec
             )
         except e:
             return _decode_err(

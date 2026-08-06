@@ -5876,6 +5876,7 @@ from residentk.contract import (
     residentk_context_check as _residentk_contract__residentk_context_check,
     residentk_cache_elements as _residentk_contract__residentk_cache_elements,
     residentk_dispatch_budget as _residentk_contract__residentk_dispatch_budget,
+    residentk_dispatch_budget_deep as _residentk_contract__residentk_dispatch_budget_deep,
     residentk_weight_elems as _residentk_contract__residentk_weight_elems,
     residentk_scalars_ok as _residentk_contract__residentk_scalars_ok,
     residentk_splitk_should_split as _residentk_contract__residentk_splitk_should_split,
@@ -17887,6 +17888,8 @@ fn _to_json_qwen3decoderesult(value: Qwen3DecodeResult) raises -> String:
     result += _to_json_int(value.dispatches_per_token)
     result += ","
     result += _to_json_float64(value.decode_tokens_per_sec)
+    result += ","
+    result += _to_json_float64(value.prefill_tokens_per_sec)
     result += "]}"
     return result
 
@@ -118566,6 +118569,22 @@ fn _dispatch_residentk__contract(function_name: String, args_array: String) rais
         return _error_json(
             "invalid_arguments",
             "Function residentk.contract.residentk_dispatch_budget expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_dispatch_budget_deep":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _residentk_contract__residentk_dispatch_budget_deep(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_dispatch_budget_deep."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_dispatch_budget_deep expected 1 arguments, received " + String(arg_count) + "."
         )
     if function_name == "residentk_weight_elems":
         if arg_count == 7:
