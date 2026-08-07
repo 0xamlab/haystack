@@ -315,6 +315,52 @@ int main(int argc, char **argv) {
         double tol = 1.0e-3;
         printf("%s (tolerance %.1e; F32 Q + F16 K/V narrowing only, no other source of error expected)\n",
                worst < tol ? "PASS" : "FAIL", tol);
-        return worst < tol ? 0 : 1;
+        if (worst >= tol) return 1;
+
+        /* ---- Phase 1 operator-gap timing: L0's own latency at this exact shape, so the Mojo
+         * parity replica (L1) has something directly comparable to measure against. GPU time
+         * (CommandBuffer GPUEndTime-GPUStartTime) excludes CPU dispatch/encoding overhead --
+         * the fairer number for an operator-level comparison -- wall time is reported alongside
+         * since the plan's own Definition of Victory wants both. */
+        #define N_TIMING_RUNS 200
+        double gpu_ms[N_TIMING_RUNS];
+        double wall_ms[N_TIMING_RUNS];
+        for (int run = 0; run < N_TIMING_RUNS; run++) {
+            CFAbsoluteTime t0 = CFAbsoluteTimeGetCurrent();
+            id<MTLCommandBuffer> tcb = [queue commandBuffer];
+            id<MTLComputeCommandEncoder> tenc = [tcb computeCommandEncoder];
+            [tenc setComputePipelineState:pipeline];
+            [tenc setBytes:&kargs length:sizeof(kargs) atIndex:0];
+            [tenc setBuffer:qBuf offset:0 atIndex:1];
+            [tenc setBuffer:kBuf offset:0 atIndex:2];
+            [tenc setBuffer:vBuf offset:0 atIndex:3];
+            [tenc setBuffer:maskBuf offset:0 atIndex:4];
+            [tenc setBuffer:sinksBuf offset:0 atIndex:5];
+            [tenc setBuffer:padBuf offset:0 atIndex:6];
+            [tenc setBuffer:blkBuf offset:0 atIndex:7];
+            [tenc setBuffer:dstBuf offset:0 atIndex:8];
+            [tenc setThreadgroupMemoryLength:10240 atIndex:0];
+            [tenc dispatchThreadgroups:grid threadsPerThreadgroup:tpg];
+            [tenc endEncoding];
+            [tcb commit];
+            [tcb waitUntilCompleted];
+            CFAbsoluteTime t1 = CFAbsoluteTimeGetCurrent();
+            gpu_ms[run] = (tcb.GPUEndTime - tcb.GPUStartTime) * 1000.0;
+            wall_ms[run] = (t1 - t0) * 1000.0;
+        }
+        /* insertion sort, N_TIMING_RUNS is small */
+        for (int i = 1; i < N_TIMING_RUNS; i++) {
+            double kg = gpu_ms[i], kw = wall_ms[i]; int j = i - 1;
+            while (j >= 0 && gpu_ms[j] > kg) { gpu_ms[j+1] = gpu_ms[j]; j--; }
+            gpu_ms[j+1] = kg;
+            j = i - 1;
+            while (j >= 0 && wall_ms[j] > kw) { wall_ms[j+1] = wall_ms[j]; j--; }
+            wall_ms[j+1] = kw;
+        }
+        printf("L0 timing (n=%d dispatches, same shape): GPU median=%.4f ms (p10=%.4f p90=%.4f)  wall median=%.4f ms\n",
+               N_TIMING_RUNS, gpu_ms[N_TIMING_RUNS/2], gpu_ms[N_TIMING_RUNS/10], gpu_ms[N_TIMING_RUNS*9/10],
+               wall_ms[N_TIMING_RUNS/2]);
+
+        return 0;
     }
 }

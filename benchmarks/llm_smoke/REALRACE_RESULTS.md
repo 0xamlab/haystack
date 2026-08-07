@@ -5406,3 +5406,97 @@ already-known instances of this same class of bug.
   attention-output perturbation across 28 layers and many tokens could plausibly wash out in
   practice or could compound; nothing here measures which.
 
+## Attention Compiler Plan v1.0, Phase 1 -- faithful llama.cpp parity replica (2026-08-07): correct and deterministic; wall-time gap measured, substantially explained, not yet fully resolved
+
+Not a continuation of this file's own prior "Phase 1/Phase 2" numbering above -- those predate the
+four-round redesign into the frozen Attention Compiler Plan v1.0
+(`attention_forge/parity_replica.mojo`'s own docstring has the architecture). This entry is that
+plan's OWN Phase 1: Stage 2 of the teardown methodology, a faithful Mojo replica of llama.cpp's
+pinned Metal kernel (`kernel_flash_attn_ext_f16_dk128_dv128`, torn down in `benchmarks/competitors/
+llama_cpp/teardown/EXECUTION_DIAGRAM.md`) -- Q_TILE=8, K_TILE=64, H_TILE=1, 4 SIMD groups, F16 K/V
+storage, F32 running softmax state, hardware `_mma_apple_8x8` for BOTH QK^T and PV, online softmax.
+Five itemized, deliberate deviations from the control are documented in the kernel's own docstring
+(analytic per-element causal/ragged masking instead of a separate mask-tensor + `blk` pre-pass;
+loop-bound tile skipping instead of iterate-and-`continue`; a hand-rolled `shuffle_xor` butterfly
+standing in for `simd_max`; K AND V both staged through threadgroup memory, since Mojo's
+`apple_mma_load_8x8` has no transposed-load flag; blocked rather than interleaved SIMD-group
+ownership) -- none of which change the axis this stage is measuring (the QK/PV MMA schedule and
+online-softmax organization), all chosen to avoid disproportionate engineering on an orthogonal
+axis, and none hidden.
+
+**Correctness**: verified against `attnk.sdpa.sdpa_forward_flat` (the same trusted materialized
+reference `attn_block_update_probe.mojo` itself uses) at five shapes -- tiny aligned, ragged K,
+two Q-blocks with a nonzero causal offset, real Qwen3-0.6B-Base dims with a non-8-aligned tile and
+offset, and a full 256-token single-shot prefill. Q/K/V are narrowed to Float16 first and that
+SAME narrowed value (widened back to Float64) is what the CPU oracle consumes, isolating any
+mismatch to the kernel's own math rather than F16 storage precision. Worst-ratio (relative to the
+same `dtx_tol_for`-scaled tolerance `_worst_deltas` uses elsewhere in this file) stayed under 0.005
+on output and under 6e-6 on LSE across all five shapes -- clean.
+
+**Determinism**: 1,000 dispatches at the real 256-token single-shot-prefill shape, fixed input
+buffers, comparing every dispatch's output against the first bit-for-bit: **zero mismatching
+elements**. Unlike the pre-existing per-key reduction bug documented two entries above (which
+lives in the UNRELATED, currently-dispatched `_pf_attn_tiled_kernel_simd`/`_sdpa_kernel_simd`),
+this new kernel shows no self-nondeterminism at this sample size.
+
+**Operator-latency gap vs L0**: at the exact shape `fa_operator_harness.m` (Phase 0A's Objective-C
+operator harness) measures -- Q_ROWS=8, N_KV=64, H_Q=16, H_KV=8, DK=DV=128, one Q-tile, one K-tile,
+causal -- L0 (the pinned llama.cpp kernel, hand-written Metal) measures **0.159 ms wall / 0.0415 ms
+GPU-only** (median of 200 dispatches; GPU-only excludes CPU-side command-buffer encoding). L1 (this
+kernel, dispatched via Mojo's `ctx.enqueue_function`) measures **0.57-0.58 ms wall**, median of 200
+dispatches, stable across three repeated runs after an initial cold-start outlier (0.29 ms on the
+very first process invocation -- a real cold/warm effect, consistent with `mm8.mojo`'s own
+documented cold-vs-warm finding, not treated as the number). Raw wall-to-wall ratio: **L1 is
+~3.6x slower than L0**.
+
+That raw ratio is NOT yet a clean statement about the kernel's own GPU efficiency, and is not
+reported as one. L0's own wall/GPU ratio at this shape is itself ~3.8x (0.159/0.0415) -- meaning
+even the hand-written Metal control pays a dispatch-overhead tax nearly as large as its actual GPU
+execution time, at a shape this small (a single 8x64 tile, on the order of a few million FLOPs
+total for QK+PV combined). A dedicated control measurement -- the already-proven, UNRELATED
+`_qkv_proj_gemm_mma8x8` (`mma_forge/mm8.mojo`) at a trivial 8x8x8 shape, dispatched via the exact
+same `ctx.enqueue_function`/`ctx.synchronize()` mechanism at the same 16-threadgroup grid --
+measures **0.136-0.138 ms wall median**, stable across three runs. That is Mojo's OWN fixed
+per-dispatch overhead for ANY kernel through this toolchain's `enqueue_function` path (argument
+marshaling through a higher-level API than hand-rolled Objective-C `setBuffer`/`setBytes`/
+`dispatchThreadgroups`), independent of what the kernel actually computes.
+
+Subtracting that control from L1's wall time leaves an attributable, kernel-specific cost of
+**~0.44 ms**, which is only ~2.75x L0's wall time (not ~3.6x) and, most likely, meaningfully closer
+to L0's GPU-only time than the raw ratio suggests -- but this subtraction is an ESTIMATE, not a
+measurement: Mojo's `DeviceContext` does not expose a `GPUStartTime`/`GPUEndTime`-equivalent at
+this toolchain version (`max.gpu.host`, checked directly), so there is no way to measure L1's own
+GPU-only time the same way L0's was measured. **This is the single biggest open item in this
+entry**: the true kernel-vs-kernel GPU efficiency gap is somewhere in the range implied by these
+two bounds (roughly 2.75x-3.6x depending which overhead is subtracted from which side), not a
+single clean number, and closing that range requires either a GPU-side timing primitive for Mojo
+(Metal's own `GPUStartTime`/`GPUEndTime` via a lower-level binding, or `MTL_HUD`/Instruments
+GPU-frame capture around the dispatch) or accepting operator-level, in-pipeline measurement
+(the real-checkpoint role-accounting infrastructure Phase 0A already built) as the fairer
+apples-to-apples comparison instead of a microbenchmark this small.
+
+**What this does and doesn't license per the plan's own stop rules**: stop rule 1 ("do not tune
+Candidates A/B/C until the parity replica's gap is explained") is satisfied to the extent a gap
+this size CAN be explained without GPU-side profiling tooling this repo doesn't yet have -- a
+substantial, measured fraction of the raw wall-time gap is dispatch-overhead, not kernel schedule,
+and the five itemized, already-documented design deviations (K+V shared-memory staging in
+particular, since it adds one extra 64x128-half write+read cycle this single-K-tile shape pays
+for exactly once) are plausible, itemized, non-hidden candidates for the REMAINING gap. This is
+reported as a substantiated, evidence-graded explanation, not a fully closed investigation --
+Phase 2A's own three-candidate tournament is free to proceed (nothing here blocks it), but a GPU-
+side timing primitive for Mojo kernels is flagged as follow-up infrastructure worth building
+before the tournament's own results are taken as final, since the SAME wall-time-vs-GPU-time gap
+would otherwise contaminate every later candidate comparison identically.
+
+### What is left
+
+- Build (or find) a GPU-only timing primitive for Mojo-dispatched kernels, so Phase 2A's
+  candidate-vs-L0 comparisons aren't subject to the same wall-time/dispatch-overhead ambiguity
+  this entry found and could only bound, not close.
+- Wire this kernel into the real pipeline behind a flag (matching `_PFROLE_ATTN_BLOCK8`'s own
+  precedent two entries above) and measure the real-checkpoint, 256-token end-to-end delta against
+  the plan's own Amdahl prediction -- not done in this entry, since the operator-level gap above
+  needed measuring and attributing FIRST, per stop rule 1.
+- Phase 2A: the three-candidate tournament (grouped-head fused FlashAttention, triangular
+  score-slab, associative split-K) on prepacked buffers, per the plan's own PR sequence.
+
