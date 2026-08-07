@@ -1,7 +1,13 @@
 #!/bin/bash
 # Algenta — one-line self-hosted installer
 # Usage: curl -fsSL https://algenta.ai/install.sh | bash
-# Or:    curl -fsSL https://raw.githubusercontent.com/thyn-ai/algenta/main/install.sh | bash
+#
+# Auth path = the same device login the SDKs use (accounts.thyn.ai, RFC 8628): the installer
+# asks you to open a URL + enter a code, then exchanges the token for read-only registry
+# credentials via the control plane (POST /v1/registry/credentials). No GitHub token needed.
+#
+# Release pinning: images are pulled as :latest (or your ALGENTA_IMAGE_TAG) and then PINNED
+# BY DIGEST in the compose file that stays on disk — a floating tag never runs here.
 
 set -euo pipefail
 
@@ -10,10 +16,13 @@ INSTALL_DIR="${ALGENTA_DIR:-$HOME/.algenta}"
 API_PORT="${ALGENTA_API_PORT:-8000}"
 DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.algenta.ai/self-hosting}"
 IMAGE_REGISTRY="${ALGENTA_IMAGE_REGISTRY:-ghcr.io/thyn-ai/algenta}"
-RELEASE_REF="${ALGENTA_VERSION:-}"
-IMAGE_TAG="${ALGENTA_IMAGE_TAG:-}"
-COMPOSE_BUNDLE_URL="${ALGENTA_COMPOSE_URL:-}"
+IMAGE_TAG="${ALGENTA_IMAGE_TAG:-${ALGENTA_VERSION:-latest}}"
+COMPOSE_BUNDLE_URL="${ALGENTA_COMPOSE_URL:-https://algenta.ai/install/docker-compose.selfhosted.yml}"
 SKIP_IMAGE_PULL="${ALGENTA_SKIP_IMAGE_PULL:-0}"
+ACCOUNTS_URL="${ALGENTA_ACCOUNTS_URL:-https://accounts.thyn.ai}"
+CONTROL_PLANE_URL="${ALGENTA_API_URL:-https://api.algenta.ai}"
+CLIENT_ID="${ALGENTA_INSTALLER_CLIENT_ID:-algenta-cli}"
+DEVICE_WAIT_SECONDS="${ALGENTA_DEVICE_WAIT_SECONDS:-300}"
 COMPOSE_CMD=()
 COMPOSE_DISPLAY=""
 CLI_BIN_DIR="${ALGENTA_BIN_DIR:-$HOME/.local/bin}"
@@ -88,19 +97,6 @@ detect_os() {
   esac
 }
 
-fetch_text() {
-  local url="$1"
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url"
-    return
-  fi
-  if command -v wget >/dev/null 2>&1; then
-    wget -qO- "$url"
-    return
-  fi
-  return 1
-}
-
 http_ok() {
   local url="$1"
   if command -v curl >/dev/null 2>&1; then
@@ -123,42 +119,16 @@ is_truthy() {
   esac
 }
 
-is_git_sha() {
-  local value="$1"
-  [[ "$value" =~ ^[a-f0-9]{7,40}$ ]]
+json_field() {
+  # json_field '<json>' field  →  value of a top-level STRING field (stdlib-free parsing:
+  # the device-flow + credentials payloads are tiny flat JSON objects of strings).
+  printf '%s' "$1" | sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
 }
 
 resolve_release_ref() {
-  if [ -n "$RELEASE_REF" ]; then
-    if [ -z "$IMAGE_TAG" ]; then
-      if is_git_sha "$RELEASE_REF"; then
-        IMAGE_TAG="git-${RELEASE_REF:0:7}"
-      else
-        IMAGE_TAG="$RELEASE_REF"
-      fi
-    fi
-    echo -e "${GREEN}✓ Using requested release ref ${RELEASE_REF}${NC}"
-    echo -e "${GREEN}✓ Using pinned image tag ${IMAGE_TAG}${NC}"
-    return
-  fi
-
-  local latest_sha=""
-  latest_sha=$(fetch_text "https://api.github.com/repos/$REPO/commits/main" 2>/dev/null | \
-    grep -m1 '"sha"' | sed -E 's/.*"sha": "([a-f0-9]+)".*/\1/' || true)
-
-  if [ -n "$latest_sha" ]; then
-    RELEASE_REF="$latest_sha"
-    if [ -z "$IMAGE_TAG" ]; then
-      IMAGE_TAG="git-${latest_sha:0:7}"
-    fi
-    echo -e "${GREEN}✓ Resolved release ref ${RELEASE_REF}${NC}"
-    echo -e "${GREEN}✓ Using pinned image tag ${IMAGE_TAG}${NC}"
-    return
-  fi
-
-  echo -e "${RED}Could not resolve a pinned release ref from GitHub.${NC}"
-  echo "Set ALGENTA_VERSION and, if needed, ALGENTA_IMAGE_TAG explicitly before retrying."
-  exit 1
+  # No GitHub round-trip: images are pulled by tag (default: latest) and pinned BY DIGEST
+  # after the pull (see pin_images_by_digest). ALGENTA_IMAGE_TAG / ALGENTA_VERSION override.
+  echo -e "${GREEN}✓ Using image tag ${IMAGE_TAG} (digest-pinned after pull)${NC}"
 }
 
 download_release() {
@@ -167,11 +137,10 @@ download_release() {
   mkdir -p "$INSTALL_DIR"
   cd "$INSTALL_DIR"
 
-  local compose_url="${COMPOSE_BUNDLE_URL:-https://raw.githubusercontent.com/$REPO/$RELEASE_REF/infra/docker/docker-compose.selfhosted.yml}"
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$compose_url" -o docker-compose.yml
+    curl -fsSL "$COMPOSE_BUNDLE_URL" -o docker-compose.yml
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO docker-compose.yml "$compose_url"
+    wget -qO docker-compose.yml "$COMPOSE_BUNDLE_URL"
   fi
 
   echo -e "${GREEN}✓ Downloaded${NC}"
@@ -332,7 +301,7 @@ RESULT_STORAGE_ENABLED=true
 # ── Webhooks ─────────────────────────────────────────────────────────────────
 WEBHOOK_SIGNING_SECRET=${WEBHOOK_SECRET}
 
-# ── Billing (optional — leave blank to disable) ───────────────────────────────
+# ── Billing (optional — leave blank to disable) ──────────────────────────────
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 
@@ -340,7 +309,6 @@ STRIPE_WEBHOOK_SECRET=
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USERNAME=
-SMTP_PASSWORD=
 EMAIL_FROM=noreply@algenta.local
 EOF
 
@@ -419,14 +387,135 @@ set_env_value() {
   fi
 }
 
+# Rewrite a compose image line to a digest reference: REG/NAME:TAG -> REG/NAME@sha256:...
+# so nothing floating ever runs from the on-disk compose file.
+pin_one_image_by_digest() {
+  local service="$1"
+  local ref
+  ref=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_REGISTRY}/${service}:${IMAGE_TAG}" 2>/dev/null || true)
+  if [ -z "$ref" ]; then
+    echo -e "${YELLOW}⚠ Could not resolve a digest for ${service}; leaving the tag reference in place${NC}"
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp)"
+  awk -v svc="$service" -v reg="$IMAGE_REGISTRY" -v tag="$IMAGE_TAG" -v digest_ref="$ref" '
+    index($0, "image:") && index($0, reg "/" svc ":" tag) { sub(/image:.*/, "image: " digest_ref) }
+    { print }
+  ' docker-compose.yml > "$tmp"
+  mv "$tmp" docker-compose.yml
+  echo -e "${GREEN}✓ Pinned ${service} to ${ref#*@}${NC}"
+}
+
+pin_images_by_digest() {
+  echo -e "${BLUE}Pinning images by digest...${NC}"
+  pin_one_image_by_digest "api"
+  pin_one_image_by_digest "engine"
+}
+
+# ── Device login (same path as `algenta login`): accounts portal RFC 8628, then exchange the
+# token for read-only registry credentials on the control plane. ─────────────────────────────
+device_login_and_pull_creds() {
+  echo -e "${BLUE}Authenticating to pull the Algenta images (device login — same as the SDK)...${NC}"
+
+  local code_json user_code device_code verify interval
+  code_json=$(curl -fsSL -X POST "${ACCOUNTS_URL}/oauth/device/code" \
+      -H "Content-Type: application/json" \
+      -H "User-Agent: algenta-installer/1.0" \
+      -d "{\"client_id\": \"${CLIENT_ID}\", \"scope\": \"algenta\"}" 2>/dev/null || true)
+  device_code=$(json_field "$code_json" device_code)
+  user_code=$(json_field "$code_json" user_code)
+  verify=$(json_field "$code_json" verification_uri_complete)
+  [ -n "$verify" ] || verify=$(json_field "$code_json" verification_uri)
+  interval=$(json_field "$code_json" interval)
+  case "$interval" in ''|*[!0-9]*) interval=5 ;; esac
+
+  if [ -z "$device_code" ] || [ -z "$user_code" ] || [ -z "$verify" ]; then
+    echo -e "${RED}Could not start device authorization against ${ACCOUNTS_URL}.${NC}"
+    echo "If you already have registry access, run 'docker login ${IMAGE_REGISTRY%%/*}' first,"
+    echo "then re-run with ALGENTA_SKIP_REGISTRY_LOGIN=1."
+    exit 1
+  fi
+
+  echo ""
+  echo -e "  ${BOLD}1.${NC} Open:  ${verify}"
+  echo -e "  ${BOLD}2.${NC} Enter code:  ${YELLOW}${user_code}${NC}"
+  echo ""
+  if command -v open >/dev/null 2>&1; then
+    open "$verify" >/dev/null 2>&1 || true
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$verify" >/dev/null 2>&1 || true
+  fi
+
+  local deadline=$(( $(date +%s) + DEVICE_WAIT_SECONDS ))
+  local access_token="" tok_json error
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    sleep "$interval"
+    tok_json=$(curl -fsSL -X POST "${ACCOUNTS_URL}/oauth/device/token" \
+        -H "Content-Type: application/json" \
+        -H "User-Agent: algenta-installer/1.0" \
+        -d "{\"client_id\": \"${CLIENT_ID}\", \"device_code\": \"${device_code}\", \"grant_type\": \"urn:ietf:params:oauth:grant-type:device_code\"}" 2>/dev/null || true)
+    access_token=$(json_field "$tok_json" access_token)
+    if [ -n "$access_token" ]; then
+      break
+    fi
+    error=$(json_field "$tok_json" error)
+    case "$error" in
+      authorization_pending|slow_down|"") continue ;;
+      *) echo -e "${RED}Device authorization failed: ${error}${NC}"; exit 1 ;;
+    esac
+  done
+  if [ -z "$access_token" ]; then
+    echo -e "${RED}Timed out waiting for device authorization.${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}✓ Device authorized${NC}"
+
+  echo -e "${BLUE}Fetching registry credentials from the control plane...${NC}"
+  local creds_json registry username password
+  creds_json=$(curl -fsSL -X POST "${CONTROL_PLANE_URL}/v1/registry/credentials" \
+      -H "Authorization: Bearer ${access_token}" \
+      -H "Content-Type: application/json" \
+      -H "User-Agent: algenta-installer/1.0" \
+      -d '{}' 2>/dev/null || true)
+  registry=$(json_field "$creds_json" registry)
+  username=$(json_field "$creds_json" username)
+  password=$(json_field "$creds_json" password)
+  if [ -z "$registry" ] || [ -z "$username" ] || [ -z "$password" ]; then
+    echo -e "${RED}The control plane did not issue registry credentials.${NC}"
+    echo "If the images are public or you already ran 'docker login ${IMAGE_REGISTRY%%/*}',"
+    echo "re-run with ALGENTA_SKIP_REGISTRY_LOGIN=1."
+    exit 1
+  fi
+
+  printf '%s' "$password" | docker login "$registry" -u "$username" --password-stdin >/dev/null 2>&1 || {
+    echo -e "${RED}docker login with the issued credentials failed.${NC}"
+    exit 1
+  }
+  echo -e "${GREEN}✓ Logged in to ${registry}${NC}"
+}
+
+registry_login() {
+  if is_truthy "$SKIP_IMAGE_PULL"; then
+    return 0
+  fi
+  if is_truthy "${ALGENTA_SKIP_REGISTRY_LOGIN:-0}"; then
+    echo -e "${YELLOW}⚠ Skipping registry login (ALGENTA_SKIP_REGISTRY_LOGIN set) — assuming an existing docker login${NC}"
+    return 0
+  fi
+  device_login_and_pull_creds
+}
+
 start_services() {
   echo -e "${BLUE}Starting Algenta...${NC}"
   if ! is_truthy "$SKIP_IMAGE_PULL"; then
     if ! compose pull --quiet; then
       echo -e "${RED}Failed to pull images for tag ${IMAGE_TAG}.${NC}"
-      echo "Check ALGENTA_IMAGE_REGISTRY / ALGENTA_IMAGE_TAG in ${INSTALL_DIR}/.env."
+      echo "Check ALGENTA_IMAGE_REGISTRY / ALGENTA_IMAGE_TAG in ${INSTALL_DIR}/.env,"
+      echo "or authenticate first: docker login ${IMAGE_REGISTRY%%/*}"
       exit 1
     fi
+    pin_images_by_digest
   else
     echo -e "${YELLOW}⚠ Skipping image pull because ALGENTA_SKIP_IMAGE_PULL=${SKIP_IMAGE_PULL}${NC}"
   fi
@@ -593,6 +682,7 @@ main() {
   download_release
   install_cli_wrapper
   generate_env
+  registry_login
   start_services
   if ! wait_healthy; then
     echo -e "${RED}Self-hosted install failed because the API did not become ready.${NC}"

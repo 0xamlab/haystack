@@ -101,6 +101,23 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_CONTROL_PLANE_URL"),
     )
+    # Self-hosted distribution (install.sh): authenticated users (device login, the same path
+    # as `<product> login`) can pull the private runtime images. The control plane hands out
+    # read-only registry credentials so the one-line installer works without a GitHub token.
+    # Unset -> POST /v1/registry/credentials answers 503 (this deployment does not distribute
+    # images). The token is never logged.
+    algenta_registry_url: str = Field(
+        default="ghcr.io",
+        validation_alias=AliasChoices("ALGENTA_REGISTRY_URL"),
+    )
+    algenta_registry_username: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_REGISTRY_USERNAME"),
+    )
+    algenta_registry_read_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_REGISTRY_READ_TOKEN"),
+    )
     # Service role (P4): 'full' = the complete engine + control-plane API (default, today's
     # behavior); 'control_plane' = ONLY the hosted control-plane surfaces (auth/account/billing/
     # devices/team/credits/metering/license/meta) — no engine routers, no Mojo, no /mcp. The

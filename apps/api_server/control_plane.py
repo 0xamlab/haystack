@@ -45,6 +45,7 @@ from apps.api_server.routers import (
 )
 from apps.api_server.routers import license as license_router
 from apps.api_server.routers import meta as meta_router
+from apps.api_server.routers import registry_credentials as registry_credentials_router
 from apps.api_server.services.public_url_policy import validate_public_url_configuration
 
 logger = structlog.get_logger(__name__)
@@ -61,6 +62,7 @@ _CONTROL_PLANE_ROUTERS = (
     metering.router,
     devices.router,
     oauth_device.router,
+    registry_credentials_router.router,
     license_router.router,
     meta_router.router,
     control_plane.router,
