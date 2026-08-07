@@ -3602,6 +3602,20 @@ def _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int
     per element -- the identical two-part discipline `_tiled_gemm_kernel`'s own docstring names:
     every thread must reach both barriers (an early `continue` on a partial tile hangs the group),
     but a padded lane's own OUTPUT is never written if it falls outside `[0,m_rows) x [0,n)`.
+
+    REAL, UNRESOLVED correctness bug on Mojo 1.0.0b2 at an extreme M:N tile-count ratio: `m_rows=1,
+    k=1024, n=4096` (128 N-tiles, 1 M-tile) diverges from the row-flattened oracle at ~94% of all
+    columns (`mma_forge/probes/debug_assign_m1.mojo`) -- every one of those mismatches computed
+    EXACTLY zero contribution (the accumulate loop added nothing for that column), not garbage or a
+    small numerical drift. Byte-identical source passed this same shape before the Mojo 1.0.0b2
+    migration. Likely the same class of miscompilation as `_pf_gnrw_accum_kernel_i8`'s own
+    documented bug (see the narrow-tile section's module comment below) -- a race or stale-read
+    issue specific to this compiler, not a logic error in this file -- but the FAULT SIGNATURE
+    differs (near-total zero-contribution here vs. scattered zero/double-contribution there), so
+    treat as a related but distinct data point, not confirmed to share a root cause. This shape
+    (M=1 against a very wide N) does not occur in the current production dispatch plan: real
+    prefill chunks use hardware MMA unconditionally now (`session_prefill._apply_m_rows`), and this
+    kernel's OWN other tested shapes (`m_rows` 8/33/128/512 at the same `k,n`) all pass cleanly.
     """
     comptime BM = _GEMM_BM
     comptime BN = _GEMM_BN
@@ -3843,7 +3857,30 @@ def _pf_gemm_swiglu_kernel_i8(
 # kernel_i8`/`_pf_gemm_accum_kernel_i8`/`_pf_gemm_swiglu_kernel_i8`); the ONLY difference is which
 # comptime tile constants each reads (`_GEMM_BM_NARROW`/`_GEMM_TM_NARROW` in place of `_GEMM_BM`/
 # `_GEMM_TM`, `_GEMM_BN`/`_GEMM_BK`/`_GEMM_TN` UNCHANGED). Selected at runtime by `residentk.
-# contract.residentk_prefill_gemm_use_narrow_tile(m_rows)`, never both for the same dispatch.
+# contract.residentk_prefill_gemm_use_narrow_tile(m_rows)`, never both for the same dispatch --
+# EXCEPT that `metaldispatch.session_prefill._apply_m_rows` now selects hardware MMA unconditionally
+# (see that method's own docstring), so in the current production dispatch plan this narrow-tile
+# selection is dead code, never actually reached; the three kernels below are still compiled (their
+# classify-role registration in `metaldispatch.session` still runs) but never dispatched.
+#
+# REAL, UNRESOLVED CORRECTNESS BUG on Mojo 1.0.0b2, found re-running `test_residentk_prefill_gemm_
+# kernels.mojo` after this repo's toolchain migration (PR #587): `_pf_gnrw_accum_kernel_i8` diverges
+# from its own row-flattened oracle at EVERY shape tested, by amounts far past FP32 noise (worst
+# delta 141-235 against a ~0.2-0.6 tolerance bound). Byte-identical kernel source (only `fn`->`def`
+# etc. syntax differs) passed this exact diff test before the toolchain migration -- this is a
+# regression coincident with the new compiler, not a logic change. A minimal, single-tile,
+# single-K-step repro (`mma_forge/probes/debug_narrow_accum.mojo`) isolated the fault SIGNATURE:
+# some `(row, col)` positions receive ZERO contribution (`got == y_init` exactly -- the "+=" never
+# happened for that position) while others receive EXACTLY 2x the correct delta (duplicated) -- the
+# classic signature of a race or register/memory aliasing bug, not an algorithmic error. Hand-traced
+# the thread -> (row, col) ownership math (`ty = tid // (BN/TN)`, `r = block_row + ty*TM + i2`,
+# `TM=1`) and confirmed it is a clean 1:1 mapping with no aliasing possible at the SOURCE level, so
+# this is very likely a genuine Mojo 1.0.0b2 miscompilation specific to this kernel's narrow-tile
+# register/thread-count shape (128 threads, `BM=8,TM=1`), not something fixable by editing this
+# file. `_pf_gnrw_swiglu_kernel_i8` (same narrow tile constants, no "+=") and `_pf_gemm_accum_
+# kernel_i8` (same "+=", wide tile) both still pass -- it is specifically the narrow+accumulate
+# combination that is broken. Do NOT re-enable this narrow-tile path (e.g. by reverting `_apply_m_
+# rows`'s unconditional-MMA choice) without re-verifying this bug is fixed upstream first.
 # ============================================================================================
 
 
