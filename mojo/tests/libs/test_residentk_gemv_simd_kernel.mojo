@@ -257,8 +257,8 @@ def main() raises:
 
         var y_tree = ctx.enqueue_create_buffer[DType.float32](N)
         var y_simd = ctx.enqueue_create_buffer[DType.float32](N)
-        var f_ng_tree = ctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
-        var f_ng_simd = ctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
+        var f_ng_tree = ctx.compile_function[_norm_gemv_kernel_i8]()
+        var f_ng_simd = ctx.compile_function[_norm_gemv_kernel_simd_i8]()
 
         ctx.enqueue_function_unchecked(
             f_ng_tree,
@@ -316,8 +316,8 @@ def main() raises:
                 h[j] = Float32(y0_64[j])
         ctx.synchronize()
 
-        var f_ga_tree = ctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
-        var f_ga_simd = ctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
+        var f_ga_tree = ctx.compile_function[_gemv_accum_kernel_i8]()
+        var f_ga_simd = ctx.compile_function[_gemv_accum_kernel_simd_i8]()
         ctx.enqueue_function_unchecked(
             f_ga_tree,
             y0_tree_buf.unsafe_ptr(), x_buf.unsafe_ptr(),
@@ -402,8 +402,8 @@ def main() raises:
 
         var act_tree = ctx.enqueue_create_buffer[DType.float32](N)
         var act_simd = ctx.enqueue_create_buffer[DType.float32](N)
-        var f_gu_tree = ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
-        var f_gu_simd = ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
+        var f_gu_tree = ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
+        var f_gu_simd = ctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
 
         ctx.enqueue_function_unchecked(
             f_gu_tree,

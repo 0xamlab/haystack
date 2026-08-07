@@ -242,8 +242,8 @@ def main() raises:
         var blk_idx_tree = ctx.enqueue_create_buffer[DType.int32](GRID_DIM)
         var blk_val_simd = ctx.enqueue_create_buffer[DType.float32](GRID_DIM)
         var blk_idx_simd = ctx.enqueue_create_buffer[DType.int32](GRID_DIM)
-        var f_tree = ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
-        var f_simd = ctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
+        var f_tree = ctx.compile_function[_lmhead_argmax_kernel_i8]()
+        var f_simd = ctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
 
         ctx.enqueue_function_unchecked(
             f_tree,

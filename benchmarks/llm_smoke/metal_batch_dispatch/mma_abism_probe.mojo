@@ -45,7 +45,7 @@ def main() raises:
     from std.gpu.host import DeviceContext
     from std.gpu import thread_idx
 
-    fn _abism_pinned_kernel_real(d_out: _FP, scale: Int, base: Int):
+    def _abism_pinned_kernel_real(d_out: _FP, scale: Int, base: Int):
         var tid = Int(thread_idx.x)
         d_out[tid] = Float32(tid) * Float32(scale) + Float32(base)
 

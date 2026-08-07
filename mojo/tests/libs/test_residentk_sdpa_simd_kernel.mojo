@@ -167,8 +167,8 @@ def main() raises:
         var attn_tree = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
         var attn_simd = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
 
-        var f_tree = ctx.compile_function_unchecked[_sdpa_kernel]()
-        var f_simd = ctx.compile_function_unchecked[_sdpa_kernel_simd]()
+        var f_tree = ctx.compile_function[_sdpa_kernel]()
+        var f_simd = ctx.compile_function[_sdpa_kernel_simd]()
 
         ctx.enqueue_function_unchecked(
             f_tree,
@@ -266,8 +266,8 @@ def main() raises:
         var attn_tree16 = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
         var attn_simd16 = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
 
-        var f_tree16 = ctx.compile_function_unchecked[_sdpa_kernel_kvf16]()
-        var f_simd16 = ctx.compile_function_unchecked[_sdpa_kernel_simd_kvf16]()
+        var f_tree16 = ctx.compile_function[_sdpa_kernel_kvf16]()
+        var f_simd16 = ctx.compile_function[_sdpa_kernel_simd_kvf16]()
 
         ctx.enqueue_function_unchecked(
             f_tree16,

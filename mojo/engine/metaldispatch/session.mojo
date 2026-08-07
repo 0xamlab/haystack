@@ -365,7 +365,7 @@ per that struct's own docstring, not yet raced/published), so renumbering here c
 any OTHER struct in this file."""
 
 
-fn _classify_prefill_pipeline(name: String) -> Int:
+def _classify_prefill_pipeline(name: String) -> Int:
     """Which of the TEN `residentk.kernels` batched-prefill functions a discovered pipeline's
     Metal function name belongs to — `0`..`9`, or `-1` (neither). A THIRD classifier, deliberately
     never folded into `_classify_pipeline`'s shared `_N_ROLES`/`pipeline_idx` (every struct in this

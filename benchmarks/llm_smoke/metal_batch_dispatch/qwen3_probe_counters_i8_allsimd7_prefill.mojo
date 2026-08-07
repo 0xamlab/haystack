@@ -53,19 +53,19 @@ comptime _R_ARGMAX_REDUCE: Int = 10
 comptime _N_ROLES_PREFILL: Int = 11
 
 
-fn _mb_counters_supported() -> Int:
+def _mb_counters_supported() -> Int:
     return Int(external_call["algenta_counters_supported", Int64]())
 
 
-fn _mb_timestamp_frequency() -> UInt64:
+def _mb_timestamp_frequency() -> UInt64:
     return external_call["algenta_timestamp_frequency", UInt64]()
 
 
-fn _mb_sample_gpu_timestamp() -> UInt64:
+def _mb_sample_gpu_timestamp() -> UInt64:
     return external_call["algenta_sample_gpu_timestamp", UInt64]()
 
 
-fn _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
+def _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     var t_wall0 = perf_counter_ns()
     var gpu0 = _mb_sample_gpu_timestamp()
     var deadline = t_wall0 + UInt(hold_ms) * 1_000_000
@@ -80,11 +80,11 @@ fn _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     return 1.0e9 / tick_rate_hz
 
 
-fn _mb_open_counters(max_samples: Int) -> Int:
+def _mb_open_counters(max_samples: Int) -> Int:
     return Int(external_call["algenta_open_counters", Int64, Int64](Int64(max_samples)))
 
 
-fn _mb_run_token_counters(
+def _mb_run_token_counters(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin],
     n: Int,
     out_ticks: UnsafePointer[UInt64, origin=MutAnyOrigin],
@@ -98,7 +98,7 @@ fn _mb_run_token_counters(
     )
 
 
-fn _role_name(role: Int) -> String:
+def _role_name(role: Int) -> String:
     if role == _R_EMBED:
         return "pf_embed_rows"
     if role == _R_RMSNORM:
@@ -124,7 +124,7 @@ fn _role_name(role: Int) -> String:
     return "UNKNOWN"
 
 
-fn _build_role_table_prefill(n_layers: Int, n_descriptors: Int) raises -> List[Int]:
+def _build_role_table_prefill(n_layers: Int, n_descriptors: Int) raises -> List[Int]:
     var roles = List[Int](capacity=n_descriptors)
     roles.append(_R_EMBED)
     for _ in range(n_layers):
@@ -146,7 +146,7 @@ fn _build_role_table_prefill(n_layers: Int, n_descriptors: Int) raises -> List[I
     return roles^
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -159,7 +159,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -168,7 +168,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -182,12 +182,12 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn _check_mb(status: Int) raises:
+def _check_mb(status: Int) raises:
     if status != MB_OK:
         raise Error(
             "qwen3_probe_counters_i8_allsimd7_prefill: metaldispatch call failed, status=" + String(status)
@@ -195,7 +195,7 @@ fn _check_mb(status: Int) raises:
         )
 
 
-fn _sample_at_m_rows(
+def _sample_at_m_rows(
     mut s: _MBQwen3I8AllSimd7Prefill,
     m_rows: Int,
     n_layers: Int,

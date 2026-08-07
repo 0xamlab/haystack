@@ -40,7 +40,7 @@ Measured on this host (Apple M4 Max), same session, both re-verified in this pac
 
 - one `enqueue_function` through a struct-held compiled handle: **~180 us**; through the
   `enqueue_function[k, k]` parameter form: **~390 us**. The handle is worth 2.2x and this package
-  therefore compiles every kernel ONCE at session open (`compile_function_unchecked`) and stores the
+  therefore compiles every kernel ONCE at session open (`compile_function`) and stores the
   handle as a field.
 - a whole token as 197 unfused split-K GEMVs — 394 dispatches, all 2.38 GB of weights already
   resident — measures **114 ms == 8.8 tok/s**. Residency alone is NOT the win. That is the number

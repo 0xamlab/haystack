@@ -156,7 +156,7 @@ def _run_case(
 
     # ── the single-dispatch original ──
     var attn_orig = ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
-    var f_orig = ctx.compile_function_unchecked[_sdpa_kernel_simd]()
+    var f_orig = ctx.compile_function[_sdpa_kernel_simd]()
     ctx.enqueue_function_unchecked(
         f_orig,
         attn_orig.unsafe_ptr(), q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
@@ -170,8 +170,8 @@ def _run_case(
     var o_buf = ctx.enqueue_create_buffer[DType.float32](h_q * n_splits * d_head)
     var attn_split = ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
 
-    var f_partial = ctx.compile_function_unchecked[_splitk_partial_kernel_simd]()
-    var f_merge = ctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+    var f_partial = ctx.compile_function[_splitk_partial_kernel_simd]()
+    var f_merge = ctx.compile_function[_splitk_merge_kernel_simd]()
     ctx.enqueue_function_unchecked(
         f_partial,
         m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
@@ -195,7 +195,7 @@ def _run_case(
     var o_buf2 = ctx.enqueue_create_buffer[DType.float32](h_q * n_splits * d_head)
     var attn_native = ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
 
-    var f_partial_n = ctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
+    var f_partial_n = ctx.compile_function[_splitk_partial_kernel_simd_native]()
     ctx.enqueue_function_unchecked(
         f_partial_n,
         m_buf2.unsafe_ptr(), l_buf2.unsafe_ptr(), o_buf2.unsafe_ptr(),

@@ -19,7 +19,7 @@ one that would have caught the whole-CI failure mode.
 THE GOLDEN VECTOR IS A WHOLE MODEL, NOT A KERNEL
 ===================================================
 `residentk.session` holds its compiled kernel handles as struct fields, which on this toolchain is
-only possible through `compile_function_unchecked` — the checked form's return type is
+only possible through `compile_function` — the checked form's return type is
 parameterised on a packed argument list with no writable surface syntax. `_unchecked` means the
 argument types at a launch site are NOT verified by the compiler: a swapped pointer, a transposed
 dimension or an `eps` where a `scale` belongs all compile cleanly and produce wrong numbers.

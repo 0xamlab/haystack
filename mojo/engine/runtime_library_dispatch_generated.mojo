@@ -9035,7 +9035,7 @@ from vector_kernels.table import (
     _Vec64 as _Vec64__vector_kernels_table,
 )
 
-fn _unquote_json_string(token: String) -> String:
+def _unquote_json_string(token: String) -> String:
     var n = len(token)
     if n < 2:
         return token
@@ -9067,7 +9067,7 @@ fn _unquote_json_string(token: String) -> String:
         i += 1
     return result
 
-fn _escape_json_string(value: String) -> String:
+def _escape_json_string(value: String) -> String:
     var result = String("")
     var bytes = value.as_bytes()
     for i in range(len(value)):
@@ -9089,18 +9089,18 @@ fn _escape_json_string(value: String) -> String:
             result += chr(Int(b))
     return result
 
-fn _json_hex_digit(v: Int) -> String:
+def _json_hex_digit(v: Int) -> String:
     if v < 10:
         return chr(48 + v)
     return chr(55 + v)
 
-fn _success_json(result_json: String) -> String:
+def _success_json(result_json: String) -> String:
     return "{\"result\":" + result_json + "}"
 
-fn _success_with_mutated_args_json(result_json: String, mutated_args_json: String) -> String:
+def _success_with_mutated_args_json(result_json: String, mutated_args_json: String) -> String:
     return "{\"result\":" + result_json + ",\"mutated_args\":" + mutated_args_json + "}"
 
-fn _error_json(code: String, message: String) -> String:
+def _error_json(code: String, message: String) -> String:
     return "{\"error\":\"" + code + ": " + _escape_json_string(message) + "\",\"error_code\":\"" + code + "\",\"error_message\":\"" + _escape_json_string(message) + "\"}"
 
 # `v - v` is 0.0 for every finite Float64, and nan for both nan and +/-inf, so this
@@ -9109,20 +9109,20 @@ fn _error_json(code: String, message: String) -> String:
 # a non-finite value anywhere in a frame destroys the WHOLE frame rather than the one
 # field holding it. Measured on a compiled worker: the client's json.loads raised, the
 # session layer terminated the process, and every resident dataset went with it.
-fn _is_finite_f64(value: Float64) -> Bool:
+def _is_finite_f64(value: Float64) -> Bool:
     return (value - value) == 0.0
 
-fn _is_finite_f32(value: Float32) -> Bool:
+def _is_finite_f32(value: Float32) -> Bool:
     return (value - value) == Float32(0.0)
 
-fn _parse_bool_token(token: String) raises -> Bool:
+def _parse_bool_token(token: String) raises -> Bool:
     if token == "true":
         return True
     if token == "false":
         return False
     raise Error("Expected Bool token, received " + token)
 
-fn _parse_cooentry_token(token: String) raises -> COOEntry:
+def _parse_cooentry_token(token: String) raises -> COOEntry:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for COOEntry, received " + String(json_array_len(values_json)))
@@ -9131,7 +9131,7 @@ fn _parse_cooentry_token(token: String) raises -> COOEntry:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return COOEntry(field_0^, field_1^, field_2^)
 
-fn _parse_cscmatrix_token(token: String) raises -> CSCMatrix:
+def _parse_cscmatrix_token(token: String) raises -> CSCMatrix:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for CSCMatrix, received " + String(json_array_len(values_json)))
@@ -9144,7 +9144,7 @@ fn _parse_cscmatrix_token(token: String) raises -> CSCMatrix:
     var field_6 = _parse_bool_token(json_array_get(values_json, 6))
     return CSCMatrix(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_csrmatrix_token(token: String) raises -> CSRMatrix:
+def _parse_csrmatrix_token(token: String) raises -> CSRMatrix:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for CSRMatrix, received " + String(json_array_len(values_json)))
@@ -9157,7 +9157,7 @@ fn _parse_csrmatrix_token(token: String) raises -> CSRMatrix:
     var field_6 = _parse_bool_token(json_array_get(values_json, 6))
     return CSRMatrix(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_csvrow_token(token: String) raises -> CSVRow:
+def _parse_csvrow_token(token: String) raises -> CSVRow:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for CSVRow, received " + String(json_array_len(values_json)))
@@ -9165,7 +9165,7 @@ fn _parse_csvrow_token(token: String) raises -> CSVRow:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     return CSVRow(field_0^, field_1^)
 
-fn _parse_cellvalue_token(token: String) raises -> CellValue:
+def _parse_cellvalue_token(token: String) raises -> CellValue:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 9:
         raise Error("Expected 9 fields for CellValue, received " + String(json_array_len(values_json)))
@@ -9190,7 +9190,7 @@ fn _parse_cellvalue_token(token: String) raises -> CellValue:
     decoded.e = field_8^
     return decoded^
 
-fn _parse_circularbuffer_token(token: String) raises -> CircularBuffer:
+def _parse_circularbuffer_token(token: String) raises -> CircularBuffer:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for CircularBuffer, received " + String(json_array_len(values_json)))
@@ -9200,7 +9200,7 @@ fn _parse_circularbuffer_token(token: String) raises -> CircularBuffer:
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
     return CircularBuffer(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_complex_token(token: String) raises -> Complex:
+def _parse_complex_token(token: String) raises -> Complex:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for Complex, received " + String(json_array_len(values_json)))
@@ -9208,7 +9208,7 @@ fn _parse_complex_token(token: String) raises -> Complex:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     return Complex(field_0^, field_1^)
 
-fn _parse_countminsketch_token(token: String) raises -> CountMinSketch:
+def _parse_countminsketch_token(token: String) raises -> CountMinSketch:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for CountMinSketch, received " + String(json_array_len(values_json)))
@@ -9218,7 +9218,7 @@ fn _parse_countminsketch_token(token: String) raises -> CountMinSketch:
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     return CountMinSketch(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_countingbloom_token(token: String) raises -> CountingBloom:
+def _parse_countingbloom_token(token: String) raises -> CountingBloom:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for CountingBloom, received " + String(json_array_len(values_json)))
@@ -9228,7 +9228,7 @@ fn _parse_countingbloom_token(token: String) raises -> CountingBloom:
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     return CountingBloom(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_dd_token(token: String) raises -> DD:
+def _parse_dd_token(token: String) raises -> DD:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for DD, received " + String(json_array_len(values_json)))
@@ -9236,7 +9236,7 @@ fn _parse_dd_token(token: String) raises -> DD:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     return DD(field_0^, field_1^)
 
-fn _parse_distinctsketch_token(token: String) raises -> DistinctSketch:
+def _parse_distinctsketch_token(token: String) raises -> DistinctSketch:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 6:
         raise Error("Expected 6 fields for DistinctSketch, received " + String(json_array_len(values_json)))
@@ -9248,7 +9248,7 @@ fn _parse_distinctsketch_token(token: String) raises -> DistinctSketch:
     var field_5 = _parse_bool_token(json_array_get(values_json, 5))
     return DistinctSketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
-fn _parse_fnode_token(token: String) raises -> FNode:
+def _parse_fnode_token(token: String) raises -> FNode:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 11:
         raise Error("Expected 11 fields for FNode, received " + String(json_array_len(values_json)))
@@ -9265,19 +9265,19 @@ fn _parse_fnode_token(token: String) raises -> FNode:
     var field_10 = _parse_int_token(json_array_get(values_json, 10))
     return FNode(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^)
 
-fn _parse_float32_token(token: String) raises -> Float32:
+def _parse_float32_token(token: String) raises -> Float32:
     var parsed = parse_float64(token)
     if not _is_finite_f64(parsed):
         raise Error("non_finite_argument")
     return Float32(parsed)
 
-fn _parse_float64_token(token: String) raises -> Float64:
+def _parse_float64_token(token: String) raises -> Float64:
     var parsed = parse_float64(token)
     if not _is_finite_f64(parsed):
         raise Error("non_finite_argument")
     return parsed
 
-fn _parse_frequencysketch_token(token: String) raises -> FrequencySketch:
+def _parse_frequencysketch_token(token: String) raises -> FrequencySketch:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for FrequencySketch, received " + String(json_array_len(values_json)))
@@ -9290,7 +9290,7 @@ fn _parse_frequencysketch_token(token: String) raises -> FrequencySketch:
     var field_6 = _parse_bool_token(json_array_get(values_json, 6))
     return FrequencySketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_gaconfig_token(token: String) raises -> GAConfig:
+def _parse_gaconfig_token(token: String) raises -> GAConfig:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for GAConfig, received " + String(json_array_len(values_json)))
@@ -9303,7 +9303,7 @@ fn _parse_gaconfig_token(token: String) raises -> GAConfig:
     var field_6 = _parse_float64_token(json_array_get(values_json, 6))
     return GAConfig(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_gbdtmodel_token(token: String) raises -> GBDTModel:
+def _parse_gbdtmodel_token(token: String) raises -> GBDTModel:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 8:
         raise Error("Expected 8 fields for GBDTModel, received " + String(json_array_len(values_json)))
@@ -9317,7 +9317,7 @@ fn _parse_gbdtmodel_token(token: String) raises -> GBDTModel:
     var field_7 = _parse_list_float64_token(json_array_get(values_json, 7))
     return GBDTModel(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^)
 
-fn _parse_gpfit_token(token: String) raises -> GPFit:
+def _parse_gpfit_token(token: String) raises -> GPFit:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 10:
         raise Error("Expected 10 fields for GPFit, received " + String(json_array_len(values_json)))
@@ -9344,7 +9344,7 @@ fn _parse_gpfit_token(token: String) raises -> GPFit:
     decoded.ok = field_9^
     return decoded^
 
-fn _parse_grustate_token(token: String) raises -> GRUState:
+def _parse_grustate_token(token: String) raises -> GRUState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for GRUState, received " + String(json_array_len(values_json)))
@@ -9361,7 +9361,7 @@ fn _parse_grustate_token(token: String) raises -> GRUState:
     decoded.s_reset = field_4^
     return decoded^
 
-fn _parse_graph_token(token: String) raises -> Graph:
+def _parse_graph_token(token: String) raises -> Graph:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Graph, received " + String(json_array_len(values_json)))
@@ -9370,7 +9370,7 @@ fn _parse_graph_token(token: String) raises -> Graph:
     var field_2 = _parse_list_list_float64_token(json_array_get(values_json, 2))
     return Graph(field_0^, field_1^, field_2^)
 
-fn _parse_graphcsr_token(token: String) raises -> GraphCSR:
+def _parse_graphcsr_token(token: String) raises -> GraphCSR:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for GraphCSR, received " + String(json_array_len(values_json)))
@@ -9383,7 +9383,7 @@ fn _parse_graphcsr_token(token: String) raises -> GraphCSR:
     var field_6 = _parse_int_token(json_array_get(values_json, 6))
     return GraphCSR(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_hsl_token(token: String) raises -> HSL:
+def _parse_hsl_token(token: String) raises -> HSL:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for HSL, received " + String(json_array_len(values_json)))
@@ -9392,7 +9392,7 @@ fn _parse_hsl_token(token: String) raises -> HSL:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return HSL(field_0^, field_1^, field_2^)
 
-fn _parse_hsv_token(token: String) raises -> HSV:
+def _parse_hsv_token(token: String) raises -> HSV:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for HSV, received " + String(json_array_len(values_json)))
@@ -9401,7 +9401,7 @@ fn _parse_hsv_token(token: String) raises -> HSV:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return HSV(field_0^, field_1^, field_2^)
 
-fn _parse_histogram_token(token: String) raises -> Histogram:
+def _parse_histogram_token(token: String) raises -> Histogram:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Histogram, received " + String(json_array_len(values_json)))
@@ -9410,7 +9410,7 @@ fn _parse_histogram_token(token: String) raises -> Histogram:
     var field_2 = _parse_list_float64_token(json_array_get(values_json, 2))
     return Histogram(field_0^, field_1^, field_2^)
 
-fn _parse_huffmannode_token(token: String) raises -> HuffmanNode:
+def _parse_huffmannode_token(token: String) raises -> HuffmanNode:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for HuffmanNode, received " + String(json_array_len(values_json)))
@@ -9420,7 +9420,7 @@ fn _parse_huffmannode_token(token: String) raises -> HuffmanNode:
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
     return HuffmanNode(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_hyperloglog_token(token: String) raises -> HyperLogLog:
+def _parse_hyperloglog_token(token: String) raises -> HyperLogLog:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for HyperLogLog, received " + String(json_array_len(values_json)))
@@ -9429,7 +9429,7 @@ fn _parse_hyperloglog_token(token: String) raises -> HyperLogLog:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     return HyperLogLog(field_0^, field_1^, field_2^)
 
-fn _parse_individual_token(token: String) raises -> Individual:
+def _parse_individual_token(token: String) raises -> Individual:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for Individual, received " + String(json_array_len(values_json)))
@@ -9437,10 +9437,10 @@ fn _parse_individual_token(token: String) raises -> Individual:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     return Individual(field_0^, field_1^)
 
-fn _parse_int_token(token: String) raises -> Int:
+def _parse_int_token(token: String) raises -> Int:
     return parse_int(token)
 
-fn _parse_interval_token(token: String) raises -> Interval:
+def _parse_interval_token(token: String) raises -> Interval:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Interval, received " + String(json_array_len(values_json)))
@@ -9449,7 +9449,7 @@ fn _parse_interval_token(token: String) raises -> Interval:
     var field_2 = _parse_bool_token(json_array_get(values_json, 2))
     return Interval(field_0^, field_1^, field_2^)
 
-fn _parse_kvstore_token(token: String) raises -> KVStore:
+def _parse_kvstore_token(token: String) raises -> KVStore:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for KVStore, received " + String(json_array_len(values_json)))
@@ -9458,7 +9458,7 @@ fn _parse_kvstore_token(token: String) raises -> KVStore:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     return KVStore(field_0^, field_1^, field_2^)
 
-fn _parse_kalmanstate_token(token: String) raises -> KalmanState:
+def _parse_kalmanstate_token(token: String) raises -> KalmanState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for KalmanState, received " + String(json_array_len(values_json)))
@@ -9466,7 +9466,7 @@ fn _parse_kalmanstate_token(token: String) raises -> KalmanState:
     var field_1 = _parse_list_list_float64_token(json_array_get(values_json, 1))
     return KalmanState(field_0^, field_1^)
 
-fn _parse_lstmstate_token(token: String) raises -> LSTMState:
+def _parse_lstmstate_token(token: String) raises -> LSTMState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for LSTMState, received " + String(json_array_len(values_json)))
@@ -9487,7 +9487,7 @@ fn _parse_lstmstate_token(token: String) raises -> LSTMState:
     decoded.c_tanh = field_6^
     return decoded^
 
-fn _parse_lz77token_token(token: String) raises -> LZ77Token:
+def _parse_lz77token_token(token: String) raises -> LZ77Token:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for LZ77Token, received " + String(json_array_len(values_json)))
@@ -9496,7 +9496,7 @@ fn _parse_lz77token_token(token: String) raises -> LZ77Token:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     return LZ77Token(field_0^, field_1^, field_2^)
 
-fn _parse_leakybucket_token(token: String) raises -> LeakyBucket:
+def _parse_leakybucket_token(token: String) raises -> LeakyBucket:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for LeakyBucket, received " + String(json_array_len(values_json)))
@@ -9506,7 +9506,7 @@ fn _parse_leakybucket_token(token: String) raises -> LeakyBucket:
     var field_3 = _parse_float64_token(json_array_get(values_json, 3))
     return LeakyBucket(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_matrix_token(token: String) raises -> Matrix:
+def _parse_matrix_token(token: String) raises -> Matrix:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Matrix, received " + String(json_array_len(values_json)))
@@ -9515,7 +9515,7 @@ fn _parse_matrix_token(token: String) raises -> Matrix:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     return Matrix(field_0^, field_1^, field_2^)
 
-fn _parse_matrix2d_token(token: String) raises -> Matrix2D:
+def _parse_matrix2d_token(token: String) raises -> Matrix2D:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Matrix2D, received " + String(json_array_len(values_json)))
@@ -9524,7 +9524,7 @@ fn _parse_matrix2d_token(token: String) raises -> Matrix2D:
     var field_2 = _parse_list_float64_token(json_array_get(values_json, 2))
     return Matrix2D(field_0^, field_1^, field_2^)
 
-fn _parse_metricscounter_token(token: String) raises -> MetricsCounter:
+def _parse_metricscounter_token(token: String) raises -> MetricsCounter:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for MetricsCounter, received " + String(json_array_len(values_json)))
@@ -9532,7 +9532,7 @@ fn _parse_metricscounter_token(token: String) raises -> MetricsCounter:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     return MetricsCounter(field_0^, field_1^)
 
-fn _parse_modelflat_token(token: String) raises -> ModelFlat:
+def _parse_modelflat_token(token: String) raises -> ModelFlat:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 28:
         raise Error("Expected 28 fields for ModelFlat, received " + String(json_array_len(values_json)))
@@ -9566,7 +9566,7 @@ fn _parse_modelflat_token(token: String) raises -> ModelFlat:
     var field_27 = _parse_float64_token(json_array_get(values_json, 27))
     return ModelFlat(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^, field_11^, field_12^, field_13^, field_14^, field_15^, field_16^, field_17^, field_18^, field_19^, field_20^, field_21^, field_22^, field_23^, field_24^, field_25^, field_26^, field_27^)
 
-fn _parse_optpolicy_token(token: String) raises -> OptPolicy:
+def _parse_optpolicy_token(token: String) raises -> OptPolicy:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for OptPolicy, received " + String(json_array_len(values_json)))
@@ -9577,7 +9577,7 @@ fn _parse_optpolicy_token(token: String) raises -> OptPolicy:
     var field_4 = _parse_float64_token(json_array_get(values_json, 4))
     return OptPolicy(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_optvar_token(token: String) raises -> OptVar:
+def _parse_optvar_token(token: String) raises -> OptVar:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 8:
         raise Error("Expected 8 fields for OptVar, received " + String(json_array_len(values_json)))
@@ -9591,7 +9591,7 @@ fn _parse_optvar_token(token: String) raises -> OptVar:
     var field_7 = _parse_float64_token(json_array_get(values_json, 7))
     return OptVar(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^)
 
-fn _parse_pcaresult_token(token: String) raises -> PCAResult:
+def _parse_pcaresult_token(token: String) raises -> PCAResult:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for PCAResult, received " + String(json_array_len(values_json)))
@@ -9601,7 +9601,7 @@ fn _parse_pcaresult_token(token: String) raises -> PCAResult:
     var field_3 = _parse_list_float64_token(json_array_get(values_json, 3))
     return PCAResult(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_pidstate_token(token: String) raises -> PIDState:
+def _parse_pidstate_token(token: String) raises -> PIDState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for PIDState, received " + String(json_array_len(values_json)))
@@ -9614,7 +9614,7 @@ fn _parse_pidstate_token(token: String) raises -> PIDState:
     var field_6 = _parse_float64_token(json_array_get(values_json, 6))
     return PIDState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_plsresult_token(token: String) raises -> PLSResult:
+def _parse_plsresult_token(token: String) raises -> PLSResult:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 15:
         raise Error("Expected 15 fields for PLSResult, received " + String(json_array_len(values_json)))
@@ -9651,7 +9651,7 @@ fn _parse_plsresult_token(token: String) raises -> PLSResult:
     decoded.n_iter = field_14^
     return decoded^
 
-fn _parse_pacestate_token(token: String) raises -> PaceState:
+def _parse_pacestate_token(token: String) raises -> PaceState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for PaceState, received " + String(json_array_len(values_json)))
@@ -9664,7 +9664,7 @@ fn _parse_pacestate_token(token: String) raises -> PaceState:
     var field_6 = _parse_int_token(json_array_get(values_json, 6))
     return PaceState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_pagehinkleystate_token(token: String) raises -> PageHinkleyState:
+def _parse_pagehinkleystate_token(token: String) raises -> PageHinkleyState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 11:
         raise Error("Expected 11 fields for PageHinkleyState, received " + String(json_array_len(values_json)))
@@ -9681,7 +9681,7 @@ fn _parse_pagehinkleystate_token(token: String) raises -> PageHinkleyState:
     var field_10 = _parse_bool_token(json_array_get(values_json, 10))
     return PageHinkleyState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^)
 
-fn _parse_pipelinestate_token(token: String) raises -> PipelineState:
+def _parse_pipelinestate_token(token: String) raises -> PipelineState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for PipelineState, received " + String(json_array_len(values_json)))
@@ -9698,7 +9698,7 @@ fn _parse_pipelinestate_token(token: String) raises -> PipelineState:
     decoded.offsets = field_4^
     return decoded^
 
-fn _parse_point_token(token: String) raises -> Point:
+def _parse_point_token(token: String) raises -> Point:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for Point, received " + String(json_array_len(values_json)))
@@ -9706,7 +9706,7 @@ fn _parse_point_token(token: String) raises -> Point:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     return Point(field_0^, field_1^)
 
-fn _parse_priorityqueue_token(token: String) raises -> PriorityQueue:
+def _parse_priorityqueue_token(token: String) raises -> PriorityQueue:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for PriorityQueue, received " + String(json_array_len(values_json)))
@@ -9714,7 +9714,7 @@ fn _parse_priorityqueue_token(token: String) raises -> PriorityQueue:
     var field_1 = _parse_list_int_token(json_array_get(values_json, 1))
     return PriorityQueue(field_0^, field_1^)
 
-fn _parse_quantilesketch_token(token: String) raises -> QuantileSketch:
+def _parse_quantilesketch_token(token: String) raises -> QuantileSketch:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 10:
         raise Error("Expected 10 fields for QuantileSketch, received " + String(json_array_len(values_json)))
@@ -9730,7 +9730,7 @@ fn _parse_quantilesketch_token(token: String) raises -> QuantileSketch:
     var field_9 = _parse_bool_token(json_array_get(values_json, 9))
     return QuantileSketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^)
 
-fn _parse_rgb_token(token: String) raises -> RGB:
+def _parse_rgb_token(token: String) raises -> RGB:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for RGB, received " + String(json_array_len(values_json)))
@@ -9739,7 +9739,7 @@ fn _parse_rgb_token(token: String) raises -> RGB:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return RGB(field_0^, field_1^, field_2^)
 
-fn _parse_rankresult_vector_kernels_batch_ranker_token(token: String) raises -> RankResult__vector_kernels_batch_ranker:
+def _parse_rankresult_vector_kernels_batch_ranker_token(token: String) raises -> RankResult__vector_kernels_batch_ranker:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 6:
         raise Error("Expected 6 fields for RankResult__vector_kernels_batch_ranker, received " + String(json_array_len(values_json)))
@@ -9751,7 +9751,7 @@ fn _parse_rankresult_vector_kernels_batch_ranker_token(token: String) raises -> 
     var field_5 = _parse_uint8_token(json_array_get(values_json, 5))
     return RankResult__vector_kernels_batch_ranker(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
-fn _parse_regressiontree_token(token: String) raises -> RegressionTree:
+def _parse_regressiontree_token(token: String) raises -> RegressionTree:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 6:
         raise Error("Expected 6 fields for RegressionTree, received " + String(json_array_len(values_json)))
@@ -9763,7 +9763,7 @@ fn _parse_regressiontree_token(token: String) raises -> RegressionTree:
     var field_5 = _parse_int_token(json_array_get(values_json, 5))
     return RegressionTree(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
-fn _parse_svmmodel_token(token: String) raises -> SVMModel:
+def _parse_svmmodel_token(token: String) raises -> SVMModel:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 9:
         raise Error("Expected 9 fields for SVMModel, received " + String(json_array_len(values_json)))
@@ -9788,7 +9788,7 @@ fn _parse_svmmodel_token(token: String) raises -> SVMModel:
     decoded.n_support = field_8^
     return decoded^
 
-fn _parse_seq2params_token(token: String) raises -> Seq2Params:
+def _parse_seq2params_token(token: String) raises -> Seq2Params:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 13:
         raise Error("Expected 13 fields for Seq2Params, received " + String(json_array_len(values_json)))
@@ -9821,7 +9821,7 @@ fn _parse_seq2params_token(token: String) raises -> Seq2Params:
     decoded.d2_b = field_12^
     return decoded^
 
-fn _parse_simstate_token(token: String) raises -> SimState:
+def _parse_simstate_token(token: String) raises -> SimState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 8:
         raise Error("Expected 8 fields for SimState, received " + String(json_array_len(values_json)))
@@ -9835,7 +9835,7 @@ fn _parse_simstate_token(token: String) raises -> SimState:
     var field_7 = _parse_int_token(json_array_get(values_json, 7))
     return SimState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^)
 
-fn _parse_slidingwindow_token(token: String) raises -> SlidingWindow:
+def _parse_slidingwindow_token(token: String) raises -> SlidingWindow:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for SlidingWindow, received " + String(json_array_len(values_json)))
@@ -9844,7 +9844,7 @@ fn _parse_slidingwindow_token(token: String) raises -> SlidingWindow:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     return SlidingWindow(field_0^, field_1^, field_2^)
 
-fn _parse_sparselu_token(token: String) raises -> SparseLU:
+def _parse_sparselu_token(token: String) raises -> SparseLU:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 13:
         raise Error("Expected 13 fields for SparseLU, received " + String(json_array_len(values_json)))
@@ -9863,7 +9863,7 @@ fn _parse_sparselu_token(token: String) raises -> SparseLU:
     var field_12 = _parse_list_float64_token(json_array_get(values_json, 12))
     return SparseLU(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^, field_11^, field_12^)
 
-fn _parse_sparsematrixcoo_token(token: String) raises -> SparseMatrixCOO:
+def _parse_sparsematrixcoo_token(token: String) raises -> SparseMatrixCOO:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for SparseMatrixCOO, received " + String(json_array_len(values_json)))
@@ -9872,10 +9872,10 @@ fn _parse_sparsematrixcoo_token(token: String) raises -> SparseMatrixCOO:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     return SparseMatrixCOO(field_0^, field_1^, field_2^)
 
-fn _parse_string_token(token: String) raises -> String:
+def _parse_string_token(token: String) raises -> String:
     return _unquote_json_string(token)
 
-fn _parse_survivalpoint_token(token: String) raises -> SurvivalPoint:
+def _parse_survivalpoint_token(token: String) raises -> SurvivalPoint:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for SurvivalPoint, received " + String(json_array_len(values_json)))
@@ -9885,7 +9885,7 @@ fn _parse_survivalpoint_token(token: String) raises -> SurvivalPoint:
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
     return SurvivalPoint(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_ttlcache_token(token: String) raises -> TTLCache:
+def _parse_ttlcache_token(token: String) raises -> TTLCache:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for TTLCache, received " + String(json_array_len(values_json)))
@@ -9896,7 +9896,7 @@ fn _parse_ttlcache_token(token: String) raises -> TTLCache:
     var field_4 = _parse_int_token(json_array_get(values_json, 4))
     return TTLCache(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_ttlcacheentry_token(token: String) raises -> TTLCacheEntry:
+def _parse_ttlcacheentry_token(token: String) raises -> TTLCacheEntry:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for TTLCacheEntry, received " + String(json_array_len(values_json)))
@@ -9905,7 +9905,7 @@ fn _parse_ttlcacheentry_token(token: String) raises -> TTLCacheEntry:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return TTLCacheEntry(field_0^, field_1^, field_2^)
 
-fn _parse_table_token(token: String) raises -> Table:
+def _parse_table_token(token: String) raises -> Table:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Table, received " + String(json_array_len(values_json)))
@@ -9914,7 +9914,7 @@ fn _parse_table_token(token: String) raises -> Table:
     var field_2 = _parse_list_list_float64_token(json_array_get(values_json, 2))
     return Table(field_0^, field_1^, field_2^)
 
-fn _parse_tensor1d_token(token: String) raises -> Tensor1D:
+def _parse_tensor1d_token(token: String) raises -> Tensor1D:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for Tensor1D, received " + String(json_array_len(values_json)))
@@ -9922,7 +9922,7 @@ fn _parse_tensor1d_token(token: String) raises -> Tensor1D:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     return Tensor1D(field_0^, field_1^)
 
-fn _parse_token_token(token: String) raises -> Token:
+def _parse_token_token(token: String) raises -> Token:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for Token, received " + String(json_array_len(values_json)))
@@ -9931,7 +9931,7 @@ fn _parse_token_token(token: String) raises -> Token:
     var field_2 = _parse_string_token(json_array_get(values_json, 2))
     return Token(field_0^, field_1^, field_2^)
 
-fn _parse_tokenbucket_token(token: String) raises -> TokenBucket:
+def _parse_tokenbucket_token(token: String) raises -> TokenBucket:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for TokenBucket, received " + String(json_array_len(values_json)))
@@ -9941,7 +9941,7 @@ fn _parse_tokenbucket_token(token: String) raises -> TokenBucket:
     var field_3 = _parse_float64_token(json_array_get(values_json, 3))
     return TokenBucket(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_tomldoc_token(token: String) raises -> TomlDoc:
+def _parse_tomldoc_token(token: String) raises -> TomlDoc:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for TomlDoc, received " + String(json_array_len(values_json)))
@@ -9949,7 +9949,7 @@ fn _parse_tomldoc_token(token: String) raises -> TomlDoc:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     return TomlDoc(field_0^, field_1^)
 
-fn _parse_tomlnode_token(token: String) raises -> TomlNode:
+def _parse_tomlnode_token(token: String) raises -> TomlNode:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for TomlNode, received " + String(json_array_len(values_json)))
@@ -9960,7 +9960,7 @@ fn _parse_tomlnode_token(token: String) raises -> TomlNode:
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
     return TomlNode(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> TopKEntry__vector_kernels_batch_ranker:
+def _parse_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> TopKEntry__vector_kernels_batch_ranker:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
         raise Error("Expected 4 fields for TopKEntry__vector_kernels_batch_ranker, received " + String(json_array_len(values_json)))
@@ -9970,7 +9970,7 @@ fn _parse_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> T
     var field_3 = _parse_float32_token(json_array_get(values_json, 3))
     return TopKEntry__vector_kernels_batch_ranker(field_0^, field_1^, field_2^, field_3^)
 
-fn _parse_trie_token(token: String) raises -> Trie:
+def _parse_trie_token(token: String) raises -> Trie:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for Trie, received " + String(json_array_len(values_json)))
@@ -9981,7 +9981,7 @@ fn _parse_trie_token(token: String) raises -> Trie:
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
     return Trie(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_txbuffer_token(token: String) raises -> TxBuffer:
+def _parse_txbuffer_token(token: String) raises -> TxBuffer:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for TxBuffer, received " + String(json_array_len(values_json)))
@@ -9992,31 +9992,31 @@ fn _parse_txbuffer_token(token: String) raises -> TxBuffer:
     var field_4 = _parse_int_token(json_array_get(values_json, 4))
     return TxBuffer(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_uint16_token(token: String) raises -> UInt16:
+def _parse_uint16_token(token: String) raises -> UInt16:
     var parsed = parse_int(token)
     if parsed < 0:
         raise Error("Expected non-negative UInt16 token, received " + token)
     return UInt16(parsed)
 
-fn _parse_uint32_token(token: String) raises -> UInt32:
+def _parse_uint32_token(token: String) raises -> UInt32:
     var parsed = parse_int(token)
     if parsed < 0:
         raise Error("Expected non-negative UInt32 token, received " + token)
     return UInt32(parsed)
 
-fn _parse_uint64_token(token: String) raises -> UInt64:
+def _parse_uint64_token(token: String) raises -> UInt64:
     var parsed = parse_int(token)
     if parsed < 0:
         raise Error("Expected non-negative UInt64 token, received " + token)
     return UInt64(parsed)
 
-fn _parse_uint8_token(token: String) raises -> UInt8:
+def _parse_uint8_token(token: String) raises -> UInt8:
     var parsed = parse_int(token)
     if parsed < 0:
         raise Error("Expected non-negative UInt8 token, received " + token)
     return UInt8(parsed)
 
-fn _parse_url_token(token: String) raises -> URL:
+def _parse_url_token(token: String) raises -> URL:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 6:
         raise Error("Expected 6 fields for URL, received " + String(json_array_len(values_json)))
@@ -10028,7 +10028,7 @@ fn _parse_url_token(token: String) raises -> URL:
     var field_5 = _parse_string_token(json_array_get(values_json, 5))
     return URL(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
-fn _parse_weightededge_token(token: String) raises -> WeightedEdge:
+def _parse_weightededge_token(token: String) raises -> WeightedEdge:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
         raise Error("Expected 3 fields for WeightedEdge, received " + String(json_array_len(values_json)))
@@ -10037,7 +10037,7 @@ fn _parse_weightededge_token(token: String) raises -> WeightedEdge:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return WeightedEdge(field_0^, field_1^, field_2^)
 
-fn _parse_windowsummary_token(token: String) raises -> WindowSummary:
+def _parse_windowsummary_token(token: String) raises -> WindowSummary:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 7:
         raise Error("Expected 7 fields for WindowSummary, received " + String(json_array_len(values_json)))
@@ -10050,7 +10050,7 @@ fn _parse_windowsummary_token(token: String) raises -> WindowSummary:
     var field_6 = _parse_int_token(json_array_get(values_json, 6))
     return WindowSummary(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
-fn _parse_workbook_token(token: String) raises -> Workbook:
+def _parse_workbook_token(token: String) raises -> Workbook:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 26:
         raise Error("Expected 26 fields for Workbook, received " + String(json_array_len(values_json)))
@@ -10109,7 +10109,7 @@ fn _parse_workbook_token(token: String) raises -> Workbook:
     decoded.formula_cells = field_25^
     return decoded^
 
-fn _parse_yamldoc_token(token: String) raises -> YamlDoc:
+def _parse_yamldoc_token(token: String) raises -> YamlDoc:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
         raise Error("Expected 2 fields for YamlDoc, received " + String(json_array_len(values_json)))
@@ -10117,7 +10117,7 @@ fn _parse_yamldoc_token(token: String) raises -> YamlDoc:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     return YamlDoc(field_0^, field_1^)
 
-fn _parse_yamlnode_token(token: String) raises -> YamlNode:
+def _parse_yamlnode_token(token: String) raises -> YamlNode:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
         raise Error("Expected 5 fields for YamlNode, received " + String(json_array_len(values_json)))
@@ -10128,21 +10128,21 @@ fn _parse_yamlnode_token(token: String) raises -> YamlNode:
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
     return YamlNode(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_tomlpool_token(token: String) raises -> _TomlPool:
+def _parse_tomlpool_token(token: String) raises -> _TomlPool:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 1:
         raise Error("Expected 1 fields for _TomlPool, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_tomlnode_token(json_array_get(values_json, 0))
     return _TomlPool(field_0^)
 
-fn _parse_yamlpool_token(token: String) raises -> _YamlPool:
+def _parse_yamlpool_token(token: String) raises -> _YamlPool:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 1:
         raise Error("Expected 1 fields for _YamlPool, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_yamlnode_token(json_array_get(values_json, 0))
     return _YamlPool(field_0^)
 
-fn _parse_list_bool_token(token: String) raises -> List[Bool]:
+def _parse_list_bool_token(token: String) raises -> List[Bool]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10151,7 +10151,7 @@ fn _parse_list_bool_token(token: String) raises -> List[Bool]:
         result.append(_parse_bool_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_cooentry_token(token: String) raises -> List[COOEntry]:
+def _parse_list_cooentry_token(token: String) raises -> List[COOEntry]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10160,7 +10160,7 @@ fn _parse_list_cooentry_token(token: String) raises -> List[COOEntry]:
         result.append(_parse_cooentry_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_csvrow_token(token: String) raises -> List[CSVRow]:
+def _parse_list_csvrow_token(token: String) raises -> List[CSVRow]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10169,7 +10169,7 @@ fn _parse_list_csvrow_token(token: String) raises -> List[CSVRow]:
         result.append(_parse_csvrow_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_complex_token(token: String) raises -> List[Complex]:
+def _parse_list_complex_token(token: String) raises -> List[Complex]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10178,7 +10178,7 @@ fn _parse_list_complex_token(token: String) raises -> List[Complex]:
         result.append(_parse_complex_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_fnode_token(token: String) raises -> List[FNode]:
+def _parse_list_fnode_token(token: String) raises -> List[FNode]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10187,7 +10187,7 @@ fn _parse_list_fnode_token(token: String) raises -> List[FNode]:
         result.append(_parse_fnode_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_float32_token(token: String) raises -> List[Float32]:
+def _parse_list_float32_token(token: String) raises -> List[Float32]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10196,10 +10196,10 @@ fn _parse_list_float32_token(token: String) raises -> List[Float32]:
         result.append(_parse_float32_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_float64_token(token: String) raises -> List[Float64]:
+def _parse_list_float64_token(token: String) raises -> List[Float64]:
     return json_parse_float64_list(token)
 
-fn _parse_list_huffmannode_token(token: String) raises -> List[HuffmanNode]:
+def _parse_list_huffmannode_token(token: String) raises -> List[HuffmanNode]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10208,7 +10208,7 @@ fn _parse_list_huffmannode_token(token: String) raises -> List[HuffmanNode]:
         result.append(_parse_huffmannode_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_individual_token(token: String) raises -> List[Individual]:
+def _parse_list_individual_token(token: String) raises -> List[Individual]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10217,7 +10217,7 @@ fn _parse_list_individual_token(token: String) raises -> List[Individual]:
         result.append(_parse_individual_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_int_token(token: String) raises -> List[Int]:
+def _parse_list_int_token(token: String) raises -> List[Int]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10226,7 +10226,7 @@ fn _parse_list_int_token(token: String) raises -> List[Int]:
         result.append(_parse_int_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_lz77token_token(token: String) raises -> List[LZ77Token]:
+def _parse_list_lz77token_token(token: String) raises -> List[LZ77Token]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10235,7 +10235,7 @@ fn _parse_list_lz77token_token(token: String) raises -> List[LZ77Token]:
         result.append(_parse_lz77token_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_optvar_token(token: String) raises -> List[OptVar]:
+def _parse_list_optvar_token(token: String) raises -> List[OptVar]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10244,7 +10244,7 @@ fn _parse_list_optvar_token(token: String) raises -> List[OptVar]:
         result.append(_parse_optvar_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_point_token(token: String) raises -> List[Point]:
+def _parse_list_point_token(token: String) raises -> List[Point]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10253,7 +10253,7 @@ fn _parse_list_point_token(token: String) raises -> List[Point]:
         result.append(_parse_point_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_string_token(token: String) raises -> List[String]:
+def _parse_list_string_token(token: String) raises -> List[String]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10262,7 +10262,7 @@ fn _parse_list_string_token(token: String) raises -> List[String]:
         result.append(_parse_string_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_survivalpoint_token(token: String) raises -> List[SurvivalPoint]:
+def _parse_list_survivalpoint_token(token: String) raises -> List[SurvivalPoint]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10271,7 +10271,7 @@ fn _parse_list_survivalpoint_token(token: String) raises -> List[SurvivalPoint]:
         result.append(_parse_survivalpoint_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_ttlcacheentry_token(token: String) raises -> List[TTLCacheEntry]:
+def _parse_list_ttlcacheentry_token(token: String) raises -> List[TTLCacheEntry]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10280,7 +10280,7 @@ fn _parse_list_ttlcacheentry_token(token: String) raises -> List[TTLCacheEntry]:
         result.append(_parse_ttlcacheentry_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_token_token(token: String) raises -> List[Token]:
+def _parse_list_token_token(token: String) raises -> List[Token]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10289,7 +10289,7 @@ fn _parse_list_token_token(token: String) raises -> List[Token]:
         result.append(_parse_token_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_tomlnode_token(token: String) raises -> List[TomlNode]:
+def _parse_list_tomlnode_token(token: String) raises -> List[TomlNode]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10298,7 +10298,7 @@ fn _parse_list_tomlnode_token(token: String) raises -> List[TomlNode]:
         result.append(_parse_tomlnode_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> List[TopKEntry__vector_kernels_batch_ranker]:
+def _parse_list_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> List[TopKEntry__vector_kernels_batch_ranker]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10307,7 +10307,7 @@ fn _parse_list_topkentry_vector_kernels_batch_ranker_token(token: String) raises
         result.append(_parse_topkentry_vector_kernels_batch_ranker_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_uint8_token(token: String) raises -> List[UInt8]:
+def _parse_list_uint8_token(token: String) raises -> List[UInt8]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10316,7 +10316,7 @@ fn _parse_list_uint8_token(token: String) raises -> List[UInt8]:
         result.append(_parse_uint8_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_weightededge_token(token: String) raises -> List[WeightedEdge]:
+def _parse_list_weightededge_token(token: String) raises -> List[WeightedEdge]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10325,7 +10325,7 @@ fn _parse_list_weightededge_token(token: String) raises -> List[WeightedEdge]:
         result.append(_parse_weightededge_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_yamlnode_token(token: String) raises -> List[YamlNode]:
+def _parse_list_yamlnode_token(token: String) raises -> List[YamlNode]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10334,7 +10334,7 @@ fn _parse_list_yamlnode_token(token: String) raises -> List[YamlNode]:
         result.append(_parse_yamlnode_token(_elem_tokens[_i]))
     return result^
 
-fn _parse_list_list_float64_token(token: String) raises -> List[List[Float64]]:
+def _parse_list_list_float64_token(token: String) raises -> List[List[Float64]]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10343,7 +10343,7 @@ fn _parse_list_list_float64_token(token: String) raises -> List[List[Float64]]:
         result.append(_parse_list_float64_token(_elem_tokens[_i])^)
     return result^
 
-fn _parse_list_list_int_token(token: String) raises -> List[List[Int]]:
+def _parse_list_list_int_token(token: String) raises -> List[List[Int]]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10352,7 +10352,7 @@ fn _parse_list_list_int_token(token: String) raises -> List[List[Int]]:
         result.append(_parse_list_int_token(_elem_tokens[_i])^)
     return result^
 
-fn _parse_list_list_string_token(token: String) raises -> List[List[String]]:
+def _parse_list_list_string_token(token: String) raises -> List[List[String]]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var _elem_tokens = json_array_tokens(array_json)
@@ -10361,10 +10361,10 @@ fn _parse_list_list_string_token(token: String) raises -> List[List[String]]:
         result.append(_parse_list_string_token(_elem_tokens[_i])^)
     return result^
 
-fn _to_json_none() raises -> String:
+def _to_json_none() raises -> String:
     return "null"
 
-fn _to_json_a1parse(value: A1Parse) raises -> String:
+def _to_json_a1parse(value: A1Parse) raises -> String:
     var result = String("{\"__algenta_struct\":\"A1Parse\",\"v\":[")
     result += _to_json_bool(value.ok)
     result += ","
@@ -10378,7 +10378,7 @@ fn _to_json_a1parse(value: A1Parse) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_arfit(value: ARFit) raises -> String:
+def _to_json_arfit(value: ARFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"ARFit\",\"v\":[")
     result += _to_json_list_float64(value.phi)
     result += ","
@@ -10386,7 +10386,7 @@ fn _to_json_arfit(value: ARFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_actgrad(value: ActGrad) raises -> String:
+def _to_json_actgrad(value: ActGrad) raises -> String:
     var result = String("{\"__algenta_struct\":\"ActGrad\",\"v\":[")
     result += _to_json_list_float64(value.d_value)
     result += ","
@@ -10400,7 +10400,7 @@ fn _to_json_actgrad(value: ActGrad) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_actout(value: ActOut) raises -> String:
+def _to_json_actout(value: ActOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"ActOut\",\"v\":[")
     result += _to_json_list_float64(value.y)
     result += ","
@@ -10414,7 +10414,7 @@ fn _to_json_actout(value: ActOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_adjustmentset(value: AdjustmentSet) raises -> String:
+def _to_json_adjustmentset(value: AdjustmentSet) raises -> String:
     var result = String("{\"__algenta_struct\":\"AdjustmentSet\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10438,7 +10438,7 @@ fn _to_json_adjustmentset(value: AdjustmentSet) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_arenaflat(value: ArenaFlat) raises -> String:
+def _to_json_arenaflat(value: ArenaFlat) raises -> String:
     var result = String("{\"__algenta_struct\":\"ArenaFlat\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10460,7 +10460,7 @@ fn _to_json_arenaflat(value: ArenaFlat) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_armcontrast(value: ArmContrast) raises -> String:
+def _to_json_armcontrast(value: ArmContrast) raises -> String:
     var result = String("{\"__algenta_struct\":\"ArmContrast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10486,7 +10486,7 @@ fn _to_json_armcontrast(value: ArmContrast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_assignment(value: Assignment) raises -> String:
+def _to_json_assignment(value: Assignment) raises -> String:
     var result = String("{\"__algenta_struct\":\"Assignment\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10528,7 +10528,7 @@ fn _to_json_assignment(value: Assignment) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_assumptionverdict(value: AssumptionVerdict) raises -> String:
+def _to_json_assumptionverdict(value: AssumptionVerdict) raises -> String:
     var result = String("{\"__algenta_struct\":\"AssumptionVerdict\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10556,7 +10556,7 @@ fn _to_json_assumptionverdict(value: AssumptionVerdict) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_attndelta(value: AttnDelta) raises -> String:
+def _to_json_attndelta(value: AttnDelta) raises -> String:
     var result = String("{\"__algenta_struct\":\"AttnDelta\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -10572,7 +10572,7 @@ fn _to_json_attndelta(value: AttnDelta) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_attnresult(value: AttnResult) raises -> String:
+def _to_json_attnresult(value: AttnResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"AttnResult\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -10594,7 +10594,7 @@ fn _to_json_attnresult(value: AttnResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_backbonefit(value: BackboneFit) raises -> String:
+def _to_json_backbonefit(value: BackboneFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"BackboneFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10610,7 +10610,7 @@ fn _to_json_backbonefit(value: BackboneFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_backdoorreport(value: BackdoorReport) raises -> String:
+def _to_json_backdoorreport(value: BackdoorReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"BackdoorReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10632,7 +10632,7 @@ fn _to_json_backdoorreport(value: BackdoorReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_backtestreport(value: BacktestReport) raises -> String:
+def _to_json_backtestreport(value: BacktestReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"BacktestReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10682,7 +10682,7 @@ fn _to_json_backtestreport(value: BacktestReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_baggedforecast(value: BaggedForecast) raises -> String:
+def _to_json_baggedforecast(value: BaggedForecast) raises -> String:
     var result = String("{\"__algenta_struct\":\"BaggedForecast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10720,7 +10720,7 @@ fn _to_json_baggedforecast(value: BaggedForecast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bestresponsepath(value: BestResponsePath) raises -> String:
+def _to_json_bestresponsepath(value: BestResponsePath) raises -> String:
     var result = String("{\"__algenta_struct\":\"BestResponsePath\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10744,7 +10744,7 @@ fn _to_json_bestresponsepath(value: BestResponsePath) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_betweennessresult(value: BetweennessResult) raises -> String:
+def _to_json_betweennessresult(value: BetweennessResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"BetweennessResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10768,7 +10768,7 @@ fn _to_json_betweennessresult(value: BetweennessResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_biasaudit(value: BiasAudit) raises -> String:
+def _to_json_biasaudit(value: BiasAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"BiasAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10796,7 +10796,7 @@ fn _to_json_biasaudit(value: BiasAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_binassignment(value: BinAssignment) raises -> String:
+def _to_json_binassignment(value: BinAssignment) raises -> String:
     var result = String("{\"__algenta_struct\":\"BinAssignment\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10812,7 +10812,7 @@ fn _to_json_binassignment(value: BinAssignment) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bincounts(value: BinCounts) raises -> String:
+def _to_json_bincounts(value: BinCounts) raises -> String:
     var result = String("{\"__algenta_struct\":\"BinCounts\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10832,7 +10832,7 @@ fn _to_json_bincounts(value: BinCounts) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bindingreport(value: BindingReport) raises -> String:
+def _to_json_bindingreport(value: BindingReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"BindingReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10880,7 +10880,7 @@ fn _to_json_bindingreport(value: BindingReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_blockquant(value: BlockQuant) raises -> String:
+def _to_json_blockquant(value: BlockQuant) raises -> String:
     var result = String("{\"__algenta_struct\":\"BlockQuant\",\"v\":[")
     result += _to_json_list_int(value.codes)
     result += ","
@@ -10894,7 +10894,7 @@ fn _to_json_blockquant(value: BlockQuant) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_blockresult(value: BlockResult) raises -> String:
+def _to_json_blockresult(value: BlockResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"BlockResult\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -10912,10 +10912,10 @@ fn _to_json_blockresult(value: BlockResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bool(value: Bool) raises -> String:
+def _to_json_bool(value: Bool) raises -> String:
     return "true" if value else "false"
 
-fn _to_json_bootci(value: BootCI) raises -> String:
+def _to_json_bootci(value: BootCI) raises -> String:
     var result = String("{\"__algenta_struct\":\"BootCI\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10941,7 +10941,7 @@ fn _to_json_bootci(value: BootCI) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bootstrapci(value: BootstrapCI) raises -> String:
+def _to_json_bootstrapci(value: BootstrapCI) raises -> String:
     var result = String("{\"__algenta_struct\":\"BootstrapCI\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -10981,7 +10981,7 @@ fn _to_json_bootstrapci(value: BootstrapCI) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bracket(value: Bracket) raises -> String:
+def _to_json_bracket(value: Bracket) raises -> String:
     var result = String("{\"__algenta_struct\":\"Bracket\",\"v\":[")
     result += _to_json_int(value.s)
     result += ","
@@ -10993,7 +10993,7 @@ fn _to_json_bracket(value: Bracket) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_branchchoice(value: BranchChoice) raises -> String:
+def _to_json_branchchoice(value: BranchChoice) raises -> String:
     var result = String("{\"__algenta_struct\":\"BranchChoice\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11015,7 +11015,7 @@ fn _to_json_branchchoice(value: BranchChoice) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_brierdecomposition(value: BrierDecomposition) raises -> String:
+def _to_json_brierdecomposition(value: BrierDecomposition) raises -> String:
     var result = String("{\"__algenta_struct\":\"BrierDecomposition\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11045,7 +11045,7 @@ fn _to_json_brierdecomposition(value: BrierDecomposition) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_bwdagreement(value: BwdAgreement) raises -> String:
+def _to_json_bwdagreement(value: BwdAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"BwdAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -11059,7 +11059,7 @@ fn _to_json_bwdagreement(value: BwdAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cifattime(value: CIFAtTime) raises -> String:
+def _to_json_cifattime(value: CIFAtTime) raises -> String:
     var result = String("{\"__algenta_struct\":\"CIFAtTime\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11079,7 +11079,7 @@ fn _to_json_cifattime(value: CIFAtTime) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ciffit(value: CIFFit) raises -> String:
+def _to_json_ciffit(value: CIFFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"CIFFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11119,7 +11119,7 @@ fn _to_json_ciffit(value: CIFFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cooentry(value: COOEntry) raises -> String:
+def _to_json_cooentry(value: COOEntry) raises -> String:
     var result = String("{\"__algenta_struct\":\"COOEntry\",\"v\":[")
     result += _to_json_int(value.row)
     result += ","
@@ -11129,7 +11129,7 @@ fn _to_json_cooentry(value: COOEntry) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cscmatrix(value: CSCMatrix) raises -> String:
+def _to_json_cscmatrix(value: CSCMatrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"CSCMatrix\",\"v\":[")
     result += _to_json_list_int(value.colptr)
     result += ","
@@ -11147,7 +11147,7 @@ fn _to_json_cscmatrix(value: CSCMatrix) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cspresult(value: CSPResult) raises -> String:
+def _to_json_cspresult(value: CSPResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"CSPResult\",\"v\":[")
     result += _to_json_list_int(value.solution)
     result += ","
@@ -11155,7 +11155,7 @@ fn _to_json_cspresult(value: CSPResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_csrintsresult(value: CSRIntsResult) raises -> String:
+def _to_json_csrintsresult(value: CSRIntsResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"CSRIntsResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11165,7 +11165,7 @@ fn _to_json_csrintsresult(value: CSRIntsResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_csrmatrix(value: CSRMatrix) raises -> String:
+def _to_json_csrmatrix(value: CSRMatrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"CSRMatrix\",\"v\":[")
     result += _to_json_list_int(value.indptr)
     result += ","
@@ -11183,7 +11183,7 @@ fn _to_json_csrmatrix(value: CSRMatrix) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_csrresult(value: CSRResult) raises -> String:
+def _to_json_csrresult(value: CSRResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"CSRResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11209,7 +11209,7 @@ fn _to_json_csrresult(value: CSRResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_csrvectorresult(value: CSRVectorResult) raises -> String:
+def _to_json_csrvectorresult(value: CSRVectorResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"CSRVectorResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11219,7 +11219,7 @@ fn _to_json_csrvectorresult(value: CSRVectorResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_calendartrace(value: CalendarTrace) raises -> String:
+def _to_json_calendartrace(value: CalendarTrace) raises -> String:
     var result = String("{\"__algenta_struct\":\"CalendarTrace\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11247,7 +11247,7 @@ fn _to_json_calendartrace(value: CalendarTrace) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_calibrationcurve(value: CalibrationCurve) raises -> String:
+def _to_json_calibrationcurve(value: CalibrationCurve) raises -> String:
     var result = String("{\"__algenta_struct\":\"CalibrationCurve\",\"v\":[")
     result += _to_json_list_float64(value.bin_centers)
     result += ","
@@ -11257,7 +11257,7 @@ fn _to_json_calibrationcurve(value: CalibrationCurve) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_calibrationerrorresult(value: CalibrationErrorResult) raises -> String:
+def _to_json_calibrationerrorresult(value: CalibrationErrorResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"CalibrationErrorResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11277,7 +11277,7 @@ fn _to_json_calibrationerrorresult(value: CalibrationErrorResult) raises -> Stri
     result += "]}"
     return result
 
-fn _to_json_candidateentry_vector_kernels_table(value: CandidateEntry__vector_kernels_table) raises -> String:
+def _to_json_candidateentry_vector_kernels_table(value: CandidateEntry__vector_kernels_table) raises -> String:
     var result = String("{\"__algenta_struct\":\"CandidateEntry\",\"v\":[")
     result += _to_json_uint32(value.column_id)
     result += ","
@@ -11291,13 +11291,13 @@ fn _to_json_candidateentry_vector_kernels_table(value: CandidateEntry__vector_ke
     result += "]}"
     return result
 
-fn _to_json_candidatetable(value: CandidateTable) raises -> String:
+def _to_json_candidatetable(value: CandidateTable) raises -> String:
     var result = String("{\"__algenta_struct\":\"CandidateTable\",\"v\":[")
     result += _to_json_list_candidateentry_vector_kernels_table(value.entries)
     result += "]}"
     return result
 
-fn _to_json_cdfagreement(value: CdfAgreement) raises -> String:
+def _to_json_cdfagreement(value: CdfAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"CdfAgreement\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11317,7 +11317,7 @@ fn _to_json_cdfagreement(value: CdfAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ceagreement(value: CeAgreement) raises -> String:
+def _to_json_ceagreement(value: CeAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"CeAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -11331,7 +11331,7 @@ fn _to_json_ceagreement(value: CeAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cegrad(value: CeGrad) raises -> String:
+def _to_json_cegrad(value: CeGrad) raises -> String:
     var result = String("{\"__algenta_struct\":\"CeGrad\",\"v\":[")
     result += _to_json_list_float64(value.d_hidden)
     result += ","
@@ -11345,7 +11345,7 @@ fn _to_json_cegrad(value: CeGrad) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cememory(value: CeMemory) raises -> String:
+def _to_json_cememory(value: CeMemory) raises -> String:
     var result = String("{\"__algenta_struct\":\"CeMemory\",\"v\":[")
     result += _to_json_float64(value.chunked_cells)
     result += ","
@@ -11359,7 +11359,7 @@ fn _to_json_cememory(value: CeMemory) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ceout(value: CeOut) raises -> String:
+def _to_json_ceout(value: CeOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"CeOut\",\"v\":[")
     result += _to_json_float64(value.mean_loss)
     result += ","
@@ -11373,7 +11373,7 @@ fn _to_json_ceout(value: CeOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cellcountverdict(value: CellCountVerdict) raises -> String:
+def _to_json_cellcountverdict(value: CellCountVerdict) raises -> String:
     var result = String("{\"__algenta_struct\":\"CellCountVerdict\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11403,7 +11403,7 @@ fn _to_json_cellcountverdict(value: CellCountVerdict) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_celldraw(value: CellDraw) raises -> String:
+def _to_json_celldraw(value: CellDraw) raises -> String:
     var result = String("{\"__algenta_struct\":\"CellDraw\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11419,7 +11419,7 @@ fn _to_json_celldraw(value: CellDraw) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_cellvalue(value: CellValue) raises -> String:
+def _to_json_cellvalue(value: CellValue) raises -> String:
     var result = String("{\"__algenta_struct\":\"CellValue\",\"v\":[")
     result += _to_json_int(value.kind)
     result += ","
@@ -11441,7 +11441,7 @@ fn _to_json_cellvalue(value: CellValue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_chaingreeksresult(value: ChainGreeksResult) raises -> String:
+def _to_json_chaingreeksresult(value: ChainGreeksResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ChainGreeksResult\",\"v\":[")
     result += _to_json_list_float64(value.price)
     result += ","
@@ -11455,7 +11455,7 @@ fn _to_json_chaingreeksresult(value: ChainGreeksResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_chanceresult(value: ChanceResult) raises -> String:
+def _to_json_chanceresult(value: ChanceResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ChanceResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11499,7 +11499,7 @@ fn _to_json_chanceresult(value: ChanceResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_checkedproportiontest(value: CheckedProportionTest) raises -> String:
+def _to_json_checkedproportiontest(value: CheckedProportionTest) raises -> String:
     var result = String("{\"__algenta_struct\":\"CheckedProportionTest\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11539,7 +11539,7 @@ fn _to_json_checkedproportiontest(value: CheckedProportionTest) raises -> String
     result += "]}"
     return result
 
-fn _to_json_checkedtest(value: CheckedTest) raises -> String:
+def _to_json_checkedtest(value: CheckedTest) raises -> String:
     var result = String("{\"__algenta_struct\":\"CheckedTest\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11587,7 +11587,7 @@ fn _to_json_checkedtest(value: CheckedTest) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_circularbuffer(value: CircularBuffer) raises -> String:
+def _to_json_circularbuffer(value: CircularBuffer) raises -> String:
     var result = String("{\"__algenta_struct\":\"CircularBuffer\",\"v\":[")
     result += _to_json_list_float64(value.data)
     result += ","
@@ -11599,7 +11599,7 @@ fn _to_json_circularbuffer(value: CircularBuffer) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_classweights(value: ClassWeights) raises -> String:
+def _to_json_classweights(value: ClassWeights) raises -> String:
     var result = String("{\"__algenta_struct\":\"ClassWeights\",\"v\":[")
     result += _to_json_list_int(value.classes)
     result += ","
@@ -11607,7 +11607,7 @@ fn _to_json_classweights(value: ClassWeights) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_clipresult(value: ClipResult) raises -> String:
+def _to_json_clipresult(value: ClipResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ClipResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11629,7 +11629,7 @@ fn _to_json_clipresult(value: ClipResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_closedform(value: ClosedForm) raises -> String:
+def _to_json_closedform(value: ClosedForm) raises -> String:
     var result = String("{\"__algenta_struct\":\"ClosedForm\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11653,7 +11653,7 @@ fn _to_json_closedform(value: ClosedForm) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_closenessresult(value: ClosenessResult) raises -> String:
+def _to_json_closenessresult(value: ClosenessResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ClosenessResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11677,7 +11677,7 @@ fn _to_json_closenessresult(value: ClosenessResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_coherencereport(value: CoherenceReport) raises -> String:
+def _to_json_coherencereport(value: CoherenceReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"CoherenceReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11705,7 +11705,7 @@ fn _to_json_coherencereport(value: CoherenceReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_column(value: Column) raises -> String:
+def _to_json_column(value: Column) raises -> String:
     var result = String("{\"__algenta_struct\":\"Column\",\"v\":[")
     result += _to_json_string(value.name)
     result += ","
@@ -11715,7 +11715,7 @@ fn _to_json_column(value: Column) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_columnprofile(value: ColumnProfile) raises -> String:
+def _to_json_columnprofile(value: ColumnProfile) raises -> String:
     var result = String("{\"__algenta_struct\":\"ColumnProfile\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11771,7 +11771,7 @@ fn _to_json_columnprofile(value: ColumnProfile) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communityaggregate(value: CommunityAggregate) raises -> String:
+def _to_json_communityaggregate(value: CommunityAggregate) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityAggregate\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11789,7 +11789,7 @@ fn _to_json_communityaggregate(value: CommunityAggregate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communitycompare(value: CommunityCompare) raises -> String:
+def _to_json_communitycompare(value: CommunityCompare) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityCompare\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11807,7 +11807,7 @@ fn _to_json_communitycompare(value: CommunityCompare) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communitycounts(value: CommunityCounts) raises -> String:
+def _to_json_communitycounts(value: CommunityCounts) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityCounts\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11821,7 +11821,7 @@ fn _to_json_communitycounts(value: CommunityCounts) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communitylevels(value: CommunityLevels) raises -> String:
+def _to_json_communitylevels(value: CommunityLevels) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityLevels\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11851,7 +11851,7 @@ fn _to_json_communitylevels(value: CommunityLevels) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communityorder(value: CommunityOrder) raises -> String:
+def _to_json_communityorder(value: CommunityOrder) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityOrder\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11867,7 +11867,7 @@ fn _to_json_communityorder(value: CommunityOrder) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communitypartition(value: CommunityPartition) raises -> String:
+def _to_json_communitypartition(value: CommunityPartition) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityPartition\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11893,7 +11893,7 @@ fn _to_json_communitypartition(value: CommunityPartition) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_communityscore(value: CommunityScore) raises -> String:
+def _to_json_communityscore(value: CommunityScore) raises -> String:
     var result = String("{\"__algenta_struct\":\"CommunityScore\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11915,7 +11915,7 @@ fn _to_json_communityscore(value: CommunityScore) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_complex(value: Complex) raises -> String:
+def _to_json_complex(value: Complex) raises -> String:
     var result = String("{\"__algenta_struct\":\"Complex\",\"v\":[")
     result += _to_json_float64(value.re)
     result += ","
@@ -11923,7 +11923,7 @@ fn _to_json_complex(value: Complex) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_conformalband(value: ConformalBand) raises -> String:
+def _to_json_conformalband(value: ConformalBand) raises -> String:
     var result = String("{\"__algenta_struct\":\"ConformalBand\",\"v\":[")
     result += _to_json_list_float64(value.lo)
     result += ","
@@ -11931,7 +11931,7 @@ fn _to_json_conformalband(value: ConformalBand) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_conformalinterval(value: ConformalInterval) raises -> String:
+def _to_json_conformalinterval(value: ConformalInterval) raises -> String:
     var result = String("{\"__algenta_struct\":\"ConformalInterval\",\"v\":[")
     result += _to_json_float64(value.lo)
     result += ","
@@ -11939,7 +11939,7 @@ fn _to_json_conformalinterval(value: ConformalInterval) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_corrresult(value: CorrResult) raises -> String:
+def _to_json_corrresult(value: CorrResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"CorrResult\",\"v\":[")
     result += _to_json_float64(value.r)
     result += ","
@@ -11947,7 +11947,7 @@ fn _to_json_corrresult(value: CorrResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_correction(value: Correction) raises -> String:
+def _to_json_correction(value: Correction) raises -> String:
     var result = String("{\"__algenta_struct\":\"Correction\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11969,7 +11969,7 @@ fn _to_json_correction(value: Correction) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_correctionagreement(value: CorrectionAgreement) raises -> String:
+def _to_json_correctionagreement(value: CorrectionAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"CorrectionAgreement\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -11989,7 +11989,7 @@ fn _to_json_correctionagreement(value: CorrectionAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_costreport(value: CostReport) raises -> String:
+def _to_json_costreport(value: CostReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"CostReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12007,7 +12007,7 @@ fn _to_json_costreport(value: CostReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_countminsketch(value: CountMinSketch) raises -> String:
+def _to_json_countminsketch(value: CountMinSketch) raises -> String:
     var result = String("{\"__algenta_struct\":\"CountMinSketch\",\"v\":[")
     result += _to_json_list_list_int(value.table)
     result += ","
@@ -12019,7 +12019,7 @@ fn _to_json_countminsketch(value: CountMinSketch) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_countingbloom(value: CountingBloom) raises -> String:
+def _to_json_countingbloom(value: CountingBloom) raises -> String:
     var result = String("{\"__algenta_struct\":\"CountingBloom\",\"v\":[")
     result += _to_json_list_int(value.counters)
     result += ","
@@ -12031,7 +12031,7 @@ fn _to_json_countingbloom(value: CountingBloom) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_coveragereport(value: CoverageReport) raises -> String:
+def _to_json_coveragereport(value: CoverageReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"CoverageReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12053,7 +12053,7 @@ fn _to_json_coveragereport(value: CoverageReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_coxbaseline(value: CoxBaseline) raises -> String:
+def _to_json_coxbaseline(value: CoxBaseline) raises -> String:
     var result = String("{\"__algenta_struct\":\"CoxBaseline\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12073,7 +12073,7 @@ fn _to_json_coxbaseline(value: CoxBaseline) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_coxfit(value: CoxFit) raises -> String:
+def _to_json_coxfit(value: CoxFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"CoxFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12115,7 +12115,7 @@ fn _to_json_coxfit(value: CoxFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_coxrisk(value: CoxRisk) raises -> String:
+def _to_json_coxrisk(value: CoxRisk) raises -> String:
     var result = String("{\"__algenta_struct\":\"CoxRisk\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12133,7 +12133,7 @@ fn _to_json_coxrisk(value: CoxRisk) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_crnaddress(value: CrnAddress) raises -> String:
+def _to_json_crnaddress(value: CrnAddress) raises -> String:
     var result = String("{\"__algenta_struct\":\"CrnAddress\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12155,7 +12155,7 @@ fn _to_json_crnaddress(value: CrnAddress) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_crowding(value: Crowding) raises -> String:
+def _to_json_crowding(value: Crowding) raises -> String:
     var result = String("{\"__algenta_struct\":\"Crowding\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12175,7 +12175,7 @@ fn _to_json_crowding(value: Crowding) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dd(value: DD) raises -> String:
+def _to_json_dd(value: DD) raises -> String:
     var result = String("{\"__algenta_struct\":\"DD\",\"v\":[")
     result += _to_json_float64(value.hi)
     result += ","
@@ -12183,7 +12183,7 @@ fn _to_json_dd(value: DD) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ddlstsq(value: DDLstsq) raises -> String:
+def _to_json_ddlstsq(value: DDLstsq) raises -> String:
     var result = String("{\"__algenta_struct\":\"DDLstsq\",\"v\":[")
     result += _to_json_list_float64(value.coefficients)
     result += ","
@@ -12203,7 +12203,7 @@ fn _to_json_ddlstsq(value: DDLstsq) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dmresult(value: DMResult) raises -> String:
+def _to_json_dmresult(value: DMResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"DMResult\",\"v\":[")
     result += _to_json_float64(value.dm_stat)
     result += ","
@@ -12211,7 +12211,7 @@ fn _to_json_dmresult(value: DMResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dsepreport(value: DSepReport) raises -> String:
+def _to_json_dsepreport(value: DSepReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"DSepReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12227,7 +12227,7 @@ fn _to_json_dsepreport(value: DSepReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dagreport(value: DagReport) raises -> String:
+def _to_json_dagreport(value: DagReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"DagReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12255,7 +12255,7 @@ fn _to_json_dagreport(value: DagReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dataframe(value: DataFrame) raises -> String:
+def _to_json_dataframe(value: DataFrame) raises -> String:
     var result = String("{\"__algenta_struct\":\"DataFrame\",\"v\":[")
     result += _to_json_list_column(value.columns)
     result += ","
@@ -12267,7 +12267,7 @@ fn _to_json_dataframe(value: DataFrame) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_degreecentralityresult(value: DegreeCentralityResult) raises -> String:
+def _to_json_degreecentralityresult(value: DegreeCentralityResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"DegreeCentralityResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12287,7 +12287,7 @@ fn _to_json_degreecentralityresult(value: DegreeCentralityResult) raises -> Stri
     result += "]}"
     return result
 
-fn _to_json_demandprofile(value: DemandProfile) raises -> String:
+def _to_json_demandprofile(value: DemandProfile) raises -> String:
     var result = String("{\"__algenta_struct\":\"DemandProfile\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12319,7 +12319,7 @@ fn _to_json_demandprofile(value: DemandProfile) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_deviceprobe(value: DeviceProbe) raises -> String:
+def _to_json_deviceprobe(value: DeviceProbe) raises -> String:
     var result = String("{\"__algenta_struct\":\"DeviceProbe\",\"v\":[")
     result += _to_json_bool(value.device_present)
     result += ","
@@ -12333,7 +12333,7 @@ fn _to_json_deviceprobe(value: DeviceProbe) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_didreport(value: DidReport) raises -> String:
+def _to_json_didreport(value: DidReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"DidReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12377,7 +12377,7 @@ fn _to_json_didreport(value: DidReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_diffci(value: DiffCI) raises -> String:
+def _to_json_diffci(value: DiffCI) raises -> String:
     var result = String("{\"__algenta_struct\":\"DiffCI\",\"v\":[")
     result += _to_json_float64(value.lo)
     result += ","
@@ -12387,7 +12387,7 @@ fn _to_json_diffci(value: DiffCI) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_distinctestimate(value: DistinctEstimate) raises -> String:
+def _to_json_distinctestimate(value: DistinctEstimate) raises -> String:
     var result = String("{\"__algenta_struct\":\"DistinctEstimate\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -12403,7 +12403,7 @@ fn _to_json_distinctestimate(value: DistinctEstimate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_distinctsketch(value: DistinctSketch) raises -> String:
+def _to_json_distinctsketch(value: DistinctSketch) raises -> String:
     var result = String("{\"__algenta_struct\":\"DistinctSketch\",\"v\":[")
     result += _to_json_list_int(value.registers)
     result += ","
@@ -12419,7 +12419,7 @@ fn _to_json_distinctsketch(value: DistinctSketch) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dominancecheck(value: DominanceCheck) raises -> String:
+def _to_json_dominancecheck(value: DominanceCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"DominanceCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12441,7 +12441,7 @@ fn _to_json_dominancecheck(value: DominanceCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dominancereport(value: DominanceReport) raises -> String:
+def _to_json_dominancereport(value: DominanceReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"DominanceReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12457,7 +12457,7 @@ fn _to_json_dominancereport(value: DominanceReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dotmfit(value: DotmFit) raises -> String:
+def _to_json_dotmfit(value: DotmFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"DotmFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12483,7 +12483,7 @@ fn _to_json_dotmfit(value: DotmFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_doublequant(value: DoubleQuant) raises -> String:
+def _to_json_doublequant(value: DoubleQuant) raises -> String:
     var result = String("{\"__algenta_struct\":\"DoubleQuant\",\"v\":[")
     result += _to_json_list_int(value.scale_codes)
     result += ","
@@ -12497,7 +12497,7 @@ fn _to_json_doublequant(value: DoubleQuant) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_drestimate(value: DrEstimate) raises -> String:
+def _to_json_drestimate(value: DrEstimate) raises -> String:
     var result = String("{\"__algenta_struct\":\"DrEstimate\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12537,7 +12537,7 @@ fn _to_json_drestimate(value: DrEstimate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_driftresult(value: DriftResult) raises -> String:
+def _to_json_driftresult(value: DriftResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"DriftResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12567,7 +12567,7 @@ fn _to_json_driftresult(value: DriftResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_driftverdict(value: DriftVerdict) raises -> String:
+def _to_json_driftverdict(value: DriftVerdict) raises -> String:
     var result = String("{\"__algenta_struct\":\"DriftVerdict\",\"v\":[")
     result += _to_json_bool(value.detected)
     result += ","
@@ -12585,7 +12585,7 @@ fn _to_json_driftverdict(value: DriftVerdict) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dtypecast(value: DtypeCast) raises -> String:
+def _to_json_dtypecast(value: DtypeCast) raises -> String:
     var result = String("{\"__algenta_struct\":\"DtypeCast\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -12601,7 +12601,7 @@ fn _to_json_dtypecast(value: DtypeCast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_dualcheck(value: DualCheck) raises -> String:
+def _to_json_dualcheck(value: DualCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"DualCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12629,7 +12629,7 @@ fn _to_json_dualcheck(value: DualCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_duplicatereport(value: DuplicateReport) raises -> String:
+def _to_json_duplicatereport(value: DuplicateReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"DuplicateReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12667,7 +12667,7 @@ fn _to_json_duplicatereport(value: DuplicateReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_evalue(value: EValue) raises -> String:
+def _to_json_evalue(value: EValue) raises -> String:
     var result = String("{\"__algenta_struct\":\"EValue\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12687,7 +12687,7 @@ fn _to_json_evalue(value: EValue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_eftreduction(value: EftReduction) raises -> String:
+def _to_json_eftreduction(value: EftReduction) raises -> String:
     var result = String("{\"__algenta_struct\":\"EftReduction\",\"v\":[")
     result += _to_json_float64(value.hi)
     result += ","
@@ -12699,7 +12699,7 @@ fn _to_json_eftreduction(value: EftReduction) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_eigresult2x2(value: EigResult2x2) raises -> String:
+def _to_json_eigresult2x2(value: EigResult2x2) raises -> String:
     var result = String("{\"__algenta_struct\":\"EigResult2x2\",\"v\":[")
     result += _to_json_float64(value.lambda1)
     result += ","
@@ -12707,7 +12707,7 @@ fn _to_json_eigresult2x2(value: EigResult2x2) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_eigenvectorresult(value: EigenvectorResult) raises -> String:
+def _to_json_eigenvectorresult(value: EigenvectorResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"EigenvectorResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12731,7 +12731,7 @@ fn _to_json_eigenvectorresult(value: EigenvectorResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_eighresult(value: EighResult) raises -> String:
+def _to_json_eighresult(value: EighResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"EighResult\",\"v\":[")
     result += _to_json_list_float64(value.eigenvalues)
     result += ","
@@ -12743,7 +12743,7 @@ fn _to_json_eighresult(value: EighResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_elasticnetresult(value: ElasticNetResult) raises -> String:
+def _to_json_elasticnetresult(value: ElasticNetResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ElasticNetResult\",\"v\":[")
     result += _to_json_list_float64(value.weights)
     result += ","
@@ -12755,7 +12755,7 @@ fn _to_json_elasticnetresult(value: ElasticNetResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_embedgrad(value: EmbedGrad) raises -> String:
+def _to_json_embedgrad(value: EmbedGrad) raises -> String:
     var result = String("{\"__algenta_struct\":\"EmbedGrad\",\"v\":[")
     result += _to_json_list_float64(value.d_weight)
     result += ","
@@ -12769,7 +12769,7 @@ fn _to_json_embedgrad(value: EmbedGrad) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_embedout(value: EmbedOut) raises -> String:
+def _to_json_embedout(value: EmbedOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"EmbedOut\",\"v\":[")
     result += _to_json_list_float64(value.y)
     result += ","
@@ -12781,7 +12781,7 @@ fn _to_json_embedout(value: EmbedOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_errorreport(value: ErrorReport) raises -> String:
+def _to_json_errorreport(value: ErrorReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"ErrorReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12825,7 +12825,7 @@ fn _to_json_errorreport(value: ErrorReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_evalbins(value: EvalBins) raises -> String:
+def _to_json_evalbins(value: EvalBins) raises -> String:
     var result = String("{\"__algenta_struct\":\"EvalBins\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12849,7 +12849,7 @@ fn _to_json_evalbins(value: EvalBins) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_evalreport(value: EvalReport) raises -> String:
+def _to_json_evalreport(value: EvalReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"EvalReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12897,7 +12897,7 @@ fn _to_json_evalreport(value: EvalReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_event(value: Event) raises -> String:
+def _to_json_event(value: Event) raises -> String:
     var result = String("{\"__algenta_struct\":\"Event\",\"v\":[")
     result += _to_json_float64(value.time)
     result += ","
@@ -12907,7 +12907,7 @@ fn _to_json_event(value: Event) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_expectationreport(value: ExpectationReport) raises -> String:
+def _to_json_expectationreport(value: ExpectationReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"ExpectationReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12953,7 +12953,7 @@ fn _to_json_expectationreport(value: ExpectationReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_exploitability(value: Exploitability) raises -> String:
+def _to_json_exploitability(value: Exploitability) raises -> String:
     var result = String("{\"__algenta_struct\":\"Exploitability\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12979,7 +12979,7 @@ fn _to_json_exploitability(value: Exploitability) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_exprcheck(value: ExprCheck) raises -> String:
+def _to_json_exprcheck(value: ExprCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"ExprCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -12995,7 +12995,7 @@ fn _to_json_exprcheck(value: ExprCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_fnode(value: FNode) raises -> String:
+def _to_json_fnode(value: FNode) raises -> String:
     var result = String("{\"__algenta_struct\":\"FNode\",\"v\":[")
     result += _to_json_int(value.k)
     result += ","
@@ -13021,7 +13021,7 @@ fn _to_json_fnode(value: FNode) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_factorvector(value: FactorVector) raises -> String:
+def _to_json_factorvector(value: FactorVector) raises -> String:
     var result = String("{\"__algenta_struct\":\"FactorVector\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13033,7 +13033,7 @@ fn _to_json_factorvector(value: FactorVector) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_fcquantile(value: FcQuantile) raises -> String:
+def _to_json_fcquantile(value: FcQuantile) raises -> String:
     var result = String("{\"__algenta_struct\":\"FcQuantile\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13049,7 +13049,7 @@ fn _to_json_fcquantile(value: FcQuantile) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_fittedforecast(value: FittedForecast) raises -> String:
+def _to_json_fittedforecast(value: FittedForecast) raises -> String:
     var result = String("{\"__algenta_struct\":\"FittedForecast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13095,7 +13095,7 @@ fn _to_json_fittedforecast(value: FittedForecast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_flashagreement(value: FlashAgreement) raises -> String:
+def _to_json_flashagreement(value: FlashAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlashAgreement\",\"v\":[")
     result += _to_json_float64(value.max_out_delta)
     result += ","
@@ -13111,7 +13111,7 @@ fn _to_json_flashagreement(value: FlashAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_flashout(value: FlashOut) raises -> String:
+def _to_json_flashout(value: FlashOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlashOut\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -13129,7 +13129,7 @@ fn _to_json_flashout(value: FlashOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_flashplan(value: FlashPlan) raises -> String:
+def _to_json_flashplan(value: FlashPlan) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlashPlan\",\"v\":[")
     result += _to_json_int(value.block_k)
     result += ","
@@ -13143,17 +13143,17 @@ fn _to_json_flashplan(value: FlashPlan) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_float32(value: Float32) raises -> String:
+def _to_json_float32(value: Float32) raises -> String:
     if not _is_finite_f32(value):
         raise Error("non_finite_result")
     return String(value)
 
-fn _to_json_float64(value: Float64) raises -> String:
+def _to_json_float64(value: Float64) raises -> String:
     if not _is_finite_f64(value):
         raise Error("non_finite_result")
     return String(value)
 
-fn _to_json_flowaudit(value: FlowAudit) raises -> String:
+def _to_json_flowaudit(value: FlowAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlowAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13181,7 +13181,7 @@ fn _to_json_flowaudit(value: FlowAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_flowreport(value: FlowReport) raises -> String:
+def _to_json_flowreport(value: FlowReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlowReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13207,7 +13207,7 @@ fn _to_json_flowreport(value: FlowReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_flowscalar(value: FlowScalar) raises -> String:
+def _to_json_flowscalar(value: FlowScalar) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlowScalar\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13219,7 +13219,7 @@ fn _to_json_flowscalar(value: FlowScalar) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_flowvector(value: FlowVector) raises -> String:
+def _to_json_flowvector(value: FlowVector) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlowVector\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13229,7 +13229,7 @@ fn _to_json_flowvector(value: FlowVector) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_formvalue(value: FormValue) raises -> String:
+def _to_json_formvalue(value: FormValue) raises -> String:
     var result = String("{\"__algenta_struct\":\"FormValue\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13239,7 +13239,7 @@ fn _to_json_formvalue(value: FormValue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_formulationcheck(value: FormulationCheck) raises -> String:
+def _to_json_formulationcheck(value: FormulationCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"FormulationCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13261,7 +13261,7 @@ fn _to_json_formulationcheck(value: FormulationCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_framecensus(value: FrameCensus) raises -> String:
+def _to_json_framecensus(value: FrameCensus) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrameCensus\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13297,7 +13297,7 @@ fn _to_json_framecensus(value: FrameCensus) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_frequencyestimate(value: FrequencyEstimate) raises -> String:
+def _to_json_frequencyestimate(value: FrequencyEstimate) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrequencyEstimate\",\"v\":[")
     result += _to_json_int(value.count)
     result += ","
@@ -13315,7 +13315,7 @@ fn _to_json_frequencyestimate(value: FrequencyEstimate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_frequencylist(value: FrequencyList) raises -> String:
+def _to_json_frequencylist(value: FrequencyList) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrequencyList\",\"v\":[")
     result += _to_json_list_int(value.items)
     result += ","
@@ -13327,7 +13327,7 @@ fn _to_json_frequencylist(value: FrequencyList) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_frequencysketch(value: FrequencySketch) raises -> String:
+def _to_json_frequencysketch(value: FrequencySketch) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrequencySketch\",\"v\":[")
     result += _to_json_list_int(value.cells)
     result += ","
@@ -13345,7 +13345,7 @@ fn _to_json_frequencysketch(value: FrequencySketch) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_frontsort(value: FrontSort) raises -> String:
+def _to_json_frontsort(value: FrontSort) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrontSort\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13373,7 +13373,7 @@ fn _to_json_frontsort(value: FrontSort) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_fusion(value: Fusion) raises -> String:
+def _to_json_fusion(value: Fusion) raises -> String:
     var result = String("{\"__algenta_struct\":\"Fusion\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13401,7 +13401,7 @@ fn _to_json_fusion(value: Fusion) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gbdtmodel(value: GBDTModel) raises -> String:
+def _to_json_gbdtmodel(value: GBDTModel) raises -> String:
     var result = String("{\"__algenta_struct\":\"GBDTModel\",\"v\":[")
     result += _to_json_int(value.n_features)
     result += ","
@@ -13421,7 +13421,7 @@ fn _to_json_gbdtmodel(value: GBDTModel) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gmmresult(value: GMMResult) raises -> String:
+def _to_json_gmmresult(value: GMMResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"GMMResult\",\"v\":[")
     result += _to_json_list_float64(value.weights)
     result += ","
@@ -13439,7 +13439,7 @@ fn _to_json_gmmresult(value: GMMResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gmmresultnd(value: GMMResultND) raises -> String:
+def _to_json_gmmresultnd(value: GMMResultND) raises -> String:
     var result = String("{\"__algenta_struct\":\"GMMResultND\",\"v\":[")
     result += _to_json_list_float64(value.weights)
     result += ","
@@ -13459,7 +13459,7 @@ fn _to_json_gmmresultnd(value: GMMResultND) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gpfit(value: GPFit) raises -> String:
+def _to_json_gpfit(value: GPFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"GPFit\",\"v\":[")
     result += _to_json_list_float64(value.chol)
     result += ","
@@ -13483,7 +13483,7 @@ fn _to_json_gpfit(value: GPFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gpprediction(value: GPPrediction) raises -> String:
+def _to_json_gpprediction(value: GPPrediction) raises -> String:
     var result = String("{\"__algenta_struct\":\"GPPrediction\",\"v\":[")
     result += _to_json_list_float64(value.mean)
     result += ","
@@ -13493,7 +13493,7 @@ fn _to_json_gpprediction(value: GPPrediction) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_grugrads(value: GRUGrads) raises -> String:
+def _to_json_grugrads(value: GRUGrads) raises -> String:
     var result = String("{\"__algenta_struct\":\"GRUGrads\",\"v\":[")
     result += _to_json_list_float64(value.dx)
     result += ","
@@ -13507,7 +13507,7 @@ fn _to_json_grugrads(value: GRUGrads) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_grustate(value: GRUState) raises -> String:
+def _to_json_grustate(value: GRUState) raises -> String:
     var result = String("{\"__algenta_struct\":\"GRUState\",\"v\":[")
     result += _to_json_list_float64(value.h)
     result += ","
@@ -13521,7 +13521,7 @@ fn _to_json_grustate(value: GRUState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gateresult_evaluation_gates(value: GateResult__evaluation_gates) raises -> String:
+def _to_json_gateresult_evaluation_gates(value: GateResult__evaluation_gates) raises -> String:
     var result = String("{\"__algenta_struct\":\"GateResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13549,7 +13549,7 @@ fn _to_json_gateresult_evaluation_gates(value: GateResult__evaluation_gates) rai
     result += "]}"
     return result
 
-fn _to_json_gateresult_mlpk_gated_ffn(value: GateResult__mlpk_gated_ffn) raises -> String:
+def _to_json_gateresult_mlpk_gated_ffn(value: GateResult__mlpk_gated_ffn) raises -> String:
     var result = String("{\"__algenta_struct\":\"GateResult\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -13565,7 +13565,7 @@ fn _to_json_gateresult_mlpk_gated_ffn(value: GateResult__mlpk_gated_ffn) raises 
     result += "]}"
     return result
 
-fn _to_json_geluagreement(value: GeluAgreement) raises -> String:
+def _to_json_geluagreement(value: GeluAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeluAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -13581,7 +13581,7 @@ fn _to_json_geluagreement(value: GeluAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_gemmresult(value: GemmResult) raises -> String:
+def _to_json_gemmresult(value: GemmResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"GemmResult\",\"v\":[")
     result += _to_json_list_float64(value.c)
     result += ","
@@ -13597,7 +13597,7 @@ fn _to_json_gemmresult(value: GemmResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_geodistance(value: GeoDistance) raises -> String:
+def _to_json_geodistance(value: GeoDistance) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoDistance\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13611,7 +13611,7 @@ fn _to_json_geodistance(value: GeoDistance) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_geogrid(value: GeoGrid) raises -> String:
+def _to_json_geogrid(value: GeoGrid) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoGrid\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13649,7 +13649,7 @@ fn _to_json_geogrid(value: GeoGrid) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_geojoin(value: GeoJoin) raises -> String:
+def _to_json_geojoin(value: GeoJoin) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoJoin\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13681,7 +13681,7 @@ fn _to_json_geojoin(value: GeoJoin) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_geoknn(value: GeoKnn) raises -> String:
+def _to_json_geoknn(value: GeoKnn) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoKnn\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13707,7 +13707,7 @@ fn _to_json_geoknn(value: GeoKnn) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_geomatch(value: GeoMatch) raises -> String:
+def _to_json_geomatch(value: GeoMatch) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoMatch\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13747,7 +13747,7 @@ fn _to_json_geomatch(value: GeoMatch) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_georingjoin(value: GeoRingJoin) raises -> String:
+def _to_json_georingjoin(value: GeoRingJoin) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoRingJoin\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13775,7 +13775,7 @@ fn _to_json_georingjoin(value: GeoRingJoin) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_georoutematrix(value: GeoRouteMatrix) raises -> String:
+def _to_json_georoutematrix(value: GeoRouteMatrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoRouteMatrix\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13801,7 +13801,7 @@ fn _to_json_georoutematrix(value: GeoRouteMatrix) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_geowindow(value: GeoWindow) raises -> String:
+def _to_json_geowindow(value: GeoWindow) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeoWindow\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13821,7 +13821,7 @@ fn _to_json_geowindow(value: GeoWindow) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_glmfit(value: GlmFit) raises -> String:
+def _to_json_glmfit(value: GlmFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"GlmFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13857,7 +13857,7 @@ fn _to_json_glmfit(value: GlmFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graph(value: Graph) raises -> String:
+def _to_json_graph(value: Graph) raises -> String:
     var result = String("{\"__algenta_struct\":\"Graph\",\"v\":[")
     result += _to_json_int(value.n_nodes)
     result += ","
@@ -13867,7 +13867,7 @@ fn _to_json_graph(value: Graph) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphbuildresult(value: GraphBuildResult) raises -> String:
+def _to_json_graphbuildresult(value: GraphBuildResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphBuildResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13897,7 +13897,7 @@ fn _to_json_graphbuildresult(value: GraphBuildResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphcsr(value: GraphCSR) raises -> String:
+def _to_json_graphcsr(value: GraphCSR) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphCSR\",\"v\":[")
     result += _to_json_list_int(value.row_ptr)
     result += ","
@@ -13915,7 +13915,7 @@ fn _to_json_graphcsr(value: GraphCSR) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphdistances(value: GraphDistances) raises -> String:
+def _to_json_graphdistances(value: GraphDistances) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphDistances\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13937,7 +13937,7 @@ fn _to_json_graphdistances(value: GraphDistances) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphedgequery(value: GraphEdgeQuery) raises -> String:
+def _to_json_graphedgequery(value: GraphEdgeQuery) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphEdgeQuery\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13949,7 +13949,7 @@ fn _to_json_graphedgequery(value: GraphEdgeQuery) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphintsresult(value: GraphIntsResult) raises -> String:
+def _to_json_graphintsresult(value: GraphIntsResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphIntsResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13959,7 +13959,7 @@ fn _to_json_graphintsresult(value: GraphIntsResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphlevels(value: GraphLevels) raises -> String:
+def _to_json_graphlevels(value: GraphLevels) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphLevels\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13979,7 +13979,7 @@ fn _to_json_graphlevels(value: GraphLevels) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphpath(value: GraphPath) raises -> String:
+def _to_json_graphpath(value: GraphPath) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphPath\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -13997,7 +13997,7 @@ fn _to_json_graphpath(value: GraphPath) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphsymmetry(value: GraphSymmetry) raises -> String:
+def _to_json_graphsymmetry(value: GraphSymmetry) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphSymmetry\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14015,7 +14015,7 @@ fn _to_json_graphsymmetry(value: GraphSymmetry) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_graphvectorresult(value: GraphVectorResult) raises -> String:
+def _to_json_graphvectorresult(value: GraphVectorResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"GraphVectorResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14027,7 +14027,7 @@ fn _to_json_graphvectorresult(value: GraphVectorResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_greedyassignment(value: GreedyAssignment) raises -> String:
+def _to_json_greedyassignment(value: GreedyAssignment) raises -> String:
     var result = String("{\"__algenta_struct\":\"GreedyAssignment\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14047,7 +14047,7 @@ fn _to_json_greedyassignment(value: GreedyAssignment) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_greedyresult(value: GreedyResult) raises -> String:
+def _to_json_greedyresult(value: GreedyResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"GreedyResult\",\"v\":[")
     result += _to_json_int(value.token_id)
     result += ","
@@ -14057,7 +14057,7 @@ fn _to_json_greedyresult(value: GreedyResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hmmforward(value: HMMForward) raises -> String:
+def _to_json_hmmforward(value: HMMForward) raises -> String:
     var result = String("{\"__algenta_struct\":\"HMMForward\",\"v\":[")
     result += _to_json_list_list_float64(value.log_alpha)
     result += ","
@@ -14065,7 +14065,7 @@ fn _to_json_hmmforward(value: HMMForward) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hmmmodel(value: HMMModel) raises -> String:
+def _to_json_hmmmodel(value: HMMModel) raises -> String:
     var result = String("{\"__algenta_struct\":\"HMMModel\",\"v\":[")
     result += _to_json_list_list_float64(value.a)
     result += ","
@@ -14077,7 +14077,7 @@ fn _to_json_hmmmodel(value: HMMModel) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hsl(value: HSL) raises -> String:
+def _to_json_hsl(value: HSL) raises -> String:
     var result = String("{\"__algenta_struct\":\"HSL\",\"v\":[")
     result += _to_json_float64(value.h)
     result += ","
@@ -14087,7 +14087,7 @@ fn _to_json_hsl(value: HSL) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hsv(value: HSV) raises -> String:
+def _to_json_hsv(value: HSV) raises -> String:
     var result = String("{\"__algenta_struct\":\"HSV\",\"v\":[")
     result += _to_json_float64(value.h)
     result += ","
@@ -14097,7 +14097,7 @@ fn _to_json_hsv(value: HSV) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_halvinground(value: HalvingRound) raises -> String:
+def _to_json_halvinground(value: HalvingRound) raises -> String:
     var result = String("{\"__algenta_struct\":\"HalvingRound\",\"v\":[")
     result += _to_json_int(value.n_survivors)
     result += ","
@@ -14105,7 +14105,7 @@ fn _to_json_halvinground(value: HalvingRound) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_harmonicresult(value: HarmonicResult) raises -> String:
+def _to_json_harmonicresult(value: HarmonicResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"HarmonicResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14123,7 +14123,7 @@ fn _to_json_harmonicresult(value: HarmonicResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_histogram(value: Histogram) raises -> String:
+def _to_json_histogram(value: Histogram) raises -> String:
     var result = String("{\"__algenta_struct\":\"Histogram\",\"v\":[")
     result += _to_json_string(value.name)
     result += ","
@@ -14133,7 +14133,7 @@ fn _to_json_histogram(value: Histogram) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_huffmannode(value: HuffmanNode) raises -> String:
+def _to_json_huffmannode(value: HuffmanNode) raises -> String:
     var result = String("{\"__algenta_struct\":\"HuffmanNode\",\"v\":[")
     result += _to_json_int(value.symbol)
     result += ","
@@ -14145,7 +14145,7 @@ fn _to_json_huffmannode(value: HuffmanNode) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hybridranking(value: HybridRanking) raises -> String:
+def _to_json_hybridranking(value: HybridRanking) raises -> String:
     var result = String("{\"__algenta_struct\":\"HybridRanking\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14173,7 +14173,7 @@ fn _to_json_hybridranking(value: HybridRanking) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hyperloglog(value: HyperLogLog) raises -> String:
+def _to_json_hyperloglog(value: HyperLogLog) raises -> String:
     var result = String("{\"__algenta_struct\":\"HyperLogLog\",\"v\":[")
     result += _to_json_list_int(value.registers)
     result += ","
@@ -14183,7 +14183,7 @@ fn _to_json_hyperloglog(value: HyperLogLog) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_hypervolume(value: Hypervolume) raises -> String:
+def _to_json_hypervolume(value: Hypervolume) raises -> String:
     var result = String("{\"__algenta_struct\":\"Hypervolume\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14217,7 +14217,7 @@ fn _to_json_hypervolume(value: Hypervolume) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_independenceaudit(value: IndependenceAudit) raises -> String:
+def _to_json_independenceaudit(value: IndependenceAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"IndependenceAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14259,7 +14259,7 @@ fn _to_json_independenceaudit(value: IndependenceAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_individual(value: Individual) raises -> String:
+def _to_json_individual(value: Individual) raises -> String:
     var result = String("{\"__algenta_struct\":\"Individual\",\"v\":[")
     result += _to_json_list_float64(value.genes)
     result += ","
@@ -14267,7 +14267,7 @@ fn _to_json_individual(value: Individual) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_infeasibilitycore(value: InfeasibilityCore) raises -> String:
+def _to_json_infeasibilitycore(value: InfeasibilityCore) raises -> String:
     var result = String("{\"__algenta_struct\":\"InfeasibilityCore\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14303,7 +14303,7 @@ fn _to_json_infeasibilitycore(value: InfeasibilityCore) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_initsolve(value: InitSolve) raises -> String:
+def _to_json_initsolve(value: InitSolve) raises -> String:
     var result = String("{\"__algenta_struct\":\"InitSolve\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14323,10 +14323,10 @@ fn _to_json_initsolve(value: InitSolve) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_int(value: Int) raises -> String:
+def _to_json_int(value: Int) raises -> String:
     return String(value)
 
-fn _to_json_intermittentforecast(value: IntermittentForecast) raises -> String:
+def _to_json_intermittentforecast(value: IntermittentForecast) raises -> String:
     var result = String("{\"__algenta_struct\":\"IntermittentForecast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14360,7 +14360,7 @@ fn _to_json_intermittentforecast(value: IntermittentForecast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_interval(value: Interval) raises -> String:
+def _to_json_interval(value: Interval) raises -> String:
     var result = String("{\"__algenta_struct\":\"Interval\",\"v\":[")
     result += _to_json_float64(value.lo)
     result += ","
@@ -14370,7 +14370,7 @@ fn _to_json_interval(value: Interval) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_intervalband(value: IntervalBand) raises -> String:
+def _to_json_intervalband(value: IntervalBand) raises -> String:
     var result = String("{\"__algenta_struct\":\"IntervalBand\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14408,7 +14408,7 @@ fn _to_json_intervalband(value: IntervalBand) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_inverseresult(value: InverseResult) raises -> String:
+def _to_json_inverseresult(value: InverseResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"InverseResult\",\"v\":[")
     result += _to_json_bool(value.ok)
     result += ","
@@ -14416,7 +14416,7 @@ fn _to_json_inverseresult(value: InverseResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ipwestimate(value: IpwEstimate) raises -> String:
+def _to_json_ipwestimate(value: IpwEstimate) raises -> String:
     var result = String("{\"__algenta_struct\":\"IpwEstimate\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14450,7 +14450,7 @@ fn _to_json_ipwestimate(value: IpwEstimate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_isotonicfit(value: IsotonicFit) raises -> String:
+def _to_json_isotonicfit(value: IsotonicFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"IsotonicFit\",\"v\":[")
     result += _to_json_list_float64(value.thresholds)
     result += ","
@@ -14458,7 +14458,7 @@ fn _to_json_isotonicfit(value: IsotonicFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_iterativeresult(value: IterativeResult) raises -> String:
+def _to_json_iterativeresult(value: IterativeResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"IterativeResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14478,7 +14478,7 @@ fn _to_json_iterativeresult(value: IterativeResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_iterativevectorresult(value: IterativeVectorResult) raises -> String:
+def _to_json_iterativevectorresult(value: IterativeVectorResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"IterativeVectorResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14490,7 +14490,7 @@ fn _to_json_iterativevectorresult(value: IterativeVectorResult) raises -> String
     result += "]}"
     return result
 
-fn _to_json_jobshopaudit(value: JobShopAudit) raises -> String:
+def _to_json_jobshopaudit(value: JobShopAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"JobShopAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14520,7 +14520,7 @@ fn _to_json_jobshopaudit(value: JobShopAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_jobshopbound(value: JobShopBound) raises -> String:
+def _to_json_jobshopbound(value: JobShopBound) raises -> String:
     var result = String("{\"__algenta_struct\":\"JobShopBound\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14542,7 +14542,7 @@ fn _to_json_jobshopbound(value: JobShopBound) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_jobshopresult(value: JobShopResult) raises -> String:
+def _to_json_jobshopresult(value: JobShopResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"JobShopResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14596,7 +14596,7 @@ fn _to_json_jobshopresult(value: JobShopResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_jobshopschedule(value: JobShopSchedule) raises -> String:
+def _to_json_jobshopschedule(value: JobShopSchedule) raises -> String:
     var result = String("{\"__algenta_struct\":\"JobShopSchedule\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14632,7 +14632,7 @@ fn _to_json_jobshopschedule(value: JobShopSchedule) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_judgereport(value: JudgeReport) raises -> String:
+def _to_json_judgereport(value: JudgeReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"JudgeReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14656,7 +14656,7 @@ fn _to_json_judgereport(value: JudgeReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kmfit(value: KMFit) raises -> String:
+def _to_json_kmfit(value: KMFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"KMFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14702,7 +14702,7 @@ fn _to_json_kmfit(value: KMFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kmlookup(value: KMLookup) raises -> String:
+def _to_json_kmlookup(value: KMLookup) raises -> String:
     var result = String("{\"__algenta_struct\":\"KMLookup\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14720,7 +14720,7 @@ fn _to_json_kmlookup(value: KMLookup) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kmrmst(value: KMRmst) raises -> String:
+def _to_json_kmrmst(value: KMRmst) raises -> String:
     var result = String("{\"__algenta_struct\":\"KMRmst\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14738,7 +14738,7 @@ fn _to_json_kmrmst(value: KMRmst) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kmeansresult(value: KMeansResult) raises -> String:
+def _to_json_kmeansresult(value: KMeansResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"KMeansResult\",\"v\":[")
     result += _to_json_list_list_float64(value.centroids)
     result += ","
@@ -14750,7 +14750,7 @@ fn _to_json_kmeansresult(value: KMeansResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kvstore(value: KVStore) raises -> String:
+def _to_json_kvstore(value: KVStore) raises -> String:
     var result = String("{\"__algenta_struct\":\"KVStore\",\"v\":[")
     result += _to_json_list_int(value.keys)
     result += ","
@@ -14760,7 +14760,7 @@ fn _to_json_kvstore(value: KVStore) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kalmanstate(value: KalmanState) raises -> String:
+def _to_json_kalmanstate(value: KalmanState) raises -> String:
     var result = String("{\"__algenta_struct\":\"KalmanState\",\"v\":[")
     result += _to_json_list_float64(value.x)
     result += ","
@@ -14768,7 +14768,7 @@ fn _to_json_kalmanstate(value: KalmanState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_kvappendresult(value: KvAppendResult) raises -> String:
+def _to_json_kvappendresult(value: KvAppendResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"KvAppendResult\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -14778,7 +14778,7 @@ fn _to_json_kvappendresult(value: KvAppendResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lpmatrix(value: LPMatrix) raises -> String:
+def _to_json_lpmatrix(value: LPMatrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"LPMatrix\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14808,7 +14808,7 @@ fn _to_json_lpmatrix(value: LPMatrix) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lpsolution(value: LPSolution) raises -> String:
+def _to_json_lpsolution(value: LPSolution) raises -> String:
     var result = String("{\"__algenta_struct\":\"LPSolution\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14848,7 +14848,7 @@ fn _to_json_lpsolution(value: LPSolution) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lstmgrads(value: LSTMGrads) raises -> String:
+def _to_json_lstmgrads(value: LSTMGrads) raises -> String:
     var result = String("{\"__algenta_struct\":\"LSTMGrads\",\"v\":[")
     result += _to_json_list_float64(value.dx)
     result += ","
@@ -14864,7 +14864,7 @@ fn _to_json_lstmgrads(value: LSTMGrads) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lstmstate(value: LSTMState) raises -> String:
+def _to_json_lstmstate(value: LSTMState) raises -> String:
     var result = String("{\"__algenta_struct\":\"LSTMState\",\"v\":[")
     result += _to_json_list_float64(value.h)
     result += ","
@@ -14882,7 +14882,7 @@ fn _to_json_lstmstate(value: LSTMState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_luresult(value: LUResult) raises -> String:
+def _to_json_luresult(value: LUResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LUResult\",\"v\":[")
     result += _to_json_matrix(value.L)
     result += ","
@@ -14892,7 +14892,7 @@ fn _to_json_luresult(value: LUResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lz77token(value: LZ77Token) raises -> String:
+def _to_json_lz77token(value: LZ77Token) raises -> String:
     var result = String("{\"__algenta_struct\":\"LZ77Token\",\"v\":[")
     result += _to_json_int(value.offset)
     result += ","
@@ -14902,7 +14902,7 @@ fn _to_json_lz77token(value: LZ77Token) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_layernormagreement(value: LayerNormAgreement) raises -> String:
+def _to_json_layernormagreement(value: LayerNormAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"LayerNormAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -14916,7 +14916,7 @@ fn _to_json_layernormagreement(value: LayerNormAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_layernormgrad(value: LayerNormGrad) raises -> String:
+def _to_json_layernormgrad(value: LayerNormGrad) raises -> String:
     var result = String("{\"__algenta_struct\":\"LayerNormGrad\",\"v\":[")
     result += _to_json_list_float64(value.dx)
     result += ","
@@ -14932,7 +14932,7 @@ fn _to_json_layernormgrad(value: LayerNormGrad) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_layernormout(value: LayerNormOut) raises -> String:
+def _to_json_layernormout(value: LayerNormOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"LayerNormOut\",\"v\":[")
     result += _to_json_list_float64(value.y)
     result += ","
@@ -14948,7 +14948,7 @@ fn _to_json_layernormout(value: LayerNormOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_leakagereport(value: LeakageReport) raises -> String:
+def _to_json_leakagereport(value: LeakageReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"LeakageReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -14996,7 +14996,7 @@ fn _to_json_leakagereport(value: LeakageReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_leakagetimingreport(value: LeakageTimingReport) raises -> String:
+def _to_json_leakagetimingreport(value: LeakageTimingReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"LeakageTimingReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15022,7 +15022,7 @@ fn _to_json_leakagetimingreport(value: LeakageTimingReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_leakybucket(value: LeakyBucket) raises -> String:
+def _to_json_leakybucket(value: LeakyBucket) raises -> String:
     var result = String("{\"__algenta_struct\":\"LeakyBucket\",\"v\":[")
     result += _to_json_float64(value.capacity)
     result += ","
@@ -15034,7 +15034,7 @@ fn _to_json_leakybucket(value: LeakyBucket) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_leastsquaresresult(value: LeastSquaresResult) raises -> String:
+def _to_json_leastsquaresresult(value: LeastSquaresResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LeastSquaresResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15056,7 +15056,7 @@ fn _to_json_leastsquaresresult(value: LeastSquaresResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lexresult(value: LexResult) raises -> String:
+def _to_json_lexresult(value: LexResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LexResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15090,7 +15090,7 @@ fn _to_json_lexresult(value: LexResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_linregresult(value: LinRegResult) raises -> String:
+def _to_json_linregresult(value: LinRegResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LinRegResult\",\"v\":[")
     result += _to_json_float64(value.slope)
     result += ","
@@ -15100,7 +15100,7 @@ fn _to_json_linregresult(value: LinRegResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_linearform(value: LinearForm) raises -> String:
+def _to_json_linearform(value: LinearForm) raises -> String:
     var result = String("{\"__algenta_struct\":\"LinearForm\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15124,7 +15124,7 @@ fn _to_json_linearform(value: LinearForm) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_linearmodel(value: LinearModel) raises -> String:
+def _to_json_linearmodel(value: LinearModel) raises -> String:
     var result = String("{\"__algenta_struct\":\"LinearModel\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15136,7 +15136,7 @@ fn _to_json_linearmodel(value: LinearModel) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_linearscore(value: LinearScore) raises -> String:
+def _to_json_linearscore(value: LinearScore) raises -> String:
     var result = String("{\"__algenta_struct\":\"LinearScore\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15160,7 +15160,7 @@ fn _to_json_linearscore(value: LinearScore) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_loadresult(value: LoadResult) raises -> String:
+def _to_json_loadresult(value: LoadResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LoadResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15170,7 +15170,7 @@ fn _to_json_loadresult(value: LoadResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_loglossresult(value: LogLossResult) raises -> String:
+def _to_json_loglossresult(value: LogLossResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LogLossResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15186,7 +15186,7 @@ fn _to_json_loglossresult(value: LogLossResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_logger(value: Logger) raises -> String:
+def _to_json_logger(value: Logger) raises -> String:
     var result = String("{\"__algenta_struct\":\"Logger\",\"v\":[")
     result += _to_json_string(value.name)
     result += ","
@@ -15194,7 +15194,7 @@ fn _to_json_logger(value: Logger) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_logisticresult(value: LogisticResult) raises -> String:
+def _to_json_logisticresult(value: LogisticResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"LogisticResult\",\"v\":[")
     result += _to_json_list_float64(value.weights)
     result += ","
@@ -15208,7 +15208,7 @@ fn _to_json_logisticresult(value: LogisticResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_lognormalfit(value: LognormalFit) raises -> String:
+def _to_json_lognormalfit(value: LognormalFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"LognormalFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15242,7 +15242,7 @@ fn _to_json_lognormalfit(value: LognormalFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_loweredform(value: LoweredForm) raises -> String:
+def _to_json_loweredform(value: LoweredForm) raises -> String:
     var result = String("{\"__algenta_struct\":\"LoweredForm\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15274,7 +15274,7 @@ fn _to_json_loweredform(value: LoweredForm) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_mafit(value: MAFit) raises -> String:
+def _to_json_mafit(value: MAFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"MAFit\",\"v\":[")
     result += _to_json_list_float64(value.theta)
     result += ","
@@ -15282,7 +15282,7 @@ fn _to_json_mafit(value: MAFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_milpresult(value: MILPResult) raises -> String:
+def _to_json_milpresult(value: MILPResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"MILPResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15338,7 +15338,7 @@ fn _to_json_milpresult(value: MILPResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_mmrselection(value: MMRSelection) raises -> String:
+def _to_json_mmrselection(value: MMRSelection) raises -> String:
     var result = String("{\"__algenta_struct\":\"MMRSelection\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15360,7 +15360,7 @@ fn _to_json_mmrselection(value: MMRSelection) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_maskconvention(value: MaskConvention) raises -> String:
+def _to_json_maskconvention(value: MaskConvention) raises -> String:
     var result = String("{\"__algenta_struct\":\"MaskConvention\",\"v\":[")
     result += _to_json_float64(value.additive_bias)
     result += ","
@@ -15372,7 +15372,7 @@ fn _to_json_maskconvention(value: MaskConvention) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_maskspec(value: MaskSpec) raises -> String:
+def _to_json_maskspec(value: MaskSpec) raises -> String:
     var result = String("{\"__algenta_struct\":\"MaskSpec\",\"v\":[")
     result += _to_json_list_float64(value.bias)
     result += ","
@@ -15386,7 +15386,7 @@ fn _to_json_maskspec(value: MaskSpec) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_matchreport(value: MatchReport) raises -> String:
+def _to_json_matchreport(value: MatchReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"MatchReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15422,7 +15422,7 @@ fn _to_json_matchreport(value: MatchReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_matrix(value: Matrix) raises -> String:
+def _to_json_matrix(value: Matrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"Matrix\",\"v\":[")
     result += _to_json_list_float64(value.data)
     result += ","
@@ -15432,7 +15432,7 @@ fn _to_json_matrix(value: Matrix) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_matrix2d(value: Matrix2D) raises -> String:
+def _to_json_matrix2d(value: Matrix2D) raises -> String:
     var result = String("{\"__algenta_struct\":\"Matrix2D\",\"v\":[")
     result += _to_json_int(value.rows)
     result += ","
@@ -15442,7 +15442,7 @@ fn _to_json_matrix2d(value: Matrix2D) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_maxflow(value: MaxFlow) raises -> String:
+def _to_json_maxflow(value: MaxFlow) raises -> String:
     var result = String("{\"__algenta_struct\":\"MaxFlow\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15476,7 +15476,7 @@ fn _to_json_maxflow(value: MaxFlow) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_metalgemmagreement(value: MetalGemmAgreement) raises -> String:
+def _to_json_metalgemmagreement(value: MetalGemmAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetalGemmAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -15490,7 +15490,7 @@ fn _to_json_metalgemmagreement(value: MetalGemmAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_metalgemmresult(value: MetalGemmResult) raises -> String:
+def _to_json_metalgemmresult(value: MetalGemmResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetalGemmResult\",\"v\":[")
     result += _to_json_list_float64(value.c)
     result += ","
@@ -15504,7 +15504,7 @@ fn _to_json_metalgemmresult(value: MetalGemmResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_metricci(value: MetricCI) raises -> String:
+def _to_json_metricci(value: MetricCI) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetricCI\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15540,7 +15540,7 @@ fn _to_json_metricci(value: MetricCI) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_metricvalue(value: MetricValue) raises -> String:
+def _to_json_metricvalue(value: MetricValue) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetricValue\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15558,7 +15558,7 @@ fn _to_json_metricvalue(value: MetricValue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_metricscounter(value: MetricsCounter) raises -> String:
+def _to_json_metricscounter(value: MetricsCounter) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetricsCounter\",\"v\":[")
     result += _to_json_string(value.name)
     result += ","
@@ -15566,7 +15566,7 @@ fn _to_json_metricscounter(value: MetricsCounter) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_mincostflow(value: MinCostFlow) raises -> String:
+def _to_json_mincostflow(value: MinCostFlow) raises -> String:
     var result = String("{\"__algenta_struct\":\"MinCostFlow\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15598,7 +15598,7 @@ fn _to_json_mincostflow(value: MinCostFlow) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_mixedequilibrium(value: MixedEquilibrium) raises -> String:
+def _to_json_mixedequilibrium(value: MixedEquilibrium) raises -> String:
     var result = String("{\"__algenta_struct\":\"MixedEquilibrium\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15630,7 +15630,7 @@ fn _to_json_mixedequilibrium(value: MixedEquilibrium) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_mm1validation(value: Mm1Validation) raises -> String:
+def _to_json_mm1validation(value: Mm1Validation) raises -> String:
     var result = String("{\"__algenta_struct\":\"Mm1Validation\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15716,7 +15716,7 @@ fn _to_json_mm1validation(value: Mm1Validation) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_modelevaluation(value: ModelEvaluation) raises -> String:
+def _to_json_modelevaluation(value: ModelEvaluation) raises -> String:
     var result = String("{\"__algenta_struct\":\"ModelEvaluation\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15752,7 +15752,7 @@ fn _to_json_modelevaluation(value: ModelEvaluation) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_modelflat(value: ModelFlat) raises -> String:
+def _to_json_modelflat(value: ModelFlat) raises -> String:
     var result = String("{\"__algenta_struct\":\"ModelFlat\",\"v\":[")
     result += _to_json_list_float64(value.var_lower)
     result += ","
@@ -15812,7 +15812,7 @@ fn _to_json_modelflat(value: ModelFlat) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_modelvalidation(value: ModelValidation) raises -> String:
+def _to_json_modelvalidation(value: ModelValidation) raises -> String:
     var result = String("{\"__algenta_struct\":\"ModelValidation\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15842,7 +15842,7 @@ fn _to_json_modelvalidation(value: ModelValidation) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_msgpackfloatresult(value: MsgPackFloatResult) raises -> String:
+def _to_json_msgpackfloatresult(value: MsgPackFloatResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"MsgPackFloatResult\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -15850,7 +15850,7 @@ fn _to_json_msgpackfloatresult(value: MsgPackFloatResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_msgpackintresult(value: MsgPackIntResult) raises -> String:
+def _to_json_msgpackintresult(value: MsgPackIntResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"MsgPackIntResult\",\"v\":[")
     result += _to_json_int(value.value)
     result += ","
@@ -15858,7 +15858,7 @@ fn _to_json_msgpackintresult(value: MsgPackIntResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_msgpackstringresult(value: MsgPackStringResult) raises -> String:
+def _to_json_msgpackstringresult(value: MsgPackStringResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"MsgPackStringResult\",\"v\":[")
     result += _to_json_string(value.value)
     result += ","
@@ -15866,7 +15866,7 @@ fn _to_json_msgpackstringresult(value: MsgPackStringResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_murphyterms(value: MurphyTerms) raises -> String:
+def _to_json_murphyterms(value: MurphyTerms) raises -> String:
     var result = String("{\"__algenta_struct\":\"MurphyTerms\",\"v\":[")
     result += _to_json_float64(value.brier)
     result += ","
@@ -15882,7 +15882,7 @@ fn _to_json_murphyterms(value: MurphyTerms) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_nafit(value: NAFit) raises -> String:
+def _to_json_nafit(value: NAFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"NAFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15920,7 +15920,7 @@ fn _to_json_nafit(value: NAFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_normagreement(value: NormAgreement) raises -> String:
+def _to_json_normagreement(value: NormAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"NormAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -15934,7 +15934,7 @@ fn _to_json_normagreement(value: NormAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_normgrad(value: NormGrad) raises -> String:
+def _to_json_normgrad(value: NormGrad) raises -> String:
     var result = String("{\"__algenta_struct\":\"NormGrad\",\"v\":[")
     result += _to_json_list_float64(value.dx)
     result += ","
@@ -15948,7 +15948,7 @@ fn _to_json_normgrad(value: NormGrad) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_normout(value: NormOut) raises -> String:
+def _to_json_normout(value: NormOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"NormOut\",\"v\":[")
     result += _to_json_list_float64(value.y)
     result += ","
@@ -15962,7 +15962,7 @@ fn _to_json_normout(value: NormOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_normalityverdict(value: NormalityVerdict) raises -> String:
+def _to_json_normalityverdict(value: NormalityVerdict) raises -> String:
     var result = String("{\"__algenta_struct\":\"NormalityVerdict\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -15990,7 +15990,7 @@ fn _to_json_normalityverdict(value: NormalityVerdict) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_nsga2result(value: Nsga2Result) raises -> String:
+def _to_json_nsga2result(value: Nsga2Result) raises -> String:
     var result = String("{\"__algenta_struct\":\"Nsga2Result\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16026,7 +16026,7 @@ fn _to_json_nsga2result(value: Nsga2Result) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_oderesult(value: ODEResult) raises -> String:
+def _to_json_oderesult(value: ODEResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ODEResult\",\"v\":[")
     result += _to_json_list_float64(value.t_values)
     result += ","
@@ -16034,7 +16034,7 @@ fn _to_json_oderesult(value: ODEResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_objectivedecomposition(value: ObjectiveDecomposition) raises -> String:
+def _to_json_objectivedecomposition(value: ObjectiveDecomposition) raises -> String:
     var result = String("{\"__algenta_struct\":\"ObjectiveDecomposition\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16072,7 +16072,7 @@ fn _to_json_objectivedecomposition(value: ObjectiveDecomposition) raises -> Stri
     result += "]}"
     return result
 
-fn _to_json_optmodelsolve(value: OptModelSolve) raises -> String:
+def _to_json_optmodelsolve(value: OptModelSolve) raises -> String:
     var result = String("{\"__algenta_struct\":\"OptModelSolve\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16118,7 +16118,7 @@ fn _to_json_optmodelsolve(value: OptModelSolve) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_optpolicy(value: OptPolicy) raises -> String:
+def _to_json_optpolicy(value: OptPolicy) raises -> String:
     var result = String("{\"__algenta_struct\":\"OptPolicy\",\"v\":[")
     result += _to_json_int(value.max_iterations)
     result += ","
@@ -16132,7 +16132,7 @@ fn _to_json_optpolicy(value: OptPolicy) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_optresult(value: OptResult) raises -> String:
+def _to_json_optresult(value: OptResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"OptResult\",\"v\":[")
     result += _to_json_float64(value.x)
     result += ","
@@ -16144,7 +16144,7 @@ fn _to_json_optresult(value: OptResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_optvar(value: OptVar) raises -> String:
+def _to_json_optvar(value: OptVar) raises -> String:
     var result = String("{\"__algenta_struct\":\"OptVar\",\"v\":[")
     result += _to_json_string(value.name)
     result += ","
@@ -16164,7 +16164,7 @@ fn _to_json_optvar(value: OptVar) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_oracleboard(value: OracleBoard) raises -> String:
+def _to_json_oracleboard(value: OracleBoard) raises -> String:
     var result = String("{\"__algenta_struct\":\"OracleBoard\",\"v\":[")
     result += _to_json_list_float64(value.p_win)
     result += ","
@@ -16182,7 +16182,7 @@ fn _to_json_oracleboard(value: OracleBoard) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_orderaudit(value: OrderAudit) raises -> String:
+def _to_json_orderaudit(value: OrderAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"OrderAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16202,7 +16202,7 @@ fn _to_json_orderaudit(value: OrderAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_originselected(value: OriginSelected) raises -> String:
+def _to_json_originselected(value: OriginSelected) raises -> String:
     var result = String("{\"__algenta_struct\":\"OriginSelected\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16240,7 +16240,7 @@ fn _to_json_originselected(value: OriginSelected) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_outcomemodel(value: OutcomeModel) raises -> String:
+def _to_json_outcomemodel(value: OutcomeModel) raises -> String:
     var result = String("{\"__algenta_struct\":\"OutcomeModel\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16274,7 +16274,7 @@ fn _to_json_outcomemodel(value: OutcomeModel) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ovbresult(value: OvbResult) raises -> String:
+def _to_json_ovbresult(value: OvbResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"OvbResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16296,7 +16296,7 @@ fn _to_json_ovbresult(value: OvbResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_overlapreport(value: OverlapReport) raises -> String:
+def _to_json_overlapreport(value: OverlapReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"OverlapReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16334,7 +16334,7 @@ fn _to_json_overlapreport(value: OverlapReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pcaresult(value: PCAResult) raises -> String:
+def _to_json_pcaresult(value: PCAResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PCAResult\",\"v\":[")
     result += _to_json_list_list_float64(value.components)
     result += ","
@@ -16346,7 +16346,7 @@ fn _to_json_pcaresult(value: PCAResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pidstate(value: PIDState) raises -> String:
+def _to_json_pidstate(value: PIDState) raises -> String:
     var result = String("{\"__algenta_struct\":\"PIDState\",\"v\":[")
     result += _to_json_float64(value.kp)
     result += ","
@@ -16364,7 +16364,7 @@ fn _to_json_pidstate(value: PIDState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_plsresult(value: PLSResult) raises -> String:
+def _to_json_plsresult(value: PLSResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PLSResult\",\"v\":[")
     result += _to_json_int(value.n_components)
     result += ","
@@ -16398,7 +16398,7 @@ fn _to_json_plsresult(value: PLSResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_prf1result(value: PRF1Result) raises -> String:
+def _to_json_prf1result(value: PRF1Result) raises -> String:
     var result = String("{\"__algenta_struct\":\"PRF1Result\",\"v\":[")
     result += _to_json_float64(value.precision)
     result += ","
@@ -16408,7 +16408,7 @@ fn _to_json_prf1result(value: PRF1Result) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pacestate(value: PaceState) raises -> String:
+def _to_json_pacestate(value: PaceState) raises -> String:
     var result = String("{\"__algenta_struct\":\"PaceState\",\"v\":[")
     result += _to_json_float64(value.beta0)
     result += ","
@@ -16426,7 +16426,7 @@ fn _to_json_pacestate(value: PaceState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_packednibbles(value: PackedNibbles) raises -> String:
+def _to_json_packednibbles(value: PackedNibbles) raises -> String:
     var result = String("{\"__algenta_struct\":\"PackedNibbles\",\"v\":[")
     result += _to_json_list_int(value.bytes)
     result += ","
@@ -16436,7 +16436,7 @@ fn _to_json_packednibbles(value: PackedNibbles) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pagehinkleystate(value: PageHinkleyState) raises -> String:
+def _to_json_pagehinkleystate(value: PageHinkleyState) raises -> String:
     var result = String("{\"__algenta_struct\":\"PageHinkleyState\",\"v\":[")
     result += _to_json_float64(value.mean)
     result += ","
@@ -16462,7 +16462,7 @@ fn _to_json_pagehinkleystate(value: PageHinkleyState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pagerankresult(value: PageRankResult) raises -> String:
+def _to_json_pagerankresult(value: PageRankResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PageRankResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16486,7 +16486,7 @@ fn _to_json_pagerankresult(value: PageRankResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pairedbootstrap(value: PairedBootstrap) raises -> String:
+def _to_json_pairedbootstrap(value: PairedBootstrap) raises -> String:
     var result = String("{\"__algenta_struct\":\"PairedBootstrap\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16520,7 +16520,7 @@ fn _to_json_pairedbootstrap(value: PairedBootstrap) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_paireddiff(value: PairedDiff) raises -> String:
+def _to_json_paireddiff(value: PairedDiff) raises -> String:
     var result = String("{\"__algenta_struct\":\"PairedDiff\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16602,7 +16602,7 @@ fn _to_json_paireddiff(value: PairedDiff) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pairingaudit(value: PairingAudit) raises -> String:
+def _to_json_pairingaudit(value: PairingAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"PairingAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16678,7 +16678,7 @@ fn _to_json_pairingaudit(value: PairingAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_parallelgemvresult(value: ParallelGemvResult) raises -> String:
+def _to_json_parallelgemvresult(value: ParallelGemvResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ParallelGemvResult\",\"v\":[")
     result += _to_json_list_float64(value.y)
     result += ","
@@ -16688,7 +16688,7 @@ fn _to_json_parallelgemvresult(value: ParallelGemvResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_paretocertificate(value: ParetoCertificate) raises -> String:
+def _to_json_paretocertificate(value: ParetoCertificate) raises -> String:
     var result = String("{\"__algenta_struct\":\"ParetoCertificate\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16712,7 +16712,7 @@ fn _to_json_paretocertificate(value: ParetoCertificate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_partialdependence(value: PartialDependence) raises -> String:
+def _to_json_partialdependence(value: PartialDependence) raises -> String:
     var result = String("{\"__algenta_struct\":\"PartialDependence\",\"v\":[")
     result += _to_json_list_float64(value.mean)
     result += ","
@@ -16720,7 +16720,7 @@ fn _to_json_partialdependence(value: PartialDependence) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pathlength(value: PathLength) raises -> String:
+def _to_json_pathlength(value: PathLength) raises -> String:
     var result = String("{\"__algenta_struct\":\"PathLength\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16742,7 +16742,7 @@ fn _to_json_pathlength(value: PathLength) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_permutationimportance(value: PermutationImportance) raises -> String:
+def _to_json_permutationimportance(value: PermutationImportance) raises -> String:
     var result = String("{\"__algenta_struct\":\"PermutationImportance\",\"v\":[")
     result += _to_json_list_float64(value.means)
     result += ","
@@ -16750,7 +16750,7 @@ fn _to_json_permutationimportance(value: PermutationImportance) raises -> String
     result += "]}"
     return result
 
-fn _to_json_permutationtest(value: PermutationTest) raises -> String:
+def _to_json_permutationtest(value: PermutationTest) raises -> String:
     var result = String("{\"__algenta_struct\":\"PermutationTest\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16778,7 +16778,7 @@ fn _to_json_permutationtest(value: PermutationTest) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_philoxblock(value: PhiloxBlock) raises -> String:
+def _to_json_philoxblock(value: PhiloxBlock) raises -> String:
     var result = String("{\"__algenta_struct\":\"PhiloxBlock\",\"v\":[")
     result += _to_json_uint64(value.w0)
     result += ","
@@ -16790,7 +16790,7 @@ fn _to_json_philoxblock(value: PhiloxBlock) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pipresult(value: PipResult) raises -> String:
+def _to_json_pipresult(value: PipResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PipResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16810,7 +16810,7 @@ fn _to_json_pipresult(value: PipResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pipelinestate(value: PipelineState) raises -> String:
+def _to_json_pipelinestate(value: PipelineState) raises -> String:
     var result = String("{\"__algenta_struct\":\"PipelineState\",\"v\":[")
     result += _to_json_bool(value.ok)
     result += ","
@@ -16824,7 +16824,7 @@ fn _to_json_pipelinestate(value: PipelineState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_planeverdict(value: PlaneVerdict) raises -> String:
+def _to_json_planeverdict(value: PlaneVerdict) raises -> String:
     var result = String("{\"__algenta_struct\":\"PlaneVerdict\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16870,7 +16870,7 @@ fn _to_json_planeverdict(value: PlaneVerdict) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_plannerresolution(value: PlannerResolution) raises -> String:
+def _to_json_plannerresolution(value: PlannerResolution) raises -> String:
     var result = String("{\"__algenta_struct\":\"PlannerResolution\",\"v\":[")
     result += _to_json_uint32(value.resolved_column_id)
     result += ","
@@ -16886,7 +16886,7 @@ fn _to_json_plannerresolution(value: PlannerResolution) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_plattparams(value: PlattParams) raises -> String:
+def _to_json_plattparams(value: PlattParams) raises -> String:
     var result = String("{\"__algenta_struct\":\"PlattParams\",\"v\":[")
     result += _to_json_float64(value.a)
     result += ","
@@ -16894,7 +16894,7 @@ fn _to_json_plattparams(value: PlattParams) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_point(value: Point) raises -> String:
+def _to_json_point(value: Point) raises -> String:
     var result = String("{\"__algenta_struct\":\"Point\",\"v\":[")
     result += _to_json_float64(value.x)
     result += ","
@@ -16902,7 +16902,7 @@ fn _to_json_point(value: Point) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pointaudit(value: PointAudit) raises -> String:
+def _to_json_pointaudit(value: PointAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"PointAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16932,7 +16932,7 @@ fn _to_json_pointaudit(value: PointAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pointforecast(value: PointForecast) raises -> String:
+def _to_json_pointforecast(value: PointForecast) raises -> String:
     var result = String("{\"__algenta_struct\":\"PointForecast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16964,7 +16964,7 @@ fn _to_json_pointforecast(value: PointForecast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_pointresult(value: PointResult) raises -> String:
+def _to_json_pointresult(value: PointResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PointResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -16978,7 +16978,7 @@ fn _to_json_pointresult(value: PointResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policyaction(value: PolicyAction) raises -> String:
+def _to_json_policyaction(value: PolicyAction) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicyAction\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17002,7 +17002,7 @@ fn _to_json_policyaction(value: PolicyAction) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policyaudit(value: PolicyAudit) raises -> String:
+def _to_json_policyaudit(value: PolicyAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicyAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17030,7 +17030,7 @@ fn _to_json_policyaudit(value: PolicyAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policyoutcome(value: PolicyOutcome) raises -> String:
+def _to_json_policyoutcome(value: PolicyOutcome) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicyOutcome\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17052,7 +17052,7 @@ fn _to_json_policyoutcome(value: PolicyOutcome) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policyrun(value: PolicyRun) raises -> String:
+def _to_json_policyrun(value: PolicyRun) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicyRun\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17094,7 +17094,7 @@ fn _to_json_policyrun(value: PolicyRun) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policysetrun(value: PolicySetRun) raises -> String:
+def _to_json_policysetrun(value: PolicySetRun) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicySetRun\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17142,7 +17142,7 @@ fn _to_json_policysetrun(value: PolicySetRun) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policytable(value: PolicyTable) raises -> String:
+def _to_json_policytable(value: PolicyTable) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicyTable\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17158,7 +17158,7 @@ fn _to_json_policytable(value: PolicyTable) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_policyvalues(value: PolicyValues) raises -> String:
+def _to_json_policyvalues(value: PolicyValues) raises -> String:
     var result = String("{\"__algenta_struct\":\"PolicyValues\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17186,7 +17186,7 @@ fn _to_json_policyvalues(value: PolicyValues) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_poolforecast(value: PoolForecast) raises -> String:
+def _to_json_poolforecast(value: PoolForecast) raises -> String:
     var result = String("{\"__algenta_struct\":\"PoolForecast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17216,7 +17216,7 @@ fn _to_json_poolforecast(value: PoolForecast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_poolreport(value: PoolReport) raises -> String:
+def _to_json_poolreport(value: PoolReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"PoolReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17246,7 +17246,7 @@ fn _to_json_poolreport(value: PoolReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_poweriterresult(value: PowerIterResult) raises -> String:
+def _to_json_poweriterresult(value: PowerIterResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PowerIterResult\",\"v\":[")
     result += _to_json_float64(value.eigenvalue)
     result += ","
@@ -17254,7 +17254,7 @@ fn _to_json_poweriterresult(value: PowerIterResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_powerreport(value: PowerReport) raises -> String:
+def _to_json_powerreport(value: PowerReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"PowerReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17278,7 +17278,7 @@ fn _to_json_powerreport(value: PowerReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_priorityqueue(value: PriorityQueue) raises -> String:
+def _to_json_priorityqueue(value: PriorityQueue) raises -> String:
     var result = String("{\"__algenta_struct\":\"PriorityQueue\",\"v\":[")
     result += _to_json_list_float64(value.priorities)
     result += ","
@@ -17286,7 +17286,7 @@ fn _to_json_priorityqueue(value: PriorityQueue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_priorityqueueentry(value: PriorityQueueEntry) raises -> String:
+def _to_json_priorityqueueentry(value: PriorityQueueEntry) raises -> String:
     var result = String("{\"__algenta_struct\":\"PriorityQueueEntry\",\"v\":[")
     result += _to_json_float64(value.priority)
     result += ","
@@ -17294,7 +17294,7 @@ fn _to_json_priorityqueueentry(value: PriorityQueueEntry) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_progexecresult(value: ProgExecResult) raises -> String:
+def _to_json_progexecresult(value: ProgExecResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ProgExecResult\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -17308,7 +17308,7 @@ fn _to_json_progexecresult(value: ProgExecResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_projectedpoints(value: ProjectedPoints) raises -> String:
+def _to_json_projectedpoints(value: ProjectedPoints) raises -> String:
     var result = String("{\"__algenta_struct\":\"ProjectedPoints\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17330,7 +17330,7 @@ fn _to_json_projectedpoints(value: ProjectedPoints) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_propensityfit(value: PropensityFit) raises -> String:
+def _to_json_propensityfit(value: PropensityFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"PropensityFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17370,7 +17370,7 @@ fn _to_json_propensityfit(value: PropensityFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_provenance(value: Provenance) raises -> String:
+def _to_json_provenance(value: Provenance) raises -> String:
     var result = String("{\"__algenta_struct\":\"Provenance\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17396,7 +17396,7 @@ fn _to_json_provenance(value: Provenance) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_purenashreport(value: PureNashReport) raises -> String:
+def _to_json_purenashreport(value: PureNashReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"PureNashReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17428,7 +17428,7 @@ fn _to_json_purenashreport(value: PureNashReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qdelta(value: QDelta) raises -> String:
+def _to_json_qdelta(value: QDelta) raises -> String:
     var result = String("{\"__algenta_struct\":\"QDelta\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -17442,7 +17442,7 @@ fn _to_json_qdelta(value: QDelta) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qgemmresult(value: QGemmResult) raises -> String:
+def _to_json_qgemmresult(value: QGemmResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"QGemmResult\",\"v\":[")
     result += _to_json_list_float64(value.y)
     result += ","
@@ -17458,7 +17458,7 @@ fn _to_json_qgemmresult(value: QGemmResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qpbound(value: QPBound) raises -> String:
+def _to_json_qpbound(value: QPBound) raises -> String:
     var result = String("{\"__algenta_struct\":\"QPBound\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17484,7 +17484,7 @@ fn _to_json_qpbound(value: QPBound) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qpcertificate(value: QPCertificate) raises -> String:
+def _to_json_qpcertificate(value: QPCertificate) raises -> String:
     var result = String("{\"__algenta_struct\":\"QPCertificate\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17528,7 +17528,7 @@ fn _to_json_qpcertificate(value: QPCertificate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qpconvexity(value: QPConvexity) raises -> String:
+def _to_json_qpconvexity(value: QPConvexity) raises -> String:
     var result = String("{\"__algenta_struct\":\"QPConvexity\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17556,7 +17556,7 @@ fn _to_json_qpconvexity(value: QPConvexity) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qpsolution(value: QPSolution) raises -> String:
+def _to_json_qpsolution(value: QPSolution) raises -> String:
     var result = String("{\"__algenta_struct\":\"QPSolution\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17656,7 +17656,7 @@ fn _to_json_qpsolution(value: QPSolution) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qpvalue(value: QPValue) raises -> String:
+def _to_json_qpvalue(value: QPValue) raises -> String:
     var result = String("{\"__algenta_struct\":\"QPValue\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17666,7 +17666,7 @@ fn _to_json_qpvalue(value: QPValue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qpvector(value: QPVector) raises -> String:
+def _to_json_qpvector(value: QPVector) raises -> String:
     var result = String("{\"__algenta_struct\":\"QPVector\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17678,7 +17678,7 @@ fn _to_json_qpvector(value: QPVector) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qrresult(value: QRResult) raises -> String:
+def _to_json_qrresult(value: QRResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"QRResult\",\"v\":[")
     result += _to_json_matrix(value.Q)
     result += ","
@@ -17686,7 +17686,7 @@ fn _to_json_qrresult(value: QRResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qiniresult(value: QiniResult) raises -> String:
+def _to_json_qiniresult(value: QiniResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"QiniResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17724,7 +17724,7 @@ fn _to_json_qiniresult(value: QiniResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_quanterror(value: QuantError) raises -> String:
+def _to_json_quanterror(value: QuantError) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantError\",\"v\":[")
     result += _to_json_float64(value.max_abs_err)
     result += ","
@@ -17738,7 +17738,7 @@ fn _to_json_quanterror(value: QuantError) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_quantileestimate(value: QuantileEstimate) raises -> String:
+def _to_json_quantileestimate(value: QuantileEstimate) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantileEstimate\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -17754,7 +17754,7 @@ fn _to_json_quantileestimate(value: QuantileEstimate) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_quantileprofile(value: QuantileProfile) raises -> String:
+def _to_json_quantileprofile(value: QuantileProfile) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantileProfile\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -17768,7 +17768,7 @@ fn _to_json_quantileprofile(value: QuantileProfile) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_quantileseries(value: QuantileSeries) raises -> String:
+def _to_json_quantileseries(value: QuantileSeries) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantileSeries\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -17784,7 +17784,7 @@ fn _to_json_quantileseries(value: QuantileSeries) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_quantilesketch(value: QuantileSketch) raises -> String:
+def _to_json_quantilesketch(value: QuantileSketch) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantileSketch\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -17808,7 +17808,7 @@ fn _to_json_quantilesketch(value: QuantileSketch) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_quantilesnapshot(value: QuantileSnapshot) raises -> String:
+def _to_json_quantilesnapshot(value: QuantileSnapshot) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantileSnapshot\",\"v\":[")
     result += _to_json_list_int(value.header)
     result += ","
@@ -17816,7 +17816,7 @@ fn _to_json_quantilesnapshot(value: QuantileSnapshot) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_queuerun(value: QueueRun) raises -> String:
+def _to_json_queuerun(value: QueueRun) raises -> String:
     var result = String("{\"__algenta_struct\":\"QueueRun\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17882,7 +17882,7 @@ fn _to_json_queuerun(value: QueueRun) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qwen3decoderesult(value: Qwen3DecodeResult) raises -> String:
+def _to_json_qwen3decoderesult(value: Qwen3DecodeResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"Qwen3DecodeResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17902,7 +17902,7 @@ fn _to_json_qwen3decoderesult(value: Qwen3DecodeResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_qwen3prefilldecoderesult(value: Qwen3PrefillDecodeResult) raises -> String:
+def _to_json_qwen3prefilldecoderesult(value: Qwen3PrefillDecodeResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"Qwen3PrefillDecodeResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17924,7 +17924,7 @@ fn _to_json_qwen3prefilldecoderesult(value: Qwen3PrefillDecodeResult) raises -> 
     result += "]}"
     return result
 
-fn _to_json_rgb(value: RGB) raises -> String:
+def _to_json_rgb(value: RGB) raises -> String:
     var result = String("{\"__algenta_struct\":\"RGB\",\"v\":[")
     result += _to_json_float64(value.r)
     result += ","
@@ -17934,7 +17934,7 @@ fn _to_json_rgb(value: RGB) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rnnparams(value: RNNParams) raises -> String:
+def _to_json_rnnparams(value: RNNParams) raises -> String:
     var result = String("{\"__algenta_struct\":\"RNNParams\",\"v\":[")
     result += _to_json_list_float64(value.W)
     result += ","
@@ -17944,7 +17944,7 @@ fn _to_json_rnnparams(value: RNNParams) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rankrequest(value: RankRequest) raises -> String:
+def _to_json_rankrequest(value: RankRequest) raises -> String:
     var result = String("{\"__algenta_struct\":\"RankRequest\",\"v\":[")
     result += _to_json_uint16(value.source_id)
     result += ","
@@ -17958,7 +17958,7 @@ fn _to_json_rankrequest(value: RankRequest) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rcpspaudit(value: RcpspAudit) raises -> String:
+def _to_json_rcpspaudit(value: RcpspAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"RcpspAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -17988,7 +17988,7 @@ fn _to_json_rcpspaudit(value: RcpspAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rcpspbound(value: RcpspBound) raises -> String:
+def _to_json_rcpspbound(value: RcpspBound) raises -> String:
     var result = String("{\"__algenta_struct\":\"RcpspBound\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18014,7 +18014,7 @@ fn _to_json_rcpspbound(value: RcpspBound) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rcpsppeak(value: RcpspPeak) raises -> String:
+def _to_json_rcpsppeak(value: RcpspPeak) raises -> String:
     var result = String("{\"__algenta_struct\":\"RcpspPeak\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18034,7 +18034,7 @@ fn _to_json_rcpsppeak(value: RcpspPeak) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rcpspresult(value: RcpspResult) raises -> String:
+def _to_json_rcpspresult(value: RcpspResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"RcpspResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18096,7 +18096,7 @@ fn _to_json_rcpspresult(value: RcpspResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_recalcoutcome(value: RecalcOutcome) raises -> String:
+def _to_json_recalcoutcome(value: RecalcOutcome) raises -> String:
     var result = String("{\"__algenta_struct\":\"RecalcOutcome\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18118,7 +18118,7 @@ fn _to_json_recalcoutcome(value: RecalcOutcome) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_reconciliation(value: Reconciliation) raises -> String:
+def _to_json_reconciliation(value: Reconciliation) raises -> String:
     var result = String("{\"__algenta_struct\":\"Reconciliation\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18152,7 +18152,7 @@ fn _to_json_reconciliation(value: Reconciliation) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_refdelta(value: RefDelta) raises -> String:
+def _to_json_refdelta(value: RefDelta) raises -> String:
     var result = String("{\"__algenta_struct\":\"RefDelta\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
     result += ","
@@ -18166,7 +18166,7 @@ fn _to_json_refdelta(value: RefDelta) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_refparse(value: RefParse) raises -> String:
+def _to_json_refparse(value: RefParse) raises -> String:
     var result = String("{\"__algenta_struct\":\"RefParse\",\"v\":[")
     result += _to_json_bool(value.ok)
     result += ","
@@ -18188,7 +18188,7 @@ fn _to_json_refparse(value: RefParse) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_regressionresult(value: RegressionResult) raises -> String:
+def _to_json_regressionresult(value: RegressionResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"RegressionResult\",\"v\":[")
     result += _to_json_list_float64(value.coefficients)
     result += ","
@@ -18200,7 +18200,7 @@ fn _to_json_regressionresult(value: RegressionResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_regressiontree(value: RegressionTree) raises -> String:
+def _to_json_regressiontree(value: RegressionTree) raises -> String:
     var result = String("{\"__algenta_struct\":\"RegressionTree\",\"v\":[")
     result += _to_json_list_int(value.split_feature)
     result += ","
@@ -18216,7 +18216,7 @@ fn _to_json_regressiontree(value: RegressionTree) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_reliabilitybins(value: ReliabilityBins) raises -> String:
+def _to_json_reliabilitybins(value: ReliabilityBins) raises -> String:
     var result = String("{\"__algenta_struct\":\"ReliabilityBins\",\"v\":[")
     result += _to_json_list_float64(value.bin_center)
     result += ","
@@ -18228,7 +18228,7 @@ fn _to_json_reliabilitybins(value: ReliabilityBins) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_reliabilitydiagram(value: ReliabilityDiagram) raises -> String:
+def _to_json_reliabilitydiagram(value: ReliabilityDiagram) raises -> String:
     var result = String("{\"__algenta_struct\":\"ReliabilityDiagram\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18254,7 +18254,7 @@ fn _to_json_reliabilitydiagram(value: ReliabilityDiagram) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_replicationci(value: ReplicationCI) raises -> String:
+def _to_json_replicationci(value: ReplicationCI) raises -> String:
     var result = String("{\"__algenta_struct\":\"ReplicationCI\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18290,7 +18290,7 @@ fn _to_json_replicationci(value: ReplicationCI) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_residresult(value: ResidResult) raises -> String:
+def _to_json_residresult(value: ResidResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ResidResult\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -18300,7 +18300,7 @@ fn _to_json_residresult(value: ResidResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_residentprobe(value: ResidentProbe) raises -> String:
+def _to_json_residentprobe(value: ResidentProbe) raises -> String:
     var result = String("{\"__algenta_struct\":\"ResidentProbe\",\"v\":[")
     result += _to_json_bool(value.kernels_compiled)
     result += ","
@@ -18316,7 +18316,7 @@ fn _to_json_residentprobe(value: ResidentProbe) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_resourcerun(value: ResourceRun) raises -> String:
+def _to_json_resourcerun(value: ResourceRun) raises -> String:
     var result = String("{\"__algenta_struct\":\"ResourceRun\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18372,7 +18372,7 @@ fn _to_json_resourcerun(value: ResourceRun) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_retrievalquality(value: RetrievalQuality) raises -> String:
+def _to_json_retrievalquality(value: RetrievalQuality) raises -> String:
     var result = String("{\"__algenta_struct\":\"RetrievalQuality\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18394,7 +18394,7 @@ fn _to_json_retrievalquality(value: RetrievalQuality) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rhssensitivity(value: RhsSensitivity) raises -> String:
+def _to_json_rhssensitivity(value: RhsSensitivity) raises -> String:
     var result = String("{\"__algenta_struct\":\"RhsSensitivity\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18422,7 +18422,7 @@ fn _to_json_rhssensitivity(value: RhsSensitivity) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ringarea(value: RingArea) raises -> String:
+def _to_json_ringarea(value: RingArea) raises -> String:
     var result = String("{\"__algenta_struct\":\"RingArea\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18446,7 +18446,7 @@ fn _to_json_ringarea(value: RingArea) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ringclassification(value: RingClassification) raises -> String:
+def _to_json_ringclassification(value: RingClassification) raises -> String:
     var result = String("{\"__algenta_struct\":\"RingClassification\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18464,7 +18464,7 @@ fn _to_json_ringclassification(value: RingClassification) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ringframecensus(value: RingFrameCensus) raises -> String:
+def _to_json_ringframecensus(value: RingFrameCensus) raises -> String:
     var result = String("{\"__algenta_struct\":\"RingFrameCensus\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18498,7 +18498,7 @@ fn _to_json_ringframecensus(value: RingFrameCensus) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ringreport(value: RingReport) raises -> String:
+def _to_json_ringreport(value: RingReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"RingReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18546,7 +18546,7 @@ fn _to_json_ringreport(value: RingReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_risktable(value: RiskTable) raises -> String:
+def _to_json_risktable(value: RiskTable) raises -> String:
     var result = String("{\"__algenta_struct\":\"RiskTable\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18570,7 +18570,7 @@ fn _to_json_risktable(value: RiskTable) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_robustfit(value: RobustFit) raises -> String:
+def _to_json_robustfit(value: RobustFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"RobustFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18606,7 +18606,7 @@ fn _to_json_robustfit(value: RobustFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_robustminmaxresult(value: RobustMinMaxResult) raises -> String:
+def _to_json_robustminmaxresult(value: RobustMinMaxResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"RobustMinMaxResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18656,7 +18656,7 @@ fn _to_json_robustminmaxresult(value: RobustMinMaxResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_robustscenarioresult(value: RobustScenarioResult) raises -> String:
+def _to_json_robustscenarioresult(value: RobustScenarioResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"RobustScenarioResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18698,7 +18698,7 @@ fn _to_json_robustscenarioresult(value: RobustScenarioResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_robustnessvalue(value: RobustnessValue) raises -> String:
+def _to_json_robustnessvalue(value: RobustnessValue) raises -> String:
     var result = String("{\"__algenta_struct\":\"RobustnessValue\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18718,7 +18718,7 @@ fn _to_json_robustnessvalue(value: RobustnessValue) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ropeagreement(value: RopeAgreement) raises -> String:
+def _to_json_ropeagreement(value: RopeAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"RopeAgreement\",\"v\":[")
     result += _to_json_float64(value.squared_convention)
     result += ","
@@ -18730,7 +18730,7 @@ fn _to_json_ropeagreement(value: RopeAgreement) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ropeapplied(value: RopeApplied) raises -> String:
+def _to_json_ropeapplied(value: RopeApplied) raises -> String:
     var result = String("{\"__algenta_struct\":\"RopeApplied\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -18744,7 +18744,7 @@ fn _to_json_ropeapplied(value: RopeApplied) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ropetable(value: RopeTable) raises -> String:
+def _to_json_ropetable(value: RopeTable) raises -> String:
     var result = String("{\"__algenta_struct\":\"RopeTable\",\"v\":[")
     result += _to_json_list_float64(value.cos_table)
     result += ","
@@ -18760,7 +18760,7 @@ fn _to_json_ropetable(value: RopeTable) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rosenbaumbound(value: RosenbaumBound) raises -> String:
+def _to_json_rosenbaumbound(value: RosenbaumBound) raises -> String:
     var result = String("{\"__algenta_struct\":\"RosenbaumBound\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18784,7 +18784,7 @@ fn _to_json_rosenbaumbound(value: RosenbaumBound) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routeaudit(value: RouteAudit) raises -> String:
+def _to_json_routeaudit(value: RouteAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteAudit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18832,7 +18832,7 @@ fn _to_json_routeaudit(value: RouteAudit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routematrixcensus(value: RouteMatrixCensus) raises -> String:
+def _to_json_routematrixcensus(value: RouteMatrixCensus) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteMatrixCensus\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18864,7 +18864,7 @@ fn _to_json_routematrixcensus(value: RouteMatrixCensus) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routescalar(value: RouteScalar) raises -> String:
+def _to_json_routescalar(value: RouteScalar) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteScalar\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18874,7 +18874,7 @@ fn _to_json_routescalar(value: RouteScalar) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routesolution(value: RouteSolution) raises -> String:
+def _to_json_routesolution(value: RouteSolution) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteSolution\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18934,7 +18934,7 @@ fn _to_json_routesolution(value: RouteSolution) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routetour(value: RouteTour) raises -> String:
+def _to_json_routetour(value: RouteTour) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteTour\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -18982,7 +18982,7 @@ fn _to_json_routetour(value: RouteTour) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routetourcheck(value: RouteTourCheck) raises -> String:
+def _to_json_routetourcheck(value: RouteTourCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteTourCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19004,7 +19004,7 @@ fn _to_json_routetourcheck(value: RouteTourCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_routevehiclebound(value: RouteVehicleBound) raises -> String:
+def _to_json_routevehiclebound(value: RouteVehicleBound) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteVehicleBound\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19028,7 +19028,7 @@ fn _to_json_routevehiclebound(value: RouteVehicleBound) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_svdresult(value: SVDResult) raises -> String:
+def _to_json_svdresult(value: SVDResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"SVDResult\",\"v\":[")
     result += _to_json_list_float64(value.u)
     result += ","
@@ -19040,7 +19040,7 @@ fn _to_json_svdresult(value: SVDResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_svmmodel(value: SVMModel) raises -> String:
+def _to_json_svmmodel(value: SVMModel) raises -> String:
     var result = String("{\"__algenta_struct\":\"SVMModel\",\"v\":[")
     result += _to_json_int(value.kernel_type)
     result += ","
@@ -19062,7 +19062,7 @@ fn _to_json_svmmodel(value: SVMModel) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_samplesizereport(value: SampleSizeReport) raises -> String:
+def _to_json_samplesizereport(value: SampleSizeReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"SampleSizeReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19090,7 +19090,7 @@ fn _to_json_samplesizereport(value: SampleSizeReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_scalarresult(value: ScalarResult) raises -> String:
+def _to_json_scalarresult(value: ScalarResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ScalarResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19104,7 +19104,7 @@ fn _to_json_scalarresult(value: ScalarResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_scenarioset(value: ScenarioSet) raises -> String:
+def _to_json_scenarioset(value: ScenarioSet) raises -> String:
     var result = String("{\"__algenta_struct\":\"ScenarioSet\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19124,7 +19124,7 @@ fn _to_json_scenarioset(value: ScenarioSet) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sdpagrad(value: SdpaGrad) raises -> String:
+def _to_json_sdpagrad(value: SdpaGrad) raises -> String:
     var result = String("{\"__algenta_struct\":\"SdpaGrad\",\"v\":[")
     result += _to_json_list_float64(value.dq)
     result += ","
@@ -19140,7 +19140,7 @@ fn _to_json_sdpagrad(value: SdpaGrad) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sdpaout(value: SdpaOut) raises -> String:
+def _to_json_sdpaout(value: SdpaOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"SdpaOut\",\"v\":[")
     result += _to_json_list_float64(value.out)
     result += ","
@@ -19156,7 +19156,7 @@ fn _to_json_sdpaout(value: SdpaOut) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sdpascores(value: SdpaScores) raises -> String:
+def _to_json_sdpascores(value: SdpaScores) raises -> String:
     var result = String("{\"__algenta_struct\":\"SdpaScores\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -19170,7 +19170,7 @@ fn _to_json_sdpascores(value: SdpaScores) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_seasonaladjust(value: SeasonalAdjust) raises -> String:
+def _to_json_seasonaladjust(value: SeasonalAdjust) raises -> String:
     var result = String("{\"__algenta_struct\":\"SeasonalAdjust\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19196,7 +19196,7 @@ fn _to_json_seasonaladjust(value: SeasonalAdjust) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_segmentdistance(value: SegmentDistance) raises -> String:
+def _to_json_segmentdistance(value: SegmentDistance) raises -> String:
     var result = String("{\"__algenta_struct\":\"SegmentDistance\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19222,7 +19222,7 @@ fn _to_json_segmentdistance(value: SegmentDistance) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_selectedforecast(value: SelectedForecast) raises -> String:
+def _to_json_selectedforecast(value: SelectedForecast) raises -> String:
     var result = String("{\"__algenta_struct\":\"SelectedForecast\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19250,7 +19250,7 @@ fn _to_json_selectedforecast(value: SelectedForecast) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_selection(value: Selection) raises -> String:
+def _to_json_selection(value: Selection) raises -> String:
     var result = String("{\"__algenta_struct\":\"Selection\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19270,7 +19270,7 @@ fn _to_json_selection(value: Selection) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sensitivitycurve(value: SensitivityCurve) raises -> String:
+def _to_json_sensitivitycurve(value: SensitivityCurve) raises -> String:
     var result = String("{\"__algenta_struct\":\"SensitivityCurve\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19294,7 +19294,7 @@ fn _to_json_sensitivitycurve(value: SensitivityCurve) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_seq2params(value: Seq2Params) raises -> String:
+def _to_json_seq2params(value: Seq2Params) raises -> String:
     var result = String("{\"__algenta_struct\":\"Seq2Params\",\"v\":[")
     result += _to_json_int(value.input_dim)
     result += ","
@@ -19324,7 +19324,7 @@ fn _to_json_seq2params(value: Seq2Params) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_seq2trainresult(value: Seq2TrainResult) raises -> String:
+def _to_json_seq2trainresult(value: Seq2TrainResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"Seq2TrainResult\",\"v\":[")
     result += _to_json_seq2params(value.params)
     result += ","
@@ -19338,7 +19338,7 @@ fn _to_json_seq2trainresult(value: Seq2TrainResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_shapleysamples(value: ShapleySamples) raises -> String:
+def _to_json_shapleysamples(value: ShapleySamples) raises -> String:
     var result = String("{\"__algenta_struct\":\"ShapleySamples\",\"v\":[")
     result += _to_json_list_int(value.coalitions)
     result += ","
@@ -19350,7 +19350,7 @@ fn _to_json_shapleysamples(value: ShapleySamples) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sheetcellresult(value: SheetCellResult) raises -> String:
+def _to_json_sheetcellresult(value: SheetCellResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"SheetCellResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19366,7 +19366,7 @@ fn _to_json_sheetcellresult(value: SheetCellResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sheetrecalcreport(value: SheetRecalcReport) raises -> String:
+def _to_json_sheetrecalcreport(value: SheetRecalcReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"SheetRecalcReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19418,7 +19418,7 @@ fn _to_json_sheetrecalcreport(value: SheetRecalcReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_simstate(value: SimState) raises -> String:
+def _to_json_simstate(value: SimState) raises -> String:
     var result = String("{\"__algenta_struct\":\"SimState\",\"v\":[")
     result += _to_json_float64(value.clock)
     result += ","
@@ -19438,7 +19438,7 @@ fn _to_json_simstate(value: SimState) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_slacknesscheck(value: SlacknessCheck) raises -> String:
+def _to_json_slacknesscheck(value: SlacknessCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"SlacknessCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19456,7 +19456,7 @@ fn _to_json_slacknesscheck(value: SlacknessCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_slidingwindow(value: SlidingWindow) raises -> String:
+def _to_json_slidingwindow(value: SlidingWindow) raises -> String:
     var result = String("{\"__algenta_struct\":\"SlidingWindow\",\"v\":[")
     result += _to_json_list_float64(value.timestamps)
     result += ","
@@ -19466,7 +19466,7 @@ fn _to_json_slidingwindow(value: SlidingWindow) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_smoothedhazard(value: SmoothedHazard) raises -> String:
+def _to_json_smoothedhazard(value: SmoothedHazard) raises -> String:
     var result = String("{\"__algenta_struct\":\"SmoothedHazard\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19500,7 +19500,7 @@ fn _to_json_smoothedhazard(value: SmoothedHazard) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sortedobs(value: SortedObs) raises -> String:
+def _to_json_sortedobs(value: SortedObs) raises -> String:
     var result = String("{\"__algenta_struct\":\"SortedObs\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19518,7 +19518,7 @@ fn _to_json_sortedobs(value: SortedObs) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sparseconditionestimate(value: SparseConditionEstimate) raises -> String:
+def _to_json_sparseconditionestimate(value: SparseConditionEstimate) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseConditionEstimate\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19534,7 +19534,7 @@ fn _to_json_sparseconditionestimate(value: SparseConditionEstimate) raises -> St
     result += "]}"
     return result
 
-fn _to_json_sparsehealthreport(value: SparseHealthReport) raises -> String:
+def _to_json_sparsehealthreport(value: SparseHealthReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseHealthReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19608,7 +19608,7 @@ fn _to_json_sparsehealthreport(value: SparseHealthReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sparselu(value: SparseLU) raises -> String:
+def _to_json_sparselu(value: SparseLU) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseLU\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19638,7 +19638,7 @@ fn _to_json_sparselu(value: SparseLU) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sparsematrixcoo(value: SparseMatrixCOO) raises -> String:
+def _to_json_sparsematrixcoo(value: SparseMatrixCOO) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseMatrixCOO\",\"v\":[")
     result += _to_json_list_cooentry(value.entries)
     result += ","
@@ -19648,7 +19648,7 @@ fn _to_json_sparsematrixcoo(value: SparseMatrixCOO) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sparsemetric(value: SparseMetric) raises -> String:
+def _to_json_sparsemetric(value: SparseMetric) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseMetric\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19658,7 +19658,7 @@ fn _to_json_sparsemetric(value: SparseMetric) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sparseslice(value: SparseSlice) raises -> String:
+def _to_json_sparseslice(value: SparseSlice) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseSlice\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19672,7 +19672,7 @@ fn _to_json_sparseslice(value: SparseSlice) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_sparsesolve(value: SparseSolve) raises -> String:
+def _to_json_sparsesolve(value: SparseSolve) raises -> String:
     var result = String("{\"__algenta_struct\":\"SparseSolve\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19694,7 +19694,7 @@ fn _to_json_sparsesolve(value: SparseSolve) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_splitindices(value: SplitIndices) raises -> String:
+def _to_json_splitindices(value: SplitIndices) raises -> String:
     var result = String("{\"__algenta_struct\":\"SplitIndices\",\"v\":[")
     result += _to_json_list_int(value.train)
     result += ","
@@ -19702,7 +19702,7 @@ fn _to_json_splitindices(value: SplitIndices) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_splitresult(value: SplitResult) raises -> String:
+def _to_json_splitresult(value: SplitResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"SplitResult\",\"v\":[")
     result += _to_json_list_float64(value.train_data)
     result += ","
@@ -19714,7 +19714,7 @@ fn _to_json_splitresult(value: SplitResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_spmvmatrix(value: SpmvMatrix) raises -> String:
+def _to_json_spmvmatrix(value: SpmvMatrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"SpmvMatrix\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19736,7 +19736,7 @@ fn _to_json_spmvmatrix(value: SpmvMatrix) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_spmvscalar(value: SpmvScalar) raises -> String:
+def _to_json_spmvscalar(value: SpmvScalar) raises -> String:
     var result = String("{\"__algenta_struct\":\"SpmvScalar\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19744,7 +19744,7 @@ fn _to_json_spmvscalar(value: SpmvScalar) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_spmvvector(value: SpmvVector) raises -> String:
+def _to_json_spmvvector(value: SpmvVector) raises -> String:
     var result = String("{\"__algenta_struct\":\"SpmvVector\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19754,7 +19754,7 @@ fn _to_json_spmvvector(value: SpmvVector) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_stmclaim(value: StmClaim) raises -> String:
+def _to_json_stmclaim(value: StmClaim) raises -> String:
     var result = String("{\"__algenta_struct\":\"StmClaim\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -19764,7 +19764,7 @@ fn _to_json_stmclaim(value: StmClaim) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_strataate(value: StrataAte) raises -> String:
+def _to_json_strataate(value: StrataAte) raises -> String:
     var result = String("{\"__algenta_struct\":\"StrataAte\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19796,7 +19796,7 @@ fn _to_json_strataate(value: StrataAte) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_strategyboard(value: StrategyBoard) raises -> String:
+def _to_json_strategyboard(value: StrategyBoard) raises -> String:
     var result = String("{\"__algenta_struct\":\"StrategyBoard\",\"v\":[")
     result += _to_json_list_float64(value.p_ahead)
     result += ","
@@ -19822,10 +19822,10 @@ fn _to_json_strategyboard(value: StrategyBoard) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_string(value: String) raises -> String:
+def _to_json_string(value: String) raises -> String:
     return "\"" + _escape_json_string(value) + "\""
 
-fn _to_json_survivalpoint(value: SurvivalPoint) raises -> String:
+def _to_json_survivalpoint(value: SurvivalPoint) raises -> String:
     var result = String("{\"__algenta_struct\":\"SurvivalPoint\",\"v\":[")
     result += _to_json_float64(value.time)
     result += ","
@@ -19837,7 +19837,7 @@ fn _to_json_survivalpoint(value: SurvivalPoint) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_symmetryresult(value: SymmetryResult) raises -> String:
+def _to_json_symmetryresult(value: SymmetryResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"SymmetryResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19851,7 +19851,7 @@ fn _to_json_symmetryresult(value: SymmetryResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_synthresult(value: SynthResult) raises -> String:
+def _to_json_synthresult(value: SynthResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"SynthResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19889,7 +19889,7 @@ fn _to_json_synthresult(value: SynthResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ttlcache(value: TTLCache) raises -> String:
+def _to_json_ttlcache(value: TTLCache) raises -> String:
     var result = String("{\"__algenta_struct\":\"TTLCache\",\"v\":[")
     result += _to_json_list_ttlcacheentry(value.entries)
     result += ","
@@ -19903,7 +19903,7 @@ fn _to_json_ttlcache(value: TTLCache) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_ttlcacheentry(value: TTLCacheEntry) raises -> String:
+def _to_json_ttlcacheentry(value: TTLCacheEntry) raises -> String:
     var result = String("{\"__algenta_struct\":\"TTLCacheEntry\",\"v\":[")
     result += _to_json_int(value.key)
     result += ","
@@ -19913,7 +19913,7 @@ fn _to_json_ttlcacheentry(value: TTLCacheEntry) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_table(value: Table) raises -> String:
+def _to_json_table(value: Table) raises -> String:
     var result = String("{\"__algenta_struct\":\"Table\",\"v\":[")
     result += _to_json_list_string(value.columns)
     result += ","
@@ -19923,7 +19923,7 @@ fn _to_json_table(value: Table) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tableprofile(value: TableProfile) raises -> String:
+def _to_json_tableprofile(value: TableProfile) raises -> String:
     var result = String("{\"__algenta_struct\":\"TableProfile\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19949,7 +19949,7 @@ fn _to_json_tableprofile(value: TableProfile) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporalactivity(value: TemporalActivity) raises -> String:
+def _to_json_temporalactivity(value: TemporalActivity) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalActivity\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -19995,7 +19995,7 @@ fn _to_json_temporalactivity(value: TemporalActivity) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporalarrival(value: TemporalArrival) raises -> String:
+def _to_json_temporalarrival(value: TemporalArrival) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalArrival\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20025,7 +20025,7 @@ fn _to_json_temporalarrival(value: TemporalArrival) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporaldurations(value: TemporalDurations) raises -> String:
+def _to_json_temporaldurations(value: TemporalDurations) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalDurations\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20047,7 +20047,7 @@ fn _to_json_temporaldurations(value: TemporalDurations) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporalgap(value: TemporalGap) raises -> String:
+def _to_json_temporalgap(value: TemporalGap) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalGap\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20065,7 +20065,7 @@ fn _to_json_temporalgap(value: TemporalGap) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporalintsresult(value: TemporalIntsResult) raises -> String:
+def _to_json_temporalintsresult(value: TemporalIntsResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalIntsResult\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20075,7 +20075,7 @@ fn _to_json_temporalintsresult(value: TemporalIntsResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporalpath(value: TemporalPath) raises -> String:
+def _to_json_temporalpath(value: TemporalPath) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalPath\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20101,7 +20101,7 @@ fn _to_json_temporalpath(value: TemporalPath) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_temporalstream(value: TemporalStream) raises -> String:
+def _to_json_temporalstream(value: TemporalStream) raises -> String:
     var result = String("{\"__algenta_struct\":\"TemporalStream\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20131,7 +20131,7 @@ fn _to_json_temporalstream(value: TemporalStream) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tensor1d(value: Tensor1D) raises -> String:
+def _to_json_tensor1d(value: Tensor1D) raises -> String:
     var result = String("{\"__algenta_struct\":\"Tensor1D\",\"v\":[")
     result += _to_json_list_float64(value.data)
     result += ","
@@ -20139,7 +20139,7 @@ fn _to_json_tensor1d(value: Tensor1D) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_testresult(value: TestResult) raises -> String:
+def _to_json_testresult(value: TestResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"TestResult\",\"v\":[")
     result += _to_json_float64(value.statistic)
     result += ","
@@ -20149,7 +20149,7 @@ fn _to_json_testresult(value: TestResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_thetafit(value: ThetaFit) raises -> String:
+def _to_json_thetafit(value: ThetaFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"ThetaFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20173,7 +20173,7 @@ fn _to_json_thetafit(value: ThetaFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tileplan(value: TilePlan) raises -> String:
+def _to_json_tileplan(value: TilePlan) raises -> String:
     var result = String("{\"__algenta_struct\":\"TilePlan\",\"v\":[")
     result += _to_json_int(value.tile_m)
     result += ","
@@ -20187,7 +20187,7 @@ fn _to_json_tileplan(value: TilePlan) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_token(value: Token) raises -> String:
+def _to_json_token(value: Token) raises -> String:
     var result = String("{\"__algenta_struct\":\"Token\",\"v\":[")
     result += _to_json_int(value.kind)
     result += ","
@@ -20197,7 +20197,7 @@ fn _to_json_token(value: Token) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tokenbucket(value: TokenBucket) raises -> String:
+def _to_json_tokenbucket(value: TokenBucket) raises -> String:
     var result = String("{\"__algenta_struct\":\"TokenBucket\",\"v\":[")
     result += _to_json_float64(value.capacity)
     result += ","
@@ -20209,7 +20209,7 @@ fn _to_json_tokenbucket(value: TokenBucket) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tomldoc(value: TomlDoc) raises -> String:
+def _to_json_tomldoc(value: TomlDoc) raises -> String:
     var result = String("{\"__algenta_struct\":\"TomlDoc\",\"v\":[")
     result += _to_json_tomlpool(value.pool)
     result += ","
@@ -20217,7 +20217,7 @@ fn _to_json_tomldoc(value: TomlDoc) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tomlnode(value: TomlNode) raises -> String:
+def _to_json_tomlnode(value: TomlNode) raises -> String:
     var result = String("{\"__algenta_struct\":\"TomlNode\",\"v\":[")
     result += _to_json_int(value.kind)
     result += ","
@@ -20231,7 +20231,7 @@ fn _to_json_tomlnode(value: TomlNode) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tournament(value: Tournament) raises -> String:
+def _to_json_tournament(value: Tournament) raises -> String:
     var result = String("{\"__algenta_struct\":\"Tournament\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20321,7 +20321,7 @@ fn _to_json_tournament(value: Tournament) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_trainresult(value: TrainResult) raises -> String:
+def _to_json_trainresult(value: TrainResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"TrainResult\",\"v\":[")
     result += _to_json_list_float64(value.weights)
     result += ","
@@ -20329,7 +20329,7 @@ fn _to_json_trainresult(value: TrainResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_trie(value: Trie) raises -> String:
+def _to_json_trie(value: Trie) raises -> String:
     var result = String("{\"__algenta_struct\":\"Trie\",\"v\":[")
     result += _to_json_list_int(value.nodes_char)
     result += ","
@@ -20343,7 +20343,7 @@ fn _to_json_trie(value: Trie) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_txbuffer(value: TxBuffer) raises -> String:
+def _to_json_txbuffer(value: TxBuffer) raises -> String:
     var result = String("{\"__algenta_struct\":\"TxBuffer\",\"v\":[")
     result += _to_json_list_uint8(value.data)
     result += ","
@@ -20357,7 +20357,7 @@ fn _to_json_txbuffer(value: TxBuffer) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_txelemresult(value: TxElemResult) raises -> String:
+def _to_json_txelemresult(value: TxElemResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"TxElemResult\",\"v\":[")
     result += _to_json_list_uint8(value.bytes)
     result += ","
@@ -20373,7 +20373,7 @@ fn _to_json_txelemresult(value: TxElemResult) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_txreduction(value: TxReduction) raises -> String:
+def _to_json_txreduction(value: TxReduction) raises -> String:
     var result = String("{\"__algenta_struct\":\"TxReduction\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -20385,7 +20385,7 @@ fn _to_json_txreduction(value: TxReduction) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_txshape(value: TxShape) raises -> String:
+def _to_json_txshape(value: TxShape) raises -> String:
     var result = String("{\"__algenta_struct\":\"TxShape\",\"v\":[")
     result += _to_json_list_int(value.dims)
     result += ","
@@ -20399,7 +20399,7 @@ fn _to_json_txshape(value: TxShape) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_txtolerance(value: TxTolerance) raises -> String:
+def _to_json_txtolerance(value: TxTolerance) raises -> String:
     var result = String("{\"__algenta_struct\":\"TxTolerance\",\"v\":[")
     result += _to_json_float64(value.value)
     result += ","
@@ -20411,19 +20411,19 @@ fn _to_json_txtolerance(value: TxTolerance) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_uint16(value: UInt16) raises -> String:
+def _to_json_uint16(value: UInt16) raises -> String:
     return String(value)
 
-fn _to_json_uint32(value: UInt32) raises -> String:
+def _to_json_uint32(value: UInt32) raises -> String:
     return String(value)
 
-fn _to_json_uint64(value: UInt64) raises -> String:
+def _to_json_uint64(value: UInt64) raises -> String:
     return String(value)
 
-fn _to_json_uint8(value: UInt8) raises -> String:
+def _to_json_uint8(value: UInt8) raises -> String:
     return String(value)
 
-fn _to_json_url(value: URL) raises -> String:
+def _to_json_url(value: URL) raises -> String:
     var result = String("{\"__algenta_struct\":\"URL\",\"v\":[")
     result += _to_json_string(value.scheme)
     result += ","
@@ -20439,7 +20439,7 @@ fn _to_json_url(value: URL) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_upliftcurve(value: UpliftCurve) raises -> String:
+def _to_json_upliftcurve(value: UpliftCurve) raises -> String:
     var result = String("{\"__algenta_struct\":\"UpliftCurve\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20473,7 +20473,7 @@ fn _to_json_upliftcurve(value: UpliftCurve) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_varcheck(value: VarCheck) raises -> String:
+def _to_json_varcheck(value: VarCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"VarCheck\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20493,7 +20493,7 @@ fn _to_json_varcheck(value: VarCheck) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_warmupreport(value: WarmupReport) raises -> String:
+def _to_json_warmupreport(value: WarmupReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"WarmupReport\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20535,7 +20535,7 @@ fn _to_json_warmupreport(value: WarmupReport) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_weibullfit(value: WeibullFit) raises -> String:
+def _to_json_weibullfit(value: WeibullFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"WeibullFit\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20569,7 +20569,7 @@ fn _to_json_weibullfit(value: WeibullFit) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_weightededge(value: WeightedEdge) raises -> String:
+def _to_json_weightededge(value: WeightedEdge) raises -> String:
     var result = String("{\"__algenta_struct\":\"WeightedEdge\",\"v\":[")
     result += _to_json_int(value.src)
     result += ","
@@ -20579,7 +20579,7 @@ fn _to_json_weightededge(value: WeightedEdge) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_weightsbundle(value: WeightsBundle) raises -> String:
+def _to_json_weightsbundle(value: WeightsBundle) raises -> String:
     var result = String("{\"__algenta_struct\":\"WeightsBundle\",\"v\":[")
     result += _to_json_bool(value.ok)
     result += ","
@@ -20589,7 +20589,7 @@ fn _to_json_weightsbundle(value: WeightsBundle) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_windowseries(value: WindowSeries) raises -> String:
+def _to_json_windowseries(value: WindowSeries) raises -> String:
     var result = String("{\"__algenta_struct\":\"WindowSeries\",\"v\":[")
     result += _to_json_list_float64(value.values)
     result += ","
@@ -20605,7 +20605,7 @@ fn _to_json_windowseries(value: WindowSeries) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_windowsummary(value: WindowSummary) raises -> String:
+def _to_json_windowsummary(value: WindowSummary) raises -> String:
     var result = String("{\"__algenta_struct\":\"WindowSummary\",\"v\":[")
     result += _to_json_float64(value.mean)
     result += ","
@@ -20623,7 +20623,7 @@ fn _to_json_windowsummary(value: WindowSummary) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_windoweddataset(value: WindowedDataset) raises -> String:
+def _to_json_windoweddataset(value: WindowedDataset) raises -> String:
     var result = String("{\"__algenta_struct\":\"WindowedDataset\",\"v\":[")
     result += _to_json_list_float64(value.x)
     result += ","
@@ -20635,7 +20635,7 @@ fn _to_json_windoweddataset(value: WindowedDataset) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_wlssolution(value: WlsSolution) raises -> String:
+def _to_json_wlssolution(value: WlsSolution) raises -> String:
     var result = String("{\"__algenta_struct\":\"WlsSolution\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20649,7 +20649,7 @@ fn _to_json_wlssolution(value: WlsSolution) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_workbudget(value: WorkBudget) raises -> String:
+def _to_json_workbudget(value: WorkBudget) raises -> String:
     var result = String("{\"__algenta_struct\":\"WorkBudget\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20675,7 +20675,7 @@ fn _to_json_workbudget(value: WorkBudget) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_workbook(value: Workbook) raises -> String:
+def _to_json_workbook(value: Workbook) raises -> String:
     var result = String("{\"__algenta_struct\":\"Workbook\",\"v\":[")
     result += _to_json_list_string(value.sheet_names)
     result += ","
@@ -20731,7 +20731,7 @@ fn _to_json_workbook(value: Workbook) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_yamldoc(value: YamlDoc) raises -> String:
+def _to_json_yamldoc(value: YamlDoc) raises -> String:
     var result = String("{\"__algenta_struct\":\"YamlDoc\",\"v\":[")
     result += _to_json_yamlpool(value.pool)
     result += ","
@@ -20739,7 +20739,7 @@ fn _to_json_yamldoc(value: YamlDoc) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_yamlnode(value: YamlNode) raises -> String:
+def _to_json_yamlnode(value: YamlNode) raises -> String:
     var result = String("{\"__algenta_struct\":\"YamlNode\",\"v\":[")
     result += _to_json_int(value.kind)
     result += ","
@@ -20753,7 +20753,7 @@ fn _to_json_yamlnode(value: YamlNode) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_zerosumbounds(value: ZeroSumBounds) raises -> String:
+def _to_json_zerosumbounds(value: ZeroSumBounds) raises -> String:
     var result = String("{\"__algenta_struct\":\"ZeroSumBounds\",\"v\":[")
     result += _to_json_int(value.status)
     result += ","
@@ -20781,13 +20781,13 @@ fn _to_json_zerosumbounds(value: ZeroSumBounds) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_tomlpool(value: _TomlPool) raises -> String:
+def _to_json_tomlpool(value: _TomlPool) raises -> String:
     var result = String("{\"__algenta_struct\":\"_TomlPool\",\"v\":[")
     result += _to_json_list_tomlnode(value.nodes)
     result += "]}"
     return result
 
-fn _to_json_vec64_vector_kernels_table(value: _Vec64__vector_kernels_table) raises -> String:
+def _to_json_vec64_vector_kernels_table(value: _Vec64__vector_kernels_table) raises -> String:
     var result = String("{\"__algenta_struct\":\"_Vec64\",\"v\":[")
     result += _to_json_list_float32(value.data)
     result += ","
@@ -20795,13 +20795,13 @@ fn _to_json_vec64_vector_kernels_table(value: _Vec64__vector_kernels_table) rais
     result += "]}"
     return result
 
-fn _to_json_yamlpool(value: _YamlPool) raises -> String:
+def _to_json_yamlpool(value: _YamlPool) raises -> String:
     var result = String("{\"__algenta_struct\":\"_YamlPool\",\"v\":[")
     result += _to_json_list_yamlnode(value.nodes)
     result += "]}"
     return result
 
-fn _to_json_list_bool(value: List[Bool]) raises -> String:
+def _to_json_list_bool(value: List[Bool]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20810,7 +20810,7 @@ fn _to_json_list_bool(value: List[Bool]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_bracket(value: List[Bracket]) raises -> String:
+def _to_json_list_bracket(value: List[Bracket]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20819,7 +20819,7 @@ fn _to_json_list_bracket(value: List[Bracket]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_cooentry(value: List[COOEntry]) raises -> String:
+def _to_json_list_cooentry(value: List[COOEntry]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20828,7 +20828,7 @@ fn _to_json_list_cooentry(value: List[COOEntry]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_candidateentry_vector_kernels_table(value: List[CandidateEntry__vector_kernels_table]) raises -> String:
+def _to_json_list_candidateentry_vector_kernels_table(value: List[CandidateEntry__vector_kernels_table]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20837,7 +20837,7 @@ fn _to_json_list_candidateentry_vector_kernels_table(value: List[CandidateEntry_
     result += "]"
     return result
 
-fn _to_json_list_cellvalue(value: List[CellValue]) raises -> String:
+def _to_json_list_cellvalue(value: List[CellValue]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20846,7 +20846,7 @@ fn _to_json_list_cellvalue(value: List[CellValue]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_column(value: List[Column]) raises -> String:
+def _to_json_list_column(value: List[Column]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20855,7 +20855,7 @@ fn _to_json_list_column(value: List[Column]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_complex(value: List[Complex]) raises -> String:
+def _to_json_list_complex(value: List[Complex]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20864,7 +20864,7 @@ fn _to_json_list_complex(value: List[Complex]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_event(value: List[Event]) raises -> String:
+def _to_json_list_event(value: List[Event]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20873,7 +20873,7 @@ fn _to_json_list_event(value: List[Event]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_fnode(value: List[FNode]) raises -> String:
+def _to_json_list_fnode(value: List[FNode]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20882,7 +20882,7 @@ fn _to_json_list_fnode(value: List[FNode]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_float32(value: List[Float32]) raises -> String:
+def _to_json_list_float32(value: List[Float32]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20891,7 +20891,7 @@ fn _to_json_list_float32(value: List[Float32]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_float64(value: List[Float64]) raises -> String:
+def _to_json_list_float64(value: List[Float64]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20900,7 +20900,7 @@ fn _to_json_list_float64(value: List[Float64]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_halvinground(value: List[HalvingRound]) raises -> String:
+def _to_json_list_halvinground(value: List[HalvingRound]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20909,7 +20909,7 @@ fn _to_json_list_halvinground(value: List[HalvingRound]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_huffmannode(value: List[HuffmanNode]) raises -> String:
+def _to_json_list_huffmannode(value: List[HuffmanNode]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20918,7 +20918,7 @@ fn _to_json_list_huffmannode(value: List[HuffmanNode]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_individual(value: List[Individual]) raises -> String:
+def _to_json_list_individual(value: List[Individual]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20927,7 +20927,7 @@ fn _to_json_list_individual(value: List[Individual]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_int(value: List[Int]) raises -> String:
+def _to_json_list_int(value: List[Int]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20936,7 +20936,7 @@ fn _to_json_list_int(value: List[Int]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_lz77token(value: List[LZ77Token]) raises -> String:
+def _to_json_list_lz77token(value: List[LZ77Token]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20945,7 +20945,7 @@ fn _to_json_list_lz77token(value: List[LZ77Token]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_point(value: List[Point]) raises -> String:
+def _to_json_list_point(value: List[Point]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20954,7 +20954,7 @@ fn _to_json_list_point(value: List[Point]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_splitindices(value: List[SplitIndices]) raises -> String:
+def _to_json_list_splitindices(value: List[SplitIndices]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20963,7 +20963,7 @@ fn _to_json_list_splitindices(value: List[SplitIndices]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_string(value: List[String]) raises -> String:
+def _to_json_list_string(value: List[String]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20972,7 +20972,7 @@ fn _to_json_list_string(value: List[String]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_survivalpoint(value: List[SurvivalPoint]) raises -> String:
+def _to_json_list_survivalpoint(value: List[SurvivalPoint]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20981,7 +20981,7 @@ fn _to_json_list_survivalpoint(value: List[SurvivalPoint]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_ttlcacheentry(value: List[TTLCacheEntry]) raises -> String:
+def _to_json_list_ttlcacheentry(value: List[TTLCacheEntry]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20990,7 +20990,7 @@ fn _to_json_list_ttlcacheentry(value: List[TTLCacheEntry]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_token(value: List[Token]) raises -> String:
+def _to_json_list_token(value: List[Token]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -20999,7 +20999,7 @@ fn _to_json_list_token(value: List[Token]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_tomlnode(value: List[TomlNode]) raises -> String:
+def _to_json_list_tomlnode(value: List[TomlNode]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21008,7 +21008,7 @@ fn _to_json_list_tomlnode(value: List[TomlNode]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_uint8(value: List[UInt8]) raises -> String:
+def _to_json_list_uint8(value: List[UInt8]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21017,7 +21017,7 @@ fn _to_json_list_uint8(value: List[UInt8]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_weightededge(value: List[WeightedEdge]) raises -> String:
+def _to_json_list_weightededge(value: List[WeightedEdge]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21026,7 +21026,7 @@ fn _to_json_list_weightededge(value: List[WeightedEdge]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_yamlnode(value: List[YamlNode]) raises -> String:
+def _to_json_list_yamlnode(value: List[YamlNode]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21035,7 +21035,7 @@ fn _to_json_list_yamlnode(value: List[YamlNode]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_list_bool(value: List[List[Bool]]) raises -> String:
+def _to_json_list_list_bool(value: List[List[Bool]]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21044,7 +21044,7 @@ fn _to_json_list_list_bool(value: List[List[Bool]]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_list_float64(value: List[List[Float64]]) raises -> String:
+def _to_json_list_list_float64(value: List[List[Float64]]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21053,7 +21053,7 @@ fn _to_json_list_list_float64(value: List[List[Float64]]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_list_int(value: List[List[Int]]) raises -> String:
+def _to_json_list_list_int(value: List[List[Int]]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21062,7 +21062,7 @@ fn _to_json_list_list_int(value: List[List[Int]]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_list_string(value: List[List[String]]) raises -> String:
+def _to_json_list_list_string(value: List[List[String]]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21071,7 +21071,7 @@ fn _to_json_list_list_string(value: List[List[String]]) raises -> String:
     result += "]"
     return result
 
-fn _to_json_list_list_list_float64(value: List[List[List[Float64]]]) raises -> String:
+def _to_json_list_list_list_float64(value: List[List[List[Float64]]]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
@@ -21080,7 +21080,7 @@ fn _to_json_list_list_list_float64(value: List[List[List[Float64]]]) raises -> S
     result += "]"
     return result
 
-fn _dispatch_ab_testing(function_name: String, args_array: String) raises -> String:
+def _dispatch_ab_testing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sample_size_proportion":
         if arg_count == 2:
@@ -21399,7 +21399,7 @@ fn _dispatch_ab_testing(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module ab_testing."
     )
 
-fn _dispatch_accel__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_accel__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "accel_status_name":
         if arg_count == 1:
@@ -21508,7 +21508,7 @@ fn _dispatch_accel__contract(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module accel.contract."
     )
 
-fn _dispatch_accel__device(function_name: String, args_array: String) raises -> String:
+def _dispatch_accel__device(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "accel_has_device":
         if arg_count == 0:
@@ -21560,7 +21560,7 @@ fn _dispatch_accel__device(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module accel.device."
     )
 
-fn _dispatch_accel__gemm_metal(function_name: String, args_array: String) raises -> String:
+def _dispatch_accel__gemm_metal(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gemm_metal_available":
         if arg_count == 0:
@@ -21622,7 +21622,7 @@ fn _dispatch_accel__gemm_metal(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module accel.gemm_metal."
     )
 
-fn _dispatch_accounting(function_name: String, args_array: String) raises -> String:
+def _dispatch_accounting(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "straight_line_depreciation":
         if arg_count == 3:
@@ -21901,7 +21901,7 @@ fn _dispatch_accounting(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module accounting."
     )
 
-fn _dispatch_acoustics(function_name: String, args_array: String) raises -> String:
+def _dispatch_acoustics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sound_pressure_level":
         if arg_count == 2:
@@ -22175,7 +22175,7 @@ fn _dispatch_acoustics(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module acoustics."
     )
 
-fn _dispatch_activations(function_name: String, args_array: String) raises -> String:
+def _dispatch_activations(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gelu":
         if arg_count == 1:
@@ -22394,7 +22394,7 @@ fn _dispatch_activations(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module activations."
     )
 
-fn _dispatch_actuarial(function_name: String, args_array: String) raises -> String:
+def _dispatch_actuarial(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "present_value":
         if arg_count == 3:
@@ -22669,7 +22669,7 @@ fn _dispatch_actuarial(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module actuarial."
     )
 
-fn _dispatch_adhesives(function_name: String, args_array: String) raises -> String:
+def _dispatch_adhesives(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lap_shear_strength":
         if arg_count == 2:
@@ -22949,7 +22949,7 @@ fn _dispatch_adhesives(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module adhesives."
     )
 
-fn _dispatch_aerospace(function_name: String, args_array: String) raises -> String:
+def _dispatch_aerospace(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dynamic_pressure":
         if arg_count == 2:
@@ -23225,7 +23225,7 @@ fn _dispatch_aerospace(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module aerospace."
     )
 
-fn _dispatch_agent_runtime(function_name: String, args_array: String) raises -> String:
+def _dispatch_agent_runtime(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tool_call_cost_estimate":
         if arg_count == 4:
@@ -23466,7 +23466,7 @@ fn _dispatch_agent_runtime(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module agent_runtime."
     )
 
-fn _dispatch_agriculture(function_name: String, args_array: String) raises -> String:
+def _dispatch_agriculture(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "growing_degree_days":
         if arg_count == 3:
@@ -23741,7 +23741,7 @@ fn _dispatch_agriculture(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module agriculture."
     )
 
-fn _dispatch_agronomy(function_name: String, args_array: String) raises -> String:
+def _dispatch_agronomy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "crop_yield_potential":
         if arg_count == 3:
@@ -23975,7 +23975,7 @@ fn _dispatch_agronomy(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module agronomy."
     )
 
-fn _dispatch_allocation(function_name: String, args_array: String) raises -> String:
+def _dispatch_allocation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "equal_weight":
         if arg_count == 1:
@@ -24176,7 +24176,7 @@ fn _dispatch_allocation(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module allocation."
     )
 
-fn _dispatch_anomaly(function_name: String, args_array: String) raises -> String:
+def _dispatch_anomaly(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "percentile":
         if arg_count == 2:
@@ -24448,7 +24448,7 @@ fn _dispatch_anomaly(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module anomaly."
     )
 
-fn _dispatch_antenna(function_name: String, args_array: String) raises -> String:
+def _dispatch_antenna(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dipole_length":
         if arg_count == 1:
@@ -24751,7 +24751,7 @@ fn _dispatch_antenna(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module antenna."
     )
 
-fn _dispatch_apiculture(function_name: String, args_array: String) raises -> String:
+def _dispatch_apiculture(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "honey_yield_per_hive":
         if arg_count == 2:
@@ -25020,7 +25020,7 @@ fn _dispatch_apiculture(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module apiculture."
     )
 
-fn _dispatch_aquaculture(function_name: String, args_array: String) raises -> String:
+def _dispatch_aquaculture(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "stocking_density":
         if arg_count == 2:
@@ -25294,7 +25294,7 @@ fn _dispatch_aquaculture(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module aquaculture."
     )
 
-fn _dispatch_archaeology(function_name: String, args_array: String) raises -> String:
+def _dispatch_archaeology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "radiocarbon_age_bp":
         if arg_count == 1:
@@ -25600,7 +25600,7 @@ fn _dispatch_archaeology(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module archaeology."
     )
 
-fn _dispatch_arima(function_name: String, args_array: String) raises -> String:
+def _dispatch_arima(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "durbin_levinson":
         if arg_count == 2:
@@ -25763,7 +25763,7 @@ fn _dispatch_arima(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module arima."
     )
 
-fn _dispatch_astrobiology(function_name: String, args_array: String) raises -> String:
+def _dispatch_astrobiology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "habitable_zone_inner":
         if arg_count == 1:
@@ -25990,7 +25990,7 @@ fn _dispatch_astrobiology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module astrobiology."
     )
 
-fn _dispatch_astronomy(function_name: String, args_array: String) raises -> String:
+def _dispatch_astronomy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "julian_date":
         if arg_count == 3:
@@ -26273,7 +26273,7 @@ fn _dispatch_astronomy(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module astronomy."
     )
 
-fn _dispatch_atmospheric_chemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_atmospheric_chemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ozone_column_dobson":
         if arg_count == 1:
@@ -26502,7 +26502,7 @@ fn _dispatch_atmospheric_chemistry(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module atmospheric_chemistry."
     )
 
-fn _dispatch_attnk__backward(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__backward(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sdpa_bwd_flat":
         if arg_count == 10:
@@ -26559,7 +26559,7 @@ fn _dispatch_attnk__backward(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module attnk.backward."
     )
 
-fn _dispatch_attnk__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "attn_status_name":
         if arg_count == 1:
@@ -26760,7 +26760,7 @@ fn _dispatch_attnk__contract(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module attnk.contract."
     )
 
-fn _dispatch_attnk__flash(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__flash(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "flash_block_plan":
         if arg_count == 3:
@@ -26839,7 +26839,7 @@ fn _dispatch_attnk__flash(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module attnk.flash."
     )
 
-fn _dispatch_attnk__mask(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__mask(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mask_convention_agreement":
         if arg_count == 3:
@@ -26974,7 +26974,7 @@ fn _dispatch_attnk__mask(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module attnk.mask."
     )
 
-fn _dispatch_attnk__rope(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__rope(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rope_theta_agreement":
         if arg_count == 3:
@@ -27103,7 +27103,7 @@ fn _dispatch_attnk__rope(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module attnk.rope."
     )
 
-fn _dispatch_attnk__sdpa(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__sdpa(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sdpa_scores_flat":
         if arg_count == 8:
@@ -27177,7 +27177,7 @@ fn _dispatch_attnk__sdpa(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module attnk.sdpa."
     )
 
-fn _dispatch_attnk__tiled(function_name: String, args_array: String) raises -> String:
+def _dispatch_attnk__tiled(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "attn_flop_count":
         if arg_count == 6:
@@ -27319,7 +27319,7 @@ fn _dispatch_attnk__tiled(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module attnk.tiled."
     )
 
-fn _dispatch_auction(function_name: String, args_array: String) raises -> String:
+def _dispatch_auction(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "first_price_sealed":
         if arg_count == 2:
@@ -27550,7 +27550,7 @@ fn _dispatch_auction(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module auction."
     )
 
-fn _dispatch_audio(function_name: String, args_array: String) raises -> String:
+def _dispatch_audio(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "amplitude_to_db":
         if arg_count == 1:
@@ -27798,7 +27798,7 @@ fn _dispatch_audio(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module audio."
     )
 
-fn _dispatch_autograd_graph(function_name: String, args_array: String) raises -> String:
+def _dispatch_autograd_graph(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "node_output_count":
         if arg_count == 1:
@@ -28028,7 +28028,7 @@ fn _dispatch_autograd_graph(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module autograd_graph."
     )
 
-fn _dispatch_autograd_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_autograd_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "grad_add":
         if arg_count == 1:
@@ -28255,7 +28255,7 @@ fn _dispatch_autograd_ops(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module autograd_ops."
     )
 
-fn _dispatch_automl(function_name: String, args_array: String) raises -> String:
+def _dispatch_automl(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "successive_halving_schedule":
         if arg_count == 3:
@@ -28332,7 +28332,7 @@ fn _dispatch_automl(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module automl."
     )
 
-fn _dispatch_autonomous_vehicles(function_name: String, args_array: String) raises -> String:
+def _dispatch_autonomous_vehicles(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "safe_following_distance":
         if arg_count == 3:
@@ -28605,7 +28605,7 @@ fn _dispatch_autonomous_vehicles(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module autonomous_vehicles."
     )
 
-fn _dispatch_aviation(function_name: String, args_array: String) raises -> String:
+def _dispatch_aviation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lift_force":
         if arg_count == 4:
@@ -28841,7 +28841,7 @@ fn _dispatch_aviation(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module aviation."
     )
 
-fn _dispatch_battery(function_name: String, args_array: String) raises -> String:
+def _dispatch_battery(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "state_of_charge":
         if arg_count == 2:
@@ -29115,7 +29115,7 @@ fn _dispatch_battery(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module battery."
     )
 
-fn _dispatch_bayesian(function_name: String, args_array: String) raises -> String:
+def _dispatch_bayesian(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "beta_posterior":
         if arg_count == 4:
@@ -29372,7 +29372,7 @@ fn _dispatch_bayesian(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module bayesian."
     )
 
-fn _dispatch_bayesian_inference(function_name: String, args_array: String) raises -> String:
+def _dispatch_bayesian_inference(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bayes_update_log":
         if arg_count == 2:
@@ -29601,7 +29601,7 @@ fn _dispatch_bayesian_inference(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module bayesian_inference."
     )
 
-fn _dispatch_behavioral_economics(function_name: String, args_array: String) raises -> String:
+def _dispatch_behavioral_economics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "prospect_theory_value":
         if arg_count == 3:
@@ -29877,7 +29877,7 @@ fn _dispatch_behavioral_economics(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module behavioral_economics."
     )
 
-fn _dispatch_biogeochemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_biogeochemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "net_ecosystem_production":
         if arg_count == 2:
@@ -30109,7 +30109,7 @@ fn _dispatch_biogeochemistry(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module biogeochemistry."
     )
 
-fn _dispatch_bioinformatics(function_name: String, args_array: String) raises -> String:
+def _dispatch_bioinformatics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gc_content":
         if arg_count == 2:
@@ -30379,7 +30379,7 @@ fn _dispatch_bioinformatics(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module bioinformatics."
     )
 
-fn _dispatch_biomechanics(function_name: String, args_array: String) raises -> String:
+def _dispatch_biomechanics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "joint_torque":
         if arg_count == 2:
@@ -30654,7 +30654,7 @@ fn _dispatch_biomechanics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module biomechanics."
     )
 
-fn _dispatch_biomedical(function_name: String, args_array: String) raises -> String:
+def _dispatch_biomedical(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cardiac_output":
         if arg_count == 2:
@@ -30933,7 +30933,7 @@ fn _dispatch_biomedical(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module biomedical."
     )
 
-fn _dispatch_bitops(function_name: String, args_array: String) raises -> String:
+def _dispatch_bitops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "popcount":
         if arg_count == 1:
@@ -31154,7 +31154,7 @@ fn _dispatch_bitops(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module bitops."
     )
 
-fn _dispatch_blockchain(function_name: String, args_array: String) raises -> String:
+def _dispatch_blockchain(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "block_reward_halving":
         if arg_count == 2:
@@ -31419,7 +31419,7 @@ fn _dispatch_blockchain(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module blockchain."
     )
 
-fn _dispatch_bloom_counting(function_name: String, args_array: String) raises -> String:
+def _dispatch_bloom_counting(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cb_create":
         if arg_count == 2:
@@ -31594,7 +31594,7 @@ fn _dispatch_bloom_counting(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module bloom_counting."
     )
 
-fn _dispatch_boolean_algebra(function_name: String, args_array: String) raises -> String:
+def _dispatch_boolean_algebra(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bool_and":
         if arg_count == 2:
@@ -31816,7 +31816,7 @@ fn _dispatch_boolean_algebra(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module boolean_algebra."
     )
 
-fn _dispatch_bpe_tokenizer(function_name: String, args_array: String) raises -> String:
+def _dispatch_bpe_tokenizer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bpe_merge_score":
         if arg_count == 3:
@@ -32044,7 +32044,7 @@ fn _dispatch_bpe_tokenizer(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module bpe_tokenizer."
     )
 
-fn _dispatch_brewing(function_name: String, args_array: String) raises -> String:
+def _dispatch_brewing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "original_gravity_to_plato":
         if arg_count == 1:
@@ -32315,7 +32315,7 @@ fn _dispatch_brewing(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module brewing."
     )
 
-fn _dispatch_bryology(function_name: String, args_array: String) raises -> String:
+def _dispatch_bryology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sphagnum_water_holding":
         if arg_count == 2:
@@ -32547,7 +32547,7 @@ fn _dispatch_bryology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module bryology."
     )
 
-fn _dispatch_cache(function_name: String, args_array: String) raises -> String:
+def _dispatch_cache(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "create_ttl_cache":
         if arg_count == 2:
@@ -32713,7 +32713,7 @@ fn _dispatch_cache(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module cache."
     )
 
-fn _dispatch_calibration(function_name: String, args_array: String) raises -> String:
+def _dispatch_calibration(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "isotonic_fit":
         if arg_count == 2:
@@ -32821,7 +32821,7 @@ fn _dispatch_calibration(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module calibration."
     )
 
-fn _dispatch_cardiology(function_name: String, args_array: String) raises -> String:
+def _dispatch_cardiology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cardiac_output":
         if arg_count == 2:
@@ -33050,7 +33050,7 @@ fn _dispatch_cardiology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module cardiology."
     )
 
-fn _dispatch_cartography(function_name: String, args_array: String) raises -> String:
+def _dispatch_cartography(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "scale_factor":
         if arg_count == 2:
@@ -33317,7 +33317,7 @@ fn _dispatch_cartography(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module cartography."
     )
 
-fn _dispatch_category_theory(function_name: String, args_array: String) raises -> String:
+def _dispatch_category_theory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "map_list_fn":
         if arg_count == 2:
@@ -33512,7 +33512,7 @@ fn _dispatch_category_theory(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module category_theory."
     )
 
-fn _dispatch_causal(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ate":
         if arg_count == 2:
@@ -33763,7 +33763,7 @@ fn _dispatch_causal(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module causal."
     )
 
-fn _dispatch_causal_inference__base(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__base(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ci_status_name":
         if arg_count == 1:
@@ -33994,7 +33994,7 @@ fn _dispatch_causal_inference__base(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module causal_inference.base."
     )
 
-fn _dispatch_causal_inference__dag(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__dag(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dag_validate":
         if arg_count == 3:
@@ -34120,7 +34120,7 @@ fn _dispatch_causal_inference__dag(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module causal_inference.dag."
     )
 
-fn _dispatch_causal_inference__estimators(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__estimators(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "naive_ate":
         if arg_count == 2:
@@ -34233,7 +34233,7 @@ fn _dispatch_causal_inference__estimators(function_name: String, args_array: Str
         "Function '" + function_name + "' is not registered for module causal_inference.estimators."
     )
 
-fn _dispatch_causal_inference__panel(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__panel(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "did_panel":
         if arg_count == 5:
@@ -34282,7 +34282,7 @@ fn _dispatch_causal_inference__panel(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module causal_inference.panel."
     )
 
-fn _dispatch_causal_inference__propensity(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__propensity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "propensity_fit":
         if arg_count == 7:
@@ -34388,7 +34388,7 @@ fn _dispatch_causal_inference__propensity(function_name: String, args_array: Str
         "Function '" + function_name + "' is not registered for module causal_inference.propensity."
     )
 
-fn _dispatch_causal_inference__sensitivity(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__sensitivity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "e_value_ratio":
         if arg_count == 1:
@@ -34523,7 +34523,7 @@ fn _dispatch_causal_inference__sensitivity(function_name: String, args_array: St
         "Function '" + function_name + "' is not registered for module causal_inference.sensitivity."
     )
 
-fn _dispatch_causal_inference__uplift(function_name: String, args_array: String) raises -> String:
+def _dispatch_causal_inference__uplift(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "uplift_by_bin":
         if arg_count == 4:
@@ -34568,7 +34568,7 @@ fn _dispatch_causal_inference__uplift(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module causal_inference.uplift."
     )
 
-fn _dispatch_cellular(function_name: String, args_array: String) raises -> String:
+def _dispatch_cellular(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "grid_create":
         if arg_count == 2:
@@ -34776,7 +34776,7 @@ fn _dispatch_cellular(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module cellular."
     )
 
-fn _dispatch_cellular_automata(function_name: String, args_array: String) raises -> String:
+def _dispatch_cellular_automata(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "elementary_rule":
         if arg_count == 4:
@@ -34960,7 +34960,7 @@ fn _dispatch_cellular_automata(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module cellular_automata."
     )
 
-fn _dispatch_ceramics(function_name: String, args_array: String) raises -> String:
+def _dispatch_ceramics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "weibull_failure_probability":
         if arg_count == 3:
@@ -35242,7 +35242,7 @@ fn _dispatch_ceramics(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module ceramics."
     )
 
-fn _dispatch_chaos(function_name: String, args_array: String) raises -> String:
+def _dispatch_chaos(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "logistic_map":
         if arg_count == 3:
@@ -35451,7 +35451,7 @@ fn _dispatch_chaos(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module chaos."
     )
 
-fn _dispatch_checksum(function_name: String, args_array: String) raises -> String:
+def _dispatch_checksum(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "adler32":
         if arg_count == 1:
@@ -35646,7 +35646,7 @@ fn _dispatch_checksum(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module checksum."
     )
 
-fn _dispatch_chromatography(function_name: String, args_array: String) raises -> String:
+def _dispatch_chromatography(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "retention_factor":
         if arg_count == 2:
@@ -35882,7 +35882,7 @@ fn _dispatch_chromatography(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module chromatography."
     )
 
-fn _dispatch_climate(function_name: String, args_array: String) raises -> String:
+def _dispatch_climate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "celsius_to_fahrenheit":
         if arg_count == 1:
@@ -36128,7 +36128,7 @@ fn _dispatch_climate(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module climate."
     )
 
-fn _dispatch_clustering_metrics(function_name: String, args_array: String) raises -> String:
+def _dispatch_clustering_metrics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cluster_sizes":
         if arg_count == 2:
@@ -36304,7 +36304,7 @@ fn _dispatch_clustering_metrics(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module clustering_metrics."
     )
 
-fn _dispatch_color(function_name: String, args_array: String) raises -> String:
+def _dispatch_color(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "clamp01":
         if arg_count == 1:
@@ -36500,7 +36500,7 @@ fn _dispatch_color(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module color."
     )
 
-fn _dispatch_color_check(function_name: String, args_array: String) raises -> String:
+def _dispatch_color_check(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "wcag_relative_luminance_rgb255":
         if arg_count == 3:
@@ -36846,7 +36846,7 @@ fn _dispatch_color_check(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module color_check."
     )
 
-fn _dispatch_color_science(function_name: String, args_array: String) raises -> String:
+def _dispatch_color_science(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "delta_e_76":
         if arg_count == 6:
@@ -37123,7 +37123,7 @@ fn _dispatch_color_science(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module color_science."
     )
 
-fn _dispatch_column_rank(function_name: String, args_array: String) raises -> String:
+def _dispatch_column_rank(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "run_column_rank":
         if arg_count == 1:
@@ -37146,7 +37146,7 @@ fn _dispatch_column_rank(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module column_rank."
     )
 
-fn _dispatch_combinatorial(function_name: String, args_array: String) raises -> String:
+def _dispatch_combinatorial(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "knapsack_01":
         if arg_count == 3:
@@ -37331,7 +37331,7 @@ fn _dispatch_combinatorial(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module combinatorial."
     )
 
-fn _dispatch_combustion(function_name: String, args_array: String) raises -> String:
+def _dispatch_combustion(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "stoichiometric_air_fuel_ratio":
         if arg_count == 3:
@@ -37608,7 +37608,7 @@ fn _dispatch_combustion(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module combustion."
     )
 
-fn _dispatch_compiler_theory(function_name: String, args_array: String) raises -> String:
+def _dispatch_compiler_theory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "is_terminal":
         if arg_count == 1:
@@ -37824,7 +37824,7 @@ fn _dispatch_compiler_theory(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module compiler_theory."
     )
 
-fn _dispatch_composites(function_name: String, args_array: String) raises -> String:
+def _dispatch_composites(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rule_of_mixtures_modulus":
         if arg_count == 3:
@@ -38104,7 +38104,7 @@ fn _dispatch_composites(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module composites."
     )
 
-fn _dispatch_compression__delta(function_name: String, args_array: String) raises -> String:
+def _dispatch_compression__delta(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "delta_encode":
         if arg_count == 1:
@@ -38317,7 +38317,7 @@ fn _dispatch_compression__delta(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module compression.delta."
     )
 
-fn _dispatch_compression__huffman(function_name: String, args_array: String) raises -> String:
+def _dispatch_compression__huffman(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frequency_count":
         if arg_count == 1:
@@ -38449,7 +38449,7 @@ fn _dispatch_compression__huffman(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module compression.huffman."
     )
 
-fn _dispatch_compression__lz77(function_name: String, args_array: String) raises -> String:
+def _dispatch_compression__lz77(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bytes_to_ints":
         if arg_count == 1:
@@ -38586,7 +38586,7 @@ fn _dispatch_compression__lz77(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module compression.lz77."
     )
 
-fn _dispatch_compression__rle(function_name: String, args_array: String) raises -> String:
+def _dispatch_compression__rle(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rle_encode":
         if arg_count == 1:
@@ -38679,7 +38679,7 @@ fn _dispatch_compression__rle(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module compression.rle."
     )
 
-fn _dispatch_concrete(function_name: String, args_array: String) raises -> String:
+def _dispatch_concrete(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "water_cement_ratio":
         if arg_count == 2:
@@ -38954,7 +38954,7 @@ fn _dispatch_concrete(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module concrete."
     )
 
-fn _dispatch_config__toml_parser(function_name: String, args_array: String) raises -> String:
+def _dispatch_config__toml_parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "toml_parse":
         if arg_count == 1:
@@ -39053,7 +39053,7 @@ fn _dispatch_config__toml_parser(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module config.toml_parser."
     )
 
-fn _dispatch_config__yaml_parser(function_name: String, args_array: String) raises -> String:
+def _dispatch_config__yaml_parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "yaml_parse":
         if arg_count == 1:
@@ -39152,7 +39152,7 @@ fn _dispatch_config__yaml_parser(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module config.yaml_parser."
     )
 
-fn _dispatch_conformal(function_name: String, args_array: String) raises -> String:
+def _dispatch_conformal(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "conformal_quantile":
         if arg_count == 2:
@@ -39279,7 +39279,7 @@ fn _dispatch_conformal(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module conformal."
     )
 
-fn _dispatch_constraint(function_name: String, args_array: String) raises -> String:
+def _dispatch_constraint(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "solve_backtrack":
         if arg_count == 2:
@@ -39416,7 +39416,7 @@ fn _dispatch_constraint(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module constraint."
     )
 
-fn _dispatch_contest_strategy(function_name: String, args_array: String) raises -> String:
+def _dispatch_contest_strategy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "wear_penalty":
         if arg_count == 4:
@@ -39563,7 +39563,7 @@ fn _dispatch_contest_strategy(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module contest_strategy."
     )
 
-fn _dispatch_continuous_batching(function_name: String, args_array: String) raises -> String:
+def _dispatch_continuous_batching(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "iteration_level_batch_size":
         if arg_count == 2:
@@ -39796,7 +39796,7 @@ fn _dispatch_continuous_batching(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module continuous_batching."
     )
 
-fn _dispatch_contrastive_learning(function_name: String, args_array: String) raises -> String:
+def _dispatch_contrastive_learning(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "infonce_loss":
         if arg_count == 2:
@@ -40034,7 +40034,7 @@ fn _dispatch_contrastive_learning(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module contrastive_learning."
     )
 
-fn _dispatch_control(function_name: String, args_array: String) raises -> String:
+def _dispatch_control(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "create_pid":
         if arg_count == 3:
@@ -40300,7 +40300,7 @@ fn _dispatch_control(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module control."
     )
 
-fn _dispatch_convex(function_name: String, args_array: String) raises -> String:
+def _dispatch_convex(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_function":
         if arg_count == 2:
@@ -40544,7 +40544,7 @@ fn _dispatch_convex(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module convex."
     )
 
-fn _dispatch_copula(function_name: String, args_array: String) raises -> String:
+def _dispatch_copula(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "norm_cdf_approx":
         if arg_count == 1:
@@ -40654,7 +40654,7 @@ fn _dispatch_copula(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module copula."
     )
 
-fn _dispatch_correlation(function_name: String, args_array: String) raises -> String:
+def _dispatch_correlation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cholesky_lower":
         if arg_count == 2:
@@ -40741,7 +40741,7 @@ fn _dispatch_correlation(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module correlation."
     )
 
-fn _dispatch_corrosion(function_name: String, args_array: String) raises -> String:
+def _dispatch_corrosion(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "corrosion_rate_mpy":
         if arg_count == 4:
@@ -41019,7 +41019,7 @@ fn _dispatch_corrosion(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module corrosion."
     )
 
-fn _dispatch_cosmology(function_name: String, args_array: String) raises -> String:
+def _dispatch_cosmology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hubble_velocity":
         if arg_count == 2:
@@ -41287,7 +41287,7 @@ fn _dispatch_cosmology(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module cosmology."
     )
 
-fn _dispatch_cost_router(function_name: String, args_array: String) raises -> String:
+def _dispatch_cost_router(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "request_cost_estimate":
         if arg_count == 4:
@@ -41529,7 +41529,7 @@ fn _dispatch_cost_router(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module cost_router."
     )
 
-fn _dispatch_counter_rng(function_name: String, args_array: String) raises -> String:
+def _dispatch_counter_rng(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "philox_word":
         if arg_count == 7:
@@ -41786,7 +41786,7 @@ fn _dispatch_counter_rng(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module counter_rng."
     )
 
-fn _dispatch_cryogenics(function_name: String, args_array: String) raises -> String:
+def _dispatch_cryogenics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ideal_gas_density":
         if arg_count == 4:
@@ -42068,7 +42068,7 @@ fn _dispatch_cryogenics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module cryogenics."
     )
 
-fn _dispatch_cryology(function_name: String, args_array: String) raises -> String:
+def _dispatch_cryology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "permafrost_thickness":
         if arg_count == 2:
@@ -42300,7 +42300,7 @@ fn _dispatch_cryology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module cryology."
     )
 
-fn _dispatch_cryptanalysis(function_name: String, args_array: String) raises -> String:
+def _dispatch_cryptanalysis(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frequency_score_2":
         if arg_count == 4:
@@ -42564,7 +42564,7 @@ fn _dispatch_cryptanalysis(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module cryptanalysis."
     )
 
-fn _dispatch_crypto__aes_sbox(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__aes_sbox(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "aes_sbox":
         if arg_count == 1:
@@ -42701,7 +42701,7 @@ fn _dispatch_crypto__aes_sbox(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module crypto.aes_sbox."
     )
 
-fn _dispatch_crypto__base64(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__base64(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "b64_encode":
         if arg_count == 1:
@@ -42772,7 +42772,7 @@ fn _dispatch_crypto__base64(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module crypto.base64."
     )
 
-fn _dispatch_crypto__chacha20(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__chacha20(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rotl32":
         if arg_count == 2:
@@ -42925,7 +42925,7 @@ fn _dispatch_crypto__chacha20(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module crypto.chacha20."
     )
 
-fn _dispatch_crypto__crc32(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__crc32(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "crc32":
         if arg_count == 1:
@@ -42982,7 +42982,7 @@ fn _dispatch_crypto__crc32(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module crypto.crc32."
     )
 
-fn _dispatch_crypto__hash_chain(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__hash_chain(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "simple_hash":
         if arg_count == 1:
@@ -43139,7 +43139,7 @@ fn _dispatch_crypto__hash_chain(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module crypto.hash_chain."
     )
 
-fn _dispatch_crypto__hmac(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__hmac(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hmac_sha256":
         if arg_count == 2:
@@ -43181,7 +43181,7 @@ fn _dispatch_crypto__hmac(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module crypto.hmac."
     )
 
-fn _dispatch_crypto__pbkdf2(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__pbkdf2(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sha256_bytes":
         if arg_count == 1:
@@ -43306,7 +43306,7 @@ fn _dispatch_crypto__pbkdf2(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module crypto.pbkdf2."
     )
 
-fn _dispatch_crypto__uuid(function_name: String, args_array: String) raises -> String:
+def _dispatch_crypto__uuid(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "uuid4":
         if arg_count == 0:
@@ -43343,7 +43343,7 @@ fn _dispatch_crypto__uuid(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module crypto.uuid."
     )
 
-fn _dispatch_crystallography(function_name: String, args_array: String) raises -> String:
+def _dispatch_crystallography(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bragg_angle":
         if arg_count == 3:
@@ -43623,7 +43623,7 @@ fn _dispatch_crystallography(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module crystallography."
     )
 
-fn _dispatch_currency(function_name: String, args_array: String) raises -> String:
+def _dispatch_currency(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "round_currency":
         if arg_count == 1:
@@ -43913,7 +43913,7 @@ fn _dispatch_currency(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module currency."
     )
 
-fn _dispatch_cytology(function_name: String, args_array: String) raises -> String:
+def _dispatch_cytology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cell_volume_sphere":
         if arg_count == 1:
@@ -44140,7 +44140,7 @@ fn _dispatch_cytology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module cytology."
     )
 
-fn _dispatch_cytometry(function_name: String, args_array: String) raises -> String:
+def _dispatch_cytometry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "percent_positive_gate":
         if arg_count == 2:
@@ -44372,7 +44372,7 @@ fn _dispatch_cytometry(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module cytometry."
     )
 
-fn _dispatch_data__csv_parser(function_name: String, args_array: String) raises -> String:
+def _dispatch_data__csv_parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "csv_get_field":
         if arg_count == 2:
@@ -44483,7 +44483,7 @@ fn _dispatch_data__csv_parser(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module data.csv_parser."
     )
 
-fn _dispatch_data__dataframe(function_name: String, args_array: String) raises -> String:
+def _dispatch_data__dataframe(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "df_from_columns":
         if arg_count == 2:
@@ -44507,7 +44507,7 @@ fn _dispatch_data__dataframe(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module data.dataframe."
     )
 
-fn _dispatch_data_feedback_loop(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_feedback_loop(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sample_informativeness":
         if arg_count == 3:
@@ -44747,7 +44747,7 @@ fn _dispatch_data_feedback_loop(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module data_feedback_loop."
     )
 
-fn _dispatch_data_pipeline(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_pipeline(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sequence_packing_efficiency":
         if arg_count == 2:
@@ -44981,7 +44981,7 @@ fn _dispatch_data_pipeline(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module data_pipeline."
     )
 
-fn _dispatch_data_quality__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_quality__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dq_status_name":
         if arg_count == 1:
@@ -45321,7 +45321,7 @@ fn _dispatch_data_quality__contract(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module data_quality.contract."
     )
 
-fn _dispatch_data_quality__duplicates(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_quality__duplicates(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "duplicate_status_name":
         if arg_count == 1:
@@ -45401,7 +45401,7 @@ fn _dispatch_data_quality__duplicates(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module data_quality.duplicates."
     )
 
-fn _dispatch_data_quality__expect(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_quality__expect(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "expect_status_name":
         if arg_count == 1:
@@ -45534,7 +45534,7 @@ fn _dispatch_data_quality__expect(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module data_quality.expect."
     )
 
-fn _dispatch_data_quality__leakage(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_quality__leakage(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "leakage_status_name":
         if arg_count == 1:
@@ -45598,7 +45598,7 @@ fn _dispatch_data_quality__leakage(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module data_quality.leakage."
     )
 
-fn _dispatch_data_quality__profile(function_name: String, args_array: String) raises -> String:
+def _dispatch_data_quality__profile(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "profile_status_name":
         if arg_count == 1:
@@ -45696,7 +45696,7 @@ fn _dispatch_data_quality__profile(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module data_quality.profile."
     )
 
-fn _dispatch_database(function_name: String, args_array: String) raises -> String:
+def _dispatch_database(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "table_create":
         if arg_count == 2:
@@ -45871,7 +45871,7 @@ fn _dispatch_database(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module database."
     )
 
-fn _dispatch_datetime(function_name: String, args_array: String) raises -> String:
+def _dispatch_datetime(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "now_epoch":
         if arg_count == 0:
@@ -46103,7 +46103,7 @@ fn _dispatch_datetime(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module datetime."
     )
 
-fn _dispatch_decision_analysis(function_name: String, args_array: String) raises -> String:
+def _dispatch_decision_analysis(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "expected_value":
         if arg_count == 2:
@@ -46305,7 +46305,7 @@ fn _dispatch_decision_analysis(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module decision_analysis."
     )
 
-fn _dispatch_decision_ml_fusion(function_name: String, args_array: String) raises -> String:
+def _dispatch_decision_ml_fusion(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ml_to_simulation_weight":
         if arg_count == 2:
@@ -46543,7 +46543,7 @@ fn _dispatch_decision_ml_fusion(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module decision_ml_fusion."
     )
 
-fn _dispatch_degradation_state(function_name: String, args_array: String) raises -> String:
+def _dispatch_degradation_state(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pace_state_init":
         if arg_count == 4:
@@ -46806,7 +46806,7 @@ fn _dispatch_degradation_state(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module degradation_state."
     )
 
-fn _dispatch_demographics(function_name: String, args_array: String) raises -> String:
+def _dispatch_demographics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "crude_birth_rate":
         if arg_count == 2:
@@ -47079,7 +47079,7 @@ fn _dispatch_demographics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module demographics."
     )
 
-fn _dispatch_dendrochronology(function_name: String, args_array: String) raises -> String:
+def _dispatch_dendrochronology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ring_width_index":
         if arg_count == 2:
@@ -47314,7 +47314,7 @@ fn _dispatch_dendrochronology(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module dendrochronology."
     )
 
-fn _dispatch_dendrology(function_name: String, args_array: String) raises -> String:
+def _dispatch_dendrology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tree_height_from_hypsometer":
         if arg_count == 3:
@@ -47583,7 +47583,7 @@ fn _dispatch_dendrology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module dendrology."
     )
 
-fn _dispatch_dentistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_dentistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dmft_index":
         if arg_count == 3:
@@ -47852,7 +47852,7 @@ fn _dispatch_dentistry(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module dentistry."
     )
 
-fn _dispatch_dependency(function_name: String, args_array: String) raises -> String:
+def _dispatch_dependency(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "resolve_order":
         if arg_count == 2:
@@ -47996,7 +47996,7 @@ fn _dispatch_dependency(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module dependency."
     )
 
-fn _dispatch_differentiate(function_name: String, args_array: String) raises -> String:
+def _dispatch_differentiate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "derivative_forward":
         if arg_count == 2:
@@ -48104,7 +48104,7 @@ fn _dispatch_differentiate(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module differentiate."
     )
 
-fn _dispatch_diffusion_models(function_name: String, args_array: String) raises -> String:
+def _dispatch_diffusion_models(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "linear_beta_schedule":
         if arg_count == 4:
@@ -48342,7 +48342,7 @@ fn _dispatch_diffusion_models(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module diffusion_models."
     )
 
-fn _dispatch_dimensionality(function_name: String, args_array: String) raises -> String:
+def _dispatch_dimensionality(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "column_means":
         if arg_count == 1:
@@ -48499,7 +48499,7 @@ fn _dispatch_dimensionality(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module dimensionality."
     )
 
-fn _dispatch_dimensions(function_name: String, args_array: String) raises -> String:
+def _dispatch_dimensions(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "infer_from_samples":
         if arg_count == 1:
@@ -48674,7 +48674,7 @@ fn _dispatch_dimensions(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module dimensions."
     )
 
-fn _dispatch_discrete_event__calendar(function_name: String, args_array: String) raises -> String:
+def _dispatch_discrete_event__calendar(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "de_key_less":
         if arg_count == 6:
@@ -48759,7 +48759,7 @@ fn _dispatch_discrete_event__calendar(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module discrete_event.calendar."
     )
 
-fn _dispatch_discrete_event__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_discrete_event__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "de_status_name":
         if arg_count == 1:
@@ -49076,7 +49076,7 @@ fn _dispatch_discrete_event__contract(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module discrete_event.contract."
     )
 
-fn _dispatch_discrete_event__queue_sim(function_name: String, args_array: String) raises -> String:
+def _dispatch_discrete_event__queue_sim(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "qs_interarrivals":
         if arg_count == 4:
@@ -49180,7 +49180,7 @@ fn _dispatch_discrete_event__queue_sim(function_name: String, args_array: String
         "Function '" + function_name + "' is not registered for module discrete_event.queue_sim."
     )
 
-fn _dispatch_discrete_event__replicate(function_name: String, args_array: String) raises -> String:
+def _dispatch_discrete_event__replicate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "replicate_ci_flat":
         if arg_count == 3:
@@ -49228,7 +49228,7 @@ fn _dispatch_discrete_event__replicate(function_name: String, args_array: String
         "Function '" + function_name + "' is not registered for module discrete_event.replicate."
     )
 
-fn _dispatch_discrete_event__resource(function_name: String, args_array: String) raises -> String:
+def _dispatch_discrete_event__resource(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "resource_work_charge":
         if arg_count == 1:
@@ -49272,7 +49272,7 @@ fn _dispatch_discrete_event__resource(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module discrete_event.resource."
     )
 
-fn _dispatch_discrete_event__warmup(function_name: String, args_array: String) raises -> String:
+def _dispatch_discrete_event__warmup(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "warmup_mser_flat":
         if arg_count == 3:
@@ -49315,7 +49315,7 @@ fn _dispatch_discrete_event__warmup(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module discrete_event.warmup."
     )
 
-fn _dispatch_distillation(function_name: String, args_array: String) raises -> String:
+def _dispatch_distillation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "relative_volatility":
         if arg_count == 2:
@@ -49595,7 +49595,7 @@ fn _dispatch_distillation(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module distillation."
     )
 
-fn _dispatch_distributed_collectives(function_name: String, args_array: String) raises -> String:
+def _dispatch_distributed_collectives(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ring_allreduce_step":
         if arg_count == 3:
@@ -49825,7 +49825,7 @@ fn _dispatch_distributed_collectives(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module distributed_collectives."
     )
 
-fn _dispatch_distribution_fit(function_name: String, args_array: String) raises -> String:
+def _dispatch_distribution_fit(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fit_normal":
         if arg_count == 1:
@@ -50025,7 +50025,7 @@ fn _dispatch_distribution_fit(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module distribution_fit."
     )
 
-fn _dispatch_distributions(function_name: String, args_array: String) raises -> String:
+def _dispatch_distributions(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sample_normal":
         if arg_count == 2:
@@ -50586,7 +50586,7 @@ fn _dispatch_distributions(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module distributions."
     )
 
-fn _dispatch_document_layout(function_name: String, args_array: String) raises -> String:
+def _dispatch_document_layout(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "text_line_boxes_flat":
         if arg_count == 5:
@@ -50742,7 +50742,7 @@ fn _dispatch_document_layout(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module document_layout."
     )
 
-fn _dispatch_document_vision(function_name: String, args_array: String) raises -> String:
+def _dispatch_document_vision(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "otsu_threshold_flat":
         if arg_count == 3:
@@ -50938,7 +50938,7 @@ fn _dispatch_document_vision(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module document_vision."
     )
 
-fn _dispatch_dosimetry(function_name: String, args_array: String) raises -> String:
+def _dispatch_dosimetry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "absorbed_dose":
         if arg_count == 2:
@@ -51166,7 +51166,7 @@ fn _dispatch_dosimetry(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module dosimetry."
     )
 
-fn _dispatch_drones(function_name: String, args_array: String) raises -> String:
+def _dispatch_drones(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "thrust_to_weight_ratio":
         if arg_count == 2:
@@ -51444,7 +51444,7 @@ fn _dispatch_drones(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module drones."
     )
 
-fn _dispatch_earth(function_name: String, args_array: String) raises -> String:
+def _dispatch_earth(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "deg_to_rad":
         if arg_count == 1:
@@ -51664,7 +51664,7 @@ fn _dispatch_earth(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module earth."
     )
 
-fn _dispatch_ecohydrology(function_name: String, args_array: String) raises -> String:
+def _dispatch_ecohydrology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "interception_loss":
         if arg_count == 3:
@@ -51900,7 +51900,7 @@ fn _dispatch_ecohydrology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module ecohydrology."
     )
 
-fn _dispatch_ecology(function_name: String, args_array: String) raises -> String:
+def _dispatch_ecology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "logistic_growth":
         if arg_count == 3:
@@ -52179,7 +52179,7 @@ fn _dispatch_ecology(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module ecology."
     )
 
-fn _dispatch_economic_indicators(function_name: String, args_array: String) raises -> String:
+def _dispatch_economic_indicators(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gdp_growth":
         if arg_count == 2:
@@ -52466,7 +52466,7 @@ fn _dispatch_economic_indicators(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module economic_indicators."
     )
 
-fn _dispatch_ecophysiology(function_name: String, args_array: String) raises -> String:
+def _dispatch_ecophysiology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "metabolic_rate_kleiber":
         if arg_count == 1:
@@ -52700,7 +52700,7 @@ fn _dispatch_ecophysiology(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module ecophysiology."
     )
 
-fn _dispatch_eigen_full(function_name: String, args_array: String) raises -> String:
+def _dispatch_eigen_full(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eigh_symmetric":
         if arg_count == 2:
@@ -52798,7 +52798,7 @@ fn _dispatch_eigen_full(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module eigen_full."
     )
 
-fn _dispatch_election(function_name: String, args_array: String) raises -> String:
+def _dispatch_election(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pairwise_matrix":
         if arg_count == 2:
@@ -52941,7 +52941,7 @@ fn _dispatch_election(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module election."
     )
 
-fn _dispatch_electrical(function_name: String, args_array: String) raises -> String:
+def _dispatch_electrical(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ohms_law_v":
         if arg_count == 2:
@@ -53257,7 +53257,7 @@ fn _dispatch_electrical(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module electrical."
     )
 
-fn _dispatch_electrochemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_electrochemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "nernst_cell_potential":
         if arg_count == 4:
@@ -53497,7 +53497,7 @@ fn _dispatch_electrochemistry(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module electrochemistry."
     )
 
-fn _dispatch_electrostatics(function_name: String, args_array: String) raises -> String:
+def _dispatch_electrostatics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "coulomb_force":
         if arg_count == 3:
@@ -53727,7 +53727,7 @@ fn _dispatch_electrostatics(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module electrostatics."
     )
 
-fn _dispatch_elevator(function_name: String, args_array: String) raises -> String:
+def _dispatch_elevator(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "round_trip_time":
         if arg_count == 6:
@@ -54006,7 +54006,7 @@ fn _dispatch_elevator(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module elevator."
     )
 
-fn _dispatch_embeddings(function_name: String, args_array: String) raises -> String:
+def _dispatch_embeddings(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dot_product":
         if arg_count == 2:
@@ -54395,7 +54395,7 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module embeddings."
     )
 
-fn _dispatch_encoding(function_name: String, args_array: String) raises -> String:
+def _dispatch_encoding(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "build_vocabulary":
         if arg_count == 1:
@@ -54518,7 +54518,7 @@ fn _dispatch_encoding(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module encoding."
     )
 
-fn _dispatch_encryption_modes(function_name: String, args_array: String) raises -> String:
+def _dispatch_encryption_modes(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ecb_block_count":
         if arg_count == 2:
@@ -54728,7 +54728,7 @@ fn _dispatch_encryption_modes(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module encryption_modes."
     )
 
-fn _dispatch_endocrinology(function_name: String, args_array: String) raises -> String:
+def _dispatch_endocrinology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hormone_clearance_rate":
         if arg_count == 2:
@@ -54960,7 +54960,7 @@ fn _dispatch_endocrinology(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module endocrinology."
     )
 
-fn _dispatch_ensembles(function_name: String, args_array: String) raises -> String:
+def _dispatch_ensembles(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "voting_classify":
         if arg_count == 5:
@@ -55045,7 +55045,7 @@ fn _dispatch_ensembles(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module ensembles."
     )
 
-fn _dispatch_entomology(function_name: String, args_array: String) raises -> String:
+def _dispatch_entomology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "degree_days":
         if arg_count == 3:
@@ -55317,7 +55317,7 @@ fn _dispatch_entomology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module entomology."
     )
 
-fn _dispatch_env(function_name: String, args_array: String) raises -> String:
+def _dispatch_env(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "env_get":
         if arg_count == 1:
@@ -55462,7 +55462,7 @@ fn _dispatch_env(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module env."
     )
 
-fn _dispatch_epidemiology(function_name: String, args_array: String) raises -> String:
+def _dispatch_epidemiology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sir_step":
         if arg_count == 6:
@@ -55687,7 +55687,7 @@ fn _dispatch_epidemiology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module epidemiology."
     )
 
-fn _dispatch_epigenetics(function_name: String, args_array: String) raises -> String:
+def _dispatch_epigenetics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "methylation_index":
         if arg_count == 2:
@@ -55919,7 +55919,7 @@ fn _dispatch_epigenetics(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module epigenetics."
     )
 
-fn _dispatch_ergonomics(function_name: String, args_array: String) raises -> String:
+def _dispatch_ergonomics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "niosh_rwl":
         if arg_count == 7:
@@ -56202,7 +56202,7 @@ fn _dispatch_ergonomics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module ergonomics."
     )
 
-fn _dispatch_esrnn__bias_correction(function_name: String, args_array: String) raises -> String:
+def _dispatch_esrnn__bias_correction(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "esrnn_bias_mean":
         if arg_count == 1:
@@ -56247,7 +56247,7 @@ fn _dispatch_esrnn__bias_correction(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module esrnn.bias_correction."
     )
 
-fn _dispatch_esrnn__global_residual(function_name: String, args_array: String) raises -> String:
+def _dispatch_esrnn__global_residual(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "esrnn_method_name":
         if arg_count == 1:
@@ -56378,7 +56378,7 @@ fn _dispatch_esrnn__global_residual(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module esrnn.global_residual."
     )
 
-fn _dispatch_esrnn__per_frequency(function_name: String, args_array: String) raises -> String:
+def _dispatch_esrnn__per_frequency(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "esrnn_fit_frequency_corrector":
         if arg_count == 2:
@@ -56434,7 +56434,7 @@ fn _dispatch_esrnn__per_frequency(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module esrnn.per_frequency."
     )
 
-fn _dispatch_etiology(function_name: String, args_array: String) raises -> String:
+def _dispatch_etiology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "relative_risk":
         if arg_count == 2:
@@ -56665,7 +56665,7 @@ fn _dispatch_etiology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module etiology."
     )
 
-fn _dispatch_evaluation__binning(function_name: String, args_array: String) raises -> String:
+def _dispatch_evaluation__binning(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_bins_build":
         if arg_count == 5:
@@ -56749,7 +56749,7 @@ fn _dispatch_evaluation__binning(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module evaluation.binning."
     )
 
-fn _dispatch_evaluation__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_evaluation__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_status_name":
         if arg_count == 1:
@@ -56977,7 +56977,7 @@ fn _dispatch_evaluation__contract(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module evaluation.contract."
     )
 
-fn _dispatch_evaluation__gates(function_name: String, args_array: String) raises -> String:
+def _dispatch_evaluation__gates(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "metric_gate":
         if arg_count == 4:
@@ -57049,7 +57049,7 @@ fn _dispatch_evaluation__gates(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module evaluation.gates."
     )
 
-fn _dispatch_evaluation__resample(function_name: String, args_array: String) raises -> String:
+def _dispatch_evaluation__resample(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bootstrap_draw_index":
         if arg_count == 3:
@@ -57114,7 +57114,7 @@ fn _dispatch_evaluation__resample(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module evaluation.resample."
     )
 
-fn _dispatch_evaluation__scores(function_name: String, args_array: String) raises -> String:
+def _dispatch_evaluation__scores(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "brier_decomposition_flat":
         if arg_count == 5:
@@ -57240,7 +57240,7 @@ fn _dispatch_evaluation__scores(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module evaluation.scores."
     )
 
-fn _dispatch_evaluation_feedback(function_name: String, args_array: String) raises -> String:
+def _dispatch_evaluation_feedback(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "accuracy_rolling_update":
         if arg_count == 3:
@@ -57472,7 +57472,7 @@ fn _dispatch_evaluation_feedback(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module evaluation_feedback."
     )
 
-fn _dispatch_evolutionary_search(function_name: String, args_array: String) raises -> String:
+def _dispatch_evolutionary_search(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ga_init":
         if arg_count == 4:
@@ -57612,7 +57612,7 @@ fn _dispatch_evolutionary_search(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module evolutionary_search."
     )
 
-fn _dispatch_exactnum__eft(function_name: String, args_array: String) raises -> String:
+def _dispatch_exactnum__eft(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eft_status_name":
         if arg_count == 1:
@@ -58032,7 +58032,7 @@ fn _dispatch_exactnum__eft(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module exactnum.eft."
     )
 
-fn _dispatch_exactnum__lstsq(function_name: String, args_array: String) raises -> String:
+def _dispatch_exactnum__lstsq(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lstsq_status_name":
         if arg_count == 1:
@@ -58216,7 +58216,7 @@ fn _dispatch_exactnum__lstsq(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module exactnum.lstsq."
     )
 
-fn _dispatch_execution_planner(function_name: String, args_array: String) raises -> String:
+def _dispatch_execution_planner(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fusion_opportunity_score":
         if arg_count == 3:
@@ -58461,7 +58461,7 @@ fn _dispatch_execution_planner(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module execution_planner."
     )
 
-fn _dispatch_explainability(function_name: String, args_array: String) raises -> String:
+def _dispatch_explainability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "permutation_importance_from_preds":
         if arg_count == 4:
@@ -58545,7 +58545,7 @@ fn _dispatch_explainability(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module explainability."
     )
 
-fn _dispatch_fault_tolerance(function_name: String, args_array: String) raises -> String:
+def _dispatch_fault_tolerance(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "checkpoint_interval_optimal":
         if arg_count == 2:
@@ -58778,7 +58778,7 @@ fn _dispatch_fault_tolerance(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module fault_tolerance."
     )
 
-fn _dispatch_feature_engineering(function_name: String, args_array: String) raises -> String:
+def _dispatch_feature_engineering(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "minmax_scale":
         if arg_count == 3:
@@ -59013,7 +59013,7 @@ fn _dispatch_feature_engineering(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module feature_engineering."
     )
 
-fn _dispatch_feature_hashing(function_name: String, args_array: String) raises -> String:
+def _dispatch_feature_hashing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hash_feature":
         if arg_count == 3:
@@ -59096,7 +59096,7 @@ fn _dispatch_feature_hashing(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module feature_hashing."
     )
 
-fn _dispatch_feature_selection(function_name: String, args_array: String) raises -> String:
+def _dispatch_feature_selection(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "column_mean":
         if arg_count == 1:
@@ -59313,7 +59313,7 @@ fn _dispatch_feature_selection(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module feature_selection."
     )
 
-fn _dispatch_fermentation(function_name: String, args_array: String) raises -> String:
+def _dispatch_fermentation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ethanol_yield":
         if arg_count == 1:
@@ -59543,7 +59543,7 @@ fn _dispatch_fermentation(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module fermentation."
     )
 
-fn _dispatch_fft(function_name: String, args_array: String) raises -> String:
+def _dispatch_fft(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "next_power_of_2":
         if arg_count == 1:
@@ -59663,7 +59663,7 @@ fn _dispatch_fft(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module fft."
     )
 
-fn _dispatch_filepath__pathlib(function_name: String, args_array: String) raises -> String:
+def _dispatch_filepath__pathlib(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "path_join":
         if arg_count == 1:
@@ -59798,7 +59798,7 @@ fn _dispatch_filepath__pathlib(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module filepath.pathlib."
     )
 
-fn _dispatch_finance(function_name: String, args_array: String) raises -> String:
+def _dispatch_finance(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "npv":
         if arg_count == 2:
@@ -60128,7 +60128,7 @@ fn _dispatch_finance(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module finance."
     )
 
-fn _dispatch_fire_safety(function_name: String, args_array: String) raises -> String:
+def _dispatch_fire_safety(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fire_load_density":
         if arg_count == 2:
@@ -60400,7 +60400,7 @@ fn _dispatch_fire_safety(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module fire_safety."
     )
 
-fn _dispatch_fisheries(function_name: String, args_array: String) raises -> String:
+def _dispatch_fisheries(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "catch_per_unit_effort":
         if arg_count == 2:
@@ -60673,7 +60673,7 @@ fn _dispatch_fisheries(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module fisheries."
     )
 
-fn _dispatch_flash_attention(function_name: String, args_array: String) raises -> String:
+def _dispatch_flash_attention(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "flash_block_max":
         if arg_count == 2:
@@ -60910,7 +60910,7 @@ fn _dispatch_flash_attention(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module flash_attention."
     )
 
-fn _dispatch_fluid(function_name: String, args_array: String) raises -> String:
+def _dispatch_fluid(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "reynolds_number":
         if arg_count == 3:
@@ -61255,7 +61255,7 @@ fn _dispatch_fluid(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module fluid."
     )
 
-fn _dispatch_food_science(function_name: String, args_array: String) raises -> String:
+def _dispatch_food_science(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "water_activity":
         if arg_count == 1:
@@ -61530,7 +61530,7 @@ fn _dispatch_food_science(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module food_science."
     )
 
-fn _dispatch_forecast_metrics(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecast_metrics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "brier_score":
         if arg_count == 2:
@@ -61742,7 +61742,7 @@ fn _dispatch_forecast_metrics(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module forecast_metrics."
     )
 
-fn _dispatch_forecasting__backtest(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__backtest(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "backtest_origin_count":
         if arg_count == 4:
@@ -61833,7 +61833,7 @@ fn _dispatch_forecasting__backtest(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module forecasting.backtest."
     )
 
-fn _dispatch_forecasting__bagging(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__bagging(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "shrinking_ma_trend":
         if arg_count == 2:
@@ -61900,7 +61900,7 @@ fn _dispatch_forecasting__bagging(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module forecasting.bagging."
     )
 
-fn _dispatch_forecasting__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fc_status_name":
         if arg_count == 1:
@@ -62214,7 +62214,7 @@ fn _dispatch_forecasting__contract(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module forecasting.contract."
     )
 
-fn _dispatch_forecasting__fitted(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__fitted(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fitted_init_solve":
         if arg_count == 4:
@@ -62344,7 +62344,7 @@ fn _dispatch_forecasting__fitted(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module forecasting.fitted."
     )
 
-fn _dispatch_forecasting__hierarchy(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__hierarchy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hierarchy_shape_defect":
         if arg_count == 3:
@@ -62446,7 +62446,7 @@ fn _dispatch_forecasting__hierarchy(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module forecasting.hierarchy."
     )
 
-fn _dispatch_forecasting__intermittent(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__intermittent(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "croston_variant_name":
         if arg_count == 1:
@@ -62521,7 +62521,7 @@ fn _dispatch_forecasting__intermittent(function_name: String, args_array: String
         "Function '" + function_name + "' is not registered for module forecasting.intermittent."
     )
 
-fn _dispatch_forecasting__interval(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__interval(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "interval_empirical_flat":
         if arg_count == 5:
@@ -62589,7 +62589,7 @@ fn _dispatch_forecasting__interval(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module forecasting.interval."
     )
 
-fn _dispatch_forecasting__origin_select(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__origin_select(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "origin_schedule":
         if arg_count == 3:
@@ -62651,7 +62651,7 @@ fn _dispatch_forecasting__origin_select(function_name: String, args_array: Strin
         "Function '" + function_name + "' is not registered for module forecasting.origin_select."
     )
 
-fn _dispatch_forecasting__point(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__point(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ets_ann_forecast":
         if arg_count == 3:
@@ -62808,7 +62808,7 @@ fn _dispatch_forecasting__point(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module forecasting.point."
     )
 
-fn _dispatch_forecasting__pool(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__pool(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pool_candidate_name":
         if arg_count == 1:
@@ -62909,7 +62909,7 @@ fn _dispatch_forecasting__pool(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module forecasting.pool."
     )
 
-fn _dispatch_forecasting__select(function_name: String, args_array: String) raises -> String:
+def _dispatch_forecasting__select(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "select_best_fitted":
         if arg_count == 2:
@@ -62950,7 +62950,7 @@ fn _dispatch_forecasting__select(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module forecasting.select."
     )
 
-fn _dispatch_forensics(function_name: String, args_array: String) raises -> String:
+def _dispatch_forensics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "time_of_death_newton":
         if arg_count == 4:
@@ -63217,7 +63217,7 @@ fn _dispatch_forensics(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module forensics."
     )
 
-fn _dispatch_formal_logic(function_name: String, args_array: String) raises -> String:
+def _dispatch_formal_logic(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "truth_and":
         if arg_count == 2:
@@ -63459,7 +63459,7 @@ fn _dispatch_formal_logic(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module formal_logic."
     )
 
-fn _dispatch_fused_kernels(function_name: String, args_array: String) raises -> String:
+def _dispatch_fused_kernels(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fused_attention_score":
         if arg_count == 5:
@@ -63707,7 +63707,7 @@ fn _dispatch_fused_kernels(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module fused_kernels."
     )
 
-fn _dispatch_fuzzy_logic(function_name: String, args_array: String) raises -> String:
+def _dispatch_fuzzy_logic(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "triangular_mf":
         if arg_count == 4:
@@ -63957,7 +63957,7 @@ fn _dispatch_fuzzy_logic(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module fuzzy_logic."
     )
 
-fn _dispatch_game_physics(function_name: String, args_array: String) raises -> String:
+def _dispatch_game_physics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "position_update":
         if arg_count == 4:
@@ -64240,7 +64240,7 @@ fn _dispatch_game_physics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module game_physics."
     )
 
-fn _dispatch_game_theory(function_name: String, args_array: String) raises -> String:
+def _dispatch_game_theory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "nash_2x2":
         if arg_count == 2:
@@ -64392,7 +64392,7 @@ fn _dispatch_game_theory(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module game_theory."
     )
 
-fn _dispatch_gaussian_process(function_name: String, args_array: String) raises -> String:
+def _dispatch_gaussian_process(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kernel_rbf":
         if arg_count == 3:
@@ -64507,7 +64507,7 @@ fn _dispatch_gaussian_process(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module gaussian_process."
     )
 
-fn _dispatch_gbdt(function_name: String, args_array: String) raises -> String:
+def _dispatch_gbdt(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gbdt_fit":
         if arg_count == 6:
@@ -64645,7 +64645,7 @@ fn _dispatch_gbdt(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module gbdt."
     )
 
-fn _dispatch_gemm__blocked(function_name: String, args_array: String) raises -> String:
+def _dispatch_gemm__blocked(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gemm_tile_plan":
         if arg_count == 4:
@@ -64735,7 +64735,7 @@ fn _dispatch_gemm__blocked(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module gemm.blocked."
     )
 
-fn _dispatch_gemm__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_gemm__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gemm_status_name":
         if arg_count == 1:
@@ -64830,7 +64830,7 @@ fn _dispatch_gemm__contract(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module gemm.contract."
     )
 
-fn _dispatch_gemm__quantized(function_name: String, args_array: String) raises -> String:
+def _dispatch_gemm__quantized(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gemv_nf4_flat":
         if arg_count == 6:
@@ -64923,7 +64923,7 @@ fn _dispatch_gemm__quantized(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module gemm.quantized."
     )
 
-fn _dispatch_generation_loop(function_name: String, args_array: String) raises -> String:
+def _dispatch_generation_loop(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "temperature_logit_scale":
         if arg_count == 2:
@@ -65157,7 +65157,7 @@ fn _dispatch_generation_loop(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module generation_loop."
     )
 
-fn _dispatch_genetic(function_name: String, args_array: String) raises -> String:
+def _dispatch_genetic(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "initialize_population":
         if arg_count == 1:
@@ -65319,7 +65319,7 @@ fn _dispatch_genetic(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module genetic."
     )
 
-fn _dispatch_genomics(function_name: String, args_array: String) raises -> String:
+def _dispatch_genomics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gc_content":
         if arg_count == 3:
@@ -65547,7 +65547,7 @@ fn _dispatch_genomics(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module genomics."
     )
 
-fn _dispatch_geochemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_geochemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "distribution_coefficient":
         if arg_count == 2:
@@ -65779,7 +65779,7 @@ fn _dispatch_geochemistry(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module geochemistry."
     )
 
-fn _dispatch_geodesy(function_name: String, args_array: String) raises -> String:
+def _dispatch_geodesy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "haversine_distance":
         if arg_count == 4:
@@ -66008,7 +66008,7 @@ fn _dispatch_geodesy(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module geodesy."
     )
 
-fn _dispatch_geometry(function_name: String, args_array: String) raises -> String:
+def _dispatch_geometry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "distance_2d":
         if arg_count == 2:
@@ -66186,7 +66186,7 @@ fn _dispatch_geometry(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module geometry."
     )
 
-fn _dispatch_geomorphology(function_name: String, args_array: String) raises -> String:
+def _dispatch_geomorphology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "stream_power":
         if arg_count == 4:
@@ -66472,7 +66472,7 @@ fn _dispatch_geomorphology(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module geomorphology."
     )
 
-fn _dispatch_geophysics(function_name: String, args_array: String) raises -> String:
+def _dispatch_geophysics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gravity_anomaly_bouguer":
         if arg_count == 4:
@@ -66701,7 +66701,7 @@ fn _dispatch_geophysics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module geophysics."
     )
 
-fn _dispatch_geospatial__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_geospatial__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "geo_status_name":
         if arg_count == 1:
@@ -67074,7 +67074,7 @@ fn _dispatch_geospatial__contract(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module geospatial.contract."
     )
 
-fn _dispatch_geospatial__frame(function_name: String, args_array: String) raises -> String:
+def _dispatch_geospatial__frame(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_metric_distance":
         if arg_count == 6:
@@ -67247,7 +67247,7 @@ fn _dispatch_geospatial__frame(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module geospatial.frame."
     )
 
-fn _dispatch_geospatial__index(function_name: String, args_array: String) raises -> String:
+def _dispatch_geospatial__index(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "grid_build_flat":
         if arg_count == 5:
@@ -67399,7 +67399,7 @@ fn _dispatch_geospatial__index(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module geospatial.index."
     )
 
-fn _dispatch_geospatial__join(function_name: String, args_array: String) raises -> String:
+def _dispatch_geospatial__join(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "join_within_flat":
         if arg_count == 10:
@@ -67504,7 +67504,7 @@ fn _dispatch_geospatial__join(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module geospatial.join."
     )
 
-fn _dispatch_geospatial__mapmatch(function_name: String, args_array: String) raises -> String:
+def _dispatch_geospatial__mapmatch(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "point_to_segment_flat":
         if arg_count == 8:
@@ -67560,7 +67560,7 @@ fn _dispatch_geospatial__mapmatch(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module geospatial.mapmatch."
     )
 
-fn _dispatch_geospatial__polygon(function_name: String, args_array: String) raises -> String:
+def _dispatch_geospatial__polygon(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ring_planar_defect_flat":
         if arg_count == 4:
@@ -67689,7 +67689,7 @@ fn _dispatch_geospatial__polygon(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module geospatial.polygon."
     )
 
-fn _dispatch_geotechnical(function_name: String, args_array: String) raises -> String:
+def _dispatch_geotechnical(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bearing_capacity_terzaghi":
         if arg_count == 7:
@@ -67964,7 +67964,7 @@ fn _dispatch_geotechnical(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module geotechnical."
     )
 
-fn _dispatch_glaciology(function_name: String, args_array: String) raises -> String:
+def _dispatch_glaciology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "glacier_mass_balance":
         if arg_count == 2:
@@ -68196,7 +68196,7 @@ fn _dispatch_glaciology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module glaciology."
     )
 
-fn _dispatch_gpu_kernels(function_name: String, args_array: String) raises -> String:
+def _dispatch_gpu_kernels(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tile_size_for_smem":
         if arg_count == 3:
@@ -68430,7 +68430,7 @@ fn _dispatch_gpu_kernels(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module gpu_kernels."
     )
 
-fn _dispatch_gradient_descent(function_name: String, args_array: String) raises -> String:
+def _dispatch_gradient_descent(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sgd_update":
         if arg_count == 3:
@@ -68688,7 +68688,7 @@ fn _dispatch_gradient_descent(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module gradient_descent."
     )
 
-fn _dispatch_graph__algorithms(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph__algorithms(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "graph_new":
         if arg_count == 1:
@@ -68834,7 +68834,7 @@ fn _dispatch_graph__algorithms(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module graph.algorithms."
     )
 
-fn _dispatch_graph__weighted(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph__weighted(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "union_find_create":
         if arg_count == 1:
@@ -69006,7 +69006,7 @@ fn _dispatch_graph__weighted(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module graph.weighted."
     )
 
-fn _dispatch_graph_algorithms(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_algorithms(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dijkstra_relax":
         if arg_count == 3:
@@ -69241,7 +69241,7 @@ fn _dispatch_graph_algorithms(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module graph_algorithms."
     )
 
-fn _dispatch_graph_analytics__adjacency(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_analytics__adjacency(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "graph_status_name":
         if arg_count == 1:
@@ -69882,7 +69882,7 @@ fn _dispatch_graph_analytics__adjacency(function_name: String, args_array: Strin
         "Function '" + function_name + "' is not registered for module graph_analytics.adjacency."
     )
 
-fn _dispatch_graph_analytics__centrality(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_analytics__centrality(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "centrality_status_name":
         if arg_count == 1:
@@ -70071,7 +70071,7 @@ fn _dispatch_graph_analytics__centrality(function_name: String, args_array: Stri
         "Function '" + function_name + "' is not registered for module graph_analytics.centrality."
     )
 
-fn _dispatch_graph_analytics__community(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_analytics__community(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "community_status_name":
         if arg_count == 1:
@@ -70457,7 +70457,7 @@ fn _dispatch_graph_analytics__community(function_name: String, args_array: Strin
         "Function '" + function_name + "' is not registered for module graph_analytics.community."
     )
 
-fn _dispatch_graph_analytics__temporal(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_analytics__temporal(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "temporal_status_name":
         if arg_count == 1:
@@ -70803,7 +70803,7 @@ fn _dispatch_graph_analytics__temporal(function_name: String, args_array: String
         "Function '" + function_name + "' is not registered for module graph_analytics.temporal."
     )
 
-fn _dispatch_graph_compiler(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_compiler(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fusion_benefit_score":
         if arg_count == 4:
@@ -71038,7 +71038,7 @@ fn _dispatch_graph_compiler(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module graph_compiler."
     )
 
-fn _dispatch_graph_decision(function_name: String, args_array: String) raises -> String:
+def _dispatch_graph_decision(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "multi_constraint_relax":
         if arg_count == 6:
@@ -71279,7 +71279,7 @@ fn _dispatch_graph_decision(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module graph_decision."
     )
 
-fn _dispatch_greenhouse(function_name: String, args_array: String) raises -> String:
+def _dispatch_greenhouse(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "heat_loss_conduction":
         if arg_count == 3:
@@ -71555,7 +71555,7 @@ fn _dispatch_greenhouse(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module greenhouse."
     )
 
-fn _dispatch_heap(function_name: String, args_array: String) raises -> String:
+def _dispatch_heap(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "heapify_min":
         if arg_count == 1:
@@ -71812,7 +71812,7 @@ fn _dispatch_heap(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module heap."
     )
 
-fn _dispatch_hematology(function_name: String, args_array: String) raises -> String:
+def _dispatch_hematology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hematocrit":
         if arg_count == 2:
@@ -72039,7 +72039,7 @@ fn _dispatch_hematology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module hematology."
     )
 
-fn _dispatch_hmm(function_name: String, args_array: String) raises -> String:
+def _dispatch_hmm(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hmm_forward":
         if arg_count == 4:
@@ -72123,7 +72123,7 @@ fn _dispatch_hmm(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module hmm."
     )
 
-fn _dispatch_horticulture(function_name: String, args_array: String) raises -> String:
+def _dispatch_horticulture(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "photosynthesis_rate":
         if arg_count == 3:
@@ -72357,7 +72357,7 @@ fn _dispatch_horticulture(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module horticulture."
     )
 
-fn _dispatch_hvac(function_name: String, args_array: String) raises -> String:
+def _dispatch_hvac(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sensible_heat_load":
         if arg_count == 2:
@@ -72624,7 +72624,7 @@ fn _dispatch_hvac(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module hvac."
     )
 
-fn _dispatch_hybrid_reasoning(function_name: String, args_array: String) raises -> String:
+def _dispatch_hybrid_reasoning(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ml_simulation_blend":
         if arg_count == 3:
@@ -72864,7 +72864,7 @@ fn _dispatch_hybrid_reasoning(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module hybrid_reasoning."
     )
 
-fn _dispatch_hydraulics(function_name: String, args_array: String) raises -> String:
+def _dispatch_hydraulics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pascals_law_force":
         if arg_count == 2:
@@ -73138,7 +73138,7 @@ fn _dispatch_hydraulics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module hydraulics."
     )
 
-fn _dispatch_hydrogeology(function_name: String, args_array: String) raises -> String:
+def _dispatch_hydrogeology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "darcy_velocity":
         if arg_count == 2:
@@ -73372,7 +73372,7 @@ fn _dispatch_hydrogeology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module hydrogeology."
     )
 
-fn _dispatch_hydrology(function_name: String, args_array: String) raises -> String:
+def _dispatch_hydrology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "manning_velocity":
         if arg_count == 3:
@@ -73653,7 +73653,7 @@ fn _dispatch_hydrology(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module hydrology."
     )
 
-fn _dispatch_hydrometeorology(function_name: String, args_array: String) raises -> String:
+def _dispatch_hydrometeorology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "runoff_curve_number":
         if arg_count == 2:
@@ -73883,7 +73883,7 @@ fn _dispatch_hydrometeorology(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module hydrometeorology."
     )
 
-fn _dispatch_hydroponics(function_name: String, args_array: String) raises -> String:
+def _dispatch_hydroponics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ec_from_tds":
         if arg_count == 2:
@@ -74158,7 +74158,7 @@ fn _dispatch_hydroponics(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module hydroponics."
     )
 
-fn _dispatch_hypothesis(function_name: String, args_array: String) raises -> String:
+def _dispatch_hypothesis(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rank_data":
         if arg_count == 1:
@@ -74283,7 +74283,7 @@ fn _dispatch_hypothesis(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module hypothesis."
     )
 
-fn _dispatch_image_features(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_features(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sobel_magnitude":
         if arg_count == 1:
@@ -74510,7 +74510,7 @@ fn _dispatch_image_features(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module image_features."
     )
 
-fn _dispatch_image_morphology(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_morphology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "binary_erode_flat":
         if arg_count == 5:
@@ -74697,7 +74697,7 @@ fn _dispatch_image_morphology(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module image_morphology."
     )
 
-fn _dispatch_image_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "convolve_2d":
         if arg_count == 2:
@@ -74886,7 +74886,7 @@ fn _dispatch_image_ops(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module image_ops."
     )
 
-fn _dispatch_image_palette(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_palette(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dominant_palette_rgb255":
         if arg_count == 5:
@@ -75069,7 +75069,7 @@ fn _dispatch_image_palette(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module image_palette."
     )
 
-fn _dispatch_image_quality(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_quality(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "blur_score":
         if arg_count == 1:
@@ -75390,7 +75390,7 @@ fn _dispatch_image_quality(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module image_quality."
     )
 
-fn _dispatch_image_regions(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_regions(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "foreground_mask_otsu_flat":
         if arg_count == 3:
@@ -75517,7 +75517,7 @@ fn _dispatch_image_regions(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module image_regions."
     )
 
-fn _dispatch_image_resize(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_resize(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "reshape_to_grid":
         if arg_count == 3:
@@ -75690,7 +75690,7 @@ fn _dispatch_image_resize(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module image_resize."
     )
 
-fn _dispatch_image_similarity(function_name: String, args_array: String) raises -> String:
+def _dispatch_image_similarity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mean_squared_error_flat":
         if arg_count == 4:
@@ -75895,7 +75895,7 @@ fn _dispatch_image_similarity(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module image_similarity."
     )
 
-fn _dispatch_imbalance(function_name: String, args_array: String) raises -> String:
+def _dispatch_imbalance(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "smote_nd":
         if arg_count == 7:
@@ -75995,7 +75995,7 @@ fn _dispatch_imbalance(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module imbalance."
     )
 
-fn _dispatch_immunology(function_name: String, args_array: String) raises -> String:
+def _dispatch_immunology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "antibody_titer":
         if arg_count == 2:
@@ -76226,7 +76226,7 @@ fn _dispatch_immunology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module immunology."
     )
 
-fn _dispatch_inference__assume(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__assume(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "variance_homogeneity_flat":
         if arg_count == 3:
@@ -76326,7 +76326,7 @@ fn _dispatch_inference__assume(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module inference.assume."
     )
 
-fn _dispatch_inference__core(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__core(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "inference_status_name":
         if arg_count == 1:
@@ -76685,7 +76685,7 @@ fn _dispatch_inference__core(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module inference.core."
     )
 
-fn _dispatch_inference__glm(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__glm(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "glm_input_defect":
         if arg_count == 6:
@@ -76757,7 +76757,7 @@ fn _dispatch_inference__glm(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module inference.glm."
     )
 
-fn _dispatch_inference__multiplicity(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__multiplicity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "multiplicity_input_defect":
         if arg_count == 3:
@@ -76854,7 +76854,7 @@ fn _dispatch_inference__multiplicity(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module inference.multiplicity."
     )
 
-fn _dispatch_inference__power(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__power(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "power_design_defect":
         if arg_count == 3:
@@ -76955,7 +76955,7 @@ fn _dispatch_inference__power(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module inference.power."
     )
 
-fn _dispatch_inference__resample(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__resample(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "resample_statistic_name":
         if arg_count == 1:
@@ -77021,7 +77021,7 @@ fn _dispatch_inference__resample(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module inference.resample."
     )
 
-fn _dispatch_inference__robust(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference__robust(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "robust_scale_mad":
         if arg_count == 2:
@@ -77095,7 +77095,7 @@ fn _dispatch_inference__robust(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module inference.robust."
     )
 
-fn _dispatch_inference_cost_latency(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference_cost_latency(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "prompt_token_estimate":
         if arg_count == 2:
@@ -77349,7 +77349,7 @@ fn _dispatch_inference_cost_latency(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module inference_cost_latency."
     )
 
-fn _dispatch_inference_engine(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference_engine(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "batch_padding_mask":
         if arg_count == 2:
@@ -77584,7 +77584,7 @@ fn _dispatch_inference_engine(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module inference_engine."
     )
 
-fn _dispatch_inference_security(function_name: String, args_array: String) raises -> String:
+def _dispatch_inference_security(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "prompt_injection_score":
         if arg_count == 3:
@@ -77823,7 +77823,7 @@ fn _dispatch_inference_security(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module inference_security."
     )
 
-fn _dispatch_information_theory(function_name: String, args_array: String) raises -> String:
+def _dispatch_information_theory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "entropy":
         if arg_count == 1:
@@ -78042,7 +78042,7 @@ fn _dispatch_information_theory(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module information_theory."
     )
 
-fn _dispatch_insurance(function_name: String, args_array: String) raises -> String:
+def _dispatch_insurance(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pure_premium":
         if arg_count == 2:
@@ -78315,7 +78315,7 @@ fn _dispatch_insurance(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module insurance."
     )
 
-fn _dispatch_integrate(function_name: String, args_array: String) raises -> String:
+def _dispatch_integrate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "trapezoid":
         if arg_count == 2:
@@ -78469,7 +78469,7 @@ fn _dispatch_integrate(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module integrate."
     )
 
-fn _dispatch_interpolate(function_name: String, args_array: String) raises -> String:
+def _dispatch_interpolate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "linear_interp":
         if arg_count == 3:
@@ -78610,7 +78610,7 @@ fn _dispatch_interpolate(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module interpolate."
     )
 
-fn _dispatch_interval(function_name: String, args_array: String) raises -> String:
+def _dispatch_interval(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "interval":
         if arg_count == 2:
@@ -78848,7 +78848,7 @@ fn _dispatch_interval(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module interval."
     )
 
-fn _dispatch_inventory(function_name: String, args_array: String) raises -> String:
+def _dispatch_inventory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eoq":
         if arg_count == 3:
@@ -79098,7 +79098,7 @@ fn _dispatch_inventory(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module inventory."
     )
 
-fn _dispatch_json__parser(function_name: String, args_array: String) raises -> String:
+def _dispatch_json__parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "skip_whitespace":
         if arg_count == 2:
@@ -79364,7 +79364,7 @@ fn _dispatch_json__parser(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module json.parser."
     )
 
-fn _dispatch_json__writer(function_name: String, args_array: String) raises -> String:
+def _dispatch_json__writer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "json_escape_string":
         if arg_count == 1:
@@ -79577,7 +79577,7 @@ fn _dispatch_json__writer(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module json.writer."
     )
 
-fn _dispatch_kalman(function_name: String, args_array: String) raises -> String:
+def _dispatch_kalman(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mat_identity":
         if arg_count == 1:
@@ -79772,7 +79772,7 @@ fn _dispatch_kalman(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module kalman."
     )
 
-fn _dispatch_kinetics(function_name: String, args_array: String) raises -> String:
+def _dispatch_kinetics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "reaction_rate_first_order":
         if arg_count == 2:
@@ -80006,7 +80006,7 @@ fn _dispatch_kinetics(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module kinetics."
     )
 
-fn _dispatch_kv_cache(function_name: String, args_array: String) raises -> String:
+def _dispatch_kv_cache(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kv_cache_memory_per_layer":
         if arg_count == 5:
@@ -80240,7 +80240,7 @@ fn _dispatch_kv_cache(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module kv_cache."
     )
 
-fn _dispatch_latency_optimizer(function_name: String, args_array: String) raises -> String:
+def _dispatch_latency_optimizer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "early_exit_confidence":
         if arg_count == 3:
@@ -80478,7 +80478,7 @@ fn _dispatch_latency_optimizer(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module latency_optimizer."
     )
 
-fn _dispatch_laundry(function_name: String, args_array: String) raises -> String:
+def _dispatch_laundry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "water_usage_liters":
         if arg_count == 2:
@@ -80759,7 +80759,7 @@ fn _dispatch_laundry(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module laundry."
     )
 
-fn _dispatch_lidar(function_name: String, args_array: String) raises -> String:
+def _dispatch_lidar(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "range_from_tof":
         if arg_count == 1:
@@ -81082,7 +81082,7 @@ fn _dispatch_lidar(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module lidar."
     )
 
-fn _dispatch_lidar_mapping(function_name: String, args_array: String) raises -> String:
+def _dispatch_lidar_mapping(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "range_from_time_of_flight":
         if arg_count == 1:
@@ -81310,7 +81310,7 @@ fn _dispatch_lidar_mapping(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module lidar_mapping."
     )
 
-fn _dispatch_limnochemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_limnochemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "carbonate_alkalinity":
         if arg_count == 4:
@@ -81565,7 +81565,7 @@ fn _dispatch_limnochemistry(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module limnochemistry."
     )
 
-fn _dispatch_limnology(function_name: String, args_array: String) raises -> String:
+def _dispatch_limnology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lake_volume_ellipsoid":
         if arg_count == 3:
@@ -81791,7 +81791,7 @@ fn _dispatch_limnology(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module limnology."
     )
 
-fn _dispatch_linalg(function_name: String, args_array: String) raises -> String:
+def _dispatch_linalg(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mat_zeros":
         if arg_count == 2:
@@ -82079,7 +82079,7 @@ fn _dispatch_linalg(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module linalg."
     )
 
-fn _dispatch_linalg_ext(function_name: String, args_array: String) raises -> String:
+def _dispatch_linalg_ext(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mat_qr":
         if arg_count == 1:
@@ -82258,7 +82258,7 @@ fn _dispatch_linalg_ext(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module linalg_ext."
     )
 
-fn _dispatch_linear_models(function_name: String, args_array: String) raises -> String:
+def _dispatch_linear_models(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "logistic_fit":
         if arg_count == 5:
@@ -82359,7 +82359,7 @@ fn _dispatch_linear_models(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module linear_models."
     )
 
-fn _dispatch_linear_programming(function_name: String, args_array: String) raises -> String:
+def _dispatch_linear_programming(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "line_intersection_2d":
         if arg_count == 6:
@@ -82533,7 +82533,7 @@ fn _dispatch_linear_programming(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module linear_programming."
     )
 
-fn _dispatch_linguistics(function_name: String, args_array: String) raises -> String:
+def _dispatch_linguistics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "type_token_ratio":
         if arg_count == 2:
@@ -82810,7 +82810,7 @@ fn _dispatch_linguistics(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module linguistics."
     )
 
-fn _dispatch_llm_sampling(function_name: String, args_array: String) raises -> String:
+def _dispatch_llm_sampling(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "temperature_scale":
         if arg_count == 2:
@@ -83064,7 +83064,7 @@ fn _dispatch_llm_sampling(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module llm_sampling."
     )
 
-fn _dispatch_llmk__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_llmk__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "llmk_status_name":
         if arg_count == 1:
@@ -83160,7 +83160,7 @@ fn _dispatch_llmk__contract(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module llmk.contract."
     )
 
-fn _dispatch_llmk__gemv_fast(function_name: String, args_array: String) raises -> String:
+def _dispatch_llmk__gemv_fast(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gemv_transposed_parallel_flat":
         if arg_count == 4:
@@ -83186,7 +83186,7 @@ fn _dispatch_llmk__gemv_fast(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module llmk.gemv_fast."
     )
 
-fn _dispatch_llmk__generate(function_name: String, args_array: String) raises -> String:
+def _dispatch_llmk__generate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kv_cache_append_flat":
         if arg_count == 4:
@@ -83229,7 +83229,7 @@ fn _dispatch_llmk__generate(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module llmk.generate."
     )
 
-fn _dispatch_llmk__residual(function_name: String, args_array: String) raises -> String:
+def _dispatch_llmk__residual(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "residual_add_flat":
         if arg_count == 3:
@@ -83254,7 +83254,7 @@ fn _dispatch_llmk__residual(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module llmk.residual."
     )
 
-fn _dispatch_logging__logger(function_name: String, args_array: String) raises -> String:
+def _dispatch_logging__logger(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "get_logger":
         if arg_count == 1:
@@ -83277,7 +83277,7 @@ fn _dispatch_logging__logger(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module logging.logger."
     )
 
-fn _dispatch_logic_circuit(function_name: String, args_array: String) raises -> String:
+def _dispatch_logic_circuit(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gate_and":
         if arg_count == 2:
@@ -83505,7 +83505,7 @@ fn _dispatch_logic_circuit(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module logic_circuit."
     )
 
-fn _dispatch_logistics(function_name: String, args_array: String) raises -> String:
+def _dispatch_logistics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "vehicle_utilization":
         if arg_count == 2:
@@ -83777,7 +83777,7 @@ fn _dispatch_logistics(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module logistics."
     )
 
-fn _dispatch_lora_adapters(function_name: String, args_array: String) raises -> String:
+def _dispatch_lora_adapters(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lora_forward":
         if arg_count == 4:
@@ -84018,7 +84018,7 @@ fn _dispatch_lora_adapters(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module lora_adapters."
     )
 
-fn _dispatch_loss_functions(function_name: String, args_array: String) raises -> String:
+def _dispatch_loss_functions(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "binary_cross_entropy":
         if arg_count == 2:
@@ -84274,7 +84274,7 @@ fn _dispatch_loss_functions(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module loss_functions."
     )
 
-fn _dispatch_lossk__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_lossk__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "loss_status_name":
         if arg_count == 1:
@@ -84429,7 +84429,7 @@ fn _dispatch_lossk__contract(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module lossk.contract."
     )
 
-fn _dispatch_lossk__cross_entropy(function_name: String, args_array: String) raises -> String:
+def _dispatch_lossk__cross_entropy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ce_peak_logit_cells":
         if arg_count == 3:
@@ -84537,7 +84537,7 @@ fn _dispatch_lossk__cross_entropy(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module lossk.cross_entropy."
     )
 
-fn _dispatch_lottery(function_name: String, args_array: String) raises -> String:
+def _dispatch_lottery(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "combinations":
         if arg_count == 2:
@@ -84809,7 +84809,7 @@ fn _dispatch_lottery(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module lottery."
     )
 
-fn _dispatch_magnetism(function_name: String, args_array: String) raises -> String:
+def _dispatch_magnetism(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "biot_savart_infinite_wire":
         if arg_count == 2:
@@ -85047,7 +85047,7 @@ fn _dispatch_magnetism(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module magnetism."
     )
 
-fn _dispatch_marine(function_name: String, args_array: String) raises -> String:
+def _dispatch_marine(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "seawater_density":
         if arg_count == 2:
@@ -85319,7 +85319,7 @@ fn _dispatch_marine(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module marine."
     )
 
-fn _dispatch_materials(function_name: String, args_array: String) raises -> String:
+def _dispatch_materials(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "youngs_modulus":
         if arg_count == 2:
@@ -85594,7 +85594,7 @@ fn _dispatch_materials(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module materials."
     )
 
-fn _dispatch_matrix_decomp(function_name: String, args_array: String) raises -> String:
+def _dispatch_matrix_decomp(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "det_2x2":
         if arg_count == 1:
@@ -85807,7 +85807,7 @@ fn _dispatch_matrix_decomp(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module matrix_decomp."
     )
 
-fn _dispatch_matrix_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_matrix_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kronecker_product":
         if arg_count == 2:
@@ -86047,7 +86047,7 @@ fn _dispatch_matrix_ops(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module matrix_ops."
     )
 
-fn _dispatch_memory_system(function_name: String, args_array: String) raises -> String:
+def _dispatch_memory_system(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pool_fragmentation_ratio":
         if arg_count == 2:
@@ -86280,7 +86280,7 @@ fn _dispatch_memory_system(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module memory_system."
     )
 
-fn _dispatch_metabolomics(function_name: String, args_array: String) raises -> String:
+def _dispatch_metabolomics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "metabolite_fold_change":
         if arg_count == 2:
@@ -86511,7 +86511,7 @@ fn _dispatch_metabolomics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module metabolomics."
     )
 
-fn _dispatch_metaldispatch__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_metaldispatch__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "metaldispatch_status_name":
         if arg_count == 1:
@@ -86550,7 +86550,7 @@ fn _dispatch_metaldispatch__contract(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module metaldispatch.contract."
     )
 
-fn _dispatch_metaldispatch__qwen3_decode(function_name: String, args_array: String) raises -> String:
+def _dispatch_metaldispatch__qwen3_decode(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "qwen3_i8_allsimd7_decode_flat":
         if arg_count == 2:
@@ -86574,7 +86574,7 @@ fn _dispatch_metaldispatch__qwen3_decode(function_name: String, args_array: Stri
         "Function '" + function_name + "' is not registered for module metaldispatch.qwen3_decode."
     )
 
-fn _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_array: String) raises -> String:
+def _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "qwen3_i8_allsimd7_prefill_decode_flat":
         if arg_count == 2:
@@ -86598,7 +86598,7 @@ fn _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_arr
         "Function '" + function_name + "' is not registered for module metaldispatch.qwen3_prefill_decode."
     )
 
-fn _dispatch_metallurgy(function_name: String, args_array: String) raises -> String:
+def _dispatch_metallurgy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hall_petch":
         if arg_count == 3:
@@ -86885,7 +86885,7 @@ fn _dispatch_metallurgy(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module metallurgy."
     )
 
-fn _dispatch_meteorology(function_name: String, args_array: String) raises -> String:
+def _dispatch_meteorology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dew_point":
         if arg_count == 2:
@@ -87111,7 +87111,7 @@ fn _dispatch_meteorology(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module meteorology."
     )
 
-fn _dispatch_metrics_agg(function_name: String, args_array: String) raises -> String:
+def _dispatch_metrics_agg(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "counter_create":
         if arg_count == 1:
@@ -87370,7 +87370,7 @@ fn _dispatch_metrics_agg(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module metrics_agg."
     )
 
-fn _dispatch_microbiology(function_name: String, args_array: String) raises -> String:
+def _dispatch_microbiology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "exponential_growth":
         if arg_count == 3:
@@ -87602,7 +87602,7 @@ fn _dispatch_microbiology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module microbiology."
     )
 
-fn _dispatch_mineralogy(function_name: String, args_array: String) raises -> String:
+def _dispatch_mineralogy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mineral_density":
         if arg_count == 2:
@@ -87834,7 +87834,7 @@ fn _dispatch_mineralogy(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module mineralogy."
     )
 
-fn _dispatch_mining(function_name: String, args_array: String) raises -> String:
+def _dispatch_mining(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ore_grade":
         if arg_count == 2:
@@ -88110,7 +88110,7 @@ fn _dispatch_mining(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module mining."
     )
 
-fn _dispatch_mixture_models(function_name: String, args_array: String) raises -> String:
+def _dispatch_mixture_models(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gmm_fit_nd":
         if arg_count == 7:
@@ -88223,7 +88223,7 @@ fn _dispatch_mixture_models(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module mixture_models."
     )
 
-fn _dispatch_mixture_of_experts(function_name: String, args_array: String) raises -> String:
+def _dispatch_mixture_of_experts(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "topk_gate_score":
         if arg_count == 2:
@@ -88452,7 +88452,7 @@ fn _dispatch_mixture_of_experts(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module mixture_of_experts."
     )
 
-fn _dispatch_ml__classifiers(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__classifiers(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euclidean_distance":
         if arg_count == 2:
@@ -88616,7 +88616,7 @@ fn _dispatch_ml__classifiers(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module ml.classifiers."
     )
 
-fn _dispatch_ml__clustering(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__clustering(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euclidean_distance":
         if arg_count == 2:
@@ -88728,7 +88728,7 @@ fn _dispatch_ml__clustering(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module ml.clustering."
     )
 
-fn _dispatch_ml__knn(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__knn(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euclidean_distance_knn":
         if arg_count == 2:
@@ -88935,7 +88935,7 @@ fn _dispatch_ml__knn(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module ml.knn."
     )
 
-fn _dispatch_ml__metrics(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__metrics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "accuracy":
         if arg_count == 2:
@@ -89087,7 +89087,7 @@ fn _dispatch_ml__metrics(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module ml.metrics."
     )
 
-fn _dispatch_ml__naive_bayes(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__naive_bayes(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "compute_priors":
         if arg_count == 2:
@@ -89246,7 +89246,7 @@ fn _dispatch_ml__naive_bayes(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module ml.naive_bayes."
     )
 
-fn _dispatch_ml__preprocessing(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__preprocessing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "normalize_minmax":
         if arg_count == 1:
@@ -89353,7 +89353,7 @@ fn _dispatch_ml__preprocessing(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module ml.preprocessing."
     )
 
-fn _dispatch_ml__random_forest(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml__random_forest(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bootstrap_indices":
         if arg_count == 2:
@@ -89522,7 +89522,7 @@ fn _dispatch_ml__random_forest(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module ml.random_forest."
     )
 
-fn _dispatch_ml_metrics_extended(function_name: String, args_array: String) raises -> String:
+def _dispatch_ml_metrics_extended(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "auc_trapezoid":
         if arg_count == 4:
@@ -89754,7 +89754,7 @@ fn _dispatch_ml_metrics_extended(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module ml_metrics_extended."
     )
 
-fn _dispatch_mlpk__activation(function_name: String, args_array: String) raises -> String:
+def _dispatch_mlpk__activation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mlp_gelu_erf":
         if arg_count == 1:
@@ -89904,7 +89904,7 @@ fn _dispatch_mlpk__activation(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module mlpk.activation."
     )
 
-fn _dispatch_mlpk__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_mlpk__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mlp_status_name":
         if arg_count == 1:
@@ -90110,7 +90110,7 @@ fn _dispatch_mlpk__contract(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module mlpk.contract."
     )
 
-fn _dispatch_mlpk__embedding(function_name: String, args_array: String) raises -> String:
+def _dispatch_mlpk__embedding(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "embedding_ids_in_range":
         if arg_count == 3:
@@ -90175,7 +90175,7 @@ fn _dispatch_mlpk__embedding(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module mlpk.embedding."
     )
 
-fn _dispatch_mlpk__gated_ffn(function_name: String, args_array: String) raises -> String:
+def _dispatch_mlpk__gated_ffn(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gate_bytes_moved":
         if arg_count == 1:
@@ -90301,7 +90301,7 @@ fn _dispatch_mlpk__gated_ffn(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module mlpk.gated_ffn."
     )
 
-fn _dispatch_model_abi(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_abi(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tensor_layout_stride":
         if arg_count == 3:
@@ -90538,7 +90538,7 @@ fn _dispatch_model_abi(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module model_abi."
     )
 
-fn _dispatch_model_compare(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_compare(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "paired_bootstrap_diff_ci":
         if arg_count == 5:
@@ -90625,7 +90625,7 @@ fn _dispatch_model_compare(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module model_compare."
     )
 
-fn _dispatch_model_interop(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_interop(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "safetensors_tensor_offset":
         if arg_count == 2:
@@ -90858,7 +90858,7 @@ fn _dispatch_model_interop(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module model_interop."
     )
 
-fn _dispatch_model_parallel(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_parallel(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "data_parallel_gradient_scale":
         if arg_count == 1:
@@ -91088,7 +91088,7 @@ fn _dispatch_model_parallel(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module model_parallel."
     )
 
-fn _dispatch_model_router(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_router(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "capability_match_score":
         if arg_count == 4:
@@ -91327,7 +91327,7 @@ fn _dispatch_model_router(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module model_router."
     )
 
-fn _dispatch_model_selection(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_selection(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "walk_forward_splits":
         if arg_count == 4:
@@ -91427,7 +91427,7 @@ fn _dispatch_model_selection(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module model_selection."
     )
 
-fn _dispatch_model_serialization(function_name: String, args_array: String) raises -> String:
+def _dispatch_model_serialization(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "weight_quantization_bits":
         if arg_count == 1:
@@ -91659,7 +91659,7 @@ fn _dispatch_model_serialization(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module model_serialization."
     )
 
-fn _dispatch_moe_production(function_name: String, args_array: String) raises -> String:
+def _dispatch_moe_production(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "token_drop_fraction":
         if arg_count == 2:
@@ -91891,7 +91891,7 @@ fn _dispatch_moe_production(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module moe_production."
     )
 
-fn _dispatch_moe_routing(function_name: String, args_array: String) raises -> String:
+def _dispatch_moe_routing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "noisy_top_k_gate":
         if arg_count == 3:
@@ -92126,7 +92126,7 @@ fn _dispatch_moe_routing(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module moe_routing."
     )
 
-fn _dispatch_multi_objective(function_name: String, args_array: String) raises -> String:
+def _dispatch_multi_objective(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "is_dominated":
         if arg_count == 3:
@@ -92258,7 +92258,7 @@ fn _dispatch_multi_objective(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module multi_objective."
     )
 
-fn _dispatch_multimodal(function_name: String, args_array: String) raises -> String:
+def _dispatch_multimodal(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "image_patch_embed":
         if arg_count == 3:
@@ -92490,7 +92490,7 @@ fn _dispatch_multimodal(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module multimodal."
     )
 
-fn _dispatch_museum(function_name: String, args_array: String) raises -> String:
+def _dispatch_museum(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lux_hours_annual":
         if arg_count == 3:
@@ -92766,7 +92766,7 @@ fn _dispatch_museum(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module museum."
     )
 
-fn _dispatch_music_theory(function_name: String, args_array: String) raises -> String:
+def _dispatch_music_theory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frequency_from_midi":
         if arg_count == 1:
@@ -93004,7 +93004,7 @@ fn _dispatch_music_theory(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module music_theory."
     )
 
-fn _dispatch_mycology(function_name: String, args_array: String) raises -> String:
+def _dispatch_mycology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "spore_dispersal_distance":
         if arg_count == 3:
@@ -93237,7 +93237,7 @@ fn _dispatch_mycology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module mycology."
     )
 
-fn _dispatch_nanotechnology(function_name: String, args_array: String) raises -> String:
+def _dispatch_nanotechnology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "surface_to_volume_sphere":
         if arg_count == 1:
@@ -93510,7 +93510,7 @@ fn _dispatch_nanotechnology(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module nanotechnology."
     )
 
-fn _dispatch_nephrology(function_name: String, args_array: String) raises -> String:
+def _dispatch_nephrology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gfr_ckd_epi":
         if arg_count == 3:
@@ -93747,7 +93747,7 @@ fn _dispatch_nephrology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module nephrology."
     )
 
-fn _dispatch_net__url(function_name: String, args_array: String) raises -> String:
+def _dispatch_net__url(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "url_parse":
         if arg_count == 1:
@@ -93867,7 +93867,7 @@ fn _dispatch_net__url(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module net.url."
     )
 
-fn _dispatch_network_analysis(function_name: String, args_array: String) raises -> String:
+def _dispatch_network_analysis(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "degree":
         if arg_count == 2:
@@ -94107,7 +94107,7 @@ fn _dispatch_network_analysis(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module network_analysis."
     )
 
-fn _dispatch_network_protocol(function_name: String, args_array: String) raises -> String:
+def _dispatch_network_protocol(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "http_status_text":
         if arg_count == 1:
@@ -94291,7 +94291,7 @@ fn _dispatch_network_protocol(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module network_protocol."
     )
 
-fn _dispatch_neuropharmacology(function_name: String, args_array: String) raises -> String:
+def _dispatch_neuropharmacology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "receptor_occupancy_brain":
         if arg_count == 3:
@@ -94525,7 +94525,7 @@ fn _dispatch_neuropharmacology(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module neuropharmacology."
     )
 
-fn _dispatch_neurophysics(function_name: String, args_array: String) raises -> String:
+def _dispatch_neurophysics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "nernst_potential":
         if arg_count == 4:
@@ -94765,7 +94765,7 @@ fn _dispatch_neurophysics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module neurophysics."
     )
 
-fn _dispatch_nlp(function_name: String, args_array: String) raises -> String:
+def _dispatch_nlp(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tokenize":
         if arg_count == 1:
@@ -94980,7 +94980,7 @@ fn _dispatch_nlp(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module nlp."
     )
 
-fn _dispatch_nn_layers(function_name: String, args_array: String) raises -> String:
+def _dispatch_nn_layers(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dense_forward":
         if arg_count == 3:
@@ -95216,7 +95216,7 @@ fn _dispatch_nn_layers(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module nn_layers."
     )
 
-fn _dispatch_normalization_layers(function_name: String, args_array: String) raises -> String:
+def _dispatch_normalization_layers(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "layer_norm":
         if arg_count == 6:
@@ -95464,7 +95464,7 @@ fn _dispatch_normalization_layers(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module normalization_layers."
     )
 
-fn _dispatch_normk__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_normk__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "norm_status_name":
         if arg_count == 1:
@@ -95561,7 +95561,7 @@ fn _dispatch_normk__contract(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module normk.contract."
     )
 
-fn _dispatch_normk__layernorm(function_name: String, args_array: String) raises -> String:
+def _dispatch_normk__layernorm(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "layernorm_fwd_flat":
         if arg_count == 6:
@@ -95651,7 +95651,7 @@ fn _dispatch_normk__layernorm(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module normk.layernorm."
     )
 
-fn _dispatch_normk__rmsnorm(function_name: String, args_array: String) raises -> String:
+def _dispatch_normk__rmsnorm(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rmsnorm_fwd_flat":
         if arg_count == 5:
@@ -95740,7 +95740,7 @@ fn _dispatch_normk__rmsnorm(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module normk.rmsnorm."
     )
 
-fn _dispatch_nuclear(function_name: String, args_array: String) raises -> String:
+def _dispatch_nuclear(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "radioactive_decay":
         if arg_count == 3:
@@ -96017,7 +96017,7 @@ fn _dispatch_nuclear(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module nuclear."
     )
 
-fn _dispatch_number_theory(function_name: String, args_array: String) raises -> String:
+def _dispatch_number_theory(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "is_prime":
         if arg_count == 1:
@@ -96223,7 +96223,7 @@ fn _dispatch_number_theory(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module number_theory."
     )
 
-fn _dispatch_numerical_stability(function_name: String, args_array: String) raises -> String:
+def _dispatch_numerical_stability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "logsumexp":
         if arg_count == 1:
@@ -96483,7 +96483,7 @@ fn _dispatch_numerical_stability(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module numerical_stability."
     )
 
-fn _dispatch_numismatics(function_name: String, args_array: String) raises -> String:
+def _dispatch_numismatics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "melt_value":
         if arg_count == 2:
@@ -96755,7 +96755,7 @@ fn _dispatch_numismatics(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module numismatics."
     )
 
-fn _dispatch_numpy_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_numpy_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "np_clip":
         if arg_count == 3:
@@ -96981,7 +96981,7 @@ fn _dispatch_numpy_ops(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module numpy_ops."
     )
 
-fn _dispatch_nutrition(function_name: String, args_array: String) raises -> String:
+def _dispatch_nutrition(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bmi":
         if arg_count == 2:
@@ -97234,7 +97234,7 @@ fn _dispatch_nutrition(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module nutrition."
     )
 
-fn _dispatch_observability(function_name: String, args_array: String) raises -> String:
+def _dispatch_observability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "p99_latency_estimate":
         if arg_count == 2:
@@ -97471,7 +97471,7 @@ fn _dispatch_observability(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module observability."
     )
 
-fn _dispatch_oceanography(function_name: String, args_array: String) raises -> String:
+def _dispatch_oceanography(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "seawater_density":
         if arg_count == 2:
@@ -97702,7 +97702,7 @@ fn _dispatch_oceanography(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module oceanography."
     )
 
-fn _dispatch_ode(function_name: String, args_array: String) raises -> String:
+def _dispatch_ode(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euler_step":
         if arg_count == 3:
@@ -97876,7 +97876,7 @@ fn _dispatch_ode(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module ode."
     )
 
-fn _dispatch_online_learning(function_name: String, args_array: String) raises -> String:
+def _dispatch_online_learning(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "exponential_moving_average":
         if arg_count == 3:
@@ -98125,7 +98125,7 @@ fn _dispatch_online_learning(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module online_learning."
     )
 
-fn _dispatch_operations_research(function_name: String, args_array: String) raises -> String:
+def _dispatch_operations_research(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "simplex_objective_value_2":
         if arg_count == 4:
@@ -98432,7 +98432,7 @@ fn _dispatch_operations_research(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module operations_research."
     )
 
-fn _dispatch_ophthalmology(function_name: String, args_array: String) raises -> String:
+def _dispatch_ophthalmology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "visual_acuity_decimal":
         if arg_count == 2:
@@ -98662,7 +98662,7 @@ fn _dispatch_ophthalmology(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module ophthalmology."
     )
 
-fn _dispatch_optics(function_name: String, args_array: String) raises -> String:
+def _dispatch_optics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "snells_law":
         if arg_count == 3:
@@ -98888,7 +98888,7 @@ fn _dispatch_optics(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module optics."
     )
 
-fn _dispatch_optimization__assignment(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__assignment(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "assign_status_name":
         if arg_count == 1:
@@ -99028,7 +99028,7 @@ fn _dispatch_optimization__assignment(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module optimization.assignment."
     )
 
-fn _dispatch_optimization__explain(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__explain(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "explain_status_name":
         if arg_count == 1:
@@ -99276,7 +99276,7 @@ fn _dispatch_optimization__explain(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module optimization.explain."
     )
 
-fn _dispatch_optimization__flow(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__flow(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "flow_status_name":
         if arg_count == 1:
@@ -99480,7 +99480,7 @@ fn _dispatch_optimization__flow(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module optimization.flow."
     )
 
-fn _dispatch_optimization__integer(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__integer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "milp_status_name":
         if arg_count == 1:
@@ -99632,7 +99632,7 @@ fn _dispatch_optimization__integer(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module optimization.integer."
     )
 
-fn _dispatch_optimization__linear(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__linear(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lin_status_name":
         if arg_count == 1:
@@ -99836,7 +99836,7 @@ fn _dispatch_optimization__linear(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module optimization.linear."
     )
 
-fn _dispatch_optimization__model(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__model(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "model_status_name":
         if arg_count == 1:
@@ -100519,7 +100519,7 @@ fn _dispatch_optimization__model(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module optimization.model."
     )
 
-fn _dispatch_optimization__multiobjective(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__multiobjective(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mo_status_name":
         if arg_count == 1:
@@ -100816,7 +100816,7 @@ fn _dispatch_optimization__multiobjective(function_name: String, args_array: Str
         "Function '" + function_name + "' is not registered for module optimization.multiobjective."
     )
 
-fn _dispatch_optimization__quadratic(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__quadratic(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "qp_status_name":
         if arg_count == 1:
@@ -101009,7 +101009,7 @@ fn _dispatch_optimization__quadratic(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module optimization.quadratic."
     )
 
-fn _dispatch_optimization__robust(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__robust(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "robust_status_name":
         if arg_count == 1:
@@ -101230,7 +101230,7 @@ fn _dispatch_optimization__robust(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module optimization.robust."
     )
 
-fn _dispatch_optimization__routing(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__routing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "route_status_name":
         if arg_count == 1:
@@ -101526,7 +101526,7 @@ fn _dispatch_optimization__routing(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module optimization.routing."
     )
 
-fn _dispatch_optimization__scheduling(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization__scheduling(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sched_status_name":
         if arg_count == 1:
@@ -101741,7 +101741,7 @@ fn _dispatch_optimization__scheduling(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module optimization.scheduling."
     )
 
-fn _dispatch_optimization_constrained(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization_constrained(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_objective_c":
         if arg_count == 2:
@@ -101941,7 +101941,7 @@ fn _dispatch_optimization_constrained(function_name: String, args_array: String)
         "Function '" + function_name + "' is not registered for module optimization_constrained."
     )
 
-fn _dispatch_optimization_meta(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimization_meta(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_objective":
         if arg_count == 2:
@@ -102090,7 +102090,7 @@ fn _dispatch_optimization_meta(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module optimization_meta."
     )
 
-fn _dispatch_optimize(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimize(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_poly":
         if arg_count == 2:
@@ -102402,7 +102402,7 @@ fn _dispatch_optimize(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module optimize."
     )
 
-fn _dispatch_optimizer_full(function_name: String, args_array: String) raises -> String:
+def _dispatch_optimizer_full(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lbfgs_two_loop_scale":
         if arg_count == 2:
@@ -102661,7 +102661,7 @@ fn _dispatch_optimizer_full(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module optimizer_full."
     )
 
-fn _dispatch_option_greeks_batch(function_name: String, args_array: String) raises -> String:
+def _dispatch_option_greeks_batch(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "chain_greeks":
         if arg_count == 6:
@@ -102689,7 +102689,7 @@ fn _dispatch_option_greeks_batch(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module option_greeks_batch."
     )
 
-fn _dispatch_option_pricing(function_name: String, args_array: String) raises -> String:
+def _dispatch_option_pricing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "norm_cdf":
         if arg_count == 1:
@@ -102944,7 +102944,7 @@ fn _dispatch_option_pricing(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module option_pricing."
     )
 
-fn _dispatch_optmodel__formulation(function_name: String, args_array: String) raises -> String:
+def _dispatch_optmodel__formulation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "optm_status_name":
         if arg_count == 1:
@@ -103064,7 +103064,7 @@ fn _dispatch_optmodel__formulation(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module optmodel.formulation."
     )
 
-fn _dispatch_optmodel__judge(function_name: String, args_array: String) raises -> String:
+def _dispatch_optmodel__judge(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "judge_objective":
         if arg_count == 4:
@@ -103154,7 +103154,7 @@ fn _dispatch_optmodel__judge(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module optmodel.judge."
     )
 
-fn _dispatch_optmodel__solve(function_name: String, args_array: String) raises -> String:
+def _dispatch_optmodel__solve(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "formulation_solve_flat":
         if arg_count == 17:
@@ -103221,7 +103221,7 @@ fn _dispatch_optmodel__solve(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module optmodel.solve."
     )
 
-fn _dispatch_orthodontics(function_name: String, args_array: String) raises -> String:
+def _dispatch_orthodontics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tooth_movement_rate":
         if arg_count == 2:
@@ -103454,7 +103454,7 @@ fn _dispatch_orthodontics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module orthodontics."
     )
 
-fn _dispatch_packaging(function_name: String, args_array: String) raises -> String:
+def _dispatch_packaging(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "box_volume":
         if arg_count == 3:
@@ -103734,7 +103734,7 @@ fn _dispatch_packaging(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module packaging."
     )
 
-fn _dispatch_paged_kv_cache(function_name: String, args_array: String) raises -> String:
+def _dispatch_paged_kv_cache(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "page_table_lookup":
         if arg_count == 2:
@@ -103978,7 +103978,7 @@ fn _dispatch_paged_kv_cache(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module paged_kv_cache."
     )
 
-fn _dispatch_paleomagnetism(function_name: String, args_array: String) raises -> String:
+def _dispatch_paleomagnetism(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "virtual_geomagnetic_pole_lat":
         if arg_count == 1:
@@ -104267,7 +104267,7 @@ fn _dispatch_paleomagnetism(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module paleomagnetism."
     )
 
-fn _dispatch_paleontology(function_name: String, args_array: String) raises -> String:
+def _dispatch_paleontology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "radiocarbon_age":
         if arg_count == 2:
@@ -104539,7 +104539,7 @@ fn _dispatch_paleontology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module paleontology."
     )
 
-fn _dispatch_palynology(function_name: String, args_array: String) raises -> String:
+def _dispatch_palynology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pollen_concentration":
         if arg_count == 4:
@@ -104770,7 +104770,7 @@ fn _dispatch_palynology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module palynology."
     )
 
-fn _dispatch_pandas_groupby(function_name: String, args_array: String) raises -> String:
+def _dispatch_pandas_groupby(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "group_mean_update":
         if arg_count == 3:
@@ -105002,7 +105002,7 @@ fn _dispatch_pandas_groupby(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module pandas_groupby."
     )
 
-fn _dispatch_paper_science(function_name: String, args_array: String) raises -> String:
+def _dispatch_paper_science(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "basis_weight":
         if arg_count == 2:
@@ -105271,7 +105271,7 @@ fn _dispatch_paper_science(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module paper_science."
     )
 
-fn _dispatch_pattern(function_name: String, args_array: String) raises -> String:
+def _dispatch_pattern(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "glob_match":
         if arg_count == 2:
@@ -105509,7 +105509,7 @@ fn _dispatch_pattern(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module pattern."
     )
 
-fn _dispatch_pde(function_name: String, args_array: String) raises -> String:
+def _dispatch_pde(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "heat_equation_1d":
         if arg_count == 5:
@@ -105714,7 +105714,7 @@ fn _dispatch_pde(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module pde."
     )
 
-fn _dispatch_pedology(function_name: String, args_array: String) raises -> String:
+def _dispatch_pedology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "soil_development_index":
         if arg_count == 3:
@@ -105945,7 +105945,7 @@ fn _dispatch_pedology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module pedology."
     )
 
-fn _dispatch_pension(function_name: String, args_array: String) raises -> String:
+def _dispatch_pension(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "replacement_ratio":
         if arg_count == 2:
@@ -106222,7 +106222,7 @@ fn _dispatch_pension(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module pension."
     )
 
-fn _dispatch_perceptual_hash(function_name: String, args_array: String) raises -> String:
+def _dispatch_perceptual_hash(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ahash":
         if arg_count == 1:
@@ -106366,7 +106366,7 @@ fn _dispatch_perceptual_hash(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module perceptual_hash."
     )
 
-fn _dispatch_perfumery(function_name: String, args_array: String) raises -> String:
+def _dispatch_perfumery(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "concentration_parfum":
         if arg_count == 2:
@@ -106627,7 +106627,7 @@ fn _dispatch_perfumery(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module perfumery."
     )
 
-fn _dispatch_persistence(function_name: String, args_array: String) raises -> String:
+def _dispatch_persistence(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kv_create":
         if arg_count == 0:
@@ -106828,7 +106828,7 @@ fn _dispatch_persistence(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module persistence."
     )
 
-fn _dispatch_pest_control(function_name: String, args_array: String) raises -> String:
+def _dispatch_pest_control(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "economic_threshold":
         if arg_count == 3:
@@ -107103,7 +107103,7 @@ fn _dispatch_pest_control(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module pest_control."
     )
 
-fn _dispatch_petri_net(function_name: String, args_array: String) raises -> String:
+def _dispatch_petri_net(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "is_transition_enabled_2p":
         if arg_count == 4:
@@ -107357,7 +107357,7 @@ fn _dispatch_petri_net(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module petri_net."
     )
 
-fn _dispatch_pharmacokinetics(function_name: String, args_array: String) raises -> String:
+def _dispatch_pharmacokinetics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "one_compartment_oral":
         if arg_count == 5:
@@ -107635,7 +107635,7 @@ fn _dispatch_pharmacokinetics(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module pharmacokinetics."
     )
 
-fn _dispatch_pharmacology(function_name: String, args_array: String) raises -> String:
+def _dispatch_pharmacology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hill_equation":
         if arg_count == 4:
@@ -107869,7 +107869,7 @@ fn _dispatch_pharmacology(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module pharmacology."
     )
 
-fn _dispatch_photonics(function_name: String, args_array: String) raises -> String:
+def _dispatch_photonics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "snells_law_angle":
         if arg_count == 3:
@@ -108138,7 +108138,7 @@ fn _dispatch_photonics(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module photonics."
     )
 
-fn _dispatch_photovoltaics(function_name: String, args_array: String) raises -> String:
+def _dispatch_photovoltaics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cell_efficiency":
         if arg_count == 3:
@@ -108374,7 +108374,7 @@ fn _dispatch_photovoltaics(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module photovoltaics."
     )
 
-fn _dispatch_physics(function_name: String, args_array: String) raises -> String:
+def _dispatch_physics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kinematic_distance":
         if arg_count == 3:
@@ -108740,7 +108740,7 @@ fn _dispatch_physics(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module physics."
     )
 
-fn _dispatch_phytochemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_phytochemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "phenolic_content_folin":
         if arg_count == 4:
@@ -108976,7 +108976,7 @@ fn _dispatch_phytochemistry(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module phytochemistry."
     )
 
-fn _dispatch_pipeline(function_name: String, args_array: String) raises -> String:
+def _dispatch_pipeline(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "map_list":
         if arg_count == 2:
@@ -109204,7 +109204,7 @@ fn _dispatch_pipeline(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module pipeline."
     )
 
-fn _dispatch_pipelines(function_name: String, args_array: String) raises -> String:
+def _dispatch_pipelines(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "step_param_count":
         if arg_count == 2:
@@ -109300,7 +109300,7 @@ fn _dispatch_pipelines(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module pipelines."
     )
 
-fn _dispatch_plasma_physics(function_name: String, args_array: String) raises -> String:
+def _dispatch_plasma_physics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "debye_length":
         if arg_count == 2:
@@ -109531,7 +109531,7 @@ fn _dispatch_plasma_physics(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module plasma_physics."
     )
 
-fn _dispatch_pls(function_name: String, args_array: String) raises -> String:
+def _dispatch_pls(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pls_fit":
         if arg_count == 7:
@@ -109624,7 +109624,7 @@ fn _dispatch_pls(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module pls."
     )
 
-fn _dispatch_plumbing(function_name: String, args_array: String) raises -> String:
+def _dispatch_plumbing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pipe_flow_velocity":
         if arg_count == 2:
@@ -109904,7 +109904,7 @@ fn _dispatch_plumbing(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module plumbing."
     )
 
-fn _dispatch_pneumatics(function_name: String, args_array: String) raises -> String:
+def _dispatch_pneumatics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ideal_gas_volume":
         if arg_count == 3:
@@ -110187,7 +110187,7 @@ fn _dispatch_pneumatics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module pneumatics."
     )
 
-fn _dispatch_polymer(function_name: String, args_array: String) raises -> String:
+def _dispatch_polymer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "degree_of_polymerization":
         if arg_count == 2:
@@ -110461,7 +110461,7 @@ fn _dispatch_polymer(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module polymer."
     )
 
-fn _dispatch_polynomial(function_name: String, args_array: String) raises -> String:
+def _dispatch_polynomial(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "poly_eval":
         if arg_count == 2:
@@ -110652,7 +110652,7 @@ fn _dispatch_polynomial(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module polynomial."
     )
 
-fn _dispatch_population(function_name: String, args_array: String) raises -> String:
+def _dispatch_population(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "exponential_growth":
         if arg_count == 3:
@@ -110874,7 +110874,7 @@ fn _dispatch_population(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module population."
     )
 
-fn _dispatch_population_genetics(function_name: String, args_array: String) raises -> String:
+def _dispatch_population_genetics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hardy_weinberg_freq":
         if arg_count == 1:
@@ -111103,7 +111103,7 @@ fn _dispatch_population_genetics(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module population_genetics."
     )
 
-fn _dispatch_positional_encoding(function_name: String, args_array: String) raises -> String:
+def _dispatch_positional_encoding(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sinusoidal_pe":
         if arg_count == 3:
@@ -111338,7 +111338,7 @@ fn _dispatch_positional_encoding(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module positional_encoding."
     )
 
-fn _dispatch_power_systems(function_name: String, args_array: String) raises -> String:
+def _dispatch_power_systems(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "active_power":
         if arg_count == 3:
@@ -111614,7 +111614,7 @@ fn _dispatch_power_systems(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module power_systems."
     )
 
-fn _dispatch_printing(function_name: String, args_array: String) raises -> String:
+def _dispatch_printing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dpi_to_lpi":
         if arg_count == 2:
@@ -111887,7 +111887,7 @@ fn _dispatch_printing(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module printing."
     )
 
-fn _dispatch_privacy(function_name: String, args_array: String) raises -> String:
+def _dispatch_privacy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "laplace_mechanism":
         if arg_count == 3:
@@ -112108,7 +112108,7 @@ fn _dispatch_privacy(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module privacy."
     )
 
-fn _dispatch_probability(function_name: String, args_array: String) raises -> String:
+def _dispatch_probability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bayes":
         if arg_count == 3:
@@ -112356,7 +112356,7 @@ fn _dispatch_probability(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module probability."
     )
 
-fn _dispatch_procurement(function_name: String, args_array: String) raises -> String:
+def _dispatch_procurement(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "total_cost_of_ownership":
         if arg_count == 4:
@@ -112633,7 +112633,7 @@ fn _dispatch_procurement(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module procurement."
     )
 
-fn _dispatch_progexec__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_progexec__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "progexec_status_name":
         if arg_count == 1:
@@ -112656,7 +112656,7 @@ fn _dispatch_progexec__contract(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module progexec.contract."
     )
 
-fn _dispatch_progexec__exec(function_name: String, args_array: String) raises -> String:
+def _dispatch_progexec__exec(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "progexec_run_flat":
         if arg_count == 9:
@@ -112687,7 +112687,7 @@ fn _dispatch_progexec__exec(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module progexec.exec."
     )
 
-fn _dispatch_progexec__roundexact(function_name: String, args_array: String) raises -> String:
+def _dispatch_progexec__roundexact(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "round_half_even_scaled":
         if arg_count == 2:
@@ -112716,7 +112716,7 @@ fn _dispatch_progexec__roundexact(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module progexec.roundexact."
     )
 
-fn _dispatch_project_management(function_name: String, args_array: String) raises -> String:
+def _dispatch_project_management(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "earned_value":
         if arg_count == 2:
@@ -112988,7 +112988,7 @@ fn _dispatch_project_management(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module project_management."
     )
 
-fn _dispatch_propensity(function_name: String, args_array: String) raises -> String:
+def _dispatch_propensity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "propensity_scores":
         if arg_count == 2:
@@ -113178,7 +113178,7 @@ fn _dispatch_propensity(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module propensity."
     )
 
-fn _dispatch_proteomics(function_name: String, args_array: String) raises -> String:
+def _dispatch_proteomics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "molecular_weight_da":
         if arg_count == 2:
@@ -113406,7 +113406,7 @@ fn _dispatch_proteomics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module proteomics."
     )
 
-fn _dispatch_protocol(function_name: String, args_array: String) raises -> String:
+def _dispatch_protocol(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "encode_varint":
         if arg_count == 1:
@@ -113579,7 +113579,7 @@ fn _dispatch_protocol(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module protocol."
     )
 
-fn _dispatch_psychoacoustics(function_name: String, args_array: String) raises -> String:
+def _dispatch_psychoacoustics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "loudness_phon_to_sone":
         if arg_count == 1:
@@ -113804,7 +113804,7 @@ fn _dispatch_psychoacoustics(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module psychoacoustics."
     )
 
-fn _dispatch_psychometrics(function_name: String, args_array: String) raises -> String:
+def _dispatch_psychometrics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "item_difficulty":
         if arg_count == 2:
@@ -114076,7 +114076,7 @@ fn _dispatch_psychometrics(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module psychometrics."
     )
 
-fn _dispatch_pulmonology(function_name: String, args_array: String) raises -> String:
+def _dispatch_pulmonology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tidal_volume_predicted":
         if arg_count == 1:
@@ -114304,7 +114304,7 @@ fn _dispatch_pulmonology(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module pulmonology."
     )
 
-fn _dispatch_quantization(function_name: String, args_array: String) raises -> String:
+def _dispatch_quantization(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "quantize_symmetric":
         if arg_count == 2:
@@ -114532,7 +114532,7 @@ fn _dispatch_quantization(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module quantization."
     )
 
-fn _dispatch_quantization_stack(function_name: String, args_array: String) raises -> String:
+def _dispatch_quantization_stack(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bf16_to_fp32_round":
         if arg_count == 1:
@@ -114760,7 +114760,7 @@ fn _dispatch_quantization_stack(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module quantization_stack."
     )
 
-fn _dispatch_quantum(function_name: String, args_array: String) raises -> String:
+def _dispatch_quantum(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "qubit_zero":
         if arg_count == 0:
@@ -114951,7 +114951,7 @@ fn _dispatch_quantum(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module quantum."
     )
 
-fn _dispatch_quantum_computing(function_name: String, args_array: String) raises -> String:
+def _dispatch_quantum_computing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "qubit_state_probability":
         if arg_count == 1:
@@ -115199,7 +115199,7 @@ fn _dispatch_quantum_computing(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module quantum_computing."
     )
 
-fn _dispatch_queue_ds(function_name: String, args_array: String) raises -> String:
+def _dispatch_queue_ds(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pq_create":
         if arg_count == 0:
@@ -115422,7 +115422,7 @@ fn _dispatch_queue_ds(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module queue_ds."
     )
 
-fn _dispatch_queueing(function_name: String, args_array: String) raises -> String:
+def _dispatch_queueing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "factorial":
         if arg_count == 1:
@@ -115672,7 +115672,7 @@ fn _dispatch_queueing(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module queueing."
     )
 
-fn _dispatch_radar(function_name: String, args_array: String) raises -> String:
+def _dispatch_radar(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "radar_range_equation":
         if arg_count == 8:
@@ -115947,7 +115947,7 @@ fn _dispatch_radar(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module radar."
     )
 
-fn _dispatch_radiometry(function_name: String, args_array: String) raises -> String:
+def _dispatch_radiometry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "planck_spectral_radiance":
         if arg_count == 2:
@@ -116171,7 +116171,7 @@ fn _dispatch_radiometry(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module radiometry."
     )
 
-fn _dispatch_rag_retrieval(function_name: String, args_array: String) raises -> String:
+def _dispatch_rag_retrieval(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rrf_score":
         if arg_count == 3:
@@ -116407,7 +116407,7 @@ fn _dispatch_rag_retrieval(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module rag_retrieval."
     )
 
-fn _dispatch_random_utils(function_name: String, args_array: String) raises -> String:
+def _dispatch_random_utils(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "random_choice":
         if arg_count == 1:
@@ -116533,7 +116533,7 @@ fn _dispatch_random_utils(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module random_utils."
     )
 
-fn _dispatch_real_estate(function_name: String, args_array: String) raises -> String:
+def _dispatch_real_estate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cap_rate":
         if arg_count == 2:
@@ -116809,7 +116809,7 @@ fn _dispatch_real_estate(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module real_estate."
     )
 
-fn _dispatch_recommender(function_name: String, args_array: String) raises -> String:
+def _dispatch_recommender(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cosine_sim_users":
         if arg_count == 3:
@@ -116985,7 +116985,7 @@ fn _dispatch_recommender(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module recommender."
     )
 
-fn _dispatch_refrigeration(function_name: String, args_array: String) raises -> String:
+def _dispatch_refrigeration(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cop_refrigeration":
         if arg_count == 2:
@@ -117255,7 +117255,7 @@ fn _dispatch_refrigeration(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module refrigeration."
     )
 
-fn _dispatch_regex_engine(function_name: String, args_array: String) raises -> String:
+def _dispatch_regex_engine(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "match_literal":
         if arg_count == 2:
@@ -117415,7 +117415,7 @@ fn _dispatch_regex_engine(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module regex_engine."
     )
 
-fn _dispatch_regression(function_name: String, args_array: String) raises -> String:
+def _dispatch_regression(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "r_squared":
         if arg_count == 2:
@@ -117587,7 +117587,7 @@ fn _dispatch_regression(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module regression."
     )
 
-fn _dispatch_regression_tree(function_name: String, args_array: String) raises -> String:
+def _dispatch_regression_tree(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "mse_reduction":
         if arg_count == 3:
@@ -117773,7 +117773,7 @@ fn _dispatch_regression_tree(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module regression_tree."
     )
 
-fn _dispatch_reinforcement(function_name: String, args_array: String) raises -> String:
+def _dispatch_reinforcement(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "epsilon_greedy_action":
         if arg_count == 2:
@@ -117947,7 +117947,7 @@ fn _dispatch_reinforcement(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module reinforcement."
     )
 
-fn _dispatch_reliability(function_name: String, args_array: String) raises -> String:
+def _dispatch_reliability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "exponential_reliability":
         if arg_count == 2:
@@ -118199,7 +118199,7 @@ fn _dispatch_reliability(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module reliability."
     )
 
-fn _dispatch_rerank_eval(function_name: String, args_array: String) raises -> String:
+def _dispatch_rerank_eval(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "precision_at_k":
         if arg_count == 2:
@@ -118408,7 +118408,7 @@ fn _dispatch_rerank_eval(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module rerank_eval."
     )
 
-fn _dispatch_reservoir(function_name: String, args_array: String) raises -> String:
+def _dispatch_reservoir(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "reservoir_sample":
         if arg_count == 2:
@@ -118534,7 +118534,7 @@ fn _dispatch_reservoir(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module reservoir."
     )
 
-fn _dispatch_residentk__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_residentk__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "residentk_status_name":
         if arg_count == 1:
@@ -118770,7 +118770,7 @@ fn _dispatch_residentk__contract(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module residentk.contract."
     )
 
-fn _dispatch_residentk__probe(function_name: String, args_array: String) raises -> String:
+def _dispatch_residentk__probe(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "resident_gpu_kernels_compiled":
         if arg_count == 0:
@@ -118829,7 +118829,7 @@ fn _dispatch_residentk__probe(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module residentk.probe."
     )
 
-fn _dispatch_retrieval__fuse(function_name: String, args_array: String) raises -> String:
+def _dispatch_retrieval__fuse(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rrf_fuse_flat":
         if arg_count == 5:
@@ -118876,7 +118876,7 @@ fn _dispatch_retrieval__fuse(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module retrieval.fuse."
     )
 
-fn _dispatch_retrieval__score(function_name: String, args_array: String) raises -> String:
+def _dispatch_retrieval__score(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "retrieval_status_name":
         if arg_count == 1:
@@ -119024,7 +119024,7 @@ fn _dispatch_retrieval__score(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module retrieval.score."
     )
 
-fn _dispatch_rheology(function_name: String, args_array: String) raises -> String:
+def _dispatch_rheology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "shear_stress":
         if arg_count == 2:
@@ -119259,7 +119259,7 @@ fn _dispatch_rheology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module rheology."
     )
 
-fn _dispatch_risk(function_name: String, args_array: String) raises -> String:
+def _dispatch_risk(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "value_at_risk":
         if arg_count == 2:
@@ -119567,7 +119567,7 @@ fn _dispatch_risk(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module risk."
     )
 
-fn _dispatch_rlhf_dpo(function_name: String, args_array: String) raises -> String:
+def _dispatch_rlhf_dpo(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dpo_loss":
         if arg_count == 3:
@@ -119806,7 +119806,7 @@ fn _dispatch_rlhf_dpo(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module rlhf_dpo."
     )
 
-fn _dispatch_robotics(function_name: String, args_array: String) raises -> String:
+def _dispatch_robotics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "forward_kinematics_2dof":
         if arg_count == 4:
@@ -120094,7 +120094,7 @@ fn _dispatch_robotics(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module robotics."
     )
 
-fn _dispatch_robustness(function_name: String, args_array: String) raises -> String:
+def _dispatch_robustness(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_test_func":
         if arg_count == 2:
@@ -120261,7 +120261,7 @@ fn _dispatch_robustness(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module robustness."
     )
 
-fn _dispatch_root_finding(function_name: String, args_array: String) raises -> String:
+def _dispatch_root_finding(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_func":
         if arg_count == 2:
@@ -120692,7 +120692,7 @@ fn _dispatch_root_finding(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module root_finding."
     )
 
-fn _dispatch_rubber(function_name: String, args_array: String) raises -> String:
+def _dispatch_rubber(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "shore_a_to_youngs_modulus":
         if arg_count == 1:
@@ -120966,7 +120966,7 @@ fn _dispatch_rubber(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module rubber."
     )
 
-fn _dispatch_sampling(function_name: String, args_array: String) raises -> String:
+def _dispatch_sampling(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "halton_sequence":
         if arg_count == 2:
@@ -121076,7 +121076,7 @@ fn _dispatch_sampling(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module sampling."
     )
 
-fn _dispatch_scheduler_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_scheduler_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "priority_fair_score":
         if arg_count == 3:
@@ -121314,7 +121314,7 @@ fn _dispatch_scheduler_ops(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module scheduler_ops."
     )
 
-fn _dispatch_scheduling_algo(function_name: String, args_array: String) raises -> String:
+def _dispatch_scheduling_algo(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fcfs":
         if arg_count == 1:
@@ -121488,7 +121488,7 @@ fn _dispatch_scheduling_algo(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module scheduling_algo."
     )
 
-fn _dispatch_scipy_optimize_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_scipy_optimize_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bfgs_hessian_update_term":
         if arg_count == 3:
@@ -121725,7 +121725,7 @@ fn _dispatch_scipy_optimize_ops(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module scipy_optimize_ops."
     )
 
-fn _dispatch_scipy_stats_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_scipy_stats_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "normal_pdf":
         if arg_count == 3:
@@ -121958,7 +121958,7 @@ fn _dispatch_scipy_stats_ops(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module scipy_stats_ops."
     )
 
-fn _dispatch_scoring(function_name: String, args_array: String) raises -> String:
+def _dispatch_scoring(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sigmoid":
         if arg_count == 1:
@@ -122274,7 +122274,7 @@ fn _dispatch_scoring(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module scoring."
     )
 
-fn _dispatch_security_governance(function_name: String, args_array: String) raises -> String:
+def _dispatch_security_governance(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "model_provenance_hash":
         if arg_count == 4:
@@ -122515,7 +122515,7 @@ fn _dispatch_security_governance(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module security_governance."
     )
 
-fn _dispatch_sedimentology(function_name: String, args_array: String) raises -> String:
+def _dispatch_sedimentology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "settling_velocity_stokes":
         if arg_count == 4:
@@ -122757,7 +122757,7 @@ fn _dispatch_sedimentology(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module sedimentology."
     )
 
-fn _dispatch_seismology(function_name: String, args_array: String) raises -> String:
+def _dispatch_seismology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "richter_magnitude":
         if arg_count == 2:
@@ -123027,7 +123027,7 @@ fn _dispatch_seismology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module seismology."
     )
 
-fn _dispatch_semiconductors(function_name: String, args_array: String) raises -> String:
+def _dispatch_semiconductors(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "intrinsic_carrier_concentration":
         if arg_count == 4:
@@ -123315,7 +123315,7 @@ fn _dispatch_semiconductors(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module semiconductors."
     )
 
-fn _dispatch_sentiment(function_name: String, args_array: String) raises -> String:
+def _dispatch_sentiment(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tokenize_lower":
         if arg_count == 1:
@@ -123502,7 +123502,7 @@ fn _dispatch_sentiment(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module sentiment."
     )
 
-fn _dispatch_seq2_trainer(function_name: String, args_array: String) raises -> String:
+def _dispatch_seq2_trainer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "seq2_weight_count":
         if arg_count == 3:
@@ -123739,7 +123739,7 @@ fn _dispatch_seq2_trainer(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module seq2_trainer."
     )
 
-fn _dispatch_seq_nn(function_name: String, args_array: String) raises -> String:
+def _dispatch_seq_nn(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lstm_cell_forward":
         if arg_count == 7:
@@ -123925,7 +123925,7 @@ fn _dispatch_seq_nn(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module seq_nn."
     )
 
-fn _dispatch_seq_training(function_name: String, args_array: String) raises -> String:
+def _dispatch_seq_training(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "make_windows":
         if arg_count == 3:
@@ -124014,7 +124014,7 @@ fn _dispatch_seq_training(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module seq_training."
     )
 
-fn _dispatch_serialization__msgpack(function_name: String, args_array: String) raises -> String:
+def _dispatch_serialization__msgpack(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "msgpack_encode_int":
         if arg_count == 1:
@@ -124183,7 +124183,7 @@ fn _dispatch_serialization__msgpack(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module serialization.msgpack."
     )
 
-fn _dispatch_serialization_io(function_name: String, args_array: String) raises -> String:
+def _dispatch_serialization_io(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "weights_to_string":
         if arg_count == 2:
@@ -124244,7 +124244,7 @@ fn _dispatch_serialization_io(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module serialization_io."
     )
 
-fn _dispatch_series(function_name: String, args_array: String) raises -> String:
+def _dispatch_series(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sma_forecast":
         if arg_count == 3:
@@ -124433,7 +124433,7 @@ fn _dispatch_series(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module series."
     )
 
-fn _dispatch_set_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_set_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "set_union":
         if arg_count == 2:
@@ -124646,7 +124646,7 @@ fn _dispatch_set_ops(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module set_ops."
     )
 
-fn _dispatch_sheet__api(function_name: String, args_array: String) raises -> String:
+def _dispatch_sheet__api(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sheet_recalc_report":
         if arg_count == 2:
@@ -124689,7 +124689,7 @@ fn _dispatch_sheet__api(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module sheet.api."
     )
 
-fn _dispatch_sheet__engine(function_name: String, args_array: String) raises -> String:
+def _dispatch_sheet__engine(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "recalc_workbook":
         if arg_count == 2:
@@ -124713,7 +124713,7 @@ fn _dispatch_sheet__engine(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module sheet.engine."
     )
 
-fn _dispatch_sheet__formula(function_name: String, args_array: String) raises -> String:
+def _dispatch_sheet__formula(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "function_id_of":
         if arg_count == 1:
@@ -124780,7 +124780,7 @@ fn _dispatch_sheet__formula(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module sheet.formula."
     )
 
-fn _dispatch_sheet__grid(function_name: String, args_array: String) raises -> String:
+def _dispatch_sheet__grid(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "load_workbook":
         if arg_count == 1:
@@ -124803,7 +124803,7 @@ fn _dispatch_sheet__grid(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module sheet.grid."
     )
 
-fn _dispatch_sheet__refs(function_name: String, args_array: String) raises -> String:
+def _dispatch_sheet__refs(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "pack_coord":
         if arg_count == 2:
@@ -124924,7 +124924,7 @@ fn _dispatch_sheet__refs(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module sheet.refs."
     )
 
-fn _dispatch_sheet__values(function_name: String, args_array: String) raises -> String:
+def _dispatch_sheet__values(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "error_name":
         if arg_count == 1:
@@ -125240,7 +125240,7 @@ fn _dispatch_sheet__values(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module sheet.values."
     )
 
-fn _dispatch_signal__dsp(function_name: String, args_array: String) raises -> String:
+def _dispatch_signal__dsp(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "moving_average":
         if arg_count == 2:
@@ -125412,7 +125412,7 @@ fn _dispatch_signal__dsp(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module signal.dsp."
     )
 
-fn _dispatch_signal__filter(function_name: String, args_array: String) raises -> String:
+def _dispatch_signal__filter(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lowpass_ema":
         if arg_count == 2:
@@ -125626,7 +125626,7 @@ fn _dispatch_signal__filter(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module signal.filter."
     )
 
-fn _dispatch_signal_processing(function_name: String, args_array: String) raises -> String:
+def _dispatch_signal_processing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hamming_window":
         if arg_count == 1:
@@ -125816,7 +125816,7 @@ fn _dispatch_signal_processing(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module signal_processing."
     )
 
-fn _dispatch_silviculture(function_name: String, args_array: String) raises -> String:
+def _dispatch_silviculture(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "basal_area":
         if arg_count == 1:
@@ -126044,7 +126044,7 @@ fn _dispatch_silviculture(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module silviculture."
     )
 
-fn _dispatch_simulation(function_name: String, args_array: String) raises -> String:
+def _dispatch_simulation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "create_sim":
         if arg_count == 0:
@@ -126196,7 +126196,7 @@ fn _dispatch_simulation(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module simulation."
     )
 
-fn _dispatch_sketch(function_name: String, args_array: String) raises -> String:
+def _dispatch_sketch(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "create_cms":
         if arg_count == 2:
@@ -126402,7 +126402,7 @@ fn _dispatch_sketch(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module sketch."
     )
 
-fn _dispatch_social_network(function_name: String, args_array: String) raises -> String:
+def _dispatch_social_network(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "in_degree":
         if arg_count == 2:
@@ -126586,7 +126586,7 @@ fn _dispatch_social_network(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module social_network."
     )
 
-fn _dispatch_soil_mechanics(function_name: String, args_array: String) raises -> String:
+def _dispatch_soil_mechanics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bearing_capacity_terzaghi":
         if arg_count == 5:
@@ -126817,7 +126817,7 @@ fn _dispatch_soil_mechanics(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module soil_mechanics."
     )
 
-fn _dispatch_soil_science(function_name: String, args_array: String) raises -> String:
+def _dispatch_soil_science(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "soil_texture_sand_silt_clay":
         if arg_count == 3:
@@ -127082,7 +127082,7 @@ fn _dispatch_soil_science(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module soil_science."
     )
 
-fn _dispatch_solar_energy(function_name: String, args_array: String) raises -> String:
+def _dispatch_solar_energy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "solar_irradiance_on_surface":
         if arg_count == 2:
@@ -127357,7 +127357,7 @@ fn _dispatch_solar_energy(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module solar_energy."
     )
 
-fn _dispatch_sorting(function_name: String, args_array: String) raises -> String:
+def _dispatch_sorting(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "quicksort":
         if arg_count == 1:
@@ -127530,7 +127530,7 @@ fn _dispatch_sorting(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module sorting."
     )
 
-fn _dispatch_sparse(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sparse_from_dense":
         if arg_count == 1:
@@ -127657,7 +127657,7 @@ fn _dispatch_sparse(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module sparse."
     )
 
-fn _dispatch_sparse_attention(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_attention(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "local_window_mask":
         if arg_count == 4:
@@ -127899,7 +127899,7 @@ fn _dispatch_sparse_attention(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module sparse_attention."
     )
 
-fn _dispatch_sparse_numerics__csr(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_numerics__csr(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dims_fit":
         if arg_count == 3:
@@ -128535,7 +128535,7 @@ fn _dispatch_sparse_numerics__csr(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module sparse_numerics.csr."
     )
 
-fn _dispatch_sparse_numerics__diagnostics(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_numerics__diagnostics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "diag_status_name":
         if arg_count == 1:
@@ -128950,7 +128950,7 @@ fn _dispatch_sparse_numerics__diagnostics(function_name: String, args_array: Str
         "Function '" + function_name + "' is not registered for module sparse_numerics.diagnostics."
     )
 
-fn _dispatch_sparse_numerics__factor(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_numerics__factor(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "factor_status_name":
         if arg_count == 1:
@@ -129163,7 +129163,7 @@ fn _dispatch_sparse_numerics__factor(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module sparse_numerics.factor."
     )
 
-fn _dispatch_sparse_numerics__iterative(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_numerics__iterative(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "iter_status_name":
         if arg_count == 1:
@@ -129673,7 +129673,7 @@ fn _dispatch_sparse_numerics__iterative(function_name: String, args_array: Strin
         "Function '" + function_name + "' is not registered for module sparse_numerics.iterative."
     )
 
-fn _dispatch_sparse_numerics__spmv(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_numerics__spmv(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "spmv_status_name":
         if arg_count == 1:
@@ -129989,7 +129989,7 @@ fn _dispatch_sparse_numerics__spmv(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module sparse_numerics.spmv."
     )
 
-fn _dispatch_sparse_vector(function_name: String, args_array: String) raises -> String:
+def _dispatch_sparse_vector(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sv_dot":
         if arg_count == 4:
@@ -130206,7 +130206,7 @@ fn _dispatch_sparse_vector(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module sparse_vector."
     )
 
-fn _dispatch_special_functions(function_name: String, args_array: String) raises -> String:
+def _dispatch_special_functions(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gamma_function":
         if arg_count == 1:
@@ -130469,7 +130469,7 @@ fn _dispatch_special_functions(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module special_functions."
     )
 
-fn _dispatch_spectral(function_name: String, args_array: String) raises -> String:
+def _dispatch_spectral(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "power_spectral_density":
         if arg_count == 2:
@@ -130685,7 +130685,7 @@ fn _dispatch_spectral(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module spectral."
     )
 
-fn _dispatch_spectroscopy(function_name: String, args_array: String) raises -> String:
+def _dispatch_spectroscopy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "wavenumber_from_wavelength":
         if arg_count == 1:
@@ -130951,7 +130951,7 @@ fn _dispatch_spectroscopy(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module spectroscopy."
     )
 
-fn _dispatch_speculative_decoding(function_name: String, args_array: String) raises -> String:
+def _dispatch_speculative_decoding(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "speculative_accept_prob":
         if arg_count == 2:
@@ -131187,7 +131187,7 @@ fn _dispatch_speculative_decoding(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module speculative_decoding."
     )
 
-fn _dispatch_speleology(function_name: String, args_array: String) raises -> String:
+def _dispatch_speleology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cave_passage_volume":
         if arg_count == 3:
@@ -131419,7 +131419,7 @@ fn _dispatch_speleology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module speleology."
     )
 
-fn _dispatch_sports_analytics(function_name: String, args_array: String) raises -> String:
+def _dispatch_sports_analytics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "batting_average":
         if arg_count == 2:
@@ -131707,7 +131707,7 @@ fn _dispatch_sports_analytics(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module sports_analytics."
     )
 
-fn _dispatch_stat_tests(function_name: String, args_array: String) raises -> String:
+def _dispatch_stat_tests(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ks_test_2sample":
         if arg_count == 2:
@@ -131898,7 +131898,7 @@ fn _dispatch_stat_tests(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module stat_tests."
     )
 
-fn _dispatch_state_space_models(function_name: String, args_array: String) raises -> String:
+def _dispatch_state_space_models(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ssm_discretize_zoh":
         if arg_count == 2:
@@ -132135,7 +132135,7 @@ fn _dispatch_state_space_models(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module state_space_models."
     )
 
-fn _dispatch_stateful_runtime(function_name: String, args_array: String) raises -> String:
+def _dispatch_stateful_runtime(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "session_memory_relevance":
         if arg_count == 4:
@@ -132373,7 +132373,7 @@ fn _dispatch_stateful_runtime(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module stateful_runtime."
     )
 
-fn _dispatch_stats(function_name: String, args_array: String) raises -> String:
+def _dispatch_stats(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "compute_mean":
         if arg_count == 2:
@@ -132673,7 +132673,7 @@ fn _dispatch_stats(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module stats."
     )
 
-fn _dispatch_stats_bootstrap(function_name: String, args_array: String) raises -> String:
+def _dispatch_stats_bootstrap(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bootstrap_replicate":
         if arg_count == 1:
@@ -132956,7 +132956,7 @@ fn _dispatch_stats_bootstrap(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module stats_bootstrap."
     )
 
-fn _dispatch_stochastic(function_name: String, args_array: String) raises -> String:
+def _dispatch_stochastic(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "random_walk_1d":
         if arg_count == 1:
@@ -133165,7 +133165,7 @@ fn _dispatch_stochastic(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module stochastic."
     )
 
-fn _dispatch_strategy__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_strategy__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "strat_status_name":
         if arg_count == 1:
@@ -133910,7 +133910,7 @@ fn _dispatch_strategy__contract(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module strategy.contract."
     )
 
-fn _dispatch_strategy__crn(function_name: String, args_array: String) raises -> String:
+def _dispatch_strategy__crn(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "crn_contract_id":
         if arg_count == 0:
@@ -134273,7 +134273,7 @@ fn _dispatch_strategy__crn(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module strategy.crn."
     )
 
-fn _dispatch_strategy__equilibrium(function_name: String, args_array: String) raises -> String:
+def _dispatch_strategy__equilibrium(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eq_method_name":
         if arg_count == 1:
@@ -134686,7 +134686,7 @@ fn _dispatch_strategy__equilibrium(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module strategy.equilibrium."
     )
 
-fn _dispatch_strategy__policy(function_name: String, args_array: String) raises -> String:
+def _dispatch_strategy__policy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "policy_tie_rule":
         if arg_count == 0:
@@ -134859,7 +134859,7 @@ fn _dispatch_strategy__policy(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module strategy.policy."
     )
 
-fn _dispatch_strategy__tournament(function_name: String, args_array: String) raises -> String:
+def _dispatch_strategy__tournament(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tourney_method_name":
         if arg_count == 1:
@@ -135021,7 +135021,7 @@ fn _dispatch_strategy__tournament(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module strategy.tournament."
     )
 
-fn _dispatch_stratigraphy(function_name: String, args_array: String) raises -> String:
+def _dispatch_stratigraphy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sedimentation_rate":
         if arg_count == 2:
@@ -135251,7 +135251,7 @@ fn _dispatch_stratigraphy(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module stratigraphy."
     )
 
-fn _dispatch_streaming__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_streaming__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "stm_status_name":
         if arg_count == 1:
@@ -135611,7 +135611,7 @@ fn _dispatch_streaming__contract(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module streaming.contract."
     )
 
-fn _dispatch_streaming__distinct(function_name: String, args_array: String) raises -> String:
+def _dispatch_streaming__distinct(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "distinct_empty":
         if arg_count == 2:
@@ -135803,7 +135803,7 @@ fn _dispatch_streaming__distinct(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module streaming.distinct."
     )
 
-fn _dispatch_streaming__drift(function_name: String, args_array: String) raises -> String:
+def _dispatch_streaming__drift(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "page_hinkley_init":
         if arg_count == 0:
@@ -135953,7 +135953,7 @@ fn _dispatch_streaming__drift(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module streaming.drift."
     )
 
-fn _dispatch_streaming__frequency(function_name: String, args_array: String) raises -> String:
+def _dispatch_streaming__frequency(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frequency_empty":
         if arg_count == 3:
@@ -136245,7 +136245,7 @@ fn _dispatch_streaming__frequency(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module streaming.frequency."
     )
 
-fn _dispatch_streaming__quantiles(function_name: String, args_array: String) raises -> String:
+def _dispatch_streaming__quantiles(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "quantile_empty":
         if arg_count == 2:
@@ -136507,7 +136507,7 @@ fn _dispatch_streaming__quantiles(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module streaming.quantiles."
     )
 
-fn _dispatch_streaming__windows(function_name: String, args_array: String) raises -> String:
+def _dispatch_streaming__windows(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "window_positions":
         if arg_count == 2:
@@ -136689,7 +136689,7 @@ fn _dispatch_streaming__windows(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module streaming.windows."
     )
 
-fn _dispatch_string_distance(function_name: String, args_array: String) raises -> String:
+def _dispatch_string_distance(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "damerau_levenshtein":
         if arg_count == 2:
@@ -136877,7 +136877,7 @@ fn _dispatch_string_distance(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module string_distance."
     )
 
-fn _dispatch_structs__containers(function_name: String, args_array: String) raises -> String:
+def _dispatch_structs__containers(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "counter":
         if arg_count == 2:
@@ -136917,7 +136917,7 @@ fn _dispatch_structs__containers(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module structs.containers."
     )
 
-fn _dispatch_structural(function_name: String, args_array: String) raises -> String:
+def _dispatch_structural(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bending_stress":
         if arg_count == 2:
@@ -137193,7 +137193,7 @@ fn _dispatch_structural(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module structural."
     )
 
-fn _dispatch_structured_output(function_name: String, args_array: String) raises -> String:
+def _dispatch_structured_output(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "json_next_token_valid":
         if arg_count == 2:
@@ -137421,7 +137421,7 @@ fn _dispatch_structured_output(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module structured_output."
     )
 
-fn _dispatch_supply_chain(function_name: String, args_array: String) raises -> String:
+def _dispatch_supply_chain(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lead_time_demand":
         if arg_count == 2:
@@ -137695,7 +137695,7 @@ fn _dispatch_supply_chain(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module supply_chain."
     )
 
-fn _dispatch_survival(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kaplan_meier":
         if arg_count == 2:
@@ -137861,7 +137861,7 @@ fn _dispatch_survival(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module survival."
     )
 
-fn _dispatch_survival_analysis__base(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival_analysis__base(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sa_status_name":
         if arg_count == 1:
@@ -138022,7 +138022,7 @@ fn _dispatch_survival_analysis__base(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module survival_analysis.base."
     )
 
-fn _dispatch_survival_analysis__competing(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival_analysis__competing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cif_validate_causes":
         if arg_count == 3:
@@ -138085,7 +138085,7 @@ fn _dispatch_survival_analysis__competing(function_name: String, args_array: Str
         "Function '" + function_name + "' is not registered for module survival_analysis.competing."
     )
 
-fn _dispatch_survival_analysis__cox(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival_analysis__cox(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cox_fit":
         if arg_count == 7:
@@ -138154,7 +138154,7 @@ fn _dispatch_survival_analysis__cox(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module survival_analysis.cox."
     )
 
-fn _dispatch_survival_analysis__hazard(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival_analysis__hazard(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "na_fit":
         if arg_count == 3:
@@ -138197,7 +138197,7 @@ fn _dispatch_survival_analysis__hazard(function_name: String, args_array: String
         "Function '" + function_name + "' is not registered for module survival_analysis.hazard."
     )
 
-fn _dispatch_survival_analysis__km(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival_analysis__km(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "km_fit":
         if arg_count == 3:
@@ -138258,7 +138258,7 @@ fn _dispatch_survival_analysis__km(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module survival_analysis.km."
     )
 
-fn _dispatch_survival_analysis__parametric(function_name: String, args_array: String) raises -> String:
+def _dispatch_survival_analysis__parametric(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "weibull_mle":
         if arg_count == 4:
@@ -138303,7 +138303,7 @@ fn _dispatch_survival_analysis__parametric(function_name: String, args_array: St
         "Function '" + function_name + "' is not registered for module survival_analysis.parametric."
     )
 
-fn _dispatch_sustainability(function_name: String, args_array: String) raises -> String:
+def _dispatch_sustainability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "carbon_footprint_transport":
         if arg_count == 2:
@@ -138577,7 +138577,7 @@ fn _dispatch_sustainability(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module sustainability."
     )
 
-fn _dispatch_svm_kernel(function_name: String, args_array: String) raises -> String:
+def _dispatch_svm_kernel(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "kernel_linear":
         if arg_count == 2:
@@ -138898,7 +138898,7 @@ fn _dispatch_svm_kernel(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module svm_kernel."
     )
 
-fn _dispatch_svm_solver(function_name: String, args_array: String) raises -> String:
+def _dispatch_svm_solver(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "svm_fit_linear":
         if arg_count == 7:
@@ -139011,7 +139011,7 @@ fn _dispatch_svm_solver(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module svm_solver."
     )
 
-fn _dispatch_taphonomy(function_name: String, args_array: String) raises -> String:
+def _dispatch_taphonomy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "organic_decay_rate":
         if arg_count == 3:
@@ -139244,7 +139244,7 @@ fn _dispatch_taphonomy(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module taphonomy."
     )
 
-fn _dispatch_telecommunications(function_name: String, args_array: String) raises -> String:
+def _dispatch_telecommunications(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "shannon_capacity":
         if arg_count == 2:
@@ -139513,7 +139513,7 @@ fn _dispatch_telecommunications(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module telecommunications."
     )
 
-fn _dispatch_tensor(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensor(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "zeros":
         if arg_count == 1:
@@ -140052,7 +140052,7 @@ fn _dispatch_tensor(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module tensor."
     )
 
-fn _dispatch_tensor2d(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensor2d(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "m2_zeros":
         if arg_count == 2:
@@ -140257,7 +140257,7 @@ fn _dispatch_tensor2d(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module tensor2d."
     )
 
-fn _dispatch_tensor_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensor_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "matmul_element":
         if arg_count == 2:
@@ -140488,7 +140488,7 @@ fn _dispatch_tensor_ops(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module tensor_ops."
     )
 
-fn _dispatch_tensorx__buffer(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__buffer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tx_buf_element_width_bytes":
         if arg_count == 1:
@@ -140618,7 +140618,7 @@ fn _dispatch_tensorx__buffer(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module tensorx.buffer."
     )
 
-fn _dispatch_tensorx__contract(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tx_status_name":
         if arg_count == 1:
@@ -140745,7 +140745,7 @@ fn _dispatch_tensorx__contract(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module tensorx.contract."
     )
 
-fn _dispatch_tensorx__dtype(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__dtype(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dtx_is_supported":
         if arg_count == 1:
@@ -141001,7 +141001,7 @@ fn _dispatch_tensorx__dtype(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module tensorx.dtype."
     )
 
-fn _dispatch_tensorx__elementwise(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__elementwise(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tx_ew_add":
         if arg_count == 8:
@@ -141119,7 +141119,7 @@ fn _dispatch_tensorx__elementwise(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module tensorx.elementwise."
     )
 
-fn _dispatch_tensorx__pack(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__pack(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "nf4_levels":
         if arg_count == 0:
@@ -141354,7 +141354,7 @@ fn _dispatch_tensorx__pack(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module tensorx.pack."
     )
 
-fn _dispatch_tensorx__reduce(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__reduce(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tx_reduce_sum":
         if arg_count == 3:
@@ -141492,7 +141492,7 @@ fn _dispatch_tensorx__reduce(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module tensorx.reduce."
     )
 
-fn _dispatch_tensorx__shape(function_name: String, args_array: String) raises -> String:
+def _dispatch_tensorx__shape(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tx_shape_status":
         if arg_count == 2:
@@ -141660,7 +141660,7 @@ fn _dispatch_tensorx__shape(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module tensorx.shape."
     )
 
-fn _dispatch_text__column_scorer(function_name: String, args_array: String) raises -> String:
+def _dispatch_text__column_scorer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "score_token_overlap":
         if arg_count == 2:
@@ -141830,7 +141830,7 @@ fn _dispatch_text__column_scorer(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module text.column_scorer."
     )
 
-fn _dispatch_text__fuzzy(function_name: String, args_array: String) raises -> String:
+def _dispatch_text__fuzzy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "levenshtein_distance":
         if arg_count == 2:
@@ -141994,7 +141994,7 @@ fn _dispatch_text__fuzzy(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module text.fuzzy."
     )
 
-fn _dispatch_text__regex(function_name: String, args_array: String) raises -> String:
+def _dispatch_text__regex(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "regex_match":
         if arg_count == 2:
@@ -142121,7 +142121,7 @@ fn _dispatch_text__regex(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module text.regex."
     )
 
-fn _dispatch_text__string_utils(function_name: String, args_array: String) raises -> String:
+def _dispatch_text__string_utils(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "str_split":
         if arg_count == 2:
@@ -142401,7 +142401,7 @@ fn _dispatch_text__string_utils(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module text.string_utils."
     )
 
-fn _dispatch_text__tokenizer(function_name: String, args_array: String) raises -> String:
+def _dispatch_text__tokenizer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "is_stopword":
         if arg_count == 1:
@@ -142572,7 +142572,7 @@ fn _dispatch_text__tokenizer(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module text.tokenizer."
     )
 
-fn _dispatch_textile(function_name: String, args_array: String) raises -> String:
+def _dispatch_textile(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tex_to_denier":
         if arg_count == 1:
@@ -142840,7 +142840,7 @@ fn _dispatch_textile(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module textile."
     )
 
-fn _dispatch_thermodynamics(function_name: String, args_array: String) raises -> String:
+def _dispatch_thermodynamics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ideal_gas_pressure":
         if arg_count == 3:
@@ -143119,7 +143119,7 @@ fn _dispatch_thermodynamics(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module thermodynamics."
     )
 
-fn _dispatch_timber(function_name: String, args_array: String) raises -> String:
+def _dispatch_timber(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "board_feet":
         if arg_count == 3:
@@ -143395,7 +143395,7 @@ fn _dispatch_timber(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module timber."
     )
 
-fn _dispatch_time_series_decompose(function_name: String, args_array: String) raises -> String:
+def _dispatch_time_series_decompose(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "moving_average_trend":
         if arg_count == 2:
@@ -143579,7 +143579,7 @@ fn _dispatch_time_series_decompose(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module time_series_decompose."
     )
 
-fn _dispatch_time_zone(function_name: String, args_array: String) raises -> String:
+def _dispatch_time_zone(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "utc_offset":
         if arg_count == 1:
@@ -143799,7 +143799,7 @@ fn _dispatch_time_zone(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module time_zone."
     )
 
-fn _dispatch_timeseries_stats(function_name: String, args_array: String) raises -> String:
+def _dispatch_timeseries_stats(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "autocorrelation":
         if arg_count == 2:
@@ -143980,7 +143980,7 @@ fn _dispatch_timeseries_stats(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module timeseries_stats."
     )
 
-fn _dispatch_token_bucket(function_name: String, args_array: String) raises -> String:
+def _dispatch_token_bucket(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tb_create":
         if arg_count == 2:
@@ -144199,7 +144199,7 @@ fn _dispatch_token_bucket(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module token_bucket."
     )
 
-fn _dispatch_topology(function_name: String, args_array: String) raises -> String:
+def _dispatch_topology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "distance_matrix":
         if arg_count == 1:
@@ -144383,7 +144383,7 @@ fn _dispatch_topology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module topology."
     )
 
-fn _dispatch_toxicokinetics(function_name: String, args_array: String) raises -> String:
+def _dispatch_toxicokinetics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "internal_dose":
         if arg_count == 2:
@@ -144611,7 +144611,7 @@ fn _dispatch_toxicokinetics(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module toxicokinetics."
     )
 
-fn _dispatch_toxicology(function_name: String, args_array: String) raises -> String:
+def _dispatch_toxicology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ld50_dose":
         if arg_count == 2:
@@ -144887,7 +144887,7 @@ fn _dispatch_toxicology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module toxicology."
     )
 
-fn _dispatch_traffic_signal(function_name: String, args_array: String) raises -> String:
+def _dispatch_traffic_signal(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cycle_length_webster":
         if arg_count == 2:
@@ -145158,7 +145158,7 @@ fn _dispatch_traffic_signal(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module traffic_signal."
     )
 
-fn _dispatch_training_stability(function_name: String, args_array: String) raises -> String:
+def _dispatch_training_stability(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "loss_scale_adjust":
         if arg_count == 6:
@@ -145395,7 +145395,7 @@ fn _dispatch_training_stability(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module training_stability."
     )
 
-fn _dispatch_transform(function_name: String, args_array: String) raises -> String:
+def _dispatch_transform(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "log_transform":
         if arg_count == 1:
@@ -145623,7 +145623,7 @@ fn _dispatch_transform(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module transform."
     )
 
-fn _dispatch_transformer_attention(function_name: String, args_array: String) raises -> String:
+def _dispatch_transformer_attention(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "scaled_dot_product_attention":
         if arg_count == 2:
@@ -145882,7 +145882,7 @@ fn _dispatch_transformer_attention(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module transformer_attention."
     )
 
-fn _dispatch_transformer_blocks(function_name: String, args_array: String) raises -> String:
+def _dispatch_transformer_blocks(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "multi_head_split_head":
         if arg_count == 4:
@@ -146117,7 +146117,7 @@ fn _dispatch_transformer_blocks(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module transformer_blocks."
     )
 
-fn _dispatch_transportation(function_name: String, args_array: String) raises -> String:
+def _dispatch_transportation(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "level_of_service_density":
         if arg_count == 2:
@@ -146396,7 +146396,7 @@ fn _dispatch_transportation(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module transportation."
     )
 
-fn _dispatch_tribochemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_tribochemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "friction_coefficient":
         if arg_count == 2:
@@ -146635,7 +146635,7 @@ fn _dispatch_tribochemistry(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module tribochemistry."
     )
 
-fn _dispatch_tribology(function_name: String, args_array: String) raises -> String:
+def _dispatch_tribology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "coulomb_friction_force":
         if arg_count == 2:
@@ -146915,7 +146915,7 @@ fn _dispatch_tribology(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module tribology."
     )
 
-fn _dispatch_trie(function_name: String, args_array: String) raises -> String:
+def _dispatch_trie(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "trie_insert":
         if arg_count == 2:
@@ -147041,7 +147041,7 @@ fn _dispatch_trie(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module trie."
     )
 
-fn _dispatch_ultrasonics(function_name: String, args_array: String) raises -> String:
+def _dispatch_ultrasonics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "acoustic_impedance":
         if arg_count == 2:
@@ -147272,7 +147272,7 @@ fn _dispatch_ultrasonics(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module ultrasonics."
     )
 
-fn _dispatch_units(function_name: String, args_array: String) raises -> String:
+def _dispatch_units(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "convert_length":
         if arg_count == 3:
@@ -147463,7 +147463,7 @@ fn _dispatch_units(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module units."
     )
 
-fn _dispatch_urban_planning(function_name: String, args_array: String) raises -> String:
+def _dispatch_urban_planning(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "population_density":
         if arg_count == 2:
@@ -147734,7 +147734,7 @@ fn _dispatch_urban_planning(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module urban_planning."
     )
 
-fn _dispatch_vector_kernels__batch_ranker(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_kernels__batch_ranker(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "to_planner_resolution":
         if arg_count == 1:
@@ -147757,7 +147757,7 @@ fn _dispatch_vector_kernels__batch_ranker(function_name: String, args_array: Str
         "Function '" + function_name + "' is not registered for module vector_kernels.batch_ranker."
     )
 
-fn _dispatch_vector_kernels__dot(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_kernels__dot(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dot64_f32":
         if arg_count == 2:
@@ -147856,7 +147856,7 @@ fn _dispatch_vector_kernels__dot(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module vector_kernels.dot."
     )
 
-fn _dispatch_vector_kernels__ranker(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_kernels__ranker(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "run_column_rank_v2":
         if arg_count == 1:
@@ -147879,7 +147879,7 @@ fn _dispatch_vector_kernels__ranker(function_name: String, args_array: String) r
         "Function '" + function_name + "' is not registered for module vector_kernels.ranker."
     )
 
-fn _dispatch_vector_kernels__repo_ranker(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_kernels__repo_ranker(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "run_repo_rank":
         if arg_count == 1:
@@ -147902,7 +147902,7 @@ fn _dispatch_vector_kernels__repo_ranker(function_name: String, args_array: Stri
         "Function '" + function_name + "' is not registered for module vector_kernels.repo_ranker."
     )
 
-fn _dispatch_vector_kernels__table(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_kernels__table(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "build_query":
         if arg_count == 4:
@@ -147976,7 +147976,7 @@ fn _dispatch_vector_kernels__table(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module vector_kernels.table."
     )
 
-fn _dispatch_vector_search(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_search(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hnsw_layer_probability":
         if arg_count == 2:
@@ -148206,7 +148206,7 @@ fn _dispatch_vector_search(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module vector_search."
     )
 
-fn _dispatch_vector_similarity(function_name: String, args_array: String) raises -> String:
+def _dispatch_vector_similarity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "cosine_similarity":
         if arg_count == 3:
@@ -148435,7 +148435,7 @@ fn _dispatch_vector_similarity(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module vector_similarity."
     )
 
-fn _dispatch_veterinary(function_name: String, args_array: String) raises -> String:
+def _dispatch_veterinary(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dose_mg":
         if arg_count == 2:
@@ -148699,7 +148699,7 @@ fn _dispatch_veterinary(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module veterinary."
     )
 
-fn _dispatch_video_accessibility(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_accessibility(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_min_preferred_text_contrast_for_video":
         if arg_count == 5:
@@ -148923,7 +148923,7 @@ fn _dispatch_video_accessibility(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module video_accessibility."
     )
 
-fn _dispatch_video_color(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_color(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_mean_rgb255":
         if arg_count == 5:
@@ -149129,7 +149129,7 @@ fn _dispatch_video_color(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module video_color."
     )
 
-fn _dispatch_video_features(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_features(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "scene_change_scores":
         if arg_count == 4:
@@ -149240,7 +149240,7 @@ fn _dispatch_video_features(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module video_features."
     )
 
-fn _dispatch_video_gate(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_gate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "should_use_cached_video":
         if arg_count == 1:
@@ -149354,7 +149354,7 @@ fn _dispatch_video_gate(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module video_gate."
     )
 
-fn _dispatch_video_ops(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_count_from_flat":
         if arg_count == 4:
@@ -149543,7 +149543,7 @@ fn _dispatch_video_ops(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module video_ops."
     )
 
-fn _dispatch_video_quality(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_quality(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_quality_series":
         if arg_count == 5:
@@ -149689,7 +149689,7 @@ fn _dispatch_video_quality(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module video_quality."
     )
 
-fn _dispatch_video_regions(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_regions(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_diff_mask_flat":
         if arg_count == 7:
@@ -149848,7 +149848,7 @@ fn _dispatch_video_regions(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module video_regions."
     )
 
-fn _dispatch_video_similarity(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_similarity(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frame_duplicate_scores":
         if arg_count == 5:
@@ -150016,7 +150016,7 @@ fn _dispatch_video_similarity(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module video_similarity."
     )
 
-fn _dispatch_video_storyboard(function_name: String, args_array: String) raises -> String:
+def _dispatch_video_storyboard(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "scene_start_indices":
         if arg_count == 5:
@@ -150144,7 +150144,7 @@ fn _dispatch_video_storyboard(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module video_storyboard."
     )
 
-fn _dispatch_virology(function_name: String, args_array: String) raises -> String:
+def _dispatch_virology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "basic_reproduction_number":
         if arg_count == 3:
@@ -150374,7 +150374,7 @@ fn _dispatch_virology(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module virology."
     )
 
-fn _dispatch_vision_gate(function_name: String, args_array: String) raises -> String:
+def _dispatch_vision_gate(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "should_use_cache":
         if arg_count == 1:
@@ -150470,7 +150470,7 @@ fn _dispatch_vision_gate(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module vision_gate."
     )
 
-fn _dispatch_viticulture(function_name: String, args_array: String) raises -> String:
+def _dispatch_viticulture(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "brix_to_potential_alcohol":
         if arg_count == 1:
@@ -150741,7 +150741,7 @@ fn _dispatch_viticulture(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module viticulture."
     )
 
-fn _dispatch_volcanology(function_name: String, args_array: String) raises -> String:
+def _dispatch_volcanology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "vei_energy_estimate":
         if arg_count == 1:
@@ -151014,7 +151014,7 @@ fn _dispatch_volcanology(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module volcanology."
     )
 
-fn _dispatch_voting(function_name: String, args_array: String) raises -> String:
+def _dispatch_voting(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "plurality_winner":
         if arg_count == 2:
@@ -151217,7 +151217,7 @@ fn _dispatch_voting(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module voting."
     )
 
-fn _dispatch_wastewater(function_name: String, args_array: String) raises -> String:
+def _dispatch_wastewater(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bod_removal_efficiency":
         if arg_count == 2:
@@ -151497,7 +151497,7 @@ fn _dispatch_wastewater(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module wastewater."
     )
 
-fn _dispatch_watchmaking(function_name: String, args_array: String) raises -> String:
+def _dispatch_watchmaking(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "gear_ratio":
         if arg_count == 2:
@@ -151757,7 +151757,7 @@ fn _dispatch_watchmaking(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module watchmaking."
     )
 
-fn _dispatch_water_chemistry(function_name: String, args_array: String) raises -> String:
+def _dispatch_water_chemistry(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "ph_from_hydrogen_ion":
         if arg_count == 1:
@@ -151982,7 +151982,7 @@ fn _dispatch_water_chemistry(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module water_chemistry."
     )
 
-fn _dispatch_wavelet(function_name: String, args_array: String) raises -> String:
+def _dispatch_wavelet(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "haar_forward":
         if arg_count == 1:
@@ -152172,7 +152172,7 @@ fn _dispatch_wavelet(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module wavelet."
     )
 
-fn _dispatch_weight_loader(function_name: String, args_array: String) raises -> String:
+def _dispatch_weight_loader(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "shard_offset_bytes":
         if arg_count == 3:
@@ -152404,7 +152404,7 @@ fn _dispatch_weight_loader(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module weight_loader."
     )
 
-fn _dispatch_welding(function_name: String, args_array: String) raises -> String:
+def _dispatch_welding(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "heat_input":
         if arg_count == 3:
@@ -152684,7 +152684,7 @@ fn _dispatch_welding(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module welding."
     )
 
-fn _dispatch_wind_energy(function_name: String, args_array: String) raises -> String:
+def _dispatch_wind_energy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "wind_power_available":
         if arg_count == 3:
@@ -152962,7 +152962,7 @@ fn _dispatch_wind_energy(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module wind_energy."
     )
 
-fn _dispatch_wood_science(function_name: String, args_array: String) raises -> String:
+def _dispatch_wood_science(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "moisture_content":
         if arg_count == 2:
@@ -153193,7 +153193,7 @@ fn _dispatch_wood_science(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module wood_science."
     )
 
-fn _dispatch_workflow_engine(function_name: String, args_array: String) raises -> String:
+def _dispatch_workflow_engine(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dag_node_ready_score":
         if arg_count == 3:
@@ -153433,7 +153433,7 @@ fn _dispatch_workflow_engine(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module workflow_engine."
     )
 
-fn dispatch_runtime_library(raw: String) raises -> String:
+def dispatch_runtime_library(raw: String) raises -> String:
     var module_name = json_get_string(raw, "module")
     if len(module_name) == 0:
         return _error_json("invalid_arguments", "library_execute request requires a non-empty module.")

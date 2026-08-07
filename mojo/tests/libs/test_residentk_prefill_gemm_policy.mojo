@@ -28,7 +28,7 @@ from residentk.contract import (
 )
 
 
-fn _check_true(mut passed: Int, mut failed: Int, name: String, cond: Bool) -> None:
+def _check_true(mut passed: Int, mut failed: Int, name: String, cond: Bool) -> None:
     if cond:
         passed += 1
         print("  ✅", name)

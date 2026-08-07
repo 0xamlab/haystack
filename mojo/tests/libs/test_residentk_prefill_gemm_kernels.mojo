@@ -41,11 +41,11 @@ from residentk.kernels import (
 )
 
 
-fn _abs32(x: Float32) -> Float32:
+def _abs32(x: Float32) -> Float32:
     return -x if x < 0.0 else x
 
 
-fn _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
+def _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
     var o = List[Float32](capacity=n)
     for i in range(n):
         var a = Float32((i * 37 + seed * 101) % 61) / 30.0 - 1.0
@@ -54,7 +54,7 @@ fn _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
     return o^
 
 
-fn _gains_f32(n: Int, seed: Int) -> List[Float32]:
+def _gains_f32(n: Int, seed: Int) -> List[Float32]:
     var o = List[Float32](capacity=n)
     for i in range(n):
         o.append(0.8 + Float32((i * 17 + seed * 5) % 11) / 25.0)
@@ -67,7 +67,7 @@ struct _QuantResult(Copyable, Movable):
     var scale: List[Float32]
 
 
-fn _quantize_i8_rows(w_f32: List[Float32], n: Int, k: Int) -> _QuantResult:
+def _quantize_i8_rows(w_f32: List[Float32], n: Int, k: Int) -> _QuantResult:
     """Per-output-row symmetric int8 quantization — the same `scale = max(|row|) / 127` scheme
     `residentk.kernels`' own `_I8P` docstring establishes, reproduced here on the host in Float32
     (not device code) purely to build a realistic test fixture."""
@@ -94,7 +94,7 @@ fn _quantize_i8_rows(w_f32: List[Float32], n: Int, k: Int) -> _QuantResult:
     return _QuantResult(w_i8^, scale^)
 
 
-fn _run_case(
+def _run_case(
     ctx: DeviceContext, m_rows: Int, k: Int, n: Int, mut passed: Int, mut failed: Int,
 ) raises:
     var eps = Float32(1.0e-6)
@@ -122,7 +122,7 @@ fn _run_case(
 
     # ── oracle: the byte-unmodified Phase-1 row-flattened kernel ──
     var y_oracle = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
-    var f_oracle = ctx.compile_function_unchecked[_pf_qkv_proj_kernel_simd_i8]()
+    var f_oracle = ctx.compile_function[_pf_qkv_proj_kernel_simd_i8]()
     var n_units = (n + _SUBS - 1) // _SUBS
     ctx.enqueue_function_unchecked(
         f_oracle,
@@ -133,7 +133,7 @@ fn _run_case(
 
     # ── candidate: rmsnorm split out, then the weight-stationary tiled GEMM ──
     var xn_buf = ctx.enqueue_create_buffer[DType.float32](m_rows * k)
-    var f_norm = ctx.compile_function_unchecked[_pf_rmsnorm_rows_kernel]()
+    var f_norm = ctx.compile_function[_pf_rmsnorm_rows_kernel]()
     ctx.enqueue_function_unchecked(
         f_norm,
         xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), k, eps, m_rows,
@@ -141,7 +141,7 @@ fn _run_case(
     )
 
     var y_new = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
-    var f_gemm = ctx.compile_function_unchecked[_pf_gemm_assign_kernel_i8]()
+    var f_gemm = ctx.compile_function[_pf_gemm_assign_kernel_i8]()
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n + _GEMM_BN - 1) // _GEMM_BN
     ctx.enqueue_function_unchecked(
@@ -152,7 +152,7 @@ fn _run_case(
     )
 
     var y_new_narrow = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
-    var f_gemm_narrow = ctx.compile_function_unchecked[_pf_gnrw_assign_kernel_i8]()
+    var f_gemm_narrow = ctx.compile_function[_pf_gnrw_assign_kernel_i8]()
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
     ctx.enqueue_function_unchecked(
         f_gemm_narrow,
@@ -203,7 +203,7 @@ fn _run_case(
               worst_n, "bound", bound)
 
 
-fn _run_case_accum(
+def _run_case_accum(
     ctx: DeviceContext, m_rows: Int, k: Int, n: Int, mut passed: Int, mut failed: Int,
 ) raises:
     """`_pf_gemm_accum_kernel_i8` vs `_pf_gemv_accum_kernel_simd_i8` -- both start from the SAME
@@ -236,7 +236,7 @@ fn _run_case_accum(
             h[i] = y0_vals[i]
 
     var n_units = (n + _SUBS - 1) // _SUBS
-    var f_oracle = ctx.compile_function_unchecked[_pf_gemv_accum_kernel_simd_i8]()
+    var f_oracle = ctx.compile_function[_pf_gemv_accum_kernel_simd_i8]()
     ctx.enqueue_function_unchecked(
         f_oracle,
         y_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
@@ -246,7 +246,7 @@ fn _run_case_accum(
 
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n + _GEMM_BN - 1) // _GEMM_BN
-    var f_gemm = ctx.compile_function_unchecked[_pf_gemm_accum_kernel_i8]()
+    var f_gemm = ctx.compile_function[_pf_gemm_accum_kernel_i8]()
     ctx.enqueue_function_unchecked(
         f_gemm,
         y_new.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
@@ -259,7 +259,7 @@ fn _run_case_accum(
         for i in range(m_rows * n):
             h[i] = y0_vals[i]
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
-    var f_gemm_narrow = ctx.compile_function_unchecked[_pf_gnrw_accum_kernel_i8]()
+    var f_gemm_narrow = ctx.compile_function[_pf_gnrw_accum_kernel_i8]()
     ctx.enqueue_function_unchecked(
         f_gemm_narrow,
         y_new_narrow.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
@@ -309,7 +309,7 @@ fn _run_case_accum(
               worst_n, "bound", bound)
 
 
-fn _run_case_swiglu(
+def _run_case_swiglu(
     ctx: DeviceContext, m_rows: Int, k: Int, n_ff: Int, mut passed: Int, mut failed: Int,
 ) raises:
     """`_pf_rmsnorm_rows_kernel` + `_pf_gemm_swiglu_kernel_i8` vs the fused, single-row-flattened
@@ -339,7 +339,7 @@ fn _run_case_swiglu(
             h[i] = q.scale[i]
 
     var act_oracle = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
-    var f_oracle = ctx.compile_function_unchecked[_pf_swiglu_kernel_simd_i8]()
+    var f_oracle = ctx.compile_function[_pf_swiglu_kernel_simd_i8]()
     var n_units = (n_ff + _SUBS - 1) // _SUBS
     ctx.enqueue_function_unchecked(
         f_oracle,
@@ -349,7 +349,7 @@ fn _run_case_swiglu(
     )
 
     var xn_buf = ctx.enqueue_create_buffer[DType.float32](m_rows * k)
-    var f_norm = ctx.compile_function_unchecked[_pf_rmsnorm_rows_kernel]()
+    var f_norm = ctx.compile_function[_pf_rmsnorm_rows_kernel]()
     ctx.enqueue_function_unchecked(
         f_norm,
         xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), k, eps, m_rows,
@@ -357,7 +357,7 @@ fn _run_case_swiglu(
     )
 
     var act_new = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
-    var f_gemm = ctx.compile_function_unchecked[_pf_gemm_swiglu_kernel_i8]()
+    var f_gemm = ctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n_ff + _GEMM_BN - 1) // _GEMM_BN
     ctx.enqueue_function_unchecked(
@@ -368,7 +368,7 @@ fn _run_case_swiglu(
     )
 
     var act_new_narrow = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
-    var f_gemm_narrow = ctx.compile_function_unchecked[_pf_gnrw_swiglu_kernel_i8]()
+    var f_gemm_narrow = ctx.compile_function[_pf_gnrw_swiglu_kernel_i8]()
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
     ctx.enqueue_function_unchecked(
         f_gemm_narrow,
