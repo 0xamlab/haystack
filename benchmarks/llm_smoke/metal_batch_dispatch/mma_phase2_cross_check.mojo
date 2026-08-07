@@ -43,8 +43,8 @@ def _abs32(x: Float32) -> Float32:
 def main() raises:
     from std.gpu.host import DeviceContext
     var cctx = DeviceContext()
-    _ = cctx.compile_function_unchecked[_pf_gemm_accum_kernel_i8]()
-    _ = cctx.compile_function_unchecked[_pf_gemm_swiglu_kernel_i8]()
+    _ = cctx.compile_function[_pf_gemm_accum_kernel_i8]()
+    _ = cctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
 
     var opened = _mb_open_session()
     if opened < 0:
@@ -93,15 +93,15 @@ def main() raises:
         y_init_vals.append(Float32((i * 3 + 1) % 9) / 4.0 - 1.0)
 
     var x_addr: UInt64 = 0
-    var x_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var x_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var w_addr: UInt64 = 0
-    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var wscale_addr: UInt64 = 0
-    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var y_oracle_addr: UInt64 = 0
-    var y_oracle_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var y_oracle_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var y_mma_addr: UInt64 = 0
-    var y_mma_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var y_mma_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
 
     _ = _mb_alloc_buffer(M * K * 4, x_addr, x_contents)
     _ = _mb_alloc_buffer(N * K, w_addr, w_contents)
@@ -162,13 +162,13 @@ def main() raises:
         wscale2_vals.append(Float32(0.01) + Float32(i % 5) * Float32(0.001))
 
     var w2_addr: UInt64 = 0
-    var w2_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var w2_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var wscale2_addr: UInt64 = 0
-    var wscale2_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var wscale2_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var act_oracle_addr: UInt64 = 0
-    var act_oracle_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var act_oracle_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var act_mma_addr: UInt64 = 0
-    var act_mma_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var act_mma_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
 
     _ = _mb_alloc_buffer(2 * N * K, w2_addr, w2_contents)
     _ = _mb_alloc_buffer(2 * N * 4, wscale2_addr, wscale2_contents)

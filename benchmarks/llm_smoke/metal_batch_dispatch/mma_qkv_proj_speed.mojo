@@ -43,7 +43,7 @@ comptime N_ITERS: Int = 200
 def main() raises:
     from std.gpu.host import DeviceContext
     var cctx = DeviceContext()
-    _ = cctx.compile_function_unchecked[_pf_gemm_assign_kernel_i8]()
+    _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
 
     var opened = _mb_open_session()
     if opened < 0:
@@ -65,13 +65,13 @@ def main() raises:
         return
 
     var xn_addr: UInt64 = 0
-    var xn_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var xn_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var w_addr: UInt64 = 0
-    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var wscale_addr: UInt64 = 0
-    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var y_addr: UInt64 = 0
-    var y_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var y_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
 
     if _mb_alloc_buffer(M * K * 4, xn_addr, xn_contents) < 0:
         print("FAIL: alloc xn")

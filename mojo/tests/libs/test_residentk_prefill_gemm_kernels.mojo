@@ -6,7 +6,7 @@ C) — all three against the already Gate-1-verified, byte-unmodified Phase-1 or
 `test_metaldispatch_session_prefill.mojo`'s own golden vector for that verification).
 
 Hand-written, mirroring `test_residentk_attn_splitk_native_kernel.mojo`'s own isolated-kernel-diff
-pattern: `DeviceContext.enqueue_function_unchecked` directly, bypassing `metaldispatch`'s shim
+pattern: `DeviceContext.enqueue_function` directly, bypassing `metaldispatch`'s shim
 entirely — this file's whole question is "do these two kernels compute the same function," not
 "does the session's descriptor plan wire them correctly," so it needs none of the shim's machinery.
 
@@ -124,7 +124,7 @@ def _run_case(
     var y_oracle = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
     var f_oracle = ctx.compile_function[_pf_qkv_proj_kernel_simd_i8]()
     var n_units = (n + _SUBS - 1) // _SUBS
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_oracle,
         y_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
         w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(), k, n, eps, m_rows,
@@ -134,7 +134,7 @@ def _run_case(
     # ── candidate: rmsnorm split out, then the weight-stationary tiled GEMM ──
     var xn_buf = ctx.enqueue_create_buffer[DType.float32](m_rows * k)
     var f_norm = ctx.compile_function[_pf_rmsnorm_rows_kernel]()
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_norm,
         xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), k, eps, m_rows,
         grid_dim=m_rows, block_dim=_TG,
@@ -144,7 +144,7 @@ def _run_case(
     var f_gemm = ctx.compile_function[_pf_gemm_assign_kernel_i8]()
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n + _GEMM_BN - 1) // _GEMM_BN
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_gemm,
         y_new.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         m_rows, k, n,
@@ -154,7 +154,7 @@ def _run_case(
     var y_new_narrow = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
     var f_gemm_narrow = ctx.compile_function[_pf_gnrw_assign_kernel_i8]()
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_gemm_narrow,
         y_new_narrow.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         m_rows, k, n,
@@ -237,7 +237,7 @@ def _run_case_accum(
 
     var n_units = (n + _SUBS - 1) // _SUBS
     var f_oracle = ctx.compile_function[_pf_gemv_accum_kernel_simd_i8]()
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_oracle,
         y_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         k, n, m_rows,
@@ -247,7 +247,7 @@ def _run_case_accum(
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n + _GEMM_BN - 1) // _GEMM_BN
     var f_gemm = ctx.compile_function[_pf_gemm_accum_kernel_i8]()
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_gemm,
         y_new.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         m_rows, k, n,
@@ -260,7 +260,7 @@ def _run_case_accum(
             h[i] = y0_vals[i]
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
     var f_gemm_narrow = ctx.compile_function[_pf_gnrw_accum_kernel_i8]()
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_gemm_narrow,
         y_new_narrow.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         m_rows, k, n,
@@ -341,7 +341,7 @@ def _run_case_swiglu(
     var act_oracle = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
     var f_oracle = ctx.compile_function[_pf_swiglu_kernel_simd_i8]()
     var n_units = (n_ff + _SUBS - 1) // _SUBS
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_oracle,
         act_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
         w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(), k, n_ff, eps, m_rows,
@@ -350,7 +350,7 @@ def _run_case_swiglu(
 
     var xn_buf = ctx.enqueue_create_buffer[DType.float32](m_rows * k)
     var f_norm = ctx.compile_function[_pf_rmsnorm_rows_kernel]()
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_norm,
         xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), k, eps, m_rows,
         grid_dim=m_rows, block_dim=_TG,
@@ -360,7 +360,7 @@ def _run_case_swiglu(
     var f_gemm = ctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n_ff + _GEMM_BN - 1) // _GEMM_BN
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_gemm,
         act_new.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         m_rows, k, n_ff,
@@ -370,7 +370,7 @@ def _run_case_swiglu(
     var act_new_narrow = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
     var f_gemm_narrow = ctx.compile_function[_pf_gnrw_swiglu_kernel_i8]()
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
-    ctx.enqueue_function_unchecked(
+    ctx.enqueue_function(
         f_gemm_narrow,
         act_new_narrow.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
         m_rows, k, n_ff,

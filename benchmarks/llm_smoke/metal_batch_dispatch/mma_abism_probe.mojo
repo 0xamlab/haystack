@@ -38,7 +38,7 @@ from metaldispatch.ffi import (
     _mb_run_token,
 )
 
-alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
+comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 
 
 def main() raises:
@@ -50,7 +50,7 @@ def main() raises:
         d_out[tid] = Float32(tid) * Float32(scale) + Float32(base)
 
     var cctx = DeviceContext()
-    _ = cctx.compile_function_unchecked[_abism_pinned_kernel_real]()
+    _ = cctx.compile_function[_abism_pinned_kernel_real]()
 
     var opened = _mb_open_session()
     if opened < 0:
@@ -79,9 +79,9 @@ def main() raises:
     print("pinned_idx =", pinned_idx, " forge_idx =", forge_idx)
 
     var addr_pinned: UInt64 = 0
-    var contents_pinned = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var contents_pinned = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var addr_forge: UInt64 = 0
-    var contents_forge = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var contents_forge = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     if _mb_alloc_buffer(128, addr_pinned, contents_pinned) < 0:
         print("FAIL: alloc_buffer (pinned) failed")
         return

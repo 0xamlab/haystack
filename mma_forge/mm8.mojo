@@ -26,13 +26,18 @@ oracle's own `[BN,BK]` b_tile) during the cooperative load -- the DEVICE READ st
 coalesced-by-row pattern the oracle already uses; only the SHARED-MEMORY write index changes,
 standard practice for feeding a transpose-free compute stage.
 
-PHASE 1 SCOPE, exactly as staged in the approved plan: correctness of the core MMA tiling only.
-Partial-tile M/N padding (the scalar oracle's own zero-pad-and-bounds-check-on-store discipline) is
-NOT yet implemented here -- this kernel currently REQUIRES `m_rows % 32 == 0` and `n % 32 == 0`.
-`k` partial-tile padding on the LAST BK step IS handled (zero-padded on load, same as the oracle),
-since that falls out naturally from the existing cooperative-load bounds check. Extending to
-arbitrary M/N is deferred to whenever Phase 1's real GPU-counter measurement justifies Phase 2/3 --
-see the plan's own staging rationale.
+PARTIAL-TILE M/N: the shared-memory A/B tiles are ALREADY zero-padded for out-of-range rows/cols
+during the cooperative load (`if (gr < m_rows and gc < k) else 0.0`, etc.) regardless of whether
+`m_rows`/`n` are multiples of 32 -- the accumulate math itself has never needed the alignment
+restriction. The real gap was the FINAL STORE (and, for the accum kernel, the seed load): both used
+`apple_mma_store_8x8`/`apple_mma_load_8x8` unconditionally, which have no masked form and will
+write/read past a buffer sized to the real (unaligned) `m_rows`/`n`. Fixed by computing each lane's
+own (row, col) via `_frag_row_col` (the same per-lane mapping those library functions use
+internally, ground-truthed via Metal `thread_elements()` per the reference this was built from) and
+checking `r < m_rows` / `c < n` per element before reading or writing it directly -- the identical
+bounds-check discipline the scalar oracle itself already uses on its own final store. Verified
+against the scalar oracles at a wide sweep of non-32-aligned `(M,K,N)` shapes, not just tile-aligned
+ones (`mma_forge/probes/correctness_probe_partial.mojo`).
 
 Uses fixed-width `Int64` scalar kernel arguments throughout (bare `Int`/`UInt` are REJECTED as GPU
 kernel arguments on this toolchain, per Modular's own v1.0.0 release notes) and the checked
@@ -52,8 +57,8 @@ from max.gpu.compute.arch.mma_apple import (
     apple_mma_store_8x8,
 )
 
-alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
-alias _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
+comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
+comptime _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
 
 comptime _BM: Int64 = 32
 comptime _BN: Int64 = 32
@@ -61,6 +66,19 @@ comptime _BK: Int64 = 16
 comptime _NTHREADS: Int64 = 256
 comptime _N_SUBTILES: Int64 = (_BM // 8) * (_BN // 8)
 comptime _SUBTILES_PER_SG: Int64 = _N_SUBTILES // (_NTHREADS // 32)
+
+
+def _frag_row_col(tid: Int64) -> SIMD[DType.int64, 2]:
+    """This lane's (row, col_base) within its 8x8 fragment -- the SAME per-lane mapping
+    `apple_mma_load_8x8`/`apple_mma_store_8x8` use internally via `lane_id()`, computed locally
+    here (not imported) because a bounds-checked, partial-tile-safe store needs to know which two
+    (row, col) positions THIS lane owns and test them individually; neither library function has a
+    masked-store form. `lane_id() == tid % 32` for a linear threadgroup organized as consecutive
+    32-thread simdgroups, the layout every kernel in this file already assumes."""
+    var lane = tid % 32
+    var row_lo = ((lane & 6) >> 1) + ((lane & 16) >> 2)
+    var col_base = ((lane & 1) << 1) + ((lane & 8) >> 1)
+    return SIMD[DType.int64, 2](row_lo, col_base)
 
 
 def _qkv_proj_gemm_mma8x8(
@@ -123,15 +141,19 @@ def _qkv_proj_gemm_mma8x8(
 
         barrier()
 
+    var rc = _frag_row_col(tid)
     for which in range(2):
         var sub_idx = sg + Int64(which) * 8
         var sub_row = sub_idx // 4
         var sub_col = sub_idx % 4
-        var y_ptr = y + Int((block_row + sub_row * 8) * n + (block_col + sub_col * 8))
-        if which == 0:
-            apple_mma_store_8x8[DType.float32](y_ptr, Int(n), acc0)
-        else:
-            apple_mma_store_8x8[DType.float32](y_ptr, Int(n), acc1)
+        var frag = acc0 if which == 0 else acc1
+        var r = block_row + sub_row * 8 + rc[0]
+        var c0 = block_col + sub_col * 8 + rc[1]
+        var c1 = c0 + 1
+        if r < m_rows and c0 < n:
+            y[Int(r * n + c0)] = frag[0]
+        if r < m_rows and c1 < n:
+            y[Int(r * n + c1)] = frag[1]
 
 
 def _gemm_accum_mma8x8(
@@ -140,9 +162,10 @@ def _gemm_accum_mma8x8(
     """MMA twin of `_pf_gemm_accum_kernel_i8`: `y[M,n] += x[M,k] @ W^T[k,n]`. Reused for BOTH
     o_proj and down_proj, exactly as the scalar oracle already is. Byte-for-byte
     `_qkv_proj_gemm_mma8x8` except the two accumulator fragments are SEEDED from the EXISTING `y`
-    values (loaded via `apple_mma_load_8x8`, same per-lane fragment layout the store side already
-    uses) instead of zero -- `_mma_apple_8x8`'s own `D = A@B + C` shape makes "+=" just "don't
-    zero C," no separate add-back step needed after the k-loop."""
+    values instead of zero (bounds-checked per element via `_frag_row_col`, same as the final store
+    -- a stale `y` read past `m_rows`/`n` would be a memory-safety issue even though its result is
+    never stored back) -- `_mma_apple_8x8`'s own `D = A@B + C` shape makes "+=" just "don't zero C,"
+    no separate add-back step needed after the k-loop."""
     var a_tile = stack_allocation[Int(_BM * _BK), DType.float32, address_space = AddressSpace.SHARED]()
     var b_tile = stack_allocation[Int(_BK * _BN), DType.float32, address_space = AddressSpace.SHARED]()
 
@@ -155,11 +178,20 @@ def _gemm_accum_mma8x8(
     var block_row = tile_row * _BM
     var block_col = tile_col * _BN
 
-    var acc0 = apple_mma_load_8x8[DType.float32](
-        y + Int(block_row + (sg // 4) * 8) * Int(n) + Int(block_col + (sg % 4) * 8), Int(n)
+    var rc_seed = _frag_row_col(tid)
+    var r0 = block_row + (sg // 4) * 8 + rc_seed[0]
+    var c0_0 = block_col + (sg % 4) * 8 + rc_seed[1]
+    var c0_1 = c0_0 + 1
+    var acc0 = SIMD[DType.float32, 2](
+        y[Int(r0 * n + c0_0)] if (r0 < m_rows and c0_0 < n) else Float32(0.0),
+        y[Int(r0 * n + c0_1)] if (r0 < m_rows and c0_1 < n) else Float32(0.0),
     )
-    var acc1 = apple_mma_load_8x8[DType.float32](
-        y + Int(block_row + ((sg + 8) // 4) * 8) * Int(n) + Int(block_col + ((sg + 8) % 4) * 8), Int(n)
+    var r1 = block_row + ((sg + 8) // 4) * 8 + rc_seed[0]
+    var c1_0 = block_col + ((sg + 8) % 4) * 8 + rc_seed[1]
+    var c1_1 = c1_0 + 1
+    var acc1 = SIMD[DType.float32, 2](
+        y[Int(r1 * n + c1_0)] if (r1 < m_rows and c1_0 < n) else Float32(0.0),
+        y[Int(r1 * n + c1_1)] if (r1 < m_rows and c1_1 < n) else Float32(0.0),
     )
 
     var n_steps = (k + _BK - 1) // _BK
@@ -201,15 +233,19 @@ def _gemm_accum_mma8x8(
 
         barrier()
 
+    var rc = _frag_row_col(tid)
     for which in range(2):
         var sub_idx = sg + Int64(which) * 8
         var sub_row = sub_idx // 4
         var sub_col = sub_idx % 4
-        var y_ptr = y + Int((block_row + sub_row * 8) * n + (block_col + sub_col * 8))
-        if which == 0:
-            apple_mma_store_8x8[DType.float32](y_ptr, Int(n), acc0)
-        else:
-            apple_mma_store_8x8[DType.float32](y_ptr, Int(n), acc1)
+        var frag = acc0 if which == 0 else acc1
+        var r = block_row + sub_row * 8 + rc[0]
+        var c0 = block_col + sub_col * 8 + rc[1]
+        var c1 = c0 + 1
+        if r < m_rows and c0 < n:
+            y[Int(r * n + c0)] = frag[0]
+        if r < m_rows and c1 < n:
+            y[Int(r * n + c1)] = frag[1]
 
 
 comptime _BN_NARROW: Int64 = 16
@@ -366,15 +402,21 @@ def _swiglu_gemm_mma8x8(
 
         barrier()
 
+    var rc = _frag_row_col(tid)
     for which in range(2):
         var sub_idx = sg + Int64(which) * 8
         var sub_row = sub_idx // 4
         var sub_col = sub_idx % 4
-        var act_ptr = act + Int((block_row + sub_row * 8) * n_ff + (block_col + sub_col * 8))
         var g = acc_g0 if which == 0 else acc_g1
         var u = acc_u0 if which == 0 else acc_u1
         var combined = SIMD[DType.float32, 2](
             (g[0] / (1.0 + exp(-g[0]))) * u[0],
             (g[1] / (1.0 + exp(-g[1]))) * u[1],
         )
-        apple_mma_store_8x8[DType.float32](act_ptr, Int(n_ff), combined)
+        var r = block_row + sub_row * 8 + rc[0]
+        var c0 = block_col + sub_col * 8 + rc[1]
+        var c1 = c0 + 1
+        if r < m_rows and c0 < n_ff:
+            act[Int(r * n_ff + c0)] = combined[0]
+        if r < m_rows and c1 < n_ff:
+            act[Int(r * n_ff + c1)] = combined[1]

@@ -49,7 +49,7 @@ def _abs32(x: Float32) -> Float32:
 def main() raises:
     from std.gpu.host import DeviceContext
     var cctx = DeviceContext()
-    _ = cctx.compile_function_unchecked[_pf_gemm_assign_kernel_i8]()
+    _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
 
     var opened = _mb_open_session()
     if opened < 0:
@@ -88,15 +88,15 @@ def main() raises:
         wscale_vals.append(Float32(0.01) + Float32(i % 5) * Float32(0.001))
 
     var xn_addr: UInt64 = 0
-    var xn_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var xn_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var w_addr: UInt64 = 0
-    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var wscale_addr: UInt64 = 0
-    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var y_oracle_addr: UInt64 = 0
-    var y_oracle_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var y_oracle_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var y_mma_addr: UInt64 = 0
-    var y_mma_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var y_mma_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
 
     if _mb_alloc_buffer(M * K * 4, xn_addr, xn_contents) < 0:
         print("FAIL: alloc xn")

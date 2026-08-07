@@ -13,8 +13,8 @@ is real, not vacuous). w is stored [N,K] row-major, int8, matching the scalar or
 from max.gpu.host import DeviceContext
 from mm8 import _qkv_proj_gemm_mma8x8
 
-alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
-alias _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
+comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
+comptime _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
 
 comptime M: Int = 32
 comptime K: Int = 32

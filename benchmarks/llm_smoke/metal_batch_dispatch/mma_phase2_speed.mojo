@@ -44,13 +44,13 @@ def bench_one(
     label: String, oracle_idx: Int, mma_idx: Int, k: Int, n: Int, w_mult: Int, tile_n: Int = 32,
 ) raises -> None:
     var x_addr: UInt64 = 0
-    var x_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var x_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var w_addr: UInt64 = 0
-    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var w_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var wscale_addr: UInt64 = 0
-    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var wscale_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
     var y_addr: UInt64 = 0
-    var y_contents = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+    var y_contents = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
 
     if _mb_alloc_buffer(M * k * 4, x_addr, x_contents) < 0:
         print("FAIL: alloc x for", label)
@@ -113,8 +113,8 @@ def bench_one(
 def main() raises:
     from std.gpu.host import DeviceContext
     var cctx = DeviceContext()
-    _ = cctx.compile_function_unchecked[_pf_gemm_accum_kernel_i8]()
-    _ = cctx.compile_function_unchecked[_pf_gemm_swiglu_kernel_i8]()
+    _ = cctx.compile_function[_pf_gemm_accum_kernel_i8]()
+    _ = cctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
 
     var opened = _mb_open_session()
     if opened < 0:

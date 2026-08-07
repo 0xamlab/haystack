@@ -83,7 +83,7 @@ struct EmbeddingTable(Copyable, Movable):
     var vocab_size: UInt32
 
     def __init__(out self):
-        self.values     = UnsafePointer[Float32](unsafe_from_address=0)
+        self.values     = UnsafePointer[Float32](unsafe_from_address=1)
         self.vocab_size = 0
 
     def __copyinit__(out self, copy: Self):
@@ -109,8 +109,8 @@ struct LinearLayer(Copyable, Movable):
     var out_dim: UInt16
 
     def __init__(out self):
-        self.weight  = UnsafePointer[Float32](unsafe_from_address=0)
-        self.bias    = UnsafePointer[Float32](unsafe_from_address=0)
+        self.weight  = UnsafePointer[Float32](unsafe_from_address=1)
+        self.bias    = UnsafePointer[Float32](unsafe_from_address=1)
         self.in_dim  = 0
         self.out_dim = 0
 
@@ -165,8 +165,8 @@ struct SemanticModel(Movable):
         self.agg_fc2      = LinearLayer()
         self.family_fc1   = LinearLayer()
         self.family_fc2   = LinearLayer()
-        self.nn_token_ids = UnsafePointer[UInt32](unsafe_from_address=0)
-        self.nn_scores    = UnsafePointer[Float32](unsafe_from_address=0)
+        self.nn_token_ids = UnsafePointer[UInt32](unsafe_from_address=1)
+        self.nn_scores    = UnsafePointer[Float32](unsafe_from_address=1)
 
     def __moveinit__(out self, var take: Self):
         self.embeddings   = take.embeddings
@@ -193,7 +193,7 @@ struct SemanticQuery(Copyable, Movable):
     var role_id:     UInt8    # resolver ROLE_* constant
 
     def __init__(out self):
-        self.token_ids   = UnsafePointer[UInt32](unsafe_from_address=0)
+        self.token_ids   = UnsafePointer[UInt32](unsafe_from_address=1)
         self.token_count = 0
         self.source_id   = 0
         self.role_id     = 0

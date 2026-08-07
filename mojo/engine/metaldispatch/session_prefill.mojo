@@ -397,20 +397,20 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -448,11 +448,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -466,17 +466,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         # ── activation buffers: sized for `PREFILL_MAX_TILE` ROWS, not one -- see module docstring
         # "BUFFER SIZING". `step()`'s own descriptor plan below never asks for more than row 0.
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.xn_addr = UInt64(0); self.xn_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.prompt_ids_addr = UInt64(0); self.prompt_ids_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.xn_addr = UInt64(0); self.xn_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.prompt_ids_addr = UInt64(0); self.prompt_ids_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         var n_q = h_q * d_head
         if _mb_alloc_buffer(PREFILL_MAX_TILE * d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
@@ -501,9 +501,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         if _mb_alloc_buffer(PREFILL_MAX_TILE * 4, self.prompt_ids_addr, self.prompt_ids_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (prompt_ids)")
 
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -512,18 +512,18 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.nkeys_offsets = List[Int]()
 
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
         self.deep_ready = False
 
+        # Was `1 + n_layers*6 + 2` through PR #584's own Phase 1, then `1 + n_layers*7 + 2` once
+        # `qkv_proj` became `rmsnorm` + `gemm_assign`. Now `o_proj`/`down_proj` are `gemm_accum`
+        # (unchanged dispatch count, same role reused twice, just a different kernel) and `swiglu`
+        # became a SECOND `rmsnorm` dispatch (its own gamma buffer, `ln2`) feeding `gemm_swiglu` --
+        # one more dispatch per layer than the Phase-A state.
         self.n_descriptors_prefill = 1 + self.n_layers * 8 + 2
-        """Was `1 + n_layers*6 + 2` through PR #584's own Phase 1, then `1 + n_layers*7 + 2` once
-        `qkv_proj` became `rmsnorm` + `gemm_assign`. Now `o_proj`/`down_proj` are `gemm_accum`
-        (unchanged dispatch count, same role reused twice, just a different kernel) and `swiglu`
-        became a SECOND `rmsnorm` dispatch (its own gamma buffer, `ln2`) feeding `gemm_swiglu` --
-        one more dispatch per layer than the Phase-A state."""
         self.descriptors_prefill = _mb_alloc_descriptors(self.n_descriptors_prefill)
         self.embed_d = -1
         self.rmsnorm_d = List[Int]()
@@ -1060,27 +1060,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
 
         # ── the tile-config decision this method makes for every GEMM-shaped role this call
-        # dispatches, now three-way: hardware-MMA (`_qkv_proj_gemm_mma8x8`/`_gemm_accum_mma8x8`/
-        # `_swiglu_gemm_mma8x8`, real Apple `simdgroup_matrix` 8x8 instructions, measured 2.2x-3.2x
-        # over the scalar-FMA wide tile at Qwen3-0.6B-Base-scale shapes -- see `_PFROLE_GEMM_
-        # ASSIGN_MMA`'s own docstring in `metaldispatch.session`) when `m_rows % 32 == 0` (those
-        # kernels' own Phase-1/2 scope has no partial-tile M/N padding yet), else the EXISTING
-        # WIDE (`BM=32`) vs NARROW (`BM=8`) scalar choice, unchanged -- see `residentk.contract.
-        # residentk_prefill_gemm_use_narrow_tile`'s own docstring for the real two-anchor
-        # measurement THAT rests on. Evaluated FRESH every call, never cached across calls with a
-        # different `m_rows`, matching `step()`'s own `residentk_splitk_policy` call-every-time
-        # discipline.
-        # `m_rows % 32 == 0` alone is NOT sufficient: the MMA kernels' Phase-1/2 scope has no
-        # partial-tile padding on N either, so a model shape whose `n_qkv`/`d_model`/`d_ff` isn't
-        # itself a multiple of 32 would silently write out of bounds on the tail N-tile if only
-        # `m_rows` were checked -- caught by this file's own golden-vector test (`D_FF=40`, not a
-        # multiple of 32) before it ever reached a real shape. Real Qwen3-0.6B-Base dims (1024 /
-        # 2048 / 3072) all satisfy this; this check is what makes that an explicit, verified fact
-        # instead of an assumption baked into the eligibility test.
-        var use_mma = (
-            m_rows % 32 == 0 and n_qkv % 32 == 0
-            and self.d_model % 32 == 0 and self.d_ff % 32 == 0
-        )
+        # dispatches: hardware-MMA (`_qkv_proj_gemm_mma8x8`/`_gemm_accum_mma8x8`/
+        # `_swiglu_gemm_mma8x8`, real Apple `simdgroup_matrix` 8x8 instructions) is now
+        # UNCONDITIONAL, not gated on `m_rows`/model-dimension alignment. Originally these kernels
+        # required `m_rows % 32 == 0` and 32-aligned model dims (their inner `BM=32,BN=32` tile had
+        # no partial-tile padding). That padding was added -- the final store now checks each
+        # lane's own `(row,col)` against `m_rows`/`n` individually before writing, same discipline
+        # the scalar oracle's own store already used -- verified correct at seven deliberately
+        # non-32-aligned `(M,K,N)` shapes (`mma_forge/probes/correctness_probe_partial.mojo`) and
+        # bit-exact against the scalar oracles through this exact production shim at one of them
+        # (`mma_partial_cross_check.mojo`). With that gate gone, MMA was re-measured against BOTH
+        # scalar tiles across the full size range this policy used to split on: it wins at
+        # Qwen3-0.6B-Base-scale shapes (2.2x-3.3x, unchanged) AND at `m_rows=5` -- the exact small-M
+        # anchor `residentk_prefill_gemm_use_narrow_tile` was calibrated against -- where MMA still
+        # beats the narrow scalar tile 1.83x (`mma_small_m_speed.mojo`, reproduced 3x). The
+        # wide/narrow scalar split this file used to make below is therefore never selected in
+        # practice anymore; left in place (not deleted) as the fallback path and because both
+        # scalar kernels remain Gate-0 oracles the MMA kernels are diffed against.
+        var use_mma = True
         var use_narrow = residentk_prefill_gemm_use_narrow_tile(m_rows)
         var gemm_bm = 32 if use_mma else (_GEMM_BM_NARROW if use_narrow else _GEMM_BM)
         var gemm_nthreads = 256 if use_mma else (_GEMM_NTHREADS_NARROW if use_narrow else _GEMM_NTHREADS)

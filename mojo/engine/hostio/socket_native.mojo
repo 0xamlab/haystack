@@ -263,7 +263,7 @@ def sn_accept(fd: Int) -> Int:
     """
     if fd < 0:
         return -1
-    var nullptr = UnsafePointer[UInt8](unsafe_from_address=0)
+    var nullptr = UnsafePointer[UInt8](unsafe_from_address=1)
     var conn = external_call["accept", Int32](Int32(fd), nullptr, nullptr)
     return Int(conn)
 
