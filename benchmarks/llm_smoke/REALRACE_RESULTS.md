@@ -5343,3 +5343,66 @@ outright win against either opponent.
   so today's fallback-to-scalar for those chunks is very likely leaving additional real throughput
   on the table for any prompt whose length isn't itself a multiple of 32.
 
+## Tiled-MMA-attention Phase 1, block-of-8 online-softmax rescale (2026-08-07): correct, but a real regression -- fewer rescales alone is not the lever
+
+The attention redesign this ledger's own previous entry called for, Phase 1: `_pf_attn8_kernel_simd`
+in `residentk.kernels`, one online-softmax `(mx, denom, o)` rescale per block of 8 keys instead of
+once per key, isolating "does reducing rescale/bookkeeping COUNT alone help" from "does hardware
+MMA help further" before building the (much larger) MMA half of the plan. The block-combined update
+(standard flash-attention block recurrence: block max, one rescale, sum the block's weighted
+contributions in a single pass) was verified twice before touching any GPU code: on host, in
+Float64, against both `attnk.sdpa.sdpa_forward_flat` and the already-proven `attnk.flash.
+flash_forward_flat` at five edge-case shapes (`attn_block_update_probe.mojo`), then on device, in
+Float32, against the byte-unmodified `_pf_attn_tiled_kernel_simd` oracle at twelve shapes including
+the real Qwen3-0.6B-Base dims (`test_residentk_prefill_attn_kernels.mojo`).
+
+Wired into `_MBQwen3I8AllSimd7Prefill` as a new role (`_PFROLE_ATTN_BLOCK8`) for the real-pipeline
+measurement this plan's own Phase 1 explicitly requires before any speed claim. Real checkpoint,
+real pipeline, `n_prompt=256`, 3 runs: **1606-1788 tok/s prefill**, against **1940-1956 tok/s**
+with the flag reverted (`use_mma`'s own unconditional-MMA baseline, unaffected by this change) --
+a real, reproducible ~10-20% REGRESSION, not a win. Reverted (`use_block8_attn = False`); the
+kernel, its Gate-0 test, and the role stay in place as a correctness-verified artifact and as the
+variable-isolation data point Phase 2 is designed around, exactly this ledger's own "ship or
+abandon with an honest, documented reason, independently of later phases" discipline.
+
+Consistent explanation: the two-level SIMD-shuffle dot-product reduction itself -- still one
+barrier pair per key either way, since Phase 1 deliberately left it untouched to isolate the
+rescale-count variable alone -- is the dominant per-key cost, not the online-softmax bookkeeping
+this change targeted. Reducing rescale COUNT without also reducing the barrier-guarded reduction
+work underneath it doesn't move the needle; Phase 2 (hardware MMA for Q@K^T, computing an entire
+8-key score block via one matrix instruction instead of 8 barrier-guarded scalar reductions)
+targets the actual cost directly and is now the answer to "where the cost actually lives," not a
+hypothesis.
+
+### A real, pre-existing correctness bug found in the process, unrelated to this phase's own work
+
+Gate-0 showed a rare (~1-3% of dispatches at `m_rows=512`) divergence between `_pf_attn8_kernel_
+simd` and the oracle. Chased through seven structural rewrites of the new kernel (per-thread
+`InlineArray`, named scalars, genuine threadgroup-shared memory, an added trailing `barrier()`,
+`while` vs. a precomputed-trip-count `for` outer loop) before the real cause surfaced: the
+byte-unmodified oracle `_pf_attn_tiled_kernel_simd`, and its decode twin `_sdpa_kernel_simd`
+(identical math, identical reduction), disagree with THEMSELVES across two dispatches with
+identical inputs at the same ~1% rate -- confirmed with no candidate kernel involved at all. At the
+smallest possible shape (`d_head=32`, one SIMD-group, `n_keys=1`) the same failure becomes 100%
+deterministic: lanes 0 and 1 always compute `0.0` for their own accumulate step while every other
+lane (2..31) is exactly correct, every run. Internal-state dumps confirm the shared reduction value
+is correctly uniform at the point it's used -- the two lowest lanes' own SECOND read of `cv[kb+e]`
+silently loses its contribution. Same "zero-contribution" signature this file's own kernels module
+already documents for the (dead-code) narrow-tile scalar GEMM path -- same toolchain, same bug
+family, but this instance lives in the CURRENTLY-DISPATCHED decode and prefill attention paths, not
+dead code. No code change found that avoids it; documented in place
+(`_sdpa_kernel_simd`/`_pf_attn_tiled_kernel_simd` docstrings, `attn_reduction_lane_zero_bug_repro.
+mojo`) rather than chased further, matching this repo's own standing discipline for the two
+already-known instances of this same class of bug.
+
+### What is left
+
+- Phase 2 (batch query rows into tiles of 8, hardware MMA for Q@K^T via `apple_mma_load_8x8`/
+  `_mma_apple_8x8`, reusing `mma_forge/mm8.mojo`'s proven fragment-load/bounds-check pattern) is the
+  next real step -- this entry's own finding is the reason it targets the reduction itself, not
+  scalar bookkeeping around it.
+- The rare compiler bug above is real and lives in the currently-dispatched path, but its
+  end-to-end impact on generation quality is unmeasured -- a small, rare (~1%) per-dispatch
+  attention-output perturbation across 28 layers and many tokens could plausibly wash out in
+  practice or could compound; nothing here measures which.
+

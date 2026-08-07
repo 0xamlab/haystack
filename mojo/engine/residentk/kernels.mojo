@@ -1881,6 +1881,27 @@ def _sdpa_kernel_simd(
     normalizer `denom`, the running output accumulator `o`, the rescale-and-accumulate arithmetic —
     is copied byte-for-byte from `_sdpa_kernel`'s own loop body, because the math this kernel
     computes must be, and is verified to be, IDENTICAL.
+
+    KNOWN, REAL, RARE compiler bug in this exact reduction (found while gating Phase 1 of the
+    tiled-MMA-attention plan on `_pf_attn_tiled_kernel_simd`, this kernel's own batched-prefill
+    twin, NOT introduced by that work): dispatching this byte-unmodified kernel TWICE with
+    IDENTICAL inputs occasionally (~1% of dispatches at `d_head=128`, `n_keys=512`) produces two
+    DIFFERENT outputs — this kernel disagreeing with itself, no candidate kernel involved. At the
+    smallest possible shape (`d_head=32`, `n_keys=1`) the same failure becomes 100% deterministic:
+    lanes 0 and 1 of the warp always compute `0.0` for their own `o = o*corr + w*cv[kb+e]` instead
+    of the correct value, while every other lane (2..31) is exactly correct, every single run.
+    Internal-state dumps confirm `s`/`corr`/`w` are correctly uniform across every lane at the point
+    they are used — the two lowest lane indices' own SECOND read of `cv[kb+e]` (the first, inside
+    `partial = qv * ck[kb+e]` a few lines earlier, is provably correct, since the warp-wide dot
+    product it feeds is correct) silently loses its contribution. Same "zero-contribution" signature
+    already documented on `_pf_gnrw_accum_kernel_i8` below for the (dead-code) narrow-tile scalar
+    GEMM path — same toolchain, same bug family, but this instance lives in the CURRENTLY-DISPATCHED
+    decode and prefill attention paths. Repro, both the deterministic minimal case and the
+    production-scale self-race: `benchmarks/llm_smoke/attn_reduction_lane_zero_bug_repro.mojo`.
+    Not fixed here: no code change found that avoids it (every restructuring tried on the prefill
+    twin — different cache storage, extra barriers, different loop constructs — inherited the same
+    rate), consistent with a real Mojo 1.0.0b2 codegen bug in this toolchain rather than a logic
+    error in this kernel's own math, which is independently verified correct.
     """
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     """Fixed upper bound on the number of SIMD-groups one threadgroup can contain, sized off the
@@ -3289,6 +3310,11 @@ def _pf_attn_tiled_kernel_simd(
     exactly at row `m`'s own slot), and correctly DOES reach every slot written by an earlier
     `step()`/`prefill_batch()` call on this same session -- exactly the keys row `m` is supposed to
     attend to.
+
+    Inherits `_sdpa_kernel_simd`'s own known, real, rare compiler-codegen bug in this exact
+    reduction (~1% of dispatches at production scale disagree with themselves) -- see that kernel's
+    docstring and `benchmarks/llm_smoke/attn_reduction_lane_zero_bug_repro.mojo` for the full
+    account. Byte-unmodified; this kernel does not introduce anything new.
     """
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -3328,6 +3354,108 @@ def _pf_attn_tiled_kernel_simd(
         o = o * corr + w * cv[kb + e]
         denom = denom * corr + w
         mx = nm
+
+    attn_out[m * n_q + h * d_head + e] = o / denom
+
+
+comptime _ATTN_BLOCK8_KEYS: Int = 8
+"""Keys per online-softmax rescale, Phase 1 of the tiled-MMA-attention plan. Verified on host first
+(`benchmarks/llm_smoke/attn_block_update_probe.mojo`, Float64, against both `attnk.sdpa` and
+`attnk.flash`) before writing this: a genuine block-combined update -- one `(mx, denom)` rescale per
+block of 8 keys instead of one per key -- is algebraically equivalent to the per-key form (standard
+flash-attention block recurrence: block max, rescale the running accumulator once, then sum the
+block's weighted contributions in a single pass), not merely a loop-restructuring. `8` matches the
+planned Phase 2 MMA tile width so this scalar step measures the SAME granularity Phase 2 would
+inherit, isolating "does fewer rescales help" from "does hardware MMA help further"."""
+
+
+def _pf_attn8_kernel_simd(
+    attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
+    pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32, m_rows: Int,
+):
+    """Phase-1 twin of `_pf_attn_tiled_kernel_simd` -- IDENTICAL grid/block shape, IDENTICAL
+    two-level SIMD-shuffle dot-product reduction per key (still one barrier pair per key; that cost
+    is tied to computing each score, not to the online-softmax bookkeeping). The one real change:
+    the running `(mx, denom, o)` state is rescaled ONCE per `_ATTN_BLOCK8_KEYS`-key block instead of
+    once per key. `_pf_attn_tiled_kernel_simd` stays byte-unmodified as the Gate-0 oracle this kernel
+    is diffed against -- see `mojo/tests/libs/test_residentk_prefill_attn_kernels.mojo`.
+
+    Named `_pf_attn8_...`, not the more obvious `_pf_attn_tiled_block8_...`: `metaldispatch.session`'s
+    pipeline-discovery classifies a compiled kernel by the first 11 characters of its truncated Metal
+    name, and `_pf_attn_tiled_block8_kernel_simd` would have shared all 11 with the oracle
+    (`pf_attn_til` either way -- they only diverge at `tiled_` vs `tiled_block8_`, past the survivor
+    window). Exactly the `_attn_splitk_partial`/`_attn_splitk_merge` collision `session.mojo`'s own
+    docstring already documents; `attn8` diverges from the oracle's `attn_til` at character 8,
+    same fix applied a second time.
+
+    Cached into threadgroup-shared `block_s`, not a per-thread register array: both forms were
+    measured, and both inherit the same rare (~1% of dispatches at production scale) divergence that
+    `_pf_attn_tiled_kernel_simd` itself has -- see that kernel's own docstring and
+    `benchmarks/llm_smoke/attn_reduction_lane_zero_bug_repro.mojo` for the full account. This kernel
+    does not introduce a new bug; it inherits the oracle's own reduction primitive's existing one.
+    Shared memory is kept anyway (no correctness difference measured, and it avoids doubling the
+    reduction cost, which a same-bug-either-way finding makes pointless).
+    """
+    comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
+    var block_s = stack_allocation[_ATTN_BLOCK8_KEYS, DType.float32, address_space = AddressSpace.SHARED]()
+    var n_q = h_q * d_head
+    var h = Int(block_idx.x) % h_q
+    var m = Int(block_idx.x) // h_q
+    if m >= m_rows:
+        return
+    var n_keys = pos_base + m + 1
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[m * n_q + h * d_head + e]
+    var lane = lane_id()
+    var grp_id = warp_id()
+    var n_groups = d_head // WARP_SIZE
+
+    var mx = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    var j0 = 0
+    while j0 < n_keys:
+        var nb = n_keys - j0
+        if nb > _ATTN_BLOCK8_KEYS:
+            nb = _ATTN_BLOCK8_KEYS
+
+        # Pass 1: every score in this block, via the SAME per-key reduction as the oracle kernel,
+        # cached into `block_s` for Pass 2 to reuse without recomputing the dot product.
+        var block_max_raw = _NEG_HUGE
+        for jj in range(nb):
+            var j = j0 + jj
+            var kb = (j * h_kv + hk) * d_head
+            var partial = qv * ck[kb + e]
+            var group_total = _warp_sum(partial)
+            if lane == 0:
+                grp[grp_id] = group_total
+            barrier()
+            var s = Float32(0.0)
+            for g in range(n_groups):
+                s += grp[g]
+            s *= scale
+            block_s[jj] = s
+            barrier()
+            if s > block_max_raw:
+                block_max_raw = s
+
+        # ONE rescale for the whole block -- the thing this kernel is testing.
+        var nm = mx if mx > block_max_raw else block_max_raw
+        var corr = exp(mx - nm)
+        o *= corr
+        denom *= corr
+        for jj in range(nb):
+            var j = j0 + jj
+            var kb = (j * h_kv + hk) * d_head
+            var w = exp(block_s[jj] - nm)
+            o += w * cv[kb + e]
+            denom += w
+        mx = nm
+
+        j0 += _ATTN_BLOCK8_KEYS
 
     attn_out[m * n_q + h * d_head + e] = o / denom
 

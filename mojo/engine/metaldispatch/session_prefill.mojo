@@ -112,6 +112,7 @@ from residentk.kernels import (
     _pf_gemm_assign_kernel_i8,
     _pf_ropewrt_kernel,
     _pf_attn_tiled_kernel_simd,
+    _pf_attn8_kernel_simd,
     _pf_gemm_accum_kernel_i8,
     _pf_gemm_swiglu_kernel_i8,
     _pf_gnrw_assign_kernel_i8,
@@ -167,6 +168,7 @@ from metaldispatch.session import (
     _PFROLE_GEMM_ASSIGN,
     _PFROLE_ROPEWRT,
     _PFROLE_ATTN,
+    _PFROLE_ATTN_BLOCK8,
     _PFROLE_GEMM_ACCUM,
     _PFROLE_GEMM_SWIGLU,
     _PFROLE_GEMM_ASSIGN_NARROW,
@@ -332,6 +334,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
         _ = cctx.compile_function[_pf_ropewrt_kernel]()
         _ = cctx.compile_function[_pf_attn_tiled_kernel_simd]()
+        _ = cctx.compile_function[_pf_attn8_kernel_simd]()
         _ = cctx.compile_function[_pf_gemm_accum_kernel_i8]()
         _ = cctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
         _ = cctx.compile_function[_pf_gnrw_assign_kernel_i8]()
@@ -1078,6 +1081,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # practice anymore; left in place (not deleted) as the fallback path and because both
         # scalar kernels remain Gate-0 oracles the MMA kernels are diffed against.
         var use_mma = True
+        # Phase 1 of the tiled-MMA-attention plan (separate from the GEMM MMA work above): one
+        # online-softmax rescale per block of 8 keys instead of one per key, in
+        # `_pf_attn8_kernel_simd`, gated in against the byte-unmodified `_pf_attn_tiled_kernel_simd`
+        # oracle (`test_residentk_prefill_attn_kernels.mojo`). MEASURED, real pipeline, real
+        # checkpoint, 3 runs at n_prompt=256: 1606-1788 tok/s prefill, vs. the ~1950-2025 tok/s
+        # this same driver gets with `use_block8_attn = False` -- a real ~10-20% REGRESSION, not a
+        # win. Consistent with the reduction itself (the two-level SIMD-shuffle dot product, still
+        # one barrier pair per key either way) being the dominant per-key cost, not the
+        # online-softmax bookkeeping this change targeted -- exactly the "does fewer rescales alone
+        # help" question this phase was designed to isolate, answered no. Left `False`; the kernel,
+        # its Gate-0 test, and this role stay in place as a correctness-verified artifact and as the
+        # variable-isolation data point Phase 2 (hardware MMA for Q@K^T, which targets the
+        # reduction itself) is designed around.
+        var use_block8_attn = False
+        var pf_attn = (
+            self.prefill_pipeline_idx[_PFROLE_ATTN_BLOCK8] if use_block8_attn
+            else self.prefill_pipeline_idx[_PFROLE_ATTN]
+        )
         var use_narrow = residentk_prefill_gemm_use_narrow_tile(m_rows)
         var gemm_bm = 32 if use_mma else (_GEMM_BM_NARROW if use_narrow else _GEMM_BM)
         var gemm_nthreads = 256 if use_mma else (_GEMM_NTHREADS_NARROW if use_narrow else _GEMM_NTHREADS)
@@ -1129,7 +1150,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             var d_attn = self.attn_d[layer]
             _mb_set_header(
-                self.descriptors_prefill, d_attn, self.prefill_pipeline_idx[_PFROLE_ATTN],
+                self.descriptors_prefill, d_attn, pf_attn,
                 n_units_attn * m_rows, self.d_head, 10,
             )
             _mb_set_arg_int(self.descriptors_prefill, d_attn, 4, pos_base)

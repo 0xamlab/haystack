@@ -330,7 +330,8 @@ comptime _PFROLE_GEMM_SWIGLU_NARROW: Int = 9
 comptime _PFROLE_GEMM_ASSIGN_MMA: Int = 10
 comptime _PFROLE_GEMM_ACCUM_MMA: Int = 11
 comptime _PFROLE_GEMM_SWIGLU_MMA: Int = 12
-comptime _PF_N_ROLES: Int = 13
+comptime _PFROLE_ATTN_BLOCK8: Int = 13
+comptime _PF_N_ROLES: Int = 14
 """Was 6 roles (`_PFROLE_QKV_PROJ`/`_PFROLE_GEMV_ACCUM`/`_PFROLE_SWIGLU`) through PR #584's own
 Phase 1, then 7 once those became weight-stationary-tiled-GEMM roles, then 10 once the narrow-tile
 twins landed. The three `_MMA` roles (`_PFROLE_GEMM_ASSIGN_MMA`/`_PFROLE_GEMM_ACCUM_MMA`/
@@ -350,6 +351,14 @@ roles when `m_rows % 32 == 0` (these kernels' own Phase-1/2 scope: no partial-ti
 three-way choice extends); the scalar-FMA path (wide OR narrow, exactly as already selected) remains
 the fallback for every `m_rows` not a multiple of 32, so this is purely additive to the existing
 policy, never a replacement of it.
+
+`_PFROLE_ATTN_BLOCK8` (`residentk.kernels._pf_attn8_kernel_simd`) is Phase 1 of the separate
+tiled-MMA-attention plan: one online-softmax rescale per block of 8 keys instead of one per key,
+same per-key SIMD-shuffle dot-product reduction otherwise. Its classifier pattern (`pf_attn8`) MUST
+be checked before the existing `pf_attn` pattern below -- `pf_attn` is a PREFIX of `pf_attn8`, so
+`.find()` would otherwise match this kernel's discovered name against the OLD role first and never
+reach the new one, the exact ordering hazard `_pf_ropewrt_kernel`'s own naming note two paragraphs
+below already warns about for a different pair.
 
 The three `_NARROW` roles (`_PFROLE_GEMM_ASSIGN_NARROW`/`_PFROLE_GEMM_ACCUM_NARROW`/
 `_PFROLE_GEMM_SWIGLU_NARROW`) are `residentk.kernels`' narrow-tile GEMM twins
@@ -406,6 +415,8 @@ def _classify_prefill_pipeline(name: String) -> Int:
         return _PFROLE_GEMM_ASSIGN_NARROW
     if name.find("pf_ropewrt") >= 0:
         return _PFROLE_ROPEWRT
+    if name.find("pf_attn8") >= 0:
+        return _PFROLE_ATTN_BLOCK8
     if name.find("pf_attn") >= 0:
         return _PFROLE_ATTN
     if name.find("pf_gemm_acc") >= 0:
