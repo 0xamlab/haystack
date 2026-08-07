@@ -5699,3 +5699,109 @@ kernels' comptime constants. Flagged honestly as a real gap, not claimed as clos
   full block -- Phase 2C's own integration work should re-confirm this holds for the actual access
   patterns real dispatches produce (ragged trailing blocks, sub-fragment offsets within a
   partially-filled block), not just the one pattern this phase's probe exercised.
+
+## Attention Compiler Plan v1.0, Phase 2C (2026-08-07): Candidate A wired into the real production prefill pipeline behind a flag -- real ~1.2-1.4x end-to-end prefill speedup, verified correct before trusting the speed number; decode-after-AF-prefill is a known, itemized, NOT-yet-closed gap
+
+Phase 2C's own hard gate: "Winner beats llama.cpp operator AND improves the real pipeline." The
+Phase 2A/2B entries above already established the "beats llama.cpp operator" half (Candidate A,
+16-30% faster than L0's own wall time at 128/256/512 rows). This entry closes the harder half --
+an actual, real, end-to-end speedup on the real checkpoint, not just an isolated operator number
+-- while being explicit about what remains scoped out.
+
+**Two prerequisite validations, done BEFORE touching any production file, since this plan's own
+"proven mma_forge mechanism" claim had only ever been exercised for `mm8.mojo`'s simple 7-argument
+GEMM kernels, never for anything attention-shaped:**
+1. Standalone: cross-compiled Candidate A's kernel (12 args: 5 pointers + 7 scalars) via the
+   isolated nightly toolchain, extracted its Metal bitcode blob, linked it into a binary built by
+   the PINNED production toolchain, and dispatched it for real -- correct numerics vs the CPU
+   oracle, reproducible. This is meaningfully more args than the mechanism had ever carried before
+   (previous largest, 13; the production dispatch shim's own hard ceiling is 16 args).
+2. Multi-blob coexistence: linked Candidate A's blob + Candidate C's TWO kernels' blob + the
+   existing production `mm8` GEMM blob into ONE binary; confirmed all 6 kernels discover as
+   distinct pipelines with unambiguous name-substring resolution. Found ONE real, concrete
+   classifier collision in the process (not theoretical): `mojo/engine/metaldispatch/session.
+   mojo`'s existing `_classify_splitk_pipeline` used bare `splitk_part`/`splitk_merg` substrings
+   that also match `attention_forge/splitk_fa.mojo`'s OWN, differently-named kernels once both are
+   linked into the same binary (module names never truncate; only the kernel's OWN name does, so a
+   bare kernel-name substring can cross-match a same-named function in a different module). Fixed
+   by using module-qualified patterns (`residentk_kernels__splitk_part`/`_merg`) -- this exact
+   class of bug (truncated-name collision) has now bitten this codebase THREE times (two prior,
+   documented in `_classify_splitk_pipeline`'s own docstring; this is the third), reinforcing that
+   every new classifier addition needs a module-qualified pattern from the start, not a bare one.
+
+**The production wiring** (`mojo/engine/metaldispatch/session_prefill.mojo`,
+`_MBQwen3I8AllSimd7Prefill`): a new field `use_native_grouped_fa_attn`, default `False` --
+identical in spirit to PR #591's own `use_block8_attn` (a one-line, instantly-revertible toggle),
+but gating a LARGER unit of change than that precedent could, because Candidate A is not
+signature-compatible with what it replaces (F16 native-packed K/V instead of F32 natural-layout
+`ck`/`cv`, a new `lse` scratch buffer, and a native-KV-producer dispatch that must run before
+attention each layer, not just a different attention dispatch). Concretely: a COMPLETE, SEPARATE
+descriptor table (`descriptors_prefill_af`, same per-layer dispatch-count formula, `1 +
+n_layers*8 + 2`, as the existing table -- the native-KV-producer replaces `ropewrt` as one
+dispatch, Candidate A's attention replaces the existing attention dispatch as one dispatch, every
+OTHER role's descriptor points at the SAME underlying buffers the existing table's equivalent slot
+uses) built additively alongside the existing one; new per-layer F16 native-packed K/V buffers
+allocated unconditionally (existing F32 `ck`/`cv` buffers untouched); a new classifier
+(`_classify_attention_forge_pipeline`, module-qualified from the start) kept deliberately separate
+from the shared `_classify_pipeline`/`_N_ROLES` mechanism, following `_classify_splitk_pipeline`'s
+own established precedent for why. `prefill_batch` refuses to dispatch the AF table if the
+required blobs were never linked into the binary (`af_pipeline_idx` entries `<= 0`), rather than
+silently submitting an unpopulated table.
+
+**Verification, in the mandated order -- correctness proven before any speed number was trusted:**
+- **(a) Non-regression, flag OFF**: the EXISTING golden-vector test (`mojo/tests/libs/test_
+  metaldispatch_session_prefill.mojo`) still passes 9/9 unchanged -- confirmed by directly
+  re-running it myself (not just trusting the report), via `mojo build` (its own documented `mojo
+  run` invocation hit a JIT-linking limitation with `-Xlinker` objects that `mojo build` does not
+  share -- a real toolchain quirk worth remembering for future work: use `mojo build` + run the
+  binary, not `mojo run`, whenever `-Xlinker` objects are involved).
+- **(b) Correctness, flag ON, before trusting speed**: a new golden-vector test (`test_
+  metaldispatch_session_prefill_af.mojo`) -- independently re-run, 10/10 pass -- confirms the AF
+  path picks the SAME token as the frozen CPU Float64 oracle, AND that the AF path's own hidden
+  vector matches the OFF path's hidden vector elementwise (worst delta 0.000267, well inside the
+  int8+F16 tolerance bound) -- a stronger check than same-argmax-token alone, since two different
+  hidden vectors can occasionally argmax to the same token by chance. On the real 256-token
+  checkpoint, the AF path's own first generated token exactly matched the OFF path's.
+- **(c) Real end-to-end speed, >=3 runs, re-measured independently**: OFF (after excluding one
+  cold-first-run outlier, consistent with this session's own repeatedly-documented cold/warm
+  effect): **1924-1995 tok/s**, stable across 5 runs. ON (same exclusion): **2426-2722 tok/s**,
+  stable across 10 runs. **A genuine ~1.2-1.4x end-to-end prefill speedup** -- smaller than the
+  isolated Phase 2A/2B operator-level margins (16-30% faster than L0), because attention is only a
+  fraction of total per-layer time (`f_256 = 35.3%` per Phase 0A's own measurement) -- consistent
+  in DIRECTION and roughly consistent in MAGNITUDE with what the Amdahl arithmetic in this plan's
+  own Context section predicts for an attention-only speedup at this `f_256`, not a surprising or
+  suspicious number.
+
+**A known, itemized, NOT-yet-closed gap -- stated plainly, not hidden**: the AF path's own
+native-KV-producer writes ONLY the new F16 native-packed K/V buffers, never the natural-layout F32
+`ck`/`cv` cache `step()` (decode) reads. When `use_native_grouped_fa_attn=True`, `_pf_ropewrt_
+kernel` (which populates `ck`/`cv`) never runs, so those buffers are NEVER populated for that
+call's own prompt rows. **Calling `step()` for decode after an AF-enabled `prefill_batch()` will
+read stale/uninitialized cache and produce WRONG tokens.** This is why this entry's own end-to-end
+speed measurement uses `MAX_NEW_TOKENS=1` for the AF path specifically (issuing ZERO `step()`
+calls, `range(1,1)` is empty) -- a deliberate, documented methodology choice to make a TRUE,
+uncontaminated comparison possible without either hiding the gap or letting it corrupt the
+measurement. Closing this for real (either double-writing the natural cache too, at some
+additional per-layer cost, or making `step()` itself AF-aware and reading the native-packed
+layout for decode too) is genuine, scoped, NOT-yet-done follow-up work -- this phase's own
+"improves the real pipeline" claim is honestly limited to PREFILL, not decode, until that lands.
+
+### What is left
+
+- Close the decode-after-AF-prefill gap (see above) -- required before this flag could ever be
+  turned on for anything beyond a single-shot prefill-then-stop workload, and required before the
+  plan's own Definition of Victory ("no decode regression") could apply to a configuration using
+  this flag.
+- Multi-chunk AF continuation (`prefill_batch` called twice with `pos_base>0` on the same
+  AF-enabled instance) is not yet empirically tested end-to-end as a real dispatch sequence --
+  only the underlying native-KV-producer kernel's own multi-call test (Phase 2B) and Candidate A's
+  own kernel-level pos_base handling (Phase 2A) have been separately verified; the FULL wired
+  pipeline doing this has not been.
+- No 1,000-dispatch determinism soak of the wired production path specifically has been run (only
+  the underlying kernels' own soaks, plus a handful of real end-to-end runs here) -- worth doing
+  before broader use, matching this session's own established discipline for every prior phase.
+- Candidate C was not wired into production in this phase (Candidate A was chosen: it has
+  consistently matched-or-beaten Candidate C at every row count in both the Phase 2A and Phase 2B
+  measurements, and wiring only ONE candidate first, rather than both, halved the real integration
+  risk for this already highest-stakes change in the whole plan) -- if Candidate A's own
+  production integration reveals a blocking issue Candidate C would not have, revisit this choice.

@@ -403,3 +403,283 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
             return _decode_err(
                 MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
             )
+
+
+def qwen3_i8_allsimd7_prefill_decode_flat_af(
+    checkpoint_dir: String, max_new_tokens: Int, use_native_grouped_fa_attn: Bool
+) -> Qwen3PrefillDecodeResult:
+    """Attention Compiler Plan v1.0, Phase 2C: byte-for-byte the SAME orchestration as
+    `qwen3_i8_allsimd7_prefill_decode_flat` above (copy-and-extend, this file's own established
+    precedent for `_MBQwen3I8AllSimd7Prefill`'s own relationship to `_MBQwen3I8AllSimd7`), with
+    exactly one addition: `s.use_native_grouped_fa_attn = use_native_grouped_fa_attn`, set once,
+    immediately after construction, before any weight upload or dispatch. The ORIGINAL function
+    above is left completely untouched -- every existing caller (every benchmark/production build
+    that does not know this function exists) keeps running the exact code it always has; this is a
+    new, additive entry point, not a modified one.
+
+    KNOWN, DELIBERATE SCOPE LIMIT (see `_MBQwen3I8AllSimd7Prefill.prefill_batch`'s own docstring
+    addendum for the full account): when `use_native_grouped_fa_attn=True`, the natural-layout
+    `ck`/`cv` KV cache `step()` (decode) reads is NEVER populated for the prompt's own rows (the AF
+    path writes only the native-packed `ck_native`/`cv_native` buffers `step()` does not know about)
+    -- calling `step()` for decode AFTER an AF-enabled `prefill_batch()` call reads stale/uninitialized
+    cache and produces WRONG output. This function does not work around that; it is the caller's own
+    responsibility to keep `max_new_tokens` small enough that no `step()` call is ever issued past the
+    prompt when `use_native_grouped_fa_attn=True` (`max_new_tokens=1` issues ZERO `step()` calls --
+    `range(1, 1)` is empty -- so the single token this function DOES return, computed entirely inside
+    `prefill_batch()`'s own lm_head/argmax dispatch on the prompt's last row, is unaffected by this
+    gap and safe to trust). A larger `max_new_tokens` with the flag on will silently produce garbage
+    decode tokens past the first -- this is flagged here, loudly, rather than guarded against, because
+    guarding it (e.g. refusing `max_new_tokens > 1`) would make this function's own contract diverge
+    from the ORIGINAL function's shape for a reason a future non-decode caller (one that only ever
+    wants the prompt's own next-token prediction) should not have to work around."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    if (
+        d_model != QWEN3_0_6B_BASE_D_MODEL or n_layers != QWEN3_0_6B_BASE_N_LAYERS
+        or h_q != QWEN3_0_6B_BASE_H_Q or h_kv != QWEN3_0_6B_BASE_H_KV
+        or d_head != QWEN3_0_6B_BASE_D_HEAD or d_ff != QWEN3_0_6B_BASE_D_FF
+        or vocab_size != QWEN3_0_6B_BASE_VOCAB
+    ):
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "unsupported model architecture: qwen3_i8_allsimd7_prefill_decode_flat_af runs ONLY"
+            + " Qwen3-0.6B-Base's exact shape (hidden_size=" + String(QWEN3_0_6B_BASE_D_MODEL)
+            + ", num_hidden_layers=" + String(QWEN3_0_6B_BASE_N_LAYERS)
+            + ", num_attention_heads=" + String(QWEN3_0_6B_BASE_H_Q)
+            + ", num_key_value_heads=" + String(QWEN3_0_6B_BASE_H_KV)
+            + ", head_dim=" + String(QWEN3_0_6B_BASE_D_HEAD)
+            + ", intermediate_size=" + String(QWEN3_0_6B_BASE_D_FF)
+            + ", vocab_size=" + String(QWEN3_0_6B_BASE_VOCAB)
+            + "); this checkpoint declares hidden_size=" + String(d_model)
+            + ", num_hidden_layers=" + String(n_layers)
+            + ", num_attention_heads=" + String(h_q)
+            + ", num_key_value_heads=" + String(h_kv)
+            + ", head_dim=" + String(d_head)
+            + ", intermediate_size=" + String(d_ff)
+            + ", vocab_size=" + String(vocab_size),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the ONE addition over `qwen3_i8_allsimd7_prefill_decode_flat` above -- see this
+            # function's own docstring for the full, honest scope-limit account.
+            s.use_native_grouped_fa_attn = use_native_grouped_fa_attn
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = metaldispatch_dispatch_budget(n_layers)
+                if residentk_splitk_should_split(n_keys_last):
+                    expected_budget = residentk_dispatch_budget_deep(n_layers)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )

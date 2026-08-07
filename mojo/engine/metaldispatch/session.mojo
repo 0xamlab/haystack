@@ -309,10 +309,23 @@ def _classify_splitk_pipeline(name: String) -> Int:
        the discovered name entirely, so neither substring could ever be present no matter how the
        kernels were named. The fix is the patterns below: `splitk_part` / `splitk_merg`, each exactly
        the 11 characters this measurement shows genuinely survive — not a shorter, easier-to-write
-       guess, the ACTUAL boundary."""
-    if name.find("splitk_part") >= 0:
+       guess, the ACTUAL boundary.
+
+    3. A THIRD collision, found by this repo's own Attention Compiler Plan v1.0 multi-blob
+       coexistence validation (not yet landed as a production struct, but confirmed by direct
+       string inspection of a binary linking both blobs): `attention_forge/splitk_fa.mojo`'s own
+       `_attn_splitk_partial_kernel`/`_attn_splitk_merge_kernel` discover as `splitk_fa__attn_
+       splitk_partial_...`/`splitk_fa__attn_splitk_merge_ke...` — genuinely DIFFERENT kernels in a
+       DIFFERENT module, but containing the bare `splitk_part`/`splitk_merg` substrings too, since
+       the MODULE prefix (unlike the kernel's own name) is never truncated (confirmed: `residentk_
+       kernels__<11 chars>` for every kernel in this file's own module; `splitk_fa__<5 chars>` for
+       attention_forge's differently-named module). The patterns below are therefore module-
+       qualified (`residentk_kernels__splitk_part`/`residentk_kernels__splitk_merg`) so they match
+       ONLY this file's own two kernels and never `attention_forge`'s module-distinct namesakes,
+       should both ever be linked into the same binary."""
+    if name.find("residentk_kernels__splitk_part") >= 0:
         return 0
-    if name.find("splitk_merg") >= 0:
+    if name.find("residentk_kernels__splitk_merg") >= 0:
         return 1
     return -1
 
@@ -433,6 +446,59 @@ def _classify_prefill_pipeline(name: String) -> Int:
         return _PFROLE_GEMM_ACCUM_MMA
     if name.find("swiglu_gemm_mma8x8") >= 0:
         return _PFROLE_GEMM_SWIGLU_MMA
+    return -1
+
+
+comptime _AFROLE_NATIVE_KV_PRODUCER: Int = 0
+comptime _AFROLE_GROUPED_FA_ATTN: Int = 1
+comptime _AF_N_ROLES: Int = 2
+"""Attention Compiler Plan v1.0, Phase 2C production wiring: the two cross-toolchain-forged
+`attention_forge/` blobs (`native_kv_producer.mojo`'s `_native_kv_producer_kernel`,
+`grouped_fa_q8_k32_h2_sg8.mojo`'s `_attn_grouped_fa_kernel` -- Candidate A) that
+`_MBQwen3I8AllSimd7Prefill`'s new `use_native_grouped_fa_attn` flag dispatches INSTEAD OF
+`_pf_ropewrt_kernel`/`_pf_attn_tiled_kernel_simd` when set. A FOURTH classifier, deliberately never
+folded into `_classify_pipeline`'s shared `_N_ROLES` (nor `_classify_splitk_pipeline`'s two roles,
+nor `_classify_prefill_pipeline`'s ten) for the exact reason every one of those three functions'
+own docstrings already gives: `_MBQwen3I8AllSimd7Prefill` is the ONLY struct that ever links these
+two blobs, and folding them into a SHARED, required-role enum would force every OTHER struct in
+this file to demand pipelines it never compiles and never will. Unlike the other three classifiers,
+a MISSING match here is NOT fatal at session-open time -- see `_MBQwen3I8AllSimd7Prefill.__init__`'s
+own handling: this pair is genuinely OPTIONAL production capability, present only in a binary that
+was deliberately built with both forged blobs linked in (via `-Xlinker`, following
+`candidate_a_blob_test.mojo`'s/`native_kv_producer_blob_driver.mojo`'s own proven
+build-and-extract recipe) -- a binary that never linked them (every EXISTING benchmark/production
+build, unchanged by this addition) must keep working with both roles simply undiscovered.
+
+Patterns chosen, and why they are safe by construction (verified empirically, not guessed --
+`candidate_a_native_kv_discovery_check.mojo` built and ran the exact three-blob combination
+production wiring needs -- Candidate A + the native-KV-producer + the EXISTING `mm8` GEMM blob --
+in one binary and printed every discovered pipeline's real, un-truncated name):
+  - Candidate A: `grouped_fa_q8_k32_h2_sg8__attn_6A6A_d7a1249b06314ef7` -- matched on the FULL,
+    never-truncated module name `grouped_fa_q8_k32_h2_sg8` (this module contains exactly one
+    kernel, so the module name alone already disambiguates -- the same pattern
+    `candidate_a_blob_test.mojo`'s own identification loop already established).
+  - Native-KV-producer: `native_kv_producer__native_kv_p6A6A_496a269190b956c5` -- matched on the
+    FULL, never-truncated module name `native_kv_producer` (also exactly one kernel per module).
+Neither substring collides with `_classify_pipeline`'s eight patterns, `_classify_splitk_pipeline`'s
+two, `_classify_prefill_pipeline`'s ten, or `mm8`'s own three discovered names (`mm8__qkv_proj_
+gemm_mma8x8_...`, `mm8__gemm_accum_mma8x8_...`, `mm8__swiglu_gemm_mma8x8_...`) -- confirmed both by
+direct inspection of the five real names above and, more strongly, by the discovery check's own
+five-pipelines-found, one-match-each verification at runtime. Should a THIRD attention_forge module
+ever be linked into the same binary as these two, re-verify empirically exactly as this check did --
+per every other classifier in this file, "module names don't collide" is a measured property of
+the two modules THIS session forged, not a guarantee about Mojo's name-mangling in general."""
+
+
+def _classify_attention_forge_pipeline(name: String) -> Int:
+    """Which of the TWO `attention_forge/` production kernels (native-KV-producer / Candidate A's
+    grouped-head fused-FlashAttention) a discovered pipeline's name belongs to -- `0` / `1` / `-1`
+    (neither). See `_AF_N_ROLES`'s own docstring immediately above for why this classifier stays
+    separate from the other three in this file, and for the empirical verification behind each
+    pattern below."""
+    if name.find("native_kv_producer") >= 0:
+        return _AFROLE_NATIVE_KV_PRODUCER
+    if name.find("grouped_fa_q8_k32_h2_sg8") >= 0:
+        return _AFROLE_GROUPED_FA_ATTN
     return -1
 
 

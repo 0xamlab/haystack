@@ -3986,6 +3986,7 @@ from metaldispatch.qwen3_decode import (
 
 from metaldispatch.qwen3_prefill_decode import (
     qwen3_i8_allsimd7_prefill_decode_flat as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat,
+    qwen3_i8_allsimd7_prefill_decode_flat_af as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af,
 )
 
 from metallurgy import (
@@ -86592,6 +86593,24 @@ def _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_ar
         return _error_json(
             "invalid_arguments",
             "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat_af":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af(arg_0, arg_1, arg_2)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af expected 3 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",

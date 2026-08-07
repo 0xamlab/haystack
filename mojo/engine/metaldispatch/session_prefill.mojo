@@ -178,6 +178,10 @@ from metaldispatch.session import (
     _PFROLE_GEMM_ACCUM_MMA,
     _PFROLE_GEMM_SWIGLU_MMA,
     _PF_N_ROLES,
+    _AFROLE_NATIVE_KV_PRODUCER,
+    _AFROLE_GROUPED_FA_ATTN,
+    _AF_N_ROLES,
+    _classify_attention_forge_pipeline,
     _LM_BLOCKS,
     MB_GPU_BUILD,
 )
@@ -188,6 +192,15 @@ are built at this ceiling once, then narrowed per call (see module docstring). S
 `RESIDENT_DEFAULT_CONTEXT` (512) rather than restated: a prompt longer than this needs more than one
 `prefill_batch()` call (chunked by the caller, `metaldispatch.qwen3_prefill_decode`'s own job), the
 same ceiling the KV cache itself already imposes by default."""
+
+comptime _AF_KEY_BLOCK_SIZE: Int = 32
+"""Attention Compiler Plan v1.0, Phase 2C wiring: the native-packed KV block size BOTH
+`attention_forge/native_kv_producer.mojo`'s `_native_kv_producer_kernel` (its own `key_block_size`
+argument) and `attention_forge/grouped_fa_q8_k32_h2_sg8.mojo`'s `_attn_grouped_fa_kernel` (its own
+comptime `_KT`, not a runtime argument -- hardcoded 32 in that file) are built around. Declared once
+here, at the ONE place both this struct's producer-dispatch args and its native-buffer sizing read
+from, so the two kernels' own independently-hardcoded assumptions about this value can never drift
+apart from what this struct actually allocates."""
 
 
 struct _MBQwen3I8AllSimd7Prefill(Movable):
@@ -289,6 +302,98 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     var gemv_down_d: List[Int]
     var lmhead_d: Int
 
+    # ── Attention Compiler Plan v1.0, Phase 2C production wiring (Candidate A + the native-KV-
+    # producer), ADDITIVE ONLY -- every field below is new; nothing above this line changed shape or
+    # meaning. See module docstring addendum near `prefill_batch` for the full account.
+    var use_native_grouped_fa_attn: Bool
+    """Default `False`, following `metaldispatch.session._apply_n_splits`-adjacent `use_block8_attn`'s
+    own established precedent in THIS file (`_apply_m_rows`, a hardcoded, source-level toggle, not a
+    constructor parameter) for what a not-yet-unconditionally-shipped attention lever looks like in
+    this codebase -- except this one DOES need to be a real struct field (not a local var scoped to
+    one method): unlike `use_block8_attn` (which only ever repoints ONE existing, signature-compatible
+    descriptor slot inside `_apply_m_rows`), Candidate A's kernel is NOT signature-compatible with the
+    existing attention path (F16 not F32 Q/K/V, an `lse` scratch buffer the old path has no use for,
+    and a whole EXTRA per-layer dispatch for the native-KV-producer that has no old-path equivalent at
+    all) -- so this flag must be visible to BOTH `_apply_m_rows_af` (narrows the alternate table) AND
+    `prefill_batch` (decides which of the two complete descriptor tables to submit), which a
+    method-local variable cannot be. Hardcoded `False` in `__init__` below, exactly like every other
+    `use_*` toggle in this file (`use_mma`, `use_narrow`, `use_block8_attn`) -- flipping it means
+    editing this source and rebuilding, never a runtime setter, matching this file's own established
+    discipline for a lever that has not yet won its own unconditional-default promotion."""
+    var af_pipeline_idx: List[Int]
+    """Sized `_AF_N_ROLES` (2), resolved via `_classify_attention_forge_pipeline` during pipeline
+    discovery below -- UNLIKE `self.pipeline_idx`/`self.prefill_pipeline_idx`, a `-1` entry here is
+    NOT fatal at construction time (see `_classify_attention_forge_pipeline`'s own docstring in
+    `metaldispatch.session` for why): every EXISTING benchmark/production binary that instantiates
+    this struct without linking the two `attention_forge/` blobs must keep constructing successfully,
+    with both entries `-1` and `self.use_native_grouped_fa_attn` staying `False` (its own hardcoded
+    default) -- this pair is optional, additive capability, never a new required dependency."""
+    var af_n_blocks: Int
+    """`ceil(max_ctx / _AF_KEY_BLOCK_SIZE)` -- the FIXED per-`kv_head` native-packed-block stride both
+    the native-KV-producer's writes and Candidate A's attention reads use for every call on this
+    session (never `ceil(n_tok_k / _AF_KEY_BLOCK_SIZE)` for the CURRENT call's own `n_tok_k` -- see
+    `native_kv_producer.mojo`'s own docstring item 5 for why the stride must be a property of how the
+    scratch buffer was ALLOCATED, not of any one dispatch)."""
+    var q_native_addr: UInt64
+    var q_native_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    """`[PREFILL_MAX_TILE, h_q * d_head]` row-major, Float16 -- the native-KV-producer's own `q_rot`
+    output (F16-narrowed, layout UNCHANGED from `self.q_rot_addr`'s F32 shape) and Candidate A's own
+    `q_ptr` input. A SEPARATE buffer from `self.q_rot_addr` (never repurposed: the OFF path's
+    `_pf_ropewrt_kernel` still writes `self.q_rot_addr` at F32 every call, completely unaware this
+    buffer exists), reused across layers exactly like `self.q_rot_addr` already is."""
+    var lse_scratch_addr: UInt64
+    var lse_scratch_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    """`[h_q, PREFILL_MAX_TILE]`, Float32 -- Candidate A's own `lse_ptr` output argument. Written by
+    the kernel every dispatch (numerically-stable log-sum-exp per row, per this task's own
+    architecture) but never READ by anything downstream in this struct's own production dispatch
+    chain (the kernel already divides by `l` internally before writing `out_ptr`) -- allocated purely
+    because the kernel's own signature requires a valid, correctly-sized destination to write into,
+    not because any consumer needs its contents."""
+    var af_ck_native_addr: List[UInt64]
+    var af_ck_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_cv_native_addr: List[UInt64]
+    var af_cv_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    """Per-layer, parallel to `self.layers[layer].ck_addr`/`cv_addr` but NOT added as new fields on
+    `_MBLayerBufI8` itself -- that struct is shared by EVERY session struct in `metaldispatch.session`
+    (decode-only, non-prefill, every `_MBQwen3I8AllSimd*` arm), and adding fields there would force
+    every one of those OTHER structs' own `_MBLayerBufI8(...)` positional-constructor call sites to
+    supply two new arguments they have no use for -- exactly the blast-radius `_classify_splitk_
+    pipeline`'s and `_classify_attention_forge_pipeline`'s own docstrings warn against for the
+    classifier side of this same "don't force an unrelated struct to carry a new dependency" rule,
+    applied here to the BUFFER side instead. `attention_forge.native_kv_producer`'s own K/V native-
+    packed flat-index formulas (`[kv_head][key_block][d_chunk][key_in_block]` for K,
+    `[kv_head][key_block][key_in_block][d_chunk]` for V) are the two layouts these buffers hold,
+    Float16, sized `h_kv * self.af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE` elements each (same total
+    element count for both; only the byte ORDER differs, per the producer's own module docstring)."""
+
+    var descriptors_prefill_af: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors_prefill_af: Int
+    """A COMPLETE, SEPARATE descriptor table -- never a partial overlay onto `self.descriptors_
+    prefill` -- built only if BOTH `self.af_pipeline_idx` entries were discovered (`> 0` here implies
+    that; `0` means the two `attention_forge/` blobs were not linked into this binary, and
+    `prefill_batch` must refuse `use_native_grouped_fa_attn=True` with a clear error rather than
+    dispatch a table that was never populated). Same per-layer dispatch COUNT as `self.
+    n_descriptors_prefill` (`1 + n_layers*8 + 2`) -- the native-KV-producer replaces `ropewrt` as ONE
+    dispatch and Candidate A's attention replaces `attn` as ONE dispatch, so the shape of the "1 embed
+    + 8-per-layer + 2 final" formula is unchanged; only two of the eight per-layer ROLES differ. Every
+    OTHER dispatch in this table (embed, both GEMM-assign/accum/swiglu roles, both rmsnorm roles,
+    lm_head+argmax) is a full, independent descriptor pointing at the exact SAME underlying buffers
+    `self.descriptors_prefill`'s own equivalent slot uses -- safe because the two tables are mutually
+    exclusive per call (`prefill_batch` submits exactly one), never concurrently dispatched."""
+    var embed_af_d: Int
+    var rmsnorm_af_d: List[Int]
+    var gemm_assign_af_d: List[Int]
+    var kvprod_af_d: List[Int]
+    var attn_af_d: List[Int]
+    var gemv_o_af_d: List[Int]
+    var rmsnorm2_af_d: List[Int]
+    var swiglu_af_d: List[Int]
+    var gemv_down_af_d: List[Int]
+    var lmhead_af_d: Int
+    """Same per-role descriptor-index bookkeeping convention as `self.rmsnorm_d`/`self.attn_d`/etc.,
+    restated for the AF table -- `_apply_m_rows_af` narrows each of these exactly the way `_apply_m_
+    rows` narrows its own OFF-path counterparts."""
+
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -355,6 +460,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.prefill_pipeline_idx = List[Int]()
         for _ in range(_PF_N_ROLES):
             self.prefill_pipeline_idx.append(-1)
+        self.af_pipeline_idx = List[Int]()
+        for _ in range(_AF_N_ROLES):
+            self.af_pipeline_idx.append(-1)
         var count = _mb_pipeline_count()
         self.pipeline_idx_split = -1
         self.pipeline_idx_merge = -1
@@ -372,6 +480,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var pf_role = _classify_prefill_pipeline(name)
             if pf_role >= 0:
                 self.prefill_pipeline_idx[pf_role] = i
+            # ── Attention Compiler Plan v1.0, Phase 2C: OPTIONAL, non-fatal discovery of the two
+            # `attention_forge/` blobs -- see `self.af_pipeline_idx`'s own field docstring and
+            # `_classify_attention_forge_pipeline`'s docstring (`metaldispatch.session`) for why a
+            # miss here never raises, unlike every OTHER classifier's loop immediately below.
+            var af_role = _classify_attention_forge_pipeline(name)
+            if af_role >= 0:
+                self.af_pipeline_idx[af_role] = i
         for role in range(_N_ROLES):
             if self.pipeline_idx[role] < 0:
                 raise Error(
@@ -393,10 +508,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     + " not found among " + String(count) + " discovered pipelines, status="
                     + String(MB_ERR_PIPELINE_NOT_FOUND)
                 )
+        # `self.af_pipeline_idx` is deliberately NOT range-checked here -- see its own field
+        # docstring and `_classify_attention_forge_pipeline`'s docstring for why a miss is legal.
+
+        # ── Attention Compiler Plan v1.0, Phase 2C: hardcoded OFF by default -- see this field's
+        # own docstring above for why this is a struct field (not a `_apply_m_rows`-local var like
+        # `use_block8_attn`) and why flipping it means editing this line and rebuilding, not a
+        # runtime setter.
+        self.use_native_grouped_fa_attn = False
+        self.af_n_blocks = (max_ctx + _AF_KEY_BLOCK_SIZE - 1) // _AF_KEY_BLOCK_SIZE
 
         # ── resident buffers: SAME shapes as `_MBQwen3I8AllSimd7` for weights/KV-cache/globals.
         var n_qkv = self.n_qkv
         var n_pairs = d_head // 2
+
+        self.af_ck_native_addr = List[UInt64]()
+        self.af_ck_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_cv_native_addr = List[UInt64]()
+        self.af_cv_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
@@ -451,6 +580,26 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 cka, ckp, cva, cvp,
             ))
 
+            # ── Attention Compiler Plan v1.0, Phase 2C: native-packed F16 K/V, ADDITIVE to (never a
+            # replacement of) the `ck`/`cv` pair just allocated above -- allocated UNCONDITIONALLY,
+            # regardless of `self.use_native_grouped_fa_attn`, per this struct's own documented
+            # choice to always allocate the AF buffers and simply never populate/dispatch them when
+            # the flag is off (see `self.af_ck_native_addr`'s own field docstring). Same total
+            # element count as `ck`/`cv` (`h_kv * af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE`, vs.
+            # `ck`/`cv`'s own `max_ctx * h_kv * d_head` -- equal since `af_n_blocks *
+            # _AF_KEY_BLOCK_SIZE >= max_ctx` by construction), at 2 bytes (Float16) instead of 4.
+            var ckna = UInt64(0); var cknp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var cvna = UInt64(0); var cvnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var af_native_elems = h_kv * self.af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE
+            if _mb_alloc_buffer(af_native_elems * 2, ckna, cknp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (af ck_native)")
+            if _mb_alloc_buffer(af_native_elems * 2, cvna, cvnp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (af cv_native)")
+            self.af_ck_native_addr.append(ckna)
+            self.af_ck_native_ptr.append(cknp)
+            self.af_cv_native_addr.append(cvna)
+            self.af_cv_native_ptr.append(cvnp)
+
         self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
@@ -504,6 +653,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         if _mb_alloc_buffer(PREFILL_MAX_TILE * 4, self.prompt_ids_addr, self.prompt_ids_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (prompt_ids)")
 
+        # ── Attention Compiler Plan v1.0, Phase 2C: session-level AF activation buffers, ADDITIVE,
+        # allocated UNCONDITIONALLY (same "always allocate, never populate/dispatch when off" choice
+        # as the per-layer native K/V buffers above) -- see `self.q_native_addr`'s/`self.lse_scratch_
+        # addr`'s own field docstrings.
+        self.q_native_addr = UInt64(0); self.q_native_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.lse_scratch_addr = UInt64(0); self.lse_scratch_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        if _mb_alloc_buffer(PREFILL_MAX_TILE * n_q * 2, self.q_native_addr, self.q_native_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (af q_native)")
+        if _mb_alloc_buffer(h_q * PREFILL_MAX_TILE * 4, self.lse_scratch_addr, self.lse_scratch_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (af lse_scratch)")
+
         self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
@@ -539,8 +699,38 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.gemv_down_d = List[Int]()
         self.lmhead_d = -1
 
+        # ── Attention Compiler Plan v1.0, Phase 2C: a COMPLETE, SEPARATE table -- see `self.
+        # descriptors_prefill_af`'s own field docstring. Same per-layer dispatch count as the OFF
+        # table (`1 + n_layers*8 + 2`) regardless of whether it ends up actually built below.
+        self.n_descriptors_prefill_af = 1 + self.n_layers * 8 + 2
+        self.descriptors_prefill_af = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_af_d = -1
+        self.rmsnorm_af_d = List[Int]()
+        self.gemm_assign_af_d = List[Int]()
+        self.kvprod_af_d = List[Int]()
+        self.attn_af_d = List[Int]()
+        self.gemv_o_af_d = List[Int]()
+        self.rmsnorm2_af_d = List[Int]()
+        self.swiglu_af_d = List[Int]()
+        self.gemv_down_af_d = List[Int]()
+        self.lmhead_af_d = -1
+
         self._build_descriptors(n_qkv)
         self._build_descriptors_prefill(n_qkv)
+
+        # ── Only actually BUILD the AF table if both `attention_forge/` blobs were discovered above
+        # (see `self.af_pipeline_idx`'s own field docstring) -- otherwise leave `self.
+        # descriptors_prefill_af` as the placeholder pointer and `self.n_descriptors_prefill_af`
+        # unchanged from the value set above (still `1 + n_layers*8 + 2`, but never actually
+        # allocated or populated); `prefill_batch` checks `self.af_pipeline_idx` again before ever
+        # submitting this table, so a stale, never-built `n_descriptors_prefill_af` count alone
+        # cannot cause a bad dispatch -- see that method's own guard.
+        if (
+            self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
+            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
+        ):
+            self.descriptors_prefill_af = _mb_alloc_descriptors(self.n_descriptors_prefill_af)
+            self._build_descriptors_prefill_af(n_qkv)
 
     def _ensure_deep_initialized(mut self) raises:
         """Byte-identical lazy-init discipline to `_MBQwen3I8AllSimd7._ensure_deep_initialized`."""
@@ -1046,6 +1236,320 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
+    def _build_descriptors_prefill_af(mut self, n_qkv: Int) raises:
+        """Attention Compiler Plan v1.0, Phase 2C: builds `self.descriptors_prefill_af` -- a COMPLETE
+        SEPARATE table, structurally IDENTICAL to `_build_descriptors_prefill`'s own plan (one embed
+        dispatch, eight per-layer dispatches, the unmodified lmhead+argmax pair) except two of the
+        eight per-layer roles: the native-KV-producer (`attention_forge.native_kv_producer.
+        _native_kv_producer_kernel`, discovered as `self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER]`)
+        replaces `ropewrt`, and Candidate A's grouped-head fused-FlashAttention (`attention_forge.
+        grouped_fa_q8_k32_h2_sg8._attn_grouped_fa_kernel`, `self.af_pipeline_idx[_AFROLE_GROUPED_FA_
+        ATTN]`) replaces `attn`. Every OTHER dispatch below points at the EXACT SAME underlying
+        buffers `_build_descriptors_prefill`'s own equivalent slot uses (`self.hidden_addr`/`self.
+        xn_addr`/`self.qkv_addr`/`self.act_addr`/`self.attn_out_addr`/etc.) -- safe only because
+        `prefill_batch` submits exactly ONE of the two tables per call, never both. Only ever called
+        from `__init__`, and only once both `self.af_pipeline_idx` entries were discovered -- see the
+        call site's own guard."""
+        var n_q = self.h_q * self.d_head
+        var d = 0
+
+        _mb_set_header(
+            self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_EMBED],
+            _ceil_div(self.d_model, _TG) * PREFILL_MAX_TILE, _TG, 6,
+        )
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, self.prompt_ids_addr)
+        _mb_set_arg_int(self.descriptors_prefill_af, d, 4, self.d_model)
+        _mb_set_arg_int(self.descriptors_prefill_af, d, 5, 0)  # m_rows, patched per call
+        self.embed_af_d = d
+        d += 1
+
+        var n_units_kvprod_max = (self.h_q + self.h_kv) * PREFILL_MAX_TILE
+        var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 8)
+        var n_units_attn_af_max = n_q_blocks_max * (self.h_q // 2)
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            var ck_native_addr = self.af_ck_native_addr[layer]
+            var cv_native_addr = self.af_cv_native_addr[layer]
+
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                PREFILL_MAX_TILE, _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.ln1_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 3, self.d_model)
+            _mb_set_arg_f32(self.descriptors_prefill_af, d, 4, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, 0)  # m_rows, patched per call
+            self.rmsnorm_af_d.append(d)
+            d += 1
+
+            var n_tile_rows_qkv_max = _ceil_div(PREFILL_MAX_TILE, _GEMM_BM)
+            var n_tile_cols_qkv = _ceil_div(n_qkv, _GEMM_BN)
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN],
+                n_tile_rows_qkv_max * n_tile_cols_qkv, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 6, n_qkv)
+            self.gemm_assign_af_d.append(d)
+            d += 1
+
+            # ── NEW role: native-KV-producer, replaces `ropewrt`. 16 args -- see `native_kv_
+            # producer.mojo`'s own `_native_kv_producer_kernel` signature for the exact order.
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
+                n_units_kvprod_max, self.d_head, 16,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.q_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, ck_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, cv_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 8, 0)  # pos_base, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 11, self.d_head)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 12, _AF_KEY_BLOCK_SIZE)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 13, self.af_n_blocks)
+            _mb_set_arg_f32(self.descriptors_prefill_af, d, 14, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 15, 0)  # m_rows, patched per call
+            self.kvprod_af_d.append(d)
+            d += 1
+
+            # ── NEW role: Candidate A's grouped-head fused-FlashAttention, replaces `attn`. 12
+            # args -- see `grouped_fa_q8_k32_h2_sg8.mojo`'s own `_attn_grouped_fa_kernel` signature.
+            # Output writes DIRECTLY into `self.attn_out_addr` -- the SAME buffer the OFF path's
+            # `attn` role writes (byte-identical `[m_rows, h_q*d_head]` row-major F32 layout), so
+            # the `gemv_o` dispatch right after this one needs no changes at all, AF table or not.
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
+                n_units_attn_af_max, 256, 12,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.lse_scratch_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, self.q_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, ck_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 4, cv_native_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, 0)  # n_tok_q = m_rows, patched
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 6, 0)  # n_tok_k = pos_base+m_rows, patched
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 7, self.h_q)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 8, self.h_kv)
+            _mb_set_arg_f32(self.descriptors_prefill_af, d, 9, self.scale)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 10, 0)  # pos_base, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 11, self.af_n_blocks)
+            self.attn_af_d.append(d)
+            d += 1
+
+            var n_tile_rows_gemv_max = _ceil_div(PREFILL_MAX_TILE, _GEMM_BM)
+            var n_tile_cols_gemv = _ceil_div(self.d_model, _GEMM_BN)
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                n_tile_rows_gemv_max * n_tile_cols_gemv, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, n_q)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 6, self.d_model)
+            self.gemv_o_af_d.append(d)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                PREFILL_MAX_TILE, _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.ln2_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 3, self.d_model)
+            _mb_set_arg_f32(self.descriptors_prefill_af, d, 4, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, 0)  # m_rows, patched per call
+            self.rmsnorm2_af_d.append(d)
+            d += 1
+
+            var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU],
+                n_tile_rows_gemv_max * n_tile_cols_ff, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 6, self.d_ff)
+            self.swiglu_af_d.append(d)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                n_tile_rows_gemv_max * n_tile_cols_gemv, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 5, self.d_ff)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 6, self.d_model)
+            self.gemv_down_af_d.append(d)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors_prefill_af, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, self.hidden_addr)  # patched per call
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 4, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 5, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_prefill_af, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors_prefill_af, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors_prefill_af, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors_prefill_af, d, 9, n_iters)
+        self.lmhead_af_d = d
+        d += 1
+
+        _mb_set_header(self.descriptors_prefill_af, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors_prefill_af, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors_prefill_af:
+            raise Error(
+                "metaldispatch: built " + String(d) + " AF prefill descriptors but the budget says "
+                + String(self.n_descriptors_prefill_af) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
+    def _apply_m_rows_af(mut self, m_rows: Int, pos_base: Int) raises:
+        """AF-table twin of `_apply_m_rows` -- narrows every M-scaled descriptor in `self.
+        descriptors_prefill_af` to `m_rows`'s real grid width and patches every `m_rows`/`pos_base`
+        scalar argument, restated for the SEPARATE AF table (see that table's own field docstring
+        for why it is separate). Deliberately mirrors `_apply_m_rows`'s own GEMM-tiling policy choice
+        (`use_mma`/`use_narrow`) byte-for-byte, so the ONLY variable this table's own existence
+        isolates is the attention-dispatch change itself -- the Attention Compiler Plan v1.0's own
+        "never combine multiple ablations into one measurement" discipline (stop rule 5). Only ever
+        called from `prefill_batch`, and only when `self.use_native_grouped_fa_attn` is `True` AND
+        this table was actually built -- see that method's own guard."""
+        var n_qkv = self.n_qkv
+        var n_units_embed = _ceil_div(self.d_model, _TG)
+        var n_tile_cols_qkv = _ceil_div(n_qkv, _GEMM_BN)
+        var n_tile_cols_gemv = _ceil_div(self.d_model, _GEMM_BN)
+        var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
+        var n_units_kvprod = self.h_q + self.h_kv
+        var n_q_blocks = _ceil_div(m_rows, 8)
+        var n_units_attn_af = n_q_blocks * (self.h_q // 2)
+
+        var use_mma = True
+        var use_narrow = residentk_prefill_gemm_use_narrow_tile(m_rows)
+        var gemm_bm = 32 if use_mma else (_GEMM_BM_NARROW if use_narrow else _GEMM_BM)
+        var gemm_nthreads = 256 if use_mma else (_GEMM_NTHREADS_NARROW if use_narrow else _GEMM_NTHREADS)
+        var n_tile_rows_qkv = _ceil_div(m_rows, gemm_bm)
+        var pf_assign = (
+            self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN_MMA] if use_mma
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN_NARROW] if use_narrow
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN]
+        )
+        var pf_accum = (
+            self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM_MMA] if use_mma
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM_NARROW] if use_narrow
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM]
+        )
+        var pf_swiglu = (
+            self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU_MMA] if use_mma
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU_NARROW] if use_narrow
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU]
+        )
+
+        _mb_set_header(
+            self.descriptors_prefill_af, self.embed_af_d, self.prefill_pipeline_idx[_PFROLE_EMBED],
+            n_units_embed * m_rows, _TG, 6,
+        )
+        _mb_set_arg_int(self.descriptors_prefill_af, self.embed_af_d, 5, m_rows)
+
+        for layer in range(self.n_layers):
+            var d_norm = self.rmsnorm_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_norm, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                m_rows, _TG, 6,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_norm, 5, m_rows)
+
+            var d_gemm = self.gemm_assign_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_gemm, pf_assign,
+                n_tile_rows_qkv * n_tile_cols_qkv, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_gemm, 4, m_rows)
+
+            var d_kv = self.kvprod_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_kv, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
+                n_units_kvprod * m_rows, self.d_head, 16,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_kv, 8, pos_base)
+            _mb_set_arg_int(self.descriptors_prefill_af, d_kv, 15, m_rows)
+
+            var d_attn = self.attn_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_attn, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
+                n_units_attn_af, 256, 12,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_attn, 5, m_rows)
+            _mb_set_arg_int(self.descriptors_prefill_af, d_attn, 6, pos_base + m_rows)
+            _mb_set_arg_int(self.descriptors_prefill_af, d_attn, 10, pos_base)
+
+            var d_go = self.gemv_o_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_go, pf_accum,
+                n_tile_rows_qkv * n_tile_cols_gemv, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_go, 4, m_rows)
+
+            var d_norm2 = self.rmsnorm2_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_norm2, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                m_rows, _TG, 6,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_norm2, 5, m_rows)
+
+            var d_sw = self.swiglu_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_sw, pf_swiglu,
+                n_tile_rows_qkv * n_tile_cols_ff, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_sw, 4, m_rows)
+
+            var d_gd = self.gemv_down_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_gd, pf_accum,
+                n_tile_rows_qkv * n_tile_cols_gemv, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_gd, 4, m_rows)
+
+        var last_row_addr = self.hidden_addr + UInt64((m_rows - 1) * self.d_model * 4)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, self.lmhead_af_d, 2, last_row_addr)
+
     def _apply_m_rows(mut self, m_rows: Int, pos_base: Int) raises:
         """Narrows every M-scaled descriptor in `self.descriptors_prefill` to `m_rows`'s real grid
         width and patches every `m_rows`/`pos_base` scalar argument -- see module docstring's
@@ -1350,7 +1854,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         Returns the token id predicted immediately after the whole prompt (row `m_rows - 1`'s own
         lm_head/argmax result) -- exactly the same `_StepOut` shape `step()` returns, so a driver's
         decode loop can treat this call's return value as "the first generated token" and proceed
-        with ordinary `step()` calls from there."""
+        with ordinary `step()` calls from there.
+
+        Attention Compiler Plan v1.0, Phase 2C addendum: when `self.use_native_grouped_fa_attn` is
+        `True` (default `False` -- see that field's own docstring), this method submits the SEPARATE
+        `self.descriptors_prefill_af` table (native-KV-producer + Candidate A's attention, per layer)
+        instead of `self.descriptors_prefill` (`_pf_ropewrt_kernel` + `_pf_attn_tiled_kernel_simd`)
+        -- every other role, and every buffer neither of those two roles touches, is identical either
+        way. KNOWN, DELIBERATE SCOPE LIMIT, stated plainly rather than hidden: this flag changes
+        PREFILL's own attention path only. It does NOT touch `step()` (decode), which still reads
+        `self.layers[layer].ck_addr`/`cv_addr` (the F32 natural-layout cache `_pf_ropewrt_kernel`
+        populates) -- when the AF path is selected, `ropewrt` never runs, so those buffers are NEVER
+        populated for this call's own prompt rows. A caller that calls `prefill_batch(...,
+        use_native_grouped_fa_attn=True)` and then continues with `step()` for decode will read
+        stale/uninitialized `ck`/`cv` at those positions and get WRONG decode output -- this is a
+        known, itemized, NOT-yet-closed gap (see `metaldispatch.qwen3_prefill_decode`'s own AF entry
+        point docstring for how this session's own verification avoided the hazard), not a silent
+        risk: fixing it for real (either double-writing the natural cache too, or making `step()`
+        AF-aware) is deferred, itemized future work, not something this change claims to have solved."""
         @parameter
         if not MB_GPU_BUILD:
             return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
@@ -1366,6 +1887,26 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 if tid < 0 or tid >= self.vocab:
                     return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
                 ids_i32[m] = Int32(tid)
+
+            if self.use_native_grouped_fa_attn:
+                if (
+                    self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] < 0
+                    or self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] < 0
+                ):
+                    return _StepOut(
+                        -1, 0.0, 0,
+                        MB_ERR_PIPELINE_NOT_FOUND,
+                    )
+                self._apply_m_rows_af(m_rows, pos_base)
+                var rc_af = _mb_run_token(self.descriptors_prefill_af, self.n_descriptors_prefill_af)
+                if rc_af != 0:
+                    return _StepOut(-1, 0.0, self.n_descriptors_prefill_af, MB_ERR_DISPATCH_FAILED)
+
+                var tok_af = Int(self.out_idx_ptr.bitcast[Int32]()[0])
+                var lg_af = Float64(self.out_val_ptr.bitcast[Float32]()[0])
+                if tok_af < 0 or tok_af >= self.vocab:
+                    return _StepOut(-1, 0.0, self.n_descriptors_prefill_af, MB_ERR_DISPATCH_FAILED)
+                return _StepOut(tok_af, lg_af, self.n_descriptors_prefill_af, MB_OK)
 
             self._apply_m_rows(m_rows, pos_base)
 
