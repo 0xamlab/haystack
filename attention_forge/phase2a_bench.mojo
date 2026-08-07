@@ -92,21 +92,44 @@ def bench_parity_replica(ctx: DeviceContext, n_tok_q: Int, n_tok_k: Int, h_q: In
 
 
 def bench_candidate_a(ctx: DeviceContext, n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int, offset: Int, n_runs: Int) raises -> Float64:
+    """PHASE 2B ADAPTATION (collateral fix, not this task's own candidate): Candidate A's own
+    `_attn_grouped_fa_kernel` (a sibling agent's concurrent work, not touched here) now also reads
+    K/V from the native packed layout and takes a new `n_blocks` argument -- this bench function's
+    CALL SITE is updated to match (pack + pass `n_blocks`), purely to keep this shared
+    multi-candidate bench harness compiling; Candidate A's own kernel/correctness logic is untouched."""
     var q64 = _pseudo_f16(n_tok_q * h_q * d, 3)
     var k64 = _pseudo_f16(n_tok_k * h_kv * d, 11)
     var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
+
+    var n_blocks = (n_tok_k + 31) // 32
+    var kbs = 32
+    var k_native = List[Float64](capacity=h_kv * n_blocks * d * kbs)
+    for _ in range(h_kv * n_blocks * d * kbs):
+        k_native.append(0.0)
+    var v_native = List[Float64](capacity=h_kv * n_blocks * kbs * d)
+    for _ in range(h_kv * n_blocks * kbs * d):
+        v_native.append(0.0)
+    for j in range(n_tok_k):
+        var block = j // kbs
+        var kk = j % kbs
+        for hk in range(h_kv):
+            for dd in range(d):
+                var src = (j * h_kv + hk) * d + dd
+                k_native[((hk * n_blocks + block) * d + dd) * kbs + kk] = k64[src]
+                v_native[((hk * n_blocks + block) * kbs + kk) * d + dd] = v64[src]
+
     var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q * d)
-    var k_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
-    var v_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * kbs)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * kbs * d)
     with q_buf.map_to_host() as h:
         for i in range(n_tok_q * h_q * d):
             h[i] = Float16(q64[i])
     with k_buf.map_to_host() as h:
-        for i in range(n_tok_k * h_kv * d):
-            h[i] = Float16(k64[i])
+        for i in range(h_kv * n_blocks * d * kbs):
+            h[i] = Float16(k_native[i])
     with v_buf.map_to_host() as h:
-        for i in range(n_tok_k * h_kv * d):
-            h[i] = Float16(v64[i])
+        for i in range(h_kv * n_blocks * kbs * d):
+            h[i] = Float16(v_native[i])
     var out_buf = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * d)
     var lse_buf = ctx.enqueue_create_buffer[DType.float32](h_q * n_tok_q)
     ctx.synchronize()
@@ -122,7 +145,7 @@ def bench_candidate_a(ctx: DeviceContext, n_tok_q: Int, n_tok_k: Int, h_q: Int, 
             out_buf.unsafe_ptr(), lse_buf.unsafe_ptr(),
             q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
             Int64(n_tok_q), Int64(n_tok_k), Int64(h_q), Int64(h_kv),
-            Float32(scale), Int64(offset),
+            Float32(scale), Int64(offset), Int64(n_blocks),
             grid_dim=grid, block_dim=256,
         )
         ctx.synchronize()
@@ -135,22 +158,49 @@ def bench_candidate_c(ctx: DeviceContext, n_tok_q: Int, n_tok_k: Int, h_q: Int, 
     """Candidate C (associative grouped-head split-K, H_TILE=2, K_TILE=32): two dispatches per
     call -- the partial kernel (one threadgroup per (q_block, sibling-pair, split)) then the merge
     kernel (one threadgroup per (row, head)) -- timed together as ONE operator call, matching how
-    every other candidate here is timed as the full cost of one attention operator invocation."""
+    every other candidate here is timed as the full cost of one attention operator invocation.
+
+    PHASE 2B ADAPTATION: `_attn_splitk_partial_kernel` now reads K/V from the native packed layout
+    (see `splitk_fa.mojo`'s own docstring) instead of the natural `[position][kv_head][d_head]`
+    layout every OTHER candidate benched in this file still uses -- this function packs its own
+    pseudo-random K/V into that layout on the host before upload (a local, this-file-only
+    restatement of the flat-index formulas, matching `splitk_fa_driver.mojo`'s own `_pack_native_kv`
+    -- not shared with it or with `native_kv_producer.mojo`, since this file is a comparative bench
+    harness across ALL candidates, most of which were not touched by this task) instead of a
+    straight natural-layout upload."""
     var q64 = _pseudo_f16(n_tok_q * h_q * d, 3)
     var k64 = _pseudo_f16(n_tok_k * h_kv * d, 11)
     var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
+
+    var n_blocks = (n_tok_k + 31) // 32
+    var kbs = 32
+    var k_native = List[Float64](capacity=h_kv * n_blocks * d * kbs)
+    for _ in range(h_kv * n_blocks * d * kbs):
+        k_native.append(0.0)
+    var v_native = List[Float64](capacity=h_kv * n_blocks * kbs * d)
+    for _ in range(h_kv * n_blocks * kbs * d):
+        v_native.append(0.0)
+    for j in range(n_tok_k):
+        var block = j // kbs
+        var kk = j % kbs
+        for hk in range(h_kv):
+            for dd in range(d):
+                var src = (j * h_kv + hk) * d + dd
+                k_native[((hk * n_blocks + block) * d + dd) * kbs + kk] = k64[src]
+                v_native[((hk * n_blocks + block) * kbs + kk) * d + dd] = v64[src]
+
     var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q * d)
-    var k_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
-    var v_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * kbs)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * kbs * d)
     with q_buf.map_to_host() as h:
         for i in range(n_tok_q * h_q * d):
             h[i] = Float16(q64[i])
     with k_buf.map_to_host() as h:
-        for i in range(n_tok_k * h_kv * d):
-            h[i] = Float16(k64[i])
+        for i in range(h_kv * n_blocks * d * kbs):
+            h[i] = Float16(k_native[i])
     with v_buf.map_to_host() as h:
-        for i in range(n_tok_k * h_kv * d):
-            h[i] = Float16(v64[i])
+        for i in range(h_kv * n_blocks * kbs * d):
+            h[i] = Float16(v_native[i])
 
     var scale = 1.0 / Float64(d) ** 0.5
     var n_q_blocks = (n_tok_q + 7) // 8
@@ -172,7 +222,7 @@ def bench_candidate_c(ctx: DeviceContext, n_tok_q: Int, n_tok_k: Int, h_q: Int, 
             m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
             q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
             Int64(n_tok_q), Int64(n_tok_k), Int64(h_q), Int64(h_kv),
-            Float32(scale), Int64(offset), Int64(n_splits),
+            Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
             grid_dim=grid_partial, block_dim=256,
         )
         ctx.enqueue_function[_attn_splitk_merge_kernel](

@@ -56,28 +56,34 @@ sg % 4` plays EXACTLY the role `parity_replica.mojo`'s own `sg` (0..3) plays for
 `sg_local` owns one 8-key QK column-block (K_TILE=32 / 8 = 4 column-blocks = 4 SGs, one each --
 simpler than parity's 2-per-SG at K_TILE=64/4SGs), 2 softmax-owned rows (`r0=sg_local*2,
 r1=r0+1`), and one 32-wide PV output-dim chunk (`sg_local*32`). Both head-groups run the identical
-per-head recurrence CONCURRENTLY against the SAME staged `skv` tile -- K and V are each staged
-into shared memory ONCE per K-tile iteration (by all 256 threads cooperatively, regardless of
-head), then consumed by SGs 0-3 for head `h0` and SGs 4-7 for head `h1` without any second device
-read -- this is the 2x K/V-staging-traffic reduction this candidate exists to prove is a net win
-(measured separately from this file, per the plan's own note that latency comparisons happen
-outside this task to avoid cross-run GPU contention).
+per-head recurrence CONCURRENTLY against the SAME K/V tile -- ONE K-tile's worth of K/V data is
+read ONCE per K-tile iteration and consumed by SGs 0-3 for head `h0` and SGs 4-7 for head `h1`
+without any second device read -- this is the 2x K/V-read-traffic reduction this candidate exists
+to prove is a net win (measured separately from this file, per the plan's own note that latency
+comparisons happen outside this task to avoid cross-run GPU contention). (Historical note: at the
+time this paragraph was first written, "read once" meant "staged into shared memory `skv` once";
+per the "K/V CONSUMPTION UPDATE" section below, K has since moved to a device-direct MMA load with
+no shared-memory staging at all, while V still stages into `skv` once per tile exactly as
+described here -- the "read once, consumed by both heads" claim itself is unchanged for either.)
 
 Deviation from `parity_replica.mojo`'s own barrier placement, stated explicitly: this kernel adds
 one EXTRA `barrier()` at the bottom of the K-tile while-loop (after the PV MMA, before the loop
-back-edge re-stages K into the SAME `skv` buffer) that `parity_replica.mojo` does not have at the
+back-edge re-stages V into the SAME `skv` buffer) that `parity_replica.mojo` does not have at the
 equivalent point. Reasoning: `parity_replica.mojo`'s own K-tile loop restages K/V into `skv` via
 ALL SIMD groups cooperatively (`idx = tid + s*_NTHREADS`, striding across every SG's thread range),
 while the immediately-preceding PV MMA reads `skv` (V data) via each SG's OWN disjoint
 `col_blk_d`-range fragment loads -- meaning a straggling SIMD group's PV read and another SIMD
-group's next-iteration K write can, in principle, touch overlapping shared memory addresses without
+group's next-iteration V write can, in principle, touch overlapping shared memory addresses without
 an intervening synchronization point. This candidate has TWICE the SIMD-group count of
 `parity_replica.mojo` (8 vs 4) sharing the SAME `skv` tile across two independent per-head
 recurrences, which only widens that theoretical window -- so this file closes it explicitly with
 one more `barrier()` than the read-only reference uses, at negligible cost, rather than inheriting
 an assumption this session did not need to take on faith. (`parity_replica.mojo` itself is treated
 as read-only and unmodified per this task's constraints; this is not a claim that it is wrong, only
-that this candidate does not need to take the same risk.)
+that this candidate does not need to take the same risk.) This reasoning was written when `skv`
+staged BOTH K and V every iteration; it still holds verbatim for V now that K has moved to
+device-direct loads (see below) -- `skv` is V-only now, but the same straggler/restage hazard this
+barrier closes is unchanged for V's own restaging.
 
 Everything else -- F16 K/V storage, F32 softmax state (`m`/`l` running max/sum, kept as per-SG
 registers exactly like `parity_replica.mojo`), hardware MMA for both QK^T and PV, analytic
@@ -85,6 +91,70 @@ causal/ragged masking (`j < n_tok_k and j <= pos_base+i`, no additional key offs
 `shuffle_xor` max butterfly, `Int64`-typed kernel scalar arguments, `Int(...)`-wrapped
 pointer/index arithmetic -- is `parity_replica.mojo`'s own proven pattern, reused directly per this
 task's own instruction to do so wherever the algorithm doesn't require something different.
+
+K/V CONSUMPTION UPDATE (Attention Compiler Plan v1.0, Phase 2B wiring): NATIVE PACKED LAYOUT,
+NOT NATURAL [position][kv_head][d_head]
+-------------------------------------------------------------------------------------------------
+`q_ptr`/`k_ptr`/`v_ptr` used to all be natural `[position][kv_head][d_head]` device buffers, with
+K re-staged into shared memory transposed (`d = idx // _KT; kk = idx % _KT`) and V re-staged
+reordered (`kk = idx // _D; d = idx % _D`) every single K-tile dispatch. `k_ptr`/`v_ptr` are now
+`attention_forge.abi.KV_LAYOUT_NATIVE_PACKED_V2`-shaped buffers -- the exact layout
+`native_kv_producer.mojo`'s `_native_kv_producer_kernel` writes, at `key_block_size=32` (== this
+file's own `_KT`, by construction, so every K-tile iteration maps to EXACTLY one native block, no
+remainder ever needed):
+
+  K: `((hk * n_blocks + block) * _D + d) * _KT + kk`  -- `[kv_head][key_block][d_chunk][key_in_block]`
+  V: `((hk * n_blocks + block) * _KT + kk) * _D + d`  -- `[kv_head][key_block][key_in_block][d_chunk]`
+
+`n_blocks` is a NEW kernel parameter (the packed buffer's own per-`kv_head` block count, a property
+of how the caller sized the scratch buffer -- see `native_kv_producer.mojo`'s docstring item 5 for
+why this can't be derived from any other argument). `block = j0 // _KT` is exact with zero
+remainder because `j0` starts at 0 and increments by exactly `_KT` every iteration -- the same
+`pos // key_block_size` convention the producer uses, at the same block size, so this kernel's own
+per-tile block index and the producer's own per-position block index always agree.
+
+Caller contract: `n_blocks` must be `>= ceil(n_tok_k / _KT)` -- large enough to cover every
+position this dispatch's own `kv_upper` can reach -- otherwise a `block` computed above indexes
+outside the allocated K/V buffer. This is a new obligation, but the same KIND of obligation the
+old natural-layout kernel already had implicitly (that `k_ptr`/`v_ptr` be sized to at least
+`n_tok_k * h_kv * d_head` elements) -- not a new category of caller trust, just a differently
+shaped one.
+
+K: DEVICE-DIRECT MMA LOAD, NO SHARED-MEMORY STAGING AT ALL. The old "stage K, transposed" loop
+(and the `barrier()` that guarded it) is gone -- `apple_mma_load_8x8[DType.float16]` now reads the
+QK^T "B" operand straight from `k_ptr`, a per-thread-group READ-ONLY device buffer, so no
+producer/consumer hazard exists between threads and no barrier is needed at that point (the
+`barrier()` immediately after QK^T-store, before the softmax read of `ss`, is untouched -- that one
+guards a real intra-threadgroup hazard, unrelated to K staging). This choice was made, not merely
+attempted and left in a hopeful state: Phase 2B's own `native_kv_producer_driver.mojo` already
+proved `apple_mma_load_8x8[DType.float16]` against a device (non-shared) pointer is exact-correct
+at runtime (`worst abs diff = 0.0`, identity-matmul extraction, reproduced on two independent runs)
+for the SAME primitive composition (`_mma_apple_8x8` with the B operand loaded off-device) this
+file's own QK^T loop already uses for every OTHER load -- and this file's own driver
+(`grouped_fa_q8_k32_h2_sg8_driver.mojo`) re-validates it end-to-end (not just via an isolated
+identity-multiply probe) by running every existing correctness/determinism case through the real
+attention math against the CPU oracle. It is SAFE even for the ragged K-tile tail (positions
+`>= n_tok_k` within the last, partially-filled native block, whose bytes this kernel never
+initializes and may be garbage/NaN): those columns' `raw` score is read from `ss` but the
+`s_val = raw*scale if vis else _NEG_MASK` ternary NEVER assigns the `raw*scale` branch's value when
+`vis` is false -- it is computed and discarded, never stored, never fed into `exp`/`m`/`l` -- so no
+garbage or NaN in the unread tail of a native K block can ever reach the final output, regardless
+of what bit pattern happens to live there. (This is exactly why the old kernel's explicit
+`else: skv[idx] = Float16(0.0)` zero-fill for K's ragged tail was DEFENSIVE, not load-bearing --
+dropping it is not a silent risk, it is removing dead-weight safety that was never actually needed
+for K specifically.)
+
+V: STILL STAGED INTO SHARED MEMORY, BUT THE COPY IS NOW TRIVIAL. V's native block
+(`[key_in_block][d_chunk]`) is byte-identical, in order AND address arithmetic, to what `skv`
+already needs (`skv[idx] = v_ptr[v_block_off + idx]`, a single add, no `d`/`kk` recombination at
+all) -- this removes the reorder/transpose-adjacent index math the old natural-layout gather did
+(`(gk*h_kv+hk)*_D+d`), even though V's old gather was already axis-order-preserving and never
+needed a true transpose. The boundary zero-fill (`kk < nb`) is KEPT for V, deliberately NOT dropped
+the way K's was: V's masked contribution is a REAL multiply-by-probability inside the PV MMA sum
+(`p_frag * v_frag`, `p ≈ 0` for masked keys, not a discarded ternary branch), and IEEE754
+`0.0 * NaN == NaN` -- an unguarded read of a garbage/NaN tail byte would corrupt the ENTIRE output
+row's accumulator, not just one discarded scalar. K and V are NOT treated the same way here on
+purpose; this asymmetry is itemized, not an oversight.
 """
 from std.gpu import thread_idx, block_idx
 from max.gpu.sync import barrier
@@ -121,10 +191,13 @@ def _attn_grouped_fa_kernel(
     out_ptr: _FP, lse_ptr: _FP,
     q_ptr: _F16P, k_ptr: _F16P, v_ptr: _F16P,
     n_tok_q: Int64, n_tok_k: Int64, h_q: Int64, h_kv: Int64,
-    scale: Float32, pos_base: Int64,
+    scale: Float32, pos_base: Int64, n_blocks: Int64,
 ):
     var sq = stack_allocation[Int(_NROWS * _D), DType.float16, address_space = AddressSpace.SHARED]()
     var so = stack_allocation[Int(_NROWS * _D), DType.float32, address_space = AddressSpace.SHARED]()
+    # `skv` is now V-ONLY -- K reads device-direct (see module docstring), so this buffer is never
+    # written for K at all anymore; kept at the same size/name (still sized for a full [_D,_KT] or
+    # [_KT,_D] tile, both equal at 4096 elements) to minimize churn on the rest of the file.
     var skv = stack_allocation[Int(_D * _KT), DType.float16, address_space = AddressSpace.SHARED]()
     var ss = stack_allocation[Int(_NROWS * _KT), DType.float32, address_space = AddressSpace.SHARED]()
     var sp = stack_allocation[Int(_NROWS * _KT), DType.float16, address_space = AddressSpace.SHARED]()
@@ -184,26 +257,26 @@ def _attn_grouped_fa_kernel(
     while j0 <= kv_upper:
         var nb = _KT if (_KT < n_tok_k - j0) else (n_tok_k - j0)
 
-        # Stage K, transposed [D, KT], ONCE for this tile -- consumed by BOTH sibling heads below.
-        for s in range(Int64(16)):
-            var idx = tid + s * _NTHREADS
-            var d = idx // _KT
-            var kk = idx % _KT
-            var gk = j0 + kk
-            if kk < nb:
-                skv[Int(idx)] = k_ptr[Int((gk * h_kv + hk) * _D + d)]
-            else:
-                skv[Int(idx)] = Float16(0.0)
-
-        barrier()
+        # `j0` starts at 0 and increments by exactly `_KT` every iteration, and `_KT == 32 ==
+        # key_block_size` (the native producer's own block size), so `block` below is always
+        # exact -- this K-tile iteration IS native block `block` of kv_head `hk`, with zero
+        # remainder, never needing any re-derivation from a query-side offset.
+        var block = j0 // _KT
+        var k_block_off = (hk * n_blocks + block) * _D * _KT
+        var v_block_off = (hk * n_blocks + block) * _KT * _D
 
         # QK^T: this SG's head (hh), one 8-key column block (sg_local owns [sg_local*8,+8)),
-        # all 8 of that head's local rows via the a_frag row-offset hh*_QT*_D.
+        # all 8 of that head's local rows via the a_frag row-offset hh*_QT*_D. K's "B" operand is
+        # read DEVICE-DIRECT from the native packed buffer -- no shared-memory staging at all; see
+        # module docstring's "K: DEVICE-DIRECT MMA LOAD" section for why this is both safe and
+        # runtime-proven, not merely type-checked.
         var col_blk = sg_local
         var acc = SIMD[DType.float32, 2](0.0, 0.0)
         for dstep in range(Int64(16)):
             var a_frag = apple_mma_load_8x8[DType.float16](sq + Int(hh * _QT * _D + dstep * 8), Int(_D))
-            var b_frag = apple_mma_load_8x8[DType.float16](skv + Int(dstep * 8 * _KT + col_blk * 8), Int(_KT))
+            var b_frag = apple_mma_load_8x8[DType.float16](
+                k_ptr + Int(k_block_off + dstep * 8 * _KT + col_blk * 8), Int(_KT)
+            )
             _mma_apple_8x8(acc, a_frag, b_frag, acc)
         apple_mma_store_8x8[DType.float32](ss + Int(hh * _QT * _KT + col_blk * 8), Int(_KT), acc)
 
@@ -250,14 +323,17 @@ def _attn_grouped_fa_kernel(
 
         barrier()
 
-        # Stage V, natural [KT, D], ONCE for this tile -- consumed by BOTH sibling heads below.
+        # Stage V, ONCE for this tile -- consumed by BOTH sibling heads below. The native V block's
+        # own [key_in_block][d_chunk] order is byte-identical to `skv`'s own [KT,D] shape, so this
+        # is now a trivial 1:1 copy (`v_block_off + idx`, no `d`/`kk` recombination at all) instead
+        # of the old natural-layout gather's `(gk*h_kv+hk)*_D+d`. The `kk < nb` boundary zero-fill
+        # is KEPT (unlike K's) -- see module docstring's "V: STILL STAGED" section for why V's
+        # ragged tail genuinely needs it and K's did not.
         for s in range(Int64(16)):
             var idx = tid + s * _NTHREADS
             var kk = idx // _D
-            var d = idx % _D
-            var gk = j0 + kk
             if kk < nb:
-                skv[Int(idx)] = v_ptr[Int((gk * h_kv + hk) * _D + d)]
+                skv[Int(idx)] = v_ptr[Int(v_block_off + idx)]
             else:
                 skv[Int(idx)] = Float16(0.0)
 

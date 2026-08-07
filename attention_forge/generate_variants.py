@@ -26,12 +26,22 @@ from abi import (
     AttentionKernelArtifactKey,
     AttentionModelTraits,
     GeneratedKernelManifestEntry,
+    KV_LAYOUT_STUB_V1,
     sha256_file,
 )
 
 FORGE_DIR = Path(__file__).resolve().parent
 KERNEL_ABI_VERSION = 1
-KV_LAYOUT_VERSION = 1  # Phase 0B stub layout; Phase 4 introduces the real packed layout
+# Phase 0B stub layout -- corresponds to a REAL `abi.KVLayoutDescriptor`, not an arbitrary int (see
+# that class's own module-level instances). Phase 0B's stub generator never reads real K/V data, so
+# it stays pinned to the placeholder descriptor `KV_LAYOUT_STUB_V1` (layout_version=1). Phase 2B's
+# real native-packed layout is `abi.KV_LAYOUT_NATIVE_PACKED_V2` (layout_version=2, key_block_size=32,
+# dtype="f16") -- concretized and correctness-verified in `attention_forge/native_kv_producer.mojo`
+# and its driver; it is not wired in HERE because no kernel this generator emits (a Phase 0B
+# shape-check stub) consumes real K/V memory yet. Phase 2C is the first integration point where a
+# production `AttentionKernelArtifactKey` for a survivor candidate should carry
+# `kv_layout_version=abi.KV_LAYOUT_NATIVE_PACKED_V2.layout_version` instead of this stub's.
+KV_LAYOUT_VERSION = KV_LAYOUT_STUB_V1.layout_version
 
 
 def _apple_gpu_family() -> str:

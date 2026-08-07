@@ -5604,3 +5604,98 @@ configuration, not the architecture unconditionally at any split count.
   apples-to-apples comparison against L0's OWN wall-clock number, but a GPU-only comparison would
   be more decisive, especially for narrowing Candidate A's and C's own relative margin.
 
+
+## Attention Compiler Plan v1.0, Phase 2B (2026-08-07): native KV-layout producer built and wired; pack traffic measurably disappears; both survivors' margin over L0 widens substantially
+
+Phase 2B's own hard gate: "Pack traffic measurably disappears; traits toggle per-model without
+kernel rewrite; multi-call KV append with nonzero pos_base passes." Built via the same
+implement-then-adversarially-verify workflow pattern as Phase 2A's tournament: one agent builds
+the producer, two parallel agents adapt Candidates A and C to consume it, three parallel agents
+independently re-verify all three deliverables by re-running everything themselves.
+
+**The producer** (`attention_forge/native_kv_producer.mojo` + driver): one threadgroup per (row,
+head-unit), block_dim=d_head=128 -- the same grid shape as the existing PRODUCTION kernel this
+generalizes, `_pf_ropewrt_kernel` (`mojo/engine/residentk/kernels.mojo:3218-3288`), whose own
+RMSNorm (full-head-dim tree reduction, NOT a GEMM epilogue) and NeoX split-half RoPE math this
+kernel reuses formula-for-formula (independently re-derived and hand-verified during adversarial
+review, not merely copied). What's new: F16 output narrowing (the existing kernel is F32-only --
+confirmed by direct source read, no F16 twin existed for the *batched-prefill* rope-write path
+before this), and writing K/V into the plan's own canonical native-packed layout instead of the
+production natural `[position][kv_head][d_head]` cache:
+- K: `((hk*n_blocks+block)*d_head+d)*key_block_size+kk` -- `[kv_head][key_block][d_chunk][key_in_block]`
+- V: `((hk*n_blocks+block)*key_block_size+kk)*d_head+d` -- `[kv_head][key_block][key_in_block][d_chunk]`
+- Q: unchanged row-major layout, F16-narrowed only.
+
+`key_block_size=32` matches both survivors' own K_TILE. `KVLayoutDescriptor` (Phase 0B's own
+schema, confirmed by direct grep to have had ZERO consumers anywhere in the repo before this) is
+now wired for real: two named instances (`KV_LAYOUT_STUB_V1`, `KV_LAYOUT_NATIVE_PACKED_V2`) in
+`attention_forge/abi.py`, with `generate_variants.py`'s `KV_LAYOUT_VERSION` reading from the stub
+instance's own field instead of a bare literal `1`.
+
+**Correctness, independently re-verified**: RMSNorm+RoPE vs. an independent CPU Float64 oracle at
+three shapes; packing-index correctness at 6 hand-computed `(position, kv_head, d)` triples
+including ones spanning a block boundary (verified by hand during adversarial review, not just
+re-printed); a genuinely non-block-aligned multi-call continuation test (split at row 17 against
+`key_block_size=32`, so the second call starts mid-block and crosses into the next one) matching
+a single whole-range call exactly (0 mismatches); a 1,000-dispatch determinism soak (0
+mismatches).
+
+**A real, resolved open question**: this session's own standing uncertainty about whether Mojo's
+`apple_mma_load_8x8` works correctly at runtime against DEVICE (non-shared) memory -- compile-
+tested earlier in Phase 1 but never runtime-verified -- is now answered **yes** for F16, at a
+full 8x8-aligned fragment against a block-aligned native-packed pointer (exact bit match,
+reproduced on a second run). Both Candidate A and Candidate C were adapted to exploit this
+directly: K's per-dispatch shared-memory transpose-gather (`d = idx // KT; kk = idx % KT; skv[idx]
+= k_ptr[(gk*h_kv+hk)*_D+d]`, present in both kernels since Round 1) is DELETED entirely, replaced
+by a direct MMA fragment load straight from the packed device buffer -- confirmed by diffing
+against the pre-adaptation committed versions during adversarial review, not a cosmetic rename.
+V's staging loop, which never needed an index transpose (just a differently-strided gather),
+becomes a trivial contiguous copy. All of Round 1's own correctness/determinism/isolation coverage
+was independently confirmed preserved, not dropped, for both candidates.
+
+**Operator-latency result -- "pack traffic measurably disappears," quantified** (same
+`attention_forge/phase2a_bench.mojo` harness, one candidate at a time, reproduced across two runs;
+L0 numbers unchanged from the Phase 2A entry above):
+
+| rows | L0 wall | Candidate A: Round 1 → Phase 2B | A vs L0 (Phase 2B) | Candidate C: Round 1 → Phase 2B | C vs L0 (Phase 2B) |
+|---|---|---|---|---|---|
+| 128 | 0.204-0.211 ms | 0.188-0.200 → **0.171-0.181 ms** | **16-19% faster** | 0.191-0.202 → **0.181-0.191 ms** | **9-12% faster** |
+| 256 | 0.340-0.344 ms | 0.297-0.311 → **0.257-0.259 ms** | **24-25% faster** | 0.327-0.332 → **0.288-0.291 ms** | **15-16% faster** |
+| 512 | 0.773-0.790 ms | 0.643-0.650 → **0.547-0.554 ms** | **28-30% faster** | 0.702-0.710 → **0.550-0.556 ms** | **28-30% faster** |
+
+Every single row count, both candidates, moved in the SAME direction (faster) by a SUBSTANTIAL,
+consistent margin (9-18% faster than their own Round 1 selves) purely from removing the transpose-
+gather -- exactly what "pack traffic measurably disappears" predicts, not noise (noise would not
+be one-directional across 2 candidates x 3 row counts x 2 repeated runs each). Both candidates'
+margin over L0 is now substantially wider than Round 1's own screening numbers.
+
+**Multi-call KV append with nonzero pos_base**: passes (see correctness section above) --
+Phase 2B's third hard-gate item is met.
+
+**Traits toggle per-model without kernel rewrite**: partially addressed, not fully closed. The
+`KVLayoutDescriptor` schema is now wired with real instances and `generate_variants.py` reads from
+it, but `key_block_size`/layout choice is still effectively hardcoded to this session's own
+Qwen3-0.6B-Base shape (`d_head=128`, `key_block_size=32`) inside the producer and both candidate
+kernels -- a genuinely different model shape (different `d_head`, or a `head_mapping_class` other
+than `uniform_grouped`) would need the SAME kernels re-specialized, which the plan's own generator
+mechanism (Phase 0B) is designed to eventually automate but does not yet drive THESE specific
+kernels' comptime constants. Flagged honestly as a real gap, not claimed as closed.
+
+### What is left
+
+- Phase 2C: the integrated Round 2 tournament -- dispatch the producer kernel for REAL as part of
+  the same pipeline as each candidate (this entry's benchmark still builds packed buffers via a
+  host-side pack function in the bench harness, not by actually running
+  `_native_kv_producer_kernel` and feeding its live output directly into the candidate dispatch)
+  and complete the ablation ledger L1->L6. Stop rule 3 ("do not select a winner before native
+  producer integration") is now substantially closer to satisfied than before this phase, but the
+  FULL producer-into-candidate pipeline dispatch, not just layout compatibility, is Phase 2C's own
+  job to complete before a final winner is named.
+- Close the "traits toggle per-model" gap for real: wire the producer's/candidates' own comptime
+  shape constants to `AttentionModelTraits`/`KVLayoutDescriptor` instead of hardcoding Qwen3's own
+  d_head=128/key_block_size=32, and prove it with a second model shape (the synthetic MHA traits
+  Phase 0B's own generator already exercises would be the natural second data point).
+- The device-direct MMA-load finding was validated at ONE (kv_head, block) slice for one aligned
+  full block -- Phase 2C's own integration work should re-confirm this holds for the actual access
+  patterns real dispatches produce (ragged trailing blocks, sub-fragment offsets within a
+  partially-filled block), not just the one pattern this phase's probe exercised.

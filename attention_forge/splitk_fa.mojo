@@ -157,12 +157,90 @@ including Qwen3-0.6B-Base's `group=2`, satisfies it.
 
 Deviation from `parity_replica.mojo`'s own barrier placement, inherited from Candidate A and now
 doubly warranted: this kernel adds one EXTRA `barrier()` at the bottom of the K-tile while-loop
-(after the PV MMA, before the loop back-edge re-stages K into the SAME `skv` buffer) that
+(after the PV MMA, before the loop back-edge re-stages V into the SAME `skv` buffer) that
 `parity_replica.mojo` does not have at the equivalent point. This candidate has TWICE the SIMD-group
 count of `parity_replica.mojo` (8 vs 4) sharing the SAME `skv` tile across two independent per-head
 recurrences, which widens the theoretical window between a straggling SIMD group's PV read and
-another SIMD group's next-iteration K write -- so this file closes it explicitly, exactly as
+another SIMD group's next-iteration V write -- so this file closes it explicitly, exactly as
 Candidate A's own docstring reasons through for its own (non-split) grouped-head kernel.
+
+**PHASE 2B ADAPTATION, 2026-08-07 -- consuming the native packed KV layout instead of natural
+layout + per-dispatch transpose gather.** `attention_forge/native_kv_producer.mojo` (a sibling
+agent's own Phase 2B work, not modified here) now writes K/V once, at QK-norm+RoPE time, into a
+persistent device-resident layout this file's own `skv`-staging shapes were ALREADY byte-identical
+to: K packed `[kv_head][key_block][d_chunk][key_in_block]` at flat index
+`((hk*n_blocks+block)*d_head+d)*key_block_size+kk`, V packed `[kv_head][key_block][key_in_block]
+[d_chunk]` at flat index `((hk*n_blocks+block)*key_block_size+kk)*d_head+d`, `key_block_size=32`
+matching this candidate's own `_KT`. `_attn_splitk_partial_kernel` (the only kernel here that ever
+touched K/V; the merge kernel reads only its own partial scratch, see above) now takes `k_native`/
+`v_native` device pointers in THIS layout plus a caller-supplied `n_blocks` (the packed buffer's
+own per-`kv_head` block stride), instead of a natural `[position][kv_head][d_head]` pointer:
+
+  - **K: device-direct MMA load, no shared-memory staging at all.** This candidate's own
+    `apple_mma_load_8x8[DType.float16]` B-operand read for the QK^T step now points straight at
+    `k_native + block_base_k + dstep*8*_KT + col_blk*8` (a plain device pointer, `address_space`
+    unannotated) instead of `skv` -- the ENTIRE old "stage K, transposed [D,KT]" loop and its
+    dedicated barrier are deleted, not merely simplified. This is the path this task asked to be
+    tried FIRST, and it was kept (not the contiguous-copy fallback) because `native_kv_producer_
+    driver.mojo`'s own `test_direct_load_probe` already proved, at runtime on this hardware, that
+    `apple_mma_load_8x8[DType.float16]` reads a device (non-shared) F16 pointer correctly for
+    exactly this block shape (`worst abs diff = 0.0`, reproduced on an independent run) -- this
+    file's own driver (`splitk_fa_driver.mojo`) re-proves it end-to-end at the real consuming site
+    (every existing correctness/isolation/determinism case, now fed packed inputs, still passes),
+    which is the honest bar for "kept" rather than merely "type-checks."
+  - **V: trivial, index-math-free contiguous copy into `skv`.** V is still staged into shared
+    memory (this file did not attempt a device-direct load for V's `apple_mma_load_8x8` B-operand
+    in the PV step -- only K's read was this task's explicit ask, and staging V costs nothing extra
+    the K path doesn't already pay for skv's allocation, which is unchanged in size). The OLD
+    natural-layout V-staging loop computed `kk = idx // _D; d = idx % _D` and read a STRIDED
+    natural-layout address (`v_ptr[(gk*h_kv+hk)*_D+d]`, contiguous in `d` but jumping by `h_kv*_D`
+    every `_D` elements); the packed V layout's own block shape is `skv`'s exact `[KT][D]` byte
+    order, so the new loop is `skv[idx] = v_native[block_base_v + idx]` -- one pointer-offset add,
+    no division, no modulo, no per-element source-index formula at all.
+  - **Iteration is now native-block-aligned, not split-range-aligned.** The OLD scheme stepped
+    `j0` from `key_start` in `_KT`-strides, so the final tile was naturally clipped to `key_end`
+    (`nb = min(_KT, key_end-j0)`) and zero-padded beyond it -- safe only because the NATURAL k_ptr/
+    v_ptr buffers were never read past `n_tok_k`. A native block, once fetched (device-direct or
+    copied), is always fetched WHOLE (`kk` in `[0,32)`, never clipped) -- so this kernel now walks
+    whole blocks `blk` in `[key_start // _KT, (key_end-1) // _KT]`. Two consequences, both handled:
+      1. When `key_start` is not itself a multiple of `_KT` (an ordinary outcome of the split
+         partition's own integer division, unrelated to block alignment), the FIRST block this
+         split touches may be shared with the PRECEDING split (whose own `key_end` equals this
+         split's `key_start`) -- so the per-lane visibility check gains a new `gk >= key_start`
+         term (the trailing `gk < key_end` term already existed). Without it, keys in
+         `[block_lo*_KT, key_start)` would be double-counted by both splits once merged; with it,
+         each split contributes exactly its own `[key_start, key_end)` sub-range regardless of how
+         many splits happen to share a native block's physical read.
+      2. A split whose own range is NARROWER than one block but straddles a block boundary now
+         costs one EXTRA iteration versus the old scheme (e.g. `key_start=30, key_end=34` touches
+         blocks 0 AND 1, even though the old scheme needed only one `_KT`-tile) -- strictly a
+         result of aligning reads to the persistent native layout instead of to each split's own
+         arbitrary boundary; every column read by that extra iteration is masked out by the
+         `gk >= key_start` / `gk < key_end` bounds above, so it costs GPU cycles in a rare edge
+         case, never correctness. `_KT` and the native producer's `key_block_size` are BOTH 32 by
+         construction (this candidate's own K_TILE fallback, and the producer's own choice to match
+         it) -- so this iteration scheme never has to reconcile two different block sizes.
+  - **No new zero-padding, and none needed.** A native block's `kk` slots for real key positions
+    `>= n_tok_k` (a block only partially filled by real tokens, e.g. this task's own `pos_base=50`
+    continuation case) hold whatever `native_kv_producer.mojo` last left there -- possibly stale
+    data from an earlier call, never garbage from unallocated memory (the packed buffer is sized by
+    `n_blocks` up front, so every block this kernel's own `block_hi` bound can reach is always
+    in-bounds). Those columns are excluded from every reduction (`_warp_sum`, the `local_max`
+    shuffle-xor tree) by the SAME per-lane `vis` substitution (`s_val = raw*scale if vis else
+    _NEG_MASK`) this file already relied on before Phase 2B -- `raw`'s own bytes, real or stale,
+    never reach the softmax state once `vis` is false, so the old scheme's zero-padding (needed
+    ONLY to avoid an out-of-bounds read on the natural buffer, never for numerical correctness) has
+    no native-layout equivalent to preserve.
+  - **Threadgroup memory budget is UNCHANGED.** `skv` is still sized `_D * _KT` (now used for V
+    only, never aliased with K); every other shared array (`sq`, `so`, `ss`, `sp`, `s_corr`) is
+    untouched. The module docstring's worked arithmetic above (23616B, ~9.0KiB headroom) still
+    describes this kernel exactly -- Phase 2B changed WHAT `skv` holds and WHEN it's written, not
+    its size.
+
+See `splitk_fa_driver.mojo`'s own module docstring for how its existing correctness/isolation/
+determinism suite was adapted to build packed K/V buffers (by hand, independently of
+`native_kv_producer.mojo`) instead of natural ones, and for the new dedicated hand-packed-buffer
+case this task asked for.
 """
 from std.gpu import thread_idx, block_idx
 from max.gpu.sync import barrier
@@ -197,10 +275,15 @@ comptime _NEG_SENTINEL: Float32 = -3.0e38
 
 def _attn_splitk_partial_kernel(
     m_out: _FP, l_out: _FP, o_out: _FP,
-    q_ptr: _F16P, k_ptr: _F16P, v_ptr: _F16P,
+    q_ptr: _F16P, k_native: _F16P, v_native: _F16P,
     n_tok_q: Int64, n_tok_k: Int64, h_q: Int64, h_kv: Int64,
-    scale: Float32, pos_base: Int64, n_splits: Int64,
+    scale: Float32, pos_base: Int64, n_splits: Int64, n_blocks: Int64,
 ):
+    """`k_native`/`v_native` are the Phase 2B native-packed device buffers (see module docstring's
+    "PHASE 2B ADAPTATION" section for the exact flat-index formulas and why K is read device-direct
+    while V is staged via a trivial contiguous copy) -- `n_blocks` is the packed buffer's own
+    per-`kv_head` block stride, a property of how the caller sized the scratch buffer, not of this
+    one dispatch."""
     var sq = stack_allocation[Int(_NROWS * _D), DType.float16, address_space = AddressSpace.SHARED]()
     var so = stack_allocation[Int(_NROWS * _D), DType.float32, address_space = AddressSpace.SHARED]()
     var skv = stack_allocation[Int(_D * _KT), DType.float16, address_space = AddressSpace.SHARED]()
@@ -276,170 +359,177 @@ def _attn_splitk_partial_kernel(
     var key_start = (n_keys_block * split) // n_splits
     var key_end = (n_keys_block * (split + 1)) // n_splits
 
-    var j0 = key_start
-    while j0 < key_end:
-        var nb = _KT if (_KT < key_end - j0) else (key_end - j0)
+    # Native-block-aligned iteration (Phase 2B): walk whole native blocks `blk` covering
+    # `[key_start, key_end)`, instead of the old scheme's raw `_KT`-strides starting exactly at
+    # `key_start` -- see module docstring's "PHASE 2B ADAPTATION" section for why (a native block
+    # is always read WHOLE, never clipped) and for the new `gk >= key_start` visibility term this
+    # requires below.
+    if key_end > key_start:
+        var block_lo = key_start // _KT
+        var block_hi = (key_end - 1) // _KT
+        var blk = block_lo
+        while blk <= block_hi:
+            var j0 = blk * _KT
+            var block_base_k = (hk * n_blocks + blk) * _D * _KT
+            var block_base_v = (hk * n_blocks + blk) * _KT * _D
 
-        # Stage K, transposed [D, KT], ONCE for this tile and this SPLIT -- consumed by BOTH
-        # sibling heads below (the whole point of the grouped-head half of this candidate).
-        for s in range(Int64(16)):
-            var idx = tid + s * _NTHREADS
-            var d = idx // _KT
-            var kk = idx % _KT
-            var gk = j0 + kk
-            if kk < nb:
-                skv[Int(idx)] = k_ptr[Int((gk * h_kv + hk) * _D + d)]
-            else:
-                skv[Int(idx)] = Float16(0.0)
+            # QK^T: this SG's head (hh), its own single key-column block (K_TILE=32 / 8-wide
+            # blocks = 4 total, exactly 1 per SG at 4 SGs/head), all 8 of that head's own local rows
+            # via the a_frag row-offset hh*_QT*_D -- exactly `parity_replica.mojo`'s single-head QK
+            # step, duplicated per head via the hh offset, exactly as Candidate A's own QK step does
+            # (no cb loop needed at K_TILE=32, matching Candidate A's own `col_blk = sg_local`). K
+            # is read DEVICE-DIRECT here -- no shared-memory staging, no index-transposing gather;
+            # `k_native + block_base_k` is a plain device pointer, byte-identical in shape to what
+            # `skv` used to hold after the OLD per-dispatch transpose-gather (see module docstring).
+            var col_blk = sg_local
+            var acc = SIMD[DType.float32, 2](0.0, 0.0)
+            for dstep in range(Int64(16)):
+                var a_frag = apple_mma_load_8x8[DType.float16](sq + Int(hh * _QT * _D + dstep * 8), Int(_D))
+                var b_frag = apple_mma_load_8x8[DType.float16](
+                    k_native + Int(block_base_k + dstep * 8 * _KT + col_blk * 8), Int(_KT)
+                )
+                _mma_apple_8x8(acc, a_frag, b_frag, acc)
+            apple_mma_store_8x8[DType.float32](ss + Int(hh * _QT * _KT + col_blk * 8), Int(_KT), acc)
 
-        barrier()
+            barrier()
 
-        # QK^T: this SG's head (hh), its own single key-column block (K_TILE=32 / 8-wide blocks =
-        # 4 total, exactly 1 per SG at 4 SGs/head), all 8 of that head's own local rows via the
-        # a_frag row-offset hh*_QT*_D -- exactly `parity_replica.mojo`'s single-head QK step,
-        # duplicated per head via the hh offset, exactly as Candidate A's own QK step does (no cb
-        # loop needed at K_TILE=32, matching Candidate A's own `col_blk = sg_local`).
-        var col_blk = sg_local
-        var acc = SIMD[DType.float32, 2](0.0, 0.0)
-        for dstep in range(Int64(16)):
-            var a_frag = apple_mma_load_8x8[DType.float16](sq + Int(hh * _QT * _D + dstep * 8), Int(_D))
-            var b_frag = apple_mma_load_8x8[DType.float16](skv + Int(dstep * 8 * _KT + col_blk * 8), Int(_KT))
-            _mma_apple_8x8(acc, a_frag, b_frag, acc)
-        apple_mma_store_8x8[DType.float32](ss + Int(hh * _QT * _KT + col_blk * 8), Int(_KT), acc)
+            # Softmax update: this SG's 2 owned rows of ITS OWN head (hh); K_TILE=32 / 32 lanes = 1
+            # key column per lane (Candidate A's own single-column-per-lane shape at this K_TILE).
+            # All split-K-specific logic (the `gk < key_end`/`gk >= key_start` bounds, the
+            # fully-masked-tile `any_visible` detection) is UNCHANGED in spirit from the original
+            # single-head kernel -- it operates on this row's own `qpos` and the dispatch-shared
+            # `key_start`/`key_end`, neither of which depends on hh.
+            for which in range(Int64(2)):
+                var cr = cr0 if which == 0 else cr1
+                var r_local = r0 if which == 0 else r1
+                var c = lane
+                var gk = j0 + c
+                var raw = ss[Int(cr * _KT + c)]
+                var qpos = pos_base + row0 + r_local
+                # `gk < key_end` (this SPLIT's own upper bound, not just `n_tok_k`) excludes keys
+                # beyond this split's own range that a WHOLE native block may still contain (a
+                # trailing block only partially owned by this split). `gk >= key_start` (NEW for
+                # Phase 2B's block-aligned iteration -- the old position-stepped scheme never needed
+                # it, since `j0` itself started exactly at `key_start`) excludes keys BELOW this
+                # split's own range that the FIRST native block this split touches may still
+                # contain, whenever `key_start` isn't itself a multiple of `_KT` -- those keys
+                # belong to the PRECEDING split (whose own `key_end` equals this split's
+                # `key_start`), and counting them here too would double-count them once every
+                # split's partial is merged.
+                var vis = (gk < n_tok_k) and (gk <= qpos) and (gk < key_end) and (gk >= key_start)
+                var s_val = raw * scale if vis else _NEG_MASK
 
-        barrier()
+                # Fully-masked-tile detection, REQUIRED here (unlike parity_replica.mojo, where the
+                # outer loop bound `j0 <= kv_upper` is derived from the LAST row's own horizon, so
+                # the row achieving `kv_upper` never hits this case, and no split of that shared
+                # bound exists to make it common for every OTHER row): splitting the block's key
+                # range across `n_splits` threadgroups means an EARLY row (small `qpos`) routinely
+                # gets assigned to this tile purely because a LATER row's larger `qpos` sizes the
+                # block-level split range, while every key in this specific tile is already beyond
+                # the early row's own horizon. If no lane's `vis` is True, `local_max` degenerates to
+                # `_NEG_MASK` itself (a large but FINITE sentinel), and comparing every masked score
+                # against itself would wrongly yield `exp(0) == 1` per masked lane instead of the
+                # intended `~0` -- silently adding up to 32 units of pure noise to `l` (and a
+                # same-weighted, wrong contribution to `o`) for a tile that contributed NOTHING.
+                # Detected via a `_warp_sum` all-reduce over each lane's own visible-count (0/1) --
+                # reuses the same proven all-reduce primitive `parity_replica.mojo` already relies
+                # on for `_warp_sum`, just summing a visibility indicator instead of a softmax
+                # weight.
+                var vis_count = Float32(1.0) if vis else Float32(0.0)
+                var any_visible = _warp_sum(vis_count)
 
-        # Softmax update: this SG's 2 owned rows of ITS OWN head (hh); K_TILE=32 / 32 lanes = 1
-        # key column per lane (Candidate A's own single-column-per-lane shape at this K_TILE). All
-        # split-K-specific logic (the extra `gk < key_end` bound, the fully-masked-tile
-        # `any_visible` detection) is UNCHANGED in spirit from the original single-head kernel --
-        # it operates on this row's own `qpos` and the dispatch-shared `key_end`, neither of which
-        # depends on hh.
-        for which in range(Int64(2)):
-            var cr = cr0 if which == 0 else cr1
-            var r_local = r0 if which == 0 else r1
-            var c = lane
-            var gk = j0 + c
-            var raw = ss[Int(cr * _KT + c)]
-            var qpos = pos_base + row0 + r_local
-            # `gk < key_end` (this SPLIT's own upper bound, not just `n_tok_k`) is required in
-            # addition to the parity-inherited `gk < n_tok_k and gk <= qpos` checks: whenever a
-            # split's own sub-range does not end on a K_TILE=32 boundary (`nb < 32`), the zero-
-            # padded columns `kk in [nb, 32)` staged by the K-load loop above correspond to keys
-            # `gk = j0 + kk >= key_end` that may still be `< n_tok_k` and `<= qpos` (they are
-            # simply owned by a DIFFERENT split, not invisible to this row) -- without this bound
-            # they would score `raw*scale == 0` (dot product against a zero-padded K) and be
-            # counted as a spurious extra visible key by this split, double-counting it once this
-            # split's and the owning split's partials are merged.
-            var vis = (gk < n_tok_k) and (gk <= qpos) and (gk < key_end)
-            var s_val = raw * scale if vis else _NEG_MASK
+                var m_old = m0 if which == 0 else m1
+                var l_old = l0 if which == 0 else l1
+                var m_new: Float32
+                var l_new: Float32
+                var e: Float32
+                var corr: Float32
+                if any_visible > 0.0:
+                    var local_max = s_val
+                    var off: UInt32 = 16
+                    while off > 0:
+                        var other = _shuffle_xor(local_max, off)
+                        if other > local_max:
+                            local_max = other
+                        off //= 2
 
-            # Fully-masked-tile detection, REQUIRED here (unlike parity_replica.mojo, where the
-            # outer loop bound `j0 <= kv_upper` is derived from the LAST row's own horizon, so the
-            # row achieving `kv_upper` never hits this case, and no split of that shared bound
-            # exists to make it common for every OTHER row): splitting the block's key range across
-            # `n_splits` threadgroups means an EARLY row (small `qpos`) routinely gets assigned to
-            # this tile purely because a LATER row's larger `qpos` sizes the block-level split
-            # range, while every key in this specific tile is already beyond the early row's own
-            # horizon. If no lane's `vis` is True, `local_max` degenerates to `_NEG_MASK` itself (a
-            # large but FINITE sentinel), and comparing every masked score against itself would
-            # wrongly yield `exp(0) == 1` per masked lane instead of the intended `~0` -- silently
-            # adding up to 32 units of pure noise to `l` (and a same-weighted, wrong contribution to
-            # `o`) for a tile that contributed NOTHING. Detected via a `_warp_sum` all-reduce over
-            # each lane's own visible-count (0/1) -- reuses the same proven all-reduce primitive
-            # `parity_replica.mojo` already relies on for `_warp_sum`, just summing a visibility
-            # indicator instead of a softmax weight.
-            var vis_count = Float32(1.0) if vis else Float32(0.0)
-            var any_visible = _warp_sum(vis_count)
+                    m_new = local_max if local_max > m_old else m_old
+                    corr = exp(m_old - m_new)
+                    e = exp(s_val - m_new)
+                    var block_sum = _warp_sum(e)
+                    l_new = l_old * corr + block_sum
+                else:
+                    # Genuine no-op: nothing in this tile is visible to this row, so the running
+                    # state must pass through UNCHANGED, exactly as an empty split's own initial
+                    # state does.
+                    m_new = m_old
+                    l_new = l_old
+                    e = Float32(0.0)
+                    corr = Float32(1.0)
 
-            var m_old = m0 if which == 0 else m1
-            var l_old = l0 if which == 0 else l1
-            var m_new: Float32
-            var l_new: Float32
-            var e: Float32
-            var corr: Float32
-            if any_visible > 0.0:
-                var local_max = s_val
-                var off: UInt32 = 16
-                while off > 0:
-                    var other = _shuffle_xor(local_max, off)
-                    if other > local_max:
-                        local_max = other
-                    off //= 2
+                sp[Int(cr * _KT + c)] = Float16(e)
+                if lane == 0:
+                    s_corr[Int(cr)] = corr
 
-                m_new = local_max if local_max > m_old else m_old
-                corr = exp(m_old - m_new)
-                e = exp(s_val - m_new)
-                var block_sum = _warp_sum(e)
-                l_new = l_old * corr + block_sum
-            else:
-                # Genuine no-op: nothing in this tile is visible to this row, so the running state
-                # must pass through UNCHANGED, exactly as an empty split's own initial state does.
-                m_new = m_old
-                l_new = l_old
-                e = Float32(0.0)
-                corr = Float32(1.0)
+                if which == 0:
+                    m0 = m_new
+                    l0 = l_new
+                else:
+                    m1 = m_new
+                    l1 = l_new
 
-            sp[Int(cr * _KT + c)] = Float16(e)
-            if lane == 0:
-                s_corr[Int(cr)] = corr
+            barrier()
 
-            if which == 0:
-                m0 = m_new
-                l0 = l_new
-            else:
-                m1 = m_new
-                l1 = l_new
+            # V staging: TRIVIAL, index-math-free contiguous copy from the native packed buffer --
+            # no gather at all (contrast the OLD natural-layout version's `kk = idx // _D; d = idx %
+            # _D; skv[idx] = v_ptr[(gk*h_kv+hk)*_D+d]`, a per-element STRIDED read from natural
+            # layout). `native_kv_producer.mojo` packs V at exactly `((hk*n_blocks+block)*
+            # key_block_size+kk)*d_head+d` for a whole `[KT][D]` block starting at `block_base_v` --
+            # byte-identical, in order, to this buffer's own `skv` shape, so every thread copies its
+            # own flat `idx` straight across with a single base-pointer offset, nothing else. K was
+            # read device-direct above (no shared staging at all); V still stages into `skv` here
+            # (see module docstring's "PHASE 2B ADAPTATION" section for why: only K's device-direct
+            # read was this task's own explicit ask, and staging V costs nothing the K path doesn't
+            # already pay for in `skv`'s allocation).
+            for s in range(Int64(16)):
+                var idx = tid + s * _NTHREADS
+                skv[Int(idx)] = v_native[Int(block_base_v + idx)]
 
-        barrier()
+            barrier()
 
-        # Stage V, natural [KT, D], ONCE for this tile and this SPLIT -- consumed by BOTH sibling
-        # heads below.
-        for s in range(Int64(16)):
-            var idx = tid + s * _NTHREADS
-            var kk = idx // _D
-            var d = idx % _D
-            var gk = j0 + kk
-            if kk < nb:
-                skv[Int(idx)] = v_ptr[Int((gk * h_kv + hk) * _D + d)]
-            else:
-                skv[Int(idx)] = Float16(0.0)
+            # Rescale THIS head's own output-accumulator rows by this iteration's corr -- disjoint
+            # per (hh, sg_local), matching Candidate A's own per-head rescale exactly.
+            for e in range(Int64(8)):
+                var idx = lane + e * 32
+                var rr = idx // 32
+                var dd = idx % 32
+                var col = sg_local * 32 + dd
+                var cr_rs = hh * _QT + rr
+                var corr_r = s_corr[Int(cr_rs)]
+                so[Int(cr_rs * _D + col)] = so[Int(cr_rs * _D + col)] * corr_r
 
-        barrier()
+            barrier()
 
-        # Rescale THIS head's own output-accumulator rows by this iteration's corr -- disjoint per
-        # (hh, sg_local), matching Candidate A's own per-head rescale exactly.
-        for e in range(Int64(8)):
-            var idx = lane + e * 32
-            var rr = idx // 32
-            var dd = idx % 32
-            var col = sg_local * 32 + dd
-            var cr_rs = hh * _QT + rr
-            var corr_r = s_corr[Int(cr_rs)]
-            so[Int(cr_rs * _D + col)] = so[Int(cr_rs * _D + col)] * corr_r
+            # PV: this SG's head (hh), one 32-wide output-dim chunk (4 8-wide MMA sub-blocks), all 8
+            # of that head's rows, all KT keys of THIS block's current tile -- p_frag's row-offset
+            # hh*_QT*_KT selects this head's own probability rows; v_frag reads the SAME shared skv
+            # tile every SG (of both heads) just staged once above.
+            for cb in range(Int64(4)):
+                var col_blk_d = sg_local * 4 + cb
+                var seed = apple_mma_load_8x8[DType.float32](so + Int(hh * _QT * _D + col_blk_d * 8), Int(_D))
+                var acc2 = seed
+                for kstep in range(Int64(4)):
+                    var p_frag = apple_mma_load_8x8[DType.float16](sp + Int(hh * _QT * _KT + kstep * 8), Int(_KT))
+                    var v_frag = apple_mma_load_8x8[DType.float16](skv + Int(kstep * 8 * _D + col_blk_d * 8), Int(_D))
+                    _mma_apple_8x8(acc2, p_frag, v_frag, acc2)
+                apple_mma_store_8x8[DType.float32](so + Int(hh * _QT * _D + col_blk_d * 8), Int(_D), acc2)
 
-        barrier()
+            # Extra safety barrier vs. parity_replica.mojo's own loop back-edge, inherited from
+            # Candidate A and doubly warranted here (8 SGs across 2 heads sharing skv) -- see module
+            # docstring's "Deviation from parity_replica.mojo's own barrier placement" section.
+            barrier()
 
-        # PV: this SG's head (hh), one 32-wide output-dim chunk (4 8-wide MMA sub-blocks), all 8
-        # of that head's rows, all KT keys of THIS split's current tile -- p_frag's row-offset
-        # hh*_QT*_KT selects this head's own probability rows; v_frag reads the SAME shared skv
-        # tile every SG (of both heads) just staged once above.
-        for cb in range(Int64(4)):
-            var col_blk_d = sg_local * 4 + cb
-            var seed = apple_mma_load_8x8[DType.float32](so + Int(hh * _QT * _D + col_blk_d * 8), Int(_D))
-            var acc2 = seed
-            for kstep in range(Int64(4)):
-                var p_frag = apple_mma_load_8x8[DType.float16](sp + Int(hh * _QT * _KT + kstep * 8), Int(_KT))
-                var v_frag = apple_mma_load_8x8[DType.float16](skv + Int(kstep * 8 * _D + col_blk_d * 8), Int(_D))
-                _mma_apple_8x8(acc2, p_frag, v_frag, acc2)
-            apple_mma_store_8x8[DType.float32](so + Int(hh * _QT * _D + col_blk_d * 8), Int(_D), acc2)
-
-        # Extra safety barrier vs. parity_replica.mojo's own loop back-edge, inherited from
-        # Candidate A and doubly warranted here (8 SGs across 2 heads sharing skv) -- see module
-        # docstring's "Deviation from parity_replica.mojo's own barrier placement" section.
-        barrier()
-
-        j0 += _KT
+            blk += 1
 
     # No division by l -- this split's own state is UNNORMALIZED, written for the merge kernel,
     # per INDIVIDUAL head h (h0 or h1, whichever this SG owns) -- never a shared/paired slot.

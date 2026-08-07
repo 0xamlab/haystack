@@ -1,8 +1,28 @@
 """attention_forge.splitk_fa_driver -- forces codegen of Candidate C's two kernels
 (`_attn_splitk_partial_kernel`, `_attn_splitk_merge_kernel`, see `splitk_fa.mojo`'s own docstring)
-and checks them FOUR ways, matching this repo's own established forge-native pattern
+and checks them FIVE ways, matching this repo's own established forge-native pattern
 (`parity_replica_driver.mojo`, `grouped_fa_q8_k32_h2_sg8_driver.mojo`):
 
+**PHASE 2B ADAPTATION.** `_attn_splitk_partial_kernel` now consumes K/V in the native packed
+layout (`attention_forge/native_kv_producer.mojo`'s own layout, see `splitk_fa.mojo`'s "PHASE 2B
+ADAPTATION" docstring section for the exact flat-index formulas) instead of a natural
+`[position][kv_head][d_head]` buffer, so every test below that used to upload `k64`/`v64` straight
+into a natural-layout device buffer now packs them FIRST via `_pack_native_kv` -- a hand-written
+(NOT calling into `native_kv_producer.mojo`, per this task's own instruction not to touch that
+file) restatement of the exact same flat-index formulas, so this driver's own buffer construction
+is an INDEPENDENT re-derivation of the packing convention, not a shared dependency that could hide
+a matching bug on both sides. Every existing correctness/isolation/determinism case below is
+otherwise UNCHANGED (same shapes, same pseudo-random seeds, same tolerances, same oracles) --
+Phase 2B changed how K/V are CONSUMED, not the attention math itself, so every case still checks
+the exact same numerical result, just fed through the new layout. `test_hand_packed_buffer` (new,
+item 0 below) is the dedicated case this task asked for: it builds a small packed K/V buffer via
+literal, explicitly-restated flat indices (not even routed through the shared `_pack_native_kv`
+helper) and includes a few hand-verified index assertions in the style of `native_kv_producer_
+driver.mojo`'s own `test_packing_hand_indices`, before running the full partial+merge pipeline
+against `attnk.sdpa.sdpa_forward_flat` -- genuine end-to-end confidence that isn't just "this
+driver's helper agrees with itself."
+
+  0. `test_hand_packed_buffer` -- see above.
   1. `test_partial_isolation` -- Candidate C's own correctness requirement (a): each partial-kernel
      dispatch produces a correct UNNORMALIZED partial state `(m_s, l_s, o_s)` for its own key
      sub-range in ISOLATION -- compared against a DIRECT (no online-softmax, no tiling) Float64
@@ -71,6 +91,55 @@ def _pseudo_f16(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
+def _n_blocks_for(n_tok_k: Int) -> Int:
+    """`ceil(n_tok_k / 32)` -- `32` is this candidate's own `_KT`, byte-identical to
+    `native_kv_producer.mojo`'s own `key_block_size` (see `splitk_fa.mojo`'s "PHASE 2B ADAPTATION"
+    docstring section: this is not a coincidence, it is the whole reason a native block is directly
+    consumable without reconciling two different tile sizes). Every block this kernel's own
+    `block_hi = (key_end-1)//32` bound can ever reach is `< _n_blocks_for(n_tok_k)`, since
+    `key_end <= n_keys_block <= n_tok_k` always -- so a packed buffer sized with this many blocks
+    per `kv_head` is always large enough, never read out of bounds."""
+    return (n_tok_k + 31) // 32
+
+
+def _pack_native_kv(natural64: List[Float64], n_tok_k: Int, h_kv: Int, d: Int, n_blocks: Int, is_k: Bool) -> List[Float64]:
+    """Hand-packs a NATURAL `[position][kv_head][d_head]` pseudo-random buffer (`natural64`, the
+    SAME array both `test_correctness`'s CPU oracle and `test_partial_isolation`'s own direct host
+    computation already consume) into the Phase 2B native layout `splitk_fa.mojo`'s
+    `_attn_splitk_partial_kernel` now reads -- restated here independently of
+    `native_kv_producer.mojo` (never imported, per this task's own instruction not to touch that
+    file), so this driver's own construction of its test inputs is a SECOND, independent
+    re-derivation of the packing convention this task's ground-truth report specifies, not a
+    shared dependency with the kernel or the producer that could hide a matching bug on both sides:
+
+      K: `((hk*n_blocks+block)*d + dd)*32 + kk`  -- `[kv_head][key_block][d_chunk][key_in_block]`
+      V: `((hk*n_blocks+block)*32+kk)*d + dd`     -- `[kv_head][key_block][key_in_block][d_chunk]`
+
+    `block = j // 32`, `kk = j % 32` for real key position `j` in `[0, n_tok_k)`. Positions beyond
+    `n_tok_k` within a block's own 32-wide span (a block only partially filled by real tokens) are
+    left at `0.0` -- never read by the kernel (masked out by `gk < n_tok_k` before use), so their
+    exact value is immaterial; `0.0` merely keeps this helper simple, it is not a correctness
+    requirement the kernel depends on."""
+    var kbs = 32
+    var size = h_kv * n_blocks * d * kbs
+    var out = List[Float64](capacity=size)
+    for _ in range(size):
+        out.append(0.0)
+    for j in range(n_tok_k):
+        var block = j // kbs
+        var kk = j % kbs
+        for hk in range(h_kv):
+            for dd in range(d):
+                var src = (j * h_kv + hk) * d + dd
+                if is_k:
+                    var dst = ((hk * n_blocks + block) * d + dd) * kbs + kk
+                    out[dst] = natural64[src]
+                else:
+                    var dst = ((hk * n_blocks + block) * kbs + kk) * d + dd
+                    out[dst] = natural64[src]
+    return out^
+
+
 def test_partial_isolation(
     ctx: DeviceContext, name: String,
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int, offset: Int, n_splits: Int,
@@ -92,18 +161,22 @@ def test_partial_isolation(
     var k64 = _pseudo_f16(n_tok_k * h_kv * d, 11)
     var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
 
+    var n_blocks = _n_blocks_for(n_tok_k)
+    var k_native64 = _pack_native_kv(k64, n_tok_k, h_kv, d, n_blocks, True)
+    var v_native64 = _pack_native_kv(v64, n_tok_k, h_kv, d, n_blocks, False)
+
     var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q * d)
-    var k_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
-    var v_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * 32)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * 32 * d)
     with q_buf.map_to_host() as hbuf:
         for i in range(n_tok_q * h_q * d):
             hbuf[i] = Float16(q64[i])
     with k_buf.map_to_host() as hbuf:
-        for i in range(n_tok_k * h_kv * d):
-            hbuf[i] = Float16(k64[i])
+        for i in range(h_kv * n_blocks * d * 32):
+            hbuf[i] = Float16(k_native64[i])
     with v_buf.map_to_host() as hbuf:
-        for i in range(n_tok_k * h_kv * d):
-            hbuf[i] = Float16(v64[i])
+        for i in range(h_kv * n_blocks * 32 * d):
+            hbuf[i] = Float16(v_native64[i])
 
     var n_q_blocks = (n_tok_q + 7) // 8
     var m_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * n_splits)
@@ -117,7 +190,7 @@ def test_partial_isolation(
         m_scratch.unsafe_ptr(), l_scratch.unsafe_ptr(), o_scratch.unsafe_ptr(),
         q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
         Int64(n_tok_q), Int64(n_tok_k), Int64(h_q), Int64(h_kv),
-        Float32(scale), Int64(offset), Int64(n_splits),
+        Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
         grid_dim=grid_partial, block_dim=256,
     )
     ctx.synchronize()
@@ -252,18 +325,22 @@ def test_correctness(
         print("  [", name, "] oracle FAILED, status=", oracle.status)
         return False
 
+    var n_blocks = _n_blocks_for(n_tok_k)
+    var k_native64 = _pack_native_kv(k64, n_tok_k, h_kv, d, n_blocks, True)
+    var v_native64 = _pack_native_kv(v64, n_tok_k, h_kv, d, n_blocks, False)
+
     var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q * d)
-    var k_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
-    var v_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * 32)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * 32 * d)
     with q_buf.map_to_host() as hbuf:
         for i in range(n_tok_q * h_q * d):
             hbuf[i] = Float16(q64[i])
     with k_buf.map_to_host() as hbuf:
-        for i in range(n_tok_k * h_kv * d):
-            hbuf[i] = Float16(k64[i])
+        for i in range(h_kv * n_blocks * d * 32):
+            hbuf[i] = Float16(k_native64[i])
     with v_buf.map_to_host() as hbuf:
-        for i in range(n_tok_k * h_kv * d):
-            hbuf[i] = Float16(v64[i])
+        for i in range(h_kv * n_blocks * 32 * d):
+            hbuf[i] = Float16(v_native64[i])
 
     var n_q_blocks = (n_tok_q + 7) // 8
     var m_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * n_splits)
@@ -281,7 +358,7 @@ def test_correctness(
         m_scratch.unsafe_ptr(), l_scratch.unsafe_ptr(), o_scratch.unsafe_ptr(),
         q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
         Int64(n_tok_q), Int64(n_tok_k), Int64(h_q), Int64(h_kv),
-        Float32(scale), Int64(offset), Int64(n_splits),
+        Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
         grid_dim=grid_partial, block_dim=256,
     )
     ctx.synchronize()
@@ -348,20 +425,23 @@ def test_pair_grid_isolation(
     var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
     var scale = 1.0 / Float64(d) ** 0.5
     var n_q_blocks = (n_tok_q + 7) // 8
+    var n_blocks = _n_blocks_for(n_tok_k)
 
     # --- paired run: every sibling pair sharing this dispatch's grid ---
+    var k_native64 = _pack_native_kv(k64, n_tok_k, h_kv, d, n_blocks, True)
+    var v_native64 = _pack_native_kv(v64, n_tok_k, h_kv, d, n_blocks, False)
     var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q_paired * d)
-    var k_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
-    var v_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * 32)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * 32 * d)
     with q_buf.map_to_host() as h:
         for i in range(n_tok_q * h_q_paired * d):
             h[i] = Float16(q64[i])
     with k_buf.map_to_host() as h:
-        for i in range(n_tok_k * h_kv * d):
-            h[i] = Float16(k64[i])
+        for i in range(h_kv * n_blocks * d * 32):
+            h[i] = Float16(k_native64[i])
     with v_buf.map_to_host() as h:
-        for i in range(n_tok_k * h_kv * d):
-            h[i] = Float16(v64[i])
+        for i in range(h_kv * n_blocks * 32 * d):
+            h[i] = Float16(v_native64[i])
 
     var m_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q_paired * n_splits)
     var l_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q_paired * n_splits)
@@ -374,7 +454,7 @@ def test_pair_grid_isolation(
         m_scratch.unsafe_ptr(), l_scratch.unsafe_ptr(), o_scratch.unsafe_ptr(),
         q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
         Int64(n_tok_q), Int64(n_tok_k), Int64(h_q_paired), Int64(h_kv),
-        Float32(scale), Int64(offset), Int64(n_splits),
+        Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
         grid_dim=grid_partial_paired, block_dim=256,
     )
     ctx.synchronize()
@@ -418,18 +498,21 @@ def test_pair_grid_isolation(
                 k_solo.append(k64[(j * h_kv + pair_idx) * d + e])
                 v_solo.append(v64[(j * h_kv + pair_idx) * d + e])
 
+        var k_solo_native64 = _pack_native_kv(k_solo, n_tok_k, 1, d, n_blocks, True)
+        var v_solo_native64 = _pack_native_kv(v_solo, n_tok_k, 1, d, n_blocks, False)
+
         var qs_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * 2 * d)
-        var ks_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * d)
-        var vs_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * d)
+        var ks_buf = ctx.enqueue_create_buffer[DType.float16](n_blocks * d * 32)
+        var vs_buf = ctx.enqueue_create_buffer[DType.float16](n_blocks * 32 * d)
         with qs_buf.map_to_host() as h:
             for i in range(n_tok_q * 2 * d):
                 h[i] = Float16(q_solo[i])
         with ks_buf.map_to_host() as h:
-            for j in range(n_tok_k * d):
-                h[j] = Float16(k_solo[j])
+            for j in range(n_blocks * d * 32):
+                h[j] = Float16(k_solo_native64[j])
         with vs_buf.map_to_host() as h:
-            for j in range(n_tok_k * d):
-                h[j] = Float16(v_solo[j])
+            for j in range(n_blocks * 32 * d):
+                h[j] = Float16(v_solo_native64[j])
 
         var ms_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * 2 * n_splits)
         var ls_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * 2 * n_splits)
@@ -442,7 +525,7 @@ def test_pair_grid_isolation(
             ms_scratch.unsafe_ptr(), ls_scratch.unsafe_ptr(), os_scratch.unsafe_ptr(),
             qs_buf.unsafe_ptr(), ks_buf.unsafe_ptr(), vs_buf.unsafe_ptr(),
             Int64(n_tok_q), Int64(n_tok_k), Int64(2), Int64(1),
-            Float32(scale), Int64(offset), Int64(n_splits),
+            Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
             grid_dim=grid_partial_solo, block_dim=256,
         )
         ctx.synchronize()
@@ -492,18 +575,22 @@ def test_determinism_soak(
     var k64 = _pseudo_f16(n_tok_k * h_kv * d, 11)
     var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
 
+    var n_blocks = _n_blocks_for(n_tok_k)
+    var k_native64 = _pack_native_kv(k64, n_tok_k, h_kv, d, n_blocks, True)
+    var v_native64 = _pack_native_kv(v64, n_tok_k, h_kv, d, n_blocks, False)
+
     var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q * d)
-    var k_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
-    var v_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_k * h_kv * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * 32)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * 32 * d)
     with q_buf.map_to_host() as hbuf:
         for i in range(n_tok_q * h_q * d):
             hbuf[i] = Float16(q64[i])
     with k_buf.map_to_host() as hbuf:
-        for i in range(n_tok_k * h_kv * d):
-            hbuf[i] = Float16(k64[i])
+        for i in range(h_kv * n_blocks * d * 32):
+            hbuf[i] = Float16(k_native64[i])
     with v_buf.map_to_host() as hbuf:
-        for i in range(n_tok_k * h_kv * d):
-            hbuf[i] = Float16(v64[i])
+        for i in range(h_kv * n_blocks * 32 * d):
+            hbuf[i] = Float16(v_native64[i])
 
     var scale = 1.0 / Float64(d) ** 0.5
     var n_q_blocks = (n_tok_q + 7) // 8
@@ -526,7 +613,7 @@ def test_determinism_soak(
             m_scratch.unsafe_ptr(), l_scratch.unsafe_ptr(), o_scratch.unsafe_ptr(),
             q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
             Int64(n_tok_q), Int64(n_tok_k), Int64(h_q), Int64(h_kv),
-            Float32(scale), Int64(offset), Int64(n_splits),
+            Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
             grid_dim=grid_partial, block_dim=256,
         )
         ctx.enqueue_function[_attn_splitk_merge_kernel](
@@ -562,10 +649,152 @@ def test_determinism_soak(
     return ok
 
 
+def test_hand_packed_buffer(ctx: DeviceContext) raises -> Bool:
+    """The dedicated case this task asked for: builds a small packed K/V buffer via LITERAL,
+    explicitly-restated flat indices -- not even routed through this file's own shared
+    `_pack_native_kv` helper (used by every OTHER test in this driver) -- then runs the full
+    partial+merge pipeline against `attnk.sdpa.sdpa_forward_flat`, exactly like `test_correctness`
+    does, but starting from a buffer THIS function itself hand-assembled. `n_tok_k=40` spans native
+    block 0 (`[0,32)`) and block 1 (`[32,40)`); `offset=30` with `n_tok_q=3` gives row 2 (absolute
+    position 32) a causal horizon landing exactly on the 31/32 block boundary; `n_splits=2` gives
+    split 1 a `key_start=19` that is NOT a multiple of 32, so split 1's own native-block walk
+    touches BOTH native blocks even though its own key range starts mid-block-0 -- exactly the case
+    this task's own `gk >= key_start` guard (see `splitk_fa.mojo`) exists for. A handful of
+    (position, d) -> literal flat-index spot checks (mirroring `native_kv_producer_driver.mojo`'s
+    own `test_packing_hand_indices` style) are verified BEFORE this buffer is ever uploaded to the
+    GPU."""
+    var h_q = 2
+    var h_kv = 1
+    var d = 128
+    var n_tok_q = 3
+    var n_tok_k = 40
+    var offset = 30
+    var n_splits = 2
+    var n_blocks = 2  # ceil(40/32) restated literally here, not via `_n_blocks_for`, on purpose
+
+    var q64 = _pseudo_f16(n_tok_q * h_q * d, 3)
+    var k64 = _pseudo_f16(n_tok_k * h_kv * d, 11)
+    var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
+
+    # Hand-packing: a literal loop restating the flat-index formulas directly (K:
+    # `((hk*n_blocks+block)*d+dd)*32+kk`, V: `((hk*n_blocks+block)*32+kk)*d+dd`, `hk=0` always since
+    # `h_kv=1` here) -- deliberately NOT calling `_pack_native_kv`.
+    var k_native = List[Float64](capacity=h_kv * n_blocks * d * 32)
+    for _ in range(h_kv * n_blocks * d * 32):
+        k_native.append(0.0)
+    var v_native = List[Float64](capacity=h_kv * n_blocks * 32 * d)
+    for _ in range(h_kv * n_blocks * 32 * d):
+        v_native.append(0.0)
+    for j in range(n_tok_k):
+        var block = j // 32
+        var kk = j % 32
+        for dd in range(d):
+            var src = j * d + dd  # h_kv=1, so the natural-layout source collapses to j*d+dd
+            k_native[(block * d + dd) * 32 + kk] = k64[src]
+            v_native[(block * 32 + kk) * d + dd] = v64[src]
+
+    var idx_ok = True
+    # position 31 (last slot of block 0), d=0: block=0, kk=31 -> k_flat=(0*128+0)*32+31=31
+    if k_native[31] != k64[31 * d + 0]:
+        idx_ok = False
+    # position 32 (first slot of block 1), d=0: block=1, kk=0 -> k_flat=(1*128+0)*32+0=4096
+    if k_native[4096] != k64[32 * d + 0]:
+        idx_ok = False
+    # position 39 (last real key), d=127: block=1, kk=7 -> k_flat=(1*128+127)*32+7=8167
+    if k_native[8167] != k64[39 * d + 127]:
+        idx_ok = False
+    # V, position 32, d=0: block=1, kk=0 -> v_flat=(1*32+0)*128+0=4096
+    if v_native[4096] != v64[32 * d + 0]:
+        idx_ok = False
+    print("  [hand-packed sanity] literal (position,d)->flat-index spot checks  ", "OK" if idx_ok else "MISMATCH")
+
+    var cm = mask_causal_flat(n_tok_q, n_tok_k, offset)
+    if cm.status != ATTN_OK:
+        print("  [hand-packed buffer] mask build FAILED")
+        return False
+    var scale = 1.0 / Float64(d) ** 0.5
+    var oracle = sdpa_forward_flat(q64, k64, v64, cm.bias, n_tok_q, n_tok_k, h_q, h_kv, d, scale, True)
+    if oracle.status != ATTN_OK:
+        print("  [hand-packed buffer] oracle FAILED, status=", oracle.status)
+        return False
+
+    var q_buf = ctx.enqueue_create_buffer[DType.float16](n_tok_q * h_q * d)
+    var k_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * d * 32)
+    var v_buf = ctx.enqueue_create_buffer[DType.float16](h_kv * n_blocks * 32 * d)
+    with q_buf.map_to_host() as h:
+        for i in range(n_tok_q * h_q * d):
+            h[i] = Float16(q64[i])
+    with k_buf.map_to_host() as h:
+        for i in range(h_kv * n_blocks * d * 32):
+            h[i] = Float16(k_native[i])
+    with v_buf.map_to_host() as h:
+        for i in range(h_kv * n_blocks * 32 * d):
+            h[i] = Float16(v_native[i])
+
+    var n_q_blocks = (n_tok_q + 7) // 8
+    var m_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * n_splits)
+    var l_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * n_splits)
+    var o_scratch = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * n_splits * d)
+    var out_buf = ctx.enqueue_create_buffer[DType.float32](n_tok_q * h_q * d)
+    var lse_buf = ctx.enqueue_create_buffer[DType.float32](h_q * n_tok_q)
+
+    var n_pairs = h_q // 2
+    var grid_partial = n_q_blocks * n_pairs * n_splits
+    ctx.enqueue_function[_attn_splitk_partial_kernel](
+        m_scratch.unsafe_ptr(), l_scratch.unsafe_ptr(), o_scratch.unsafe_ptr(),
+        q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
+        Int64(n_tok_q), Int64(n_tok_k), Int64(h_q), Int64(h_kv),
+        Float32(scale), Int64(offset), Int64(n_splits), Int64(n_blocks),
+        grid_dim=grid_partial, block_dim=256,
+    )
+    ctx.synchronize()
+
+    var grid_merge = n_tok_q * h_q
+    ctx.enqueue_function[_attn_splitk_merge_kernel](
+        out_buf.unsafe_ptr(), lse_buf.unsafe_ptr(),
+        m_scratch.unsafe_ptr(), l_scratch.unsafe_ptr(), o_scratch.unsafe_ptr(),
+        Int64(n_tok_q), Int64(h_q), Int64(n_splits),
+        grid_dim=grid_merge, block_dim=128,
+    )
+    ctx.synchronize()
+
+    var worst_out = 0.0
+    var worst_lse = 0.0
+    with out_buf.map_to_host() as ho:
+        for i in range(n_tok_q * h_q * d):
+            var got = Float64(ho[i])
+            var want = oracle.out[i]
+            var diff = _abs64(got - want)
+            var allowed = 5.0e-2 * (1.0 + _abs64(want))
+            var ratio = diff / allowed
+            if ratio > worst_out:
+                worst_out = ratio
+    with lse_buf.map_to_host() as hl:
+        for i in range(h_q * n_tok_q):
+            var got = Float64(hl[i])
+            var want = oracle.lse[i]
+            var diff = _abs64(got - want)
+            var allowed = 5.0e-2 * (1.0 + _abs64(want))
+            var ratio = diff / allowed
+            if ratio > worst_lse:
+                worst_lse = ratio
+
+    var ok = idx_ok and worst_out <= 1.0 and worst_lse <= 1.0
+    print(
+        "  [hand-packed buffer, n_tok_k=40 spanning block 0/1, split key_start=19 mid-block] worst-ratio out=", worst_out,
+        " lse=", worst_lse, "  ", "OK" if ok else "MISMATCH",
+    )
+    return ok
+
+
 def main() raises:
     var ctx = DeviceContext()
     var all_ok = True
 
+    print("=== Candidate C: hand-packed native K/V buffer, built without _pack_native_kv (item 0) ===")
+    all_ok = test_hand_packed_buffer(ctx) and all_ok
+
+    print("")
     print("=== Candidate C (associative split-K FlashAttention): partial-isolation (requirement a) ===")
     all_ok = test_partial_isolation(ctx, "tiny aligned s2", 8, 64, 2, 1, 128, 0, 2) and all_ok
     all_ok = test_partial_isolation(ctx, "tiny ragged K s2", 8, 37, 2, 1, 128, 0, 2) and all_ok
@@ -598,6 +827,6 @@ def main() raises:
 
     print("")
     if all_ok:
-        print("CANDIDATE C (SPLIT-K FLASHATTENTION, H_TILE=2 CORRECTED): PASS (partial-isolation correct, full pipeline correct vs CPU oracle, paired-grid==solo-pair-grid, deterministic over 1,000 dispatches)")
+        print("CANDIDATE C (SPLIT-K FLASHATTENTION, H_TILE=2, PHASE 2B NATIVE-KV-LAYOUT ADAPTED): PASS (hand-packed buffer correct, partial-isolation correct, full pipeline correct vs CPU oracle, paired-grid==solo-pair-grid, deterministic over 1,000 dispatches)")
     else:
-        print("CANDIDATE C (SPLIT-K FLASHATTENTION, H_TILE=2 CORRECTED): FAIL")
+        print("CANDIDATE C (SPLIT-K FLASHATTENTION, H_TILE=2, PHASE 2B NATIVE-KV-LAYOUT ADAPTED): FAIL")

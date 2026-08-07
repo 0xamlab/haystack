@@ -238,6 +238,40 @@ class KVLayoutDescriptor:
     dtype: str
 
 
+# Real, named instances -- not just documentation strings. `AttentionKernelArtifactKey.
+# kv_layout_version` (an int, because the artifact key must stay a flat hashable tuple of
+# primitives for `cache_key()`) is meant to always equal one of these descriptors' own
+# `layout_version`, never an arbitrary literal chosen independently of a real layout definition.
+#
+# V1 (Phase 0B/1/2A): no real KV tile geometry existed yet -- Phase 0B's stub generator and
+# Phase 1/2A-Round-1's kernels (`parity_replica.mojo`, `grouped_fa_q8_k32_h2_sg8.mojo`,
+# `splitk_fa.mojo`) all read K/V from a NATURAL `[position][kv_head][d_head]` device buffer and
+# stage their own transposed/reordered tiles into shared memory per dispatch (see each kernel's
+# own K/V-staging loop) -- there is no persistent packed layout to describe, so this descriptor is
+# an honest placeholder (`key_block_size=0` -- "no block geometry"), not a real geometry with a
+# fake version number.
+KV_LAYOUT_STUB_V1 = KVLayoutDescriptor(
+    layout_version=1,
+    key_block_order="[position][kv_head][d_head]",
+    value_block_order="[position][kv_head][d_head]",
+    key_block_size=0,
+    dtype="f32",
+)
+
+# V2 (Phase 2B, `attention_forge/native_kv_producer.mojo`): the plan's own canonical
+# attention-native layout, concretized at the block size Candidates A and C's surviving K_TILE
+# fallback (32) already stage into shared memory every dispatch -- see that file's own docstring
+# for the exact flat-index formulas this descriptor's field values correspond to, and for which of
+# A/C's own `skv` staging shapes are now byte-identical to a native device-memory block.
+KV_LAYOUT_NATIVE_PACKED_V2 = KVLayoutDescriptor(
+    layout_version=2,
+    key_block_order="[kv_head][key_block][d_chunk][key_in_block]",
+    value_block_order="[kv_head][key_block][key_in_block][d_chunk]",
+    key_block_size=32,
+    dtype="f16",
+)
+
+
 @dataclasses.dataclass
 class GeneratedKernelManifestEntry:
     """One row of the generated manifest: semantic key -> discovered symbol -> provenance. See
