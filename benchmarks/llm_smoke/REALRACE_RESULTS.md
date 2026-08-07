@@ -5894,3 +5894,254 @@ specifically, and a re-measurement of end-to-end decode throughput with the gap 
 addendum is a correctness fix, not a new speed number -- `benchmarks/llm_smoke/metal_batch_dispatch/
 qwen3_generate_batch_i8_allsimd7_prefill_af.mojo`'s own `MAX_NEW_TOKENS` was deliberately left at `1`
 for the AF arm, not bumped, for exactly this reason).
+
+## Attention Compiler Plan v1.0, Phase 4 finding (2026-08-07): the operator-differential table -- non-attention time is GEMM-dominated, not RMSNorm-dominated; the plan's own suggested levers (statistics-only RMSNorm, F16 transport) would move almost nothing
+
+Phase 4's own first requirement, "operator-differential table first," run via the EXISTING
+Phase 0A/1 GPU-counter probe (`benchmarks/llm_smoke/metal_batch_dispatch/
+qwen3_probe_counters_i8_allsimd7_prefill.mojo`, unmodified) against the CURRENT production OFF
+path (`_MBQwen3I8AllSimd7Prefill.descriptors_prefill`), at the real Qwen3-0.6B-Base checkpoint,
+m_rows=256 (the same row count `f_256` is calibrated at):
+
+| role | % of GPU-time total |
+|---|---|
+| `pf_attn_tiled` (attention) | 35.27% |
+| `pf_gemm_swiglu` (fused gate+up GEMM) | 17.47% |
+| `pf_gemm_assign` (qkv_proj GEMM) | 15.44% |
+| `pf_gemm_accum` (down_proj GEMM) | 15.10% |
+| `pf_gemm_accum` (o_proj GEMM) | 10.00% |
+| `pf_ropewrt` | 5.87% |
+| `lmhead_argmax` | 0.42% |
+| `pf_rmsnorm_rows` (attn) | 0.20% |
+| `pf_rmsnorm_rows` (ffn) | 0.21% |
+| `pf_embed_rows` | 0.03% |
+| `argmax_reduce` | 0.01% |
+
+**35.27% attention matches the already-established `f_256=0.353` measurement almost exactly --
+confirms this probe and the earlier one agree.** The other ~64.7% is NOT spread evenly across
+"everything else": **the four GEMMs (qkv_proj + o_proj + swiglu + down_proj) alone consume
+58.0% of total GPU time** -- nearly 6x the combined share of both RMSNorm dispatches (0.41%
+combined) and comparable to or larger than attention's own share.
+
+**This directly contradicts the plan's own Phase 4 prescription, and is reported honestly rather
+than implemented anyway.** The plan's text calls out "statistics-only RMSNorm" and "F16
+transport at QKV/attn-out/FFN boundaries" as the main non-attention levers. Given RMSNorm is
+measured at 0.41% of total time COMBINED across both dispatches, an optimization that makes
+RMSNorm itself cheaper (removing a materialized pass, fusing gamma into a GEMM epilogue) has a
+mathematical ceiling of ~0.4% of total runtime -- even a magical 100%-reduction of RMSNorm's own
+cost would be unmeasurable against real run-to-run noise. F16 transport at kernel boundaries
+targets bandwidth-bound stages; the dominant cost here (the four GEMMs, already int8+hardware-MMA
+accelerated) is very likely compute-bound, not bandwidth-bound, so this lever is also unlikely to
+move the needle much on the actual bottleneck, though it may still be worth a small, separately-
+measured attempt.
+
+**What this means for the plan's own "beats llama.cpp end-to-end" goal, stated plainly**: the
+architecture-level things one would check for a "why so much slower than llama.cpp" question --
+is prefill actually batched (yes, M=256 processed as one batched forward pass, confirmed by this
+same probe's own dispatch structure), are all of a layer's dispatches submitted in one command
+buffer rather than resubmitted per layer (yes, confirmed by this session's own earlier production-
+wiring research into `algenta_run_token`'s implementation) -- are NOT the explanation. The real,
+now-measured explanation is narrower and less comfortable: **the GEMM kernels themselves
+(`mma_forge/mm8.mojo`'s `_qkv_proj_gemm_mma8x8`/`_gemm_accum_mma8x8`/`_swiglu_gemm_mma8x8`,
+already int8-quantized and hardware-MMA-accelerated, already carrying a documented "2.2-3.3x"
+win over an earlier ALGENTA-INTERNAL baseline) are very likely still slower than llama.cpp's own
+mature, long-tuned Metal GEMM kernels** -- a "2.2-3.3x faster than our own previous scalar path"
+result says nothing about how it compares to a completely different, independently-optimized
+implementation. Closing the REMAINING end-to-end gap against llama.cpp, now that attention no
+longer is the bottleneck, requires a GEMM-focused effort of comparable scope to the attention
+tournament this plan just completed (Phases 0-2C) -- not a small, targeted RMSNorm/F16 tweak.
+
+### What is left
+
+- This is a genuine, large pivot from the plan's own original Phase 4 text, surfaced by real
+  measurement rather than assumption -- flagged for a scoping decision before committing further
+  effort, per this plan's own "no further redesign unless the dyno produces contradictory
+  evidence" clause (this IS that contradictory evidence).
+- If pursued: a GEMM tournament analogous to Phases 0-2C's attention tournament (teardown
+  llama.cpp's own GEMM kernels as a white-box control, replicate, then race alternative Mojo GEMM
+  designs against both llama.cpp and the current `mm8.mojo` kernels) is the honest, evidence-based
+  path to closing the remaining gap -- not yet started, and a comparable-scale undertaking to what
+  was just completed for attention.
+- Smaller, lower-risk items still worth doing regardless of the above: re-run this SAME counter
+  probe against the NEW AF-enabled attention path (not yet done) to get the current, post-Phase-2C
+  role breakdown; a small, separately-measured F16-transport experiment at the QKV/attn-out
+  boundary, reported honestly whether or not it moves the needle.
+
+## GEMM tournament Phase 0 (2026-08-07): llama.cpp's `mul_mm` (F16) vs. Algenta's `mm8` (Int8) at the real qkv_proj shape -- llama.cpp wins wall-to-wall, contradicting the naive Int8-bandwidth prediction; a real, evidence-based case for the GEMM tournament the Phase 4 entry above called for
+
+Directly motivated by the Phase 4 entry immediately above: "the GEMM kernels themselves... are very
+likely still slower than llama.cpp's own mature, long-tuned Metal GEMM kernels" was a hypothesis,
+not yet measured operator-to-operator. This entry is that measurement, at the IDENTICAL real
+Qwen3-0.6B-Base qkv_proj shape (M=256, K=1024, N=4096), via two independent, freshly-built
+harnesses: llama.cpp's own pinned `kernel_mul_mm_f16_f32` Metal kernel
+(`benchmarks/competitors/llama_cpp/operator_harness/mm_operator_harness.m`, new file) and Algenta's
+own production `_qkv_proj_gemm_mma8x8` (`mma_forge/mm8.mojo`, dispatched from a new file,
+`mma_forge/probes/gemm_qkv_proj_bench.mojo`). Both confirmed standalone, nothing else touched
+(`git status` shows both as untracked additions only).
+
+**Format asymmetry, disclosed prominently, exactly like this doc's own F16-vs-quantized disclosure
+for the attention race (lines 128-133)**: llama.cpp's kernel runs DENSE F16 weights (2 bytes/
+element); Algenta's kernel runs INT8 per-output-row-quantized weights (1 byte/element, symmetric,
+`scale = maxabs/127`, no zero-point) -- a real, disclosed, NOT-equalized 2x raw weight-bit-width
+difference, in Algenta's favor on paper. Neither side's weight format was changed to match the
+other; both are exactly what each engine ships in production for this role.
+
+### The numbers
+
+| Kernel | Weight format | Wall median | Wall p10 / p90 | GPU-only median | Wall-clock GFLOP/s\* |
+|---|---|---|---|---|---|
+| llama.cpp `kernel_mul_mm_f16_f32` (L0) | F16 | **0.562 ms** | 0.532 / 0.899 ms | 0.410 ms | **~3821** |
+| Algenta `_qkv_proj_gemm_mma8x8`, run 1 | Int8 | 0.689 ms | 0.678 / 0.723 ms | not measurable (see below) | 3116.8 |
+| Algenta `_qkv_proj_gemm_mma8x8`, run 2 | Int8 | 0.708 ms | 0.697 / 0.734 ms | not measurable | 3033.2 |
+| Algenta `_qkv_proj_gemm_mma8x8`, run 3 | Int8 | 0.705 ms | 0.688 / 0.772 ms | not measurable | 3046.1 |
+
+\*FLOPs = 2×M×K×N = 2,147,483,648 for this shape; GFLOP/s = FLOPs / wall-seconds / 1e9 -- the exact
+convention the Algenta harness itself already used and reported; applied here to L0's own wall
+number too (not reported by that harness directly, computed here) so both sides are stated in the
+same unit. This is a WALL-CLOCK-to-WALL-CLOCK comparison, not GPU-only-to-GPU-only: Algenta's
+harness could not produce a GPU-only number at all -- `DeviceContext` on this toolchain has no
+`GPUStartTime`/`GPUEndTime`-equivalent, the same limitation this plan's own Phase 1 entry already
+found and could only bound, not close (see that entry's "single biggest open item"). Wall-to-wall is
+the only axis available on both sides, and it is used consistently in both directions below rather
+than mixing L0's GPU-only number into the comparison, which would unfairly flatter L0.
+
+**Result: llama.cpp's F16 kernel is faster than Algenta's Int8 kernel, reproducibly, in EVERY one
+of Algenta's three independent process launches** -- not a one-off or a noise artifact. Comparing
+medians: L0's 0.562 ms beats Algenta's 0.689/0.708/0.705 ms by **22.6% / 26.0% / 25.4%** respectively
+(equivalently, Algenta's wall-clock GFLOP/s trails L0's 3821 by roughly **18-21%**: 3117/3821=0.816,
+3033/3821=0.794, 3046/3821=0.798). The gap widens to ~33% if L0's fastest decile (0.532 ms) is set
+against Algenta's slowest run (0.708 ms), and narrows to ~23% at L0's median against Algenta's
+fastest run (0.689 ms) -- reported as the range three real runs on each side actually produced, not
+a single cherry-picked number. Every framing agrees on direction: **Algenta's own production Int8
+qkv_proj kernel does not beat llama.cpp's F16 kernel at this exact, real shape.**
+
+### Why -- the format's theoretical bandwidth advantage predicted the opposite result; the real lever is MMA operand width, and it currently favors llama.cpp
+
+Int8 storage is nominally the FASTER format on paper: for this shape's weight matrix (K×N =
+1,048,576 elements), F16 costs 8 MiB, Int8 costs 4 MiB + a 16 KiB per-row Float32 scale vector
+(~0.4% overhead) -- Algenta's kernel should be moving well under half the weight bytes llama.cpp's
+moves. The real measurement contradicts that naive prediction outright: the format moving MORE
+bytes is faster. Reading both kernels' actual dispatch math resolves why:
+
+- **llama.cpp's `kernel_mul_mm_f16_f32`** narrows BOTH operands to `half` before the actual multiply
+  -- confirmed by the harness agent's own research note citing the kernel's template instantiation
+  (`ggml-metal.metal:10747`, `S1=half` even though `T1=float` is just the device/activation storage
+  dtype). The hardware `simdgroup_half8x8` MMA op is what actually executes, accumulating into
+  `simdgroup_float8x8`.
+- **Algenta's `_qkv_proj_gemm_mma8x8`** (`mma_forge/mm8.mojo`) dequantizes the Int8 weight to
+  `Float32` the moment it is staged into shared memory (`Float32(w[...]) * wscale[...]`, written
+  into a `b_tile` declared `DType.float32`); the activation tile (`a_tile`) is also `DType.float32`.
+  The actual multiply dispatches `apple_mma_load_8x8[DType.float32]` / `_mma_apple_8x8` -- confirmed
+  by direct source read of `mma_forge/mm8.mojo` (lines 87-135) for this synthesis. The hardware MMA
+  op that executes is `simdgroup_float8x8`, not `simdgroup_half8x8`.
+
+So the two axes -- storage byte-width (bandwidth) and MMA operand width (compute throughput) -- are
+independent here, and each kernel only wins on one of them: Algenta wins storage bandwidth 2:1;
+llama.cpp wins MMA operand width 2:1 (`half` vs. `float32` per Apple's `simdgroup_matrix` ISA, which
+like every other GPU matrix-unit design issues half-precision operands at higher throughput per
+cycle than full-precision ones). Whichever axis dominates the wall-time result depends on whether
+this shape is bandwidth-bound or compute-bound, which a rough roofline check answers: this shape's
+FLOP count is 2.147 GFLOP; even under a PESSIMISTIC no-on-chip-reuse assumption (whole weight matrix
+read once from device memory, plus ~1 MiB Float32 activation and ~4 MiB Float32 output common to
+both kernels), realized arithmetic intensity is roughly 150-230 FLOP/byte depending on weight
+format. Against this repo's own previously-measured, real 411 GB/s streaming ceiling on this exact
+M4 Max host (cited repeatedly elsewhere in this file) and a public-spec M4 Max GPU FP32 compute
+figure on the order of ~16-18 TFLOP/s (a public spec approximation, NOT independently re-measured
+in this repo the way the 411 GB/s bandwidth number is -- flagged explicitly as the weaker half of
+this estimate), the roofline ridge point works out to roughly ~40 FLOP/byte -- 4-6x below either
+format's realized intensity at this shape. That places qkv_proj at M=256/K=1024/N=4096 solidly in
+compute-bound territory for BOTH kernels, which is exactly the regime where a bandwidth-only
+advantage (Int8's halved weight bytes) has little room to show up in wall time, while the actual
+multiply-accumulate throughput (`half` vs. `float32` MMA) is the lever that does.
+
+**This is the best-reasoned, source-grounded explanation available from direct code read plus a
+rough roofline estimate -- it is a hypothesis with real supporting evidence, not a proven cause.**
+No dedicated isolation experiment (an F16-operand variant of Algenta's kernel, re-measured at this
+exact shape) has been built yet; that is this entry's own concrete next step, below.
+
+### Honest gaps in this comparison, named rather than glossed over
+
+- **Algenta's own harness could not reproduce the 3654 GFLOP/s figure this plan cites elsewhere**
+  (the PR #584/MMA-hardware-adoption entry, "qkv_proj kernel alone (3654 GFLOP/s)"): three fresh
+  runs here measured 3033.2-3116.8 GFLOP/s, 83-85% of that figure, and that report's own text
+  states the gap was "not investigated further; not this task's scope." That lowers confidence in
+  treating 3654 as this kernel's known ceiling. **Going forward, this entry uses the freshly
+  reproduced 3033-3117 GFLOP/s range, not 3654, as Algenta's qkv_proj number** -- the 3654 figure
+  should not be quoted as settled until someone identifies which methodology/percentile produced it.
+- **Algenta's correctness check for this entry is at a different shape than the one being timed.**
+  The Float64-oracle correctness pass ran at a small, deliberately non-tile-aligned shape (M=33,
+  K=64, N=37) to verify the kernel's own dispatch machinery (grid/block sizing, buffer layout,
+  int8-dequant math) cheaply; it does NOT independently re-verify bit-level correctness at the
+  actual M=256/K=1024/N=4096 shape being raced here. This is common, reasonable practice (a Float64
+  oracle at the full production shape is slow), but it means this entry's speed comparison rests on
+  a correctness guarantee established at a DIFFERENT shape, not the benchmarked one. L0's
+  correctness check, by contrast, IS at the exact benchmarked shape (worst relative delta 0.000896,
+  well inside the 1e-2 tolerance) -- stronger on this specific axis.
+- **No GPU-only number exists for Algenta's side.** The wall-to-wall comparison above is the fairest
+  available, but it cannot rule out that Mojo's `enqueue_function` dispatch path carries a
+  different fixed overhead than L0's hand-rolled Objective-C `setBuffer`/`dispatchThreadgroups`
+  path -- at THIS shape, L0's own wall/GPU ratio is only 1.37x (0.562/0.410), much tighter than the
+  ~3.8x this plan's own Phase 1 entry found at a much smaller attention microbenchmark, meaning L0's
+  wall number is a reasonably tight proxy for its GPU-only cost at this larger GEMM shape -- but
+  there is no equivalent check available for Algenta's kernel, so its true GPU-only cost (and thus
+  the true kernel-vs-kernel efficiency gap, as opposed to the dispatch-inclusive one measured here)
+  remains unresolved, same open infrastructure item this plan has flagged before.
+- **Sample depth is asymmetric, mildly.** L0's numbers come from 200 dispatches within one process
+  launch, repeated once more purely as a determinism check (2 process-level launches total,
+  identical worst-delta and GPU-median both times); Algenta's numbers come from three separate
+  process launches. Not a large asymmetry, but worth naming for completeness -- it does not change
+  the reproducible direction of the result.
+
+### What this means for scope, stated plainly
+
+Algenta's Int8 qkv_proj kernel does **not** already convincingly beat llama.cpp's F16 kernel at this
+real production shape -- it measurably loses, by roughly 20-26% wall-clock at the medians,
+reproducibly across three runs, despite carrying a real 2x theoretical storage-bandwidth advantage.
+That rules out the branch of this task's own framing that would have required a "different
+explanation" for the Phase 4 entry's 58%-of-total-time GEMM finding (dispatch overhead, the 28-layer
+multiplication, an untested shape): **the straightforward explanation -- Algenta's own GEMM kernels
+are measurably slower than llama.cpp's, operator-to-operator, at the exact shape that matters --
+now has direct evidence for one of the four roles, not just the "very likely" hedge the Phase 4
+entry stated.** This is a real, actionable finding supporting a genuine GEMM-design tournament,
+exactly the path Phase 4's own "what is left" section proposed, and exactly the branch of this
+task's framing this evidence supports.
+
+A concrete, scoped first next step -- not a vague "optimize further":
+
+1. **Build one new kernel variant**, `_qkv_proj_gemm_mma8x8_f16`: identical `BM=32/BN=32/BK=16` tile
+   shape, identical shared-memory cooperative-load structure, identical Int8 storage/dequant on
+   load (keeping the real bandwidth advantage upstream of the shared-memory tile), but stage the
+   dequantized weight AND the activation into `DType.float16` shared-memory tiles instead of
+   `DType.float32`, and dispatch `apple_mma_load_8x8[DType.float16]` / `_mma_apple_8x8` with half
+   fragments, accumulating into a Float32 accumulator (mirroring llama.cpp's own half-multiply/
+   float-accumulate scheme). This is directly buildable, not speculative: the vendored Mojo
+   `matmul_8x8.mojo` reference kernel this project's own `_mma_apple_8x8`/`apple_mma_load_8x8`
+   imports from (`max.gpu.compute.arch.mma_apple`) is already genericized over `a_type`/`b_type`/
+   `c_type: DType` -- Float16 operands are a supported, not hypothetical, path through the same
+   primitive Algenta's kernel already calls. This changes EXACTLY ONE variable relative to the
+   already-proven `_qkv_proj_gemm_mma8x8` (MMA operand width), isolating the specific hypothesis
+   above from every other confound (tile shape and threadgroup organization stay identical).
+2. **Re-run this exact same harness** (`gemm_qkv_proj_bench.mojo`, same M=256/K=1024/N=4096 shape)
+   against the new variant, with a fresh correctness check against the existing Float64 CPU oracle
+   -- an extra F16 rounding step means the current 5.2e-8-tight tolerance will likely need loosening;
+   report that plainly if it happens, not as a regression.
+3. **If the F16-MMA variant closes most/all of the ~20-26% gap**: that confirms the operand-width
+   hypothesis, and the correct next comparison is Int8-storage-plus-F16-math vs. llama.cpp's
+   F16-storage-plus-F16-math -- Algenta should then, in principle, ALSO keep its bandwidth edge with
+   matched compute throughput, which would be the point to re-race and see if Algenta actually pulls
+   ahead before calling this tournament closed.
+4. **If it does not close the gap**: the operand-width hypothesis is wrong or only partially
+   explanatory, and the remaining, already-fully-documented tile-shape/threadgroup-organization
+   difference (Algenta: `BM=32/BN=32/BK=16`, 8 simdgroups over 256 threads; llama.cpp: `nr0=64/
+   nr1=32/nsg=4`, 128 threads-per-threadgroup) becomes the next isolable tournament axis -- a real,
+   scoped comparison, not a shot in the dark, since both geometries are already fully recorded in
+   the two source reports behind this entry.
+5. **Separately, lower priority, explicitly NOT covered by this entry**: this measured only ONE of
+   the four GEMM roles Phase 4's own role breakdown named (qkv_proj, 15.44% of total GPU time).
+   `down_proj`/`o_proj` share this model's much smaller `N=1024` (vs. qkv_proj's `N=4096`), which
+   changes the tile-count (`n_tile_cols = N/BN`: 32 vs. 128) and occupancy profile substantially --
+   `mm8.mojo`'s own docstring already notes a real, measured BN=32-vs-BN=16 tuning difference at
+   N=1024 that does not apply at N=4096. The ~20-26% gap measured here for qkv_proj should NOT be
+   assumed to generalize uniformly to `o_proj`/`down_proj`/`swiglu` without separately measuring
+   each at its own real shape -- a natural, cheap follow-up given both harnesses built for this
+   entry already exist and only need a new shape argument.
