@@ -317,6 +317,114 @@ def _classify_splitk_pipeline(name: String) -> Int:
     return -1
 
 
+comptime _PFROLE_EMBED: Int = 0
+comptime _PFROLE_RMSNORM: Int = 1
+comptime _PFROLE_GEMM_ASSIGN: Int = 2
+comptime _PFROLE_ROPEWRT: Int = 3
+comptime _PFROLE_ATTN: Int = 4
+comptime _PFROLE_GEMM_ACCUM: Int = 5
+comptime _PFROLE_GEMM_SWIGLU: Int = 6
+comptime _PFROLE_GEMM_ASSIGN_NARROW: Int = 7
+comptime _PFROLE_GEMM_ACCUM_NARROW: Int = 8
+comptime _PFROLE_GEMM_SWIGLU_NARROW: Int = 9
+comptime _PFROLE_GEMM_ASSIGN_MMA: Int = 10
+comptime _PFROLE_GEMM_ACCUM_MMA: Int = 11
+comptime _PFROLE_GEMM_SWIGLU_MMA: Int = 12
+comptime _PF_N_ROLES: Int = 13
+"""Was 6 roles (`_PFROLE_QKV_PROJ`/`_PFROLE_GEMV_ACCUM`/`_PFROLE_SWIGLU`) through PR #584's own
+Phase 1, then 7 once those became weight-stationary-tiled-GEMM roles, then 10 once the narrow-tile
+twins landed. The three `_MMA` roles (`_PFROLE_GEMM_ASSIGN_MMA`/`_PFROLE_GEMM_ACCUM_MMA`/
+`_PFROLE_GEMM_SWIGLU_MMA`) are real Apple hardware `simdgroup_matrix` 8x8 kernels
+(`_qkv_proj_gemm_mma8x8`/`_gemm_accum_mma8x8`/`_swiglu_gemm_mma8x8`), built and correctness-gated in
+the isolated `mma_forge/` cross-toolchain project (own pixi env, `mojo>=1.0` + the proprietary `max`
+package — never a dependency of this repo's own pinned `mojo_env`), extracted as a raw `.metallib`
+blob (`mma_forge/tools/extract_blob.py`) and linked into the SAME production binary as one more
+`-Xlinker` object (`mma_forge/generated/mm8_blob.c`, compiled with plain `clang -c`) — the pipeline-
+discovery mechanism below is provenance-agnostic, so these need no different handling than any
+other kernel here once linked. Measured on this exact M4 Max, at Qwen3-0.6B-Base-scale shapes,
+against the scalar oracles they replace: qkv_proj 2.37x, o_proj 2.19x, down_proj 2.22x, swiglu
+3.24x (real GFLOP/s, `benchmarks/llm_smoke/metal_batch_dispatch/mma_qkv_proj_speed.mojo` and
+`mma_phase2_speed.mojo`). Selected per `prefill_batch()` call in place of the wide/narrow scalar
+roles when `m_rows % 32 == 0` (these kernels' own Phase-1/2 scope: no partial-tile M/N padding yet
+— `residentk.contract`'s own module docstring on the wide/narrow split is the precedent this
+three-way choice extends); the scalar-FMA path (wide OR narrow, exactly as already selected) remains
+the fallback for every `m_rows` not a multiple of 32, so this is purely additive to the existing
+policy, never a replacement of it.
+
+The three `_NARROW` roles (`_PFROLE_GEMM_ASSIGN_NARROW`/`_PFROLE_GEMM_ACCUM_NARROW`/
+`_PFROLE_GEMM_SWIGLU_NARROW`) are `residentk.kernels`' narrow-tile GEMM twins
+(`_pf_gnrw_assign_kernel_i8`/`_pf_gnrw_accum_kernel_i8`/`_pf_gnrw_swiglu_kernel_i8`) — selected per
+`prefill_batch()` call, in place of the wide roles three lines up, by `residentk.contract.
+residentk_prefill_gemm_use_narrow_tile(m_rows)`. See that function's own docstring for the real
+two-anchor measurement this choice rests on: `_pf_qkv_proj_kernel_simd_i8`/`_pf_gemv_accum_kernel_
+simd_i8`/`_pf_swiglu_kernel_simd_i8` all stay byte-unmodified in `residentk.kernels`, now serving
+only as Gate-0 oracles `test_residentk_prefill_gemm_kernels.mojo` diffs against, compiled and
+dispatched there directly via `DeviceContext`, never through this file's own pipeline-discovery
+mechanism. `_MBQwen3I8AllSimd7Prefill` is the ONLY struct that reads this enum (iterated on in place
+per that struct's own docstring, not yet raced/published), so renumbering here carries no risk to
+any OTHER struct in this file."""
+
+
+fn _classify_prefill_pipeline(name: String) -> Int:
+    """Which of the TEN `residentk.kernels` batched-prefill functions a discovered pipeline's
+    Metal function name belongs to — `0`..`9`, or `-1` (neither). A THIRD classifier, deliberately
+    never folded into `_classify_pipeline`'s shared `_N_ROLES`/`pipeline_idx` (every struct in this
+    file would then be forced to compile ten kernels it never uses) nor into `_classify_splitk_
+    pipeline` (a different, unrelated role pair) — the identical reasoning that function's own
+    docstring gives for staying separate from `_classify_pipeline`, applied a second time for a
+    second, independent addition.
+
+    Every pattern below is verified DIRECTLY against this binary's own real, possibly-truncated Metal
+    AIR names (`benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_prefill_naming.mojo`, run for
+    real — not merely inspected in source), and confirmed to collide with none of `_classify_
+    pipeline`'s eight patterns nor `_classify_splitk_pipeline`'s two, nor with each other. Note the
+    THREE `pf_gemm_*` (wide) names share an 8-character prefix (`pf_gemm_`) and diverge only at
+    character 9 or 10, still inside the 11-character surviving window (`pf_gemm_ass` / `pf_gemm_acc`
+    / `pf_gemm_swi`) — confirmed distinct by the same probe, not merely counted by hand, exactly the
+    discipline this near-collision calls for. Their NARROW-tile twins are deliberately NOT named
+    `_pf_gemm_*_narrow`: that suffix falls AFTER the 11-character survivor boundary, so all three
+    would have truncated IDENTICALLY to their wide twins — `residentk.kernels`' own module comment
+    for the narrow-tile section has the full account of that rejected naming and the `pf_gnrw_*`
+    prefix (`pf_gnrw_ass` / `pf_gnrw_acc` / `pf_gnrw_swi`) chosen instead, verified distinct from
+    every `pf_gemm_*` pattern by the same probe. `_pf_ropewrt_kernel` is named deliberately unlike
+    its single-row twin `_qk_rope_write_kernel`: the truncation-surviving prefix of the OBVIOUS name
+    (`_pf_qk_rope_write_kernel` -> `pf_qk_rope_`) contains `_classify_pipeline`'s own `qk_rope`
+    substring, which would have made every discovered pipeline of THIS kernel also match role
+    `_ROLE_QK_ROPE` in `_classify_pipeline`'s scan — harmless for `_classify_pipeline` itself (its
+    own loop never sees this kernel's pipeline unless `_classify_prefill_pipeline` also runs, and
+    this file's session structs only ever call ONE of the two classifiers per discovered name, never
+    both blindly) but a needless landmine for the next person changing either function — the same
+    "diverge before the surviving window ends" fix `splitk_part`/`splitk_merg`'s own rename already
+    used."""
+    if name.find("pf_embed") >= 0:
+        return _PFROLE_EMBED
+    if name.find("pf_rmsnorm") >= 0:
+        return _PFROLE_RMSNORM
+    if name.find("pf_gemm_ass") >= 0:
+        return _PFROLE_GEMM_ASSIGN
+    if name.find("pf_gnrw_ass") >= 0:
+        return _PFROLE_GEMM_ASSIGN_NARROW
+    if name.find("pf_ropewrt") >= 0:
+        return _PFROLE_ROPEWRT
+    if name.find("pf_attn") >= 0:
+        return _PFROLE_ATTN
+    if name.find("pf_gemm_acc") >= 0:
+        return _PFROLE_GEMM_ACCUM
+    if name.find("pf_gnrw_acc") >= 0:
+        return _PFROLE_GEMM_ACCUM_NARROW
+    if name.find("pf_gemm_swi") >= 0:
+        return _PFROLE_GEMM_SWIGLU
+    if name.find("pf_gnrw_swi") >= 0:
+        return _PFROLE_GEMM_SWIGLU_NARROW
+    if name.find("proj_gemm_mma8x8") >= 0:
+        return _PFROLE_GEMM_ASSIGN_MMA
+    if name.find("gemm_accum_mma8x8") >= 0:
+        return _PFROLE_GEMM_ACCUM_MMA
+    if name.find("swiglu_gemm_mma8x8") >= 0:
+        return _PFROLE_GEMM_SWIGLU_MMA
+    return -1
+
+
 @fieldwise_init
 struct _StepOut(Copyable, Movable):
     var token_id: Int

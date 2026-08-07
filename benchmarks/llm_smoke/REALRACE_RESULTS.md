@@ -5232,3 +5232,114 @@ short-context is not consistently 14/14 anymore and long-context has never been 
 standing publication rule (outright win, every round, at both short and long context) is not met
 today, and this docs-only recomputation does not change that.
 
+## Batched prefill + real Apple hardware simdgroup_matrix MMA (2026-08-06): a real 1.51x further improvement on top of PR #584's own 2x, still short of both opponents on prefill
+
+Everything above this section is about DECODE throughput (one token at a time, `step()`). This
+section is about a different metric this repo had no competitive path on at all until PR #584:
+PREFILL throughput (processing an entire prompt at once, `prefill_batch()`) -- Algenta's original
+prefill path was just `step()` called once per prompt token, batching nothing. Measured for real,
+same Qwen3-0.6B-Base checkpoint, same M4 Max, 256-token prompt:
+
+| Stage | prefill tok/s | vs. previous stage | vs. mlx-lm (2827.1) | vs. llama.cpp (7117.6) |
+|---|---|---|---|---|
+| Original (`step()` per prompt token) | 285.6 | -- | 0.10x | 0.04x |
+| PR #584 Phase 1 (batched dispatch, row-flattened kernels) | 558.9 | 1.96x | 0.20x | 0.08x |
+| PR #584 Phase A/C (weight-stationary tiled scalar GEMM) | 1165 | 2.09x | 0.41x | 0.16x |
+| **This entry (real Apple `simdgroup_matrix` 8x8 hardware MMA)** | **1757.7** | **1.51x** | **0.62x** | **0.25x** |
+
+### What was tried
+
+The user's own framing going into this: "these are legacy and not using mojo kernels" -- research
+whether llama.cpp/mlx-lm's prefill lead is structural (a lever we lack) rather than a tuning gap.
+Roofline analysis on PR #584's own shipped kernel settled it decisively: mlx-lm (2490 GFLOP/s) and
+llama.cpp (6269 GFLOP/s) both exceed 100% of our own scalar kernel's MEASURED ceiling (2018 GFLOP/s,
+`accel.gemm_metal._tiled_gemm_kernel`'s own same-GPU number) -- no amount of scalar tuning closes
+that gap. Both opponents use Apple's hardware `simdgroup_matrix` matrix-multiply-accumulate
+instructions (llama.cpp since 2023, mlx-lm since 2024); Algenta's kernels never had.
+
+Apple exposes two `simdgroup_matrix` shapes: 16x16x16 (Apple M5 only -- confirmed on this M4 Max:
+compiles, fails cleanly at pipeline-creation with "supported by GPUFamily10 and later") and 8x8
+(documented available on all Apple GPU generations M1-M5). The 8x8 primitive reproducibly CRASHED
+the pinned Mojo compiler (`0.26.3.0.dev2026042305`) -- isolated as a real compiler bug, not a usage
+error. Verified fixed in a newer nightly (`1.1.0.dev2026080606` + the proprietary `max` package,
+which the GPU host/compute APIs moved into at v1.0.0) in an isolated scratch environment: real
+hardware MMA, correct (worst delta `2.38e-7` vs. an independent Float64 CPU reference).
+
+Rather than upgrade the whole project's pinned toolchain (a `fn`->`def` etc. dialect migration
+across this repo's entire Mojo tree, plus a new proprietary runtime dependency this repo has never
+had), a cross-toolchain "kernel forge" mechanism was built and verified end-to-end instead: new
+kernels are written and compiled in an isolated `mma_forge/` project (own pixi env, the newer
+toolchain + `max`), extracted as a raw `.metallib` blob (`mma_forge/tools/extract_blob.py`), and
+linked into the SAME pinned-toolchain production binary as one more object file -- the existing
+dispatch shim (`batch_shim.m`) already discovers Metal pipelines by scanning for `MTLB`-tagged
+bytes anywhere in the final binary, regardless of which compiler produced them, so this needed zero
+shim changes. The pinned `mojo_env` toolchain and the existing `residentk.kernels` tree are
+untouched; `max` never becomes a dependency of anything shipped.
+
+Four weight-stationary tiled GEMM kernels were built this way (`_qkv_proj_gemm_mma8x8`,
+`_gemm_accum_mma8x8` for o_proj/down_proj, `_swiglu_gemm_mma8x8`), reusing PR #584's own
+`BM=32,BN=32,BK=16` tile shape and shared-memory scaffold, with the inner accumulate loop redesigned
+per-simdgroup (32 threads cooperating on one 8x8 output sub-tile) instead of per-thread scalar
+register blocking. Each is bit-exact against its scalar-oracle twin at multi-tile shapes, dispatched
+through the identical production shim. Real per-role GFLOP/s at Qwen3-0.6B-Base scale (M=256):
+qkv_proj 2.37x, o_proj 2.19x, down_proj 2.22x, swiglu 3.24x over the scalar oracles they sit beside
+-- consistent across repeated runs once an initial cold-run measurement artifact was caught and
+corrected (a narrow-BN tile variant built to chase that artifact as a real occupancy effect measured
+WORSE everywhere it was tried; the original wide tile needed no tuning at all).
+
+Wired into `_MBQwen3I8AllSimd7Prefill` as three new roles (`_PFROLE_GEMM_ASSIGN_MMA`/`_ACCUM_MMA`/
+`_SWIGLU_MMA`), selected in `_apply_m_rows` when `m_rows % 32 == 0` AND the model's own
+`n_qkv`/`d_model`/`d_ff` are all multiples of 32 (these kernels' own Phase-1/2 scope has no
+partial-tile M/N padding yet) -- the existing wide/narrow scalar choice remains the fallback for
+every other shape, so this is purely additive to PR #584's own policy. The model-shape half of that
+check exists because the golden-vector test's own toy shape (`D_FF=40`) caught the gap before any
+real shape could: checking only `m_rows` would have silently written out of bounds on a model whose
+FFN width isn't 32-aligned. A dedicated integration probe (prefill_batch(M=32) on the MMA path vs.
+32 independent step() calls on a twin instance, same weights) confirms the wired-in path produces
+the same token and logit agreement to `9.5e-7` -- the existing golden-vector test's own toy shape
+never exercises the MMA path at all (`D_FF=40`, `M=4`), so this was a real, separate gate, not
+redundant with it.
+
+### Verdict
+
+A real, decisive, hardware-level win over the scalar path (1.51x on top of PR #584's already-real
+2x, 6.15x cumulative from the original 285.6 tok/s baseline) -- and the roofline reasoning that
+motivated it holds up: this session's own qkv_proj kernel alone (3654 GFLOP/s) already exceeds
+mlx-lm's aggregate measured rate (2490 GFLOP/s). But the FULL PIPELINE number (1757.7 tok/s) is
+still 0.62x of mlx-lm and 0.25x of llama.cpp -- non-GEMM overhead (attention, RMSNorm, per-dispatch
+cost) and/or opponent-side optimizations beyond their own GEMM kernel eat into the advantage at the
+whole-pipeline level in a way the per-role GFLOP/s comparison alone doesn't show. Per this repo's
+own standing publication rule, no GitBook page: this is a real, verified improvement, not yet an
+outright win against either opponent.
+
+### What is left
+
+- **Re-ran the GPU-counter measurement with the MMA path engaged (`qwen3_probe_counters_i8_
+  allsimd7_prefill.mojo`, same methodology PR #584's own Phase 2 pivot used) -- the bottleneck has
+  moved.** At `m_rows=512` (MMA-eligible, `512 % 32 == 0`), `pf_attn_tiled` (attention) is now
+  **52.9% of GPU time** on its own, more than all four GEMM roles combined (12.3% + 6.6% + 13.2% +
+  9.9% = 42.0%). Before this entry, attention was 2.9-14.1% of GPU time at the same m_rows range
+  (PR #584's own measurement) -- it did not get slower; the GEMM roles it was being compared against
+  got 2.2x-3.2x faster, so its RELATIVE share grew by construction. Reproduced twice (1949.6 and
+  1951.8 tok/s at `m_rows=512` in isolation, real GPU dispatch time, not host-side noise). This is
+  the same "measure again after the win, the bottleneck moves" pattern this repo's own history has
+  hit before (the original Phase 2 plan for this same effort was redirected by an identical finding).
+  `_pf_attn_tiled_kernel_simd` was never touched by this entry's own work -- it is the SAME kernel
+  PR #584 shipped, now newly exposed as the next real target, not more GEMM tuning.
+- At smaller `m_rows` (8, not MMA-eligible; 128, MMA-eligible), attention's share is much lower
+  (1.6% and 21.4% respectively) -- the effect scales with context depth, consistent with attention's
+  own O(context) cost growing while the GEMM roles' cost is closer to O(1) per token at fixed model
+  size. A from-scratch or split-K-style attention redesign (the SAME lever this ledger's own
+  decode-side chain, above, already concluded is the correct next investment for the identical
+  reason on the decode side) is now demonstrably the highest-leverage next step for PREFILL too, not
+  a hypothesis.
+- The MMA kernels' own tile config (`BM=32,BN=32,BK=16`, 2 subtiles/simdgroup) was carried over
+  unchanged from the scalar GEMM's own choice, never independently calibrated for the MMA case
+  itself (the narrow-BN variant tried here tested only ONE alternative, and was rejected) -- a real
+  sweep across `(BM,BN,BK)` combinations specifically for the hardware-MMA inner loop is untried.
+  the M5-only 16x16x16 shape is also entirely unexplored on hardware that has it.
+- Partial-tile M/N padding (this entry's own Phase-1/2 scope) would let the MMA path cover every
+  `m_rows`/model shape, not just 32-aligned ones -- real prompts' tail chunks are rarely 32-aligned,
+  so today's fallback-to-scalar for those chunks is very likely leaving additional real throughput
+  on the table for any prompt whose length isn't itself a multiple of 32.
+

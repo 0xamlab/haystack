@@ -3043,3 +3043,1027 @@ def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx
                 bi = other_idx
         out_val[0] = bv
         out_idx[0] = bi
+
+
+# ============================================================================================
+# BATCHED PREFILL KERNELS -- an EIGHTH, structurally different axis from the seven weight-storage/
+# KV-cache-precision/reduction-mechanism/grid-size axes documented at the top of this file. Those
+# seven all batch NOTHING: every one of them still processes exactly ONE new token per dispatch,
+# the shape this whole file's fusion table was designed around. The kernels below process `m_rows`
+# NEW tokens per dispatch instead of one -- built for prefill (prompt processing), where the whole
+# prompt is already known up front and the per-token dispatch-submission floor this file's own
+# module docstring names (`~180 us of host submission ... per dispatch, with no overlap`) is exactly
+# what a `for t in range(n_prompt): step(...)` loop would pay per PROMPT TOKEN, not per generated
+# token -- fatal once a prompt is hundreds of tokens long (see `metaldispatch.session_prefill`'s own
+# module docstring for the measured gap this addresses).
+#
+# EVERY kernel below is a ROW-FLATTENED twin of an existing, already-verified single-row kernel:
+# the per-row MATH is copied byte-for-byte from that kernel's own body (same normalization, same
+# int8 dequantization, same reduction shape, same online-softmax recurrence); the ONLY change is
+# that `block_idx.x` now flattens `(unit, m)` -- `m` selects which of the `m_rows` prefill rows this
+# threadgroup computes, `unit` is that row's OWN original grid index -- and every buffer read/write
+# gains a `row * stride` offset selecting row `m`'s own slice. Two rows never share a threadgroup and
+# never touch each other's shared memory (shared memory is per-threadgroup, not global), so each
+# row's own computation is exactly as independent as `m_rows` separate single-row dispatches would
+# have been -- the correctness gate every kernel below is checked against (`test_residentk_prefill_
+# kernels.mojo`) diffs against exactly that: `m_rows` independent calls to the existing single-row
+# twin, not a restated formula.
+#
+# Every new kernel's base name starts with `pf_` -- verified DIRECTLY (not merely by inspection of
+# the Mojo source names) to survive Metal's AIR truncation with a unique, mutually-distinct, 11-
+# characters-or-fewer visible prefix, colliding with none of `_classify_pipeline`'s eight patterns
+# nor `_classify_splitk_pipeline`'s two, via `benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_
+# prefill_naming.mojo` (compiled with placeholder bodies temporarily added here, run for real,
+# confirmed, then reverted before these real bodies replaced them) -- the same throwaway-probe-then-
+# real-body sequencing `_classify_splitk_pipeline`'s own docstring documents using to catch two real
+# collisions before landing. `metaldispatch.session._classify_prefill_pipeline` is the new
+# classifier these six names resolve through, a separate function from `_classify_pipeline`/
+# `_classify_splitk_pipeline` for the identical reason those two are already separate from each
+# other (folding a new role into `_N_ROLES` would force every OTHER struct in `metaldispatch.session`
+# to start demanding a pipeline it never compiles).
+#
+# ATTENTION IS NOT LIKE THE OTHER FIVE: `_pf_attn_tiled_kernel_simd` below computes at `br = 1`
+# (one query row per threadgroup, exactly like every other kernel in this family) for Phase 1 --
+# flattened into ONE dispatch across every row, never a per-row loop, so its own cost is measured
+# as a single dispatch at every `m_rows` this build is raced at. Whether a REAL register-blocked,
+# multiple-queries-per-thread BR-tiled version (`br > 1`, reusing each streamed key across several
+# query rows) is needed at all is Phase 1's OWN measurement question, decided from a real GPU-
+# counter probe, not assumed from the FLOP table alone -- see the implementation plan's own "Phase
+# 1's own measurement decides Phase 2" section. This Phase-1 body is deliberately the SAME kernel
+# Phase 2 would extend in place, not a throwaway.
+# ============================================================================================
+
+
+fn _pf_embed_rows_kernel_i8(
+    hidden: _FP, embed: _I8P, embed_scale: _FP, token_ids: _IP, d_model: Int, m_rows: Int
+):
+    """Batched twin of `_embed_row_kernel_i8` -- gathers `m_rows` embedding rows in ONE dispatch
+    instead of one dispatch per row. `grid_dim = ceil_div(d_model, _TG) * m_rows`; `block_idx.x`
+    flattens `(unit, m)` as `unit = block_idx.x % n_units`, `m = block_idx.x // n_units`
+    (`n_units = ceil_div(d_model, _TG)`) -- the SAME flattening convention every kernel in this
+    family uses. `token_ids` is a resident Int32 buffer of `m_rows` prompt token ids, uploaded once
+    per `prefill_batch()` call: a decode step's single `token_id` was always a plain scalar kernel
+    argument, but a BATCH of them needs a buffer, since a Metal dispatch's scalar arguments are fixed
+    at descriptor-BUILD time (`metaldispatch.ffi._mb_set_arg_int`), not re-suppliable per row within
+    one dispatch. `hidden` is `[m_rows, d_model]` row-major -- row `m` is exactly what
+    `_embed_row_kernel_i8` would have written for token `token_ids[m]`, independent of every other
+    row.
+    """
+    var n_units = (d_model + _TG - 1) // _TG
+    var unit = Int(block_idx.x) % n_units
+    var m = Int(block_idx.x) // n_units
+    if m >= m_rows:
+        return
+    var i = unit * _TG + Int(thread_idx.x)
+    if i < d_model:
+        var token_id = Int(token_ids[m])
+        var s = embed_scale[token_id]
+        hidden[m * d_model + i] = Float32(embed[token_id * d_model + i]) * s
+
+
+fn _pf_qkv_proj_kernel_simd_i8(
+    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32, m_rows: Int
+):
+    """Batched twin of `_norm_gemv_kernel_simd_i8` -- IDENTICAL per-row rmsnorm+QKV-projection math
+    and IDENTICAL two-level SIMD-shuffle reduction (see that kernel's own docstring for the full
+    account this one leans on), computed independently for `m_rows` rows in ONE dispatch instead of
+    `m_rows` separate dispatches. `grid_dim = ceil_div(n, _SUBS) * m_rows`; `block_idx.x` flattens
+    `(unit, m)` the same way `_pf_embed_rows_kernel_i8` does. `x` is `[m_rows, k]` row-major (row `m`
+    is prefill row `m`'s post-embedding hidden state); `y` is `[m_rows, n]` -- row `m`'s own,
+    completely independent rmsnorm-then-projection result, with NOTHING shared across rows (the
+    sum-of-squares normalization is over row `m`'s own `k` elements only, exactly as if
+    `_norm_gemv_kernel_simd_i8` had been called `m_rows` separate times on `m_rows` separate single
+    rows -- the oracle this kernel's own correctness gate diffs against).
+    """
+    var n_units = (n + _SUBS - 1) // _SUBS
+    var unit = Int(block_idx.x) % n_units
+    var m = Int(block_idx.x) // n_units
+    if m >= m_rows:
+        return
+    var row_x = m * k
+    var row_y = m * n
+
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[row_x + i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[row_x + s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var j = unit * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    var total = _warp_sum(acc)
+    if lane == 0 and j < n:
+        y[row_y + j] = total
+
+
+fn _pf_ropewrt_kernel(
+    q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
+    cos_t: _FP, sin_t: _FP, pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32, m_rows: Int,
+):
+    """Batched twin of `_qk_rope_write_kernel` -- IDENTICAL per-row q_norm/k_norm/RoPE math and
+    IDENTICAL in-place KV-cache write, computed independently for `m_rows` prefill rows in ONE
+    dispatch. `grid_dim = (h_q + h_kv) * m_rows`; `block_idx.x` flattens `(b, m)` as
+    `n_units = h_q + h_kv`, `b = block_idx.x % n_units`, `m = block_idx.x // n_units`. Row `m`'s
+    absolute cache position is `pos_base + m` -- the SAME absolute-position addressing `ck`/`cv`
+    already use for decode's single-token `step()`, so this dispatch writes exactly the slots
+    `[pos_base, pos_base + m_rows)` a subsequent `step()` call on the same session reads back from,
+    with no cache-layout change at all. `q_rot` becomes `[m_rows, h_q * d_head]` row-major (one row
+    per prefill position) instead of decode's single-row buffer -- the batched attention dispatch
+    immediately after this one reads it row-by-row.
+    """
+    var n_units = h_q + h_kv
+    var b = Int(block_idx.x) % n_units
+    var m = Int(block_idx.x) // n_units
+    if m >= m_rows:
+        return
+    var pos = pos_base + m
+    var n_qkv = h_q * d_head + 2 * h_kv * d_head
+    var row_qkv = m * n_qkv
+    var n_q = h_q * d_head
+    var row_q_rot = m * n_q
+
+    var xs = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var red = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var e = Int(thread_idx.x)
+    var is_q = b < h_q
+    var head = b if is_q else b - h_q
+
+    var src_off = row_qkv + (head * d_head + e if is_q else (h_q + head) * d_head + e)
+    var v = qkv[src_off]
+    var g = qn_w[e] if is_q else kn_w[e]
+
+    red[e] = v * v
+    barrier()
+    var stride = d_head // 2
+    while stride > 0:
+        if e < stride:
+            red[e] = red[e] + red[e + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+    xs[e] = v * inv * g
+    barrier()
+
+    var n_pairs = d_head // 2
+    if e < n_pairs:
+        var c = cos_t[pos * n_pairs + e]
+        var s = sin_t[pos * n_pairs + e]
+        var a0 = xs[e]
+        var a1 = xs[e + n_pairs]
+        var o0 = a0 * c - a1 * s
+        var o1 = a0 * s + a1 * c
+        if is_q:
+            var qb = row_q_rot + head * d_head
+            q_rot[qb + e] = o0
+            q_rot[qb + e + n_pairs] = o1
+        else:
+            var kb = (pos * h_kv + head) * d_head
+            ck[kb + e] = o0
+            ck[kb + e + n_pairs] = o1
+
+    if not is_q:
+        cv[(pos * h_kv + head) * d_head + e] = qkv[row_qkv + (h_q + h_kv + head) * d_head + e]
+
+
+fn _pf_attn_tiled_kernel_simd(
+    attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
+    pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32, m_rows: Int,
+):
+    """Phase-1 batched twin of `_sdpa_kernel_simd` -- IDENTICAL per-key online-softmax math and
+    IDENTICAL two-level SIMD-shuffle reduction (see that kernel's own docstring for the full
+    account), flattened into ONE dispatch across `m_rows` prefill rows instead of one dispatch per
+    row -- never a literal per-row loop, so this kernel's own cost is measured once, as ONE
+    dispatch, at every `m_rows` this Phase-1 build is raced at (the FLOP-share-vs-GPU-time-share
+    check the implementation plan's own Phase 1 measurement step runs before Phase 2 is ever
+    started). `grid_dim = h_q * m_rows`; `block_idx.x` flattens `(h, m)` as `h = block_idx.x % h_q`,
+    `m = block_idx.x // h_q`. Row `m` is query position `pos_base + m`; CAUSAL by construction, not
+    by an explicit mask: row `m` computes its own `n_keys = pos_base + m + 1` and its per-key loop
+    reads exactly `[0, n_keys)`, the identical "n_keys = pos + 1 is the whole mask" contract
+    `_sdpa_kernel`'s own docstring establishes for decode, extended to a per-row `pos`. `q_rot`/
+    `attn_out` are `[m_rows, h_q * d_head]` row-major -- the batched `_pf_ropewrt_kernel` dispatch
+    immediately before this one has already written EVERY row's K/V into `ck`/`cv` at their own
+    absolute positions `[pos_base, pos_base + m_rows)`, so row `m`'s causal loop reading keys
+    `[0, n_keys)` never reaches a slot written by a LATER row (`n_keys = pos_base + m + 1` stops
+    exactly at row `m`'s own slot), and correctly DOES reach every slot written by an earlier
+    `step()`/`prefill_batch()` call on this same session -- exactly the keys row `m` is supposed to
+    attend to.
+    """
+    comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
+    var n_q = h_q * d_head
+    var h = Int(block_idx.x) % h_q
+    var m = Int(block_idx.x) // h_q
+    if m >= m_rows:
+        return
+    var n_keys = pos_base + m + 1
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[m * n_q + h * d_head + e]
+    var lane = lane_id()
+    var grp_id = warp_id()
+    var n_groups = d_head // WARP_SIZE
+
+    var mx = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    for j in range(n_keys):
+        var kb = (j * h_kv + hk) * d_head
+        var partial = qv * ck[kb + e]
+        var group_total = _warp_sum(partial)
+        if lane == 0:
+            grp[grp_id] = group_total
+        barrier()
+        var s = Float32(0.0)
+        for g in range(n_groups):
+            s += grp[g]
+        s *= scale
+        barrier()
+
+        var nm = mx if mx > s else s
+        var corr = exp(mx - nm)
+        var w = exp(s - nm)
+        o = o * corr + w * cv[kb + e]
+        denom = denom * corr + w
+        mx = nm
+
+    attn_out[m * n_q + h * d_head + e] = o / denom
+
+
+fn _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, m_rows: Int):
+    """Batched twin of `_gemv_accum_kernel_simd_i8` -- IDENTICAL projection-plus-residual-`+=` math
+    and IDENTICAL single-level SIMD-shuffle reduction, computed independently for `m_rows` rows in
+    ONE dispatch. Reused for BOTH `o_proj` (`k = h_q * d_head`, `n = d_model`) and `down_proj`
+    (`k = d_ff`, `n = d_model`) exactly as its single-row twin already is by
+    `metaldispatch.session_prefill`'s own descriptor plan -- see that module's docstring."""
+    var n_units = (n + _SUBS - 1) // _SUBS
+    var unit = Int(block_idx.x) % n_units
+    var m = Int(block_idx.x) // n_units
+    if m >= m_rows:
+        return
+    var row_x = m * k
+    var row_y = m * n
+
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[row_x + s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = unit * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    var total = _warp_sum(acc)
+    if lane == 0 and j < n:
+        y[row_y + j] = y[row_y + j] + total
+
+
+fn _pf_swiglu_kernel_simd_i8(
+    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32, m_rows: Int
+):
+    """Batched twin of `_norm_gemv2_swiglu_kernel_simd_i8` -- IDENTICAL per-row rmsnorm/gate/up/
+    SwiGLU math and IDENTICAL reduction shapes (see that kernel's own docstring), computed
+    independently for `m_rows` rows in ONE dispatch."""
+    var n_units = (n_ff + _SUBS - 1) // _SUBS
+    var unit = Int(block_idx.x) % n_units
+    var m = Int(block_idx.x) // n_units
+    if m >= m_rows:
+        return
+    var row_x = m * k
+    var row_act = m * n_ff
+
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[row_x + i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[row_x + s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var j = unit * _SUBS + sub
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    var acc = Float32(0.0)
+    if j < n_ff:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    var gate_total = _warp_sum(acc)
+    if lane == 0:
+        gsh[sub] = gate_total
+    barrier()
+
+    var acc2 = Float32(0.0)
+    if j < n_ff:
+        var base2 = (n_ff + j) * k
+        var srow2 = wscale[n_ff + j]
+        var srow2_v = SIMD[DType.float32, _VEC_I8](srow2)
+        var t2 = lane * _VEC_I8
+        while t2 < k_vec:
+            var xv2 = xs.load[width=_VEC_I8](t2)
+            var wv2 = w.load[width=_VEC_I8](base2 + t2).cast[DType.float32]() * srow2_v
+            var pv2 = xv2 * wv2
+            for lane_e2 in range(_VEC_I8):
+                acc2 += pv2[lane_e2]
+            t2 += _VEC_STRIDE_I8
+        var tt2 = k_vec + lane
+        while tt2 < k:
+            acc2 += xs[tt2] * (Float32(w[base2 + tt2]) * srow2)
+            tt2 += _LANES
+    var up_total = _warp_sum(acc2)
+    if lane == 0 and j < n_ff:
+        var g = gsh[sub]
+        act[row_act + j] = (g / (1.0 + exp(-g))) * up_total
+
+
+# ============================================================================================
+# WEIGHT-STATIONARY TILED GEMM, Phase A -- the GPU-counter measurement of the batched-prefill
+# kernels above (`qwen3_probe_counters_i8_allsimd7_prefill.mojo`) found the four GEMV-shaped roles
+# (`_pf_qkv_proj_kernel_simd_i8`, `_pf_gemv_accum_kernel_simd_i8`, `_pf_swiglu_kernel_simd_i8`) at
+# 86-90% of GPU time at every M tested, NOT attention. Root cause: row-flattening (the family above)
+# cuts DISPATCH COUNT but not MEMORY TRAFFIC -- each of the M rows is still an independent GEMV, a
+# separate threadgroup per (output-tile, row) re-reading the SAME weight bytes from device memory
+# with zero reuse across rows. The kernels below fix that: each threadgroup loads a slice of BOTH
+# operands into shared memory ONCE and reuses it across a whole BM x BN output tile, each thread
+# owning a TM x TN register block -- the same register-tiling STRATEGY `accel.gemm_metal.
+# _tiled_gemm_kernel` already measures a 7.5x win from on this exact GPU (268 -> 2018 GFLOP/s at a
+# 2048-cube), adapted here for: int8 dequantized weights (per-output-row scale, exactly this file's
+# own existing GEMV kernels' scheme), the `[out, in]` weight layout this file's own module docstring
+# establishes (the TRANSPOSE of `gemm_metal`'s own `[K, N]`-row-major `B` operand -- copying that
+# kernel's cooperative-load indexing literally would de-coalesce every weight read, the exact 10x
+# loss this file's own layout section already measured once for a different kernel), and this
+# repo's own 1D-descriptor shim (`metaldispatch.ffi`'s `AlgentaDispatchDesc` has `grid_x`/`threads_x`
+# only, no `grid_y` -- `block_idx.x` below flattens `(tile_row, tile_col)` the same way every other
+# kernel in this file's `_pf_*` family already flattens `(unit, m)`).
+#
+# PHASE A SCOPE: qkv_proj only, at ONE hand-picked tile config (`_GEMM_BM=32, _GEMM_BN=32,
+# _GEMM_BK=16, _GEMM_TM=2, _GEMM_TN=2` -- `accel.gemm_metal`'s own measured-best for a same-GPU,
+# different-shape, different-dtype kernel; a reasonable STARTING point, explicitly NOT yet the
+# calibrated choice for THIS shape -- see the implementation plan's own "Calibration methodology"
+# section for the real sweep that decides whether this config, a different single config, or a
+# policy-selected family of configs actually ships). `_pf_qkv_proj_kernel_simd_i8` above stays
+# byte-unmodified -- it is the Gate-0 oracle `_pf_gemm_assign_kernel_i8` is diffed against
+# (`test_residentk_prefill_gemm_kernels.mojo`), not a duplicate to delete.
+# ============================================================================================
+
+comptime _GEMM_BM: Int = 32
+comptime _GEMM_BN: Int = 32
+comptime _GEMM_BK: Int = 16
+comptime _GEMM_TM: Int = 2
+comptime _GEMM_TN: Int = 2
+comptime _GEMM_NTHREADS: Int = (_GEMM_BM // _GEMM_TM) * (_GEMM_BN // _GEMM_TN)
+"""The WIDE tile config -- see this section's own module comment. `_GEMM_NTHREADS = 256`, matching
+`_TG` (not imported as the same symbol on purpose: `_TG` is this file's GEMV-shaped kernels' own
+per-threadgroup thread count, a coincidence of both landing on 256, not a shared constraint -- the
+GEMM tile's thread count is DERIVED from `_GEMM_BM/_GEMM_TM * _GEMM_BN/_GEMM_TN`, `_TG`'s is not).
+
+MEASURED, NOT ASSUMED to be universally good: real end-to-end runs on the actual Qwen3-0.6B-Base
+checkpoint found this config a real win at `m_rows=256` (1165 tok/s, against the row-flattened
+family's own 558.9) but a real REGRESSION at `m_rows=5` (91.6 tok/s, against that SAME row-flattened
+family's ~558.9-tok/s-implying per-token cost at short prompts) -- a `BM=32` tile is mostly zero-
+padding when `m_rows` is a fraction of 32, and every GEMM-shaped role now pays that waste. See
+`_GEMM_BM_NARROW`'s own docstring for the second, small-`m_rows`-oriented config this measurement
+motivated, and `residentk.contract.residentk_prefill_gemm_use_narrow_tile` for the policy that
+picks between them."""
+
+comptime _GEMM_BM_NARROW: Int = 8
+comptime _GEMM_TM_NARROW: Int = 1
+comptime _GEMM_NTHREADS_NARROW: Int = (_GEMM_BM_NARROW // _GEMM_TM_NARROW) * (_GEMM_BN // _GEMM_TN)
+"""The NARROW tile config -- same `_GEMM_BN`/`_GEMM_BK`/`_GEMM_TN` as the wide config (only the
+ROW-tile dimension changes, since `m_rows` -- not `n` or `k` -- is the axis that swings 64x across
+this arm's own real race points, 8 to 512), `BM=8` instead of 32, `TM=1` instead of 2 (each thread
+now owns one row's worth of register accumulator instead of two, matching the narrower tile).
+MEASURED, NOT ASSUMED: real end-to-end runs found this config real relief at `m_rows=5` (110.1
+tok/s against the wide config's 91.6) but a real REGRESSION at `m_rows=256` (783.3 tok/s against
+the wide config's 1165) -- confirming NEITHER config is good across the whole range, the exact
+"let the data decide single-vs-multi-variant" outcome the implementation plan's own calibration
+methodology anticipated as a real possibility, not a certainty. Compiled as three separate kernel
+functions below (`_pf_gnrw_assign_kernel_i8`/`_pf_gnrw_accum_kernel_i8`/`_pf_gnrw_
+swiglu_kernel_i8`), named to diverge from their wide twins WITHIN the 11-character truncation
+window (`pf_gnrw_ass`/`pf_gnrw_acc`/`pf_gnrw_swi` vs `pf_gemm_ass`/`pf_gemm_acc`/`pf_gemm_swi` --
+the OBVIOUS `_pf_gemm_*_narrow` naming was tried first and rejected here, before landing, precisely
+because the `_narrow` suffix falls AFTER the 11-character survivor boundary and both variants would
+truncate identically) -- exactly the same "multiple pre-compiled variants selected by a calibrated
+runtime policy" pattern this file already uses for `_sdpa_kernel_simd` vs `_splitk_partial_kernel_
+simd_native` vs `_splitk_partial_kernel_simd_batched4`."""
+
+
+fn _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m_rows: Int):
+    """Batched RMSNorm + gamma over `m_rows` independent rows, writing the normalized result to a
+    SEPARATE device buffer (`xn`) rather than keeping it in threadgroup-shared memory the way every
+    fused GEMV kernel above does -- this kernel's whole purpose is to make that normalized row
+    available to a LATER, separate tiled-GEMM dispatch, not to a same-dispatch reduction.
+
+    `grid_dim = m_rows`, `block_dim = _TG` -- one threadgroup per row, the SAME two-level SIMD-
+    shuffle sum-of-squares reduction `_norm_gemv_kernel_simd_i8`'s own docstring establishes (8 full
+    32-lane SIMD-groups at `_TG=256`, one `_warp_sum` per group, one combining `barrier()`), copied
+    byte-for-byte for that stage since the math is identical; only the final store differs (to
+    device memory, not `stack_allocation`).
+    """
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var m = Int(block_idx.x)
+    if m >= m_rows:
+        return
+    var row = m * k
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[row + i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xn[row + s] = x[row + s] * inv * gamma[s]
+        s += _TG
+
+
+fn _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+    """Weight-stationary tiled GEMM: `y[M,n] = xn[M,k] @ W^T[k,n]`, `w` stored `[n,k]` row-major
+    (one output row's `k` coefficients contiguous). See this section's own module comment for the
+    strategy this adapts from `accel.gemm_metal._tiled_gemm_kernel` and why the weight-tile
+    cooperative load below is NOT that kernel's own indexing, copied.
+
+    `block_idx.x` flattens `(tile_row, tile_col)`: `n_tile_cols = ceil(n / _GEMM_BN); tile_col =
+    block_idx.x % n_tile_cols; tile_row = block_idx.x // n_tile_cols`. `b_tile` is stored `[BN, BK]`
+    (row = output-row offset within the tile, an N-index; col = K-offset) rather than `gemm_metal`'s
+    own `[BK, BN]`, specifically so each lane's own cooperative-load stays CONTIGUOUS along `k` for
+    one fixed output row -- `w`'s own `[n,k]` layout, unchanged.
+
+    Out-of-range rows/columns (the FINAL tile of `m_rows` or `n`, when neither is an exact multiple
+    of `BM`/`BN`) are zero-padded on load rather than skipped, and the final store is bounds-checked
+    per element -- the identical two-part discipline `_tiled_gemm_kernel`'s own docstring names:
+    every thread must reach both barriers (an early `continue` on a partial tile hangs the group),
+    but a padded lane's own OUTPUT is never written if it falls outside `[0,m_rows) x [0,n)`.
+    """
+    comptime BM = _GEMM_BM
+    comptime BN = _GEMM_BN
+    comptime BK = _GEMM_BK
+    comptime TM = _GEMM_TM
+    comptime TN = _GEMM_TN
+    comptime NTHREADS = _GEMM_NTHREADS
+
+    var a_tile = stack_allocation[BM * BK, DType.float32, address_space = AddressSpace.SHARED]()
+    var b_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var acc = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_b = stack_allocation[TN, DType.float32]()
+
+    for i in range(TM * TN):
+        acc[i] = 0.0
+
+    var n_tile_cols = (n + BN - 1) // BN
+    var tile_col = Int(block_idx.x) % n_tile_cols
+    var tile_row = Int(block_idx.x) // n_tile_cols
+
+    var tid = Int(thread_idx.x)
+    var ty = tid // (BN // TN)
+    var tx = tid % (BN // TN)
+    var block_row = tile_row * BM
+    var block_col = tile_col * BN
+
+    var n_steps = (k + BK - 1) // BK
+    for step in range(n_steps):
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = xn[gr * k + gc] if (gr < m_rows and gc < k) else Float32(0.0)
+        for s in range(BN * BK // NTHREADS):
+            var idx2 = tid + s * NTHREADS
+            var br = idx2 // BK
+            var bc = idx2 % BK
+            var gr2 = block_col + br
+            var gc2 = step * BK + bc
+            if gr2 < n and gc2 < k:
+                b_tile[idx2] = Float32(w[gr2 * k + gc2]) * wscale[gr2]
+            else:
+                b_tile[idx2] = Float32(0.0)
+
+        barrier()
+
+        for kk in range(BK):
+            for i2 in range(TM):
+                reg_a[i2] = a_tile[(ty * TM + i2) * BK + kk]
+            for j2 in range(TN):
+                reg_b[j2] = b_tile[(tx * TN + j2) * BK + kk]
+            for i2 in range(TM):
+                for j2 in range(TN):
+                    acc[i2 * TN + j2] += reg_a[i2] * reg_b[j2]
+
+        barrier()
+
+    for i2 in range(TM):
+        for j2 in range(TN):
+            var r = block_row + ty * TM + i2
+            var c = block_col + tx * TN + j2
+            if r < m_rows and c < n:
+                y[r * n + c] = acc[i2 * TN + j2]
+
+
+fn _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+    """Weight-stationary tiled GEMM: `y[M,n] += x[M,k] @ W^T[k,n]` -- byte-for-byte the same tiling
+    as `_pf_gemm_assign_kernel_i8` (see that kernel's own docstring for the full account); the ONLY
+    difference is the final store, `+=` instead of `=`, matching `_pf_gemv_accum_kernel_simd_i8`'s
+    own relationship to `_pf_qkv_proj_kernel_simd_i8`. `x` here is NOT normalized first (unlike
+    `qkv_proj`'s `xn`) -- `o_proj`'s input is the attention output, `down_proj`'s is the gated-FFN
+    activation, neither of which is ever normalized before this projection in the un-tiled Phase-1
+    kernel this replaces either. Reused for BOTH `o_proj` and `down_proj`, exactly as that Phase-1
+    kernel already is.
+    """
+    comptime BM = _GEMM_BM
+    comptime BN = _GEMM_BN
+    comptime BK = _GEMM_BK
+    comptime TM = _GEMM_TM
+    comptime TN = _GEMM_TN
+    comptime NTHREADS = _GEMM_NTHREADS
+
+    var a_tile = stack_allocation[BM * BK, DType.float32, address_space = AddressSpace.SHARED]()
+    var b_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var acc = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_b = stack_allocation[TN, DType.float32]()
+
+    for i in range(TM * TN):
+        acc[i] = 0.0
+
+    var n_tile_cols = (n + BN - 1) // BN
+    var tile_col = Int(block_idx.x) % n_tile_cols
+    var tile_row = Int(block_idx.x) // n_tile_cols
+
+    var tid = Int(thread_idx.x)
+    var ty = tid // (BN // TN)
+    var tx = tid % (BN // TN)
+    var block_row = tile_row * BM
+    var block_col = tile_col * BN
+
+    var n_steps = (k + BK - 1) // BK
+    for step in range(n_steps):
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = x[gr * k + gc] if (gr < m_rows and gc < k) else Float32(0.0)
+        for s in range(BN * BK // NTHREADS):
+            var idx2 = tid + s * NTHREADS
+            var br = idx2 // BK
+            var bc = idx2 % BK
+            var gr2 = block_col + br
+            var gc2 = step * BK + bc
+            if gr2 < n and gc2 < k:
+                b_tile[idx2] = Float32(w[gr2 * k + gc2]) * wscale[gr2]
+            else:
+                b_tile[idx2] = Float32(0.0)
+
+        barrier()
+
+        for kk in range(BK):
+            for i2 in range(TM):
+                reg_a[i2] = a_tile[(ty * TM + i2) * BK + kk]
+            for j2 in range(TN):
+                reg_b[j2] = b_tile[(tx * TN + j2) * BK + kk]
+            for i2 in range(TM):
+                for j2 in range(TN):
+                    acc[i2 * TN + j2] += reg_a[i2] * reg_b[j2]
+
+        barrier()
+
+    for i2 in range(TM):
+        for j2 in range(TN):
+            var r = block_row + ty * TM + i2
+            var c = block_col + tx * TN + j2
+            if r < m_rows and c < n:
+                y[r * n + c] = y[r * n + c] + acc[i2 * TN + j2]
+
+
+fn _pf_gemm_swiglu_kernel_i8(
+    act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n_ff: Int
+):
+    """Weight-stationary tiled GEMM computing BOTH gate and up projections from the SAME loaded
+    `xn` tile in one pass -- gate rows `[0, n_ff)` of `w`/`wscale`, up rows `[n_ff, 2*n_ff)`, the SAME
+    row-indexing convention `_pf_swiglu_kernel_simd_i8`'s own docstring establishes -- SwiGLU-
+    combined on output: `act[m,j] = (gate / (1 + exp(-gate))) * up`. Same `BM x BN` tile / `TM x TN`
+    register-block strategy as `_pf_gemm_assign_kernel_i8`, but each thread now holds TWO accumulator
+    blocks (`acc_g`, `acc_u`) and each `step` loads TWO weight tiles (`bg_tile`, `bu_tile`) against
+    the SAME loaded activation tile (`a_tile`) -- the identical "stage the normalized row once, read
+    it twice" reuse `_pf_swiglu_kernel_simd_i8`'s own docstring achieves via `xs`, just register-
+    tiled instead of one-column-per-SIMD-group.
+    """
+    comptime BM = _GEMM_BM
+    comptime BN = _GEMM_BN
+    comptime BK = _GEMM_BK
+    comptime TM = _GEMM_TM
+    comptime TN = _GEMM_TN
+    comptime NTHREADS = _GEMM_NTHREADS
+
+    var a_tile = stack_allocation[BM * BK, DType.float32, address_space = AddressSpace.SHARED]()
+    var bg_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var bu_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var acc_g = stack_allocation[TM * TN, DType.float32]()
+    var acc_u = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_bg = stack_allocation[TN, DType.float32]()
+    var reg_bu = stack_allocation[TN, DType.float32]()
+
+    for i in range(TM * TN):
+        acc_g[i] = 0.0
+        acc_u[i] = 0.0
+
+    var n_tile_cols = (n_ff + BN - 1) // BN
+    var tile_col = Int(block_idx.x) % n_tile_cols
+    var tile_row = Int(block_idx.x) // n_tile_cols
+
+    var tid = Int(thread_idx.x)
+    var ty = tid // (BN // TN)
+    var tx = tid % (BN // TN)
+    var block_row = tile_row * BM
+    var block_col = tile_col * BN
+
+    var n_steps = (k + BK - 1) // BK
+    for step in range(n_steps):
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = xn[gr * k + gc] if (gr < m_rows and gc < k) else Float32(0.0)
+        for s in range(BN * BK // NTHREADS):
+            var idx2 = tid + s * NTHREADS
+            var br = idx2 // BK
+            var bc = idx2 % BK
+            var gr2 = block_col + br
+            var gc2 = step * BK + bc
+            if gr2 < n_ff and gc2 < k:
+                bg_tile[idx2] = Float32(w[gr2 * k + gc2]) * wscale[gr2]
+                bu_tile[idx2] = Float32(w[(n_ff + gr2) * k + gc2]) * wscale[n_ff + gr2]
+            else:
+                bg_tile[idx2] = Float32(0.0)
+                bu_tile[idx2] = Float32(0.0)
+
+        barrier()
+
+        for kk in range(BK):
+            for i2 in range(TM):
+                reg_a[i2] = a_tile[(ty * TM + i2) * BK + kk]
+            for j2 in range(TN):
+                reg_bg[j2] = bg_tile[(tx * TN + j2) * BK + kk]
+                reg_bu[j2] = bu_tile[(tx * TN + j2) * BK + kk]
+            for i2 in range(TM):
+                for j2 in range(TN):
+                    acc_g[i2 * TN + j2] += reg_a[i2] * reg_bg[j2]
+                    acc_u[i2 * TN + j2] += reg_a[i2] * reg_bu[j2]
+
+        barrier()
+
+    for i2 in range(TM):
+        for j2 in range(TN):
+            var r = block_row + ty * TM + i2
+            var c = block_col + tx * TN + j2
+            if r < m_rows and c < n_ff:
+                var g = acc_g[i2 * TN + j2]
+                var u = acc_u[i2 * TN + j2]
+                act[r * n_ff + c] = (g / (1.0 + exp(-g))) * u
+
+
+# ============================================================================================
+# NARROW-TILE VARIANTS -- see `_GEMM_BM_NARROW`'s own docstring for the measurement that motivated
+# these. Byte-for-byte the same math as their WIDE twins immediately above (`_pf_gemm_assign_
+# kernel_i8`/`_pf_gemm_accum_kernel_i8`/`_pf_gemm_swiglu_kernel_i8`); the ONLY difference is which
+# comptime tile constants each reads (`_GEMM_BM_NARROW`/`_GEMM_TM_NARROW` in place of `_GEMM_BM`/
+# `_GEMM_TM`, `_GEMM_BN`/`_GEMM_BK`/`_GEMM_TN` UNCHANGED). Selected at runtime by `residentk.
+# contract.residentk_prefill_gemm_use_narrow_tile(m_rows)`, never both for the same dispatch.
+# ============================================================================================
+
+
+fn _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+    """The NARROW-tile twin of `_pf_gemm_assign_kernel_i8` -- see that kernel's own docstring for
+    the full account; only `BM`/`TM` differ."""
+    comptime BM = _GEMM_BM_NARROW
+    comptime BN = _GEMM_BN
+    comptime BK = _GEMM_BK
+    comptime TM = _GEMM_TM_NARROW
+    comptime TN = _GEMM_TN
+    comptime NTHREADS = _GEMM_NTHREADS_NARROW
+
+    var a_tile = stack_allocation[BM * BK, DType.float32, address_space = AddressSpace.SHARED]()
+    var b_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var acc = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_b = stack_allocation[TN, DType.float32]()
+
+    for i in range(TM * TN):
+        acc[i] = 0.0
+
+    var n_tile_cols = (n + BN - 1) // BN
+    var tile_col = Int(block_idx.x) % n_tile_cols
+    var tile_row = Int(block_idx.x) // n_tile_cols
+
+    var tid = Int(thread_idx.x)
+    var ty = tid // (BN // TN)
+    var tx = tid % (BN // TN)
+    var block_row = tile_row * BM
+    var block_col = tile_col * BN
+
+    var n_steps = (k + BK - 1) // BK
+    for step in range(n_steps):
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = xn[gr * k + gc] if (gr < m_rows and gc < k) else Float32(0.0)
+        for s in range(BN * BK // NTHREADS):
+            var idx2 = tid + s * NTHREADS
+            var br = idx2 // BK
+            var bc = idx2 % BK
+            var gr2 = block_col + br
+            var gc2 = step * BK + bc
+            if gr2 < n and gc2 < k:
+                b_tile[idx2] = Float32(w[gr2 * k + gc2]) * wscale[gr2]
+            else:
+                b_tile[idx2] = Float32(0.0)
+
+        barrier()
+
+        for kk in range(BK):
+            for i2 in range(TM):
+                reg_a[i2] = a_tile[(ty * TM + i2) * BK + kk]
+            for j2 in range(TN):
+                reg_b[j2] = b_tile[(tx * TN + j2) * BK + kk]
+            for i2 in range(TM):
+                for j2 in range(TN):
+                    acc[i2 * TN + j2] += reg_a[i2] * reg_b[j2]
+
+        barrier()
+
+    for i2 in range(TM):
+        for j2 in range(TN):
+            var r = block_row + ty * TM + i2
+            var c = block_col + tx * TN + j2
+            if r < m_rows and c < n:
+                y[r * n + c] = acc[i2 * TN + j2]
+
+
+fn _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+    """The NARROW-tile twin of `_pf_gemm_accum_kernel_i8` -- see that kernel's own docstring for
+    the full account; only `BM`/`TM` differ."""
+    comptime BM = _GEMM_BM_NARROW
+    comptime BN = _GEMM_BN
+    comptime BK = _GEMM_BK
+    comptime TM = _GEMM_TM_NARROW
+    comptime TN = _GEMM_TN
+    comptime NTHREADS = _GEMM_NTHREADS_NARROW
+
+    var a_tile = stack_allocation[BM * BK, DType.float32, address_space = AddressSpace.SHARED]()
+    var b_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var acc = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_b = stack_allocation[TN, DType.float32]()
+
+    for i in range(TM * TN):
+        acc[i] = 0.0
+
+    var n_tile_cols = (n + BN - 1) // BN
+    var tile_col = Int(block_idx.x) % n_tile_cols
+    var tile_row = Int(block_idx.x) // n_tile_cols
+
+    var tid = Int(thread_idx.x)
+    var ty = tid // (BN // TN)
+    var tx = tid % (BN // TN)
+    var block_row = tile_row * BM
+    var block_col = tile_col * BN
+
+    var n_steps = (k + BK - 1) // BK
+    for step in range(n_steps):
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = x[gr * k + gc] if (gr < m_rows and gc < k) else Float32(0.0)
+        for s in range(BN * BK // NTHREADS):
+            var idx2 = tid + s * NTHREADS
+            var br = idx2 // BK
+            var bc = idx2 % BK
+            var gr2 = block_col + br
+            var gc2 = step * BK + bc
+            if gr2 < n and gc2 < k:
+                b_tile[idx2] = Float32(w[gr2 * k + gc2]) * wscale[gr2]
+            else:
+                b_tile[idx2] = Float32(0.0)
+
+        barrier()
+
+        for kk in range(BK):
+            for i2 in range(TM):
+                reg_a[i2] = a_tile[(ty * TM + i2) * BK + kk]
+            for j2 in range(TN):
+                reg_b[j2] = b_tile[(tx * TN + j2) * BK + kk]
+            for i2 in range(TM):
+                for j2 in range(TN):
+                    acc[i2 * TN + j2] += reg_a[i2] * reg_b[j2]
+
+        barrier()
+
+    for i2 in range(TM):
+        for j2 in range(TN):
+            var r = block_row + ty * TM + i2
+            var c = block_col + tx * TN + j2
+            if r < m_rows and c < n:
+                y[r * n + c] = y[r * n + c] + acc[i2 * TN + j2]
+
+
+fn _pf_gnrw_swiglu_kernel_i8(
+    act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n_ff: Int
+):
+    """The NARROW-tile twin of `_pf_gemm_swiglu_kernel_i8` -- see that kernel's own docstring for
+    the full account; only `BM`/`TM` differ."""
+    comptime BM = _GEMM_BM_NARROW
+    comptime BN = _GEMM_BN
+    comptime BK = _GEMM_BK
+    comptime TM = _GEMM_TM_NARROW
+    comptime TN = _GEMM_TN
+    comptime NTHREADS = _GEMM_NTHREADS_NARROW
+
+    var a_tile = stack_allocation[BM * BK, DType.float32, address_space = AddressSpace.SHARED]()
+    var bg_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var bu_tile = stack_allocation[BK * BN, DType.float32, address_space = AddressSpace.SHARED]()
+    var acc_g = stack_allocation[TM * TN, DType.float32]()
+    var acc_u = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_bg = stack_allocation[TN, DType.float32]()
+    var reg_bu = stack_allocation[TN, DType.float32]()
+
+    for i in range(TM * TN):
+        acc_g[i] = 0.0
+        acc_u[i] = 0.0
+
+    var n_tile_cols = (n_ff + BN - 1) // BN
+    var tile_col = Int(block_idx.x) % n_tile_cols
+    var tile_row = Int(block_idx.x) // n_tile_cols
+
+    var tid = Int(thread_idx.x)
+    var ty = tid // (BN // TN)
+    var tx = tid % (BN // TN)
+    var block_row = tile_row * BM
+    var block_col = tile_col * BN
+
+    var n_steps = (k + BK - 1) // BK
+    for step in range(n_steps):
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = xn[gr * k + gc] if (gr < m_rows and gc < k) else Float32(0.0)
+        for s in range(BN * BK // NTHREADS):
+            var idx2 = tid + s * NTHREADS
+            var br = idx2 // BK
+            var bc = idx2 % BK
+            var gr2 = block_col + br
+            var gc2 = step * BK + bc
+            if gr2 < n_ff and gc2 < k:
+                bg_tile[idx2] = Float32(w[gr2 * k + gc2]) * wscale[gr2]
+                bu_tile[idx2] = Float32(w[(n_ff + gr2) * k + gc2]) * wscale[n_ff + gr2]
+            else:
+                bg_tile[idx2] = Float32(0.0)
+                bu_tile[idx2] = Float32(0.0)
+
+        barrier()
+
+        for kk in range(BK):
+            for i2 in range(TM):
+                reg_a[i2] = a_tile[(ty * TM + i2) * BK + kk]
+            for j2 in range(TN):
+                reg_bg[j2] = bg_tile[(tx * TN + j2) * BK + kk]
+                reg_bu[j2] = bu_tile[(tx * TN + j2) * BK + kk]
+            for i2 in range(TM):
+                for j2 in range(TN):
+                    acc_g[i2 * TN + j2] += reg_a[i2] * reg_bg[j2]
+                    acc_u[i2 * TN + j2] += reg_a[i2] * reg_bu[j2]
+
+        barrier()
+
+    for i2 in range(TM):
+        for j2 in range(TN):
+            var r = block_row + ty * TM + i2
+            var c = block_col + tx * TN + j2
+            if r < m_rows and c < n_ff:
+                var g = acc_g[i2 * TN + j2]
+                var u = acc_u[i2 * TN + j2]
+                act[r * n_ff + c] = (g / (1.0 + exp(-g))) * u

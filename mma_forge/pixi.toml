@@ -1,0 +1,12 @@
+[workspace]
+name = "mma-forge"
+channels = ["https://conda.modular.com/max-nightly/", "conda-forge"]
+platforms = ["osx-arm64"]
+
+[dependencies]
+# Pinned to the exact build empirically verified (this session) to run the Apple 8x8
+# simdgroup_matrix MMA primitive correctly on this M4 Max without the compiler crash the
+# 0.26.3 pinned toolchain (mojo_env/pixi.toml) hits. Do not float this to "*" -- a later
+# nightly could silently change AIR codegen for the forged kernel blobs.
+mojo = "==1.1.0.dev2026080606"
+max = "==26.6.0.dev2026080606"

@@ -644,3 +644,48 @@ def residentk_splitk_policy(n_keys: Int, n_cores: Int, h_q: Int) -> Int:
     if n_splits > ceiling:
         n_splits = ceiling
     return n_splits
+
+
+comptime RESIDENT_PREFILL_GEMM_NARROW_THRESHOLD_M: Int = 32
+"""Restates `residentk.kernels._GEMM_BM` (the WIDE weight-stationary-tiled-GEMM config's own row-
+tile width) as a plain literal here, not an import — `residentk.contract` is a layering root
+(`residentk.kernels` imports FROM this module, never the reverse), so the threshold is a second,
+independent literal, matching the SAME "restate a value rather than create a layering cycle"
+choice `metaldispatch.qwen3_decode`'s own `QWEN3_0_6B_BASE_D_MODEL` etc. already make for constants
+that could otherwise be imported from a file this one must not depend on.
+
+`m_rows < RESIDENT_PREFILL_GEMM_NARROW_THRESHOLD_M` is exactly the point below which the WIDE tile
+(`BM=32`) is GUARANTEED to be more than half zero-padding on the row axis for EVERY row-tile it
+ever launches (`m_rows` fits inside a single `BM`-wide tile whenever `m_rows <= 32`, so a smaller
+`m_rows` only shrinks how much of that one tile is real work) — the structural boundary
+`residentk_prefill_gemm_use_narrow_tile`'s own threshold is anchored to, not a free-floating guess."""
+
+
+fn residentk_prefill_gemm_use_narrow_tile(m_rows: Int) -> Bool:
+    """Should THIS `prefill_batch()` call's weight-stationary-tiled-GEMM dispatches
+    (`_pf_gemm_assign_kernel_i8`/`_pf_gemm_accum_kernel_i8`/`_pf_gemm_swiglu_kernel_i8`) use their
+    NARROW-tile twins (`_pf_gnrw_assign_kernel_i8`/`_pf_gnrw_accum_kernel_i8`/`_pf_gnrw_swiglu_
+    kernel_i8`, `residentk.kernels`) instead of the wide ones?
+
+    A COARSE, two-point calibration, stated as such rather than oversold: real end-to-end runs on
+    the actual Qwen3-0.6B-Base checkpoint found the WIDE config (`BM=32`) a real win at `m_rows=256`
+    (1165 tok/s against the row-flattened family's own 558.9) but a real REGRESSION at `m_rows=5`
+    (91.6 tok/s, WORSE than that same row-flattened family's short-prompt throughput); the NARROW
+    config (`BM=8`) reverses both signs (110.1 tok/s at `m_rows=5`, but only 783.3 at `m_rows=256`,
+    a real regression from the wide config's own 1165) — confirming NEITHER config is good across
+    this arm's whole race range (8 to 512) and a real choice between them is needed, not a single
+    constant. Only TWO configs were built and measured (not a fine-grained sweep across `BN`/`BK`/
+    `TM`/`TN` too, and not a third or fourth `BM` candidate in between) — the implementation plan's
+    own "let the data decide single-vs-multi-variant" step, decided in favor of "multi," with the
+    SIMPLEST version of "multi" (a binary choice, not `residentk_splitk_policy`'s own continuous
+    log-linear interpolation, since there is no continuous knob here — only two COMPILED kernel
+    variants exist). The threshold itself (`RESIDENT_PREFILL_GEMM_NARROW_THRESHOLD_M`, 32) is the
+    structural boundary where the wide tile's own padding waste starts, not a third measured anchor
+    point in its own right — a finer sweep (more `m_rows` points, more tile configs) could refine
+    this boundary later; this is Phase B's first real answer, not its last word.
+
+    @capability residentk_prefill_gemm_use_narrow_tile
+    complexity: O(1)
+    @endcapability
+    """
+    return m_rows < RESIDENT_PREFILL_GEMM_NARROW_THRESHOLD_M

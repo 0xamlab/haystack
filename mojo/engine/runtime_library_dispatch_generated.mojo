@@ -3984,6 +3984,10 @@ from metaldispatch.qwen3_decode import (
     qwen3_i8_allsimd7_decode_flat as _metaldispatch_qwen3_decode__qwen3_i8_allsimd7_decode_flat,
 )
 
+from metaldispatch.qwen3_prefill_decode import (
+    qwen3_i8_allsimd7_prefill_decode_flat as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat,
+)
+
 from metallurgy import (
     hall_petch as _metallurgy__hall_petch,
     johnson_cook_flow_stress as _metallurgy__johnson_cook_flow_stress,
@@ -5882,6 +5886,7 @@ from residentk.contract import (
     residentk_splitk_should_split as _residentk_contract__residentk_splitk_should_split,
     residentk_splitk_max_n_splits as _residentk_contract__residentk_splitk_max_n_splits,
     residentk_splitk_policy as _residentk_contract__residentk_splitk_policy,
+    residentk_prefill_gemm_use_narrow_tile as _residentk_contract__residentk_prefill_gemm_use_narrow_tile,
 )
 
 from residentk.probe import (
@@ -8510,6 +8515,10 @@ from lossk.cross_entropy import (
 
 from metaldispatch.qwen3_decode import (
     Qwen3DecodeResult,
+)
+
+from metaldispatch.qwen3_prefill_decode import (
+    Qwen3PrefillDecodeResult,
 )
 
 from metrics_agg import (
@@ -17890,6 +17899,28 @@ fn _to_json_qwen3decoderesult(value: Qwen3DecodeResult) raises -> String:
     result += _to_json_float64(value.decode_tokens_per_sec)
     result += ","
     result += _to_json_float64(value.prefill_tokens_per_sec)
+    result += "]}"
+    return result
+
+fn _to_json_qwen3prefilldecoderesult(value: Qwen3PrefillDecodeResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Qwen3PrefillDecodeResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.error_message)
+    result += ","
+    result += _to_json_list_int(value.token_ids)
+    result += ","
+    result += _to_json_int(value.n_prompt)
+    result += ","
+    result += _to_json_bool(value.stopped_on_eos)
+    result += ","
+    result += _to_json_int(value.dispatches_per_token)
+    result += ","
+    result += _to_json_float64(value.decode_tokens_per_sec)
+    result += ","
+    result += _to_json_float64(value.prefill_tokens_per_sec)
+    result += ","
+    result += _to_json_int(value.prefill_chunks)
     result += "]}"
     return result
 
@@ -86543,6 +86574,30 @@ fn _dispatch_metaldispatch__qwen3_decode(function_name: String, args_array: Stri
         "Function '" + function_name + "' is not registered for module metaldispatch.qwen3_decode."
     )
 
+fn _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat(arg_0, arg_1)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module metaldispatch.qwen3_prefill_decode."
+    )
+
 fn _dispatch_metallurgy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hall_petch":
@@ -118693,6 +118748,22 @@ fn _dispatch_residentk__contract(function_name: String, args_array: String) rais
         return _error_json(
             "invalid_arguments",
             "Function residentk.contract.residentk_splitk_policy expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_prefill_gemm_use_narrow_tile":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _residentk_contract__residentk_prefill_gemm_use_narrow_tile(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_prefill_gemm_use_narrow_tile."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_prefill_gemm_use_narrow_tile expected 1 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",
@@ -154030,6 +154101,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_metaldispatch__contract(function_name, args_array)
     if module_name == "metaldispatch.qwen3_decode":
         return _dispatch_metaldispatch__qwen3_decode(function_name, args_array)
+    if module_name == "metaldispatch.qwen3_prefill_decode":
+        return _dispatch_metaldispatch__qwen3_prefill_decode(function_name, args_array)
     if module_name == "metallurgy":
         return _dispatch_metallurgy(function_name, args_array)
     if module_name == "meteorology":
