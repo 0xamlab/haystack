@@ -1,0 +1,72 @@
+{
+  "entries": [
+    {
+      "key": {
+        "model_traits_subset": [
+          128,
+          128,
+          "uniform_grouped",
+          16,
+          8,
+          "f32",
+          "causal",
+          true,
+          false,
+          false
+        ],
+        "query_tile": 8,
+        "key_tile": 64,
+        "h_tile": 2,
+        "simd_group_count": 8,
+        "is_matrix_path": true,
+        "is_split_k": false,
+        "math_mode": "precise_exp",
+        "kv_layout_version": 1,
+        "apple_gpu_family": "Apple M4 Max",
+        "kernel_abi_version": 1,
+        "forge_toolchain_hash": "no-pixi-toml-yet",
+        "source_hash": "c5957e53873503d1b47eb413e5e406a1aca5648f4cffc61da8fde21a2e20fc90"
+      },
+      "cache_key": "f8945b6ee682f454",
+      "requested_name": "agfa_d128_v128_q8_k64_h2_precise_sg8",
+      "actual_metal_symbol": null,
+      "metallib_sha256": null,
+      "source_sha256": "c5957e53873503d1b47eb413e5e406a1aca5648f4cffc61da8fde21a2e20fc90",
+      "toolchain_sha256": "no-pixi-toml-yet"
+    },
+    {
+      "key": {
+        "model_traits_subset": [
+          64,
+          64,
+          "mha",
+          16,
+          16,
+          "f32",
+          "causal",
+          false,
+          false,
+          false
+        ],
+        "query_tile": 8,
+        "key_tile": 64,
+        "h_tile": 1,
+        "simd_group_count": 4,
+        "is_matrix_path": true,
+        "is_split_k": false,
+        "math_mode": "precise_exp",
+        "kv_layout_version": 1,
+        "apple_gpu_family": "Apple M4 Max",
+        "kernel_abi_version": 1,
+        "forge_toolchain_hash": "no-pixi-toml-yet",
+        "source_hash": "32da83d3a8b65e3aa6c602b16834cb5ab460ae70ae156a2a17c112b1d3fef38b"
+      },
+      "cache_key": "e62dc5e738c6fd10",
+      "requested_name": "agfa_d64_v64_q8_k64_mha_precise_sg4",
+      "actual_metal_symbol": null,
+      "metallib_sha256": null,
+      "source_sha256": "32da83d3a8b65e3aa6c602b16834cb5ab460ae70ae156a2a17c112b1d3fef38b",
+      "toolchain_sha256": "no-pixi-toml-yet"
+    }
+  ]
+}
