@@ -5500,3 +5500,107 @@ would otherwise contaminate every later candidate comparison identically.
 - Phase 2A: the three-candidate tournament (grouped-head fused FlashAttention, triangular
   score-slab, associative split-K) on prepacked buffers, per the plan's own PR sequence.
 
+## Attention Compiler Plan v1.0, Phase 2A Round 1 screening (2026-08-07): Candidates A and C both beat L0's wall time at 128/256/512 rows, reproducibly; B1/B2/B3 clearly lose
+
+Round 1's own hard gate: "≥1 architecture beats the pinned llama.cpp operator at 128, 256, AND 512
+rows." Built via a parallel implement-then-adversarially-verify workflow (three independent agents,
+one per candidate architecture, each re-checked by a SEPARATE skeptical agent that re-ran the
+driver itself rather than trusting the implementer's own report) -- consistent with this session's
+own established discipline of not trusting a correctness claim at face value.
+
+**Candidate A -- grouped-head fused FlashAttention** (`attention_forge/grouped_fa_q8_k32_h2_sg8.
+mojo`): two GQA-sibling query heads share ONE K/V shared-memory load per tile instead of
+`parity_replica.mojo`'s one-head-per-dispatch organization. Shipped at a real, honestly-disclosed
+scope cut from the plan's own "aggressive" q16/k64 schedule -- q8/k32 instead -- because a
+shared-memory-resident output accumulator for BOTH heads' full 32 combined rows does not fit the
+32KiB threadgroup budget at q16/k64 (worked arithmetic in the kernel's own docstring: 34944B vs.
+the 32768B ceiling). Correctness confirmed by independent re-verification (re-ran the driver,
+read the actual shared-memory arithmetic, checked for the exact head-count-mismatch bug class this
+session already found twice) against `attnk.sdpa.sdpa_forward_flat` at five shapes plus an
+H_TILE=2-vs-solo-head isolation check plus a 1,000-dispatch determinism soak (0 mismatches).
+
+**Operator-latency result, measured one candidate at a time (never concurrently, to avoid the
+GPU-contention risk flagged in this ledger's own prior entry) via `attention_forge/phase2a_bench.
+mojo`, repeated twice for stability, and against L0 measured via a NEW multi-tile harness
+(`fa_operator_harness_multitile.m` -- the existing `fa_operator_harness.m` only covers ONE K-tile;
+128/256/512 rows need 2/4/8 K-tiles and therefore the real `blk[]` mask-tile classification, which
+this new harness computes analytically per `(query-tile, key-tile)` pair from the same closed-form
+rule `kernel_flash_attn_ext_blk`'s own source implements, self-checked against the teardown's own
+documented causal-256² census of 48 class-0 / 32 class-1 / 48 class-2 before trusting it):**
+
+| rows | L0 wall (run1/run2) | Candidate A wall (run1/run2) | A vs L0 |
+|---|---|---|---|
+| 128 | 0.204 / 0.211 ms | 0.188 / 0.193 ms | **8-9% faster** |
+| 256 | 0.340 / 0.344 ms | 0.302 / 0.310 ms | **9-11% faster** |
+| 512 | 0.773 / 0.790 ms | 0.643 / 0.647 ms | **16-19% faster** |
+
+Reproducible across two independent runs at every row count, with the margin WIDENING as row count
+grows -- the opposite of what a dispatch-overhead artifact would look like (fixed overhead should
+matter LESS, not more, as the real work grows). This is corroborated by comparing Candidate A
+against L1 (the parity replica) at the SAME shapes, dispatched via the exact SAME `ctx.
+enqueue_function` mechanism (so Mojo's own fixed dispatch-overhead component is identical for
+both): L1 costs 0.575-4.27ms across these shapes while Candidate A costs 0.19-0.65ms -- a 4-7x gap
+between two Mojo kernels sharing the same dispatch overhead is not overhead, it is a real
+architectural efficiency difference, which is the strongest evidence in this entry that Candidate
+A's advantage over L0 is real kernel efficiency and not a wall-time-comparison artifact.
+
+**Candidates B1/B2/B3 -- triangular score-slab** (`attention_forge/candidate_b_score_slab.mojo`):
+all three sub-variants implemented and independently re-verified as genuinely distinct (B1 mutates
+scores in place and never recomputes exp; B2 recomputes exp twice from stored per-row stats; B3
+fuses everything into one dispatch with no device-global slab) -- correctness is clean across all
+three. Operator latency, however, clearly loses at every tested shape: at 256 rows, B1/B2 cost
+1.35-1.36ms and B3 costs 2.15ms, against L0's 0.34ms -- roughly 4-6x slower, the SAME order of
+magnitude L1's own gap showed, not a competitive result at this shape/regime. **Eliminated per
+Round 1's own "clearly-losing candidates eliminated" rule** -- not because the implementation is
+wrong (it is not), but because the architecture, at this regime and this session's implementation
+effort, does not close the gap the way Candidate A's grouped-head reuse does.
+
+**Candidate C -- associative grouped-head split-K** (`attention_forge/splitk_fa.mojo` +
+`_driver.mojo`): the FIRST delivered version was independently REFUTED on its headline claim by
+adversarial review, despite passing every test it actually ran -- it implemented `H_TILE=1` (no
+grouped-head K/V reuse at all), not the `H_TILE=2` grouped-head split-K the plan's own spec and
+tournament-table variant names (`agfa_splitk_q8_k64_h2_s2_sg4`) require, confirmed by the
+implementing agent's own honest docstring admission ("this file implements H_TILE=1 ... not the
+tournament table's h2 label"). A good-faith, disclosed scope decision, but one that would have
+made the Round 1 comparison invalid had it gone unchecked -- exactly the value adversarial
+re-verification is for. Fixed (H_TILE=2, following Candidate A's own proven grouped-head
+technique, at K_TILE=32 for the same 32KiB-threadgroup-memory reason Candidate A fell back to it)
+and independently re-verified: genuine architectural rewrite confirmed against Candidate A's own
+committed file, shared-memory arithmetic re-derived by hand, a new pair-grid-vs-solo-pair
+isolation check added and passing, merge kernel's own no-changes-needed claim independently
+re-checked, 1,000-dispatch determinism soak green.
+
+**Candidate C's own operator-latency result** (two dispatches -- partial kernel then merge
+kernel -- timed together as one operator call, matching every other candidate's own
+one-attention-operator-invocation convention), reproduced across two runs:
+
+| rows | L0 wall (run1/run2) | Candidate C wall, n_splits=2 (run1/run2) | C vs L0 |
+|---|---|---|---|
+| 128 | 0.204 / 0.211 ms | 0.191 / 0.202 ms | **4-9% faster** |
+| 256 | 0.340 / 0.344 ms | 0.327 / 0.332 ms | **3-4% faster** |
+| 512 | 0.773 / 0.790 ms | 0.702 / 0.710 ms | **8-10% faster** |
+
+A real, reproducible win at all three hard-gate row counts -- a smaller margin than Candidate A's
+(8-19% faster), but Round 1's own gate only requires "≥1 architecture beats," and nothing in the
+plan says a second winner should be discarded once found. **Both A and C clear Round 1's hard gate
+and advance; only B1/B2/B3 are eliminated.** One honest nuance, not glossed over: `n_splits=4` at
+512 rows measured 0.827-0.845ms, which does NOT beat L0 (0.773-0.790ms) -- more splits costs more
+merge-kernel and partial-state-scratch overhead without enough added parallelism benefit at this
+shape to pay for it. Candidate C's Round 1 result is specifically about its `n_splits=2`
+configuration, not the architecture unconditionally at any split count.
+
+### What is left
+
+- Round 2 (integrated selection, per the plan's own two-round structure): Candidates A and C both
+  survive Round 1 on prepacked buffers, but stop rule 3 explicitly forbids selecting a FINAL winner
+  before each survivor's native QK-norm/RoPE/KV producer is integrated -- this result is a
+  screening pass, not a final selection. Both advance to Phase 2B/2C.
+- Repeat this measurement a third time on a genuinely cold process start (not just repeated `mojo
+  run` invocations within the same warm session -- each IS a fresh process, but all close together
+  in time on an already-warm GPU/driver state) before treating the reproducibility claim above as
+  fully settled, per this ledger's own "no single hot or cold session" discipline.
+- Build (or find) a GPU-only timing primitive for Mojo kernels (this ledger's Phase 1 entry's own
+  open item) -- every number in this entry is wall-clock, which is the fairest available
+  apples-to-apples comparison against L0's OWN wall-clock number, but a GPU-only comparison would
+  be more decisive, especially for narrowing Candidate A's and C's own relative margin.
+
