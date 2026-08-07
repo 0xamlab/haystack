@@ -319,9 +319,14 @@ def main() raises:
             raise Error("qwen3_probe_counters_i8_allsimd7_prefill: algenta_open_counters failed, rc=" + String(counters_rc))
         var out_ticks = alloc[UInt64](2 * s.n_descriptors_prefill)
 
+        # 32 and 256 added for the Attention Compiler Plan's Phase 0A: the headline RealRace runs a
+        # 256-token prompt, so the Amdahl-law attention share that calibrates every speedup target
+        # (f_256) must come from m_rows=256, not be extrapolated from the 128/512 endpoints.
         var m_values = List[Int]()
         m_values.append(8)
+        m_values.append(32)
         m_values.append(128)
+        m_values.append(256)
         m_values.append(512)
 
         for mi in range(len(m_values)):

@@ -1,0 +1,6 @@
+repo:    https://github.com/ggml-org/llama.cpp
+commit:  000547513f1530346ecd163db8b3e13962949961
+date:    2026-07-31T08:16:17Z
+build:   10210 (llama-cli --version: "version: 10210 (000547513)")
+matches: Homebrew bottle llama.cpp 10210 installed at /opt/homebrew/Cellar/llama.cpp/10210
+         (built with AppleClang 21.0.0.21000101 for Darwin arm64, Metal backend included)

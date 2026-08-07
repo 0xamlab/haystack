@@ -1,0 +1,8 @@
+Pinned binary provenance (Homebrew bottle, NOT a local build):
+  /opt/homebrew/bin/llama-cli    sha256=a93e2ad35030bcd338cc93c84fd1a62109c6b0eaf2b32c4d508773cc2b5b510b
+  /opt/homebrew/bin/llama-server sha256=98a87a22a77f58696a5dc416f10b828d161fc01bdac5298bc0d4e6227f1d710c
+  Homebrew formula: llama.cpp 10210 (AppleClang 21.0.0.21000101, Darwin arm64, Metal on)
+The operator harness compiles the vendored .metal source with this machine's own Xcode metal
+compiler (DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer); the resulting metallib
+hash is recorded in operator_harness/ at build time. End-to-end races use the untouched Homebrew
+binaries above via benchmarks/llm_smoke/realrace_llama_cpp.py.
