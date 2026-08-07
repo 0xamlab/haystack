@@ -111,8 +111,8 @@ def main() raises:
             return
 
         var ctx = DeviceContext()
-        var f_tree = ctx.compile_function_unchecked[_argmax_reduce_kernel]()
-        var f_simd = ctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        var f_tree = ctx.compile_function[_argmax_reduce_kernel]()
+        var f_simd = ctx.compile_function[_argmax_reduce_kernel_simd]()
 
         # ── general shapes: unique maxima, idle/partial SIMD groups exercised ──────────────────
         var n_cases = List[Int]()

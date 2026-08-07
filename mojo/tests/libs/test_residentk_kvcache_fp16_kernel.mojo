@@ -4,7 +4,7 @@ else `residentk` does.
 
 Hand-written. `test_residentk_session.mojo` judges every precision arm at the WHOLE-SESSION level
 (a full small transformer, GPU vs frozen CPU kernels) because that is the only level at which a
-`compile_function_unchecked` launch-site mistake — a swapped pointer, a wrong dimension — would
+`compile_function` launch-site mistake — a swapped pointer, a wrong dimension — would
 show up. This file exists for a DIFFERENT, narrower question that whole-session judging cannot
 answer cleanly: **exactly how much error does narrowing the KV cache to Float16 introduce, on its
 own, with no weight quantization, no RoPE, no normalization and no fused projection anywhere in the
@@ -140,8 +140,8 @@ def main() raises:
             var ck16 = ctx.enqueue_create_buffer[DType.float16](max_ctx * H_KV * D_HEAD)
             var cv16 = ctx.enqueue_create_buffer[DType.float16](max_ctx * H_KV * D_HEAD)
 
-            var f_rope32 = ctx.compile_function_unchecked[_qk_rope_write_kernel]()
-            var f_rope16 = ctx.compile_function_unchecked[_qk_rope_write_kernel_kvf16]()
+            var f_rope32 = ctx.compile_function[_qk_rope_write_kernel]()
+            var f_rope16 = ctx.compile_function[_qk_rope_write_kernel_kvf16]()
 
             ctx.enqueue_function_unchecked(
                 f_rope32,
@@ -229,8 +229,8 @@ def main() raises:
         var attn16 = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
         var scale = Float32(1.0 / sqrt(Float64(D_HEAD)))
 
-        var f_sdpa32 = ctx.compile_function_unchecked[_sdpa_kernel]()
-        var f_sdpa16 = ctx.compile_function_unchecked[_sdpa_kernel_kvf16]()
+        var f_sdpa32 = ctx.compile_function[_sdpa_kernel]()
+        var f_sdpa16 = ctx.compile_function[_sdpa_kernel_kvf16]()
 
         ctx.enqueue_function_unchecked(
             f_sdpa32,

@@ -287,7 +287,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     var gemv_down_d: List[Int]
     var lmhead_d: Int
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
     ) raises:
@@ -319,24 +319,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # `_MBQwen3I8AllSimd7`.
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
-        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
-        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_pf_embed_rows_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_pf_rmsnorm_rows_kernel]()
-        _ = cctx.compile_function_unchecked[_pf_gemm_assign_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_pf_ropewrt_kernel]()
-        _ = cctx.compile_function_unchecked[_pf_attn_tiled_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_pf_gemm_accum_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_pf_gemm_swiglu_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_pf_gnrw_assign_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_pf_gnrw_accum_kernel_i8]()
-        _ = cctx.compile_function_unchecked[_pf_gnrw_swiglu_kernel_i8]()
+        _ = cctx.compile_function[_embed_row_kernel_i8]()
+        _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function[_qk_rope_write_kernel]()
+        _ = cctx.compile_function[_sdpa_kernel_simd]()
+        _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
+        _ = cctx.compile_function[_pf_embed_rows_kernel_i8]()
+        _ = cctx.compile_function[_pf_rmsnorm_rows_kernel]()
+        _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
+        _ = cctx.compile_function[_pf_ropewrt_kernel]()
+        _ = cctx.compile_function[_pf_attn_tiled_kernel_simd]()
+        _ = cctx.compile_function[_pf_gemm_accum_kernel_i8]()
+        _ = cctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
+        _ = cctx.compile_function[_pf_gnrw_assign_kernel_i8]()
+        _ = cctx.compile_function[_pf_gnrw_accum_kernel_i8]()
+        _ = cctx.compile_function[_pf_gnrw_swiglu_kernel_i8]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -397,20 +397,20 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -448,11 +448,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -466,17 +466,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         # ── activation buffers: sized for `PREFILL_MAX_TILE` ROWS, not one -- see module docstring
         # "BUFFER SIZING". `step()`'s own descriptor plan below never asks for more than row 0.
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.xn_addr = UInt64(0); self.xn_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.prompt_ids_addr = UInt64(0); self.prompt_ids_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.xn_addr = UInt64(0); self.xn_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.prompt_ids_addr = UInt64(0); self.prompt_ids_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         var n_q = h_q * d_head
         if _mb_alloc_buffer(PREFILL_MAX_TILE * d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
@@ -501,9 +501,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         if _mb_alloc_buffer(PREFILL_MAX_TILE * 4, self.prompt_ids_addr, self.prompt_ids_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (prompt_ids)")
 
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -512,7 +512,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.nkeys_offsets = List[Int]()
 
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=0)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -539,14 +539,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self._build_descriptors(n_qkv)
         self._build_descriptors_prefill(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Byte-identical lazy-init discipline to `_MBQwen3I8AllSimd7._ensure_deep_initialized`."""
         if self.deep_ready:
             return
         from std.gpu.host import DeviceContext
         var cctx = DeviceContext()
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
+        _ = cctx.compile_function[_splitk_merge_kernel_simd]()
 
         if _mb_alloc_buffer(self.h_q * self.n_splits_max * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
@@ -560,7 +560,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Byte-identical plan to `_MBQwen3I8AllSimd7._build_descriptors` -- builds `self.
         descriptors`, the table `step()` submits below `residentk_splitk_should_split`'s gate."""
         var n_q = self.h_q * self.d_head
@@ -693,7 +693,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """Byte-identical plan to `_MBQwen3I8AllSimd7._build_descriptors_deep`."""
         var n_q = self.h_q * self.d_head
         var n_kv = self.h_kv * self.d_head
@@ -840,7 +840,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _apply_n_splits(mut self, new_n_splits: Int) raises:
+    def _apply_n_splits(mut self, new_n_splits: Int) raises:
         """Byte-identical to `_MBQwen3I8AllSimd7._apply_n_splits` -- see that method's own
         docstring for the full safety argument."""
         for layer in range(self.n_layers):
@@ -853,7 +853,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_deep, d_split, 7, new_n_splits)
             _mb_set_arg_int(self.descriptors_deep, d_merge, 4, new_n_splits)
 
-    fn _build_descriptors_prefill(mut self, n_qkv: Int) raises:
+    def _build_descriptors_prefill(mut self, n_qkv: Int) raises:
         """Builds `self.descriptors_prefill` -- ONE embed dispatch, eight per-layer batched
         dispatches (`rmsnorm`, `gemm_assign` [replacing the fused `qkv_proj`], `ropewrt`, `attn`,
         `gemm_accum` o_proj, a SECOND `rmsnorm` [its own gamma buffer, `ln2`], `gemm_swiglu`
@@ -1043,7 +1043,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _apply_m_rows(mut self, m_rows: Int, pos_base: Int) raises:
+    def _apply_m_rows(mut self, m_rows: Int, pos_base: Int) raises:
         """Narrows every M-scaled descriptor in `self.descriptors_prefill` to `m_rows`'s real grid
         width and patches every `m_rows`/`pos_base` scalar argument -- see module docstring's
         "DISPATCH PLAN" section for why this always runs unconditionally, unlike `step()`'s own
@@ -1171,22 +1171,22 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var last_row_addr = self.hidden_addr + UInt64((m_rows - 1) * self.d_model * 4)
         _mb_set_arg_ptr(self.descriptors_prefill, self.lmhead_d, 2, last_row_addr)
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, batched prefill + SDPA/GEMV/lm_head/argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction, DYNAMIC per-step n_splits policy)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn prefill_dispatch_budget(self) -> Int:
+    def prefill_dispatch_budget(self) -> Int:
         return self.n_descriptors_prefill
 
-    fn n_cores_detected(self) -> Int:
+    def n_cores_detected(self) -> Int:
         return self.n_cores
 
-    fn n_splits_currently_applied(self) -> Int:
+    def n_splits_currently_applied(self) -> Int:
         return self.deep_last_n_splits
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -1210,7 +1210,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -1269,10 +1269,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Byte-identical to `_MBQwen3I8AllSimd7.step` -- see that method's own docstring. Untouched
         by this struct's own `prefill_batch()` addition: reads/writes exactly row 0 of every
         activation buffer, regardless of how many rows `prefill_batch()` most recently used."""
@@ -1321,7 +1321,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 return _StepOut(-1, 0.0, dispatches_used, MB_ERR_DISPATCH_FAILED)
             return _StepOut(tok, lg, dispatches_used, MB_OK)
 
-    fn prefill_batch(mut self, prompt_ids: List[Int], pos_base: Int) raises -> _StepOut:
+    def prefill_batch(mut self, prompt_ids: List[Int], pos_base: Int) raises -> _StepOut:
         """Processes `len(prompt_ids)` prompt tokens in `self.n_descriptors_prefill` dispatches
         total -- see module docstring. Writes KV-cache slots `[pos_base, pos_base + m_rows)`; a
         subsequent `step()` call on this SAME instance continues correctly from `pos = pos_base +

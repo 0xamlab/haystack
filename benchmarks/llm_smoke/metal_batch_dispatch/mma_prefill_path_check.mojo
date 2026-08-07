@@ -45,7 +45,7 @@ comptime THETA: Float64 = 10000.0
 comptime M: Int = 32
 
 
-fn _pseudo(n: Int, seed: Int, amp: Float64) -> List[Float64]:
+def _pseudo(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         var a = Float64((i * 37 + seed * 101) % 61) / 30.0 - 1.0
@@ -54,7 +54,7 @@ fn _pseudo(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     return o^
 
 
-fn _gains(n: Int, seed: Int) -> List[Float64]:
+def _gains(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(0.8 + Float64((i * 17 + seed * 5) % 11) / 25.0)

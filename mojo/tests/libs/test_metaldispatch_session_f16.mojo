@@ -9,7 +9,7 @@ close-margin argmax without that being a bug).
 
 A SEPARATE FILE FROM `test_metaldispatch_session.mojo` ON PURPOSE — NOT MERELY FOR TIDINESS
 ====================================================================================================
-`_MBQwen3.__init__` (Float32) and `_MBQwen3F16.__init__` both force `compile_function_unchecked` on
+`_MBQwen3.__init__` (Float32) and `_MBQwen3F16.__init__` both force `compile_function` on
 their own GEMV-shaped kernels. If ONE binary called both constructors, it would embed a role's
 Float32 AND Float16 pipeline together — and `metaldispatch.session`'s name-based pipeline classifier
 cannot tell those two apart: Mojo's Metal AIR function name for both is truncated to an IDENTICAL

@@ -49,7 +49,7 @@ Measured on this host, same binary, same trivial kernel, 50 launches:
     enqueue_function[kernel, kernel](...)           ~390 us
 
 2.2x, and at 171 dispatches per token that is ~36 ms of a token's latency. So every kernel is
-compiled ONCE at session open with `compile_function_unchecked` and the handle is held for the
+compiled ONCE at session open with `compile_function` and the handle is held for the
 session's life.
 
 `_unchecked` is not a shortcut, it is the only spelling whose RESULT TYPE can be written down. The

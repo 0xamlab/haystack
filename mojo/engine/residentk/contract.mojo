@@ -661,7 +661,7 @@ ever launches (`m_rows` fits inside a single `BM`-wide tile whenever `m_rows <= 
 `residentk_prefill_gemm_use_narrow_tile`'s own threshold is anchored to, not a free-floating guess."""
 
 
-fn residentk_prefill_gemm_use_narrow_tile(m_rows: Int) -> Bool:
+def residentk_prefill_gemm_use_narrow_tile(m_rows: Int) -> Bool:
     """Should THIS `prefill_batch()` call's weight-stationary-tiled-GEMM dispatches
     (`_pf_gemm_assign_kernel_i8`/`_pf_gemm_accum_kernel_i8`/`_pf_gemm_swiglu_kernel_i8`) use their
     NARROW-tile twins (`_pf_gnrw_assign_kernel_i8`/`_pf_gnrw_accum_kernel_i8`/`_pf_gnrw_swiglu_

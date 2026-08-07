@@ -19,7 +19,7 @@ per-dispatch cost.
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run /tmp/mma_qkv_proj_speed
 """
 
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 from metaldispatch.contract import MB_ERR_SESSION_OPEN_FAILED
 from metaldispatch.ffi import (
     _mb_open_session,

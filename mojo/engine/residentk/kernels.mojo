@@ -3094,7 +3094,7 @@ def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx
 # ============================================================================================
 
 
-fn _pf_embed_rows_kernel_i8(
+def _pf_embed_rows_kernel_i8(
     hidden: _FP, embed: _I8P, embed_scale: _FP, token_ids: _IP, d_model: Int, m_rows: Int
 ):
     """Batched twin of `_embed_row_kernel_i8` -- gathers `m_rows` embedding rows in ONE dispatch
@@ -3121,7 +3121,7 @@ fn _pf_embed_rows_kernel_i8(
         hidden[m * d_model + i] = Float32(embed[token_id * d_model + i]) * s
 
 
-fn _pf_qkv_proj_kernel_simd_i8(
+def _pf_qkv_proj_kernel_simd_i8(
     y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32, m_rows: Int
 ):
     """Batched twin of `_norm_gemv_kernel_simd_i8` -- IDENTICAL per-row rmsnorm+QKV-projection math
@@ -3194,7 +3194,7 @@ fn _pf_qkv_proj_kernel_simd_i8(
         y[row_y + j] = total
 
 
-fn _pf_ropewrt_kernel(
+def _pf_ropewrt_kernel(
     q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
     cos_t: _FP, sin_t: _FP, pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32, m_rows: Int,
 ):
@@ -3267,7 +3267,7 @@ fn _pf_ropewrt_kernel(
         cv[(pos * h_kv + head) * d_head + e] = qkv[row_qkv + (h_q + h_kv + head) * d_head + e]
 
 
-fn _pf_attn_tiled_kernel_simd(
+def _pf_attn_tiled_kernel_simd(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32, m_rows: Int,
 ):
@@ -3332,7 +3332,7 @@ fn _pf_attn_tiled_kernel_simd(
     attn_out[m * n_q + h * d_head + e] = o / denom
 
 
-fn _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, m_rows: Int):
+def _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, m_rows: Int):
     """Batched twin of `_gemv_accum_kernel_simd_i8` -- IDENTICAL projection-plus-residual-`+=` math
     and IDENTICAL single-level SIMD-shuffle reduction, computed independently for `m_rows` rows in
     ONE dispatch. Reused for BOTH `o_proj` (`k = h_q * d_head`, `n = d_model`) and `down_proj`
@@ -3381,7 +3381,7 @@ fn _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n
         y[row_y + j] = y[row_y + j] + total
 
 
-fn _pf_swiglu_kernel_simd_i8(
+def _pf_swiglu_kernel_simd_i8(
     act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32, m_rows: Int
 ):
     """Batched twin of `_norm_gemv2_swiglu_kernel_simd_i8` -- IDENTICAL per-row rmsnorm/gate/up/
@@ -3543,7 +3543,7 @@ runtime policy" pattern this file already uses for `_sdpa_kernel_simd` vs `_spli
 simd_native` vs `_splitk_partial_kernel_simd_batched4`."""
 
 
-fn _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m_rows: Int):
+def _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m_rows: Int):
     """Batched RMSNorm + gamma over `m_rows` independent rows, writing the normalized result to a
     SEPARATE device buffer (`xn`) rather than keeping it in threadgroup-shared memory the way every
     fused GEMV kernel above does -- this kernel's whole purpose is to make that normalized row
@@ -3585,7 +3585,7 @@ fn _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m_
         s += _TG
 
 
-fn _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
     """Weight-stationary tiled GEMM: `y[M,n] = xn[M,k] @ W^T[k,n]`, `w` stored `[n,k]` row-major
     (one output row's `k` coefficients contiguous). See this section's own module comment for the
     strategy this adapts from `accel.gemm_metal._tiled_gemm_kernel` and why the weight-tile
@@ -3670,7 +3670,7 @@ fn _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int,
                 y[r * n + c] = acc[i2 * TN + j2]
 
 
-fn _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
     """Weight-stationary tiled GEMM: `y[M,n] += x[M,k] @ W^T[k,n]` -- byte-for-byte the same tiling
     as `_pf_gemm_assign_kernel_i8` (see that kernel's own docstring for the full account); the ONLY
     difference is the final store, `+=` instead of `=`, matching `_pf_gemv_accum_kernel_simd_i8`'s
@@ -3747,7 +3747,7 @@ fn _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k
                 y[r * n + c] = y[r * n + c] + acc[i2 * TN + j2]
 
 
-fn _pf_gemm_swiglu_kernel_i8(
+def _pf_gemm_swiglu_kernel_i8(
     act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n_ff: Int
 ):
     """Weight-stationary tiled GEMM computing BOTH gate and up projections from the SAME loaded
@@ -3847,7 +3847,7 @@ fn _pf_gemm_swiglu_kernel_i8(
 # ============================================================================================
 
 
-fn _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
     """The NARROW-tile twin of `_pf_gemm_assign_kernel_i8` -- see that kernel's own docstring for
     the full account; only `BM`/`TM` differ."""
     comptime BM = _GEMM_BM_NARROW
@@ -3917,7 +3917,7 @@ fn _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int,
                 y[r * n + c] = acc[i2 * TN + j2]
 
 
-fn _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
     """The NARROW-tile twin of `_pf_gemm_accum_kernel_i8` -- see that kernel's own docstring for
     the full account; only `BM`/`TM` differ."""
     comptime BM = _GEMM_BM_NARROW
@@ -3987,7 +3987,7 @@ fn _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k
                 y[r * n + c] = y[r * n + c] + acc[i2 * TN + j2]
 
 
-fn _pf_gnrw_swiglu_kernel_i8(
+def _pf_gnrw_swiglu_kernel_i8(
     act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n_ff: Int
 ):
     """The NARROW-tile twin of `_pf_gemm_swiglu_kernel_i8` -- see that kernel's own docstring for

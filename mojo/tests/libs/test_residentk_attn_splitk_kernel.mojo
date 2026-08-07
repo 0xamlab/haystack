@@ -141,7 +141,7 @@ def _run_case(
 
     # ── the single-dispatch original, `_sdpa_kernel_simd` at its own grid shape ──
     var attn_orig = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
-    var f_orig = ctx.compile_function_unchecked[_sdpa_kernel_simd]()
+    var f_orig = ctx.compile_function[_sdpa_kernel_simd]()
     ctx.enqueue_function_unchecked(
         f_orig,
         attn_orig.unsafe_ptr(), q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
@@ -155,8 +155,8 @@ def _run_case(
     var o_buf = ctx.enqueue_create_buffer[DType.float32](H_Q * n_splits * D_HEAD)
     var attn_split = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
 
-    var f_partial = ctx.compile_function_unchecked[_splitk_partial_kernel_simd]()
-    var f_merge = ctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+    var f_partial = ctx.compile_function[_splitk_partial_kernel_simd]()
+    var f_merge = ctx.compile_function[_splitk_merge_kernel_simd]()
     ctx.enqueue_function_unchecked(
         f_partial,
         m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
