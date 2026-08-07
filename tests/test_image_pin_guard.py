@@ -68,11 +68,13 @@ def _scanned_files() -> list[Path]:
     ]
 
 
-def _violations(text: str) -> list[str]:
+def _violations(text: str, *, exempt_lines: set[int] | None = None) -> list[str]:
     """'lineno: reason -> snippet' for every floating tag, skipping comment lines."""
     out: list[str] = []
     for lineno, line in enumerate(text.splitlines(), start=1):
         if line.lstrip().startswith("#"):
+            continue
+        if exempt_lines and lineno in exempt_lines:
             continue
         if _LATEST_TAG.search(line):
             out.append(f"{lineno}: floating :latest tag -> {line.strip()}")
@@ -85,7 +87,22 @@ def test_no_floating_image_tags_in_self_host_surface() -> None:
     failures: dict[str, list[str]] = {}
     for path in _scanned_files():
         assert path.exists(), f"guard target missing: {path}"
-        hits = _violations(path.read_text(encoding="utf-8"))
+        exempt: set[int] = set()
+        if path == _INSTALL:
+            # install.sh's ONLY floating reference is the transient PULL default
+            # (${ALGENTA_IMAGE_TAG:-${ALGENTA_VERSION:-latest}}): images are pulled by that
+            # tag and immediately PINNED BY DIGEST in the on-disk compose file
+            # (pin_images_by_digest), so no floating reference ever reaches disk. The digest
+            # pinning machinery itself is asserted in test_install_script_pins_the_image_tag.
+            exempt = {
+                lineno
+                for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+                if 'IMAGE_TAG="${ALGENTA_IMAGE_TAG:-${ALGENTA_VERSION:-latest}}"' in line
+            }
+            assert len(exempt) == 1, (
+                "install.sh must carry exactly one transient :latest pull default"
+            )
+        hits = _violations(path.read_text(encoding="utf-8"), exempt_lines=exempt)
         if hits:
             failures[str(path.relative_to(_ROOT))] = hits
     assert not failures, (
@@ -121,10 +138,24 @@ def test_self_host_app_images_are_pin_required() -> None:
 
 def test_install_script_pins_the_image_tag() -> None:
     install = _INSTALL.read_text(encoding="utf-8")
-    # The installer resolves a concrete pinned tag (git-<sha7> / release ref) and writes it to .env.
-    assert "git-${" in install, "install.sh must resolve a pinned git-sha image tag"
-    assert "ALGENTA_IMAGE_TAG=" in install, "install.sh must write the pinned tag into .env"
-    assert not _violations(install), "install.sh must not reference a floating tag"
+    # The installer pulls by tag and then PINS BY DIGEST in the on-disk compose file — a
+    # stronger guarantee than a git-sha tag: digests are content-addressed, and no GitHub
+    # round-trip is needed (the repo is private). The machinery must resolve each image's
+    # RepoDigests and rewrite the compose reference to @sha256.
+    assert "pin_images_by_digest" in install, "install.sh must digest-pin after the pull"
+    assert "RepoDigests" in install, "install.sh must resolve each image's digest"
+    assert "@sha256" in install or "digest_ref" in install, (
+        "install.sh must rewrite compose image refs to digests"
+    )
+    assert "ALGENTA_IMAGE_TAG=" in install, "install.sh must write the tag into .env"
+    assert not _violations(
+        install,
+        exempt_lines={
+            lineno
+            for lineno, line in enumerate(install.splitlines(), start=1)
+            if 'IMAGE_TAG="${ALGENTA_IMAGE_TAG:-${ALGENTA_VERSION:-latest}}"' in line
+        },
+    ), "install.sh must not reference a floating tag"
 
 
 def test_ci_service_images_are_pinned() -> None:

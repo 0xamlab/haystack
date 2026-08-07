@@ -36,6 +36,9 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_MANAGED_LLM` | `False` | — | Enable the pooled managed-LLM provider key (multi-tenant SaaS). |
 | `ALGENTA_METERING_MODE` | — | — | Execution-record destination. Self-hosted Algenta defaults to local_audit; control_plane_sync is for explicitly configured managed deployments. |
 | `ALGENTA_PRODUCT` | — | — | Edition this deployment presents (e.g. algenta): scopes the MCP tool set and which product /billing/plans prices. |
+| `ALGENTA_REGISTRY_READ_TOKEN` | — | — | — |
+| `ALGENTA_REGISTRY_URL` | `ghcr.io` | — | — |
+| `ALGENTA_REGISTRY_USERNAME` | — | — | — |
 | `ALGENTA_REQUIRE_LOCAL_LICENSE` | — | — | Require a valid local signed license; disable hosted/dev fallback. |
 | `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` | `True` | `RUNTIME_LIBRARY_HTTP_API_ENABLED` | Expose the /v1/libraries* runtime-library routes (on by default). |
 | `ALGENTA_SERVICE_ROLE` | `full` | — | Deployment role: full (default, with engine) \| control_plane (engine-free). |

@@ -316,6 +316,11 @@ from apps.api_server.routers import oauth_device as _oauth_device_router  # noqa
 
 app.include_router(_oauth_device_router.router)
 
+# Self-hosted installer — POST /v1/registry/credentials (device-login token -> pull creds)
+from apps.api_server.routers import registry_credentials as _registry_credentials_router  # noqa: E402
+
+app.include_router(_registry_credentials_router.router)
+
 # License control-plane surfaces — GET /.well-known/jwks.json (+ renewal/CRL in P3b)
 from apps.api_server.routers import license as _license_router  # noqa: E402
 
