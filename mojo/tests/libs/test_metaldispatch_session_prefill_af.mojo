@@ -10,17 +10,30 @@ fa_kernel` hardcodes `_D: Int64 = 128` as a comptime constant (no runtime `d_hea
 so ANY shape exercising this kernel MUST use `d_head=128` exactly; `H_Q=2, H_KV=1` (`group=2`) is the
 smallest GQA-valid pairing the kernel's own grouped-head design supports.
 
-ONE `_MBQwen3I8AllSimd7Prefill` instance, called TWICE with the IDENTICAL prompt and `pos_base=0` --
-once with `use_native_grouped_fa_attn=False` (byte-identical to today's shipping path), once with it
-flipped `True` immediately after (safe: `prefill_batch` fully recomputes `hidden` from the embedding
-forward every call; no state from the first call leaks into the second beyond harmless KV-cache
-slots the second call's own dispatch plan overwrites at the SAME positions before anything reads
-them). Compares BOTH runs against the SAME CPU Float64 oracle (`_cpu_reference`, restated) --
-independent, not merely self-consistent -- and, going one step further than a same-token check
-alone: reads back `s.hidden_ptr`'s row `m_rows-1` (the transformer's own final, pre-final-norm hidden
-state, Float32) directly after each call and diffs the two runs' own hidden VECTORS elementwise,
-which a same-argmax-token check alone could miss (two different vectors can occasionally argmax to
-the same token by coincidence; a small per-element vector delta cannot).
+Gate A/B: ONE `_MBQwen3I8AllSimd7Prefill` instance (`s`), called TWICE with the IDENTICAL prompt and
+`pos_base=0` -- once with `use_native_grouped_fa_attn=False` (byte-identical to today's shipping
+path), once with it flipped `True` immediately after (safe: `prefill_batch` fully recomputes
+`hidden` from the embedding forward every call; no state from the first call leaks into the second
+beyond harmless KV-cache slots the second call's own dispatch plan overwrites at the SAME positions
+before anything reads them). Compares BOTH runs against the SAME CPU Float64 oracle (`_cpu_
+reference`, restated) -- independent, not merely self-consistent -- and, going one step further than
+a same-token check alone: reads back `s.hidden_ptr`'s row `m_rows-1` (the transformer's own final,
+pre-final-norm hidden state, Float32) directly after each call and diffs the two runs' own hidden
+VECTORS elementwise, which a same-argmax-token check alone could miss (two different vectors can
+occasionally argmax to the same token by coincidence; a small per-element vector delta cannot).
+
+Gate C: the decode-after-AF-prefill gap-closing proof (`_MBQwen3I8AllSimd7Prefill.use_native_
+grouped_fa_attn`'s own field docstring has the full account of the gap and its fix). A SEPARATE,
+FRESH instance (`s3`, never `s`) with `use_native_grouped_fa_attn = True` set BEFORE its own first
+`prefill_batch()` call -- deliberately NOT reusing `s`, whose `ck`/`cv` at these same positions would
+already be correct from Gate A's own OFF-path prefill regardless of whether the gap fix works,
+silently hiding the exact bug this gate exists to catch. `s3.prefill_batch(prompt, 0)` then several
+real `s3.step(...)` decode calls, feeding each step's own predicted token back in like a real
+generation loop; the full actual token sequence (prompt ++ fed-back tokens) is then independently
+re-scored by `_cpu_reference` at every prefix length the GPU made a prediction for, and every
+GPU/CPU (token, logit) pair must agree within the SAME tight int8-only bound Gate A's pure-OFF-path
+check uses -- correct because decode never touches the F16 native-packed buffers, so a tight pass
+here is a sharp signal `ck`/`cv` were genuinely, not just approximately, written correctly.
 
     cd /Users/angel/Developer/decision-engine/mojo_env
     clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
@@ -31,12 +44,20 @@ the same token by coincidence; a small per-element vector delta cannot).
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \
       clang -c -O2 ../attention_forge/generated/native_kv_producer_blob.c -o /tmp/native_kv_producer_blob.o
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \
-      pixi run mojo run -D ALGENTA_GPU -I ../mojo/engine \
-      ../mojo/tests/libs/test_metaldispatch_session_prefill_af.mojo \
+      pixi run mojo build -D ALGENTA_GPU -I ../mojo/engine \
+      ../mojo/tests/libs/test_metaldispatch_session_prefill_af.mojo -o /tmp/test_prefill_af \
       -Xlinker /tmp/batch_shim.o -Xlinker /tmp/mm8_blob.o \
       -Xlinker /tmp/candidate_a_blob.o -Xlinker /tmp/native_kv_producer_blob.o \
       -Xlinker -framework -Xlinker Metal -Xlinker -framework -Xlinker Foundation \
       -Xlinker -framework -Xlinker IOKit
+    DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/test_prefill_af
+
+Corrected here from a stale `mojo run` invocation that this session verified, for real, fails with a
+JIT symbol-resolution error (`Symbols not found: [ _algenta_gpu_core_count, _algenta_open_session,
+... ]`) -- `mojo run` cannot load `-Xlinker` objects at JIT time, matching this session's own
+already-documented finding (`REALRACE_RESULTS.md`'s Phase 2C entry, re: `test_metaldispatch_session_
+prefill.mojo`'s own recipe). `mojo build` + running the resulting binary is the form that actually
+works, confirmed by running it for real while writing this file's own Gate C.
 """
 
 from std.math import sqrt
@@ -372,13 +393,15 @@ def main() raises:
                 failed += 1
                 print("  ❌ prefill_batch() [ON] failed:", metaldispatch_status_name(pf_on.status))
 
-            if pf_on.dispatches == 1 + N_LAYERS * 8 + 2:
+            if pf_on.dispatches == 1 + N_LAYERS * 9 + 2:
                 passed += 1
-                print("  ✅ [ON] dispatch count matches the AF design budget (1 + n_layers*8 + 2)")
+                print("  ✅ [ON] dispatch count matches the AF design budget (1 + n_layers*9 + 2 --")
+                print("      one MORE per layer than the OFF table's own 8: the gap-fix natural-")
+                print("      cache double-write, see `self.kvprod_mirror_af_d`'s own docstring)")
             else:
                 failed += 1
                 print("  ❌ [ON] dispatch count drifted:", pf_on.dispatches, "expected",
-                      1 + N_LAYERS * 8 + 2)
+                      1 + N_LAYERS * 9 + 2)
 
             if cpu_ref.ok and pf_on.token_id == cpu_ref.token_id:
                 passed += 1
@@ -425,6 +448,125 @@ def main() raises:
                     failed += 1
                     print("  ❌ [ON vs OFF] worst hidden-row element delta", worst, "(idx", worst_idx,
                           ") EXCEEDS", elem_bound)
+
+        # ══ Gate C: decode-after-AF-prefill -- THE gap-closing proof, not just "kernels compile" ══
+        # A FRESH instance (never `s`) with `use_native_grouped_fa_attn = True` set BEFORE its very
+        # first `prefill_batch()` call -- unlike Gate B's own `s`, which ran an OFF-path prefill
+        # first and would therefore have correct `ck`/`cv` left over from THAT call regardless of
+        # whether the gap fix works, silently hiding the exact bug this gate exists to catch. Here,
+        # the ONLY possible writer of `ck`/`cv` for these prompt positions is the AF path's own new
+        # `kvprod_mirror_af_d` dispatch -- if that dispatch were missing or wrong, decode below would
+        # diverge from the CPU oracle, not merely look "close enough".
+        print("")
+        print("  --- Gate C: fresh AF-from-construction instance, prefill_batch() THEN real step() decode ---")
+        if not af_pipelines_present:
+            print("  ⚠️  attention_forge blobs not linked into this binary -- Gate C SKIPPED.")
+        else:
+            comptime N_DECODE: Int = 4
+            var s3 = _MBQwen3I8AllSimd7Prefill(
+                D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+            )
+            s3.use_native_grouped_fa_attn = True  # set BEFORE the first prefill_batch() call
+
+            var up3 = s3.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+            for l in range(N_LAYERS):
+                if up3 == MB_OK:
+                    up3 = s3.upload_layer(
+                        l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                    )
+            if up3 == MB_OK:
+                up3 = s3.seal()
+            if up3 == MB_OK:
+                passed += 1
+                print("  ✅ [C] fresh AF-from-construction instance uploaded/sealed")
+            else:
+                failed += 1
+                print("  ❌ [C] upload/seal failed:", metaldispatch_status_name(up3))
+
+            var pf_c = s3.prefill_batch(prompt, 0)
+            if pf_c.status == MB_OK:
+                passed += 1
+                print("  ✅ [C] prefill_batch() [AF, fresh instance] ran", pf_c.dispatches, "dispatches for", M, "rows")
+            else:
+                failed += 1
+                print("  ❌ [C] prefill_batch() failed:", metaldispatch_status_name(pf_c.status))
+
+            # Real autoregressive decode: feed each step's own predicted token back in, exactly like
+            # a real generation loop, recording the FULL actual sequence (prompt ++ fed tokens) plus
+            # each step's own GPU prediction (token, logit) for the independent CPU check below.
+            var full_seq = List[Int]()
+            for i in range(M):
+                full_seq.append(prompt[i])
+            var gpu_pred_tokens = List[Int]()
+            var gpu_pred_logits = List[Float64]()
+            var decode_ok = pf_c.status == MB_OK
+            if decode_ok:
+                gpu_pred_tokens.append(pf_c.token_id)
+                gpu_pred_logits.append(pf_c.logit)
+                var cur_tok = pf_c.token_id
+                var cur_pos = M
+                for i in range(N_DECODE):
+                    var r = s3.step(cur_tok, cur_pos)
+                    if r.status != MB_OK:
+                        decode_ok = False
+                        failed += 1
+                        print("  ❌ [C] step() decode call", i, "at pos", cur_pos, "failed:",
+                              metaldispatch_status_name(r.status))
+                        break
+                    full_seq.append(cur_tok)
+                    gpu_pred_tokens.append(r.token_id)
+                    gpu_pred_logits.append(r.logit)
+                    cur_tok = r.token_id
+                    cur_pos += 1
+            if decode_ok:
+                passed += 1
+                print("  ✅ [C]", N_DECODE, "real step() decode calls after the AF prefill all returned MB_OK")
+
+            # Independent CPU Float64 oracle, over the FULL sequence the GPU actually consumed
+            # (prompt ++ its own fed-back tokens), re-run from position 0 at each prefix length --
+            # checked at every position the GPU made a prediction for (the prompt's last row via
+            # `prefill_batch`, then each of the `N_DECODE` real `step()` calls). Uses the SAME
+            # int8-ONLY `bound` (no F16 term) Gate A's pure-OFF-path comparison uses above, not the
+            # wider int8+F16 `bound_on` Gate B needs -- correct because DECODE never touches the F16
+            # native-packed buffers at all; its own accuracy depends only on int8 GEMM error plus
+            # whatever `ck`/`cv` the AF prefill wrote, and those were written by the byte-unmodified,
+            # all-F32 `_pf_ropewrt_kernel`. A tight pass here is a sharp, itemized signal that `ck`/
+            # `cv` are genuinely correct, not merely "close enough" the way F16 narrowing would mask.
+            if decode_ok:
+                var all_match = True
+                for i in range(len(gpu_pred_tokens)):
+                    var prefix_len = M + i
+                    var prefix = List[Int]()
+                    for j in range(prefix_len):
+                        prefix.append(full_seq[j])
+                    var cpu_i = _cpu_reference(
+                        embed, final_norm, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd, prefix, scale
+                    )
+                    if not cpu_i.ok:
+                        all_match = False
+                        print("  ❌ [C] CPU oracle failed at prefix_len=", prefix_len)
+                        continue
+                    var bound_i = i8_eps * depth * (1.0 + _abs(cpu_i.logit))
+                    var delta_i = _abs(cpu_i.logit - gpu_pred_logits[i])
+                    var ok = cpu_i.token_id == gpu_pred_tokens[i] and delta_i <= bound_i
+                    if not ok:
+                        all_match = False
+                    print(
+                        "    [C] predict-for-pos", prefix_len, " gpu_tok=", gpu_pred_tokens[i],
+                        " cpu_tok=", cpu_i.token_id, " gpu_logit=", gpu_pred_logits[i],
+                        " cpu_logit=", cpu_i.logit, " delta=", delta_i, " bound=", bound_i, "  ",
+                        "OK" if ok else "MISMATCH",
+                    )
+                if all_match:
+                    passed += 1
+                    print("  ✅ [C] prefill's own prediction AND all", N_DECODE, "real step() decode",
+                          "predictions match the independent CPU Float64 oracle over the full",
+                          "prompt+generated sequence, within the tight int8-only bound -- the",
+                          "decode-after-AF-prefill gap is closed for single-chunk (pos_base=0) prefill")
+                else:
+                    failed += 1
+                    print("  ❌ [C] at least one prefill/decode prediction diverges from the CPU",
+                          "oracle -- see the per-position lines above")
 
         # ── forces `step()` (and therefore `_ensure_deep_initialized`'s own `compile_function[
         # _splitk_partial_kernel_simd_native]`/`[_splitk_merge_kernel_simd]` calls) to be reachable

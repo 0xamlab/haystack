@@ -319,7 +319,25 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     method-local variable cannot be. Hardcoded `False` in `__init__` below, exactly like every other
     `use_*` toggle in this file (`use_mma`, `use_narrow`, `use_block8_attn`) -- flipping it means
     editing this source and rebuilding, never a runtime setter, matching this file's own established
-    discipline for a lever that has not yet won its own unconditional-default promotion."""
+    discipline for a lever that has not yet won its own unconditional-default promotion.
+
+    DECODE-AFTER-AF-PREFILL GAP, CLOSED: this flag originally shipped (PR #599) with a documented,
+    itemized gap -- setting it `True` made `prefill_batch` populate ONLY the F16 native-packed K/V
+    buffers, never the natural F32 `ck`/`cv` cache `step()` (decode) reads, so a decode call after an
+    AF-enabled prefill read stale/uninitialized cache and produced wrong tokens. `self.descriptors_
+    prefill_af` now carries a THIRD per-layer dispatch (`self.kvprod_mirror_af_d`, see its own field
+    docstring) that double-writes `ck`/`cv` via the byte-unmodified `_pf_ropewrt_kernel` every
+    `prefill_batch(use_native_grouped_fa_attn=True)` call -- `step()` itself is completely untouched,
+    still always reading `self.layers[layer].ck_addr`/`cv_addr` exactly as it always has, and now
+    finds them correctly populated. Proven by `test_metaldispatch_session_prefill_af.mojo`'s Gate C:
+    a session with this flag set `True` BEFORE its first `prefill_batch()` call, followed by real
+    `step()` decode calls, matches an independent CPU Float64 oracle computed over the full prompt +
+    generated-token sequence. Scope of what is proven: single-chunk prefill (`pos_base=0`) followed by
+    decode. NOT separately verified by that test: multi-chunk AF prefill (`prefill_batch` called more
+    than once with increasing `pos_base` on one AF-enabled instance) followed by decode -- the
+    underlying kernels' own multi-call continuation is verified (Phase 2B's `native_kv_producer_
+    driver.mojo`, `_pf_ropewrt_kernel`'s own decode-cache precedent), but the full wired multi-chunk-
+    then-decode sequence through THIS struct has not been exercised end-to-end."""
     var af_pipeline_idx: List[Int]
     """Sized `_AF_N_ROLES` (2), resolved via `_classify_attention_forge_pipeline` during pipeline
     discovery below -- UNLIKE `self.pipeline_idx`/`self.prefill_pipeline_idx`, a `-1` entry here is
@@ -372,18 +390,33 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     prefill` -- built only if BOTH `self.af_pipeline_idx` entries were discovered (`> 0` here implies
     that; `0` means the two `attention_forge/` blobs were not linked into this binary, and
     `prefill_batch` must refuse `use_native_grouped_fa_attn=True` with a clear error rather than
-    dispatch a table that was never populated). Same per-layer dispatch COUNT as `self.
-    n_descriptors_prefill` (`1 + n_layers*8 + 2`) -- the native-KV-producer replaces `ropewrt` as ONE
-    dispatch and Candidate A's attention replaces `attn` as ONE dispatch, so the shape of the "1 embed
-    + 8-per-layer + 2 final" formula is unchanged; only two of the eight per-layer ROLES differ. Every
-    OTHER dispatch in this table (embed, both GEMM-assign/accum/swiglu roles, both rmsnorm roles,
-    lm_head+argmax) is a full, independent descriptor pointing at the exact SAME underlying buffers
-    `self.descriptors_prefill`'s own equivalent slot uses -- safe because the two tables are mutually
-    exclusive per call (`prefill_batch` submits exactly one), never concurrently dispatched."""
+    dispatch a table that was never populated). `1 + n_layers*9 + 2` dispatches -- ONE MORE per layer
+    than `self.n_descriptors_prefill`'s own `1 + n_layers*8 + 2` (the native-KV-producer replaces
+    `ropewrt` as one dispatch, Candidate A's attention replaces `attn` as one dispatch, and a THIRD,
+    genuinely EXTRA per-layer dispatch -- `self.kvprod_mirror_af_d`, see its own field docstring --
+    re-dispatches the byte-unmodified, already-linked `_pf_ropewrt_kernel` a SECOND time to also
+    populate `self.layers[layer].ck_addr`/`cv_addr` (the natural F32 cache `step()` reads), closing
+    the decode-after-AF-prefill gap this phase originally shipped with (see that field's own
+    docstring, and `prefill_batch`'s, for the full account). Every OTHER dispatch in this table
+    (embed, both GEMM-assign/accum/swiglu roles, both rmsnorm roles, lm_head+argmax) is a full,
+    independent descriptor pointing at the exact SAME underlying buffers `self.descriptors_prefill`'s
+    own equivalent slot uses -- safe because the two tables are mutually exclusive per call
+    (`prefill_batch` submits exactly one), never concurrently dispatched."""
     var embed_af_d: Int
     var rmsnorm_af_d: List[Int]
     var gemm_assign_af_d: List[Int]
     var kvprod_af_d: List[Int]
+    var kvprod_mirror_af_d: List[Int]
+    """Per-layer descriptor index of the natural-cache DOUBLE-WRITE dispatch -- see `self.
+    descriptors_prefill_af`'s own field docstring for the full rationale and `_build_descriptors_
+    prefill_af`'s own comment at this dispatch's build site for why it re-dispatches the EXISTING
+    `_pf_ropewrt_kernel` (pipeline `self.prefill_pipeline_idx[_PFROLE_ROPEWRT]`, already compiled and
+    discovered unconditionally, AF blobs or not) rather than extending `_native_kv_producer_kernel`'s
+    own signature: that kernel's dispatch is ALREADY at `_mb_set_header`'s `num_args=16`, exactly
+    `metaldispatch.ffi.MB_MAX_ARGS`'s hard ceiling (the fixed byte-stride shared with `batch_shim.m`'s
+    own `ALGENTA_MAX_ARGS`) -- there is no room to add the two more pointer arguments (`ck_addr`/
+    `cv_addr`) a same-kernel double-write would need without growing that ceiling for every OTHER
+    dispatch table in this file too, a far larger blast radius than this gap-closing fix warrants."""
     var attn_af_d: List[Int]
     var gemv_o_af_d: List[Int]
     var rmsnorm2_af_d: List[Int]
@@ -700,14 +733,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.lmhead_d = -1
 
         # ── Attention Compiler Plan v1.0, Phase 2C: a COMPLETE, SEPARATE table -- see `self.
-        # descriptors_prefill_af`'s own field docstring. Same per-layer dispatch count as the OFF
-        # table (`1 + n_layers*8 + 2`) regardless of whether it ends up actually built below.
-        self.n_descriptors_prefill_af = 1 + self.n_layers * 8 + 2
+        # descriptors_prefill_af`'s own field docstring. ONE MORE dispatch per layer than the OFF
+        # table (`1 + n_layers*9 + 2`, not `...*8...`) regardless of whether it ends up actually
+        # built below -- the extra dispatch is the natural-cache double-write (`self.kvprod_mirror_
+        # af_d`) that closes the decode-after-AF-prefill gap; see that field's own docstring.
+        self.n_descriptors_prefill_af = 1 + self.n_layers * 9 + 2
         self.descriptors_prefill_af = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.embed_af_d = -1
         self.rmsnorm_af_d = List[Int]()
         self.gemm_assign_af_d = List[Int]()
         self.kvprod_af_d = List[Int]()
+        self.kvprod_mirror_af_d = List[Int]()
         self.attn_af_d = List[Int]()
         self.gemv_o_af_d = List[Int]()
         self.rmsnorm2_af_d = List[Int]()
@@ -721,7 +757,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # ── Only actually BUILD the AF table if both `attention_forge/` blobs were discovered above
         # (see `self.af_pipeline_idx`'s own field docstring) -- otherwise leave `self.
         # descriptors_prefill_af` as the placeholder pointer and `self.n_descriptors_prefill_af`
-        # unchanged from the value set above (still `1 + n_layers*8 + 2`, but never actually
+        # unchanged from the value set above (still `1 + n_layers*9 + 2`, but never actually
         # allocated or populated); `prefill_batch` checks `self.af_pipeline_idx` again before ever
         # submitting this table, so a stale, never-built `n_descriptors_prefill_af` count alone
         # cannot cause a bad dispatch -- see that method's own guard.
@@ -1237,19 +1273,25 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             )
 
     def _build_descriptors_prefill_af(mut self, n_qkv: Int) raises:
-        """Attention Compiler Plan v1.0, Phase 2C: builds `self.descriptors_prefill_af` -- a COMPLETE
-        SEPARATE table, structurally IDENTICAL to `_build_descriptors_prefill`'s own plan (one embed
-        dispatch, eight per-layer dispatches, the unmodified lmhead+argmax pair) except two of the
-        eight per-layer roles: the native-KV-producer (`attention_forge.native_kv_producer.
-        _native_kv_producer_kernel`, discovered as `self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER]`)
-        replaces `ropewrt`, and Candidate A's grouped-head fused-FlashAttention (`attention_forge.
-        grouped_fa_q8_k32_h2_sg8._attn_grouped_fa_kernel`, `self.af_pipeline_idx[_AFROLE_GROUPED_FA_
-        ATTN]`) replaces `attn`. Every OTHER dispatch below points at the EXACT SAME underlying
-        buffers `_build_descriptors_prefill`'s own equivalent slot uses (`self.hidden_addr`/`self.
-        xn_addr`/`self.qkv_addr`/`self.act_addr`/`self.attn_out_addr`/etc.) -- safe only because
-        `prefill_batch` submits exactly ONE of the two tables per call, never both. Only ever called
-        from `__init__`, and only once both `self.af_pipeline_idx` entries were discovered -- see the
-        call site's own guard."""
+        """Attention Compiler Plan v1.0, Phase 2C (+ the decode-after-AF-prefill gap fix): builds
+        `self.descriptors_prefill_af` -- a COMPLETE SEPARATE table, structurally IDENTICAL to
+        `_build_descriptors_prefill`'s own plan (one embed dispatch, the unmodified lmhead+argmax
+        pair) except NINE per-layer dispatches instead of eight: the native-KV-producer
+        (`attention_forge.native_kv_producer._native_kv_producer_kernel`, discovered as `self.
+        af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER]`) replaces `ropewrt`; Candidate A's grouped-head
+        fused-FlashAttention (`attention_forge.grouped_fa_q8_k32_h2_sg8._attn_grouped_fa_kernel`,
+        `self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN]`) replaces `attn`; and ONE genuinely NEW
+        dispatch (`self.kvprod_mirror_af_d`) immediately follows the native-KV-producer, re-running
+        the byte-unmodified `_pf_ropewrt_kernel` a SECOND time to ALSO write `lw.ck_addr`/`cv_addr`
+        (the natural F32 cache `step()` reads) -- a double-write, not a replacement, closing the gap
+        PR #599 shipped with (see `self.kvprod_mirror_af_d`'s own field docstring for why this is a
+        separate dispatch of an EXISTING kernel rather than extending `_native_kv_producer_kernel`'s
+        own signature: that dispatch is already at the `metaldispatch.ffi.MB_MAX_ARGS` ceiling).
+        Every OTHER dispatch below points at the EXACT SAME underlying buffers `_build_descriptors_
+        prefill`'s own equivalent slot uses (`self.hidden_addr`/`self.xn_addr`/`self.qkv_addr`/`self.
+        act_addr`/`self.attn_out_addr`/etc.) -- safe only because `prefill_batch` submits exactly ONE
+        of the two tables per call, never both. Only ever called from `__init__`, and only once both
+        `self.af_pipeline_idx` entries were discovered -- see the call site's own guard."""
         var n_q = self.h_q * self.d_head
         var d = 0
 
@@ -1327,6 +1369,42 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_f32(self.descriptors_prefill_af, d, 14, self.eps)
             _mb_set_arg_int(self.descriptors_prefill_af, d, 15, 0)  # m_rows, patched per call
             self.kvprod_af_d.append(d)
+            d += 1
+
+            # ── NEW role (gap fix, additive): natural-cache DOUBLE-WRITE. Re-dispatches the
+            # byte-unmodified, already-linked (pinned-toolchain, always compiled) `_pf_ropewrt_
+            # kernel` -- the EXACT same pipeline `_build_descriptors_prefill`'s own `ropewrt` role
+            # uses -- a SECOND time, so `lw.ck_addr`/`lw.cv_addr` (the natural F32 KV cache `step()`
+            # reads) end up populated exactly as they would after an OFF-path `prefill_batch()` call,
+            # even though this table's own attention dispatch (below) never reads them -- it reads
+            # `q_native_addr`/`ck_native_addr`/`cv_native_addr` instead. Also harmlessly re-writes
+            # `self.q_rot_addr` (unread anywhere in THIS table; only the OFF table's own `attn` role
+            # reads it, and the two tables are never submitted in the same call) -- accepted, not
+            # worked around, because `_pf_ropewrt_kernel`'s own grid computes Q and K/V lanes in ONE
+            # dispatch and cannot be told to skip the Q lanes. 14 args, IDENTICAL order to
+            # `_build_descriptors_prefill`'s own `ropewrt` dispatch -- see that dispatch for the
+            # cross-reference. This is a genuinely EXTRA per-layer dispatch (not a replacement of
+            # anything), which is why `self.n_descriptors_prefill_af` is `1 + n_layers*9 + 2`, not
+            # `...*8...` like the OFF table.
+            _mb_set_header(
+                self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
+                n_units_kvprod_max, self.d_head, 14,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_af, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 8, 0)  # pos_base, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors_prefill_af, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 13, 0)  # m_rows, patched per call
+            self.kvprod_mirror_af_d.append(d)
             d += 1
 
             # ── NEW role: Candidate A's grouped-head fused-FlashAttention, replaces `attn`. 12
@@ -1509,6 +1587,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             )
             _mb_set_arg_int(self.descriptors_prefill_af, d_kv, 8, pos_base)
             _mb_set_arg_int(self.descriptors_prefill_af, d_kv, 15, m_rows)
+
+            # ── gap fix: natural-cache double-write, same `pos_base`/`m_rows` this call's own
+            # native-KV-producer dispatch just got patched with, two lines above -- see `self.
+            # kvprod_mirror_af_d`'s own field docstring.
+            var d_kvm = self.kvprod_mirror_af_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_af, d_kvm, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
+                n_units_kvprod * m_rows, self.d_head, 14,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_af, d_kvm, 8, pos_base)
+            _mb_set_arg_int(self.descriptors_prefill_af, d_kvm, 13, m_rows)
 
             var d_attn = self.attn_af_d[layer]
             _mb_set_header(
@@ -1858,20 +1947,31 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         Attention Compiler Plan v1.0, Phase 2C addendum: when `self.use_native_grouped_fa_attn` is
         `True` (default `False` -- see that field's own docstring), this method submits the SEPARATE
-        `self.descriptors_prefill_af` table (native-KV-producer + Candidate A's attention, per layer)
-        instead of `self.descriptors_prefill` (`_pf_ropewrt_kernel` + `_pf_attn_tiled_kernel_simd`)
-        -- every other role, and every buffer neither of those two roles touches, is identical either
-        way. KNOWN, DELIBERATE SCOPE LIMIT, stated plainly rather than hidden: this flag changes
-        PREFILL's own attention path only. It does NOT touch `step()` (decode), which still reads
-        `self.layers[layer].ck_addr`/`cv_addr` (the F32 natural-layout cache `_pf_ropewrt_kernel`
-        populates) -- when the AF path is selected, `ropewrt` never runs, so those buffers are NEVER
-        populated for this call's own prompt rows. A caller that calls `prefill_batch(...,
-        use_native_grouped_fa_attn=True)` and then continues with `step()` for decode will read
-        stale/uninitialized `ck`/`cv` at those positions and get WRONG decode output -- this is a
-        known, itemized, NOT-yet-closed gap (see `metaldispatch.qwen3_prefill_decode`'s own AF entry
-        point docstring for how this session's own verification avoided the hazard), not a silent
-        risk: fixing it for real (either double-writing the natural cache too, or making `step()`
-        AF-aware) is deferred, itemized future work, not something this change claims to have solved."""
+        `self.descriptors_prefill_af` table (native-KV-producer + a natural-cache double-write +
+        Candidate A's attention, per layer) instead of `self.descriptors_prefill` (`_pf_ropewrt_
+        kernel` + `_pf_attn_tiled_kernel_simd`) -- every other role, and every buffer none of those
+        roles touch, is identical either way.
+
+        DECODE-AFTER-AF-PREFILL GAP, CLOSED (was: a known, itemized, NOT-yet-closed gap in PR #599):
+        this method's own AF table now ALSO dispatches `_pf_ropewrt_kernel` a second time per layer
+        (`self.kvprod_mirror_af_d`, see its own field docstring) purely to populate `self.
+        layers[layer].ck_addr`/`cv_addr` (the F32 natural-layout cache `step()` reads) -- a
+        double-write alongside the native-KV-producer's own F16 native-packed write, not a
+        replacement of it. `step()` itself is completely unmodified and still always reads `ck`/
+        `cv` unconditionally, regardless of `self.use_native_grouped_fa_attn`; it now finds them
+        correctly populated after an AF-enabled call, exactly as it always has after an OFF-path
+        call. Proven by `test_metaldispatch_session_prefill_af.mojo`'s Gate C: a FRESH instance with
+        this flag set `True` before its first `prefill_batch()` call, followed by real `step()`
+        decode calls, matches an independent CPU Float64 oracle computed over the full prompt +
+        generated-token sequence -- see that test for the exact scenario and tolerance.
+
+        Precisely what remains unverified, so this is not overclaimed: this method's OWN handling of
+        a SECOND `prefill_batch()` call with `pos_base > 0` on an AF-enabled instance (multi-chunk AF
+        continuation), followed by decode, has not been exercised end-to-end through this exact
+        wired path -- only the underlying kernels' own multi-call continuation (Phase 2B's `native_
+        kv_producer_driver.mojo`, and `_pf_ropewrt_kernel`'s own long-standing decode-cache
+        precedent) is separately verified. Single-chunk AF prefill (`pos_base=0`) followed by decode
+        is the scenario this fix is proven for."""
         @parameter
         if not MB_GPU_BUILD:
             return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)

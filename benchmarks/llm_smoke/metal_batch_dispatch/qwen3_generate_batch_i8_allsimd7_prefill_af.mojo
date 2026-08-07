@@ -47,13 +47,19 @@ comptime USE_AF: Bool = False
 point (non-regression check); `True` exercises Candidate A + the native-KV-producer."""
 
 comptime MAX_NEW_TOKENS: Int = 1 if USE_AF else 16
-"""`1` when `USE_AF` -- issues ZERO `step()` (decode) calls (`range(1, 1)` is empty), sidestepping
-the documented, not-yet-closed gap (`qwen3_i8_allsimd7_prefill_decode_flat_af`'s own docstring):
-`step()` would read the natural `ck`/`cv` cache the AF prefill path never populates. The single
-token this run DOES return either way is `prefill_batch()`'s own lm_head/argmax result on the
-prompt's last row, computed entirely from the (correctly populated, either arm) attention path --
-safe to trust regardless of `USE_AF`. `16`, matching the ORIGINAL benchmark's own value, when
-`USE_AF=False`, so the two runs are comparable beyond just `prefill_tokens_per_sec`."""
+"""Historically `1` when `USE_AF`, to issue ZERO `step()` (decode) calls (`range(1, 1)` is empty)
+and sidestep what was then a documented, not-yet-closed gap: `step()` reading the natural `ck`/`cv`
+cache the AF prefill path never populated. That gap is now CLOSED (`_MBQwen3I8AllSimd7Prefill`'s own
+AF descriptor table double-writes `ck`/`cv` via an additional `_pf_ropewrt_kernel` dispatch --  see
+`use_native_grouped_fa_attn`'s field docstring in `session_prefill.mojo`, and `qwen3_i8_allsimd7_
+prefill_decode_flat_af`'s own docstring, for the full account), proven for single-chunk prefill
+(this benchmark's own prompt fits in one `PREFILL_MAX_TILE` chunk) followed by decode. Left at `1`
+here anyway: this file measures PREFILL throughput specifically (`prefill_tokens_per_sec`), and this
+session has not re-run this exact benchmark binary with `MAX_NEW_TOKENS > 1` under `USE_AF=True` to
+re-confirm end-to-end decode speed/correctness through the full real-checkpoint smoke path (as
+opposed to the golden-vector test, which does) -- raising this value is a reasonable, low-risk next
+step, not something this change claims to have already done. `16`, matching the ORIGINAL benchmark's
+own value, when `USE_AF=False`, so the two runs are comparable beyond just `prefill_tokens_per_sec`."""
 
 
 def main() raises:

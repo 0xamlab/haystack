@@ -5700,7 +5700,7 @@ kernels' comptime constants. Flagged honestly as a real gap, not claimed as clos
   patterns real dispatches produce (ragged trailing blocks, sub-fragment offsets within a
   partially-filled block), not just the one pattern this phase's probe exercised.
 
-## Attention Compiler Plan v1.0, Phase 2C (2026-08-07): Candidate A wired into the real production prefill pipeline behind a flag -- real ~1.2-1.4x end-to-end prefill speedup, verified correct before trusting the speed number; decode-after-AF-prefill is a known, itemized, NOT-yet-closed gap
+## Attention Compiler Plan v1.0, Phase 2C (2026-08-07): Candidate A wired into the real production prefill pipeline behind a flag -- real ~1.2-1.4x end-to-end prefill speedup, verified correct before trusting the speed number; decode-after-AF-prefill gap found here, CLOSED in the same-day addendum below
 
 Phase 2C's own hard gate: "Winner beats llama.cpp operator AND improves the real pipeline." The
 Phase 2A/2B entries above already established the "beats llama.cpp operator" half (Candidate A,
@@ -5772,31 +5772,26 @@ silently submitting an unpopulated table.
   own Context section predicts for an attention-only speedup at this `f_256`, not a surprising or
   suspicious number.
 
-**A known, itemized, NOT-yet-closed gap -- stated plainly, not hidden**: the AF path's own
-native-KV-producer writes ONLY the new F16 native-packed K/V buffers, never the natural-layout F32
-`ck`/`cv` cache `step()` (decode) reads. When `use_native_grouped_fa_attn=True`, `_pf_ropewrt_
-kernel` (which populates `ck`/`cv`) never runs, so those buffers are NEVER populated for that
-call's own prompt rows. **Calling `step()` for decode after an AF-enabled `prefill_batch()` will
-read stale/uninitialized cache and produce WRONG tokens.** This is why this entry's own end-to-end
-speed measurement uses `MAX_NEW_TOKENS=1` for the AF path specifically (issuing ZERO `step()`
-calls, `range(1,1)` is empty) -- a deliberate, documented methodology choice to make a TRUE,
-uncontaminated comparison possible without either hiding the gap or letting it corrupt the
-measurement. Closing this for real (either double-writing the natural cache too, at some
-additional per-layer cost, or making `step()` itself AF-aware and reading the native-packed
-layout for decode too) is genuine, scoped, NOT-yet-done follow-up work -- this phase's own
-"improves the real pipeline" claim is honestly limited to PREFILL, not decode, until that lands.
+**A known, itemized gap -- stated plainly when found, CLOSED in a follow-up same-day session (see
+the addendum below this entry for the real verification)**: the AF path's own native-KV-producer
+wrote ONLY the new F16 native-packed K/V buffers, never the natural-layout F32 `ck`/`cv` cache
+`step()` (decode) reads. When `use_native_grouped_fa_attn=True`, `_pf_ropewrt_kernel` (which
+populates `ck`/`cv`) never ran, so those buffers were never populated for that call's own prompt
+rows, and calling `step()` for decode after an AF-enabled `prefill_batch()` read stale/uninitialized
+cache and produced wrong tokens -- which is why THIS entry's own end-to-end speed measurement used
+`MAX_NEW_TOKENS=1` for the AF path specifically. The fix (double-writing the natural cache, not
+making `step()` itself AF-aware -- see the addendum for why) means this phase's own "improves the
+real pipeline" claim now honestly extends to single-chunk-prefill-then-decode, not just prefill
+alone; multi-chunk AF prefill followed by decode remains unverified (see "What is left").
 
 ### What is left
 
-- Close the decode-after-AF-prefill gap (see above) -- required before this flag could ever be
-  turned on for anything beyond a single-shot prefill-then-stop workload, and required before the
-  plan's own Definition of Victory ("no decode regression") could apply to a configuration using
-  this flag.
 - Multi-chunk AF continuation (`prefill_batch` called twice with `pos_base>0` on the same
-  AF-enabled instance) is not yet empirically tested end-to-end as a real dispatch sequence --
-  only the underlying native-KV-producer kernel's own multi-call test (Phase 2B) and Candidate A's
-  own kernel-level pos_base handling (Phase 2A) have been separately verified; the FULL wired
-  pipeline doing this has not been.
+  AF-enabled instance) followed by decode is not yet empirically tested end-to-end as a real
+  dispatch sequence -- only the underlying native-KV-producer kernel's own multi-call test
+  (Phase 2B), Candidate A's own kernel-level pos_base handling (Phase 2A), and single-chunk
+  (`pos_base=0`) prefill-then-decode (see the addendum below) have been separately verified; the
+  FULL wired multi-chunk pipeline followed by decode has not been.
 - No 1,000-dispatch determinism soak of the wired production path specifically has been run (only
   the underlying kernels' own soaks, plus a handful of real end-to-end runs here) -- worth doing
   before broader use, matching this session's own established discipline for every prior phase.
@@ -5805,3 +5800,97 @@ layout for decode too) is genuine, scoped, NOT-yet-done follow-up work -- this p
   measurements, and wiring only ONE candidate first, rather than both, halved the real integration
   risk for this already highest-stakes change in the whole plan) -- if Candidate A's own
   production integration reveals a blocking issue Candidate C would not have, revisit this choice.
+
+## Attention Compiler Plan v1.0, Phase 2C addendum (2026-08-07, same day): the decode-after-AF-prefill gap, closed and proven -- real `step()` calls after an AF-enabled `prefill_batch()` now match an independent CPU oracle
+
+The entry directly above shipped Phase 2C's production wiring with one itemized, deliberately
+unfixed gap: the AF path's native-KV-producer wrote only the F16 native-packed K/V buffers, never
+the natural F32 `ck`/`cv` cache `step()` (decode) reads, so decode after an AF-enabled prefill read
+stale/uninitialized cache and produced wrong tokens. This addendum closes it.
+
+**The two approaches considered, and which one won**: (1) make `step()` itself understand the
+native-packed layout, or (2) double-write the natural cache from inside the already-new,
+already-flag-gated AF prefill path, leaving `step()` untouched. (2) was chosen -- `step()`
+(`_sdpa_kernel_simd` and friends) is ANOTHER real, currently-shipping production path; teaching it a
+second KV layout would be a second high-stakes change on top of Phase 2C's already-careful first
+one. Double-writing inside code that only runs when the flag is already on keeps the blast radius
+contained to code that is already new.
+
+**The double-write itself, and a real constraint that changed the plan**: the natural approach --
+extend `_native_kv_producer_kernel`'s own signature with two more pointer arguments (`ck_addr`/
+`cv_addr`) and rebuild its blob -- turned out to be blocked by a genuine hard ceiling discovered
+while reading `metaldispatch.ffi`: that kernel's dispatch is already at `MB_MAX_ARGS=16` args (the
+fixed byte-stride shared with `batch_shim.m`'s own `ALGENTA_MAX_ARGS`, load-bearing for EVERY
+dispatch table in this file, not just this one). Growing that ceiling to fit two more arguments
+would have meant a native-shim rebuild affecting every other dispatch table -- a far larger blast
+radius than this fix warrants. Instead, `_MBQwen3I8AllSimd7Prefill`'s own AF descriptor table now
+carries a NINTH per-layer dispatch (`self.kvprod_mirror_af_d`) that re-runs the byte-unmodified,
+already-linked (pinned-toolchain) `_pf_ropewrt_kernel` a second time, writing `lw.ck_addr`/`cv_addr`
+from the SAME `qkv`/`qn`/`kn`/`cos`/`sin` inputs the native-KV-producer's own dispatch (right before
+it) already reads -- no new kernel, no new blob, no `mma_forge`/forge-toolchain rebuild at all;
+purely additive wiring in `mojo/engine/metaldispatch/session_prefill.mojo`. `self.
+n_descriptors_prefill_af` moved from `1 + n_layers*8 + 2` to `1 + n_layers*9 + 2`.
+
+**The proof**: a NEW Gate C in `mojo/tests/libs/test_metaldispatch_session_prefill_af.mojo` --
+deliberately a FRESH `_MBQwen3I8AllSimd7Prefill` instance (never the `s` Gate A/B already ran an
+OFF-path prefill on, which would leave `ck`/`cv` correct from that call regardless of whether this
+fix works) with `use_native_grouped_fa_attn=True` set BEFORE its first `prefill_batch()` call, then
+4 real `step()` decode calls feeding each step's own predicted token back in. Every prediction
+(prefill's own last-row token plus all 4 decode tokens) is checked against `_cpu_reference` run
+independently over the exact same full token sequence, at every prefix length. Real output, this
+session, `mojo build` (not `mojo run` -- confirmed once more that `-Xlinker` objects only load
+through a built binary) + running the resulting binary:
+
+    cd mojo_env && DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \
+      pixi run mojo build -D ALGENTA_GPU -I ../mojo/engine \
+      ../mojo/tests/libs/test_metaldispatch_session_prefill_af.mojo -o /tmp/test_prefill_af \
+      -Xlinker /tmp/batch_shim.o -Xlinker /tmp/mm8_blob.o -Xlinker /tmp/candidate_a_blob.o \
+      -Xlinker /tmp/native_kv_producer_blob.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation -Xlinker -framework -Xlinker IOKit
+    DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/test_prefill_af
+
+    --- Gate C: fresh AF-from-construction instance, prefill_batch() THEN real step() decode ---
+    ✅ [C] fresh AF-from-construction instance uploaded/sealed
+    ✅ [C] prefill_batch() [AF, fresh instance] ran 21 dispatches for 17 rows
+    ✅ [C] 4 real step() decode calls after the AF prefill all returned MB_OK
+      [C] predict-for-pos 17  gpu_tok= 3  cpu_tok= 3  ...  delta= 0.0645  bound= 21.31    OK
+      [C] predict-for-pos 18  gpu_tok= 19  cpu_tok= 19  ...  delta= 0.0718  bound= 25.23    OK
+      [C] predict-for-pos 19  gpu_tok= 19  cpu_tok= 19  ...  delta= 0.0161  bound= 22.80    OK
+      [C] predict-for-pos 20  gpu_tok= 19  cpu_tok= 19  ...  delta= 0.0020  bound= 20.89    OK
+      [C] predict-for-pos 21  gpu_tok= 19  cpu_tok= 19  ...  delta= 0.0350  bound= 19.12    OK
+    ✅ [C] prefill's own prediction AND all 4 real step() decode predictions match the independent
+        CPU Float64 oracle over the full prompt+generated sequence, within the tight int8-only
+        bound -- the decode-after-AF-prefill gap is closed for single-chunk (pos_base=0) prefill
+
+    [metaldispatch.session_prefill_af] Passed: 14 Failed: 0
+
+The pre-existing Gate A/B checks (now 10 of the 14) also still pass, confirming no regression to
+either the OFF path or the original AF prefill-only checks. The tolerance Gate C's decode checks
+pass within is the SAME tight int8-ONLY bound Gate A's pure-OFF-path comparison uses (not the wider
+int8+F16 bound Gate B needs) -- correct because `step()` never touches the F16 native-packed
+buffers, so this is a sharp signal `ck`/`cv` were genuinely written correctly, not merely "close
+enough" the way F16 slop could mask.
+
+**A negative-control experiment run in the same session, to confirm Gate C is not a vacuous pass**:
+temporarily reverting only the per-call argument patch for the new ninth dispatch (leaving it
+dispatched with the build-time placeholder `m_rows=0`, i.e. a real no-op -- reproducing the
+pre-fix behavior where `ck`/`cv` were never written by the AF path) and re-running the identical
+binary reproduced exactly the predicted failure: predict-for-pos 18/19/20 diverged (GPU token 3
+where CPU said 19, logit deltas of 1.15-2.32 against the SAME bound), `Passed: 13 Failed: 1`. The
+fix was then restored (diffed byte-identical against the pre-experiment source) and re-verified back
+to `14/14`. This is real evidence the new test catches the actual bug, not a check that would have
+passed either way.
+
+**What this proves, and what it does not -- stated precisely, not overclaimed**: PROVEN --
+single-chunk AF prefill (`pos_base=0`, one `prefill_batch()` call) followed by real `step()` decode
+calls on the same instance now produces correct tokens, matching an independent CPU Float64 oracle.
+NOT verified by this addendum: multi-chunk AF prefill (`prefill_batch` called more than once with
+increasing `pos_base` on one AF-enabled instance, `metaldispatch.qwen3_prefill_decode`'s own chunked
+loop for prompts longer than `PREFILL_MAX_TILE`) followed by decode -- the underlying kernels' own
+multi-call continuation is separately verified (Phase 2B's `native_kv_producer_driver.mojo`), but the
+full wired multi-chunk-then-decode sequence through `_MBQwen3I8AllSimd7Prefill` has not been
+exercised end-to-end. Also not done here: a 1,000-dispatch determinism soak of the fixed AF table
+specifically, and a re-measurement of end-to-end decode throughput with the gap closed (this
+addendum is a correctness fix, not a new speed number -- `benchmarks/llm_smoke/metal_batch_dispatch/
+qwen3_generate_batch_i8_allsimd7_prefill_af.mojo`'s own `MAX_NEW_TOKENS` was deliberately left at `1`
+for the AF arm, not bumped, for exactly this reason).

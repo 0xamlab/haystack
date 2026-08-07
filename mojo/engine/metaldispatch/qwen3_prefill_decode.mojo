@@ -417,21 +417,26 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
     that does not know this function exists) keeps running the exact code it always has; this is a
     new, additive entry point, not a modified one.
 
-    KNOWN, DELIBERATE SCOPE LIMIT (see `_MBQwen3I8AllSimd7Prefill.prefill_batch`'s own docstring
-    addendum for the full account): when `use_native_grouped_fa_attn=True`, the natural-layout
-    `ck`/`cv` KV cache `step()` (decode) reads is NEVER populated for the prompt's own rows (the AF
-    path writes only the native-packed `ck_native`/`cv_native` buffers `step()` does not know about)
-    -- calling `step()` for decode AFTER an AF-enabled `prefill_batch()` call reads stale/uninitialized
-    cache and produces WRONG output. This function does not work around that; it is the caller's own
-    responsibility to keep `max_new_tokens` small enough that no `step()` call is ever issued past the
-    prompt when `use_native_grouped_fa_attn=True` (`max_new_tokens=1` issues ZERO `step()` calls --
-    `range(1, 1)` is empty -- so the single token this function DOES return, computed entirely inside
-    `prefill_batch()`'s own lm_head/argmax dispatch on the prompt's last row, is unaffected by this
-    gap and safe to trust). A larger `max_new_tokens` with the flag on will silently produce garbage
-    decode tokens past the first -- this is flagged here, loudly, rather than guarded against, because
-    guarding it (e.g. refusing `max_new_tokens > 1`) would make this function's own contract diverge
-    from the ORIGINAL function's shape for a reason a future non-decode caller (one that only ever
-    wants the prompt's own next-token prediction) should not have to work around."""
+    DECODE-AFTER-AF-PREFILL GAP, CLOSED (see `_MBQwen3I8AllSimd7Prefill.prefill_batch`'s own docstring
+    addendum, and `use_native_grouped_fa_attn`'s own field docstring, for the full account): this
+    function used to carry a known, itemized scope limit -- when `use_native_grouped_fa_attn=True`,
+    the natural-layout `ck`/`cv` KV cache `step()` (decode) reads was never populated for the
+    prompt's own rows, so a `step()` call issued past the prompt read stale/uninitialized cache and
+    produced garbage. `_MBQwen3I8AllSimd7Prefill`'s own AF descriptor table now ALSO double-writes
+    `ck`/`cv` (via a second, additive dispatch of the byte-unmodified `_pf_ropewrt_kernel`) every
+    `prefill_batch()` call made while the flag is `True` -- `step()` itself is unmodified and now
+    finds those buffers correctly populated, so `max_new_tokens > 1` with `use_native_grouped_fa_
+    attn=True` is no longer expected to produce wrong decode tokens for a SINGLE-CHUNK prompt (one
+    `prefill_batch()` call, i.e. `n_prompt <= PREFILL_MAX_TILE` so the `while pos_base < n_prompt`
+    loop below runs its body exactly once).
+
+    PRECISELY WHAT REMAINS UNVERIFIED, stated so this is not overclaimed: this function's own
+    MULTI-CHUNK prefill loop (`n_prompt > PREFILL_MAX_TILE`, several `prefill_batch(chunk_ids,
+    pos_base)` calls with increasing `pos_base`, ALL with the flag on) followed by decode has not
+    been exercised end-to-end -- `test_metaldispatch_session_prefill_af.mojo`'s Gate C (the test that
+    proves the gap is closed) covers only a single `prefill_batch()` call at `pos_base=0` followed by
+    `step()`. Treat multi-chunk AF prefill + decode as not yet certified until that scenario is
+    separately tested through this exact entry point."""
     if max_new_tokens < 1:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
