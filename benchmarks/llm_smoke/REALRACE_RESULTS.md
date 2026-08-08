@@ -6145,3 +6145,174 @@ A concrete, scoped first next step -- not a vague "optimize further":
    assumed to generalize uniformly to `o_proj`/`down_proj`/`swiglu` without separately measuring
    each at its own real shape -- a natural, cheap follow-up given both harnesses built for this
    entry already exist and only need a new shape argument.
+
+## GEMM tournament, two isolation experiments (2026-08-07): both hypotheses refuted -- operand width and tile shape are NOT the lever; the gap is likely a Mojo-codegen-vs-hand-Metal-codegen efficiency tax
+
+Direct follow-up to the GEMM tournament Phase 0 entry above, per its own stop-rule discipline
+(change exactly ONE variable per measurement, never combine ablations). Two single-variable
+isolation experiments, both at the identical real qkv_proj shape (M=256, K=1024, N=4096), both
+measured against the SAME two anchors from that entry: llama.cpp's `kernel_mul_mm_f16_f32` (L0,
+0.562ms median wall / ~3821 GFLOP/s) and Algenta's own existing `_qkv_proj_gemm_mma8x8` (F32
+MMA operands, Int8 storage, 0.689-0.708ms median wall / 3033-3117 GFLOP/s).
+
+### Experiment 1 -- MMA operand width (F32 -> F16), REFUTED
+
+`_qkv_proj_gemm_mma8x8_f16` (`mma_forge/mm8.mojo`): identical tile shape (BM=32/BN=32/BK=16, 8
+SIMD groups) and identical Int8-storage-dequant-on-load to the existing kernel; the ONLY change
+is narrowing the dequantized weight AND the activation into `DType.float16` shared-memory tiles
+before the MMA multiply (matching llama.cpp's own half-operand scheme), accumulating into the
+SAME `Float32` accumulator. Correctness: worst delta 9.6e-5 to 1.0e-4 (looser than the F32
+kernel's 5.2e-8 as expected from the extra rounding step, well inside a derived 1e-2/1e-1
+tolerance) at both a small non-aligned shape and the real qkv_proj shape -- PASS.
+
+**Timing, 3 independent process launches**: 0.860 / 0.696 / 0.842 ms median wall (mean 0.799ms,
+mean 2711 GFLOP/s) -- **~14% SLOWER than Algenta's own existing F32 kernel on average**, and
+never beats llama.cpp (best case ~24% behind L0, matching the F32 kernel's own gap; worst case
+~53% behind). Run-to-run variance was surprisingly high (~24% spread across only 3 runs, vs. the
+F32 kernel's own ~2.8% spread) -- flagged as a real, unresolved oddity, not smoothed over; a
+plausible but unproven explanation is that the extra Float32->Float16 narrowing instruction at
+tile-load time (unavoidable since Int8 storage must dequantize through Float32 first) eats some
+or all of the hardware `simdgroup_half8x8` throughput gain, a cost llama.cpp's own kernel never
+pays since its weights are natively F16 already.
+
+### Experiment 2 -- tile shape / threadgroup organization, DECISIVELY REFUTED
+
+`_qkv_proj_gemm_mma8x8_wide` (`mma_forge/mm8.mojo`): keeps the ORIGINAL F32-MMA-operand,
+Int8-storage scheme exactly (does NOT combine with Experiment 1's already-refuted change --
+tile shape is the only variable here), but reshapes the threadgroup tile to match llama.cpp's
+own geometry as closely as Mojo's 8x8-only MMA fragment allows: `BN=64, BK=32` (both doubled),
+4 SIMD groups over 128 threads (half of the original's 8/256) -- re-derived directly from the
+vendored source (`ggml-metal-device.cpp:704-763`, `ggml-metal-impl.h:14-15`, confirming
+`nr0=64,nr1=32,nsg=4,128 threads`), not assumed. Correctness: worst delta 5.2e-8 (small shape) /
+4.3e-7 (real qkv_proj shape) -- PASS, tight, no precision concern (this experiment changes
+geometry only, not precision).
+
+**Timing, 5 independent process launches** (widened from 3 to 5 given the surprising direction):
+2.970-3.034 ms median wall, GFLOP/s 707.8-723.1 -- tight variance (<2.2% spread, a real,
+systematic effect, not noise, unlike Experiment 1's own high variance). **This is ~4.2-4.3x
+SLOWER than Algenta's own existing kernel and ~5.3x slower than llama.cpp** -- not a partial
+win, a decisive regression. Total FLOP count and even barrier count (which HALVES, 64 vs 128)
+both rule out the obvious confounds. Best available explanation: matching llama.cpp's tile
+forces each SIMD group to walk 4x more sequential MMA steps across the K-reduction (1024 vs 256
+per SG) while simultaneously HALVING the SIMD-group count (4 vs 8) and TRIPLING shared-memory
+footprint per threadgroup (12KB vs 4KB) -- fewer, larger threadgroups means fewer of them can be
+co-resident per GPU core at once, so the now-longer per-SIMD-group dependency chain has less
+concurrent work available to hide its own latency behind. A genuine, reasoned occupancy/latency-
+hiding diagnosis, not proven with real GPU occupancy counters (none available on this toolchain,
+the same standing limitation this plan's own Phase 1 entry already flagged).
+
+### What this means, stated plainly
+
+**Neither of the two most obvious "structural" explanations for the 20-26% GEMM gap holds up.**
+Operand width made things slightly worse; tile shape matching llama.cpp's own geometry made
+things dramatically worse. This is a genuinely important negative result, not a dead end to
+paper over: it shifts the most probable explanation away from "Algenta's kernel DESIGN choices
+are suboptimal" and toward **"Metal's own compiler generates measurably tighter code for the
+SAME logical MMA operations than Mojo's `apple_mma_load_8x8`/`_mma_apple_8x8` wrapper currently
+does"** -- a toolchain/codegen-maturity gap, not a design gap, and one this repo cannot fix by
+iterating on kernel architecture alone. This is exactly the kind of finding this plan's own
+"no further redesign unless the dyno produces contradictory evidence" clause anticipates:
+real measurement contradicting an assumption (that kernel-design tournaments, which worked for
+attention, would also work for GEMM) -- surfaced honestly rather than forced.
+
+### What is left
+
+- A genuinely different hypothesis worth trying before concluding the codegen-gap diagnosis is
+  final: software-pipelined/double-buffered K-steps (prefetching the NEXT BK-slice's cooperative
+  load while the CURRENT slice's MMA multiply is still in flight) -- independent of both operand
+  width and tile shape, and a real, known GEMM optimization technique neither experiment tested.
+  Not yet attempted.
+- If a genuinely different, well-motivated hypothesis does not surface a real win after one more
+  attempt, the honest recommendation is to STOP iterating on GEMM kernel architecture specifically
+  and treat the current ~20-26% gap as a standing, disclosed limitation -- continuing to try
+  variations without a strong reason to expect the next one to work would not match this session's
+  own "no forced low-value optimization" discipline (see the Phase 4 entry's own treatment of
+  RMSNorm/F16-transport, which this same discipline already declined to force).
+- The other three GEMM roles (o_proj, down_proj, swiglu) still have not been measured at their own
+  real shapes (different N, different occupancy profile per `mm8.mojo`'s own docstring) -- the
+  qkv_proj-specific 20-26% gap should not be assumed to generalize without checking.
+
+## GEMM tournament, third and decisive isolation experiment (2026-08-07): software-pipelined K-steps also refuted -- stopping kernel-architecture iteration per this entry's own pre-committed rule
+
+Direct follow-up to the two isolation experiments immediately above, which set an explicit
+decision rule: "if a genuinely different, well-motivated hypothesis does not surface a real win
+after one more attempt, the honest recommendation is to STOP iterating on GEMM kernel
+architecture." This is that one more attempt.
+
+`_qkv_proj_gemm_mma8x8_pipelined` (`mma_forge/mm8.mojo`): a real, correctly-implemented ping-pong
+double-buffered variant of the existing `_qkv_proj_gemm_mma8x8` -- two sets of `a_tile`/`b_tile`
+shared-memory buffers (8192B vs. the original's 4096B, still comfortably under the 32KiB
+threadgroup ceiling), a prologue that loads step 0, then per K-step: issue the cooperative load
+for step+1 into the OTHER buffer set (no barrier before/after), compute MMA against the CURRENT
+step's already-synced buffer set, then a single trailing barrier that both publishes this step's
+prefetch and protects the next iteration's overwrite -- a genuine single-barrier-per-step
+pipelining structure, not a disguised sequential design. Same tile shape, same SIMD-group count,
+same Int8-storage-dequant, same F32 MMA operands as the original -- ONLY the load/compute
+scheduling changed, per this plan's own stop-rule discipline (never combine with the two already-
+refuted axes).
+
+**Correctness**: worst delta 5.2e-8 (small shape) / 4.3e-7 (real qkv_proj shape) -- byte-identical
+to the ORIGINAL kernel's own recorded precision, strong evidence the restructuring changed
+scheduling only, not arithmetic. PASS at both shapes.
+
+**Timing, 5 independent process launches**: 1.048-1.068 ms median wall, ~2011-2049 GFLOP/s --
+tight variance (1.9% spread, a real systematic effect, matching Experiment 2's own tight-variance
+signature, not noise). **~51% SLOWER than Algenta's own existing kernel (0.689-0.708ms baseline),
+~88% slower than llama.cpp's L0.** A fresh same-session reconfirmation of the ORIGINAL kernel (6
+runs, immediately after ~1000 pipelined-kernel dispatches -- a disclosed thermal/session-state
+confound on its own numbers, ranging 0.697-0.872ms, noticeably noisier than the historical
+0.689-0.708ms) still beat every single pipelined-kernel run even at its own worst case -- the
+conclusion holds regardless of which baseline is used.
+
+**No implementation wall was hit** -- double buffering was expressed correctly, with no Mojo/Metal
+barrier-semantics obstacle. It simply does not help. Reasoned diagnosis: the original kernel's 8
+SIMD groups over 256 threads, with only a small 4KB shared-memory footprint, likely already lets
+the GPU keep enough OTHER threadgroups concurrently resident to hide shared-memory load latency
+via thread-level parallelism ACROSS threadgroups -- without needing manual pipelining WITHIN one
+threadgroup's own instruction stream. The double-buffered version pays real costs (more live tile
+pointers/register pressure, doubled shared-memory footprint reducing how many threadgroups fit
+per core) for a latency-hiding benefit the hardware/occupancy profile apparently did not need --
+pure overhead, no compensating win. Not profiler-verified (no GPU occupancy counters available on
+this toolchain, the same standing limitation flagged repeatedly in this plan).
+
+### GEMM tournament synthesis -- three real, rigorous, single-variable experiments, all refuted; stopping kernel-architecture iteration as pre-committed
+
+| Experiment | Change | Result vs. Algenta's own original kernel |
+|---|---|---|
+| 1: MMA operand width | F32 -> F16 | ~14% SLOWER (avg) |
+| 2: Tile shape / threadgroup geometry | matched to llama.cpp's own | ~4.2-4.3x SLOWER |
+| 3: Software-pipelined K-steps | ping-pong double buffering | ~51% SLOWER |
+
+Every single hypothesis this session could construct from direct comparison of the two kernels'
+own dispatch mechanics -- precision, geometry, and scheduling -- made things WORSE, several of
+them dramatically so, none of them better. This is not an ambiguous or inconclusive outcome: it is
+three consistent, reproducible, correctly-executed data points all pointing the same direction.
+**Per this entry's own pre-committed decision rule, GEMM kernel-architecture iteration stops
+here.** The remaining ~20-26% qkv_proj gap against llama.cpp (and, by extension, whatever the real
+gap turns out to be for the other three GEMM roles, not yet separately measured) is reported as a
+standing, disclosed limitation of Algenta's current Mojo-toolchain-generated GEMM kernels relative
+to llama.cpp's hand-written, long-matured Metal kernels -- most likely a codegen/compiler-maturity
+gap (Metal's own compiler producing measurably tighter machine code for the identical logical MMA
+operations Mojo's `apple_mma_load_8x8`/`_mma_apple_8x8` wrapper also targets), not a fixable
+architectural inefficiency in Algenta's own kernel DESIGN, which this tournament's own three
+experiments already tried to out-design and could not.
+
+### What is left (revised, given the stop)
+
+- **Not recommended without new evidence**: further GEMM kernel-architecture variants for
+  qkv_proj specifically -- three real, honest attempts already made, all refuted, matching the
+  discipline already applied to Phase 4's RMSNorm/F16-transport question (do not force a low-value
+  path once real measurement says stop).
+- **A genuinely different KIND of investigation, not a kernel variant**, if this gap is worth
+  closing later: direct inspection of Mojo's own generated AIR/Metal machine code (disassembly or
+  an Instruments GPU capture) against llama.cpp's own compiled kernel, to actually confirm or
+  refute the "codegen tax" diagnosis with real evidence instead of a reasoned hypothesis -- not
+  attempted in this session, a materially different skill/tooling requirement than the kernel-
+  design experiments already run.
+- The other three GEMM roles (o_proj, down_proj, swiglu) were never separately measured at their
+  own real shapes -- still open, though given all three architecture axes already failed for
+  qkv_proj, there is little reason to expect a different kernel-design outcome for them; measuring
+  them would mainly confirm or bound the TOTAL scope of the standing gap, not open a new lever.
+- Phase 3 (small-M/deep-context policy), Phase 5 (finite device/shape policy), Phase 6 (manifest
+  wiring), Phase 7 (final win gate) remain untouched and do not depend on resolving this GEMM
+  question.
