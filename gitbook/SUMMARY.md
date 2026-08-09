@@ -229,7 +229,10 @@
 * [Least-squares accuracy](benchmarks/least-squares-accuracy.md)
 * [Forecasting on the joint axis](benchmarks/forecasting-joint-axis.md)
 * [FinQA exact execution](benchmarks/finqa-exact-execution.md)
+* [LLM inference overview](benchmarks/llm-inference-overview.md)
+* [Prefill (token input) throughput](benchmarks/llm-prefill-throughput.md)
 * [Decode throughput](benchmarks/decode-throughput.md)
+* [Batched decode throughput](benchmarks/batched-decode-throughput.md)
 * [LLM tool-calling uplift](benchmarks/llm-tool-calling-uplift.md)
 
 ## Help

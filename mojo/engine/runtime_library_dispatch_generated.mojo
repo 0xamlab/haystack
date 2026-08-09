@@ -3987,6 +3987,20 @@ from metaldispatch.qwen3_decode import (
 from metaldispatch.qwen3_prefill_decode import (
     qwen3_i8_allsimd7_prefill_decode_flat as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat,
     qwen3_i8_allsimd7_prefill_decode_flat_af as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af,
+    qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4 as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4,
+    qwen3_i8_allsimd7_prefill_decode_flat_af_msl as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_msl,
+    qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl,
+    qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4 as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4,
+    qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror,
+    qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3 as _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3,
+)
+
+from metaldispatch.session_prefill_policy import (
+    pf_attn_path_name as _metaldispatch_session_prefill_policy__pf_attn_path_name,
+    pf_gemm_path_name as _metaldispatch_session_prefill_policy__pf_gemm_path_name,
+    kv_contract_name as _metaldispatch_session_prefill_policy__kv_contract_name,
+    decode_path_name as _metaldispatch_session_prefill_policy__decode_path_name,
+    resolve_prefill_execution_plan as _metaldispatch_session_prefill_policy__resolve_prefill_execution_plan,
 )
 
 from metallurgy import (
@@ -8522,6 +8536,11 @@ from metaldispatch.qwen3_prefill_decode import (
     Qwen3PrefillDecodeResult,
 )
 
+from metaldispatch.session_prefill_policy import (
+    ResolvedSessionExecutionPlan,
+    UnresolvedPrefillConfig,
+)
+
 from metrics_agg import (
     Histogram,
     MetricsCounter,
@@ -10028,6 +10047,14 @@ def _parse_url_token(token: String) raises -> URL:
     var field_4 = _parse_string_token(json_array_get(values_json, 4))
     var field_5 = _parse_string_token(json_array_get(values_json, 5))
     return URL(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
+
+def _parse_unresolvedprefillconfig_token(token: String) raises -> UnresolvedPrefillConfig:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 2:
+        raise Error("Expected 2 fields for UnresolvedPrefillConfig, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_int_token(json_array_get(values_json, 1))
+    return UnresolvedPrefillConfig(field_0^, field_1^)
 
 def _parse_weightededge_token(token: String) raises -> WeightedEdge:
     var values_json = json_get_array(token, "v")
@@ -18314,6 +18341,18 @@ def _to_json_residentprobe(value: ResidentProbe) raises -> String:
     result += _to_json_int(value.resident_f32_elems)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+def _to_json_resolvedsessionexecutionplan(value: ResolvedSessionExecutionPlan) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ResolvedSessionExecutionPlan\",\"v\":[")
+    result += _to_json_int(value.attention)
+    result += ","
+    result += _to_json_int(value.gemm)
+    result += ","
+    result += _to_json_int(value.kv_contract)
+    result += ","
+    result += _to_json_int(value.decode)
     result += "]}"
     return result
 
@@ -86612,9 +86651,315 @@ def _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_ar
             "invalid_arguments",
             "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af expected 3 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4."
+                )
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4 expected 4 or 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat_af_msl":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_msl(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_msl."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_msl expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl."
+                )
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl expected 4 or 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4 expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3."
+                )
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3 expected 4 or 5 arguments, received " + String(arg_count) + "."
+        )
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module metaldispatch.qwen3_prefill_decode."
+    )
+
+def _dispatch_metaldispatch__session_prefill_policy(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "pf_attn_path_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _metaldispatch_session_prefill_policy__pf_attn_path_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.pf_attn_path_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.session_prefill_policy.pf_attn_path_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pf_gemm_path_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _metaldispatch_session_prefill_policy__pf_gemm_path_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.pf_gemm_path_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.session_prefill_policy.pf_gemm_path_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "kv_contract_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _metaldispatch_session_prefill_policy__kv_contract_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.kv_contract_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.session_prefill_policy.kv_contract_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "decode_path_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _metaldispatch_session_prefill_policy__decode_path_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.decode_path_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.session_prefill_policy.decode_path_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "resolve_prefill_execution_plan":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_unresolvedprefillconfig_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var result = _metaldispatch_session_prefill_policy__resolve_prefill_execution_plan(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_resolvedsessionexecutionplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.resolve_prefill_execution_plan."
+                )
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_unresolvedprefillconfig_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _metaldispatch_session_prefill_policy__resolve_prefill_execution_plan(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_resolvedsessionexecutionplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.resolve_prefill_execution_plan."
+                )
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_unresolvedprefillconfig_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _metaldispatch_session_prefill_policy__resolve_prefill_execution_plan(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_resolvedsessionexecutionplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.resolve_prefill_execution_plan."
+                )
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_unresolvedprefillconfig_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_bool_token(json_array_get(args_array, 8))
+                var result = _metaldispatch_session_prefill_policy__resolve_prefill_execution_plan(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_resolvedsessionexecutionplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.resolve_prefill_execution_plan."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.session_prefill_policy.resolve_prefill_execution_plan expected 6 or 7 or 8 or 9 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module metaldispatch.session_prefill_policy."
     )
 
 def _dispatch_metallurgy(function_name: String, args_array: String) raises -> String:
@@ -154122,6 +154467,8 @@ def dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_metaldispatch__qwen3_decode(function_name, args_array)
     if module_name == "metaldispatch.qwen3_prefill_decode":
         return _dispatch_metaldispatch__qwen3_prefill_decode(function_name, args_array)
+    if module_name == "metaldispatch.session_prefill_policy":
+        return _dispatch_metaldispatch__session_prefill_policy(function_name, args_array)
     if module_name == "metallurgy":
         return _dispatch_metallurgy(function_name, args_array)
     if module_name == "meteorology":

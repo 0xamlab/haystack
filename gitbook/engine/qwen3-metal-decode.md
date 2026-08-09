@@ -100,6 +100,9 @@ what this kernel path actually does rather than an aspirational streaming API.
 ## Related
 
 * [Decode throughput](../benchmarks/decode-throughput.md) — the measured race this kernel path won.
+* [Batched decode throughput](../benchmarks/batched-decode-throughput.md) — stepping many sequences
+  per weight sweep with this same kernel path (continuous batching), for serving workloads with more
+  than one request in flight.
 * [Runtime libraries](runtime-libraries.md) — the same call also reaches this over
   `POST /v1/libraries/execute` with `module=metaldispatch.qwen3_decode`,
   `function=qwen3_i8_allsimd7_decode_flat`.

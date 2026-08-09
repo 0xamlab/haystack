@@ -35,6 +35,15 @@ GPU/CPU (token, logit) pair must agree within the SAME tight int8-only bound Gat
 check uses -- correct because decode never touches the F16 native-packed buffers, so a tight pass
 here is a sharp signal `ck`/`cv` were genuinely, not just approximately, written correctly.
 
+Gate D (resolved-execution-plan refactor, 2026-08-08, `UnresolvedPrefillConfig`/`ResolvedSessionExecutionPlan`/
+`resolve_plan`): proves
+regression #2 (an explicit with-mirror request silently outranked by a stale no-mirror default) is
+now structurally impossible, not merely fixed by reordering a check -- resolves a FRESH instance to
+`PF_ATTN_GROUPED_FA_NO_MIRROR` first, THEN to `PF_ATTN_GROUPED_FA_WITH_MIRROR` (the real, later,
+explicit request) on the SAME instance, and confirms the resulting `prefill_batch()` dispatch count
+is unambiguously the with-mirror table's own (`1 + n_layers*9 + 2`), never no-mirror's
+(`1 + n_layers*8 + 2`) -- then repeats in the opposite order for symmetry.
+
     cd /Users/angel/Developer/decision-engine/mojo_env
     clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \
@@ -81,6 +90,13 @@ from metaldispatch.contract import (
 )
 from metaldispatch.session import MB_GPU_BUILD, _mb_preflight
 from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill
+from metaldispatch.session_prefill_policy import (
+    PF_ATTN_OFF,
+    PF_ATTN_GROUPED_FA_WITH_MIRROR,
+    PF_ATTN_GROUPED_FA_NO_MIRROR,
+    PF_GEMM_ORIGINAL,
+    UnresolvedPrefillConfig,
+)
 
 comptime D_MODEL: Int = 64
 comptime H_Q: Int = 2
@@ -314,6 +330,15 @@ def main() raises:
         var s = _MBQwen3I8AllSimd7Prefill(
             D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
         )
+        # ── Project Redline reopening (2026-08-08), "make unresolved plan state unrepresentable":
+        # Gate A below used to discover its own arm through `__init__`'s own constructor default
+        # rather than an explicit `resolve_plan` call -- flagged, by this same investigation's own
+        # adversarial-verify pass, as a real gap: it made Gate A's "OFF path" claim rest on WHATEVER
+        # the default happens to be today, not on anything this test itself states. Declared
+        # explicitly here instead, control-vs-candidate style (matching Gate D's own two `sd1`/`sd2`
+        # instances below) -- `control` for Gate A/B's `s`, `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL`, so a
+        # future change to the constructor's own default can never silently change what Gate A tests.
+        s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL))
         var rt = rope_table(D_HEAD, MAX_CTX, THETA)
         var up = s.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
         for l in range(N_LAYERS):
@@ -334,9 +359,10 @@ def main() raises:
         var depth = Float64(N_LAYERS * (D_MODEL + D_FF) + D_MODEL)
         var bound = i8_eps * depth * (1.0 + _abs(cpu_ref.logit))
 
-        # ══ Gate A: OFF path (default, byte-identical to today's shipping code) vs CPU oracle ══
+        # ══ Gate A: OFF path (EXPLICITLY resolved above, not merely the constructor's own default;
+        # ══ byte-identical to today's shipping code either way) vs CPU oracle ══
         print("")
-        print("  --- use_native_grouped_fa_attn = False (today's shipping path) ---")
+        print("  --- use_native_grouped_fa_attn = False (today's shipping path, explicitly resolved) ---")
         var af_pipelines_present = (
             s.af_pipeline_idx[0] >= 0 and s.af_pipeline_idx[1] >= 0
         )
@@ -379,7 +405,7 @@ def main() raises:
             print("      Rebuild with candidate_a_blob.o + native_kv_producer_blob.o linked (see")
             print("      this file's own module docstring) to actually exercise Gate B.")
         else:
-            s.use_native_grouped_fa_attn = True
+            s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR, PF_GEMM_ORIGINAL))
             var pf_on = s.prefill_batch(prompt, 0)
             var hidden_on = List[Float64]()
             if pf_on.status == MB_OK:
@@ -393,7 +419,7 @@ def main() raises:
                 failed += 1
                 print("  ❌ prefill_batch() [ON] failed:", metaldispatch_status_name(pf_on.status))
 
-            if pf_on.dispatches == 1 + N_LAYERS * 9 + 2:
+            if pf_on.dispatches == 1 + N_LAYERS * 9 + 2 + (N_LAYERS if s.kvprod_v2_built else 0):
                 passed += 1
                 print("  ✅ [ON] dispatch count matches the AF design budget (1 + n_layers*9 + 2 --")
                 print("      one MORE per layer than the OFF table's own 8: the gap-fix natural-")
@@ -401,7 +427,7 @@ def main() raises:
             else:
                 failed += 1
                 print("  ❌ [ON] dispatch count drifted:", pf_on.dispatches, "expected",
-                      1 + N_LAYERS * 9 + 2)
+                      1 + N_LAYERS * 9 + 2 + (N_LAYERS if s.kvprod_v2_built else 0))
 
             if cpu_ref.ok and pf_on.token_id == cpu_ref.token_id:
                 passed += 1
@@ -466,7 +492,8 @@ def main() raises:
             var s3 = _MBQwen3I8AllSimd7Prefill(
                 D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
             )
-            s3.use_native_grouped_fa_attn = True  # set BEFORE the first prefill_batch() call
+            # set BEFORE the first prefill_batch() call
+            s3.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR, PF_GEMM_ORIGINAL))
 
             var up3 = s3.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
             for l in range(N_LAYERS):
@@ -567,6 +594,84 @@ def main() raises:
                     failed += 1
                     print("  ❌ [C] at least one prefill/decode prediction diverges from the CPU",
                           "oracle -- see the per-position lines above")
+
+        # ══ Gate D (resolved-execution-plan refactor, 2026-08-08): explicit WITH-MIRROR request, ══
+        # ══ on an instance where NO-MIRROR's own blobs are ALSO linked -- the exact scenario ══
+        # ══ regression #2 broke, restated for the new `resolve_plan`/`UnresolvedPrefillConfig` API ══
+        # `test_metaldispatch_session_prefill_native_decode.mojo`'s own Gate D/E/F/G/H/I/J/K all
+        # exercise `PF_ATTN_GROUPED_FA_NO_MIRROR` -- this binary links the SAME two `attention_forge/`
+        # blobs no-mirror needs (identical availability guard to with-mirror's own, see
+        # `PF_ATTN_GROUPED_FA_NO_MIRROR`'s own docstring), so "no-mirror's own blobs also being
+        # linked" is true of every gate in THIS file already. Regression #2's own mechanism was: a
+        # SEPARATE `Bool` field (`use_native_grouped_fa_attn_no_mirror`) sitting at `True` (from a
+        # hardcoded default flip, standing in for "whatever a different code path last left behind")
+        # silently outranked an explicit `use_native_grouped_fa_attn = True` request, because
+        # `prefill_batch` checked the no-mirror field first. With a single resolved `self.plan` field,
+        # there is no SEPARATE field left to sit at a stale value -- so this gate proves the fix
+        # directly: resolve to NO_MIRROR first (standing in for "some other path's own default"),
+        # THEN resolve to WITH_MIRROR explicitly (the caller's real, later intent) on the SAME
+        # instance, and confirm the dispatch count is unambiguously the WITH-MIRROR table's own COUNT
+        # (`1 + n_layers*9 + 2`, NOT no-mirror's `1 + n_layers*8 + 2` -- the two tables' dispatch
+        # counts differ by exactly the mirror dispatch, so this one number distinguishes them without
+        # any other signal). Repeated in the OPPOSITE order (WITH_MIRROR then NO_MIRROR) for symmetry
+        # -- `resolve_plan` is not a "first request wins" or "last request wins by accident" API, it
+        # is "the most recent call is a full, independent resolution," proven both ways.
+        print("")
+        print("  --- Gate D: explicit request always wins over a prior resolve_plan() call ---")
+        if not af_pipelines_present:
+            print("  ⚠️  attention_forge blobs not linked into this binary -- Gate D SKIPPED.")
+        else:
+            var sd1 = _MBQwen3I8AllSimd7Prefill(
+                D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+            )
+            sd1.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_ORIGINAL))
+            sd1.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR, PF_GEMM_ORIGINAL))
+            var up_d1 = sd1.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+            for l in range(N_LAYERS):
+                if up_d1 == MB_OK:
+                    up_d1 = sd1.upload_layer(
+                        l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                    )
+            if up_d1 == MB_OK:
+                up_d1 = sd1.seal()
+            var pf_d1 = sd1.prefill_batch(prompt, 0)
+            var expect_with_mirror = 1 + N_LAYERS * 9 + 2 + (N_LAYERS if sd1.kvprod_v2_built else 0)
+            if up_d1 == MB_OK and pf_d1.status == MB_OK and pf_d1.dispatches == expect_with_mirror:
+                passed += 1
+                print("  ✅ [D1] NO_MIRROR-then-WITH_MIRROR resolves to WITH_MIRROR:", pf_d1.dispatches,
+                      "dispatches (expected", expect_with_mirror, ") -- the LATER explicit request",
+                      "won, not the earlier one masquerading as a leftover default")
+            else:
+                failed += 1
+                print("  ❌ [D1] expected WITH_MIRROR's own dispatch count", expect_with_mirror,
+                      "got", pf_d1.dispatches, "(upload status", metaldispatch_status_name(up_d1),
+                      ", prefill status", metaldispatch_status_name(pf_d1.status), ")")
+
+            var sd2 = _MBQwen3I8AllSimd7Prefill(
+                D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+            )
+            sd2.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR, PF_GEMM_ORIGINAL))
+            sd2.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_ORIGINAL))
+            var up_d2 = sd2.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+            for l in range(N_LAYERS):
+                if up_d2 == MB_OK:
+                    up_d2 = sd2.upload_layer(
+                        l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                    )
+            if up_d2 == MB_OK:
+                up_d2 = sd2.seal()
+            var pf_d2 = sd2.prefill_batch(prompt, 0)
+            var expect_no_mirror = 1 + N_LAYERS * 8 + 2 + (N_LAYERS if sd2.kvprod_v2_built else 0)
+            if up_d2 == MB_OK and pf_d2.status == MB_OK and pf_d2.dispatches == expect_no_mirror:
+                passed += 1
+                print("  ✅ [D2] WITH_MIRROR-then-NO_MIRROR resolves to NO_MIRROR:", pf_d2.dispatches,
+                      "dispatches (expected", expect_no_mirror, ") -- symmetric, confirming this is",
+                      "not a first-request-wins ordering artifact either")
+            else:
+                failed += 1
+                print("  ❌ [D2] expected NO_MIRROR's own dispatch count", expect_no_mirror,
+                      "got", pf_d2.dispatches, "(upload status", metaldispatch_status_name(up_d2),
+                      ", prefill status", metaldispatch_status_name(pf_d2.status), ")")
 
         # ── forces `step()` (and therefore `_ensure_deep_initialized`'s own `compile_function[
         # _splitk_partial_kernel_simd_native]`/`[_splitk_merge_kernel_simd]` calls) to be reachable

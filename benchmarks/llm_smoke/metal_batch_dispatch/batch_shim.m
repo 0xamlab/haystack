@@ -44,8 +44,28 @@
 #include <string.h>
 
 #define ALGENTA_MAX_ARGS 16
-#define ALGENTA_MAX_PIPELINES 32
-#define ALGENTA_MAX_BUFFERS 512
+/* Beat-llama.cpp campaign (2026-08-08 night): bumped 32 -> 64. Real measured need, hit for real,
+ * not a theoretical worry: the campaign's no-mirror+MSL race binary links NINE forged blob objects
+ * (mm8, three vecload4, msl_parity's three metallibs, candidate_a, native_kv_producer, and the two
+ * decode-side native_kv_decode_attn + split-K blobs) on top of the ~23 Mojo-compiled kernels the
+ * session's own `__init__` lowers -- ~34 MTLBs total, OVER the old 32 cap. The overflow is silent
+ * by construction (the discovery scan stops at the cap): the two decode blobs, linked last, simply
+ * never registered, and the first `step()` call failed `metaldispatch_pipeline_not_found` -- the
+ * exact failure that surfaced this. 64 leaves the same headroom style the buffer bump below uses. */
+#define ALGENTA_MAX_PIPELINES 64
+/* Project Redline reopening, adversarial-hardening follow-up (task steps 2/3): bumped 512 -> 2048.
+ * Buffers are allocated per-`_MBQwen3I8AllSimd7Prefill`-instance (weights/KV-cache/activation
+ * buffers) and never freed for the lifetime of the process (`algenta_alloc_buffer`'s own
+ * `g_buffer_count` only ever grows) -- every PRIOR test file in this repo constructed at most a
+ * handful of instances per binary, comfortably under 512. This session's own fault-injection/
+ * depth-shape-hardening test (`test_metaldispatch_session_prefill_native_decode.mojo`'s Gates H/I)
+ * deliberately constructs MANY fresh, isolated instances in one process (one per fault fixture, one
+ * per depth/shape scenario) to keep each fixture's own native-cache state genuinely clean -- real
+ * measured need, hit 512 for real (`buffer alloc failed (ck)` at the 11th instance), not a
+ * theoretical worry. Pipelines (`ALGENTA_MAX_PIPELINES`, a SEPARATE, one-time-discovered, process-
+ * wide table `algenta_open_session` reuses across every instance) are unaffected by this and stay
+ * unchanged. */
+#define ALGENTA_MAX_BUFFERS 2048
 
 typedef struct {
     int32_t tag;       /* 0 = buffer device-address value, 1 = int64 scalar, 2 = float32 scalar */

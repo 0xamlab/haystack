@@ -19,6 +19,25 @@ the SAME struct instance are diffed against the CPU reference run over progressi
 prefixes — the claim this file's own module docstring makes ("the byte-identical `step()` then
 continues from `pos = pos_base + m_rows` on the SAME instance") checked directly, not asserted.
 
+Gate "unresolved plan sentinel" (Project Redline reopening, 2026-08-08, "make unresolved plan state
+unrepresentable"): this file's own `s` now resolves its plan EXPLICITLY (`PF_ATTN_OFF`/`PF_GEMM_
+ORIGINAL`, the "control" this whole suite has always exercised, declared rather than left to the
+constructor's own default -- see `metaldispatch.session_prefill_policy`'s own module docstring
+addendum). This gate goes one step further: it forces `s.plan` directly into the sentinel
+`ResolvedSessionExecutionPlan(PF_UNRESOLVED, PF_UNRESOLVED, PF_UNRESOLVED, PF_UNRESOLVED)` (the one
+way an invalid value can reach that field despite `resolve_plan`/`UnresolvedPrefillConfig.resolve`
+never producing one -- see `PF_UNRESOLVED`'s own docstring) and confirms `prefill_batch()` RAISES
+rather than silently dispatching under some re-defaulted plan.
+
+Gate "kv_contract/decode mismatch sentinel" (round 5, 2026-08-08): the SAME defensive mechanism,
+exercised for the actual round-5 root-cause finding instead of the simpler out-of-range case above --
+forces `s.plan` into `PF_ATTN_GROUPED_FA_NO_MIRROR` paired with `KV_CONTRACT_NATURAL_F32`/`DECODE_
+PATH_LEGACY_NATURAL_KV` (every field individually a real, named constant, but a combination
+`_derive_kv_contract_for_attention`/`_derive_decode_path_for_attention` can never produce) and
+confirms `prefill_batch()` RAISES for that too. Both gates then confirm a subsequent explicit
+`resolve_plan(...)` call restores ordinary dispatch on the SAME instance -- the defensive check
+refuses one bad call, it does not permanently wedge a session.
+
     # GPU build, needs the shim + the mma_forge-extracted hardware-MMA blob linked (see
     # metaldispatch.session's own _PFROLE_GEMM_ASSIGN_MMA docstring for what that blob is)
     clang -c -fobjc-arc -O2 benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
@@ -52,6 +71,16 @@ from metaldispatch.contract import (
 )
 from metaldispatch.session import MB_GPU_BUILD, _mb_preflight
 from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill
+from metaldispatch.session_prefill_policy import (
+    DECODE_PATH_LEGACY_NATURAL_KV,
+    KV_CONTRACT_NATURAL_F32,
+    PF_ATTN_GROUPED_FA_NO_MIRROR,
+    PF_ATTN_OFF,
+    PF_GEMM_ORIGINAL,
+    PF_UNRESOLVED,
+    ResolvedSessionExecutionPlan,
+    UnresolvedPrefillConfig,
+)
 
 comptime D_MODEL: Int = 32
 comptime H_Q: Int = 4
@@ -285,6 +314,11 @@ def main() raises:
         var s = _MBQwen3I8AllSimd7Prefill(
             D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
         )
+        # ── Project Redline reopening (2026-08-08), "make unresolved plan state unrepresentable":
+        # declared explicitly (this whole suite's own "control", `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL`)
+        # rather than relying on the constructor's own default -- see this file's own module
+        # docstring addendum and `metaldispatch.session_prefill_policy`'s own module docstring.
+        s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL))
         var rt = rope_table(D_HEAD, MAX_CTX, THETA)
         var up = s.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
         for l in range(N_LAYERS):
@@ -395,5 +429,73 @@ def main() raises:
         else:
             failed += 1
             print("  ❌ a context-overflowing prefill was accepted:", overflow_r.status)
+
+        # ══ GATE "unresolved plan sentinel": prefill_batch() must RAISE, never silently default ══
+        # Project Redline reopening (2026-08-08), "make unresolved plan state unrepresentable" --
+        # forces `s.plan` directly into the sentinel `ResolvedSessionExecutionPlan(PF_UNRESOLVED, PF_
+        # UNRESOLVED, PF_UNRESOLVED, PF_UNRESOLVED)`, the one way an invalid value can reach that
+        # field despite `resolve_plan`/`UnresolvedPrefillConfig.resolve` never producing one (both
+        # always return an `is_resolved() == True` value -- see that method's own docstring). Confirms
+        # `prefill_batch()` raises a clear error instead of silently re-defaulting to `PF_ATTN_OFF`/
+        # `PF_GEMM_ORIGINAL`, then confirms the SAME instance dispatches normally again after an
+        # explicit `resolve_plan(...)` call -- the defensive check refuses one bad call, it does not
+        # permanently wedge the session.
+        s.plan = ResolvedSessionExecutionPlan(PF_UNRESOLVED, PF_UNRESOLVED, PF_UNRESOLVED, PF_UNRESOLVED)
+        var raised_for_unresolved = False
+        var unresolved_error_text = String("")
+        try:
+            _ = s.prefill_batch(prefill_prompt, 0)
+        except e:
+            raised_for_unresolved = True
+            unresolved_error_text = String(e)
+        if raised_for_unresolved:
+            passed += 1
+            print("  ✅ prefill_batch() RAISED for an unresolved/sentinel plan, as designed:",
+                  unresolved_error_text)
+        else:
+            failed += 1
+            print("  ❌ prefill_batch() did NOT raise for an unresolved plan -- it silently",
+                  "dispatched instead, exactly the class of bug this redesign exists to prevent")
+
+        # ══ GATE "kv_contract/decode mismatch sentinel" (round 5, 2026-08-08) ══
+        # Every field individually looks like a real, named constant here -- `PF_ATTN_GROUPED_FA_
+        # NO_MIRROR` is a genuine attention value, `KV_CONTRACT_NATURAL_F32`/`DECODE_PATH_LEGACY_
+        # NATURAL_KV` are genuine kv_contract/decode values -- but this exact COMBINATION is precisely
+        # what `_derive_kv_contract_for_attention`/`_derive_decode_path_for_attention` can never
+        # produce (see `metaldispatch.session_prefill_policy`'s own module docstring addendum, round
+        # 5): `PF_ATTN_GROUPED_FA_NO_MIRROR` derives ONLY to `KV_CONTRACT_PACKED_F16_NATIVE`/
+        # `DECODE_PATH_NATIVE_PACKED_KV`, never to the legacy/natural pair constructed here. Confirms
+        # `is_resolved()` (and therefore `prefill_batch()`) rejects a self-CONTRADICTORY plan, not
+        # merely an out-of-range one -- the `PF_UNRESOLVED` sentinel gate above already covers the
+        # simpler case; this one is the actual round-5 root-cause finding, exercised directly.
+        s.plan = ResolvedSessionExecutionPlan(
+            PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_ORIGINAL, KV_CONTRACT_NATURAL_F32, DECODE_PATH_LEGACY_NATURAL_KV
+        )
+        var raised_for_mismatch = False
+        var mismatch_error_text = String("")
+        try:
+            _ = s.prefill_batch(prefill_prompt, 0)
+        except e:
+            raised_for_mismatch = True
+            mismatch_error_text = String(e)
+        if raised_for_mismatch:
+            passed += 1
+            print("  ✅ prefill_batch() RAISED for a self-contradictory attention/kv_contract/decode",
+                  "plan, as designed:", mismatch_error_text)
+        else:
+            failed += 1
+            print("  ❌ prefill_batch() did NOT raise for a self-contradictory plan -- it silently",
+                  "dispatched instead, exactly the round-5 root-cause bug this redesign closes")
+
+        s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL))
+        var recovered_r = s.prefill_batch(prefill_prompt, 0)
+        if recovered_r.status == MB_OK:
+            passed += 1
+            print("  ✅ after an explicit resolve_plan() call, the SAME instance dispatches",
+                  "normally again -- the sentinel check does not permanently wedge a session")
+        else:
+            failed += 1
+            print("  ❌ resolve_plan() did not restore normal dispatch:",
+                  metaldispatch_status_name(recovered_r.status))
 
         print("  [metaldispatch.session_prefill] Passed:", passed, "Failed:", failed)

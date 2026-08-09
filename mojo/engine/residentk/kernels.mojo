@@ -2126,6 +2126,53 @@ def _splitk_merge_kernel_simd(
     attn_out[h * d_head + e] = o / denom
 
 
+def _batched_splitk_merge_kernel_simd(
+    attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits: Int, h_q: Int, d_head: Int,
+):
+    """Project Slipstream Phase 3 (2026-08-09): the B-aware / continuous-batching twin of
+    `_splitk_merge_kernel_simd`, engine-side half of the batched flash-decoding pair (the partial
+    half is the forge blob `native_kv_decode_attn_splitk_batched`, which writes a `[B, h_q,
+    n_splits]` partial layout -- the single-stream `[h_q, n_splits]` layout with a leading sequence
+    axis). `grid_dim = B * h_q`, `block_dim = d_head`: one threadgroup per (sequence, query head),
+    `b = block_idx.x // h_q`, `h = block_idx.x % h_q`. Same associative online-softmax rescale-and-add
+    over `n_splits` partials as the single-stream merge, same finite `_NEG_HUGE` empty-split no-op
+    discipline, same deliberately-no-barrier thread-private-column property; only the partial index
+    (`b*(h_q*n_splits) + h*n_splits + s`) and the output index (`(b*h_q + h)*d_head + e`) gain the
+    sequence axis. Math byte-for-byte the forge `_native_kv_decode_splitk_merge_batched_kernel`
+    verified 9/9 in `attention_forge/native_kv_decode_attn_splitk_batched_driver.mojo`; this engine
+    copy exists because the merge must NOT be a blob (its 36-char module would truncate partial+merge
+    to an indistinguishable AIR prefix -- see REALRACE_RESULTS.md "batched-kernel DISCOVERY NAMES").
+
+    NAMING (load-bearing, see REALRACE_RESULTS.md "THIRD discovery collision"): engine-compiled
+    residentk kernels discover with only the FIRST 11 base-name chars visible
+    (`residentk_kernels__<11>6A6A6A6A_<hash>`), so this kernel is deliberately named to diverge from
+    `_splitk_merge_kernel_simd` (visible `splitk_merg`) WITHIN that window -- `_batched_splitk_merge_
+    kernel_simd` is visible as `batched_spl`. A name like `_splitk_merge_kernel_simd_batched` would
+    ALSO truncate to `splitk_merg` and collide with the single-stream merge at discovery."""
+    var idx = Int(block_idx.x)
+    var b = idx // h_q
+    var h = idx % h_q
+    var e = Int(thread_idx.x)
+    var base = b * (h_q * n_splits) + h * n_splits
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+    for s in range(n_splits):
+        var pidx = base + s
+        var sm = m_in[pidx]
+        var sl = l_in[pidx]
+        var so = o_in[pidx * d_head + e]
+        var nm = m if m > sm else sm
+        var corr = exp(m - nm)
+        var w = exp(sm - nm)
+        o = o * corr + w * so
+        denom = denom * corr + w * sl
+        m = nm
+
+    attn_out[(b * h_q + h) * d_head + e] = o / denom
+
+
 def _splitk_partial_kernel_simd_batched4(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,

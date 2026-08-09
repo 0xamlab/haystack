@@ -50,8 +50,6 @@ from attnk.rope import rope_table
 from residentk.contract import (
     RESIDENT_DEFAULT_CONTEXT,
     RESIDENT_MAX_CONTEXT,
-    residentk_dispatch_budget_deep,
-    residentk_splitk_should_split,
 )
 from metaldispatch.contract import (
     MB_ERR_CHECKPOINT_UNREADABLE,
@@ -61,11 +59,20 @@ from metaldispatch.contract import (
     MB_ERR_SHADER_TOOLCHAIN_ABSENT,
     MB_ERR_UNSUPPORTED_ARCHITECTURE,
     MB_OK,
-    metaldispatch_dispatch_budget,
     metaldispatch_status_name,
 )
 from metaldispatch.session import _mb_preflight, MB_GPU_BUILD
 from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill, PREFILL_MAX_TILE
+from metaldispatch.session_prefill_policy import (
+    PF_ATTN_OFF,
+    PF_ATTN_GROUPED_FA_WITH_MIRROR,
+    PF_ATTN_GROUPED_FA_NO_MIRROR,
+    PF_GEMM_ORIGINAL,
+    PF_GEMM_BM64,
+    PF_GEMM_VECLOAD4_ALL_ROLES,
+    PF_GEMM_MSL_PARITY_ALL_ROLES,
+    UnresolvedPrefillConfig,
+)
 
 comptime QWEN3_0_6B_BASE_D_MODEL: Int = 1024
 comptime QWEN3_0_6B_BASE_N_LAYERS: Int = 28
@@ -122,16 +129,31 @@ def _tensor_loc(tensors_obj: String, name: String) raises -> _TensorLoc:
 
 
 def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+    # Read in bounded chunks (16 Mi elements = 128 MiB each) rather than one `read_bytes` of the
+    # full size: large models (Qwen3-1.7B's tied embedding is ~2.5 GB of float64) exceed the
+    # single-read limit a whole-tensor read hits with "Invalid argument", and chunking also halves
+    # peak memory (no second full-size copy). Identical bytes either way -- the campaign's
+    # Qwen3-0.6B-Base checkpoints read back byte-for-byte the same through this path.
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
-    var raw = f.read_bytes(n_elements * 8)
-    f.close()
-    if len(raw) != n_elements * 8:
-        raise Error("metaldispatch.qwen3_prefill_decode: short read at byte offset " + String(byte_offset))
     var out = List[Float64](capacity=n_elements)
-    var fp = raw.unsafe_ptr().bitcast[Float64]()
-    for i in range(n_elements):
-        out.append(fp[i])
+    var remaining = n_elements
+    alias CHUNK_ELEMS = 1 << 24  # 16 Mi elements = 128 MiB per read
+    while remaining > 0:
+        var take = CHUNK_ELEMS if remaining > CHUNK_ELEMS else remaining
+        var raw = f.read_bytes(take * 8)
+        if len(raw) != take * 8:
+            f.close()
+            raise Error(
+                "metaldispatch.qwen3_prefill_decode: short read at byte offset "
+                + String(byte_offset) + " (wanted " + String(take * 8) + " bytes, got "
+                + String(len(raw)) + ")"
+            )
+        var fp = raw.unsafe_ptr().bitcast[Float64]()
+        for i in range(take):
+            out.append(fp[i])
+        remaining -= take
+    f.close()
     return out^
 
 
@@ -154,7 +176,88 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
     through `_MBQwen3I8AllSimd7Prefill` -- batched `prefill_batch()` for the prompt, then the
     byte-identical `step()` for every generated token. Same failure-mode contract as
     `qwen3_decode.qwen3_i8_allsimd7_decode_flat`: every failure is a returned `status`, never a crash
-    and never a silently-wrong answer."""
+    and never a silently-wrong answer.
+
+    Project Redline reopening (2026-08-08), "make unresolved plan state unrepresentable" audit: this
+    is the ONE function in this file actually wired into the real runtime-library-dispatch catalog
+    (`runtime_library_dispatch_generated.mojo`'s own `qwen3_i8_allsimd7_prefill_decode_flat` entry),
+    and it used to construct `_MBQwen3I8AllSimd7Prefill` and decode via plain `step()` WITHOUT ever
+    calling `resolve_plan` -- relying entirely on the constructor's own default. That was safe only
+    because the default happens to be the always-safe `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL`, and only by
+    coincidence: nothing in this function's own code said so, so a future change to the literal
+    default value inside `_MBQwen3I8AllSimd7Prefill.__init__`'s signature would have silently changed
+    what this function does (see `metaldispatch.session_prefill_policy`'s own module docstring
+    addendum for the full account -- this was one of the two real call sites that motivated it). Now
+    resolved explicitly, immediately after construction, to the SAME `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL`
+    this function has always run -- this function's own behavior is completely unchanged; only the
+    SOURCE of that behavior moved from "whatever the constructor's default happens to be" to "this
+    function's own explicit, self-documenting request".
+
+    PROMOTION DECISION, round 5 (2026-08-08), SUPERSEDED by round 7 below: `PF_ATTN_GROUPED_FA_
+    NO_MIRROR`/`PF_GEMM_VECLOAD4_ALL_ROLES` was considered and NOT flipped to despite (a)-(g) of the
+    promotion gate all genuinely passing, because that plan's own decode path (`native_kv_decode_
+    attn`, which has no split-K/deep-decode occupancy variant) collapses decode throughput ~2.87x
+    (~255-257 tok/s -> ~89-100 tok/s) relative to the legacy decode path -- a real, structural
+    regression for any generation past ~7 tokens, found by measuring DECODE throughput in a
+    throughput context for the first time (every prior driver had hardcoded `max_new_tokens=1` to
+    isolate prefill). That finding stands, unchanged, for THAT specific plan -- see `qwen3_i8_
+    allsimd7_prefill_decode_flat_af_nomirror_vecload4`'s own docstring, which still carries the full
+    account. It is superseded here only in the sense that it motivated the round-7 discovery below,
+    not because the ~2.87x no-mirror decode regression stopped being real.
+
+    PROMOTION DECISION, round 7 (2026-08-08): `attention=PF_ATTN_GROUPED_FA_WITH_MIRROR` + `gemm=
+    PF_GEMM_VECLOAD4_ALL_ROLES` is DIFFERENT from the round-5 candidate above on the ONE axis that
+    mattered: with-mirror populates BOTH KV-cache representations every prefill call, so `self.plan.
+    decode` derives to `DECODE_PATH_LEGACY_NATURAL_KV` regardless of `gemm` -- decode always runs the
+    legacy path's own stable, already-occupancy-optimized throughput, never the no-mirror plan's
+    unoptimized native-KV decode path. This makes vecload4's real, independently-confirmed GEMM
+    speedup (a property of prefill's own GEMM-role kernel choice, orthogonal to which attention path
+    populated the KV cache that same prefill call also writes) reachable WITHOUT the round-5 decode
+    regression. `_apply_m_rows_af` (the with-mirror prefill dispatch table) never consulted `self.
+    plan.gemm` before this round -- a real, disclosed wiring gap, closed additively in `session_
+    prefill.mojo` (see that method's own docstring) -- so this exact combination had never been
+    measured, or even reachable, before round 7.
+
+    Independently re-verified end-to-end before this promotion, one round deeper than the promotion
+    gate's own stated criteria (this file's own established discipline -- 5 prior rounds on the
+    no-mirror path, each finding something real by checking one level deeper than the checklist):
+    (1) a fresh, from-scratch rebuild of all 4 real-Metal regression suites (OFF/`test_metaldispatch_
+    session_prefill.mojo` 12/12, with-mirror-AF/`test_metaldispatch_session_prefill_af.mojo` 16/16,
+    native-decode-attn integration/`test_metaldispatch_session_prefill_native_decode.mojo` 65/65,
+    qwen3-production-path/`test_metaldispatch_qwen3_production_path.mojo` 52/52 blobs-present + 3/3
+    blobs-absent) found zero regressions. (2) The one case this combination does NOT win: a pure
+    prefill-only workload (`max_new_tokens<=1`, zero real decode steps) -- measured directly, 14
+    fresh runs per arm, no-mirror+vecload4 beats with-mirror+vecload4 by a real but modest ~4-5% in
+    prefill-only throughput (mean 3419.8 vs 3278.0 tok/s, median 3467.7 vs 3302.0 tok/s -- run-to-run
+    noise (CV 3-6.7%) is smaller than this gap, so it is real, not noise, but it is a few percent, not
+    the ~2.87x decode-regression scale). `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4`
+    remains the better explicit choice for that one workload shape; this default does not change that
+    -- see that function's own docstring. (3) `gemm=PF_GEMM_BM64` requested alongside `attention=
+    PF_ATTN_GROUPED_FA_WITH_MIRROR` was verified, not assumed, to be a true structural no-op: two
+    fresh instances given an identical prompt, one resolved to with-mirror+`PF_GEMM_ORIGINAL` and one
+    to with-mirror+`PF_GEMM_BM64`, produced bit-for-bit identical dispatch counts (21) AND token_id/
+    logit -- `PF_GEMM_BM64` genuinely stays no-mirror-only, unaffected by this round's own vecload4
+    wiring fix (Gate PP-BM64-NOOP, `test_metaldispatch_qwen3_production_path.mojo`). (4) A deep x
+    multi-chunk configuration different from every previously-tested depth/chunk-boundary combination
+    -- 3 chunks (120/120/80 = 320 rows, every chunk boundary past the ~32-key split-K threshold) at
+    the synthetic scale (Gate PP-DEEP-MULTI, CPU-oracle-verified at every position, all 4 named plans,
+    zero divergence), AND a real 547-token checkpoint (SAME weights as the established 256-token
+    `qwen3smoke` checkpoint, different `input_ids`/`n_tokens` only) that genuinely crosses `PREFILL_
+    MAX_TILE`=512 for the first time in this investigation (2 real `prefill_batch()` chunks: 512+35)
+    -- both plans produced BYTE-IDENTICAL generated token streams (OFF vs. this default, 24 tokens)
+    with decode throughput statistically indistinguishable (232.25 vs. 232.61 tok/s) and prefill
+    ~2.2x faster (1622 vs. 3591 tok/s). No 6th regression found. PROMOTED: this is now the default
+    for this function, replacing `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL`. Real, independently-verified
+    throughput with this default now ACTIVE (no explicit override), re-measured at 3 of the 6
+    previously-established generation lengths, lands in the already-measured (c)-arm ranges (see
+    `REALRACE_RESULTS.md`'s "With-mirror + vecload4-all-roles" entry for the full 6-length table this
+    reproduces). Rollback, fully explicit and never deleted: `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL` (this
+    function's own pre-round-7 behavior) stays reachable via `qwen3_i8_allsimd7_prefill_decode_flat_
+    af(checkpoint_dir, max_new_tokens, False)` or `..._af_vecload4(checkpoint_dir, max_new_tokens,
+    False, False)`; the original with-mirror-without-vecload4 plan via `..._af(checkpoint_dir,
+    max_new_tokens, True)`; both no-mirror variants via `..._af_nomirror`/`..._af_nomirror_vecload4`
+    -- every plan this investigation has ever measured remains one explicit call away, exactly this
+    file's own established "genuine rollback, not a deleted path" discipline."""
     if max_new_tokens < 1:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -280,6 +383,17 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
             var s = _MBQwen3I8AllSimd7Prefill(
                 d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
             )
+            # ── round 7 (2026-08-08): the default flips here, from `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL`
+            # to `PF_ATTN_GROUPED_FA_WITH_MIRROR`/`PF_GEMM_VECLOAD4_ALL_ROLES` -- see this function's
+            # own docstring's "PROMOTION DECISION, round 7" addendum for the full evidence trail. This
+            # plan's own decode path always derives to `DECODE_PATH_LEGACY_NATURAL_KV` (with-mirror
+            # populates BOTH KV-cache representations), so this flip is decode-safe -- unlike the
+            # round-5 no-mirror candidate, which stays NOT the default (see that same docstring
+            # addendum, and `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4`'s own, for
+            # why). Both blob families gracefully degrade to `PF_ATTN_OFF`/`PF_GEMM_ORIGINAL` if
+            # linked without them (`resolve_prefill_execution_plan`'s own availability-gated degrade),
+            # so this call is safe even on a binary built without `attention_forge`/vecload4 blobs.
+            s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR, PF_GEMM_VECLOAD4_ALL_ROLES))
 
             var rt = rope_table(d_head, max_ctx, theta)
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
@@ -376,10 +490,15 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
             var t_decode_end = perf_counter_ns()
 
             if dispatches_per_token != 0:
+                # Round 5 (2026-08-08): reads the GENERATED expected count straight off the session
+                # itself (`s.expected_decode_dispatch_count`) instead of re-deriving a split-K-aware
+                # formula here -- see that method's own docstring in `metaldispatch.session_prefill`
+                # for why a separately-maintained formula is exactly what round 4's own adversarial
+                # pass found silently wrong for the native-KV decode path (no split-K variant exists
+                # for it at all). Correct for BOTH decode paths uniformly; this wrapper no longer
+                # needs to know which one is active.
                 var n_keys_last = n_prompt + (n_decoded - 1)
-                var expected_budget = metaldispatch_dispatch_budget(n_layers)
-                if residentk_splitk_should_split(n_keys_last):
-                    expected_budget = residentk_dispatch_budget_deep(n_layers)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
                 if dispatches_per_token != expected_budget:
                     return _decode_err(
                         MB_ERR_DISPATCH_COUNT_MISMATCH,
@@ -411,8 +530,9 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
     """Attention Compiler Plan v1.0, Phase 2C: byte-for-byte the SAME orchestration as
     `qwen3_i8_allsimd7_prefill_decode_flat` above (copy-and-extend, this file's own established
     precedent for `_MBQwen3I8AllSimd7Prefill`'s own relationship to `_MBQwen3I8AllSimd7`), with
-    exactly one addition: `s.use_native_grouped_fa_attn = use_native_grouped_fa_attn`, set once,
-    immediately after construction, before any weight upload or dispatch. The ORIGINAL function
+    exactly one addition: `s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR if
+    use_native_grouped_fa_attn else PF_ATTN_OFF, PF_GEMM_ORIGINAL))`, called once, immediately after
+    construction, before any weight upload or dispatch. The ORIGINAL function
     above is left completely untouched -- every existing caller (every benchmark/production build
     that does not know this function exists) keeps running the exact code it always has; this is a
     new, additive entry point, not a modified one.
@@ -563,8 +683,627 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
                 d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
             )
             # ── the ONE addition over `qwen3_i8_allsimd7_prefill_decode_flat` above -- see this
-            # function's own docstring for the full, honest scope-limit account.
-            s.use_native_grouped_fa_attn = use_native_grouped_fa_attn
+            # function's own docstring for the full, honest scope-limit account. Resolved-execution-
+            # plan refactor (2026-08-08): this function's own `use_native_grouped_fa_attn: Bool`
+            # parameter is unchanged (still the external, CLI-facing API every existing caller of
+            # THIS function passes); internally it now translates to a single `UnresolvedPrefillConfig`
+            # request (resolved by `resolve_plan` immediately below) instead of setting a raw struct
+            # field directly -- see `metaldispatch.session_
+            # prefill_policy`'s own module docstring for why the struct-level API changed.
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_WITH_MIRROR if use_native_grouped_fa_attn else PF_ATTN_OFF,
+                PF_GEMM_ORIGINAL,
+            ))
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                # Round 5 (2026-08-08): reads the GENERATED expected count straight off the session
+                # itself (`s.expected_decode_dispatch_count`) instead of re-deriving a split-K-aware
+                # formula here -- see that method's own docstring in `metaldispatch.session_prefill`
+                # for why a separately-maintained formula is exactly what round 4's own adversarial
+                # pass found silently wrong for the native-KV decode path (no split-K variant exists
+                # for it at all). Correct for BOTH decode paths uniformly; this wrapper no longer
+                # needs to know which one is active.
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+def qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_native_grouped_fa_attn: Bool, use_vecload4_all_roles: Bool,
+    warmup_prefills: Int = 0,
+) -> Qwen3PrefillDecodeResult:
+    """Project Redline reopening (2026-08-08), round 7: byte-for-byte the SAME orchestration as
+    `qwen3_i8_allsimd7_prefill_decode_flat_af` above (copy-and-extend, this file's own established
+    precedent -- `flat` -> `flat_af` -> THIS, exactly the same relationship `flat_af_nomirror` ->
+    `flat_af_nomirror_vecload4` already has below), with exactly ONE addition: a single `s.resolve_
+    plan(UnresolvedPrefillConfig(...))` call that ALSO threads a `gemm` request through, instead of
+    always requesting `PF_GEMM_ORIGINAL`. `qwen3_i8_allsimd7_prefill_decode_flat`, `qwen3_i8_allsimd7_
+    prefill_decode_flat_af`, `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror`, and `qwen3_i8_
+    allsimd7_prefill_decode_flat_af_nomirror_vecload4` are all FOUR left completely untouched by this
+    addition -- every existing caller keeps running the exact code it already runs.
+
+    WHY THIS FUNCTION EXISTS: `attention=PF_ATTN_GROUPED_FA_WITH_MIRROR` + `gemm=PF_GEMM_VECLOAD4_
+    ALL_ROLES` had never been measured as its own combination before this round, because `_apply_m_
+    rows_af` (the with-mirror prefill dispatch table) never consulted `self.plan.gemm` at all -- a
+    real, disclosed wiring gap (NOT a design choice; `PF_GEMM_BM64` staying no-mirror-only IS a design
+    choice, restated in `metaldispatch.session_prefill_policy`'s own module docstring), now closed
+    additively in `session_prefill.mojo`'s `_apply_m_rows_af` (see that method's own docstring for the
+    full account). The motivating hypothesis this function exists to measure: with-mirror populates
+    BOTH the packed-F16 AND natural-F32 KV caches, so `self.plan.decode` still resolves to `DECODE_
+    PATH_LEGACY_NATURAL_KV` regardless of `gemm` -- decode should therefore run at the legacy path's
+    own stable throughput (no regression, unlike the no-mirror arm's own documented ~2.87x decode
+    collapse -- see `qwen3_i8_allsimd7_prefill_decode_flat`'s own "PROMOTION DECISION" docstring
+    addendum), while prefill should still capture vecload4's real, independently-confirmed GEMM speedup
+    (a property of which KERNEL executes the GEMM roles, orthogonal to which attention path populated
+    the KV cache that prefill call also writes).
+
+    DECODE SCOPE: like every other arm in this file, this function's own decode loop below calls plain
+    `s.step()`, UNRESTRICTED, for `max_new_tokens` tokens -- `step()` is plan-aware (round 5) and
+    routes on `self.plan.decode`, which for THIS plan is always `DECODE_PATH_LEGACY_NATURAL_KV`
+    (derived from `attention` alone, never from `gemm` -- see `_derive_decode_path_for_attention`'s
+    own docstring in `metaldispatch.session_prefill_policy`), so this function carries no scope
+    restriction analogous to the no-mirror arms' own historical `max_new_tokens=1` caveat."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    if (
+        d_model != QWEN3_0_6B_BASE_D_MODEL or n_layers != QWEN3_0_6B_BASE_N_LAYERS
+        or h_q != QWEN3_0_6B_BASE_H_Q or h_kv != QWEN3_0_6B_BASE_H_KV
+        or d_head != QWEN3_0_6B_BASE_D_HEAD or d_ff != QWEN3_0_6B_BASE_D_FF
+        or vocab_size != QWEN3_0_6B_BASE_VOCAB
+    ):
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "unsupported model architecture: qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4 runs"
+            + " ONLY Qwen3-0.6B-Base's exact shape (hidden_size=" + String(QWEN3_0_6B_BASE_D_MODEL)
+            + ", num_hidden_layers=" + String(QWEN3_0_6B_BASE_N_LAYERS)
+            + ", num_attention_heads=" + String(QWEN3_0_6B_BASE_H_Q)
+            + ", num_key_value_heads=" + String(QWEN3_0_6B_BASE_H_KV)
+            + ", head_dim=" + String(QWEN3_0_6B_BASE_D_HEAD)
+            + ", intermediate_size=" + String(QWEN3_0_6B_BASE_D_FF)
+            + ", vocab_size=" + String(QWEN3_0_6B_BASE_VOCAB)
+            + "); this checkpoint declares hidden_size=" + String(d_model)
+            + ", num_hidden_layers=" + String(n_layers)
+            + ", num_attention_heads=" + String(h_q)
+            + ", num_key_value_heads=" + String(h_kv)
+            + ", head_dim=" + String(d_head)
+            + ", intermediate_size=" + String(d_ff)
+            + ", vocab_size=" + String(vocab_size),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the ONE addition over `qwen3_i8_allsimd7_prefill_decode_flat_af` above -- see this
+            # function's own docstring for the full account. `gemm` now threads through the caller's
+            # own `use_vecload4_all_roles` instead of being hardcoded to `PF_GEMM_ORIGINAL`.
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_WITH_MIRROR if use_native_grouped_fa_attn else PF_ATTN_OFF,
+                PF_GEMM_VECLOAD4_ALL_ROLES if use_vecload4_all_roles else PF_GEMM_ORIGINAL,
+            ))
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            # ── Beat-llama.cpp front-2 consistency fix (2026-08-09): same warmup discipline as
+            # `flat_af_nomirror_msl` above/below -- see that entry point's own warmup note. A
+            # fresh process otherwise measures its first prefill_batch COLD (max_ctx-scaled
+            # first-use cost); warmup_prefills=0 reproduces the prior cold measurement exactly.
+            for _w in range(warmup_prefills):
+                var wpos = 0
+                while wpos < n_prompt:
+                    var wlen = PREFILL_MAX_TILE
+                    if n_prompt - wpos < wlen:
+                        wlen = n_prompt - wpos
+                    var wids = _slice_ids(prompt_ids, wpos, wlen)
+                    var wr = s.prefill_batch(wids, wpos)
+                    if wr.status != MB_OK:
+                        return _decode_err(
+                            wr.status,
+                            "warmup prefill_batch(pos_base=" + String(wpos) + ") failed: "
+                            + metaldispatch_status_name(wr.status),
+                        )
+                    wpos += wlen
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                # Round 5 (2026-08-08): reads the GENERATED expected count straight off the session
+                # itself (`s.expected_decode_dispatch_count`) instead of re-deriving a split-K-aware
+                # formula here -- see that method's own docstring in `metaldispatch.session_prefill`
+                # for why a separately-maintained formula is exactly what round 4's own adversarial
+                # pass found silently wrong for the native-KV decode path (no split-K variant exists
+                # for it at all). Correct for BOTH decode paths uniformly; this wrapper no longer
+                # needs to know which one is active.
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+def qwen3_i8_allsimd7_prefill_decode_flat_af_msl(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_native_grouped_fa_attn: Bool, use_msl_parity_all_roles: Bool,
+) -> Qwen3PrefillDecodeResult:
+    """Phase 3 (2026-08-08), hybrid per-role Metal GEMM backend: byte-for-byte the SAME
+    orchestration as `qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4` above (copy-and-extend,
+    this file's own established precedent), with the `gemm` request threading
+    `PF_GEMM_MSL_PARITY_ALL_ROLES` (the three hand-written MSL replicas of llama.cpp's
+    `kernel_mul_mm_f16_f32`, shipped through the EXISTING blob mechanism as `mma_forge/generated/
+    msl_parity_blob.c`) instead of `PF_GEMM_VECLOAD4_ALL_ROLES` when the caller's own
+    `use_msl_parity_all_roles` is set. OPT-IN: nothing about the production default changes --
+    `qwen3_i8_allsimd7_prefill_decode_flat` (the real runtime-library-dispatch entry point) is
+    untouched, and passing `use_msl_parity_all_roles=False` here resolves EXACTLY the current
+    production default (`PF_ATTN_GROUPED_FA_WITH_MIRROR` + `PF_GEMM_VECLOAD4_ALL_ROLES`, when
+    `use_native_grouped_fa_attn=True`), which is what makes this entry point double as a
+    same-binary baseline/fallback arm. GRACEFUL FALLBACK, the round-4/5 lesson: a binary that
+    never links `msl_parity_blob.c` resolves the same MSL request down to
+    `PF_GEMM_VECLOAD4_ALL_ROLES` (then the existing BM64/ORIGINAL chain) -- never a hard error;
+    see `resolve_prefill_execution_plan`'s own Phase 3 branch. Same decode scope as the vecload4
+    arm above: `self.plan.decode` derives from `attention` alone and is always
+    `DECODE_PATH_LEGACY_NATURAL_KV` for with-mirror, so `step()` is unrestricted."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    if (
+        d_model != QWEN3_0_6B_BASE_D_MODEL or n_layers != QWEN3_0_6B_BASE_N_LAYERS
+        or h_q != QWEN3_0_6B_BASE_H_Q or h_kv != QWEN3_0_6B_BASE_H_KV
+        or d_head != QWEN3_0_6B_BASE_D_HEAD or d_ff != QWEN3_0_6B_BASE_D_FF
+        or vocab_size != QWEN3_0_6B_BASE_VOCAB
+    ):
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "unsupported model architecture: qwen3_i8_allsimd7_prefill_decode_flat_af_msl runs"
+            + " ONLY Qwen3-0.6B-Base's exact shape (hidden_size=" + String(QWEN3_0_6B_BASE_D_MODEL)
+            + ", num_hidden_layers=" + String(QWEN3_0_6B_BASE_N_LAYERS)
+            + ", num_attention_heads=" + String(QWEN3_0_6B_BASE_H_Q)
+            + ", num_key_value_heads=" + String(QWEN3_0_6B_BASE_H_KV)
+            + ", head_dim=" + String(QWEN3_0_6B_BASE_D_HEAD)
+            + ", intermediate_size=" + String(QWEN3_0_6B_BASE_D_FF)
+            + ", vocab_size=" + String(QWEN3_0_6B_BASE_VOCAB)
+            + "); this checkpoint declares hidden_size=" + String(d_model)
+            + ", num_hidden_layers=" + String(n_layers)
+            + ", num_attention_heads=" + String(h_q)
+            + ", num_key_value_heads=" + String(h_kv)
+            + ", head_dim=" + String(d_head)
+            + ", intermediate_size=" + String(d_ff)
+            + ", vocab_size=" + String(vocab_size),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the ONE difference over `qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4`: the
+            # `gemm` request is the OPT-IN MSL-parity tier when asked, else byte-for-byte the
+            # current production default's vecload4 tier. A blobs-absent binary degrades the MSL
+            # request to that same vecload4 tier in `resolve_prefill_execution_plan` (graceful
+            # fallback, never a hard error).
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_WITH_MIRROR if use_native_grouped_fa_attn else PF_ATTN_OFF,
+                PF_GEMM_MSL_PARITY_ALL_ROLES if use_msl_parity_all_roles else PF_GEMM_VECLOAD4_ALL_ROLES,
+            ))
+            # Phase 3 diagnostic (benchmark-facing entry point only, printed BEFORE any timed
+            # section): makes the resolved plan externally visible -- the graceful-fallback proof
+            # reads exactly this line on a blobs-absent binary (requested MSL -> resolved gemm=2
+            # PF_GEMM_VECLOAD4_ALL_ROLES), and the routing proof on a blobs-present one (resolved
+            # gemm=3 PF_GEMM_MSL_PARITY_ALL_ROLES). Attention: 0=OFF, 1=with-mirror, 2=no-mirror.
+            print("  resolved plan: attention =", s.plan.attention,
+                  ", gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
 
             var rt = rope_table(d_head, max_ctx, theta)
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
@@ -662,9 +1401,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
 
             if dispatches_per_token != 0:
                 var n_keys_last = n_prompt + (n_decoded - 1)
-                var expected_budget = metaldispatch_dispatch_budget(n_layers)
-                if residentk_splitk_should_split(n_keys_last):
-                    expected_budget = residentk_dispatch_budget_deep(n_layers)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
                 if dispatches_per_token != expected_budget:
                     return _decode_err(
                         MB_ERR_DISPATCH_COUNT_MISMATCH,
@@ -688,3 +1425,1233 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
             return _decode_err(
                 MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
             )
+
+
+def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_native_grouped_fa_attn_no_mirror: Bool, use_msl_parity_all_roles: Bool,
+    warmup_prefills: Int = 0,
+) -> Qwen3PrefillDecodeResult:
+    """Beat-llama.cpp campaign (2026-08-08 night): the COMBINATION arm -- byte-for-byte the SAME
+    orchestration as `qwen3_i8_allsimd7_prefill_decode_flat_af_msl` above (copy-and-extend, this
+    file's own established precedent), with the `attention` request flipped from the with-mirror
+    tier to `PF_ATTN_GROUPED_FA_NO_MIRROR` when the caller's own `use_native_grouped_fa_attn_no_
+    mirror` is set -- i.e. the two landed kernel-side levers together: the mirror-free AF prefill
+    table (-5.95 ms GPU at m_rows=256, measured by the campaign's nomirror+MSL counter probe) and
+    the MSL-parity GEMM tier. The `gemm` request is unchanged from the MSL entry point above
+    (MSL-parity when asked, vecload4 fallback otherwise, same graceful-degrade chain).
+
+    DECODE SCOPE, the property that distinguishes this arm from every earlier no-mirror attempt:
+    `self.plan.decode` derives to `DECODE_PATH_NATIVE_PACKED_KV`, so `step()` routes to `_step_
+    native_kv_impl` -- which, since this same campaign's split-K wiring, dispatches the flash-
+    decoding partial+merge pair at and above `_NATIVE_DECODE_SPLITK_THRESHOLD` keys (the round-5
+    ~2.87x decode collapse is FIXED by that kernel, not merely worked around: the campaign's
+    measurement shows the no-mirror+vecload4 arm decoding at 265-274 tok/s vs the legacy path's
+    252-259 at the race's own depths). Multi-token generation is therefore SAFE on this arm -- no
+    `max_new_tokens` clamp -- provided the binary links BOTH `attention_forge/generated/native_
+    kv_decode_attn_blob.c` AND `native_kv_decode_attn_splitk_blob.c` (the naive table runs below
+    threshold or when only the naive blob is present; a binary linking NEITHER decode blob degrades
+    the no-mirror request to `PF_ATTN_OFF` at resolution, per `resolve_prefill_execution_plan`'s
+    own gate, and generation proceeds on the OFF path)."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    if (
+        d_model != QWEN3_0_6B_BASE_D_MODEL or n_layers != QWEN3_0_6B_BASE_N_LAYERS
+        or h_q != QWEN3_0_6B_BASE_H_Q or h_kv != QWEN3_0_6B_BASE_H_KV
+        or d_head != QWEN3_0_6B_BASE_D_HEAD or d_ff != QWEN3_0_6B_BASE_D_FF
+        or vocab_size != QWEN3_0_6B_BASE_VOCAB
+    ):
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "unsupported model architecture: qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl runs"
+            + " ONLY Qwen3-0.6B-Base's exact shape (hidden_size=" + String(QWEN3_0_6B_BASE_D_MODEL)
+            + ", num_hidden_layers=" + String(QWEN3_0_6B_BASE_N_LAYERS)
+            + ", num_attention_heads=" + String(QWEN3_0_6B_BASE_H_Q)
+            + ", num_key_value_heads=" + String(QWEN3_0_6B_BASE_H_KV)
+            + ", head_dim=" + String(QWEN3_0_6B_BASE_D_HEAD)
+            + ", intermediate_size=" + String(QWEN3_0_6B_BASE_D_FF)
+            + ", vocab_size=" + String(QWEN3_0_6B_BASE_VOCAB)
+            + "); this checkpoint declares hidden_size=" + String(d_model)
+            + ", num_hidden_layers=" + String(n_layers)
+            + ", num_attention_heads=" + String(h_q)
+            + ", num_key_value_heads=" + String(h_kv)
+            + ", head_dim=" + String(d_head)
+            + ", intermediate_size=" + String(d_ff)
+            + ", vocab_size=" + String(vocab_size),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the ONE difference over `qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4`: the
+            # `gemm` request is the OPT-IN MSL-parity tier when asked, else byte-for-byte the
+            # current production default's vecload4 tier. A blobs-absent binary degrades the MSL
+            # request to that same vecload4 tier in `resolve_prefill_execution_plan` (graceful
+            # fallback, never a hard error).
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_NO_MIRROR if use_native_grouped_fa_attn_no_mirror else PF_ATTN_OFF,
+                PF_GEMM_MSL_PARITY_ALL_ROLES if use_msl_parity_all_roles else PF_GEMM_VECLOAD4_ALL_ROLES,
+            ))
+            # Phase 3 diagnostic (benchmark-facing entry point only, printed BEFORE any timed
+            # section): makes the resolved plan externally visible -- the graceful-fallback proof
+            # reads exactly this line on a blobs-absent binary (requested MSL -> resolved gemm=2
+            # PF_GEMM_VECLOAD4_ALL_ROLES), and the routing proof on a blobs-present one (resolved
+            # gemm=3 PF_GEMM_MSL_PARITY_ALL_ROLES). Attention: 0=OFF, 1=with-mirror, 2=no-mirror.
+            print("  resolved plan: attention =", s.plan.attention,
+                  "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            # ── Beat-llama.cpp front-2 consistency fix (2026-08-09): a FRESH process measures
+            # its first prefill_batch COLD -- the max_ctx-scaled first-use cost the Front-1 entry
+            # already diagnosed and quantified (~57 ms at this race's ctx=512): GPU-buffer
+            # first-touch + per-pipeline first-dispatch. llama.cpp's number in this harness is
+            # WARM-resident (its server is warmed by the preconditioning requests before any timed
+            # run). To measure apples-to-apples, run warmup_prefills UNTIMED full prefills first,
+            # bringing buffers/PSOs/DVFS to that same warm state. warmup_prefills=0 (the default)
+            # reproduces the prior cold measurement byte-for-byte.
+            for _w in range(warmup_prefills):
+                var wpos = 0
+                while wpos < n_prompt:
+                    var wlen = PREFILL_MAX_TILE
+                    if n_prompt - wpos < wlen:
+                        wlen = n_prompt - wpos
+                    var wids = _slice_ids(prompt_ids, wpos, wlen)
+                    var wr = s.prefill_batch(wids, wpos)
+                    if wr.status != MB_OK:
+                        return _decode_err(
+                            wr.status,
+                            "warmup prefill_batch(pos_base=" + String(wpos) + ") failed: "
+                            + metaldispatch_status_name(wr.status),
+                        )
+                    wpos += wlen
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+
+def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_native_grouped_fa_attn_no_mirror: Bool, use_qkv_proj_bm64: Bool, use_vecload4_all_roles: Bool,
+) -> Qwen3PrefillDecodeResult:
+    """Project Redline reopening (2026-08-08), step 4: byte-for-byte the SAME orchestration as
+    `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror` immediately below (copy-and-extend, this
+    file's own established precedent -- `flat` -> `flat_af` -> `flat_af_nomirror` -> THIS), with
+    exactly ONE addition over that function's two: a single `s.resolve_plan(UnresolvedPrefillConfig(...))`
+    call, translating all three `Bool` parameters into one `UnresolvedPrefillConfig` request (`vecload4 > bm64 >
+    original` precedence for the `gemm` field -- see `PF_GEMM_VECLOAD4_ALL_ROLES`'s own docstring in
+    `metaldispatch.session_prefill_policy` for the full account), called once, immediately after
+    construction, before any weight upload or dispatch. `qwen3_i8_allsimd7_prefill_decode_flat`,
+    `qwen3_i8_allsimd7_prefill_decode_flat_af`, and `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror`
+    are all THREE left completely untouched by this addition -- every existing caller keeps running
+    the exact code it always has, and every existing benchmark driver keeps calling the function it
+    already calls, unmodified.
+
+    DECODE SCOPE: this function measures PREFILL throughput (`prefill_tokens_per_sec`) primarily,
+    matching every other arm's own measurement methodology so the numbers stay directly comparable --
+    its own decode loop below calls plain `s.step()`, UNRESTRICTED, for `max_new_tokens` tokens.
+    Round 5 (2026-08-08): before this round, `s.step()` only ever read the natural `ck`/`cv` cache, so
+    this function's own docstring used to restrict itself to `max_new_tokens=1` whenever `use_native_
+    grouped_fa_attn_no_mirror=True` (a real caller error past that, undetected) -- `s.step()` is now
+    plan-aware (see `metaldispatch.session_prefill`'s own module docstring addendum, round 5) and
+    routes to the correct implementation automatically based on `s.plan.decode`, so that restriction
+    no longer applies: this function is correct for any `max_new_tokens` under any combination of its
+    three `Bool` parameters. Real decode-after-no-mirror-prefill correctness, INCLUDING the
+    all-4-roles-vecload4 combination specifically, is independently, separately verified by
+    `test_metaldispatch_session_prefill_native_decode.mojo`'s own Gate K, which exercises the EXACT
+    same implementation `s.step()` routes to for this attention path (`_step_native_kv_impl`, via
+    the test-only `step_native_kv` wrapper -- byte-identical code either way, see `metaldispatch.
+    session_prefill`'s own module docstring addendum, round 5)."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    if (
+        d_model != QWEN3_0_6B_BASE_D_MODEL or n_layers != QWEN3_0_6B_BASE_N_LAYERS
+        or h_q != QWEN3_0_6B_BASE_H_Q or h_kv != QWEN3_0_6B_BASE_H_KV
+        or d_head != QWEN3_0_6B_BASE_D_HEAD or d_ff != QWEN3_0_6B_BASE_D_FF
+        or vocab_size != QWEN3_0_6B_BASE_VOCAB
+    ):
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "unsupported model architecture: qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4"
+            + " runs ONLY Qwen3-0.6B-Base's exact shape (hidden_size=" + String(QWEN3_0_6B_BASE_D_MODEL)
+            + ", num_hidden_layers=" + String(QWEN3_0_6B_BASE_N_LAYERS)
+            + ", num_attention_heads=" + String(QWEN3_0_6B_BASE_H_Q)
+            + ", num_key_value_heads=" + String(QWEN3_0_6B_BASE_H_KV)
+            + ", head_dim=" + String(QWEN3_0_6B_BASE_D_HEAD)
+            + ", intermediate_size=" + String(QWEN3_0_6B_BASE_D_FF)
+            + ", vocab_size=" + String(QWEN3_0_6B_BASE_VOCAB)
+            + "); this checkpoint declares hidden_size=" + String(d_model)
+            + ", num_hidden_layers=" + String(n_layers)
+            + ", num_attention_heads=" + String(h_q)
+            + ", num_key_value_heads=" + String(h_kv)
+            + ", head_dim=" + String(d_head)
+            + ", intermediate_size=" + String(d_ff)
+            + ", vocab_size=" + String(vocab_size),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the ONE addition over `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror` above --
+            # see this function's own docstring for the full, honest scope-limit account.
+            # Resolved-execution-plan refactor (2026-08-08): this function's own three `Bool`
+            # parameters are unchanged (still the external, CLI-facing API); internally they now
+            # translate to a single `UnresolvedPrefillConfig` request -- `vecload4 > bm64 > original`
+            # precedence, matching `PF_GEMM_VECLOAD4_ALL_ROLES`'s own docstring exactly (this is the
+            # SAME precedence the pre-refactor two-boolean version's own nested checks implemented,
+            # now expressed as which single enum value gets requested instead of two flags plus an
+            # `and not` guard).
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_NO_MIRROR if use_native_grouped_fa_attn_no_mirror else PF_ATTN_OFF,
+                PF_GEMM_VECLOAD4_ALL_ROLES if use_vecload4_all_roles
+                else PF_GEMM_BM64 if use_qkv_proj_bm64
+                else PF_GEMM_ORIGINAL,
+            ))
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                # Round 5 (2026-08-08): reads the GENERATED expected count straight off the session
+                # itself (`s.expected_decode_dispatch_count`) instead of re-deriving a split-K-aware
+                # formula here -- see that method's own docstring in `metaldispatch.session_prefill`
+                # for why a separately-maintained formula is exactly what round 4's own adversarial
+                # pass found silently wrong for the native-KV decode path (no split-K variant exists
+                # for it at all). Correct for BOTH decode paths uniformly; this wrapper no longer
+                # needs to know which one is active.
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_native_grouped_fa_attn_no_mirror: Bool, use_qkv_proj_bm64: Bool,
+) -> Qwen3PrefillDecodeResult:
+    """Project Redline reopening, adversarial-hardening follow-up (task step 4): byte-for-byte the
+    SAME orchestration as `qwen3_i8_allsimd7_prefill_decode_flat_af` immediately above (copy-and-
+    extend, this file's own established precedent), with exactly TWO additions over that function's
+    ONE: a single `s.resolve_plan(UnresolvedPrefillConfig(...))` call translating both `Bool` parameters
+    into one `UnresolvedPrefillConfig` request, called once, immediately after construction, before any weight
+    upload or dispatch -- see `metaldispatch.session_prefill_policy`'s own module docstring for the
+    full account of what each resolved field does. `qwen3_i8_allsimd7_prefill_decode_flat`
+    and `qwen3_i8_allsimd7_prefill_decode_flat_af` are BOTH left completely untouched by this addition
+    -- every existing caller keeps running the exact code it always has.
+
+    DECODE SCOPE, stated precisely: this function measures PREFILL throughput
+    (`prefill_tokens_per_sec`), the SAME quantity `qwen3_i8_allsimd7_prefill_decode_flat_af` was
+    already using `MAX_NEW_TOKENS=1` to isolate for its own `USE_AF` arm (see that benchmark driver's
+    own module docstring) -- this function's own decode loop below calls plain `s.step()`,
+    UNRESTRICTED, for `max_new_tokens` tokens. Round 5 (2026-08-08): before this round, `s.step()`
+    only ever read the natural `ck`/`cv` cache, so this function's own docstring used to restrict
+    itself to `max_new_tokens=1` when `use_native_grouped_fa_attn_no_mirror=True` (a real caller error
+    past that, undetected -- `PF_ATTN_GROUPED_FA_NO_MIRROR` leaves `ck`/`cv` genuinely unwritten) --
+    `s.step()` is now plan-aware (see `metaldispatch.session_prefill`'s own module docstring
+    addendum, round 5) and routes to the correct implementation automatically based on `s.plan.
+    decode`, so that restriction no longer applies: this function is correct for any `max_new_tokens`
+    under either combination of its two `Bool` parameters. Real decode-after-no-mirror-prefill
+    correctness is independently, separately verified by `test_metaldispatch_session_prefill_native_
+    decode.mojo`'s own Gates D-J, which exercise the EXACT same implementation `s.step()` routes to
+    for this attention path (`_step_native_kv_impl`, via the test-only `step_native_kv` wrapper --
+    byte-identical code either way)."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    if (
+        d_model != QWEN3_0_6B_BASE_D_MODEL or n_layers != QWEN3_0_6B_BASE_N_LAYERS
+        or h_q != QWEN3_0_6B_BASE_H_Q or h_kv != QWEN3_0_6B_BASE_H_KV
+        or d_head != QWEN3_0_6B_BASE_D_HEAD or d_ff != QWEN3_0_6B_BASE_D_FF
+        or vocab_size != QWEN3_0_6B_BASE_VOCAB
+    ):
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "unsupported model architecture: qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror runs"
+            + " ONLY Qwen3-0.6B-Base's exact shape (hidden_size=" + String(QWEN3_0_6B_BASE_D_MODEL)
+            + ", num_hidden_layers=" + String(QWEN3_0_6B_BASE_N_LAYERS)
+            + ", num_attention_heads=" + String(QWEN3_0_6B_BASE_H_Q)
+            + ", num_key_value_heads=" + String(QWEN3_0_6B_BASE_H_KV)
+            + ", head_dim=" + String(QWEN3_0_6B_BASE_D_HEAD)
+            + ", intermediate_size=" + String(QWEN3_0_6B_BASE_D_FF)
+            + ", vocab_size=" + String(QWEN3_0_6B_BASE_VOCAB)
+            + "); this checkpoint declares hidden_size=" + String(d_model)
+            + ", num_hidden_layers=" + String(n_layers)
+            + ", num_attention_heads=" + String(h_q)
+            + ", num_key_value_heads=" + String(h_kv)
+            + ", head_dim=" + String(d_head)
+            + ", intermediate_size=" + String(d_ff)
+            + ", vocab_size=" + String(vocab_size),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the TWO additions over `qwen3_i8_allsimd7_prefill_decode_flat_af` above -- see this
+            # function's own docstring for the full, honest scope-limit account. Resolved-execution-
+            # plan refactor (2026-08-08): same translation as `qwen3_i8_allsimd7_prefill_decode_flat_
+            # af_nomirror_vecload4`'s own updated body above, minus the vecload4 tier (this function
+            # has no `use_vecload4_all_roles` parameter of its own).
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_NO_MIRROR if use_native_grouped_fa_attn_no_mirror else PF_ATTN_OFF,
+                PF_GEMM_BM64 if use_qkv_proj_bm64 else PF_GEMM_ORIGINAL,
+            ))
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                # Round 5 (2026-08-08): reads the GENERATED expected count straight off the session
+                # itself (`s.expected_decode_dispatch_count`) instead of re-deriving a split-K-aware
+                # formula here -- see that method's own docstring in `metaldispatch.session_prefill`
+                # for why a separately-maintained formula is exactly what round 4's own adversarial
+                # pass found silently wrong for the native-KV decode path (no split-K variant exists
+                # for it at all). Correct for BOTH decode paths uniformly; this wrapper no longer
+                # needs to know which one is active.
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+# ────────────────────────────────────────────────────────────────────────────────────────────
+# MODEL-AGNOSTIC variant of `qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl` (copy-and-
+# extend, 2026-08-09): byte-for-byte the same orchestration, with the exact-shape check against
+# Qwen3-0.6B-Base replaced by structural-consistency checks, so it runs ANY Qwen3-family model
+# (verified on Qwen3-1.7B: hidden 2048 / d_ff 6144). Everything else -- manifest parsing, i8
+# quantization, f16-twin materialization, split-K GEMM gating, no-mirror AF attention, timing --
+# is identical, which is precisely the model-agnostic property under test.
+# ────────────────────────────────────────────────────────────────────────────────────────────
+def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_native_grouped_fa_attn_no_mirror: Bool, use_msl_parity_all_roles: Bool,
+    warmup_prefills: Int = 0,
+) -> Qwen3PrefillDecodeResult:
+    """Beat-llama.cpp campaign (2026-08-08 night): the COMBINATION arm -- byte-for-byte the SAME
+    orchestration as `qwen3_i8_allsimd7_prefill_decode_flat_af_msl` above (copy-and-extend, this
+    file's own established precedent), with the `attention` request flipped from the with-mirror
+    tier to `PF_ATTN_GROUPED_FA_NO_MIRROR` when the caller's own `use_native_grouped_fa_attn_no_
+    mirror` is set -- i.e. the two landed kernel-side levers together: the mirror-free AF prefill
+    table (-5.95 ms GPU at m_rows=256, measured by the campaign's nomirror+MSL counter probe) and
+    the MSL-parity GEMM tier. The `gemm` request is unchanged from the MSL entry point above
+    (MSL-parity when asked, vecload4 fallback otherwise, same graceful-degrade chain).
+
+    DECODE SCOPE, the property that distinguishes this arm from every earlier no-mirror attempt:
+    `self.plan.decode` derives to `DECODE_PATH_NATIVE_PACKED_KV`, so `step()` routes to `_step_
+    native_kv_impl` -- which, since this same campaign's split-K wiring, dispatches the flash-
+    decoding partial+merge pair at and above `_NATIVE_DECODE_SPLITK_THRESHOLD` keys (the round-5
+    ~2.87x decode collapse is FIXED by that kernel, not merely worked around: the campaign's
+    measurement shows the no-mirror+vecload4 arm decoding at 265-274 tok/s vs the legacy path's
+    252-259 at the race's own depths). Multi-token generation is therefore SAFE on this arm -- no
+    `max_new_tokens` clamp -- provided the binary links BOTH `attention_forge/generated/native_
+    kv_decode_attn_blob.c` AND `native_kv_decode_attn_splitk_blob.c` (the naive table runs below
+    threshold or when only the naive blob is present; a binary linking NEITHER decode blob degrades
+    the no-mirror request to `PF_ATTN_OFF` at resolution, per `resolve_prefill_execution_plan`'s
+    own gate, and generation proceeds on the OFF path)."""
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    # ── Model-agnostic variant (beat-llama.cpp campaign, 2026-08-09): instead of pinning to
+    # Qwen3-0.6B-Base's exact shape, validate ONLY the structural invariants the kernels rely on
+    # for ANY Qwen3-family model. The split-K GEMM gates (n_q % 256 for o_proj, d_ff % 384 for
+    # down_proj) degrade gracefully per-role in `_apply_m_rows_af_nomirror`, so a model whose dims
+    # are not divisible simply keeps the parity accum kernel for that role -- never a hard error.
+    if (h_q % h_kv) != 0:
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "model-agnostic prefill requires num_attention_heads % num_key_value_heads == 0 (GQA);"
+            + " got " + String(h_q) + " % " + String(h_kv),
+        )
+    if (d_model % 32) != 0 or (d_ff % 32) != 0 or ((h_q * d_head) % 32) != 0:
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "model-agnostic prefill requires d_model, d_ff, and n_q=h_q*d_head all divisible by 32"
+            + " (GEMM tile alignment); got d_model=" + String(d_model) + " d_ff=" + String(d_ff)
+            + " n_q=" + String(h_q * d_head),
+        )
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # ── the ONE difference over `qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4`: the
+            # `gemm` request is the OPT-IN MSL-parity tier when asked, else byte-for-byte the
+            # current production default's vecload4 tier. A blobs-absent binary degrades the MSL
+            # request to that same vecload4 tier in `resolve_prefill_execution_plan` (graceful
+            # fallback, never a hard error).
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_NO_MIRROR if use_native_grouped_fa_attn_no_mirror else PF_ATTN_OFF,
+                PF_GEMM_MSL_PARITY_ALL_ROLES if use_msl_parity_all_roles else PF_GEMM_VECLOAD4_ALL_ROLES,
+            ))
+            # Phase 3 diagnostic (benchmark-facing entry point only, printed BEFORE any timed
+            # section): makes the resolved plan externally visible -- the graceful-fallback proof
+            # reads exactly this line on a blobs-absent binary (requested MSL -> resolved gemm=2
+            # PF_GEMM_VECLOAD4_ALL_ROLES), and the routing proof on a blobs-present one (resolved
+            # gemm=3 PF_GEMM_MSL_PARITY_ALL_ROLES). Attention: 0=OFF, 1=with-mirror, 2=no-mirror.
+            print("  resolved plan: attention =", s.plan.attention,
+                  "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
+
+            var rt = rope_table(d_head, max_ctx, theta)
+            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+            var up_status = s.upload_globals(
+                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+            )
+            if up_status != MB_OK:
+                return _decode_err(
+                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
+                )
+
+            for layer in range(n_layers):
+                var prefix = "model.layers." + String(layer) + "."
+                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+                var ln2 = _load_tensor(
+                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                )
+                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+                var layer_status = s.upload_layer(
+                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                )
+                if layer_status != MB_OK:
+                    return _decode_err(
+                        layer_status,
+                        "upload_layer " + String(layer) + " failed: "
+                        + metaldispatch_status_name(layer_status),
+                    )
+
+            _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            # ── Beat-llama.cpp front-2 consistency fix (2026-08-09): a FRESH process measures
+            # its first prefill_batch COLD -- the max_ctx-scaled first-use cost the Front-1 entry
+            # already diagnosed and quantified (~57 ms at this race's ctx=512): GPU-buffer
+            # first-touch + per-pipeline first-dispatch. llama.cpp's number in this harness is
+            # WARM-resident (its server is warmed by the preconditioning requests before any timed
+            # run). To measure apples-to-apples, run warmup_prefills UNTIMED full prefills first,
+            # bringing buffers/PSOs/DVFS to that same warm state. warmup_prefills=0 (the default)
+            # reproduces the prior cold measurement byte-for-byte.
+            for _w in range(warmup_prefills):
+                var wpos = 0
+                while wpos < n_prompt:
+                    var wlen = PREFILL_MAX_TILE
+                    if n_prompt - wpos < wlen:
+                        wlen = n_prompt - wpos
+                    var wids = _slice_ids(prompt_ids, wpos, wlen)
+                    var wr = s.prefill_batch(wids, wpos)
+                    if wr.status != MB_OK:
+                        return _decode_err(
+                            wr.status,
+                            "warmup prefill_batch(pos_base=" + String(wpos) + ") failed: "
+                            + metaldispatch_status_name(wr.status),
+                        )
+                    wpos += wlen
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                var r = s.prefill_batch(chunk_ids, pos_base)
+                if r.status != MB_OK:
+                    return _decode_err(
+                        r.status,
+                        "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                        + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                    )
+                first_tok = r.token_id
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    generated_ids.append(r2.token_id)
+                    n_decoded += 1
+                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last)
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+

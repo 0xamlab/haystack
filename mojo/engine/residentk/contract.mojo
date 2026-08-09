@@ -123,14 +123,29 @@ comptime RESIDENT_ERR_CODE_OUT_OF_RANGE: Int = 610
 # ── ceilings ──────────────────────────────────────────────────────────────────
 
 comptime RESIDENT_MAX_D_MODEL: Int = 3072
-"""Largest vector width the fused kernels stage in threadgroup memory.
+"""The decode kernels' shared-memory STAGING CEILING -- the single value every `_STAGE` allocation
+in `residentk/kernels.mojo` sizes to. It is NOT an arbitrary constant: it must equal the LARGEST
+vector any fused decode kernel stages for the target model, which is determined BY SIMULATION from
+the model's own dimensions as
 
-Not an arbitrary round number: the fused `rmsnorm + projection` kernels copy the normalized input
-into a shared-memory array so the 8 output columns a threadgroup owns each read it from there
-instead of from device memory 8 times over. That array is sized at COMPILE time, so this constant
-is literally the shared allocation, and 3072 Float32 is 12 KiB against Apple silicon's 32 KiB
-threadgroup budget — leaving room for the 1 KiB reduction scratch alongside it. `d_ff` is staged by
-the down-projection, so this bounds `d_ff` too, not only `d_model`."""
+    stage_needed = max(d_model, h_q * d_head, d_ff)
+
+(the norm/lmhead kernels stage `d_model`, the o_proj gemv stages `h_q * d_head`, the down_proj gemv
+stages `d_ff`). For Qwen3-0.6B-Base that is max(1024, 2048, 3072) = 3072, so 3072 Float32 = 12 KiB
+of Apple silicon's 32 KiB threadgroup budget, leaving room for the 1 KiB reduction scratch.
+
+WHY IT MUST BE DERIVED, NOT GUESSED: the staged vector is the runtime parameter `k`, and
+`stack_allocation` needs a COMPILE-time size that Metal fixes into the pipeline-state object.
+`residentk_dims_check` below enforces `stage_needed <= RESIDENT_MAX_D_MODEL` for whatever model a
+session opens, so a model whose staged vectors exceed this ceiling is refused with a clear error
+instead of silently overflowing threadgroup memory. Setting it LARGER than the target model needs
+is also wrong: the allocation is paid in full regardless of use, and a too-large stage halves the
+resident threadgroups per core -- measured directly on this machine as a 262 -> 214 tok/s decode
+regression when raised 3072 -> 6144 for Qwen3-0.6B-Base. So the value is the model's own computed
+`stage_needed`, neither smaller (overflow) nor larger (occupancy). A larger model (e.g. Qwen3-1.7B,
+`stage_needed` = 6144) is supported by building with this constant set to ITS computed value; a
+single binary cannot be occupancy-optimal for two different `stage_needed` values at once because
+the size is fixed per pipeline-state object, so per-model staging is a build-time specialization."""
 
 comptime RESIDENT_MAX_HEAD_DIM: Int = 256
 """Largest attention head dimension. The RoPE and SDPA kernels run ONE threadgroup per head with one
@@ -262,20 +277,25 @@ def residentk_dims_check(d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: I
     """
     if d_model < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1:
         return RESIDENT_ERR_EMPTY_DIM
-    if d_model > RESIDENT_MAX_D_MODEL or d_ff > RESIDENT_MAX_D_MODEL:
-        return RESIDENT_ERR_DIM_TOO_LARGE
     if d_head > RESIDENT_MAX_HEAD_DIM:
-        return RESIDENT_ERR_DIM_TOO_LARGE
-    if h_q > RESIDENT_MAX_D_MODEL or h_kv > RESIDENT_MAX_D_MODEL:
         return RESIDENT_ERR_DIM_TOO_LARGE
     if h_q % h_kv != 0:
         return RESIDENT_ERR_HEAD_MISMATCH
     # A power of two has exactly one bit set; `d & (d - 1)` clears the lowest set bit.
     if d_head & (d_head - 1) != 0:
         return RESIDENT_ERR_HEAD_MISMATCH
-    # The projection kernels stage `h_q * d_head` (the attention output) in the same shared array
-    # `d_model` and `d_ff` use, so it is bounded by the same constant.
-    if h_q > RESIDENT_MAX_D_MODEL // d_head:
+    # STAGING REQUIREMENT, computed from the model's own dimensions (determined by simulation, not
+    # hardcoded per model): the largest vector any fused decode kernel stages in the `_STAGE`
+    # shared array. The norm / lm-head kernels stage `d_model`; the o_proj gemv stages the
+    # attention output `h_q * d_head`; the down_proj gemv stages `d_ff`. (h_kv <= h_q <= h_q*d_head
+    # and d_model/d_ff are the other two terms, so this max subsumes every per-dimension bound.)
+    # It must fit the compile-time staging ceiling, else the model needs a build staged to ITS value.
+    var stage_needed = d_model
+    if h_q * d_head > stage_needed:
+        stage_needed = h_q * d_head
+    if d_ff > stage_needed:
+        stage_needed = d_ff
+    if stage_needed > RESIDENT_MAX_D_MODEL:
         return RESIDENT_ERR_DIM_TOO_LARGE
     return RESIDENT_OK
 

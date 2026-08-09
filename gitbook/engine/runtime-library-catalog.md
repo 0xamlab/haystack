@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **642 modules** and **6052 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **643 modules** and **6063 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -265,7 +265,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `json.parser` | 15 |
 | `json.writer` | 12 |
 | `metaldispatch.qwen3_decode` | 1 |
-| `metaldispatch.qwen3_prefill_decode` | 2 |
+| `metaldispatch.qwen3_prefill_decode` | 8 |
 | `model_serialization` | 10 |
 | `serialization.msgpack` | 10 |
 | `serialization_io` | 3 |
@@ -339,7 +339,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-418 modules.
+419 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -538,6 +538,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `materials` | 12 |
 | `metabolomics` | 10 |
 | `metaldispatch.contract` | 2 |
+| `metaldispatch.session_prefill_policy` | 5 |
 | `metallurgy` | 12 |
 | `meteorology` | 10 |
 | `metrics_agg` | 12 |

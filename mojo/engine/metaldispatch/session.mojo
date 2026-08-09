@@ -440,6 +440,53 @@ def _classify_prefill_pipeline(name: String) -> Int:
         return _PFROLE_GEMM_SWIGLU
     if name.find("pf_gnrw_swi") >= 0:
         return _PFROLE_GEMM_SWIGLU_NARROW
+    # Project Redline reopening (2026-08-08), step 4 (no-mirror + BM64 combined build): `mma_forge/
+    # mm8.mojo`'s `_qkv_proj_gemm_mma8x8_bm64` ALSO contains this function's own "proj_gemm_mma8x8"
+    # substring -- confirmed empirically, not assumed (`attention_forge/mm8_bm64_discovery_check.
+    # mojo`, real discovered name `mm8__qkv_proj_gemm_mma8x8_bm646A6AoA_c0094d8a5af0eda9`). Checked
+    # and excluded HERE, before the generic pattern below, so a binary that links BOTH `mm8_blob.c`
+    # (the original three kernels) AND `mm8_bm64_blob.c` never has the BM64 kernel's own discovered
+    # pipeline silently overwrite (or be overwritten by) `_PFROLE_GEMM_ASSIGN_MMA`'s real mapping to
+    # the ORIGINAL `_qkv_proj_gemm_mma8x8` -- a real, empirically-confirmed collision, not a
+    # theoretical one. Returning `-1` here (rather than a new `_PFROLE_*` role folded into `_PF_N_
+    # ROLES`) is deliberate: BM64 is an OPTIONAL, off-by-default capability exactly one struct
+    # (`_MBQwen3I8AllSimd7Prefill`) ever links, the same "stay separate, don't force every other
+    # struct/binary to demand a pipeline it never compiles" reasoning `_AF_N_ROLES`'s own docstring
+    # already gives for the attention_forge roles -- `_MBQwen3I8AllSimd7Prefill` discovers this
+    # kernel independently via its own file-private, non-fatal `self.qkv_proj_bm64_pipeline_idx`,
+    # mirroring `self.native_decode_attn_pipeline_idx`'s own established pattern exactly.
+    if name.find("mma8x8_bm64") >= 0:
+        return -1
+    # Project Redline reopening (2026-08-08), step 2 (combined no-mirror + all-4-roles vecload4
+    # build): each of the three new load-width-vecload4 GEMM kernels (`mma_forge/mm8.mojo`'s
+    # `_qkv_proj_gemm_mma8x8_vecload4` / `_gemm_accum_mma8x8_vecload4` / `_swiglu_gemm_mma8x8_
+    # vecload4`) is ALSO, by construction, a superstring of one of this function's own generic MMA
+    # patterns below -- the SAME collision class BM64 already found, now hitting three kernels
+    # instead of one. Verified EMPIRICALLY (`attention_forge/vecload4_all_roles_discovery_check.
+    # mojo`, real discovered names in a real 10-pipeline combined binary), not assumed: this binary's
+    # own Mojo/Metal name-mangler truncates each of the three kernels' names to a DIFFERENT cutoff
+    # point inside the literal string "vecload4", depending on each kernel's own argument-count-
+    # driven type-mangling budget -- the first attempt at this probe assumed all three would survive
+    # identically (`"mma8x8_vecload4"`) and that guess was WRONG, caught by actually running it:
+    #   `_qkv_proj_gemm_mma8x8_vecload4`  -> `...proj_gemm_mma8x8_veclo...`      (cut mid-word, "ad4" lost)
+    #   `_gemm_accum_mma8x8_vecload4`     -> `...gemm_accum_mma8x8_vecload4...` (survives FULLY intact)
+    #   `_swiglu_gemm_mma8x8_vecload4`    -> `...swiglu_gemm_mma8x8_vecload...` (cut one char short, "4" lost)
+    # None of "veclo"/"vecload4"/"vecload" alone disambiguates the three from EACH OTHER (each is a
+    # textual prefix of the next) -- the three patterns below each keep enough of their OWN kernel's
+    # role-name prefix (`proj_gemm_`/`accum_`/`swiglu_gemm_`) to stay unique, confirmed by the same
+    # probe's own 1-match-each, zero-collision result across all ten real discovered pipelines.
+    # Checked and excluded HERE, before the three generic patterns below, for the identical reason
+    # the `"mma8x8_bm64"` exclusion above already gives: these are OPTIONAL, off-by-default
+    # capabilities exactly one struct (`_MBQwen3I8AllSimd7Prefill`) ever links, discovered
+    # independently via its own file-private, non-fatal `self.qkv_proj_vecload4_pipeline_idx`/
+    # `self.gemm_accum_vecload4_pipeline_idx`/`self.swiglu_vecload4_pipeline_idx`, mirroring `self.
+    # qkv_proj_bm64_pipeline_idx`'s own established pattern exactly.
+    if name.find("proj_gemm_mma8x8_veclo") >= 0:
+        return -1
+    if name.find("accum_mma8x8_vecload") >= 0:
+        return -1
+    if name.find("swiglu_gemm_mma8x8_vecload") >= 0:
+        return -1
     if name.find("proj_gemm_mma8x8") >= 0:
         return _PFROLE_GEMM_ASSIGN_MMA
     if name.find("gemm_accum_mma8x8") >= 0:

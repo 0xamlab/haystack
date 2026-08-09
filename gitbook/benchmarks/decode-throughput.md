@@ -126,7 +126,8 @@ Rome." No arm diverged from any other in any round checked.
 
 * **One checkpoint, one prompt, one decode length.** This page measures Qwen3-0.6B-Base, a single
   5-token prompt, and 16 decoded tokens. It is not a throughput claim across other model sizes,
-  other prompts, longer contexts, or batched/concurrent serving.
+  other prompts, or longer contexts. Batched / concurrent serving is a separate measurement — see
+  [Batched decode throughput](batched-decode-throughput.md).
 * **Not a claim about prefill, training, or fine-tuning.** Only steady-state decode is measured.
   Prompt processing and any non-decode workload are out of scope.
 * **Not a claim about every serving framework.** mlx-lm and llama.cpp are the two real, installed
@@ -139,6 +140,9 @@ Rome." No arm diverged from any other in any round checked.
 
 ## Related
 
+* [LLM inference overview](llm-inference-overview.md) — prefill + decode together.
+* [Prefill (token input) throughput](llm-prefill-throughput.md) — the token-input half of inference.
+* [Batched decode throughput](batched-decode-throughput.md) — continuous batching for many sequences.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Feed-forward](feed-forward.md) — gated activations and embedding cost.
 * [Attention](attention.md) — tiled attention memory and rotary embedding cost.
