@@ -3113,6 +3113,158 @@ def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx
         out_idx[0] = bi
 
 
+# ── Project Slipstream Phase 3 (batched-decode tail, Option B) ────────────────────────────────
+# The BATCHED lm_head. The single-stream tail runs `_lmhead_argmax_kernel_simd_i8` once PER sequence,
+# each dispatch sweeping the full `[vocab, d_model]` lm_head weight (weight-tied to the embedding,
+# ~155 MB at Qwen3-0.6B) -- B sequences => B full vocab sweeps. `_batched_lmhead_argmax_kernel_simd_i8`
+# sweeps that weight ONCE for all B rows: each vocab column's int8 row is loaded a single time and
+# dotted against every row's ALREADY-NORMALIZED hidden vector `xn` (normalized by the existing
+# `_pf_rmsnorm_rows_kernel` in a separate dispatch, because B normalized rows do not fit in one
+# threadgroup's shared memory). Per-lane row accumulators live in per-thread PRIVATE memory --
+# `stack_allocation[N, dtype]()` with NO `address_space` is per-thread, the exact mechanism the tiled
+# GEMM's own `acc` uses -- one accumulator per sequence. Register cost is ~3*B per lane
+# (acc/best/best_i); at `_BATCH_LMHEAD_MAX_ROWS` this is real pressure, the documented trade for
+# amortizing the vocab sweep. The per-row argmax bookkeeping, int8 dequant, vectorized loads, and the
+# strict-`>` tie-break-to-lowest-id convention are copied from `_lmhead_argmax_kernel_simd_i8`, so each
+# row's result is token-identical to running that kernel on the row alone (the correctness gate).
+comptime _BATCH_LMHEAD_MAX_ROWS: Int = 32
+"""Must be >= the batched-decode `_BATCH_DECODE_MAX_SEQS` (metaldispatch.session_prefill). Sizes the
+per-thread PRIVATE row-accumulator / running-argmax arrays in `_batched_lmhead_argmax_kernel_simd_i8`
+and the per-(sub, row) shared staging. Raising `_BATCH_DECODE_MAX_SEQS` past this without raising it
+here is a compile-time-visible coupling, kept as two named constants rather than one shared import to
+avoid a metaldispatch<->residentk import cycle."""
+
+
+def _batched_lmhead_argmax_kernel_simd_i8(
+    blk_val: _FP, blk_idx: _IP, xn: _FP, w: _I8P, wscale: _FP,
+    B: Int, k: Int, n: Int, n_iters: Int,
+):
+    """Batched lm_head + per-vocab-slice argmax for B rows. `grid_dim = _LM_BLOCKS`, `block_dim =
+    _TG`, same vocab partitioning as `_lmhead_argmax_kernel_simd_i8` (column
+    `j = block_idx.x*_SUBS + sub + it*stride_cols`), but each SIMD group's column is dotted against
+    ALL B rows of `xn` (`[B, k]`, pre-normalized), sweeping the `w` row once. Writes
+    `blk_val[b*_LM_BLOCKS + block_idx.x]` / `blk_idx[...]` per row -- the B-row analogue of the
+    single-row kernel's per-threadgroup `(logit, id)` pair, consumed by
+    `_batched_argmax_reduce_kernel_simd`. Rows beyond `B` are never touched; `B` must be <=
+    `_BATCH_LMHEAD_MAX_ROWS`."""
+    var sv = stack_allocation[_SUBS * _BATCH_LMHEAD_MAX_ROWS, DType.float32, address_space = AddressSpace.SHARED]()
+    var si = stack_allocation[_SUBS * _BATCH_LMHEAD_MAX_ROWS, DType.int32, address_space = AddressSpace.SHARED]()
+    var acc = stack_allocation[_BATCH_LMHEAD_MAX_ROWS, DType.float32]()
+    var best = stack_allocation[_BATCH_LMHEAD_MAX_ROWS, DType.float32]()
+    var best_i = stack_allocation[_BATCH_LMHEAD_MAX_ROWS, DType.int32]()
+
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    for b in range(B):
+        best[b] = _NEG_HUGE
+        best_i[b] = Int32(-1)
+
+    var stride_cols = Int(grid_dim.x) * _SUBS
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    for it in range(n_iters):
+        var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
+        if j < n:
+            for b in range(B):
+                acc[b] = 0.0
+            var base = j * k
+            var srow = wscale[j]
+            var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+            var t = lane * _VEC_I8
+            while t < k_vec:
+                var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+                for b in range(B):
+                    var xv = xn.load[width=_VEC_I8](b * k + t)
+                    var pv = xv * wv
+                    for lane_e in range(_VEC_I8):
+                        acc[b] += pv[lane_e]
+                t += _VEC_STRIDE_I8
+            var tt = k_vec + lane
+            while tt < k:
+                var wvv = Float32(w[base + tt]) * srow
+                for b in range(B):
+                    acc[b] += xn[b * k + tt] * wvv
+                tt += _LANES
+            for b in range(B):
+                var total = _warp_sum(acc[b])
+                if lane == 0:
+                    if total > best[b]:
+                        best[b] = total
+                        best_i[b] = Int32(j)
+
+    if lane == 0:
+        for b in range(B):
+            sv[sub * _BATCH_LMHEAD_MAX_ROWS + b] = best[b]
+            si[sub * _BATCH_LMHEAD_MAX_ROWS + b] = best_i[b]
+    barrier()
+    if tid == 0:
+        for b in range(B):
+            var bv = sv[b]
+            var bi = si[b]
+            for u in range(1, _SUBS):
+                if sv[u * _BATCH_LMHEAD_MAX_ROWS + b] > bv:
+                    bv = sv[u * _BATCH_LMHEAD_MAX_ROWS + b]
+                    bi = si[u * _BATCH_LMHEAD_MAX_ROWS + b]
+            blk_val[b * Int(grid_dim.x) + Int(block_idx.x)] = bv
+            blk_idx[b * Int(grid_dim.x) + Int(block_idx.x)] = bi
+
+
+def _batched_argmax_reduce_kernel_simd(
+    out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int,
+):
+    """B-row analogue of `_argmax_reduce_kernel_simd`: `grid_dim = B` (one threadgroup per sequence
+    row), `block_dim = _TG`. Threadgroup `row` collapses that row's `n` per-vocab-slice
+    `(logit, id)` pairs at `blk_val[row*n .. row*n+n)` to the single `(value, id)` written to
+    `out_val[row]`/`out_idx[row]`. Same grid-stride local scan, same 5-step lane butterfly, same
+    `_SUBS`-way final combine, and the SAME tie-break-to-lowest-id clause as the single-row kernel,
+    so each row resolves exactly as `_argmax_reduce_kernel_simd` would on that row's slice alone."""
+    var grp_v = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp_i = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
+
+    var row = Int(block_idx.x)
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var base = row * n
+
+    var best = _NEG_HUGE
+    var best_i = Int32(-1)
+    var i = tid
+    while i < n:
+        if blk_val[base + i] > best:
+            best = blk_val[base + i]
+            best_i = blk_idx[base + i]
+        i += _TG
+
+    var off = UInt32(_LANES // 2)
+    while off > 0:
+        var other_val = _shuffle_xor(best, off)
+        var other_idx = _shuffle_xor(best_i, off)
+        if other_val > best or (other_val == best and other_idx >= 0 and (best_i < 0 or other_idx < best_i)):
+            best = other_val
+            best_i = other_idx
+        off //= 2
+
+    if lane == 0:
+        grp_v[sub] = best
+        grp_i[sub] = best_i
+    barrier()
+
+    if tid == 0:
+        var bv = grp_v[0]
+        var bi = grp_i[0]
+        for u in range(1, _SUBS):
+            var other_val = grp_v[u]
+            var other_idx = grp_i[u]
+            if other_val > bv or (other_val == bv and other_idx >= 0 and (bi < 0 or other_idx < bi)):
+                bv = other_val
+                bi = other_idx
+        out_val[row] = bv
+        out_idx[row] = bi
+
+
 # ============================================================================================
 # BATCHED PREFILL KERNELS -- an EIGHTH, structurally different axis from the seven weight-storage/
 # KV-cache-precision/reduction-mechanism/grid-size axes documented at the top of this file. Those

@@ -163,6 +163,8 @@ from residentk.kernels import (
     _splitk_partial_kernel_simd_native,
     _splitk_merge_kernel_simd,
     _batched_splitk_merge_kernel_simd,
+    _batched_lmhead_argmax_kernel_simd_i8,
+    _batched_argmax_reduce_kernel_simd,
     _pf_embed_rows_kernel_i8,
     _pf_rmsnorm_rows_kernel,
     _pf_gemm_assign_kernel_i8,
@@ -713,12 +715,21 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     `_batched_splitk_merge_kernel_simd` (see REALRACE_RESULTS.md "THIRD discovery collision"): this
     diverges from the single-stream merge's `splitk_merg` within the 11-char window, and `_classify_
     splitk_pipeline` (which owns `pipeline_idx_merge`) never matches it. Non-fatal-miss (`-1`)."""
+    var batched_lmhead_pipeline_idx: Int
+    """The fused B-row lm_head `_batched_lmhead_argmax_kernel_simd_i8` (residentk/kernels.mojo,
+    Slipstream Phase 3 Option B), compiled in the early `__init__` block. Discovered via `"batched_
+    lmh"` -- its own 11-char engine-kernel truncation, distinct from the single-row lm_head's
+    `lmhead_argm`, the merge's `batched_spl`, and the reduce's `batched_arg`. Non-fatal-miss (`-1`)."""
+    var batched_argmax_reduce_pipeline_idx: Int
+    """The B-row argmax reduce `_batched_argmax_reduce_kernel_simd` (residentk/kernels.mojo), compiled
+    in the early `__init__` block. Discovered via `"batched_arg"`, its own 11-char truncation.
+    Non-fatal-miss (`-1`)."""
     var decode_batched_built: Bool
-    """True iff ALL THREE batched-decode pipelines were discovered (`native_decode_splitk_partial_
+    """True iff ALL FIVE batched-decode pipelines were discovered (`native_decode_splitk_partial_
     batched_pipeline_idx >= 0` AND `kvprod_batched_pipeline_idx >= 0` AND `batched_splitk_merge_
-    pipeline_idx >= 0`) -- the gate `_step_batched` reads before running the batched decode table
-    (and refuses with `MB_ERR_PIPELINE_NOT_FOUND` otherwise). Set once, in `__init__`, right after
-    pipeline discovery."""
+    pipeline_idx >= 0` AND `batched_lmhead_pipeline_idx >= 0` AND `batched_argmax_reduce_pipeline_idx
+    >= 0`) -- the gate `_step_batched` reads before running the batched decode table (and refuses with
+    `MB_ERR_PIPELINE_NOT_FOUND` otherwise). Set once, in `__init__`, right after pipeline discovery."""
 
 
     # ── Project Redline reopening (2026-08-08), resolved-execution-plan refactor: the old `use_
@@ -1077,6 +1088,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # this same `__init__` (the deep split-K pair is deferred to `_ensure_deep_initialized`, but
         # this one must be present at discovery time for the batched table to build).
         _ = cctx.compile_function[_batched_splitk_merge_kernel_simd]()
+        # Slipstream Phase 3 Option B: the fused B-row lm_head + B-row argmax reduce that replace the
+        # B separate single-row `_lmhead_argmax_kernel_simd_i8` tail dispatches, sweeping the lm_head
+        # weight ONCE for all B rows. Compiled here (same early block, same discovery-time reason).
+        _ = cctx.compile_function[_batched_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function[_batched_argmax_reduce_kernel_simd]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -1107,6 +1123,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.native_decode_splitk_partial_batched_pipeline_idx = -1
         self.kvprod_batched_pipeline_idx = -1
         self.batched_splitk_merge_pipeline_idx = -1
+        self.batched_lmhead_pipeline_idx = -1
+        self.batched_argmax_reduce_pipeline_idx = -1
         self.decode_batched_built = False
         # ── Project Redline reopening (2026-08-08), step 4: same non-fatal-miss discovery slot,
         # for the OPTIONAL combined-build BM64 qkv_proj kernel -- see `self.qkv_proj_bm64_pipeline_
@@ -1187,6 +1205,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # docstring and REALRACE_RESULTS.md "THIRD discovery collision".
             if name.find("batched_spl") >= 0:
                 self.batched_splitk_merge_pipeline_idx = i
+            # ── Project Slipstream Phase 3 Option B: the fused B-row lm_head and the B-row argmax
+            # reduce, discovered by their own distinct 11-char engine-kernel truncations
+            # (`batched_lmh` / `batched_arg`), each distinct from the single-row `lmhead_argm` and from
+            # each other and from the merge's `batched_spl` -- see their field docstrings.
+            if name.find("batched_lmh") >= 0:
+                self.batched_lmhead_pipeline_idx = i
+            if name.find("batched_arg") >= 0:
+                self.batched_argmax_reduce_pipeline_idx = i
             # ── Project Redline reopening (2026-08-08), step 4: same file-private, non-fatal
             # discovery pattern, for the OPTIONAL combined-build BM64 qkv_proj kernel. Checked
             # independently of `_classify_prefill_pipeline`'s own now-excluded "bm64" guard (see that
@@ -1234,12 +1260,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.kvprod_v2_built = (
             self.kvprod_blk_pipeline_idx >= 0 and self.kvprod_qvec_pipeline_idx >= 0
         )
-        # ── Project Slipstream Phase 3: batched-decode availability, all-three (both blobs + the
-        # engine-side B-aware merge kernel) discovered or the batched table cannot run.
+        # ── Project Slipstream Phase 3: batched-decode availability, all-five (both blobs + the
+        # engine-side B-aware merge + the fused B-row lm_head + B-row argmax reduce) discovered or
+        # the batched table cannot run.
         self.decode_batched_built = (
             self.native_decode_splitk_partial_batched_pipeline_idx >= 0
             and self.kvprod_batched_pipeline_idx >= 0
             and self.batched_splitk_merge_pipeline_idx >= 0
+            and self.batched_lmhead_pipeline_idx >= 0
+            and self.batched_argmax_reduce_pipeline_idx >= 0
         )
 
         for role in range(_N_ROLES):
@@ -4038,7 +4067,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
         var n_rows_tile = _ceil_div(B, _GEMM_BM)
 
-        self.n_descriptors_decode_batched = 1 + self.n_layers * 9 + 2 * B
+        self.n_descriptors_decode_batched = 1 + self.n_layers * 9 + 3
         self.descriptors_decode_batched = _mb_alloc_descriptors(self.n_descriptors_decode_batched)
         var d = 0
 
@@ -4201,37 +4230,48 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
             d += 1
 
-        # tail: B single-row lm_head/argmax dispatches, one per sequence (correct first cut; the
-        # vocab weight is re-read per sequence -- a known inefficiency to batch next).
-        for b in range(B):
-            var blk_off = UInt64(b * _LM_BLOCKS * 4)
-            var hid_off = UInt64(b * self.d_model * 4)
-            var out_off = UInt64(b * 4)
-            _mb_set_header(
-                self.descriptors_decode_batched, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX],
-                _LM_BLOCKS, _TG, 10,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_blk_val_addr + blk_off)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_blk_idx_addr + blk_off)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.hidden_addr + hid_off)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.final_norm_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 4, self.embed_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 5, self.embed_scale_addr)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 7, self.vocab)
-            _mb_set_arg_f32(self.descriptors_decode_batched, d, 8, self.eps)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 9, n_iters)
-            d += 1
+        # tail: BATCHED lm_head (Slipstream Phase 3 Option B) -- 3 dispatches instead of 2*B, and the
+        # lm_head/embed weight is swept ONCE for all B rows instead of once per sequence.
+        # (1) final rmsnorm: hidden [B, d_model] -> xn [B, d_model] (overwrites the stale rmsnorm2
+        #     output the last swiglu already consumed; the next step's first rmsnorm rewrites xn again).
+        _mb_set_header(
+            self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_RMSNORM], B, _TG, 6,
+        )
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.xn_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.final_norm_addr)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 3, self.d_model)
+        _mb_set_arg_f32(self.descriptors_decode_batched, d, 4, self.eps)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 5, B)
+        d += 1
 
-            _mb_set_header(
-                self.descriptors_decode_batched, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_out_val_addr + out_off)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_out_idx_addr + out_off)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.batch_blk_val_addr + blk_off)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.batch_blk_idx_addr + blk_off)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, _LM_BLOCKS)
-            d += 1
+        # (2) fused batched lm_head + per-vocab-slice argmax: reads xn [B, d_model], sweeps the
+        #     embed/lm_head weight once, writes per-row blk_val/blk_idx [B, _LM_BLOCKS].
+        _mb_set_header(
+            self.descriptors_decode_batched, d, self.batched_lmhead_pipeline_idx, _LM_BLOCKS, _TG, 9,
+        )
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.xn_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 4, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 5, B)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 7, self.vocab)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 8, n_iters)
+        d += 1
+
+        # (3) batched argmax reduce: one threadgroup per sequence row, collapses that row's
+        #     _LM_BLOCKS (logit, id) pairs to out_val[row]/out_idx[row].
+        _mb_set_header(
+            self.descriptors_decode_batched, d, self.batched_argmax_reduce_pipeline_idx, B, _TG, 5,
+        )
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_out_val_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.batch_blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.batch_blk_idx_addr)
+        _mb_set_arg_int(self.descriptors_decode_batched, d, 4, _LM_BLOCKS)
+        d += 1
 
         if d != self.n_descriptors_decode_batched:
             raise Error(

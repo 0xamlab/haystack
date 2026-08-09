@@ -9914,3 +9914,124 @@ sequential rate at B=32. This is the honest serving-throughput shape of the toke
 lever with the CURRENT (unoptimized) tail: still B separate single-row lm_head sweeps and unfused
 per-layer prefill kernels, so the fixed per-step cost keeps the small-B aggregate low; the batched
 lm_head + dispatch fusion are the recorded next optimizations to raise the whole curve.
+
+## Slipstream Phase 3 SHIPPED: PR #603 merged to main, full capability set documented (2026-08-09)
+
+PR #603 (feat/slipstream-batched-decode) admin-merged (squash) to main as `ab214de6`. All main-tier
+runs GREEN: sdk-audit (incl. the full 6,028-function execution sweep + published-artifact proof +
+static gap checks), build-runtime, docs-audit, CodeQL, CI/CD.
+
+CI gates fixed along the way (all required to merge):
+- `test_coverage` gate: new `session_prefill_policy` module needed a dedicated libs suite ->
+  `mojo/tests/libs/test_metaldispatch_session_prefill_policy.mojo` (39 checks, all pass).
+- `contract_drift` gate: refreshed kernel inventory (`make inventory-refresh` -> runtime_library_
+  contract.json / capability manifest / dispatch generator / runtime-library catalog).
+- `capability-check` (inside `make inventory-check` / Test-Python job): new module needed a
+  `@capability-module` block -> added (pure host policy: deterministic, stateless, no GPU).
+
+GitBook (docs.algenta.ai) -- the FULL capability set, not just decode:
+- NEW `benchmarks/llm-prefill-throughput.md` -- the token-INPUT half: 256-token prefill ~10,700 tok/s
+  = 1.049x llama.cpp's ~10,199 fast regime, 1.15x prior baseline; any prompt length; model-agnostic
+  (0.6B + 1.7B verified).
+- NEW `benchmarks/llm-inference-overview.md` -- prefill + single-stream decode + batched decode
+  together, each bottleneck, cross-cutting any-token/model-agnostic/correctness-gated properties.
+- `benchmarks/batched-decode-throughput.md` (this PR's feature) -- 2.33x single-stream at B=32.
+- Cross-links + SUMMARY.md entries, matching existing page conventions (frontmatter icon/description,
+  hint callouts, results tables, method, explicit "what is not claimed").
+
+STATUS: batched (continuous-batching) decode is built, verified, documented, and on main. Recorded
+next optimization (not in this PR): batch the lm_head tail into ONE [B,d_model]@[d_model,vocab] GEMM
++ per-row argmax (removes B-1 redundant vocab sweeps) and fuse/collapse per-layer dispatches to lower
+the fixed per-step cost at small B.
+
+#### Addendum: batched lm_head optimization -- DESIGN ANALYSIS (feasible, scoped, deferred to a focused PR) (2026-08-09)
+
+The batched-decode tail currently runs B SEPARATE single-row `_lmhead_argmax_kernel_simd_i8`
+dispatches, each sweeping the ~155 MB vocab/lm_head weight (weight-tied to the embedding) -> B x the
+vocab DRAM traffic. Batching it sweeps the weight ONCE for all B rows. Analysis of the two viable
+implementations:
+
+OPTION A -- reuse the prefill tiled GEMM `_pf_gemm_assign_kernel_i8` with n=vocab to materialize
+logits [B, vocab], then a small per-row argmax kernel. REJECTED for now: that kernel carries a
+DOCUMENTED unresolved Mojo 1.0.0b2 miscompilation at extreme small-M : very-wide-N tile ratios
+(`m_rows=1, k=1024, n=4096` diverges ~94% of columns) -- lm_head is exactly that regime (M=B small,
+N=151936 huge). Also materializes [B, vocab] F32 (~9.7 MB @ B=16).
+
+OPTION B -- fused batched lm_head+argmax kernel (grid=_LM_BLOCKS, one SIMD group per vocab column
+computing all B rows; per-thread PRIVATE row-accumulators via `stack_allocation[N, f32]()` with no
+address_space = per-thread, the same mechanism the tiled GEMM's own `acc` uses). FEASIBLE, but each
+lane needs 3 private arrays of length B (acc/best/best_i) -> ~3*B registers/lane; at the current
+_BATCH_DECODE_MAX_SEQS=32 that is ~96 registers/lane, real spill/occupancy risk. Weight read is
+amortized to 1x; the B activation reads per element hit cache (xn is only B x d_model).
+
+CONTEXT that tempers the priority: lm_head is NOT the only small-B inefficiency in `_step_batched` --
+the per-layer projections at small m_rows use the tiled prefill GEMMs which underfill (the M-sweep
+showed M<=16 at well under the wall) and the path issues ~9 dispatches/layer, so the fixed per-step
+cost at small B is broader than lm_head alone. The decisive next step is therefore a focused PR that
+(1) lands the fused batched lm_head (Option B, with B capped to keep registers safe) verified
+token-identical against the B-single-row path, and (2) addresses small-B projection fill / dispatch
+count. Both are recorded here rather than rushed into this already-merged PR, to avoid shipping a
+high-register-pressure kernel without its own correctness gate.
+
+#### Addendum: Option B LANDED -- fused batched lm_head wired + verified token-identical + measured (2026-08-09)
+
+Implemented `_batched_lmhead_argmax_kernel_simd_i8` + `_argmax_reduce_batched_kernel_simd`
+(residentk/kernels.mojo, renamed from `_lmhead_argmax_batched_*` so their 11-char engine-kernel AIR
+prefixes `batched_lmh`/`batched_arg` are distinct from the single-row `lmhead_argm` and the merge's
+`batched_spl`), compiled in the early `__init__` block, discovered via those substrings, and wired into
+`_step_batched`'s tail as 3 dispatches (final rmsnorm -> batched lm_head -> batched argmax reduce)
+replacing the old 2*B single-row dispatches, sweeping the lm_head/embed weight ONCE for all B rows.
+
+CORRECTNESS GATE: B=4 identical sequences stepped 24 steps stay IDENTICAL (PASS) and seq0's stream is
+token-identical to the pre-Option-B single-row tail ([2629, 5311, 279, 2750, ...]), i.e. the fused
+kernel reproduces the single-row math row-for-row (per-thread PRIVATE row accumulators via
+`stack_allocation[N]()` no-address-space; strict-> lowest-id tie-break copied from the single-row path).
+
+MEASURED (Qwen3-0.6B, M4 Max, 24 steps, median of 3), aggregate tok/s before -> after Option B:
+```
+ B    before    after     delta
+ 1     33.1      32.8      -
+ 4    125.0     126.2     +1.0%
+ 8    231.8     238.6     +2.9%
+ 16   403.4     422.8     +4.8%
+ 32   616.7     668.2     +8.3%
+```
+Modest because lm_head is not the only small-B cost (small-m_rows projections underfill + per-layer
+dispatch count -- the analysis addendum above). The batched lm_head itself is correct and on the path;
+the next levers for a wider margin are small-B projection fill and dispatch-count reduction.
+
+## llama.cpp end-to-end parity gap analysis (Explore agent, 2026-08-09)
+
+HEADLINE: the engine is a fast, shape-gated, greedy-only, token-ids-in/token-ids-out Qwen3 kernel
+path; llama.cpp is a tokenizer-embedding, GGUF-loading, sampling-complete, HTTP-serving, multi-slot
+engine. The gaps are almost entirely OUTSIDE the hot kernels, in the layers around them. Verified from
+code (file:line in the full Explore report; transcript in the campaign subagent log).
+
+PRIORITIZED gaps for "usable end-to-end as a llama.cpp replacement":
+1. TOKENIZER (BPE + detokenize + chat template) -- TOTAL gap; no text-to-text path exists. Biggest
+   blocker. (Today: token-ids-in only, external HF transformers; EOS hardcoded per model.)
+2. LOCAL HTTP SERVING with real SSE streaming -- the literal drop-in llama-server/OpenAI surface.
+   (Today: api_server LLM routes proxy to external providers or return a deterministic stub; they do
+   NOT hit the local engine; no real streaming.)
+3. SAMPLING (temperature/top-k/top-p/min-p + repeat/frequency penalties + seed) -- the fused
+   lm_head-argmax never emits logits; scalar sampling FORMULAS already exist unwired
+   (mojo/engine/llm_sampling.mojo, generation_loop.mojo) but no driver materializes a softmax/sort/draw.
+4. PERSISTENT sessions / KV reuse (open/step/close across calls) -- prerequisite for streaming,
+   multi-turn, concurrency; current design is one-shot-per-process (re-uploads weights each call).
+5. MODEL GENERALITY within reach (CHEAP WINS): route the SDK to the existing anyqwen3 arm
+   (qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3, verified on Qwen3-1.7B but not SDK-exposed);
+   write the quantized int8 blob to disk so load skips re-quantization; raise/expose max_ctx past the
+   512 default. Session structs are already dimension-parameterized; ceilings: RESIDENT_MAX_D_MODEL=3072
+   (excludes Qwen3-8B hidden 4096 without kernel change), HEAD_DIM 256, LAYERS 128, VOCAB 2^21,
+   CONTEXT 65536.
+6. GGUF loading (for drop-in with llama.cpp model zoos) -- no GGUF reader today (only metadata-math
+   helpers); on-disk blob is f64 (8 bytes/param), BF16-safetensors-only input.
+7. MULTI-REQUEST continuous batching (slots/scheduler across HTTP requests) -- absent; today's
+   "continuous batching" is within-one-sequence (prefill tiles + per-step multi-kernel dispatch).
+8. ARCHITECTURES beyond Qwen3 -- llama-family nearest neighbor (same GQA/RoPE/gated-FFN, minus q/k-norm,
+   plus untied embeddings); no architecture dispatch today.
+9. LONG TAIL: logprobs, stop strings, logit_bias, grammar/GBNF, speculative decoding, LLM embeddings,
+   multimodal.
+
+The engine KERNELS are fast and correct (this whole campaign); the parity work is the serving/sampling/
+tokenizer/model-loading stack around them.
