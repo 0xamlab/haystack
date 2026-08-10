@@ -1,5 +1,5 @@
 [workspace]
-authors = ["Angel Marinov <angel@eplane.com>"]
+authors = ["angelatgithub <79715912+angelatgithub@users.noreply.github.com>"]
 channels = ["https://conda.modular.com/max-nightly", "conda-forge"]
 name = "hello-world"
 platforms = ["osx-arm64"]
