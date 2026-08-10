@@ -103,6 +103,18 @@ static int32_t g_pipeline_count = 0;
 static id<MTLBuffer> g_buffers[ALGENTA_MAX_BUFFERS];
 static int32_t g_buffer_count = 0;
 
+/* ---- Parity gap 4 (persistent sessions, 2026-08-10): resident-session state. A resident key
+ * (FNV hash of checkpoint + dims + max_ctx, computed Mojo-side) labels the model whose weights
+ * currently live in g_buffers. When the next call carries the SAME key, the Mojo side constructs
+ * its session in ADOPT mode: every algenta_alloc_buffer returns the NEXT EXISTING buffer instead
+ * of allocating, so the session re-adopts its own weights/KV/twins with zero Metal traffic and
+ * zero re-quantization -- allocations happen in the same order for the same model, so the cursor
+ * replays the identical layout. A DIFFERENT key frees every buffer first (teardown) so a model
+ * switch starts clean and the table cannot grow unbounded across models. ---- */
+static uint64_t g_resident_key = 0;
+static int32_t g_adopt = 0;
+static int32_t g_adopt_cursor = 0;
+
 static int64_t algenta_fail(NSString *msg) {
     fprintf(stderr, "algenta_batch_shim: %s\n", msg.UTF8String);
     return -1;
@@ -258,7 +270,24 @@ int64_t algenta_pipeline_name(int64_t idx, uint8_t *buf, int64_t buf_len) {
  * `*out_contents` is the CPU-writable pointer Mojo uses for the one-time upload. */
 int64_t algenta_alloc_buffer(int64_t length_bytes, uint64_t *out_addr, uint8_t **out_contents) {
     @autoreleasepool {
-        if (g_device == nil || g_buffer_count >= ALGENTA_MAX_BUFFERS || length_bytes <= 0) {
+        if (g_device == nil || length_bytes <= 0) {
+            return -1;
+        }
+        if (g_adopt) {
+            /* Adopt mode: hand back the next existing buffer (persistent resident weights).
+             * Overflow (more allocations than buffers exist) is a hard failure -- the caller's
+             * session shape does not match the resident one. */
+            if (g_adopt_cursor >= g_buffer_count) {
+                return -1;
+            }
+            id<MTLBuffer> buf = g_buffers[g_adopt_cursor];
+            int32_t idx = g_adopt_cursor;
+            g_adopt_cursor += 1;
+            *out_addr = buf.gpuAddress;
+            *out_contents = (uint8_t *)buf.contents;
+            return idx;
+        }
+        if (g_buffer_count >= ALGENTA_MAX_BUFFERS) {
             return -1;
         }
         id<MTLBuffer> buf = [g_device newBufferWithLength:(NSUInteger)length_bytes
@@ -336,4 +365,44 @@ int64_t algenta_run_token(const AlgentaDispatchDesc *descriptors, int64_t n) {
         }
         return 0;
     }
+}
+
+/* ---- Parity gap 4 (persistent sessions, 2026-08-10): resident-key + adopt API. ---- */
+
+uint64_t algenta_get_resident_key(void) {
+    return g_resident_key;
+}
+
+int64_t algenta_set_resident_key(uint64_t key) {
+    g_resident_key = key;
+    return 0;
+}
+
+int64_t algenta_begin_adopt(void) {
+    g_adopt = 1;
+    g_adopt_cursor = 0;
+    return 0;
+}
+
+int64_t algenta_end_adopt(void) {
+    g_adopt = 0;
+    g_adopt_cursor = 0;
+    return 0;
+}
+
+/* Teardown: release EVERY Metal buffer (their contents are weight/KV state for the OLD resident
+ * model) and clear the resident key. Pipelines are NOT touched -- they are name-keyed, model-
+ * independent, and compiled once per process. Called on a resident-key CHANGE so a model switch
+ * starts clean and the buffer table cannot grow unbounded across models. */
+int64_t algenta_free_all_buffers(void) {
+    @autoreleasepool {
+        for (int32_t i = 0; i < g_buffer_count; i++) {
+            g_buffers[i] = nil;
+        }
+        g_buffer_count = 0;
+        g_resident_key = 0;
+        g_adopt = 0;
+        g_adopt_cursor = 0;
+    }
+    return 0;
 }

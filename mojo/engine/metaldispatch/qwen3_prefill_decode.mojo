@@ -71,6 +71,13 @@ from metaldispatch.contract import (
     metaldispatch_status_name,
 )
 from metaldispatch.session import _mb_preflight, MB_GPU_BUILD
+from metaldispatch.ffi import (
+    _mb_begin_adopt,
+    _mb_end_adopt,
+    _mb_free_all_buffers,
+    _mb_get_resident_key,
+    _mb_set_resident_key,
+)
 from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill, PREFILL_MAX_TILE
 from metaldispatch.session_prefill_policy import (
     PF_ATTN_OFF,
@@ -2599,6 +2606,42 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(
 # quantization, f16-twin materialization, split-K GEMM gating, no-mirror AF attention, timing --
 # is identical, which is precisely the model-agnostic property under test.
 # ────────────────────────────────────────────────────────────────────────────────────────────
+comptime _FNV_OFFSET: UInt64 = 0xcbf29ce484222325
+comptime _FNV_PRIME: UInt64 = 0x00000100000001B3
+
+
+def _resident_key_of(
+    checkpoint_dir: String, d_model: Int, n_layers: Int, h_q: Int, h_kv: Int,
+    d_head: Int, d_ff: Int, vocab_size: Int, max_ctx: Int,
+    use_nomirror: Bool, use_msl: Bool,
+) -> UInt64:
+    """Parity gap 4 (persistent sessions, 2026-08-10): FNV-1a-64 over everything that shapes the
+    resident buffers -- checkpoint identity, model dims, context, and the plan request flags.
+    Same key => the weights living in the shim's buffer table belong to THIS call; different key
+    => teardown and rebuild. 64-bit FNV collisions across a handful of models are negligible, and
+    a collision would only reuse buffers of the SAME total layout (same dims are in the key)."""
+    var h = _FNV_OFFSET
+    var raw = checkpoint_dir.as_bytes()
+    for i in range(len(raw)):
+        h = (h ^ UInt64(raw[i])) * _FNV_PRIME
+    var scalars = List[Int]()
+    scalars.append(d_model)
+    scalars.append(n_layers)
+    scalars.append(h_q)
+    scalars.append(h_kv)
+    scalars.append(d_head)
+    scalars.append(d_ff)
+    scalars.append(vocab_size)
+    scalars.append(max_ctx)
+    scalars.append(Int(use_nomirror))
+    scalars.append(Int(use_msl))
+    for j in range(len(scalars)):
+        var v = UInt64(scalars[j])
+        for b in range(8):
+            h = (h ^ ((v >> (8 * b)) & 255)) * _FNV_PRIME
+    return h
+
+
 def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
     checkpoint_dir: String, max_new_tokens: Int,
     use_native_grouped_fa_attn_no_mirror: Bool, use_msl_parity_all_roles: Bool,
@@ -2763,9 +2806,24 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
             return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
 
         try:
+            # ── Parity gap 4 (persistent sessions, 2026-08-10): resident weights. A matching
+            # resident key adopts the shim's existing buffers in allocation order -- zero Metal
+            # traffic, zero re-quantization, zero cache read. A different key tears the old
+            # model's buffers down first, so a model switch always starts clean.
+            var resident_key = _resident_key_of(
+                checkpoint_dir, d_model, n_layers, h_q, h_kv, d_head, d_ff, vocab_size, max_ctx,
+                use_native_grouped_fa_attn_no_mirror, use_msl_parity_all_roles,
+            )
+            var resident_match = resident_key != 0 and _mb_get_resident_key() == resident_key
+            if not resident_match and _mb_get_resident_key() != 0:
+                _mb_free_all_buffers()
+            if resident_match:
+                _mb_begin_adopt()
             var s = _MBQwen3I8AllSimd7Prefill(
                 d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
             )
+            if resident_match:
+                _mb_end_adopt()
             # ── the ONE difference over `qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4`: the
             # `gemm` request is the OPT-IN MSL-parity tier when asked, else byte-for-byte the
             # current production default's vecload4 tier. A blobs-absent binary degrades the MSL
@@ -2794,47 +2852,51 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
             # time optimization, not part of the correctness contract.
             var cache_path = checkpoint_dir + "/weights_i8.cache"
             var loaded_from_cache = False
-            try:
-                var cf = open(cache_path, "r")
-                var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
-                if (
-                    len(header) == _I8_CACHE_HEADER_BYTES
-                    and _i8_cache_magic_ok(header)
-                    and _le64(header, 40) == n_layers
-                    and _le64(header, 48) == d_model
-                    and _le64(header, 56) == h_q
-                    and _le64(header, 64) == h_kv
-                    and _le64(header, 72) == d_head
-                    and _le64(header, 80) == d_ff
-                    and _le64(header, 88) == vocab_size
-                    and _sha256_matches(header, _sha256_of_string(manifest))
-                    and _le64(header, 96) == s.quantized_state_bytes()
-                ):
-                    var state_bytes = _le64(header, 96)
-                    var state = List[UInt8](capacity=state_bytes)
-                    var remaining = state_bytes
-                    var read_ok = True
-                    while read_ok and remaining > 0:
-                        var take = _I8_CACHE_CHUNK_BYTES
-                        if remaining < take:
-                            take = remaining
-                        var chunk = cf.read_bytes(take)
-                        if len(chunk) != take:
-                            read_ok = False
-                        else:
-                            for i in range(take):
-                                state.append(chunk[i])
-                        remaining -= take
-                    cf.close()
-                    if read_ok and s.load_quantized_state(state^) == MB_OK:
-                        var rope_status = s.upload_rope_tables(
-                            rt.cos_table, rt.sin_table, max_ctx
-                        )
-                        loaded_from_cache = rope_status == MB_OK
-                else:
-                    cf.close()
-            except:
-                loaded_from_cache = False
+            if resident_match:
+                # The resident buffers already hold this model's weights + rope tables.
+                loaded_from_cache = True
+            else:
+                try:
+                    var cf = open(cache_path, "r")
+                    var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
+                    if (
+                        len(header) == _I8_CACHE_HEADER_BYTES
+                        and _i8_cache_magic_ok(header)
+                        and _le64(header, 40) == n_layers
+                        and _le64(header, 48) == d_model
+                        and _le64(header, 56) == h_q
+                        and _le64(header, 64) == h_kv
+                        and _le64(header, 72) == d_head
+                        and _le64(header, 80) == d_ff
+                        and _le64(header, 88) == vocab_size
+                        and _sha256_matches(header, _sha256_of_string(manifest))
+                        and _le64(header, 96) == s.quantized_state_bytes()
+                    ):
+                        var state_bytes = _le64(header, 96)
+                        var state = List[UInt8](capacity=state_bytes)
+                        var remaining = state_bytes
+                        var read_ok = True
+                        while read_ok and remaining > 0:
+                            var take = _I8_CACHE_CHUNK_BYTES
+                            if remaining < take:
+                                take = remaining
+                            var chunk = cf.read_bytes(take)
+                            if len(chunk) != take:
+                                read_ok = False
+                            else:
+                                for i in range(take):
+                                    state.append(chunk[i])
+                            remaining -= take
+                        cf.close()
+                        if read_ok and s.load_quantized_state(state^) == MB_OK:
+                            var rope_status = s.upload_rope_tables(
+                                rt.cos_table, rt.sin_table, max_ctx
+                            )
+                            loaded_from_cache = rope_status == MB_OK
+                    else:
+                        cf.close()
+                except:
+                    loaded_from_cache = False
 
             if not loaded_from_cache:
                 var embed_table = _load_tensor(
@@ -2947,8 +3009,10 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                     wf.close()
                 except:
                     pass
+                _mb_set_resident_key(resident_key)
             else:
                 _ = s.seal()
+                _mb_set_resident_key(resident_key)
 
             var generated_ids = List[Int]()
             for i in range(n_prompt):
@@ -3052,6 +3116,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                 tok_per_sec, prefill_tok_per_sec, n_chunks
             )
         except e:
+            _mb_end_adopt()
             return _decode_err(
                 MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
             )
@@ -3221,9 +3286,26 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
             return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
 
         try:
+            # ── Parity gap 4 (persistent sessions, 2026-08-10): resident weights. A matching
+            # resident key adopts the shim's existing buffers in allocation order -- zero Metal
+            # traffic, zero re-quantization, zero cache read. A different key tears the old
+            # model's buffers down first, so a model switch always starts clean.
+            # The sampled arm IS the no-mirror + MSL combination by its name: the resident key
+            # uses literal flags (this entry point has none of its own).
+            var resident_key = _resident_key_of(
+                checkpoint_dir, d_model, n_layers, h_q, h_kv, d_head, d_ff, vocab_size, max_ctx,
+                True, True,
+            )
+            var resident_match = resident_key != 0 and _mb_get_resident_key() == resident_key
+            if not resident_match and _mb_get_resident_key() != 0:
+                _mb_free_all_buffers()
+            if resident_match:
+                _mb_begin_adopt()
             var s = _MBQwen3I8AllSimd7Prefill(
                 d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
             )
+            if resident_match:
+                _mb_end_adopt()
             # The sampled arm IS the no-mirror + MSL-parity combination, by its name: no flags.
             s.resolve_plan(UnresolvedPrefillConfig(
                 PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_MSL_PARITY_ALL_ROLES,
@@ -3234,47 +3316,51 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
             # ── SAME quantized-state cache gate + best-effort write as the greedy anyqwen3 arm.
             var cache_path = checkpoint_dir + "/weights_i8.cache"
             var loaded_from_cache = False
-            try:
-                var cf = open(cache_path, "r")
-                var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
-                if (
-                    len(header) == _I8_CACHE_HEADER_BYTES
-                    and _i8_cache_magic_ok(header)
-                    and _le64(header, 40) == n_layers
-                    and _le64(header, 48) == d_model
-                    and _le64(header, 56) == h_q
-                    and _le64(header, 64) == h_kv
-                    and _le64(header, 72) == d_head
-                    and _le64(header, 80) == d_ff
-                    and _le64(header, 88) == vocab_size
-                    and _sha256_matches(header, _sha256_of_string(manifest))
-                    and _le64(header, 96) == s.quantized_state_bytes()
-                ):
-                    var state_bytes = _le64(header, 96)
-                    var state = List[UInt8](capacity=state_bytes)
-                    var remaining = state_bytes
-                    var read_ok = True
-                    while read_ok and remaining > 0:
-                        var take = _I8_CACHE_CHUNK_BYTES
-                        if remaining < take:
-                            take = remaining
-                        var chunk = cf.read_bytes(take)
-                        if len(chunk) != take:
-                            read_ok = False
-                        else:
-                            for i in range(take):
-                                state.append(chunk[i])
-                        remaining -= take
-                    cf.close()
-                    if read_ok and s.load_quantized_state(state^) == MB_OK:
-                        var rope_status = s.upload_rope_tables(
-                            rt.cos_table, rt.sin_table, max_ctx
-                        )
-                        loaded_from_cache = rope_status == MB_OK
-                else:
-                    cf.close()
-            except:
-                loaded_from_cache = False
+            if resident_match:
+                # The resident buffers already hold this model's weights + rope tables.
+                loaded_from_cache = True
+            else:
+                try:
+                    var cf = open(cache_path, "r")
+                    var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
+                    if (
+                        len(header) == _I8_CACHE_HEADER_BYTES
+                        and _i8_cache_magic_ok(header)
+                        and _le64(header, 40) == n_layers
+                        and _le64(header, 48) == d_model
+                        and _le64(header, 56) == h_q
+                        and _le64(header, 64) == h_kv
+                        and _le64(header, 72) == d_head
+                        and _le64(header, 80) == d_ff
+                        and _le64(header, 88) == vocab_size
+                        and _sha256_matches(header, _sha256_of_string(manifest))
+                        and _le64(header, 96) == s.quantized_state_bytes()
+                    ):
+                        var state_bytes = _le64(header, 96)
+                        var state = List[UInt8](capacity=state_bytes)
+                        var remaining = state_bytes
+                        var read_ok = True
+                        while read_ok and remaining > 0:
+                            var take = _I8_CACHE_CHUNK_BYTES
+                            if remaining < take:
+                                take = remaining
+                            var chunk = cf.read_bytes(take)
+                            if len(chunk) != take:
+                                read_ok = False
+                            else:
+                                for i in range(take):
+                                    state.append(chunk[i])
+                            remaining -= take
+                        cf.close()
+                        if read_ok and s.load_quantized_state(state^) == MB_OK:
+                            var rope_status = s.upload_rope_tables(
+                                rt.cos_table, rt.sin_table, max_ctx
+                            )
+                            loaded_from_cache = rope_status == MB_OK
+                    else:
+                        cf.close()
+                except:
+                    loaded_from_cache = False
 
             if not loaded_from_cache:
                 var embed_table = _load_tensor(
@@ -3384,8 +3470,10 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                     wf.close()
                 except:
                     pass
+                _mb_set_resident_key(resident_key)
             else:
                 _ = s.seal()
+                _mb_set_resident_key(resident_key)
 
             var generated_ids = List[Int]()
             for i in range(n_prompt):
@@ -3499,6 +3587,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                 tok_per_sec, prefill_tok_per_sec, n_chunks
             )
         except e:
+            _mb_end_adopt()
             return _decode_err(
                 MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
             )

@@ -10294,3 +10294,38 @@ two-prompt cache-reuse test (skip-unless-present). All 38 GPU/serving tests gree
 change; docs (models.md local-backend section, family guide) updated; docs audits clean.
 Remaining roadmap: gap 4 persistent sessions + buffer teardown (true token-by-token streaming +
 removing the per-request session rebuild), gap 1 chat templates, embeddings on the local backend.
+
+## Parity gap 4 first increment LANDED: persistent resident sessions -- repeat requests 18x faster (2026-08-10)
+
+The gap: one-shot-per-process -- every request re-read the weights (even through the quantized
+cache), rebuilt every Metal buffer, re-ran the whole construction. Serving latency floor was the
+1.4 s cached-load measured in the gap-2 increment. Now the FIRST request's weights PERSIST in the
+worker process and repeat requests ADOPT them:
+
+MECHANISM: the shim (batch_shim.m) gained a resident key (FNV-1a-64 over checkpoint dir + dims +
+max_ctx + plan flags, computed Mojo-side) + an ADOPT mode: when the key matches, every
+algenta_alloc_buffer replays the NEXT EXISTING buffer in allocation order instead of allocating --
+the session re-adopts its own weights/KV/f16-twins with ZERO Metal traffic, zero re-quantization,
+zero cache read (allocations happen in the same order for the same model, so the cursor replays
+the identical layout). A DIFFERENT key tears every buffer down first (algenta_free_all_buffers --
+pipelines persist, they are name-keyed and compiled once per process), so a model switch starts
+clean and the buffer table cannot grow unbounded across models. Resident key is set on BOTH the
+f64-upload path and the cache-load path (first implementation set it only on the f64 path -- the
+cache-hit path then never became resident; caught by timing, fixed).
+
+MEASURED (M4 Max, prompt "The capital of France is", 4 new tokens, greedy):
+```
+ model   call 1 (load)   repeat calls
+ 0.6B      2.4-2.6 s      0.13-0.15 s   (~18x)
+ 1.7B      45 s (cold)    0.17-0.19 s   (~240x vs cold first call)
+```
+(1.7B call 1 is the full conversion + load; its repeat calls are the serving number.) Tokens
+correct on every call; model-switch teardown verified (A -> B -> A, switches rebuild in 1.4-2.9 s,
+repeats stay 0.13-0.24 s); 20-call alternation passes with no buffer-table exhaustion (pre-adopt
+the table exhausted at ~15 sessions). Remaining per-call cost is the per-construction Mojo
+compile_function (~0.1 s) + prefill + decode; a DeviceContext cache across calls is the documented
+next optimization. Permanent gates: tests/test_inference_gpu_e2e.py cache-token-identity test now
+runs on a hermetic converted-copy (its own resident key) with the corruption BEFORE the first
+call; tests/test_llm_local_engine_gpu_e2e.py second-prompt test is resident-aware. Remaining gap-4
+work: true token-by-token SSE streaming (needs step-level access from the serving layer), an
+explicit resident-release API (free a resident model on demand), per-call compile_function cache.

@@ -223,23 +223,39 @@ def test_sdk_decode_06b_long_generation_past_512_context() -> None:
     is None,
     reason="same prerequisites as test_sdk_decode_06b_matches_campaign_oracle",
 )
-def test_sdk_decode_06b_quantized_cache_token_identical() -> None:
-    """Cheap win 2 (2026-08-10): the anyqwen3 arm persists the EXACT post-quantization device
-    bytes to `weights_i8.cache` on the first call and restores them on the second -- skipping the
-    f64 blob read and the quantization pass. What this test asserts is the only part that is not
-    allowed to change: three consecutive decodes (f64 path writing the cache, cache path reading
-    it, then a deliberately CORRUPTED cache falling honestly back to the f64 path) must produce
-    the SAME greedy token sequence, oracle first token included."""
+def test_sdk_decode_06b_quantized_cache_token_identical(tmp_path) -> None:
+    """Cheap win 2 + gap 4 (2026-08-10): the anyqwen3 arm persists the EXACT post-quantization
+    device bytes to `weights_i8.cache` and restores them; separately, resident sessions keep those
+    buffers across calls. This test runs on a HERMETIC COPY of the converted checkpoint (its own
+    resident key, so no other test's resident buffers can serve it) and asserts the one thing that
+    must never change: a deliberately CORRUPTED cache falls honestly back to the f64 path, rewrites
+    a valid cache, and every path produces the SAME greedy token sequence, oracle first token
+    included."""
+    import shutil
+
     worker = _gpu_worker()
-    converted = _converted_dir("ALGENTA_QWEN3_CONVERTED_06B", Path("/tmp/qwen3smoke"))
+    converted_src = _converted_dir("ALGENTA_QWEN3_CONVERTED_06B", Path("/tmp/qwen3smoke"))
     checkpoint = _checkpoint_dir("ALGENTA_QWEN3_TEST_CHECKPOINT", Path("/private/tmp/qwen3-0.6b-base"))
-    prompt_ids = _race_prompt_ids(converted)
+    prompt_ids = _race_prompt_ids(converted_src)
+
+    # Hermetic copy: its own resident key (the checkpoint dir string is in the key), so this
+    # test's calls can never be served by another test's resident buffers.
+    converted = tmp_path / "conv"
+    shutil.copytree(converted_src, converted)
     cache_path = converted / "weights_i8.cache"
-    cache_path.unlink(missing_ok=True)
+
+    # Corrupt the validity gate BEFORE any call (flip a byte inside the stored manifest SHA-256):
+    # the first call must refuse the cache, take the f64 path, and rewrite a valid cache.
+    raw_corrupt = None
+    if cache_path.is_file():
+        raw = bytearray(cache_path.read_bytes())
+        raw[10] ^= 0xFF
+        raw_corrupt = bytes(raw)
+        cache_path.write_bytes(raw_corrupt)
 
     runtime = _runtime(worker)
 
-    def _run() -> tuple[list[int], Path | None]:
+    def _run() -> list[int]:
         result = decode(
             runtime,
             checkpoint_dir=checkpoint,
@@ -247,28 +263,21 @@ def test_sdk_decode_06b_quantized_cache_token_identical() -> None:
             max_new_tokens=8,
             converted_checkpoint_dir=converted,
         )
-        return result.token_ids, cache_path if cache_path.is_file() else None
+        return result.token_ids
 
-    cold_tokens, cache_after_cold = _run()
-    assert cold_tokens[_RACE_PROMPT_TOKEN_COUNT] == _ORACLE_FIRST_TOKEN
-    assert cache_after_cold is not None, "the f64 path did not write weights_i8.cache"
-    # ~1 byte/param + scales for 0.6B lands near 600 MB -- assert the ballpark, not the exact
-    # count (the exact one is quantized_state_bytes's own arithmetic, already length-gated by the
-    # loader).
+    first_tokens = _run()
+    assert first_tokens[_RACE_PROMPT_TOKEN_COUNT] == _ORACLE_FIRST_TOKEN
+    # The f64 fallback rewrote a valid cache (~1 byte/param + scales: ~600 MB for 0.6B).
+    assert cache_path.is_file(), "the f64 path did not write weights_i8.cache"
+    if raw_corrupt is not None:
+        assert cache_path.read_bytes() != raw_corrupt, "the fallback left the corrupted cache"
     assert cache_path.stat().st_size > 500_000_000
 
-    cached_tokens, _ = _run()
-    assert cached_tokens == cold_tokens, "the cache path changed the greedy sequence"
+    second_tokens = _run()
+    assert second_tokens == first_tokens, "the second call changed the greedy sequence"
 
-    # Corrupt the validity gate (flip a byte inside the stored manifest SHA-256) -- the entry
-    # point must refuse the cache and fall back to the f64 path, which rewrites a valid cache.
-    raw = bytearray(cache_path.read_bytes())
-    raw[10] ^= 0xFF
-    cache_path.write_bytes(bytes(raw))
-    fallback_tokens, cache_after_fallback = _run()
-    assert fallback_tokens == cold_tokens, "the corrupted-cache fallback changed the sequence"
-    assert cache_after_fallback is not None, "the fallback path did not rewrite the cache"
-    assert cache_path.read_bytes() != bytes(raw), "the fallback left the corrupted cache in place"
+    third_tokens = _run()
+    assert third_tokens == first_tokens, "the third call changed the greedy sequence"
 
 
 @pytest.mark.skipif(

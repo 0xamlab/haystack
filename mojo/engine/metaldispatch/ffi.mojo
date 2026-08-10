@@ -132,6 +132,32 @@ def _mb_run_token(descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], n: Int
     )
 
 
+# ── Parity gap 4 (persistent sessions, 2026-08-10): resident-key + adopt wrappers. The resident
+# key labels which model's weights live in the shim's buffer table; adopt mode makes the next
+# session construction re-adopt those buffers in allocation order instead of allocating fresh.
+
+def _mb_get_resident_key() -> UInt64:
+    return UInt64(external_call["algenta_get_resident_key", UInt64]())
+
+
+def _mb_set_resident_key(key: UInt64):
+    _ = external_call["algenta_set_resident_key", Int64, UInt64](key)
+
+
+def _mb_begin_adopt():
+    _ = external_call["algenta_begin_adopt", Int64]()
+
+
+def _mb_end_adopt():
+    _ = external_call["algenta_end_adopt", Int64]()
+
+
+def _mb_free_all_buffers():
+    """Teardown: release every Metal buffer + clear the resident key (a model switch). Pipelines
+    persist (name-keyed, compiled once per process)."""
+    _ = external_call["algenta_free_all_buffers", Int64]()
+
+
 def _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutAnyOrigin]:
     """Allocates a flat, zero-initialized array of `n` `AlgentaDispatchDesc` records."""
     var total = n * MB_DESC_STRIDE

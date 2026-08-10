@@ -87,10 +87,11 @@ def test_local_backend_chat_completion_through_real_gpu(monkeypatch) -> None:
 )
 def test_local_backend_second_prompt_reuses_conversion_and_quantized_caches(monkeypatch) -> None:
     """The serving shape: the prompt travels separately from the converted weights, so ONE
-    conversion per checkpoint serves every prompt. First call converts (~seconds) and writes
-    `.algenta-cache/` (with `weights_i8.cache` inside it); a second call with a DIFFERENT prompt
-    reuses both caches and must complete far faster -- and answer ITS prompt, not the first
-    one's."""
+    conversion per checkpoint serves every prompt. Two call shapes are both valid depending on
+    the worker's resident state (persistent sessions, parity gap 4): a cold worker loads through
+    `weights_i8.cache` (written on the f64 path); a worker whose resident buffers already hold
+    this checkpoint skips even the cache read (the quantized state lives in the buffers). Either
+    way: different prompt -> different answer, conversion reused, second call fast."""
     import shutil
     import time
 
@@ -104,18 +105,17 @@ def test_local_backend_second_prompt_reuses_conversion_and_quantized_caches(monk
 
     runtime = MojoRuntime(mode="local", timeout=600.0)
 
-    t0 = time.time()
     first = decode(
         runtime,
         checkpoint_dir=_CHECKPOINT,
         prompt_text="The capital of France is",
         max_new_tokens=8,
     )
-    cold_wall = time.time() - t0
 
+    # Conversion reuse: the pair now exists and a second decode must not reconvert it.
     assert (cache_dir / "manifest.json").is_file()
     assert (cache_dir / "weights.blob").is_file()
-    assert (cache_dir / "weights_i8.cache").is_file()
+    manifest_mtime = (cache_dir / "manifest.json").stat().st_mtime_ns
 
     t0 = time.time()
     second = decode(
@@ -129,7 +129,7 @@ def test_local_backend_second_prompt_reuses_conversion_and_quantized_caches(monk
     assert first.generated_text.startswith(" Paris."), repr(first.generated_text)
     # Different prompt, different answer -- the cache serves weights, not answers.
     assert "Jupiter" in second.generated_text, repr(second.generated_text)
-    assert cached_wall * 2 < cold_wall, (
-        f"the cached second call ({cached_wall:.2f}s) was not clearly faster than the cold "
-        f"first call ({cold_wall:.2f}s)"
-    )
+    # The second call reused the conversion (file untouched)...
+    assert (cache_dir / "manifest.json").stat().st_mtime_ns == manifest_mtime
+    # ...and stayed on a fast path (resident buffers or the quantized cache, either one).
+    assert cached_wall < 2.0, f"second call took {cached_wall:.2f}s; expected a fast path"

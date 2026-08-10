@@ -60,6 +60,10 @@ or multi-shard safetensors, pre-transposes the GEMM weights the kernels expect, 
 travels separately from the converted weights, so one conversion serves every prompt. Pass
 `converted_checkpoint_dir` to point at a conversion you placed elsewhere yourself.
 
+Within one worker process the loaded weights also stay RESIDENT: the first request loads them, and
+repeat requests adopt them directly (measured ~18x faster than the first load); switching to a
+different checkpoint loads that model instead.
+
 ```python
 from algenta import MojoRuntime, load_tokenizer
 from algenta.inference import decode, prepare_model_checkpoint
