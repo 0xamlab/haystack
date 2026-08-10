@@ -10379,3 +10379,63 @@ realistic shape above. Docs: gitbook/llm/models.md local-backend scope + gitbook
 family-inference.md limitations/usage updated. Remaining parity roadmap: gap 4 true token-by-token
 SSE streaming + resident-release API + compile_function cache; embeddings on the local backend;
 instruct-model checkpoint to exercise the chat path end to end with real answer quality.
+
+## Enterprise load test: large-token stress + concurrent request load (2026-08-10)
+
+The parity work proved correctness and single-request speed; this entry is the serving-load proof --
+an enterprise-style load/stress harness, `benchmarks/llm_smoke/load_test.py`, run against the
+production SDK shape (`decode` -> `MojoRuntime` -> AF_UNIX worker -> anyqwen3 entry -> Metal) with
+resident weights. Two lanes: a token-size STRESS matrix (very large input x very large output) and a
+CONCURRENT-request lane (N in-flight requests). Correctness gate in BOTH lanes is GREEDY
+DETERMINISM (identical prompt+params -> byte-identical token ids) plus a valid-token-range check;
+every cell/request below passed it. Measurements: M4 Max, Qwen3-0.6B-Base, median of timed
+iterations; concurrent lane reports latency percentiles and system throughput.
+
+STRESS, input scaling (out fixed at 1024):
+```
+ input  ctx    wall s   prefill tok/s   decode tok/s
+ 1024   2048    6.65     7,913           174
+ 2048   3072    9.29     5,788           126
+ 4096   5120   13.31     3,925            88
+ 8192   9216   23.54     2,316            54
+```
+STRESS, output scaling (input fixed at 1024):
+```
+ output  ctx    wall s   prefill tok/s   decode tok/s
+  512    1536    3.53     7,601           186
+ 1024    2048    7.63     6,868           150
+ 2048    3072   16.96     6,860           128
+ 4096    5120   40.32     6,559           105
+```
+CONCURRENT (512 in / 128 out, requests-per-level 4):
+```
+ C   reqs  errors  p50 s   p95 s   p99 s   system decode tok/s
+ 1    4      0     0.574   1.851   1.851    143
+ 2    8      0     1.150   1.158   1.158    222
+ 4   16      0     1.725   2.361   2.388    218
+ 8   32      0     3.035   4.897   4.940    209
+```
+
+FINDINGS (recorded honestly, including the unflattering ones):
+1. LARGE-TOKEN VOLUME WORKS, AT A CONTEXT-DEPENDENT RATE. 8,192-token prompts and 4,096-token
+   generations run end to end and stay greedy-deterministic. Both prefill and decode slow as context
+   grows: prefill ~3.4x (7,913 -> 2,316 tok/s) and decode ~3.2x (174 -> 54 tok/s) from 1K to 8K
+   input. This is the long-context KV/attention economics the campaign predicted -- NOT a bug; the
+   short-context numbers (the race entries) are the fast regime, and load at depth pays the
+   attention cost.
+2. CONCURRENT REQUESTS SERIALIZE IN THE WORKER. Wall time grows ~linearly with concurrency and
+   per-request latency percentiles climb with queue depth (p50 0.57s @ C=1 -> 3.0s @ C=8). The
+   single-stream engine processes one request at a time; there is no request-level parallelism yet.
+   SYSTEM decode throughput rises from 143 tok/s (C=1, per-request overhead visible) to ~210-220
+   tok/s at C>=2 (queueing keeps the GPU busy between requests, amortizing the fixed per-request
+   cost), then holds flat -- the GPU emits one token at a time, so aggregate decode cannot exceed
+   the single-stream rate. 0 errors across all 60 concurrent requests.
+3. THE PARALLEL-THROUGHPUT LEVER IS ALREADY IDENTIFIED (not new): Slipstream batched/continuous
+   decoding (many sequences per weight sweep, PR #603/#604 kernels) is the path to genuine
+   concurrent scaling; it is kernel-complete but not yet wired into this serving path. This load
+   test is the baseline that wiring must beat.
+
+PERMANENT GATES: tests/test_llm_load_gpu_e2e.py runs a small slice of the harness on the real GPU
+(skip-unless-present) -- stress determinism + a throughput floor, and concurrent no-error +
+deterministic outputs under queueing. Full matrix is the on-demand measurement (harness above).
+Docs: gitbook/benchmarks/llm-load-testing.md.
