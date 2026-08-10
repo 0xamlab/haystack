@@ -56,7 +56,7 @@ batched path sweeps the model weights once per step for all B sequences instead 
 * [Prefill throughput](llm-prefill-throughput.md) — token-input processing.
 * [Decode throughput](decode-throughput.md) — single-stream generation vs llama.cpp & mlx-lm.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
-* [Qwen3-0.6B-Base decode (Apple Silicon, Metal)](../engine/qwen3-metal-decode.md) — call it from Python.
+* [Qwen3 Metal decode](../engine/qwen3-metal-decode.md) — call it from Python.
 * [Run Qwen3-0.6B-Base decode on Apple Silicon](../guides/run-qwen3-decode.md) — step-by-step guide.
 * [Run Qwen3-family models on Apple Silicon](../guides/run-qwen3-family-inference.md) — the model-agnostic SDK path (0.6B, 1.7B, and other supported shapes).
 * [Benchmarks](overview.md) — methodology and what is not published.

@@ -2975,6 +2975,87 @@ def _lmhead_argmax_kernel_simd_i8(
         blk_idx[Int(block_idx.x)] = bi
 
 
+def _lmhead_logits_kernel_simd_i8(
+    logits: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
+    k: Int, n: Int, eps: Float32, n_iters: Int,
+):
+    """Parity gap 3 (sampling, 2026-08-10): the LOGITS-EMITTING twin of `_lmhead_argmax_kernel_
+    simd_i8` -- byte-for-byte the SAME stage 1 (whole-vector sum of squares, two-level SIMD-shuffle
+    reduced) and stage 2 (stage the normalized, gamma-scaled vector in threadgroup memory), and the
+    SAME per-column dot products in stage 3 (one SIMD group per output column, single-level `_warp_
+    sum`, vectorized `char4`-shaped loads, in-loop int8 dequant `Float32(i8) * wscale[row]`). The
+    ONLY difference: instead of tracking the running argmax across the `it` loop, lane 0 of each
+    group writes its column's total straight to `logits[j]` -- the WHOLE vocabulary row lands in
+    `logits` (Float32, `n` entries), which the host-side sampler then turns into a drawn token.
+
+    That sameness is the correctness contract: `logits[j]` is EXACTLY the value the argmax kernel
+    compares for column `j` (identical summation order, identical dequant, identical rounding), so
+    top-k=1 sampling from these logits reproduces the greedy argmax with its same lowest-id-wins
+    tie-break -- the sampler keeps the FIRST strict maximum it scans, which is the lowest id.
+
+    No `blk_val`/`blk_idx`, no per-threadgroup combine, no trailing reduce kernel: each column is
+    written exactly once, by exactly one SIMD group (the `j = block * _SUBS + sub + it * stride`
+    partition covers `[0, n)` exactly once, `n_iters = ceil(n / (grid * _SUBS))`), so there is
+    nothing to reduce. 9 arguments (the argmax kernel's 10 minus the two block outputs, `logits`
+    taking the first slot)."""
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    # ── 1. sum of squares over the whole vector, two-level SIMD-shuffle reduced (byte-identical
+    # to `_lmhead_argmax_kernel_simd_i8`'s own stage 1) ──
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    # ── 2. stage the normalized, gamma-scaled vector in threadgroup memory (byte-identical) ──
+    var st0 = tid
+    while st0 < k:
+        xs[st0] = x[st0] * inv * gamma[st0]
+        st0 += _TG
+    barrier()
+
+    # ── 3. same per-column dot products; write them out instead of argmaxing them ──
+    var stride_cols = Int(grid_dim.x) * _SUBS
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    for it in range(n_iters):
+        var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
+        var acc = Float32(0.0)
+        if j < n:
+            var base = j * k
+            var srow = wscale[j]
+            var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+            var t = lane * _VEC_I8
+            while t < k_vec:
+                var xv = xs.load[width=_VEC_I8](t)
+                var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+                var pv = xv * wv
+                for lane_e in range(_VEC_I8):
+                    acc += pv[lane_e]
+                t += _VEC_STRIDE_I8
+            var tt = k_vec + lane
+            while tt < k:
+                acc += xs[tt] * (Float32(w[base + tt]) * srow)
+                tt += _LANES
+        var total = _warp_sum(acc)
+        if lane == 0 and j < n:
+            logits[j] = total
+
+
 def _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
     """Collapse the per-threadgroup `(logit, id)` pairs to one. `grid_dim = 1`, `block_dim = 256`.
 

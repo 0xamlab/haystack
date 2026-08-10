@@ -84,5 +84,10 @@ from apps.api_server.services.llm_provider_service._executors_embeddings import 
 from apps.api_server.services.llm_provider_service._executors_embeddings import (  # noqa: F401
     _execute_router_embeddings,
 )
+from apps.api_server.services.llm_provider_service._executors_local import *  # noqa: F401, F403
+from apps.api_server.services.llm_provider_service._executors_local import (  # noqa: F401
+    load_local_llm_checkpoint_map,
+    execute_local_chat_completion,
+)
 from apps.api_server.services.llm_provider_service._chat_api import *  # noqa: F401, F403
 from apps.api_server.services.llm_provider_service._embeddings_api import *  # noqa: F401, F403

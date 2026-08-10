@@ -8,7 +8,15 @@ from tests._test_llm_api_router_helpers import *  # noqa: F401,F403
 
 
 def test_chat_completions_route_surfaces_provider_backend_unavailable(monkeypatch) -> None:
-    async def _fake_chat(*, model_id: str, messages: list[dict[str, str]]):
+    async def _fake_chat(
+        *,
+        model_id: str,
+        messages: list[dict[str, str]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ):
         del model_id, messages
         raise LLMAPIError(
             "backend_unavailable",
@@ -43,7 +51,15 @@ def test_chat_completions_route_surfaces_provider_backend_unavailable(monkeypatc
 
 
 def test_chat_completions_route_surfaces_provider_rate_limit(monkeypatch) -> None:
-    async def _fake_chat(*, model_id: str, messages: list[dict[str, str]]):
+    async def _fake_chat(
+        *,
+        model_id: str,
+        messages: list[dict[str, str]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ):
         del model_id, messages
         raise LLMAPIError(
             "provider_rate_limited",
@@ -75,7 +91,15 @@ def test_chat_completions_route_surfaces_provider_rate_limit(monkeypatch) -> Non
 
 
 def test_chat_completions_route_surfaces_invalid_provider_request(monkeypatch) -> None:
-    async def _fake_chat(*, model_id: str, messages: list[dict[str, str]]):
+    async def _fake_chat(
+        *,
+        model_id: str,
+        messages: list[dict[str, str]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ):
         del model_id, messages
         raise LLMAPIError(
             "invalid_provider_request",
@@ -107,7 +131,15 @@ def test_chat_completions_route_surfaces_invalid_provider_request(monkeypatch) -
 
 
 def test_chat_completions_route_returns_deterministic_assistant_message(monkeypatch) -> None:
-    async def _fake_chat_completion(*, model_id: str, messages: list[dict[str, str]]):
+    async def _fake_chat_completion(
+        *,
+        model_id: str,
+        messages: list[dict[str, str]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ):
         assert model_id == "text.tokenizer"
         assert messages == [
             {"role": "system", "content": "Keep output deterministic"},
@@ -168,7 +200,15 @@ def test_chat_completions_route_returns_deterministic_assistant_message(monkeypa
 
 
 def test_chat_completions_route_surfaces_provider_execution_metadata(monkeypatch) -> None:
-    async def _fake_chat_completion(*, model_id: str, messages: list[dict[str, str]]):
+    async def _fake_chat_completion(
+        *,
+        model_id: str,
+        messages: list[dict[str, str]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ):
         assert model_id == "provider.gpt-4o-mini"
         assert messages == [{"role": "user", "content": "Summarize"}]
         return _provider_chat_model_descriptor(), SimpleNamespace(
@@ -220,7 +260,15 @@ def test_chat_completions_route_surfaces_provider_execution_metadata(monkeypatch
 
 
 def test_chat_completions_route_streams_sse_chunks(monkeypatch) -> None:
-    async def _fake_chat_completion(*, model_id: str, messages: list[dict[str, str]]):
+    async def _fake_chat_completion(
+        *,
+        model_id: str,
+        messages: list[dict[str, str]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ):
         assert model_id == "text.tokenizer"
         assert messages == [{"role": "user", "content": "alpha beta"}]
         return _tokenizer_model_descriptor(), SimpleNamespace(

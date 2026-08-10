@@ -28,6 +28,7 @@ _SUPPORTED_PROVIDER_BACKENDS = frozenset(
         "groq",
         "xai",
         "router",
+        "algenta_local",
     }
 )
 _BACKEND_CAPABILITIES = {
@@ -41,9 +42,10 @@ _BACKEND_CAPABILITIES = {
     "groq": frozenset({"chat_completions"}),
     "xai": frozenset({"chat_completions", "embeddings"}),
     "router": frozenset({"chat_completions", "embeddings"}),
+    "algenta_local": frozenset({"chat_completions"}),
 }
 _ANTHROPIC_API_VERSION = "2023-06-01"
-_OPTIONAL_PROVIDER_API_KEY_BACKENDS = frozenset({"ollama"})
+_OPTIONAL_PROVIDER_API_KEY_BACKENDS = frozenset({"ollama", "algenta_local"})
 _RETRYABLE_PROVIDER_ERROR_CODE_ORDER = (
     "backend_unavailable",
     "provider_timeout",

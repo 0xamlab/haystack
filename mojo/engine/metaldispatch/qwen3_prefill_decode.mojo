@@ -44,10 +44,18 @@ length).
 from std.math import sqrt
 from std.sys import has_accelerator
 from std.time import perf_counter_ns
+from std.math import exp
 from json.parser import json_get_array, json_get_float, json_get_int, json_get_object, json_array_tokens
 from conv import parse_int
 from attnk.rope import rope_table
 from crypto.pbkdf2 import sha256_bytes
+from llm_sampling import (
+    min_p_threshold,
+    repetition_penalty_scale,
+    temperature_scale,
+    token_frequency_penalty,
+    top_p_cumulative,
+)
 from residentk.contract import (
     RESIDENT_DEFAULT_CONTEXT,
     RESIDENT_MAX_CONTEXT,
@@ -226,6 +234,192 @@ def _slice_ids(ids: List[Int], start: Int, count: Int) -> List[Int]:
     for i in range(count):
         out.append(ids[start + i])
     return out^
+
+
+# ── Parity gap 3 (sampling, 2026-08-10): the host-side sampler chain ──────────────────────────
+# The logits-emitting lm_head twin lands the whole vocab row in Float32; this chain turns it into
+# one drawn token. Order follows the conventional sampler pipeline: penalties -> temperature ->
+# top-k -> min-p -> top-p -> weighted draw. The scalar formulas come from `llm_sampling` (the
+# module the parity analysis named as "exists unwired" -- wired here, not re-derived). Everything
+# is deterministic given the seed: xorshift64 stepped once per draw, strict comparisons with
+# lowest-id tie-break, no thread-dependent order anywhere.
+
+struct _SamplerRng(Movable):
+    """xorshift64 (Marsaglia) -- shifts and xors only, no wrapping arithmetic anywhere, so the
+    pinned toolchain's lack of `&+`/`&*` never matters. Quality is ample for token draws; the
+    point is reproducibility: same state + same logits -> same token, on every platform."""
+
+    var state: UInt64
+
+    def __init__(out self, seed_state: UInt64):
+        # xorshift64 is stuck at 0 if seeded with 0; the golden-ratio constant keeps a caller
+        # seed of 0 honest without changing any other seed.
+        self.state = seed_state if seed_state != 0 else 0x9E3779B97F4A7C15
+
+    def next_u64(mut self) -> UInt64:
+        var x = self.state
+        x = x ^ (x << 13)
+        x = x ^ (x >> 7)
+        x = x ^ (x << 17)
+        self.state = x
+        return x
+
+    def uniform(mut self) -> Float64:
+        # Top 53 bits -> [0, 1), the standard double construction.
+        return Float64(Int(self.next_u64() >> 11)) * (1.0 / 9007199254740992.0)
+
+
+def _sample_sort_desc_ids(idx: List[Int], w: List[Float64]) -> List[Int]:
+    """`idx` sorted by `w` DESCENDING, ties by LOWER id first -- functional (returns a new list,
+    mutates nothing), because the pinned toolchain passes List arguments as immutable borrows.
+    Deterministic: the pivot is the middle element, the three-way split is a stable ascending-id
+    scan, and both recursions apply the same rule."""
+    var n = len(idx)
+    if n < 2:
+        var out0 = List[Int](capacity=n)
+        for i in range(n):
+            out0.append(idx[i])
+        return out0^
+    var pivot_id = idx[n // 2]
+    var pivot = w[pivot_id]
+    var hi = List[Int]()
+    var eq = List[Int]()
+    var lo = List[Int]()
+    for i in range(n):
+        var id_i = idx[i]
+        var v = w[id_i]
+        if v > pivot or (v == pivot and id_i < pivot_id):
+            hi.append(id_i)
+        elif v == pivot:
+            eq.append(id_i)
+        else:
+            lo.append(id_i)
+    var out = _sample_sort_desc_ids(hi, w)
+    for i in range(len(eq)):
+        out.append(eq[i])
+    var lo_sorted = _sample_sort_desc_ids(lo, w)
+    for i in range(len(lo_sorted)):
+        out.append(lo_sorted[i])
+    return out^
+
+
+@fieldwise_init
+struct _SampleDraw(Copyable, Movable):
+    """One draw's outcome: the chosen token and the RNG state to seed the next draw."""
+
+    var token: Int
+    var next_state: UInt64
+
+
+def _sample_draw(
+    logits: List[Float64], counts: List[Int],
+    temperature: Float64, top_k: Int, top_p: Float64, min_p: Float64,
+    repeat_penalty: Float64, presence_penalty: Float64, frequency_penalty: Float64,
+    rng_state: UInt64,
+) -> _SampleDraw:
+    """The whole chain; returns the drawn token + next rng state. The greedy-equivalence contract:
+    with top_k=1 this returns EXACTLY the argmax the fused kernel would have chosen -- same values
+    (penalties/temperature at their neutral values), strict-greater scan, lowest-id tie-break."""
+    var vocab = len(logits)
+    var w = List[Float64](capacity=vocab)
+    for j in range(vocab):
+        w.append(logits[j])
+
+    # Penalties first (llm_sampling's own formulas): Keskar repetition (scale) on every token
+    # present in prompt + generation, then OpenAI-style presence/frequency (subtractive, count-
+    # scaled). `counts[j] == 0` means untouched.
+    for j in range(vocab):
+        var c = Float64(counts[j])
+        if c > 0.0:
+            w[j] = repetition_penalty_scale(w[j], repeat_penalty, 1.0)
+        w[j] = token_frequency_penalty(w[j], c, frequency_penalty, presence_penalty)
+
+    # Temperature (llm_sampling.temperature_scale; the entry point routes T<=0 to the greedy
+    # kernel and never lands here with it).
+    for j in range(vocab):
+        w[j] = temperature_scale(w[j], temperature)
+
+    # Candidate index list, ascending ids (the tie-break order every stage relies on).
+    var idx = List[Int](capacity=vocab)
+    for j in range(vocab):
+        idx.append(j)
+    var n_cand = vocab
+    var sorted_desc = False
+
+    # top-k: keep only the k largest. v1 sorts the full list (the top-p stage needs descending
+    # order anyway when it runs) and cuts the prefix.
+    if 0 < top_k < n_cand:
+        idx = _sample_sort_desc_ids(idx, w)
+        sorted_desc = True
+        var cut = List[Int](capacity=top_k)
+        for i in range(top_k):
+            cut.append(idx[i])
+        idx = cut^
+        n_cand = top_k
+
+    # Softmax over candidates (max-shifted for stability), kept unnormalized until the draw.
+    var wmax = w[idx[0]]
+    for i in range(1, n_cand):
+        if w[idx[i]] > wmax:
+            wmax = w[idx[i]]
+    var probs = List[Float64](capacity=n_cand)
+    var z = 0.0
+    for i in range(n_cand):
+        var pr = exp(w[idx[i]] - wmax)
+        probs.append(pr)
+        z += pr
+
+    # min-p: drop candidates below max_prob * min_p (llm_sampling's threshold formula).
+    # Candidates are still in ascending-id order here, so take the actual max probability first.
+    if min_p > 0.0 and n_cand > 1:
+        var pmax = probs[0]
+        for i in range(1, n_cand):
+            if probs[i] > pmax:
+                pmax = probs[i]
+        var thr = min_p_threshold(pmax / z, min_p) * z
+        var kept_idx = List[Int](capacity=n_cand)
+        var kept_probs = List[Float64](capacity=n_cand)
+        for i in range(n_cand):
+            if probs[i] >= thr:
+                kept_idx.append(idx[i])
+                kept_probs.append(probs[i])
+        if len(kept_idx) > 0:
+            idx = kept_idx^
+            probs = kept_probs^
+            n_cand = len(probs)
+
+    # top-p: smallest prefix of the DESCENDING-sorted candidates whose mass reaches p; the most
+    # probable token always survives.
+    if 0.0 < top_p < 1.0 and n_cand > 1:
+        if not sorted_desc:
+            idx = _sample_sort_desc_ids(idx, w)
+            var probs_sorted = List[Float64](capacity=n_cand)
+            for i in range(n_cand):
+                probs_sorted.append(exp(w[idx[i]] - wmax))
+            probs = probs_sorted^
+        var cum = probs[0]
+        var kept = 1
+        var i = 1
+        while i < n_cand and top_p_cumulative(cum, probs[i] / z, top_p) > 0.0:
+            cum += probs[i]
+            kept += 1
+            i += 1
+        n_cand = kept
+
+    # Weighted draw over the survivors.
+    var mass = 0.0
+    for i in range(n_cand):
+        mass += probs[i]
+    var rng = _SamplerRng(rng_state)
+    var u = rng.uniform() * mass
+    var chosen = idx[n_cand - 1]
+    var acc = 0.0
+    for i in range(n_cand):
+        acc += probs[i]
+        if u < acc:
+            chosen = idx[i]
+            break
+    return _SampleDraw(chosen, rng.state)
 
 
 def qwen3_i8_allsimd7_prefill_decode_flat(
@@ -2408,6 +2602,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(
 def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
     checkpoint_dir: String, max_new_tokens: Int,
     use_native_grouped_fa_attn_no_mirror: Bool, use_msl_parity_all_roles: Bool,
+    wire_prompt_ids: List[Int],
     warmup_prefills: Int = 0,
 ) -> Qwen3PrefillDecodeResult:
     """Beat-llama.cpp campaign (2026-08-08 night): the COMBINATION arm -- byte-for-byte the SAME
@@ -2430,7 +2625,14 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
     kv_decode_attn_blob.c` AND `native_kv_decode_attn_splitk_blob.c` (the naive table runs below
     threshold or when only the naive blob is present; a binary linking NEITHER decode blob degrades
     the no-mirror request to `PF_ATTN_OFF` at resolution, per `resolve_prefill_execution_plan`'s
-    own gate, and generation proceeds on the OFF path)."""
+    own gate, and generation proceeds on the OFF path).
+
+    @capability qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3
+    complexity: O(n_prompt + max_new_tokens)
+    counts:
+    - dim max_new_tokens <= RESIDENT_MAX_CONTEXT [kernel_validated]
+    @endcapability
+    """
     if max_new_tokens < 1:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -2516,6 +2718,20 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
             + " (GEMM tile alignment); got d_model=" + String(d_model) + " d_ff=" + String(d_ff)
             + " n_q=" + String(h_q * d_head),
         )
+
+    # ── Serving increment (parity gap 2, 2026-08-10): the prompt can arrive over the wire,
+    # SEPARATED from the converted checkpoint. A non-empty wire prompt REPLACES the manifest's
+    # baked-in input_ids -- one converted weight set then serves every prompt, and the
+    # quantized-state cache (keyed by the manifest's hash) stays warm across different-prompt
+    # requests. An empty wire prompt keeps the baked-in behavior byte-for-byte.
+    if len(wire_prompt_ids) > 0:
+        # Wire arguments arrive as immutable borrows; take an explicit element-wise copy and MOVE
+        # it into place (List has no implicit copy).
+        var wire_copy = List[Int](capacity=len(wire_prompt_ids))
+        for i in range(len(wire_prompt_ids)):
+            wire_copy.append(wire_prompt_ids[i])
+        prompt_ids = wire_copy^
+        n_prompt = len(prompt_ids)
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
@@ -2842,3 +3058,447 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
 
 
 
+
+
+
+def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
+    checkpoint_dir: String, max_new_tokens: Int,
+    temperature: Float64, top_k: Int, top_p: Float64, min_p: Float64,
+    repeat_penalty: Float64, presence_penalty: Float64, frequency_penalty: Float64,
+    seed: Int, wire_prompt_ids: List[Int],
+) -> Qwen3PrefillDecodeResult:
+    """Parity gap 3 (sampling, 2026-08-10): the SAMPLED twin of `qwen3_prefill_decode_flat_af_
+    nomirror_msl_anyqwen3` -- identical model-agnostic gate, checkpoint load, quantized-state
+    cache, and prefill+decode orchestration, but every generated token (the first included) is
+    DRAWN from the model's own distribution instead of argmaxed: the tail dispatch swaps from the
+    fused lm_head+argmax pair to the logits-emitting twin (`step_logits`/`prefill_batch_logits`),
+    and the host-side sampler chain (penalties -> temperature -> top-k -> min-p -> top-p ->
+    weighted draw, SplitMix64 seeded) picks the token.
+
+    `temperature <= 0` is GREEDY BY DEFINITION and delegates to the greedy entry point above --
+    the sampler is never asked to approximate argmax. `top_k = 1` at any temperature is the
+    cross-check gate: it must reproduce the greedy sequence exactly (same logits, strict-greater
+    scan, lowest-id tie-break). The per-step dispatch budget the greedy path asserts is exactly
+    ONE dispatch lower here (the argmax pair collapses to the single logits dispatch), asserted
+    the same way.
+
+    Determinism contract: same checkpoint + prompt + parameters + seed -> byte-identical token
+    sequence. Different seeds diverge wherever the distribution has more than one survivor.
+
+    @capability qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled
+    complexity: O(n_prompt + max_new_tokens)
+    counts:
+    - dim max_new_tokens <= RESIDENT_MAX_CONTEXT [kernel_validated]
+    @endcapability
+    """
+    if temperature <= 0.0:
+        return qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
+            checkpoint_dir, max_new_tokens, True, True, wire_prompt_ids, 0
+        )
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    # ── SAME model-agnostic structural gate as the greedy anyqwen3 arm, byte-for-byte.
+    if (h_q % h_kv) != 0:
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "model-agnostic prefill requires num_attention_heads % num_key_value_heads == 0 (GQA);"
+            + " got " + String(h_q) + " % " + String(h_kv),
+        )
+    if (d_model % 32) != 0 or (d_ff % 32) != 0 or ((h_q * d_head) % 32) != 0:
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "model-agnostic prefill requires d_model, d_ff, and n_q=h_q*d_head all divisible by 32"
+            + " (GEMM tile alignment); got d_model=" + String(d_model) + " d_ff=" + String(d_ff)
+            + " n_q=" + String(h_q * d_head),
+        )
+
+    # ── Serving increment (parity gap 2, 2026-08-10): the prompt can arrive over the wire,
+    # SEPARATED from the converted checkpoint. A non-empty wire prompt REPLACES the manifest's
+    # baked-in input_ids -- one converted weight set then serves every prompt, and the
+    # quantized-state cache (keyed by the manifest's hash) stays warm across different-prompt
+    # requests. An empty wire prompt keeps the baked-in behavior byte-for-byte.
+    if len(wire_prompt_ids) > 0:
+        # Wire arguments arrive as immutable borrows; take an explicit element-wise copy and MOVE
+        # it into place (List has no implicit copy).
+        var wire_copy = List[Int](capacity=len(wire_prompt_ids))
+        for i in range(len(wire_prompt_ids)):
+            wire_copy.append(wire_prompt_ids[i])
+        prompt_ids = wire_copy^
+        n_prompt = len(prompt_ids)
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    var needed_ctx = n_prompt + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            # The sampled arm IS the no-mirror + MSL-parity combination, by its name: no flags.
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_MSL_PARITY_ALL_ROLES,
+            ))
+
+            var rt = rope_table(d_head, max_ctx, theta)
+
+            # ── SAME quantized-state cache gate + best-effort write as the greedy anyqwen3 arm.
+            var cache_path = checkpoint_dir + "/weights_i8.cache"
+            var loaded_from_cache = False
+            try:
+                var cf = open(cache_path, "r")
+                var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
+                if (
+                    len(header) == _I8_CACHE_HEADER_BYTES
+                    and _i8_cache_magic_ok(header)
+                    and _le64(header, 40) == n_layers
+                    and _le64(header, 48) == d_model
+                    and _le64(header, 56) == h_q
+                    and _le64(header, 64) == h_kv
+                    and _le64(header, 72) == d_head
+                    and _le64(header, 80) == d_ff
+                    and _le64(header, 88) == vocab_size
+                    and _sha256_matches(header, _sha256_of_string(manifest))
+                    and _le64(header, 96) == s.quantized_state_bytes()
+                ):
+                    var state_bytes = _le64(header, 96)
+                    var state = List[UInt8](capacity=state_bytes)
+                    var remaining = state_bytes
+                    var read_ok = True
+                    while read_ok and remaining > 0:
+                        var take = _I8_CACHE_CHUNK_BYTES
+                        if remaining < take:
+                            take = remaining
+                        var chunk = cf.read_bytes(take)
+                        if len(chunk) != take:
+                            read_ok = False
+                        else:
+                            for i in range(take):
+                                state.append(chunk[i])
+                        remaining -= take
+                    cf.close()
+                    if read_ok and s.load_quantized_state(state^) == MB_OK:
+                        var rope_status = s.upload_rope_tables(
+                            rt.cos_table, rt.sin_table, max_ctx
+                        )
+                        loaded_from_cache = rope_status == MB_OK
+                else:
+                    cf.close()
+            except:
+                loaded_from_cache = False
+
+            if not loaded_from_cache:
+                var embed_table = _load_tensor(
+                    blob_path, tensors_obj, "model.embed_tokens.weight"
+                )
+                var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+                var up_status = s.upload_globals(
+                    embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+                )
+                if up_status != MB_OK:
+                    return _decode_err(
+                        up_status,
+                        "upload_globals failed: " + metaldispatch_status_name(up_status),
+                    )
+
+                for layer in range(n_layers):
+                    var prefix = "model.layers." + String(layer) + "."
+                    var ln1 = _load_tensor(
+                        blob_path, tensors_obj, prefix + "input_layernorm.weight"
+                    )
+                    var ln2 = _load_tensor(
+                        blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                    )
+                    var qn = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
+                    )
+                    var kn = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
+                    )
+                    var wq = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.q_proj.weight"
+                    )
+                    var wk = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.k_proj.weight"
+                    )
+                    var wv = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.v_proj.weight"
+                    )
+                    var wo = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.o_proj.weight"
+                    )
+                    var wg = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.gate_proj.weight"
+                    )
+                    var wu = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.up_proj.weight"
+                    )
+                    var wd = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.down_proj.weight"
+                    )
+                    var layer_status = s.upload_layer(
+                        layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                    )
+                    if layer_status != MB_OK:
+                        return _decode_err(
+                            layer_status,
+                            "upload_layer " + String(layer) + " failed: "
+                            + metaldispatch_status_name(layer_status),
+                        )
+
+                _ = s.seal()
+
+                try:
+                    var state_out = s.dump_quantized_state()
+                    var header_out = List[UInt8](capacity=_I8_CACHE_HEADER_BYTES)
+                    for _h in range(_I8_CACHE_HEADER_BYTES):
+                        header_out.append(0)
+                    header_out[0] = 65  # 'A'
+                    header_out[1] = 76  # 'L'
+                    header_out[2] = 71  # 'G'
+                    header_out[3] = 73  # 'I'
+                    header_out[4] = 56  # '8'
+                    header_out[5] = 67  # 'C'
+                    header_out[6] = 48  # '0'
+                    header_out[7] = 49  # '1'
+                    var digest = _sha256_of_string(manifest)
+                    for _d in range(32):
+                        header_out[8 + _d] = UInt8(digest[_d])
+                    var header_fields = List[Int]()
+                    header_fields.append(n_layers)
+                    header_fields.append(d_model)
+                    header_fields.append(h_q)
+                    header_fields.append(h_kv)
+                    header_fields.append(d_head)
+                    header_fields.append(d_ff)
+                    header_fields.append(vocab_size)
+                    header_fields.append(len(state_out))
+                    for _f in range(len(header_fields)):
+                        for _b in range(8):
+                            header_out[40 + _f * 8 + _b] = UInt8(
+                                (header_fields[_f] >> (8 * _b)) & 255
+                            )
+                    var wf = open(cache_path, "w")
+                    wf.write_bytes(Span[UInt8, origin_of(header_out)](
+                        ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
+                    ))
+                    var written = 0
+                    while written < len(state_out):
+                        var take = _I8_CACHE_CHUNK_BYTES
+                        if len(state_out) - written < take:
+                            take = len(state_out) - written
+                        wf.write_bytes(Span[UInt8, origin_of(state_out)](
+                            ptr=state_out.unsafe_ptr() + written, length=take
+                        ))
+                        written += take
+                    wf.close()
+                except:
+                    pass
+            else:
+                _ = s.seal()
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            # ── Sampling state: the context histogram the penalties read, seeded from the whole
+            # prompt, plus the SplitMix64 state this run's draws step.
+            var counts = List[Int](capacity=vocab_size)
+            for _c in range(vocab_size):
+                counts.append(0)
+            for i in range(n_prompt):
+                counts[prompt_ids[i]] += 1
+            var rng_state = UInt64(seed)
+
+            var first_tok = -1
+            var n_chunks = 0
+            var t_prefill_start = perf_counter_ns()
+            var pos_base = 0
+            while pos_base < n_prompt:
+                var chunk_len = PREFILL_MAX_TILE
+                if n_prompt - pos_base < chunk_len:
+                    chunk_len = n_prompt - pos_base
+                var chunk_ids = _slice_ids(prompt_ids, pos_base, chunk_len)
+                if pos_base + chunk_len < n_prompt:
+                    # Not the last chunk: plain greedy prefill (its token is discarded anyway).
+                    var r = s.prefill_batch(chunk_ids, pos_base)
+                    if r.status != MB_OK:
+                        return _decode_err(
+                            r.status,
+                            "prefill_batch(pos_base=" + String(pos_base) + ", m_rows="
+                            + String(chunk_len) + ") failed: " + metaldispatch_status_name(r.status),
+                        )
+                else:
+                    # Last chunk: logits tail, then DRAW the first generated token.
+                    var lr = s.prefill_batch_logits(chunk_ids, pos_base)
+                    if lr.status != MB_OK:
+                        return _decode_err(
+                            lr.status,
+                            "prefill_batch_logits(pos_base=" + String(pos_base) + ", m_rows="
+                            + String(chunk_len) + ") failed: " + metaldispatch_status_name(lr.status),
+                        )
+                    var draw0 = _sample_draw(
+                        lr.logits, counts, temperature, top_k, top_p, min_p,
+                        repeat_penalty, presence_penalty, frequency_penalty, rng_state,
+                    )
+                    first_tok = draw0.token
+                    rng_state = draw0.next_state
+                n_chunks += 1
+                pos_base += chunk_len
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            generated_ids.append(first_tok)
+            counts[first_tok] += 1
+            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var n_decoded = 1
+            var dispatches_per_token = 0
+
+            var t_decode_start = perf_counter_ns()
+            if not stopped_on_eos:
+                for step in range(1, max_new_tokens):
+                    var pos = n_prompt + step - 1
+                    var r2 = s.step_logits(generated_ids[len(generated_ids) - 1], pos)
+                    if r2.status != MB_OK:
+                        return _decode_err(
+                            r2.status,
+                            "step_logits(decode pos " + String(pos) + ") failed: "
+                            + metaldispatch_status_name(r2.status),
+                        )
+                    dispatches_per_token = r2.dispatches
+                    var draw = _sample_draw(
+                        r2.logits, counts, temperature, top_k, top_p, min_p,
+                        repeat_penalty, presence_penalty, frequency_penalty, rng_state,
+                    )
+                    rng_state = draw.next_state
+                    generated_ids.append(draw.token)
+                    counts[draw.token] += 1
+                    n_decoded += 1
+                    if draw.token == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+            var t_decode_end = perf_counter_ns()
+
+            if dispatches_per_token != 0:
+                var n_keys_last = n_prompt + (n_decoded - 1)
+                # The sampled tail is exactly ONE dispatch fewer than the greedy tail (the argmax
+                # pair collapses to the single logits dispatch) -- asserted the same way.
+                var expected_budget = s.expected_decode_dispatch_count(n_keys_last) - 1
+                if dispatches_per_token != expected_budget:
+                    return _decode_err(
+                        MB_ERR_DISPATCH_COUNT_MISMATCH,
+                        "the session issued " + String(dispatches_per_token) + " dispatches but "
+                        + "the expected sampled decode budget says " + String(expected_budget)
+                        + " -- the design and the code disagree",
+                    )
+
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )

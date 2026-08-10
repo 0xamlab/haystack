@@ -17,7 +17,7 @@
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
 * [Runtime library catalog](engine/runtime-library-catalog.md)
-* [Qwen3-0.6B-Base decode (Apple Silicon, Metal)](engine/qwen3-metal-decode.md)
+* [Qwen3 Metal decode](engine/qwen3-metal-decode.md)
 * [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)
 * [Columnar queries](engine/columnar-queries.md)

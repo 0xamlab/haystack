@@ -159,6 +159,7 @@ from residentk.kernels import (
     _qk_rope_write_kernel,
     _sdpa_kernel_simd,
     _lmhead_argmax_kernel_simd_i8,
+    _lmhead_logits_kernel_simd_i8,
     _argmax_reduce_kernel_simd,
     _splitk_partial_kernel_simd_native,
     _splitk_merge_kernel_simd,
@@ -205,6 +206,7 @@ from metaldispatch.ffi import (
 from metaldispatch.session import (
     _MBLayerBufI8,
     _StepOut,
+    _SampledOut,
     _classify_pipeline,
     _classify_splitk_pipeline,
     _classify_prefill_pipeline,
@@ -391,6 +393,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
     var out_idx_addr: UInt64
     var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    # ── Parity gap 3 (sampling, 2026-08-10): the vocabulary-wide Float32 logits row the logits-
+    # emitting lm_head twin writes for the host-side sampler. Same lifetime as every other buffer
+    # here; the greedy path simply never reads it.
+    var logits_addr: UInt64
+    var logits_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
 
     var prompt_ids_addr: UInt64
     var prompt_ids_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
@@ -724,6 +732,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     """The B-row argmax reduce `_batched_argmax_reduce_kernel_simd` (residentk/kernels.mojo), compiled
     in the early `__init__` block. Discovered via `"batched_arg"`, its own 11-char truncation.
     Non-fatal-miss (`-1`)."""
+    var lmhead_logits_pipeline_idx: Int
+    """Parity gap 3 (sampling, 2026-08-10): the logits-emitting twin `_lmhead_logits_kernel_simd_i8`
+    (residentk/kernels.mojo), compiled in the early `__init__` block. Discovered via `"lmhead_logi"`
+    -- its own 11-char engine-kernel truncation, which `_classify_pipeline` explicitly refuses
+    (returns -1) so it can never land in `_ROLE_LMHEAD_ARGMAX`'s slot. Non-fatal-miss (`-1`): a
+    session that never samples simply never dispatches it."""
     var decode_batched_built: Bool
     """True iff ALL FIVE batched-decode pipelines were discovered (`native_decode_splitk_partial_
     batched_pipeline_idx >= 0` AND `kvprod_batched_pipeline_idx >= 0` AND `batched_splitk_merge_
@@ -1070,6 +1084,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _ = cctx.compile_function[_sdpa_kernel_simd]()
         _ = cctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
         _ = cctx.compile_function[_argmax_reduce_kernel_simd]()
+        # ── Parity gap 3 (sampling, 2026-08-10): the logits-emitting lm_head twin, compiled in
+        # this same early block so `lmhead_logits_pipeline_idx` is discoverable in this same
+        # `__init__` (the sampled tail dispatches it in place of the argmax pair).
+        _ = cctx.compile_function[_lmhead_logits_kernel_simd_i8]()
         _ = cctx.compile_function[_pf_embed_rows_kernel_i8]()
         _ = cctx.compile_function[_pf_rmsnorm_rows_kernel]()
         _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
@@ -1125,6 +1143,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.batched_splitk_merge_pipeline_idx = -1
         self.batched_lmhead_pipeline_idx = -1
         self.batched_argmax_reduce_pipeline_idx = -1
+        self.lmhead_logits_pipeline_idx = -1
         self.decode_batched_built = False
         # ── Project Redline reopening (2026-08-08), step 4: same non-fatal-miss discovery slot,
         # for the OPTIONAL combined-build BM64 qkv_proj kernel -- see `self.qkv_proj_bm64_pipeline_
@@ -1213,6 +1232,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.batched_lmhead_pipeline_idx = i
             if name.find("batched_arg") >= 0:
                 self.batched_argmax_reduce_pipeline_idx = i
+            # ── Parity gap 3 (sampling, 2026-08-10): the logits-emitting lm_head twin's own
+            # 11-char truncation `lmhead_logi` -- `_classify_pipeline` refuses this substring
+            # (returns -1), so only this field can ever hold it.
+            if name.find("lmhead_logi") >= 0:
+                self.lmhead_logits_pipeline_idx = i
             # ── Project Redline reopening (2026-08-08), step 4: same file-private, non-fatal
             # discovery pattern, for the OPTIONAL combined-build BM64 qkv_proj kernel. Checked
             # independently of `_classify_prefill_pipeline`'s own now-excluded "bm64" guard (see that
@@ -1525,6 +1549,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             raise Error("metaldispatch: buffer alloc failed (out_idx)")
         if _mb_alloc_buffer(PREFILL_MAX_TILE * 4, self.prompt_ids_addr, self.prompt_ids_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (prompt_ids)")
+        # ── Parity gap 3 (sampling, 2026-08-10): vocab-wide Float32 logits row (~600 KB at
+        # Qwen3 scale) -- the sampled tail's output buffer, read back host-side by the sampler.
+        self.logits_addr = UInt64(0); self.logits_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        if _mb_alloc_buffer(vocab * 4, self.logits_addr, self.logits_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (logits)")
 
         # ── Project Slipstream Phase 3: batched-decode tail + per-sequence state buffers, gated on
         # `decode_batched_built` (blobs-absent pays none of it). The B single-row lm_head/argmax tail
@@ -4567,6 +4596,145 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             if tok < 0 or tok >= self.vocab:
                 return _StepOut(-1, 0.0, n_descriptors, MB_ERR_DISPATCH_FAILED)
             return _StepOut(tok, lg, n_descriptors, MB_OK)
+
+    # ── Parity gap 3 (sampling, 2026-08-10): logits-emitting twins of the two single-stream tail
+    # paths. The greedy tail is two dispatches (fused lm_head+argmax over `_LM_BLOCKS` partials,
+    # then the block reduce); the sampled tail is ONE dispatch -- `_lmhead_logits_kernel_simd_i8`,
+    # byte-identical dot products, writing the whole vocab row into `self.logits_addr` -- and the
+    # host-side sampler draws the token. Mechanism: the tail descriptor is PATCHED in place before
+    # the run (header + all args, positional shift included) and RESTORED to the byte-exact argmax
+    # wiring immediately after, so interleaving sampled and greedy calls on one session is safe and
+    # the greedy path never sees a mutated descriptor.
+
+    def _patch_tail_logits(mut self, table: UnsafePointer[UInt8, origin=MutAnyOrigin], d_lm: Int, x_addr: UInt64) raises:
+        """Overwrite tail slot `d_lm` with the logits kernel's header + 9 args (logits first, then
+        the argmax kernel's args minus blk_val/blk_idx). Caller restores via `_restore_tail_argmax`."""
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(table, d_lm, self.lmhead_logits_pipeline_idx, _LM_BLOCKS, _TG, 9)
+        _mb_set_arg_ptr(table, d_lm, 0, self.logits_addr)
+        _mb_set_arg_ptr(table, d_lm, 1, x_addr)
+        _mb_set_arg_ptr(table, d_lm, 2, self.final_norm_addr)
+        _mb_set_arg_ptr(table, d_lm, 3, self.embed_addr)
+        _mb_set_arg_ptr(table, d_lm, 4, self.embed_scale_addr)
+        _mb_set_arg_int(table, d_lm, 5, self.d_model)
+        _mb_set_arg_int(table, d_lm, 6, self.vocab)
+        _mb_set_arg_f32(table, d_lm, 7, self.eps)
+        _mb_set_arg_int(table, d_lm, 8, n_iters)
+
+    def _restore_tail_argmax(mut self, table: UnsafePointer[UInt8, origin=MutAnyOrigin], d_lm: Int, x_addr: UInt64) raises:
+        """Byte-exact restoration of the greedy tail (both descriptors) after a logits run -- the
+        same header + arg values the table builders wrote at construction."""
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(table, d_lm, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(table, d_lm, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(table, d_lm, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(table, d_lm, 2, x_addr)
+        _mb_set_arg_ptr(table, d_lm, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(table, d_lm, 4, self.embed_addr)
+        _mb_set_arg_ptr(table, d_lm, 5, self.embed_scale_addr)
+        _mb_set_arg_int(table, d_lm, 6, self.d_model)
+        _mb_set_arg_int(table, d_lm, 7, self.vocab)
+        _mb_set_arg_f32(table, d_lm, 8, self.eps)
+        _mb_set_arg_int(table, d_lm, 9, n_iters)
+        _mb_set_header(table, d_lm + 1, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(table, d_lm + 1, 0, self.out_val_addr)
+        _mb_set_arg_ptr(table, d_lm + 1, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(table, d_lm + 1, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(table, d_lm + 1, 3, self.blk_idx_addr)
+        _mb_set_arg_int(table, d_lm + 1, 4, _LM_BLOCKS)
+
+    def _read_logits(self) raises -> List[Float64]:
+        var lp = self.logits_ptr.bitcast[Float32]()
+        var out = List[Float64](capacity=self.vocab)
+        for i in range(self.vocab):
+            out.append(Float64(lp[i]))
+        return out^
+
+    def step_logits(mut self, token_id: Int, pos: Int) raises -> _SampledOut:
+        """The sampling twin of `_step_native_kv_impl`: byte-identical per-layer dispatch (same
+        table selection, same scalar patches), with the tail swapped to the logits kernel and the
+        trailing reduce dropped -- dispatches `n_descriptors - 1`, returns the full vocab row for
+        the host sampler instead of an argmax token. Restores the greedy tail before returning,
+        whatever the outcome."""
+        @parameter
+        if not MB_GPU_BUILD:
+            return _SampledOut(List[Float64](), 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if self.lmhead_logits_pipeline_idx < 0:
+                return _SampledOut(List[Float64](), 0, MB_ERR_PIPELINE_NOT_FOUND)
+            if (
+                self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] < 0
+                or self.native_decode_attn_pipeline_idx < 0
+            ):
+                return _SampledOut(List[Float64](), 0, MB_ERR_PIPELINE_NOT_FOUND)
+            if pos < 0 or pos >= self.max_ctx:
+                return _SampledOut(List[Float64](), 0, MB_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _SampledOut(List[Float64](), 0, MB_ERR_UPLOAD_LENGTH)
+
+            var n_keys = pos + 1
+            var use_splitk = self.native_decode_splitk_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD
+            var table = self.descriptors_decode_native_splitk if use_splitk else self.descriptors_decode_native
+            var n_descriptors = self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native
+            var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
+            _mb_set_arg_int(table, token_id_offset, 3, token_id)
+            for layer in range(self.n_layers):
+                if use_splitk:
+                    _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
+                    _mb_set_arg_int(table, self.nkeys_offsets_native_splitk[layer], 6, n_keys)
+                else:
+                    _mb_set_arg_int(table, self.pos_offsets_native[layer], 8, pos)
+                    _mb_set_arg_int(table, self.nkeys_offsets_native[layer], 4, n_keys)
+
+            var d_lm = n_descriptors - 2
+            self._patch_tail_logits(table, d_lm, self.hidden_addr)
+            var rc = _mb_run_token(table, n_descriptors - 1)
+            self._restore_tail_argmax(table, d_lm, self.hidden_addr)
+            if rc != 0:
+                return _SampledOut(List[Float64](), n_descriptors - 1, MB_ERR_DISPATCH_FAILED)
+            var logits = self._read_logits()
+            return _SampledOut(logits^, n_descriptors - 1, MB_OK)
+
+    def prefill_batch_logits(mut self, prompt_ids: List[Int], pos_base: Int) raises -> _SampledOut:
+        """The sampling twin of `prefill_batch` for the NO-MIRROR arm (the only arm the sampled
+        entry point runs -- any other resolved plan is refused here, not silently sampled): runs
+        the identical `descriptors_prefill_af_nomirror` table with the tail swapped to the logits
+        kernel, so the FIRST generated token can be drawn from the same distribution as every later
+        one. Restores the greedy tail before returning, whatever the outcome."""
+        @parameter
+        if not MB_GPU_BUILD:
+            return _SampledOut(List[Float64](), 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            self._require_resolved_plan()
+            if self.lmhead_logits_pipeline_idx < 0:
+                return _SampledOut(List[Float64](), 0, MB_ERR_PIPELINE_NOT_FOUND)
+            if self.plan.attention != PF_ATTN_GROUPED_FA_NO_MIRROR:
+                return _SampledOut(List[Float64](), 0, MB_ERR_PIPELINE_NOT_FOUND)
+            var m_rows = len(prompt_ids)
+            if m_rows < 1 or m_rows > PREFILL_MAX_TILE:
+                return _SampledOut(List[Float64](), 0, MB_ERR_UPLOAD_LENGTH)
+            if pos_base < 0 or pos_base + m_rows > self.max_ctx:
+                return _SampledOut(List[Float64](), 0, MB_ERR_CONTEXT_FULL)
+            var ids_i32 = self.prompt_ids_ptr.bitcast[Int32]()
+            for m in range(m_rows):
+                var tid = prompt_ids[m]
+                if tid < 0 or tid >= self.vocab:
+                    return _SampledOut(List[Float64](), 0, MB_ERR_UPLOAD_LENGTH)
+                ids_i32[m] = Int32(tid)
+
+            self._apply_m_rows_af_nomirror(m_rows, pos_base)
+            var last_row_addr = self.hidden_addr + UInt64((m_rows - 1) * self.d_model * 4)
+            self._patch_tail_logits(self.descriptors_prefill_af_nomirror, self.lmhead_af2_d, last_row_addr)
+            var rc = _mb_run_token(
+                self.descriptors_prefill_af_nomirror, self.n_descriptors_prefill_af_nomirror - 1
+            )
+            self._restore_tail_argmax(self.descriptors_prefill_af_nomirror, self.lmhead_af2_d, last_row_addr)
+            if rc != 0:
+                return _SampledOut(
+                    List[Float64](), self.n_descriptors_prefill_af_nomirror - 1, MB_ERR_DISPATCH_FAILED
+                )
+            var logits = self._read_logits()
+            return _SampledOut(logits^, self.n_descriptors_prefill_af_nomirror - 1, MB_OK)
 
     def expected_decode_dispatch_count(self, n_keys: Int) -> Int:
         """Round 5 (2026-08-08): the single GENERATED source of truth a caller's own dispatch-count

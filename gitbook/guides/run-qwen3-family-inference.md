@@ -22,7 +22,7 @@ reference on both).
 * **Python 3.14** — `pip install algenta` requires it.
 * **A local Hugging Face checkpoint snapshot** (`config.json` + one or more `model*.safetensors`, single- or multi-shard). Downloaded by you, never by this call — for example `Qwen/Qwen3-0.6B-Base` or `Qwen/Qwen3-1.7B` (both Apache-2.0, ungated).
 * **`numpy`**, to convert the checkpoint's published BF16 weights: `pip install "algenta[benchmark]"`.
-* **A tokenizer for the checkpoint.** This path takes token ids in and token ids out — the examples below use `transformers`' `AutoTokenizer` against the same checkpoint directory.
+* **No external tokenizer needed.** The SDK implements the checkpoint's own `tokenizer.json` (Qwen3-family byte-level BPE, byte-for-byte validated against `transformers`) — pass `prompt_text` straight to `decode()`. You can still bring your own token ids if you prefer.
 * **A Metal-GPU build of the runtime worker.** The GPU worker binaries are produced by the repo's own build script (`scripts/build_mojo_binary.sh` with `MOJO_BUILD_METAL_GPU=1`); GPU packaging for the signed bundled runtime is on the roadmap.
 
 ## Supported models — and exactly what is refused
@@ -46,8 +46,8 @@ built for one tier refuses a model that needs the other, by name, rather than ru
 
 ## Limitations
 
-* **Tokens in, tokens out.** There is no BPE tokenizer or detokenizer in this path yet — bring token ids (for example from `transformers.AutoTokenizer`). A native tokenizer is the next roadmap item.
-* **Greedy decode only.** Every generated token is the argmax. No temperature, top-p/top-k, penalties, or seeds.
+* **No chat template.** `prompt_text` is tokenized raw — Qwen3 base models ship no chat template, and the instruct-template application is a later roadmap item. Special strings in the text (like the end-of-text token) map to their own ids.
+* **Greedy by default.** `decode()` with no sampling arguments is the fused argmax path. Pass `temperature > 0` to sample — see [Sampling](#sampling).
 * **One call, start to finish.** One call prefills the prompt and decodes to `max_new_tokens` or end-of-text; there is no open session to step across calls.
 * **Weights load per call — with a cache.** Each call loads the weights, but the first call on a converted checkpoint writes `weights_i8.cache` (the exact quantized device bytes, 8x smaller than the converted blob); later calls restore it and skip re-quantization entirely. See [The quantized load cache](#the-quantized-load-cache).
 
@@ -55,17 +55,20 @@ built for one tier refuses a model that needs the other, by name, rather than ru
 
 `prepare_model_checkpoint()` reads the checkpoint's own `config.json` for the shape, handles single-
 or multi-shard safetensors, pre-transposes the GEMM weights the kernels expect, and writes the flat
-`manifest.json` + `weights.blob` pair the kernel reads. `decode()` converts for you when you omit
-`converted_checkpoint_dir`; converting once and reusing is the intended shape.
+`manifest.json` + `weights.blob` pair the kernel reads. `decode()` converts for you into
+`<checkpoint>/.algenta-cache/` on first use and reuses that pair on every later call — the prompt
+travels separately from the converted weights, so one conversion serves every prompt. Pass
+`converted_checkpoint_dir` to point at a conversion you placed elsewhere yourself.
 
 ```python
-from algenta import MojoRuntime
+from algenta import MojoRuntime, load_tokenizer
 from algenta.inference import decode, prepare_model_checkpoint
 
-# 1. Convert once (multi-shard checkpoints handled automatically).
+# 1. Tokenize with the checkpoint's OWN tokenizer (no external dependency) and convert once.
+prompt_ids = load_tokenizer("./qwen3-1.7b").encode("The capital of France is")
 converted = prepare_model_checkpoint(
     checkpoint_dir="./qwen3-1.7b",
-    prompt_token_ids=[785, 6722, 315, 9625, 374],  # "The capital of France is"
+    prompt_token_ids=prompt_ids,
     out_dir="./qwen3-1.7b-converted",
 )
 
@@ -74,22 +77,19 @@ runtime = MojoRuntime(mode="local")
 result = decode(
     runtime,
     checkpoint_dir="./qwen3-1.7b",
-    prompt_token_ids=[785, 6722, 315, 9625, 374],
+    prompt_text="The capital of France is",   # text in -- same checkpoint tokenizer
     max_new_tokens=16,
     converted_checkpoint_dir=converted,
 )
-print(result.token_ids[result.n_prompt:])      # generated token ids
+print(result.generated_text)                   # text out
+print(result.token_ids[result.n_prompt:])      # ids are always available too
 print(result.prefill_tokens_per_sec, result.decode_tokens_per_sec)
 ```
 
-To tokenize a real prompt first:
-
-```python
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained("./qwen3-1.7b")
-prompt_token_ids = tokenizer("The capital of France is")["input_ids"]
-```
+Prefer to keep working in token ids? Pass `prompt_token_ids=[...]` instead of `prompt_text` —
+`decode()` accepts exactly one of the two, and token-id calls never load the tokenizer.
+`algenta.tokenizer.load_tokenizer()` is also exposed directly (`encode` / `decode`) if you want
+the ids without calling `decode()`.
 
 ## Long context
 
@@ -102,6 +102,33 @@ new tokens on 0.6B / 1,024 on 1.7B, every token checked against the reference.
 `n_prompt + max_new_tokens` is refused before any work happens; a larger value is accepted but
 cannot change a one-shot run, because nothing inside a single call can consume context beyond what
 the prompt + generation uses.
+
+## Sampling
+
+The default call is greedy (fused argmax). Pass `temperature > 0` to draw every token — the first
+one included — from the model's own distribution, using the conventional chain: repetition /
+presence / frequency penalties → temperature → top-k → min-p → top-p → seeded weighted draw.
+
+```python
+result = decode(
+    runtime,
+    checkpoint_dir="./qwen3-1.7b",
+    prompt_text="Once upon a time",
+    max_new_tokens=64,
+    temperature=0.8,
+    top_k=40,
+    top_p=0.95,
+    min_p=0.0,
+    repeat_penalty=1.1,
+    seed=1234,                       # same seed -> byte-identical sequence
+    converted_checkpoint_dir=converted,
+)
+```
+
+Properties: the same prompt + parameters + seed reproduce the identical token sequence; `top_k=1`
+at any temperature reproduces the greedy sequence exactly; and the sampled pass materializes the
+full logits row host-side, so it runs slower per token than greedy — it exists for generation
+parity, not speed.
 
 ## The quantized load cache
 

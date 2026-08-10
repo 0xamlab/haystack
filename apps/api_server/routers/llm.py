@@ -485,6 +485,10 @@ async def chat_completions(
                 {"role": message.role, "content": message.content}
                 for message in payload.messages
             ],
+            max_output_tokens=payload.max_tokens,
+            temperature=payload.temperature,
+            top_p=payload.top_p,
+            seed=payload.seed,
         )
     except (LLMAPIError, MojoLibraryError) as exc:
         raise _llm_api_http_exception(exc, request) from exc

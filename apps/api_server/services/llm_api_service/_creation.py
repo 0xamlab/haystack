@@ -512,6 +512,9 @@ async def create_chat_completion(
     model_id: str,
     messages: list[dict[str, str]],
     max_output_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    seed: int | None = None,
 ) -> tuple[LLMModelDescriptor, ChatCompletionResult]:
     from apps.api_server.services import llm_api_service as _facade
     descriptor = _facade.get_llm_model_descriptor(model_id)
@@ -521,6 +524,19 @@ async def create_chat_completion(
         operation="chat completions",
     )
     provider_config = llm_provider_service.get_configured_provider_model(model_id)
+    if provider_config is not None and provider_config.backend == "algenta_local":
+        # Parity gap 2 (2026-08-10): the local Apple-Silicon GPU engine. Not an HTTP provider --
+        # executed directly through algenta.inference.decode(); sampling parameters apply to this
+        # backend (remote providers keep their server-side defaults until their payload builders
+        # grow parameter pass-through).
+        return descriptor, await llm_provider_service.execute_local_chat_completion(
+            config=provider_config,
+            messages=messages,
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed,
+        )
     if provider_config is not None:
         # Forward the output budget only when set, so callers/stubs that don't expect
         # the kwarg are unaffected (None == provider default).

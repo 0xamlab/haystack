@@ -173,6 +173,34 @@ def derive_local_provider_registry(
             )
             router_targets.append("provider.ollama.local")
 
+    # Parity gap 2 (2026-08-10): the local Apple-Silicon GPU engine. Emitted when its own model
+    # map is configured (ALGENTA_LOCAL_LLM_MODELS_JSON, name -> checkpoint directory) -- one entry
+    # per mapped model. Deliberately NOT added to router_targets: this backend is not an HTTP
+    # failover target, and routing failover semantics do not apply to it.
+    local_llm_map_raw = str(env.get("ALGENTA_LOCAL_LLM_MODELS_JSON", "")).strip()
+    if local_llm_map_raw:
+        try:
+            local_llm_map = json.loads(local_llm_map_raw)
+        except json.JSONDecodeError:
+            local_llm_map = {}
+        if isinstance(local_llm_map, dict):
+            for model_name in sorted(local_llm_map):
+                directory = local_llm_map.get(model_name)
+                if not isinstance(directory, str) or not directory.strip():
+                    continue
+                payload.append(
+                    {
+                        "id": f"provider.algenta_local.{model_name}",
+                        "backend": "algenta_local",
+                        "model_name": model_name,
+                        "capabilities": ["chat_completions"],
+                        "description": (
+                            f"Local Apple-Silicon GPU model '{model_name}' "
+                            f"(checkpoint: {directory.strip()})."
+                        ),
+                    }
+                )
+
     if router_targets:
         router_entry: dict[str, object] = {
             "id": "provider.router",

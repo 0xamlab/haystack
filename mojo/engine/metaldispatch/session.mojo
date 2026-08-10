@@ -197,6 +197,13 @@ def _classify_pipeline(name: String) -> Int:
         return _ROLE_QK_ROPE
     if name.find("sdpa") >= 0:
         return _ROLE_SDPA
+    # Parity gap 3 (2026-08-10): the logits-emitting twin `_lmhead_logits_kernel_simd_i8` truncates
+    # to `lmhead_logi`, which ALSO contains the `lmhead` substring below -- refuse it HERE so it can
+    # never land in `_ROLE_LMHEAD_ARGMAX`'s slot; `_MBQwen3I8AllSimd7Prefill` discovers it into its
+    # own separate optional field (same non-fatal-miss pattern as the batched kernels). Structs that
+    # never compile it never see the name, so this early `-1` changes nothing for them.
+    if name.find("lmhead_logi") >= 0:
+        return -1
     if name.find("lmhead") >= 0:
         return _ROLE_LMHEAD_ARGMAX
     if name.find("argmax_redu") >= 0:
@@ -553,6 +560,18 @@ def _classify_attention_forge_pipeline(name: String) -> Int:
 struct _StepOut(Copyable, Movable):
     var token_id: Int
     var logit: Float64
+    var dispatches: Int
+    var status: Int
+
+
+@fieldwise_init
+struct _SampledOut(Copyable, Movable):
+    """Parity gap 3 (sampling, 2026-08-10): the sampling twin of `_StepOut` -- instead of one
+    argmax token, the whole vocabulary-wide logits row (`logits`, `vocab` entries) for the host-side
+    sampler to draw from. `dispatches` counts the dispatches actually run (the greedy tail's pair
+    collapsed to one), `status` uses the same `MB_*` vocabulary."""
+
+    var logits: List[Float64]
     var dispatches: Int
     var status: Int
 

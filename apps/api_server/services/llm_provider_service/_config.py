@@ -28,6 +28,10 @@ _SUPPORTED_PROVIDER_BACKENDS = frozenset(
         "groq",
         "xai",
         "router",
+        # Parity gap 2 (2026-08-10): the LOCAL Apple-Silicon GPU engine. Not an HTTP provider:
+        # no base_url, no api_key; the model name resolves to a checkpoint directory through
+        # ALGENTA_LOCAL_LLM_MODELS_JSON and executes through algenta.inference.decode().
+        "algenta_local",
     }
 )
 _BACKEND_CAPABILITIES = {
@@ -41,9 +45,10 @@ _BACKEND_CAPABILITIES = {
     "groq": frozenset({"chat_completions"}),
     "xai": frozenset({"chat_completions", "embeddings"}),
     "router": frozenset({"chat_completions", "embeddings"}),
+    "algenta_local": frozenset({"chat_completions"}),
 }
 _ANTHROPIC_API_VERSION = "2023-06-01"
-_OPTIONAL_PROVIDER_API_KEY_BACKENDS = frozenset({"ollama"})
+_OPTIONAL_PROVIDER_API_KEY_BACKENDS = frozenset({"ollama", "algenta_local"})
 _RETRYABLE_PROVIDER_ERROR_CODE_ORDER = (
     "backend_unavailable",
     "provider_timeout",

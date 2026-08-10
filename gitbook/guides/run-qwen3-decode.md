@@ -24,7 +24,7 @@ This is a narrow, real capability, not a general LLM-serving surface. Read [Requ
 * **Greedy decode only.** Every generated token is the argmax at that step. There is no sampling, no temperature, no top-p/top-k, and no beam search.
 * **One call, start to finish.** There is no session you open once and step token-by-token across separate calls — a single call prefills the prompt and decodes to `max_new_tokens` or an end-of-text token in one round trip.
 * **Every call converts the checkpoint first.** The checkpoint's BF16 weights are converted into the kernel's own flat format on every call by default, which takes real time before decoding starts.
-* **Not a chat template, not a tokenizer.** Bring your own token ids in; get token ids out.
+* **Not a chat template; token ids in.** This pinned path takes token ids, not raw text. Tokenize with the checkpoint's own tokenizer — either `algenta.load_tokenizer()` (built into the SDK, no dependencies) or `transformers`' `AutoTokenizer`; the example below shows the latter.
 
 ## Install Algenta
 

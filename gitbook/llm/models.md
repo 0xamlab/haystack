@@ -155,11 +155,12 @@ Ten backends are supported. Each entry declares its `backend`; the backend fixes
 | `groq` | Yes | No | Groq. |
 | `xai` | Yes | Yes | xAI. |
 | `ollama` | Yes | Yes | Local Ollama; the API key is optional. |
+| `algenta_local` | Yes | No | Local Apple-Silicon GPU engine (Qwen3-family checkpoints); no `base_url`, no API key. |
 | `router` | Yes | Yes | An ordered alias over other entries, with failover. |
 
 ## Configure a backend
 
-Provider-backed models are configured on a self-hosted engine by setting the `ALGENTA_LLM_PROVIDER_MODELS_JSON` environment variable to a JSON list of entries. Each non-router entry needs an `id`, a `backend`, a `base_url`, an `api_key_env` (the name of the environment variable that holds the key — optional only for `ollama`), and a `model_name`.
+Provider-backed models are configured on a self-hosted engine by setting the `ALGENTA_LLM_PROVIDER_MODELS_JSON` environment variable to a JSON list of entries. Each non-router entry needs an `id`, a `backend`, a `base_url`, an `api_key_env` (the name of the environment variable that holds the key — optional only for `ollama` and `algenta_local`), and a `model_name`. The `algenta_local` backend takes no `base_url` at all — see [The local GPU engine backend](#the-local-gpu-engine-backend).
 
 ```json title="provider-models.json"
 [
@@ -178,6 +179,31 @@ Restart the engine after changing the registry, then confirm the new id appears 
 {% hint style="info" %}
 `base_url` follows the backend's own convention (for example `.../v1` for OpenAI-compatible backends). The engine appends the standard chat/embeddings path to it.
 {% endhint %}
+
+## The local GPU engine backend
+
+`algenta_local` runs chat completions on this machine's Apple-Silicon GPU through the Algenta engine — no upstream HTTP provider. The entry's `model_name` is a key into a second registry, `ALGENTA_LOCAL_LLM_MODELS_JSON`, which maps model names to checkpoint directories (Hugging Face snapshots of supported Qwen3-family models):
+
+```json title="provider-models.json"
+[
+  {
+    "id": "provider.algenta_local",
+    "backend": "algenta_local",
+    "model_name": "qwen3-0.6b-base"
+  }
+]
+```
+
+```json title="ALGENTA_LOCAL_LLM_MODELS_JSON"
+{
+  "qwen3-0.6b-base": "/path/to/Qwen3-0.6B-Base",
+  "qwen3-1.7b": "/path/to/Qwen3-1.7B"
+}
+```
+
+The engine resolves the Metal GPU worker through the standard SDK environment knobs (`ALGENTA_NATIVE_WORKER`, `ALGENTA_RUNTIME_FALLBACK_MODE=allow`). The first call on a checkpoint converts it once into `<checkpoint>/.algenta-cache/` and caches the quantized weights (`weights_i8.cache`); every later call — including calls with different prompts — reuses both caches (the prompt travels over the wire separately from the converted weights). Generation is greedy by default; the request's `temperature`, `top_p`, `max_tokens`, and `seed` fields enable seeded sampling (`temperature > 0` draws from the model distribution; same prompt + parameters + seed reproduce the identical completion). Responses stream through the same SSE shape as every other backend.
+
+Current scope, stated precisely: chat completions only (no embeddings), one-shot generation re-chunked into SSE frames (true token-by-token streaming waits on persistent sessions), and messages are flattened to prompt text without a chat template (a single message is used verbatim; multiple messages join as `role: content` lines).
 
 ## Dynamic model discovery
 

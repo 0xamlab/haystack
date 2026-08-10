@@ -3993,6 +3993,7 @@ from metaldispatch.qwen3_prefill_decode import (
     qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4 as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4,
     qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror as _metaldispatch_qwen3_prefill_decode__qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror,
     qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3 as _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3,
+    qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled as _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled,
 )
 
 from metaldispatch.session_prefill_policy import (
@@ -86778,13 +86779,14 @@ def _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_ar
             "Function metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror expected 4 arguments, received " + String(arg_count) + "."
         )
     if function_name == "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3":
-        if arg_count == 4:
+        if arg_count == 5:
             try:
                 var arg_0 = _parse_string_token(json_array_get(args_array, 0))
                 var arg_1 = _parse_int_token(json_array_get(args_array, 1))
                 var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
                 var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
-                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(arg_0, arg_1, arg_2, arg_3)
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(arg_0, arg_1, arg_2, arg_3, arg_4)
                 var result_json = _to_json_qwen3prefilldecoderesult(result)
                 return _success_json(result_json)
             except:
@@ -86792,14 +86794,15 @@ def _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_ar
                     "mojo_library_execution_failed",
                     "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3."
                 )
-        if arg_count == 5:
+        if arg_count == 6:
             try:
                 var arg_0 = _parse_string_token(json_array_get(args_array, 0))
                 var arg_1 = _parse_int_token(json_array_get(args_array, 1))
                 var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
                 var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
-                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
-                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
                 var result_json = _to_json_qwen3prefilldecoderesult(result)
                 return _success_json(result_json)
             except:
@@ -86809,7 +86812,33 @@ def _dispatch_metaldispatch__qwen3_prefill_decode(function_name: String, args_ar
                 )
         return _error_json(
             "invalid_arguments",
-            "Function metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3 expected 4 or 5 arguments, received " + String(arg_count) + "."
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3 expected 5 or 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_int_token(json_array_get(args_array, 10))
+                var result = _metaldispatch_qwen3_prefill_decode__qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_qwen3prefilldecoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled expected 11 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",

@@ -146,7 +146,7 @@ Rome." No arm diverged from any other in any round checked.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Feed-forward](feed-forward.md) — gated activations and embedding cost.
 * [Attention](attention.md) — tiled attention memory and rotary embedding cost.
-* [Qwen3-0.6B-Base decode (Apple Silicon, Metal)](../engine/qwen3-metal-decode.md) — call this
+* [Qwen3 Metal decode](../engine/qwen3-metal-decode.md) — call this
   kernel path yourself, from Python, against your own checkpoint.
 * [Run Qwen3-0.6B-Base decode on Apple Silicon](../guides/run-qwen3-decode.md) — a step-by-step
   guide: install, get the checkpoint, tokenize a prompt, and run a decode end to end.

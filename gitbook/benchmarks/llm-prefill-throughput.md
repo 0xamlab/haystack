@@ -79,5 +79,5 @@ Fresh-process (cold start, warm-up prefills included) reproduces the resident nu
 * [LLM inference overview](llm-inference-overview.md) — prefill + decode together.
 * [Decode throughput](decode-throughput.md) — single-stream generation.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
-* [Qwen3-0.6B-Base decode (Apple Silicon, Metal)](../engine/qwen3-metal-decode.md) — the kernel path.
+* [Qwen3 Metal decode](../engine/qwen3-metal-decode.md) — the kernel path.
 * [Benchmarks](overview.md) — methodology and what is not published.

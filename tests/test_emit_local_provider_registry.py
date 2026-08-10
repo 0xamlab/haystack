@@ -145,3 +145,34 @@ def test_emit_local_provider_registry_cli_has_router_mode_fails_closed_on_invali
 
     assert result.returncode == 2
     assert "JSON array" in result.stderr
+
+
+def test_derive_local_provider_registry_emits_algenta_local_entries() -> None:
+    payload = derive_local_provider_registry(
+        {
+            "ALGENTA_LOCAL_LLM_MODELS_JSON": json.dumps(
+                {"qwen3-1.7b": "/models/qwen3-1.7b", "qwen3-0.6b-base": "/models/qwen3-0.6b"}
+            ),
+        },
+        fetch_ollama_tags=lambda base_url: [],
+    )
+
+    # Sorted model names, one entry each, and NO router entry (the local GPU backend is not an
+    # HTTP failover target, and nothing else produced a router target here).
+    assert [entry["id"] for entry in payload] == [
+        "provider.algenta_local.qwen3-0.6b-base",
+        "provider.algenta_local.qwen3-1.7b",
+    ]
+    first = payload[0]
+    assert first["backend"] == "algenta_local"
+    assert first["model_name"] == "qwen3-0.6b-base"
+    assert first["capabilities"] == ["chat_completions"]
+    assert "/models/qwen3-0.6b" in str(first["description"])
+
+
+def test_derive_local_provider_registry_ignores_invalid_local_llm_map() -> None:
+    payload = derive_local_provider_registry(
+        {"ALGENTA_LOCAL_LLM_MODELS_JSON": "not-json"},
+        fetch_ollama_tags=lambda base_url: [],
+    )
+    assert payload == []

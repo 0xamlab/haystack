@@ -220,6 +220,39 @@ class ChatCompletionsRequest(BaseModel):
         default=False,
         description="When true, return Server-Sent Events with deterministic completion chunks.",
     )
+    max_tokens: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Maximum tokens to generate. Applies to algenta_local backend models (default 256) "
+            "and forwarded providers that accept an output budget; ignored otherwise."
+        ),
+    )
+    temperature: float | None = Field(
+        default=None,
+        ge=0.0,
+        description=(
+            "Sampling temperature. Applies to algenta_local backend models: 0 or omitted is "
+            "greedy (argmax), > 0 draws from the model distribution. Remote providers use their "
+            "server-side defaults."
+        ),
+    )
+    top_p: float | None = Field(
+        default=None,
+        gt=0.0,
+        le=1.0,
+        description=(
+            "Nucleus sampling threshold for algenta_local backend models. Remote providers use "
+            "their server-side defaults."
+        ),
+    )
+    seed: int | None = Field(
+        default=None,
+        description=(
+            "Sampling seed for algenta_local backend models: same prompt + parameters + seed "
+            "reproduce the identical completion. Remote providers use their server-side defaults."
+        ),
+    )
 
 
 class ChatCompletionOutputMessage(BaseModel):

@@ -10151,5 +10151,146 @@ per-model staging stays a BUILD-time specialization, one binary per tier, exactl
 docstring said; 1.7B runs through the stage6144 worker), metaldispatch/qwen3_decode.mojo (auto-raise),
 metaldispatch/qwen3_prefill_decode.mojo (cache orchestration + helpers), metaldispatch/
 session_prefill.mojo (the four session methods), batch_shim.m (buffer cap), scripts/
-build_mojo_binary.sh (the two build hooks). NOTHING committed -- the worktree stays dirty for review,
-per the campaign's standing rule.
+build_mojo_binary.sh (the two build hooks). Shipped as PR #605 (feat/parity-cheap-wins) after the
+user asked for the PR/wait-green/admin-merge protocol.
+
+## Parity gap 1 first increment LANDED: native BPE tokenizer -- text in, text out, oracle-byte-identical (2026-08-10)
+
+The gap analysis's BIGGEST blocker ("TOKENIZER -- TOTAL gap; no text-to-text path exists") now has
+its first increment: `algenta.tokenizer` implements the checkpoint's OWN `tokenizer.json` from
+scratch -- NFC normalizer, the GPT-4-style regex split (with `\p{L}`/`\p{N}` resolved to explicit
+code-point classes built from `unicodedata` -- no third-party regex dependency), byte-level
+alphabet, greedy lowest-rank BPE, added/special tokens, and the inverse byte-level decode. No
+tokenizer library imported anywhere.
+
+ORACLE GATE (the only claim that matters): encode AND decode are BYTE-IDENTICAL to
+`transformers.AutoTokenizer` across a 20-text edge-case corpus (contractions, digits, punctuation,
+whitespace runs, CJK, emoji incl. ZWJ families, combining marks, astral plane, control bytes,
+special-token-embedded text, empty/single-space/newline) on BOTH Qwen3-0.6B-Base and Qwen3-1.7B:
+0 mismatches on either model. The 1.7B file spells merge rules as lists, 0.6B as "a b" strings --
+both handled; a foreign split regex or model type is REFUSED at load (never half-tokenized).
+
+E2E INTEGRATION: `decode()` now takes `prompt_text` (exactly one of ids/text) and returns
+`generated_text` alongside the ids. Proven through the real GPU worker: prompt_text
+"The capital of France is" on the race checkpoint -> oracle ids [374, 12095, 13, 576, 6722, 315,
+9625, 374] -> generated_text " is Paris. The capital of France is". The SDK now does text-to-text
+with zero external dependencies beyond numpy (conversion only).
+
+HONEST SCOPE: BPE encode/decode only -- no chat-template application (base models ship none;
+instruct templates are a later increment), and load builds the Unicode classes once per process
+(~0.3-0.6 s, lru_cache'd). Permanent gates: tests/test_tokenizer_qwen3.py (8 structural tests
+always run; the oracle cross-check runs where the checkpoints + transformers exist and skips
+cleanly where not -- CI). Docs updated: guides/run-qwen3-family-inference.md (text-in examples),
+guides/run-qwen3-decode.md (built-in tokenizer pointer), both audits clean. Remaining gap-1 work:
+chat templates; gap-2 (HTTP/SSE serving) is what turns this into a llama-server drop-in.
+
+## Parity gap 3 LANDED: seeded sampling -- temperature/top-k/top-p/min-p/penalties through the SDK (2026-08-10)
+
+The gap analysis: "the fused lm_head-argmax never emits logits; scalar sampling FORMULAS already
+exist unwired (llm_sampling.mojo / generation_loop.mojo) but no driver materializes softmax/sort/
+draw." All three pieces are now wired.
+
+KERNEL: `_lmhead_logits_kernel_simd_i8` (residentk/kernels.mojo) -- the byte-identical twin of
+`_lmhead_argmax_kernel_simd_i8`: same rmsnorm stage, same per-column int8-dequant dot products,
+same summation order; it WRITES the whole vocab row (Float32) instead of tracking the argmax, and
+the trailing reduce dispatch disappears. Session: `step_logits` / `prefill_batch_logits` patch the
+tail descriptor in place (logits kernel, 9 args, dispatch count - 1) and restore the greedy tail
+byte-exact afterwards, so sampled and greedy calls interleave safely on one session; the logits row
+lands in a vocab-sized shared buffer (new, ~600 KB) read back host-side. Discovery: the 11-char
+truncation `lmhead_logi` is refused by the shared `_classify_pipeline` (would otherwise collide
+with `lmhead` -> argmax slot) and taken by the session's own optional field.
+
+SAMPLER (host-side, qwen3_prefill_decode.mojo private functions): penalties (llm_sampling's
+`repetition_penalty_scale` + `token_frequency_penalty` -- the "unwired formulas", now wired) ->
+temperature (`temperature_scale`) -> top-k -> min-p (`min_p_threshold`) -> top-p
+(`top_p_cumulative`) -> weighted draw with xorshift64 (shifts/xors only -- the pinned toolchain has
+no `&+`/`&*`, SplitMix64 was dropped for it). Deterministic given the seed; strict comparisons,
+lowest-id tie-break throughout.
+
+ENTRY POINT + SDK: `qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled` (same
+model-agnostic gate + quantized cache as the greedy arm; `temperature <= 0` delegates to the greedy
+entry point by definition). `decode()` gained temperature/top_k/top_p/min_p/repeat_penalty/
+presence_penalty/frequency_penalty/seed -- greedy stays the DEFAULT, byte-unchanged.
+
+GATES (all through the real GPU worker): (1) top_k=1 == greedy EXACTLY at T=1.0 (oracle
+continuation [374, 12095, 13, 576, 6722, 315, 9625, 374]) -- proves the logits kernel computes the
+same values the argmax kernel compares. (2) Same seed twice -> byte-identical 12-token sequences.
+(3) Different seeds at T=1.5/top_k=40/top_p=1.0 diverge (genuine draws). HONEST NOTES: at low
+temperature on the race prompt the nucleus collapses to ONE survivor and every seed gives the same
+sequence -- that is the model's near-one-hot distribution, not a sampler bug (first observed as a
+"failure" at T=0.8/top_p=0.95, re-tested at T=2.0 and confirmed sampling). Sampled decode is
+~0.29 s/token at top_k=40 vs ~4 ms/token greedy: the v1 sampler does a full-vocab functional sort
++ softmax host-side per token; partial-selection is the documented v2. Permanent gates:
+tests/test_inference_gpu_e2e.py sampling test (skip-unless-present). Docs: sampling section in
+guides/run-qwen3-family-inference.md; inventory refreshed (contract 6064 fns); docs audits clean.
+Gap 3 DONE within the stated parity scope (temperature/top-k/top-p/min-p/penalties/seed). Remaining
+roadmap: gap 1 chat templates, gap 2 HTTP/SSE serving, gap 4 persistent sessions + teardown.
+
+## Parity gap 2 first increment LANDED: algenta_local -- local GPU engine behind /v1/chat/completions (2026-08-10)
+
+The gap: "LOCAL HTTP SERVING with real SSE streaming -- the api_server LLM routes proxy to
+external providers or return a deterministic stub; they do NOT hit the local engine." First
+increment: the api_server now serves the LOCAL Apple-Silicon GPU engine as a first-class provider
+backend, end to end through the real routes.
+
+WHAT LANDED:
+* New backend `algenta_local` in the provider registry (`_SUPPORTED_PROVIDER_BACKENDS` /
+  `_BACKEND_CAPABILITIES` in all three constant copies -- _config/_loader/_parsers -- plus the
+  loader branch: no base_url, no api_key, capabilities chat_completions only).
+* `ALGENTA_LOCAL_LLM_MODELS_JSON` (model name -> checkpoint directory) resolves the entry's
+  `model_name` to a checkpoint; executor `_executors_local.execute_local_chat_completion` runs
+  `algenta.inference.decode()` via `asyncio.to_thread`, shapes the result into the provider
+  result contract (provider_backend/provider_attempts flow through responses + SSE unchanged).
+* Request schema grew OpenAI-conventional optional fields: temperature, top_p, max_tokens, seed
+  -- applied by the local backend (remote providers keep server-side defaults; documented in the
+  field descriptions, not implied).
+* `POST /v1/chat/completions` with model=provider.algenta_local.* now runs Metal GPU inference;
+  `/v1/models` advertises the entries; `scripts/emit_local_provider_registry.py` emits them for
+  start-local.sh when the map is configured (deliberately NOT a router failover target).
+* ERROR MAPPING: engine refusals map to the existing code vocabulary (invalid_arguments/
+  unsupported_architecture/checkpoint_not_found -> invalid_provider_request 422; device/worker
+  missing -> backend_unavailable 503); SDK absent -> backend_unavailable 503.
+
+E2E PROOF (tests/test_llm_local_engine_gpu_e2e.py, skip-unless-present): registry entry ->
+descriptor -> create_chat_completion -> executor -> algenta SDK -> real GPU worker ->
+completion.content starts with " Paris." (the deterministic greedy first token after
+"The capital of France is"), prompt_tokens=5, completion_tokens=8, provider_backend=
+algenta_local. Plus 8 executor/loader unit tests + 2 registry-emission tests, and the existing
+LLM router/service surface re-run green (102 passed; the 13 provider-chat payload-mapping
+failures are PRE-EXISTING on main -- verified by stash round-trip -- per-tenant-key auth changes,
+unrelated to this increment).
+
+HONEST SCOPE (documented in gitbook/llm/models.md): chat completions only (no embeddings yet);
+one-shot generation re-chunked into SSE frames like every other backend today (true token-by-
+token streaming needs persistent sessions = gap 4); messages flattened without a chat template
+(single message verbatim; multi-message = role-prefixed lines). Sampling parameters apply to this
+backend only; remote providers unchanged until their payload builders grow pass-through. Docs
+audits clean (0 errors). Remaining roadmap: gap 4 persistent sessions + teardown (unlocks true
+streaming AND removes per-request weight reload), gap 1 chat templates, embeddings on the local
+backend.
+
+## Parity gap 2 serving increment LANDED: prompt separated from converted weights -- one conversion serves every prompt (2026-08-10)
+
+The first gap-2 increment left a structural blocker for real serving: the prompt was BAKED INTO the
+converted checkpoint (manifest input_ids), so every new prompt re-converted 4.8 GB of weights
+(~8-30 s) AND invalidated the quantized cache (keyed by the manifest hash, which changed with every
+prompt). Fixed by separating prompt from weights end to end:
+
+* Both anyqwen3 entry points (greedy + sampled) grew a trailing `wire_prompt_ids: List[Int]`
+  argument: non-empty REPLACES the manifest's baked-in input_ids (element-wise copy + move --
+  pinned toolchain passes List args as immutable borrows); empty keeps baked-in behavior
+  byte-for-byte. Inventory refreshed (greedy now 5-or-6 args, sampled 11).
+* SDK `decode()` converts into `<checkpoint>/.algenta-cache/` once per checkpoint and reuses the
+  pair for every prompt thereafter; the wire call always carries the prompt ids. Same documented
+  residual validity class as weights_i8.cache (keyed by the stable manifest; an in-place edit of
+  the source safetensors would not be caught).
+
+MEASURED (0.6B, M4 Max, max_new_tokens=16, fresh caches): call 1 (convert + load) 8.13 s ->
+" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."; call 2 (cached,
+DIFFERENT prompt: "The largest planet in the solar system is") 1.40 s -> "Jupiter..." -- 5.8x
+faster and answering ITS prompt. Both caches verified on disk (.algenta-cache/manifest.json +
+weights.blob + weights_i8.cache). Permanent gate: tests/test_llm_local_engine_gpu_e2e.py
+two-prompt cache-reuse test (skip-unless-present). All 38 GPU/serving tests green after the
+change; docs (models.md local-backend section, family guide) updated; docs audits clean.
+Remaining roadmap: gap 4 persistent sessions + buffer teardown (true token-by-token streaming +
+removing the per-request session rebuild), gap 1 chat templates, embeddings on the local backend.

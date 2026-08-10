@@ -306,3 +306,41 @@ def test_sdk_decode_17b_matches_campaign_oracle() -> None:
     assert result.prefill_tokens_per_sec > 500.0
     assert result.decode_tokens_per_sec > 50.0
     assert result.dispatches_per_token > 0
+
+
+@pytest.mark.skipif(
+    _gpu_worker() is None
+    or _converted_dir("ALGENTA_QWEN3_CONVERTED_06B", Path("/tmp/qwen3smoke")) is None
+    or _checkpoint_dir("ALGENTA_QWEN3_TEST_CHECKPOINT", Path("/private/tmp/qwen3-0.6b-base"))
+    is None,
+    reason="same prerequisites as test_sdk_decode_06b_matches_campaign_oracle",
+)
+def test_sdk_decode_06b_sampling_greedy_equivalence_and_determinism() -> None:
+    """Parity gap 3 gates, through the SDK: (1) top_k=1 at any temperature reproduces the greedy
+    oracle sequence EXACTLY (the logits kernel computes the same values the argmax kernel compares,
+    and the sampler's strict-greater/lowest-id scan matches its tie-break); (2) same seed ->
+    byte-identical sequence; (3) a different seed diverges once the temperature is high enough that
+    the nucleus keeps more than one survivor (at low T this prompt's distribution collapses to a
+    single token, which is correct model behavior, not a sampler failure -- hence T=1.5 here)."""
+    worker = _gpu_worker()
+    converted = _converted_dir("ALGENTA_QWEN3_CONVERTED_06B", Path("/tmp/qwen3smoke"))
+    checkpoint = _checkpoint_dir("ALGENTA_QWEN3_TEST_CHECKPOINT", Path("/private/tmp/qwen3-0.6b-base"))
+    prompt_ids = _race_prompt_ids(converted)
+    runtime = _runtime(worker)
+
+    common = dict(
+        checkpoint_dir=checkpoint,
+        prompt_token_ids=prompt_ids,
+        converted_checkpoint_dir=converted,
+    )
+
+    top1 = decode(runtime, max_new_tokens=8, temperature=1.0, top_k=1, seed=99, **common)
+    assert top1.token_ids[_RACE_PROMPT_TOKEN_COUNT :] == _ORACLE_CONTINUATION
+
+    a = decode(runtime, max_new_tokens=12, temperature=1.5, top_k=40, top_p=1.0, seed=7, **common)
+    b = decode(runtime, max_new_tokens=12, temperature=1.5, top_k=40, top_p=1.0, seed=7, **common)
+    assert a.token_ids == b.token_ids, "same seed diverged"
+
+    c = decode(runtime, max_new_tokens=12, temperature=1.5, top_k=40, top_p=1.0, seed=8, **common)
+    assert a.token_ids != c.token_ids, "different seeds produced identical sequences"
+

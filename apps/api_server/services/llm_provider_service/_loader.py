@@ -28,6 +28,7 @@ _SUPPORTED_PROVIDER_BACKENDS = frozenset(
         "groq",
         "xai",
         "router",
+        "algenta_local",
     }
 )
 _BACKEND_CAPABILITIES = {
@@ -41,9 +42,10 @@ _BACKEND_CAPABILITIES = {
     "groq": frozenset({"chat_completions"}),
     "xai": frozenset({"chat_completions", "embeddings"}),
     "router": frozenset({"chat_completions", "embeddings"}),
+    "algenta_local": frozenset({"chat_completions"}),
 }
 _ANTHROPIC_API_VERSION = "2023-06-01"
-_OPTIONAL_PROVIDER_API_KEY_BACKENDS = frozenset({"ollama"})
+_OPTIONAL_PROVIDER_API_KEY_BACKENDS = frozenset({"ollama", "algenta_local"})
 _RETRYABLE_PROVIDER_ERROR_CODE_ORDER = (
     "backend_unavailable",
     "provider_timeout",
@@ -303,6 +305,30 @@ def load_provider_model_configs() -> tuple[ProviderModelConfig, ...]:
                     timeout_seconds=timeout_seconds,
                     chat_timeout_seconds=chat_timeout_seconds,
                     embedding_timeout_seconds=embedding_timeout_seconds,
+                    header_envs=header_envs,
+                )
+            )
+            continue
+
+        if backend == "algenta_local":
+            # The local GPU engine is not an HTTP provider: no base_url, no api_key. The entry's
+            # model_name is the key into ALGENTA_LOCAL_LLM_MODELS_JSON (model name -> checkpoint
+            # directory); routing/failover fields do not apply and stay at their defaults.
+            description = str(item.get("description") or "").strip()
+            if not description:
+                description = (
+                    "Local Apple-Silicon GPU inference through the Algenta engine "
+                    "(Qwen3-family checkpoints, greedy or seeded sampling)."
+                )
+            configs.append(
+                ProviderModelConfig(
+                    model_id=model_id,
+                    backend=backend,
+                    base_url="",
+                    upstream_model=_resolve_upstream_model(item, context, model_id),
+                    api_key_env=None,
+                    description=description,
+                    capabilities=capabilities,
                     header_envs=header_envs,
                 )
             )

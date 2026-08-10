@@ -16,11 +16,16 @@ Scope, stated precisely so nothing here overclaims
 * **One hardware family**: Apple Silicon with Metal. A binary built without `-D ALGENTA_GPU`, or a
   host with no Metal accelerator, raises `InferenceError` with a status naming exactly that -- never a
   silent CPU fallback.
-* **One decode mode**: greedy (argmax), one-shot. The kernel path decodes to `max_new_tokens` or EOS
-  and returns; there is no step-by-step streaming API this kernel backs.
-* **Tokens in, tokens out.** This module does not tokenize text. Pass `prompt_token_ids` you already
-  produced with the checkpoint's own tokenizer (e.g. `transformers.AutoTokenizer`). Building a
-  tokenizer here would be a second, un-audited implementation of a correctness-sensitive component.
+* **Greedy by default, seeded sampling on request.** `temperature=0` (default) is the fused
+  lm_head+argmax kernel path. `temperature > 0` draws each token from the model's own distribution
+  (penalties -> temperature -> top-k -> min-p -> top-p -> seeded weighted draw), deterministic per
+  seed.
+* **Text or token ids in; both out.** Pass `prompt_text` for the checkpoint's own tokenizer
+  (`algenta.tokenizer`, a from-scratch implementation of its `tokenizer.json` -- no external
+  tokenizer dependency, oracle-validated byte-for-byte against `transformers` in
+  `tests/test_tokenizer_qwen3.py`), or `prompt_token_ids` if you already have ids. With
+  `prompt_text` the result also carries the detokenized `generated_text`; token ids are always
+  returned either way. (The tokenizer is BPE encode/decode only -- no chat template yet.)
 
 Usage
 -----
@@ -31,12 +36,13 @@ Usage
     result = decode(
         runtime,
         checkpoint_dir="/path/to/any/supported-model",   # your own downloaded HF snapshot
-        prompt_token_ids=[785, 6722, 315, 9625, 374],   # "The capital of France is"
+        prompt_text="The capital of France is",          # text in (uses the checkpoint's tokenizer)
         max_new_tokens=16,
         # The engine sizes its own context as max(512, n_prompt + max_new_tokens); `max_ctx`
         # is a caller-side guard only (values below that need are refused).
     )
-    result.token_ids
+    result.generated_text                                  # text out (because prompt_text was used)
+    result.token_ids                                       # ids always available
     result.decode_tokens_per_sec
     result.prefill_tokens_per_sec
 
@@ -69,6 +75,8 @@ __all__ = [
 
 _MODULE_NAME = "metaldispatch.qwen3_prefill_decode"
 _FUNCTION_NAME = "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3"
+_FUNCTION_NAME_SAMPLED = "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled"
+_CONVERSION_CACHE_DIRNAME = ".algenta-cache"
 
 # GEMM weights the engine consumes pre-transposed [out,in] -> [in,out]; embed and norm weights stay
 # native. Same set as `generate_manifest_anyqwen3.py`'s `_TRANSPOSE_SUFFIXES`.
@@ -123,7 +131,9 @@ class UnsupportedArchitectureError(InferenceError):
 @dataclass(frozen=True)
 class InferenceResult:
     """One inference call's whole outcome. `token_ids` is prompt tokens followed by every generated
-    token, in order -- empty only when the call raised before this result could be built."""
+    token, in order -- empty only when the call raised before this result could be built.
+    `generated_text` is the detokenized generation, present only when the call was made with
+    `prompt_text` (token-id calls stay pure token math and never load the tokenizer)."""
 
     token_ids: list[int]
     n_prompt: int
@@ -131,6 +141,7 @@ class InferenceResult:
     dispatches_per_token: int
     decode_tokens_per_sec: float
     prefill_tokens_per_sec: float
+    generated_text: str | None = None
 
 
 def _validate_architecture(checkpoint_dir: Path, config: dict[str, Any]) -> None:
@@ -372,15 +383,39 @@ def decode(
     runtime: Any,
     *,
     checkpoint_dir: str | Path,
-    prompt_token_ids: list[int],
+    prompt_token_ids: list[int] | None = None,
+    prompt_text: str | None = None,
     max_new_tokens: int = 16,
     max_ctx: int | None = None,
     use_msl_parity_all_roles: bool = True,
     use_native_grouped_fa_attn_no_mirror: bool = True,
     warmup_prefills: int = 0,
     converted_checkpoint_dir: str | Path | None = None,
+    temperature: float = 0.0,
+    top_k: int = 40,
+    top_p: float = 0.95,
+    min_p: float = 0.0,
+    repeat_penalty: float = 1.0,
+    presence_penalty: float = 0.0,
+    frequency_penalty: float = 0.0,
+    seed: int = 0,
 ) -> InferenceResult:
-    """Greedy-decode `prompt_token_ids` with a supported model's Metal GPU kernel path.
+    """Decode a prompt with a supported model's Metal GPU kernel path.
+
+    Pass EXACTLY ONE of `prompt_text` (tokenized with the checkpoint's own tokenizer.json via
+    `algenta.tokenizer`; the result then also carries `generated_text`) or `prompt_token_ids`
+    (pure token math, no tokenizer loaded).
+
+    GREEDY BY DEFAULT. `temperature=0` (the default) runs the fused lm_head+argmax kernel path --
+    exactly the pre-sampling behavior, byte for byte. `temperature > 0` switches to the sampled
+    path: the tail emits the full logits row and the engine draws each token (the first included)
+    through the conventional chain -- repetition/presence/frequency penalties -> temperature ->
+    top-k -> min-p -> top-p -> weighted draw -- seeded by `seed`. Same prompt + parameters + seed
+    gives a byte-identical sequence; `top_k=1` at any temperature reproduces the greedy sequence
+    exactly. The sampled pass always runs the no-mirror + MSL-parity combination arm (the two
+    `use_*` flags and `warmup_prefills` apply to the greedy pass only), and it materializes logits
+    host-side, so it is slower per token than greedy; it exists for generation quality parity, not
+    speed.
 
     Model-agnostic across any model whose architecture the kernels support (see module docstring).
     The engine sizes its own context as `max(512, n_prompt + max_new_tokens)` (auto-raised past
@@ -393,6 +428,39 @@ def decode(
     converted checkpoint). Raises `UnsupportedArchitectureError` for an unsupported architecture and
     `InferenceError` for every other refusal.
     """
+    if (prompt_token_ids is None) == (prompt_text is None):
+        raise InferenceError(
+            "invalid_arguments", "pass exactly one of prompt_token_ids or prompt_text"
+        )
+    tokenizer = None
+    if prompt_text is not None:
+        if not isinstance(prompt_text, str) or not prompt_text:
+            raise InferenceError(
+                "invalid_arguments", f"prompt_text must be a non-empty str, got {prompt_text!r}"
+            )
+        from algenta.tokenizer import load_tokenizer
+
+        tokenizer = load_tokenizer(checkpoint_dir)
+        prompt_token_ids = tokenizer.encode(prompt_text)
+    if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
+        raise InferenceError(
+            "invalid_arguments", "the prompt must tokenize to at least one token id"
+        )
+    sampling = temperature > 0.0
+    if sampling:
+        if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 1:
+            raise InferenceError(
+                "invalid_arguments", f"top_k must be an int >= 1 when sampling, got {top_k!r}"
+            )
+        if not 0.0 < top_p <= 1.0:
+            raise InferenceError(
+                "invalid_arguments", f"top_p must be in (0, 1] when sampling, got {top_p!r}"
+            )
+        if not 0.0 <= min_p < 1.0:
+            raise InferenceError(
+                "invalid_arguments", f"min_p must be in [0, 1) when sampling, got {min_p!r}"
+            )
+
     if converted_checkpoint_dir is not None:
         resolved_dir = Path(converted_checkpoint_dir)
         if not (resolved_dir / "manifest.json").is_file() or not (
@@ -405,7 +473,18 @@ def decode(
                 "automatically.",
             )
     else:
-        resolved_dir = prepare_model_checkpoint(checkpoint_dir, prompt_token_ids)
+        # Conversion cache (serving increment, parity gap 2, 2026-08-10): the prompt travels over
+        # the wire separately from the converted weights, so ONE conversion per checkpoint serves
+        # every prompt. The pair lives in `<checkpoint_dir>/.algenta-cache`; its validity gate is
+        # the same documented residual class as `weights_i8.cache` (keyed by the manifest, which is
+        # stable per checkpoint -- an in-place edit of the source safetensors would not be caught).
+        cache_dir = Path(checkpoint_dir) / _CONVERSION_CACHE_DIRNAME
+        if (cache_dir / "manifest.json").is_file() and (cache_dir / "weights.blob").is_file():
+            resolved_dir = cache_dir
+        else:
+            resolved_dir = prepare_model_checkpoint(
+                checkpoint_dir, prompt_token_ids, out_dir=cache_dir
+            )
 
     if not isinstance(max_new_tokens, int) or isinstance(max_new_tokens, bool) or max_new_tokens < 1:
         raise InferenceError(
@@ -422,17 +501,33 @@ def decode(
                 f"(n_prompt={len(prompt_token_ids)} + max_new_tokens={max_new_tokens}).",
             )
 
-    envelope = runtime.execute(
-        _MODULE_NAME,
-        _FUNCTION_NAME,
-        [
+    if sampling:
+        function_name = _FUNCTION_NAME_SAMPLED
+        wire_args: list[Any] = [
+            str(resolved_dir),
+            max_new_tokens,
+            float(temperature),
+            top_k,
+            float(top_p),
+            float(min_p),
+            float(repeat_penalty),
+            float(presence_penalty),
+            float(frequency_penalty),
+            seed,
+            list(prompt_token_ids),
+        ]
+    else:
+        function_name = _FUNCTION_NAME
+        wire_args = [
             str(resolved_dir),
             max_new_tokens,
             use_native_grouped_fa_attn_no_mirror,
             use_msl_parity_all_roles,
+            list(prompt_token_ids),
             warmup_prefills,
-        ],
-    )
+        ]
+
+    envelope = runtime.execute(_MODULE_NAME, function_name, wire_args)
     error = _envelope_error(envelope)
     if error is not None:
         raise InferenceError("runtime_execution_failed", error)
@@ -454,6 +549,13 @@ def decode(
         dispatches_per_token=int(result.get("dispatches_per_token") or 0),
         decode_tokens_per_sec=float(result.get("decode_tokens_per_sec") or 0.0),
         prefill_tokens_per_sec=float(result.get("prefill_tokens_per_sec") or 0.0),
+        generated_text=(
+            tokenizer.decode(
+                list(result.get("token_ids") or [])[int(result.get("n_prompt") or 0) :]
+            )
+            if tokenizer is not None
+            else None
+        ),
     )
 
 
