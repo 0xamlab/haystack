@@ -46,7 +46,7 @@ built for one tier refuses a model that needs the other, by name, rather than ru
 
 ## Limitations
 
-* **No chat template.** `prompt_text` is tokenized raw — Qwen3 base models ship no chat template, and the instruct-template application is a later roadmap item. Special strings in the text (like the end-of-text token) map to their own ids.
+* **Chat template applies via `messages`, not raw text.** Pass `messages=` (a list of chat dicts) and `decode()` formats them with the checkpoint's own `chat_template` — the SDK's dependency-free `algenta.chat_template`, byte-for-byte identical to `transformers`. A raw `prompt_text` string is tokenized as-is, with no template. Special strings in the text (like the end-of-text token) map to their own ids either way.
 * **Greedy by default.** `decode()` with no sampling arguments is the fused argmax path. Pass `temperature > 0` to sample — see [Sampling](#sampling).
 * **One call, start to finish.** One call prefills the prompt and decodes to `max_new_tokens` or end-of-text; there is no open session to step across calls.
 * **Weights load per call — with a cache.** Each call loads the weights, but the first call on a converted checkpoint writes `weights_i8.cache` (the exact quantized device bytes, 8x smaller than the converted blob); later calls restore it and skip re-quantization entirely. See [The quantized load cache](#the-quantized-load-cache).
@@ -91,9 +91,12 @@ print(result.prefill_tokens_per_sec, result.decode_tokens_per_sec)
 ```
 
 Prefer to keep working in token ids? Pass `prompt_token_ids=[...]` instead of `prompt_text` —
-`decode()` accepts exactly one of the two, and token-id calls never load the tokenizer.
-`algenta.tokenizer.load_tokenizer()` is also exposed directly (`encode` / `decode`) if you want
-the ids without calling `decode()`.
+`decode()` accepts exactly one of `prompt_text`, `prompt_token_ids`, or `messages`, and token-id
+calls never load the tokenizer. Chatting? Pass `messages=[{"role": "user", "content": ...}]` and
+the checkpoint's own `chat_template` formats the prompt before tokenization.
+`algenta.tokenizer.load_tokenizer()` and `algenta.chat_template.apply_chat_template()` are also
+exposed directly (`encode` / `decode`, and template rendering) if you want the ids or the formatted
+text without calling `decode()`.
 
 ## Long context
 

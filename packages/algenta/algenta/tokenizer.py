@@ -20,8 +20,8 @@ Scope, stated precisely so nothing here overclaims
 * **One tokenizer family.** The Qwen3/Qwen2 byte-level BPE shape above. A `tokenizer.json` of
   another shape (Unigram, WordPiece, a different pre-tokenizer stack) raises
   `TokenizerFormatError` naming the unsupported piece rather than half-tokenizing.
-* **No chat template.** Base models ship none; the instruct-template half of parity gap 1 is a
-  later increment.
+* **No chat template here.** Chat-template rendering (messages -> prompt text) is the separate
+  `algenta.chat_template` module; this module is BPE encode/decode only.
 * **Cross-validated, not assumed.** `tests/test_tokenizer_qwen3.py` checks encode AND decode
   against `transformers.AutoTokenizer` on the real checkpoints (the same byte-for-byte-against-
   the-original convention `algenta.qwen3_decode.prepare_checkpoint` established). Without the
@@ -392,6 +392,31 @@ class Tokenizer:
     def eos_id(self) -> int | None:
         return self._special_tokens.get("<|endoftext|>")
 
+    def merge_added_tokens(self, extra: dict[str, int]) -> int:
+        """Merge added-token entries (content -> id) that tokenizer.json does not list.
+
+        The Qwen3 `tokenizer_config.json` `added_tokens_decoder` carries four more entries than
+        `tokenizer.json` `added_tokens` -- the tool_response/think markers the chat template
+        renders (ids 151665-151668). Without them those strings would BPE-split instead of mapping
+        to their single token, so chat-formatted prompts would tokenize wrong. tokenizer.json
+        entries win any content collision. Returns the number of entries actually added."""
+        added = 0
+        for content, token_id in extra.items():
+            if not isinstance(content, str) or not content:
+                continue
+            if isinstance(token_id, bool) or not isinstance(token_id, int):
+                continue
+            if content in self._special_tokens:
+                continue
+            self._special_tokens[content] = token_id
+            self._vocab.setdefault(content, token_id)
+            added += 1
+        if added:
+            self._special_by_id = {tid: tok for tok, tid in self._special_tokens.items()}
+            # Longest-first so a shorter added string never shadows a longer one at the same spot.
+            self._special_sorted = sorted(self._special_tokens, key=len, reverse=True)
+        return added
+
 
 def _assert_byte_level_stage(stage: object, role: str) -> None:
     if not isinstance(stage, dict) or stage.get("type") != "ByteLevel":
@@ -400,13 +425,45 @@ def _assert_byte_level_stage(stage: object, role: str) -> None:
         )
 
 
+def _added_tokens_from_tokenizer_config(checkpoint_dir: Path) -> dict[str, int]:
+    """The checkpoint's `tokenizer_config.json` `added_tokens_decoder` as {content: id}. The Qwen3
+    file lists four added tokens that `tokenizer.json` omits, so it is the superset source. A
+    missing/unreadable file contributes nothing (tokenizer.json alone still loads)."""
+    config_path = checkpoint_dir / "tokenizer_config.json"
+    if not config_path.is_file():
+        return {}
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    decoder = config.get("added_tokens_decoder") or {}
+    if not isinstance(decoder, dict):
+        return {}
+    extra: dict[str, int] = {}
+    for token_id, entry in decoder.items():
+        if not isinstance(entry, dict):
+            continue
+        content = entry.get("content")
+        if not isinstance(content, str) or not content:
+            continue
+        try:
+            extra[content] = int(token_id)
+        except (TypeError, ValueError):
+            continue
+    return extra
+
+
 def load_tokenizer(checkpoint_dir: str | Path) -> Tokenizer:
-    """Load `<checkpoint_dir>/tokenizer.json` into a `Tokenizer`. The checkpoint directory is the
-    same Hugging Face snapshot `algenta.inference.decode` takes -- one directory serves both the
-    weights and the tokenizer."""
-    path = Path(checkpoint_dir) / "tokenizer.json"
+    """Load `<checkpoint_dir>/tokenizer.json` into a `Tokenizer`, then merge the added-token
+    superset from `<checkpoint_dir>/tokenizer_config.json` (`added_tokens_decoder`). The checkpoint
+    directory is the same Hugging Face snapshot `algenta.inference.decode` takes -- one directory
+    serves both the weights and the tokenizer."""
+    directory = Path(checkpoint_dir)
+    path = directory / "tokenizer.json"
     if not path.is_file():
         raise TokenizerFormatError(
             f"{path} not found: load_tokenizer needs the checkpoint's own tokenizer.json."
         )
-    return Tokenizer.from_tokenizer_json(path)
+    tokenizer = Tokenizer.from_tokenizer_json(path)
+    tokenizer.merge_added_tokens(_added_tokens_from_tokenizer_config(directory))
+    return tokenizer

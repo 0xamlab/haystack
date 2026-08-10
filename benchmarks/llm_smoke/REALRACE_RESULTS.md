@@ -10329,3 +10329,53 @@ runs on a hermetic converted-copy (its own resident key) with the corruption BEF
 call; tests/test_llm_local_engine_gpu_e2e.py second-prompt test is resident-aware. Remaining gap-4
 work: true token-by-token SSE streaming (needs step-level access from the serving layer), an
 explicit resident-release API (free a resident model on demand), per-call compile_function cache.
+
+## Parity gap 1 chat-template increment LANDED: messages -> exact prompt, oracle-byte-identical (2026-08-10)
+
+The gap: chat completions flattened messages to plain text (role-colon-content lines) with no
+template, so a chat request never produced the prompt the model was formatted with. Now the
+checkpoint's OWN chat_template is applied before tokenization.
+
+WHAT LANDED:
+1. `algenta/chat_template.py` -- the Qwen3 chat template implemented FROM SCRATCH (no jinja2
+   import, same discipline as the BPE tokenizer). Covers every branch: tools preamble, system
+   handling, the im_start/im_end role wraps, the last-real-user-query scan (tool responses don't
+   count), reasoning_content + inline think-block surfacing for assistant turns after the last
+   query, tool_call JSON emission (dict arguments via tojson, string arguments verbatim),
+   consecutive tool-role grouping into one tool_response block, add_generation_prompt, and
+   enable_thinking=False. GATE: the loaded template's SHA-256 must match one of the two canonical
+   Qwen3 revisions (the ones Qwen3-0.6B-Base and Qwen3-1.7B ship); anything else raises
+   ChatTemplateError -- never a half-render against an unknown template.
+2. TOKENIZER GAP FOUND + FIXED by this work: Qwen3's tokenizer_config.json `added_tokens_decoder`
+   carries FOUR more added tokens than tokenizer.json lists (ids 151665-151668: the tool_response
+   and think open/close markers the chat template emits). Without them those strings BPE-split
+   instead of mapping to their single token, so chat-formatted prompts tokenized WRONG. `load_
+   tokenizer` now merges the tokenizer_config superset (tokenizer.json wins any collision). The
+   existing 20-text tokenizer oracle corpus never contained these tokens, which is why the gap
+   survived until a chat-formatted prompt exposed it; the oracle still passes byte-for-byte.
+3. WIRING: `decode()` accepts `messages=` (third exclusive input; applies the template then
+   tokenizes, raises InferenceError("unsupported_chat_template") when the checkpoint has no
+   supported template). The `algenta_local` executor routes messages through the template when the
+   checkpoint ships a supported one, falls back to plain-text flattening only when it ships none.
+
+VERIFIED BYTE-FOR-BYTE vs the reference users compare against (transformers.AutoTokenizer):
+108/108 render cases (11-case branch battery x add_generation_prompt x enable_thinking, + a tools
+case) on BOTH checkpoints, and 16/16 end-to-end token-id cases (apply_chat_template ->
+algenta.tokenizer.encode == transformers.apply_chat_template(tokenize=True)). Note: transformers'
+tojson for THIS template is json.dumps(ensure_ascii=False) -- insertion order kept, no HTML
+escaping -- which is what the from-scratch renderer reproduces.
+
+HONEST FINDING, recorded not buried: the checkpoints under test are BASE models, not instruction-
+tuned, so they do not ANSWER a chat-formatted prompt -- they continue text (a chat "The capital of
+France is" yields "The capital of Germany is ...", not " Paris."). The realistic GPU serving test
+therefore asserts the template was actually applied end to end (prompt_tokens == the count derived
+from the oracle-validated template+tokenizer, not a magic number) and that the GPU generated, and
+documents that answer quality is a base-model property, not a template bug. Raw-prompt base-model
+answer quality stays gated by the sibling test that uses prompt_text and asserts " Paris."/"Jupiter".
+
+Permanent gates: tests/test_chat_template_qwen3.py (19 tests -- structural always-run + transformers
+oracle skip-unless-present); tests/test_llm_local_engine_gpu_e2e.py serving test rewritten to the
+realistic shape above. Docs: gitbook/llm/models.md local-backend scope + gitbook/guides/run-qwen3-
+family-inference.md limitations/usage updated. Remaining parity roadmap: gap 4 true token-by-token
+SSE streaming + resident-release API + compile_function cache; embeddings on the local backend;
+instruct-model checkpoint to exercise the chat path end to end with real answer quality.

@@ -385,6 +385,7 @@ def decode(
     checkpoint_dir: str | Path,
     prompt_token_ids: list[int] | None = None,
     prompt_text: str | None = None,
+    messages: list[dict] | None = None,
     max_new_tokens: int = 16,
     max_ctx: int | None = None,
     use_msl_parity_all_roles: bool = True,
@@ -402,9 +403,14 @@ def decode(
 ) -> InferenceResult:
     """Decode a prompt with a supported model's Metal GPU kernel path.
 
-    Pass EXACTLY ONE of `prompt_text` (tokenized with the checkpoint's own tokenizer.json via
-    `algenta.tokenizer`; the result then also carries `generated_text`) or `prompt_token_ids`
-    (pure token math, no tokenizer loaded).
+    Pass EXACTLY ONE of:
+    * `messages` -- a list of OpenAI-style chat dicts, formatted with the checkpoint's OWN chat
+      template (`algenta.chat_template`) and tokenized with its tokenizer. Refuses with
+      `InferenceError("unsupported_chat_template")` if the checkpoint ships no supported template.
+    * `prompt_text` -- raw text tokenized with the checkpoint's own tokenizer.json via
+      `algenta.tokenizer` (no chat template applied).
+    * `prompt_token_ids` -- pure token math, no tokenizer loaded.
+    With `messages` or `prompt_text` the result also carries `generated_text`.
 
     GREEDY BY DEFAULT. `temperature=0` (the default) runs the fused lm_head+argmax kernel path --
     exactly the pre-sampling behavior, byte for byte. `temperature > 0` switches to the sampled
@@ -428,12 +434,31 @@ def decode(
     converted checkpoint). Raises `UnsupportedArchitectureError` for an unsupported architecture and
     `InferenceError` for every other refusal.
     """
-    if (prompt_token_ids is None) == (prompt_text is None):
+    provided = sum(
+        value is not None for value in (prompt_token_ids, prompt_text, messages)
+    )
+    if provided != 1:
         raise InferenceError(
-            "invalid_arguments", "pass exactly one of prompt_token_ids or prompt_text"
+            "invalid_arguments",
+            "pass exactly one of prompt_token_ids, prompt_text, or messages",
         )
     tokenizer = None
-    if prompt_text is not None:
+    if messages is not None:
+        if not isinstance(messages, list) or not messages:
+            raise InferenceError(
+                "invalid_arguments",
+                f"messages must be a non-empty list of message dicts, got {messages!r}",
+            )
+        from algenta.chat_template import ChatTemplateError, apply_chat_template
+        from algenta.tokenizer import load_tokenizer
+
+        try:
+            prompt_text = apply_chat_template(checkpoint_dir, messages)
+        except ChatTemplateError as exc:
+            raise InferenceError("unsupported_chat_template", str(exc)) from exc
+        tokenizer = load_tokenizer(checkpoint_dir)
+        prompt_token_ids = tokenizer.encode(prompt_text)
+    elif prompt_text is not None:
         if not isinstance(prompt_text, str) or not prompt_text:
             raise InferenceError(
                 "invalid_arguments", f"prompt_text must be a non-empty str, got {prompt_text!r}"

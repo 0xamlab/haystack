@@ -1,6 +1,6 @@
 ---
 icon: arrow-right-to-bracket
-description: Prompt prefill (token-input) throughput for Qwen3-0.6B-Base on Apple silicon — Algenta processes a 256-token prompt at ~10,700 tok/s, ahead of llama.cpp's ~10,199 and 1.15x its own prior baseline, on any prompt length.
+description: Prompt prefill (token-input) throughput for Qwen3-0.6B-Base on Apple silicon — a 256-token prompt at ~10,700 tok/s, ahead of llama.cpp's ~10,199, on any prompt length.
 ---
 
 # Prefill (token input) throughput

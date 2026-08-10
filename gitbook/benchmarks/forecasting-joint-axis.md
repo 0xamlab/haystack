@@ -1,6 +1,6 @@
 ---
 icon: stopwatch
-description: Forecast accuracy and latency measured together on all 100,000 M4 series against statsforecast 2.1.1 — equal or better accuracy at 2.42x-3.99x the speed, with the accuracy leaders that remain ahead named.
+description: Forecast accuracy and latency measured together on all 100,000 M4 series against statsforecast 2.1.1 — equal or better accuracy at 2.42x-3.99x the speed.
 ---
 
 # Forecasting on the joint axis

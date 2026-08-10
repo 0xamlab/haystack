@@ -12,9 +12,10 @@ Scope, stated precisely:
 * One-shot generation: the whole completion is produced, then returned (the existing SSE path
   re-chunks it like every other backend's response; true token-by-token streaming waits on
   persistent sessions, parity gap 4).
-* Messages are flattened to prompt text WITHOUT a chat template (base models ship none): a single
-  message is used verbatim; multiple messages join as `role: content` lines. The chat-template
-  increment is a later roadmap item.
+* Messages are formatted with the checkpoint's OWN chat template (`algenta.chat_template`, the
+  Qwen3 template, byte-for-byte with `transformers`) before tokenization. A checkpoint that ships
+  NO chat template falls back to plain-text flattening (a single message verbatim; multiple join
+  as `role: content` lines); an unsupported template is refused, not guessed.
 * Sampling parameters apply here and only here; remote HTTP providers keep their own server-side
   defaults until their payload builders grow parameter pass-through.
 * No managed-spend gating/metering: the call runs on this machine's GPU, there is no upstream
@@ -59,9 +60,10 @@ def load_local_llm_checkpoint_map() -> dict[str, str]:
 
 
 def local_prompt_text_from_messages(messages: list[dict[str, str]]) -> str:
-    """Flatten chat messages into prompt text. No chat template exists yet (base models ship
-    none), so: a single message is used verbatim; multiple messages join as `role: content`
-    lines — plain-text conditioning, stated here rather than implied."""
+    """Fallback plain-text flattening for a checkpoint that ships NO chat template: a single
+    message is used verbatim; multiple messages join as `role: content` lines. Checkpoints WITH a
+    supported chat template never reach this -- they are formatted by `algenta.chat_template`
+    instead (see execute_local_chat_completion)."""
     if len(messages) == 1:
         return str(messages[0].get("content") or "")
     return "\n".join(
@@ -72,11 +74,12 @@ def local_prompt_text_from_messages(messages: list[dict[str, str]]) -> str:
 def _run_local_decode(
     *,
     checkpoint_dir: str,
-    prompt_text: str,
     max_new_tokens: int,
     temperature: float | None,
     top_p: float | None,
     seed: int | None,
+    prompt_text: str | None = None,
+    messages: list[dict[str, str]] | None = None,
 ) -> Any:
     MojoRuntime, _InferenceError, decode = _import_algenta_inference()
 
@@ -88,10 +91,13 @@ def _run_local_decode(
         kwargs["top_p"] = float(top_p)
     if seed is not None:
         kwargs["seed"] = int(seed)
+    if messages is not None:
+        kwargs["messages"] = messages
+    else:
+        kwargs["prompt_text"] = prompt_text
     return decode(
         runtime,
         checkpoint_dir=checkpoint_dir,
-        prompt_text=prompt_text,
         max_new_tokens=max_new_tokens,
         **kwargs,
     )
@@ -158,6 +164,7 @@ async def execute_local_chat_completion(
 
     try:
         _MojoRuntime, InferenceError, _decode = _import_algenta_inference()
+        from algenta.chat_template import is_qwen3_chat_template, load_chat_template
     except ImportError as exc:
         raise LLMAPIError(
             "backend_unavailable",
@@ -166,23 +173,39 @@ async def execute_local_chat_completion(
             {"cause": str(exc)},
         ) from exc
 
+    # Route chat messages through the checkpoint's own chat template when it ships a supported
+    # one; a checkpoint with NO template falls back to plain-text flattening. (An unsupported
+    # template is is_qwen3_chat_template()==False, which also flattens -- matching the documented
+    # no-template behavior rather than refusing a whole model for a formatting gap.)
+    has_chat_template = is_qwen3_chat_template(load_chat_template(checkpoint_dir))
+    decode_input: dict[str, Any] = (
+        {"messages": [dict(message) for message in messages]}
+        if has_chat_template
+        else {"prompt_text": local_prompt_text_from_messages(messages)}
+    )
+
     max_new_tokens = max_output_tokens if max_output_tokens else _DEFAULT_MAX_NEW_TOKENS
     try:
         result = await asyncio.to_thread(
             _run_local_decode,
             checkpoint_dir=checkpoint_dir,
-            prompt_text=local_prompt_text_from_messages(messages),
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             top_p=top_p,
             seed=seed,
+            **decode_input,
         )
     except Exception as exc:  # noqa: BLE001 - engine refusals surface as mapped LLMAPIErrors
         if isinstance(exc, InferenceError):
             code = (
                 "invalid_provider_request"
                 if exc.code
-                in ("invalid_arguments", "unsupported_architecture", "checkpoint_not_found")
+                in (
+                    "invalid_arguments",
+                    "unsupported_architecture",
+                    "checkpoint_not_found",
+                    "unsupported_chat_template",
+                )
                 else "backend_unavailable"
             )
             raise LLMAPIError(

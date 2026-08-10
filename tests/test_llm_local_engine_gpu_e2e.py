@@ -28,6 +28,17 @@ _CHECKPOINT = Path(os.environ.get("ALGENTA_QWEN3_TEST_CHECKPOINT", "/private/tmp
     reason="needs the GPU worker binary and the Qwen3-0.6B-Base snapshot",
 )
 def test_local_backend_chat_completion_through_real_gpu(monkeypatch) -> None:
+    """Realistic chat-completions serving: the request's messages are formatted with the
+    checkpoint's OWN chat template before reaching the GPU (parity with llama-server), not
+    flattened. We assert the prompt that hit the engine is EXACTLY the template-formatted +
+    tokenized messages (a count derived from the oracle-validated `algenta.chat_template` +
+    `algenta.tokenizer`, not a magic number) and that the GPU generated the requested tokens.
+
+    NOTE on the assertion shape: the checkpoint under test is a BASE model, which is not
+    instruction-tuned, so it does not answer a chat prompt -- it continues text. Asserting a
+    specific answer (e.g. " Paris.") would therefore be wrong here; the realistic check is that
+    the template was applied and the engine generated. (Raw-prompt base-model answer quality is
+    covered by the sibling test below, which uses `prompt_text` and does assert " Paris.".)"""
     monkeypatch.setenv(
         "ALGENTA_LLM_PROVIDER_MODELS_JSON",
         json.dumps(
@@ -48,9 +59,19 @@ def test_local_backend_chat_completion_through_real_gpu(monkeypatch) -> None:
     monkeypatch.setenv("ALGENTA_NATIVE_WORKER", str(_WORKER))
     monkeypatch.setenv("ALGENTA_RUNTIME_FALLBACK_MODE", "allow")
 
-    from apps.api_server.services import llm_api_service
-    from apps.api_server.services import llm_provider_service
+    from algenta.chat_template import apply_chat_template
+    from algenta.tokenizer import load_tokenizer
+
+    from apps.api_server.services import llm_api_service, llm_provider_service
     from apps.api_server.services.llm_provider_service import _executors_local
+
+    # The exact prompt ids the serving path must feed the engine: the checkpoint's chat template
+    # applied to the messages, then tokenized by the checkpoint's own tokenizer. Both pieces are
+    # independently oracle-validated byte-for-byte against transformers.
+    messages = [{"role": "user", "content": "The capital of France is"}]
+    expected_prompt_ids = load_tokenizer(_CHECKPOINT).encode(
+        apply_chat_template(_CHECKPOINT, messages)
+    )
 
     llm_provider_service.load_provider_model_configs.cache_clear()
     _executors_local.load_local_llm_checkpoint_map.cache_clear()
@@ -63,7 +84,7 @@ def test_local_backend_chat_completion_through_real_gpu(monkeypatch) -> None:
         descriptor, completion = asyncio.run(
             llm_api_service.create_chat_completion(
                 model_id="provider.algenta_local",
-                messages=[{"role": "user", "content": "The capital of France is"}],
+                messages=messages,
                 max_output_tokens=8,
             )
         )
@@ -72,13 +93,14 @@ def test_local_backend_chat_completion_through_real_gpu(monkeypatch) -> None:
         _executors_local.load_local_llm_checkpoint_map.cache_clear()
 
     assert completion.provider.provider_backend == "algenta_local"
-    assert completion.prompt_tokens == 5  # "The capital of France is" in the Qwen3 tokenizer
+    # The chat template was actually applied end to end (not a hardcoded count -- derived from the
+    # template + tokenizer the serving path is supposed to use).
+    assert completion.prompt_tokens == len(expected_prompt_ids), (
+        f"serving did not apply the chat template: got {completion.prompt_tokens} prompt tokens, "
+        f"expected {len(expected_prompt_ids)} for the template-formatted prompt"
+    )
     assert completion.completion_tokens == 8
-    # Greedy is deterministic: the first generated token after "...France is" is always " Paris"
-    # (id 12095). What follows is the model's own encyclopedic continuation (this short prompt
-    # does not force the race prompt's repetitive pattern), so only the start is pinned.
-    assert completion.content.startswith(" Paris."), repr(completion.content)
-    assert len(completion.content) > len(" Paris.")
+    assert completion.content, "the GPU generated no content"
 
 
 @pytest.mark.skipif(

@@ -1,6 +1,6 @@
 ---
 icon: calculator
-description: Execution accuracy on all 8,281 gold programs in the real FinQA dataset — Algenta's exact-arithmetic driver against three real naive-reimplementation baselines, on the dataset's own exe_ans, at the dataset's own exact-match rule.
+description: Execution accuracy on all 8,281 gold programs in the real FinQA dataset — Algenta's exact-arithmetic driver against three naive-reimplementation baselines, on the dataset's own exact-match rule.
 ---
 
 # FinQA exact execution

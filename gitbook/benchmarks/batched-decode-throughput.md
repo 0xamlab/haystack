@@ -1,6 +1,6 @@
 ---
 icon: layer-group
-description: Batched (continuous-batching) decode for Qwen3-0.6B-Base on Apple silicon — stepping many sequences per weight sweep. Aggregate throughput crosses single-stream around B=10 and reaches 2.33x at B=32, verified token-consistent.
+description: Batched (continuous-batching) decode for Qwen3-0.6B-Base on Apple silicon — many sequences per weight sweep. Aggregate throughput crosses single-stream near B=10 and reaches 2.33x at B=32.
 ---
 
 # Batched decode throughput

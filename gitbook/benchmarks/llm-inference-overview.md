@@ -1,6 +1,6 @@
 ---
 icon: gauge-high
-description: The full Algenta LLM-inference picture on Apple silicon — token-input prefill, single-stream decode, and batched (continuous-batching) decode for Qwen3-0.6B-Base, each benchmarked against real installed opponents.
+description: The full Algenta LLM-inference picture on Apple silicon — token-input prefill, single-stream decode, and batched decode for Qwen3-0.6B-Base, each benchmarked against real installed opponents.
 ---
 
 # LLM inference overview
