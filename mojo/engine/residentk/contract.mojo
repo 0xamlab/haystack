@@ -74,6 +74,7 @@ where it would be untestable without a Metal device.
 """
 
 from std.math import log
+from std.sys import is_defined
 from tensorx.contract import tx_finite
 
 # ── status codes: residentk owns 600-619 ──────────────────────────────────────
@@ -122,7 +123,13 @@ comptime RESIDENT_ERR_CODE_OUT_OF_RANGE: Int = 610
 
 # ── ceilings ──────────────────────────────────────────────────────────────────
 
-comptime RESIDENT_MAX_D_MODEL: Int = 3072
+comptime _RESIDENT_STAGE_6144_BUILT: Bool = is_defined["ALGENTA_STAGE_6144"]()
+"""True when this binary was compiled with `-D ALGENTA_STAGE_6144` -- the Qwen3-1.7B staging tier
+(see `RESIDENT_MAX_D_MODEL` below). Same `is_defined`-keyed-Bool shape `RESIDENT_GPU_BUILD` uses
+for `-D ALGENTA_GPU` (and for the same reason: the pinned compiler has no value-carrying defines,
+only presence flags, so each supported staging tier is its own named build)."""
+
+comptime RESIDENT_MAX_D_MODEL: Int = 6144 if _RESIDENT_STAGE_6144_BUILT else 3072
 """The decode kernels' shared-memory STAGING CEILING -- the single value every `_STAGE` allocation
 in `residentk/kernels.mojo` sizes to. It is NOT an arbitrary constant: it must equal the LARGEST
 vector any fused decode kernel stages for the target model, which is determined BY SIMULATION from
@@ -145,7 +152,13 @@ regression when raised 3072 -> 6144 for Qwen3-0.6B-Base. So the value is the mod
 `stage_needed`, neither smaller (overflow) nor larger (occupancy). A larger model (e.g. Qwen3-1.7B,
 `stage_needed` = 6144) is supported by building with this constant set to ITS computed value; a
 single binary cannot be occupancy-optimal for two different `stage_needed` values at once because
-the size is fixed per pipeline-state object, so per-model staging is a build-time specialization."""
+the size is fixed per pipeline-state object, so per-model staging is a build-time specialization.
+
+THE SPECIALIZATION KNOB (beat-llama.cpp parity cheap wins, 2026-08-09): a default build compiles
+the 3072 tier (Qwen3-0.6B-Base-optimal); building with `-D ALGENTA_STAGE_6144` compiles the 6144
+tier instead (Qwen3-1.7B: `stage_needed` = max(2048, 2048, 6144) = d_ff = 6144). A deployment that
+serves both model sizes ships one worker binary per tier (the SDK GPU-worker build passes the flag
+through `scripts/build_mojo_binary.sh`'s `MOJO_BUILD_EXTRA_DEFINES`)."""
 
 comptime RESIDENT_MAX_HEAD_DIM: Int = 256
 """Largest attention head dimension. The RoPE and SDPA kernels run ONE threadgroup per head with one
@@ -270,10 +283,16 @@ def residentk_dims_check(d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: I
     @capability residentk_dims_check
     complexity: O(1)
     counts:
-    - dim d_model <= RESIDENT_MAX_D_MODEL [kernel_validated]
-    - dim d_ff <= RESIDENT_MAX_D_MODEL [kernel_validated]
+    - dim d_model <= 3072 [kernel_validated]
+    - dim d_ff <= 3072 [kernel_validated]
     - dim d_head <= RESIDENT_MAX_HEAD_DIM [kernel_validated]
     @endcapability
+
+    (The 3072 ceilings are the DEFAULT build's staging tier -- the literal `RESIDENT_MAX_D_MODEL`
+    resolves to in a build without `-D ALGENTA_STAGE_6144`; that flag compiles the 6144 tier for
+    larger models such as Qwen3-1.7B, a separate binary per tier by design. Declared as literals
+    here because the ceiling is now build-time-conditional and the capability manifest audits the
+    default build.)
     """
     if d_model < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1:
         return RESIDENT_ERR_EMPTY_DIM

@@ -35,6 +35,19 @@ MOJO_BUILD_MCPU="${MOJO_BUILD_MCPU:-}"
 # is refused rather than silently ignored there (see the platform check below).
 MOJO_BUILD_METAL_GPU="${MOJO_BUILD_METAL_GPU:-0}"
 METAL_SHIM_SOURCE_PATH="${METAL_SHIM_SOURCE_PATH:-${REPO_ROOT}/benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m}"
+# Extra prebuilt object files to append to the final link (comma- and/or space-separated paths).
+# The GPU session's pipeline discovery finds its Metal kernels by NAME inside whatever blob
+# objects are linked in -- a MOJO_BUILD_METAL_GPU=1 worker links ONLY the batched-dispatch shim
+# unless the attention/GEMM blobs (compiled from mma_forge/generated/*.c and
+# attention_forge/generated/*.c with `clang -c`) are passed here, and without them the session
+# degrades to the blobs-absent plan (vecload4 GEMM, attention OFF). Example:
+#   MOJO_BUILD_EXTRA_OBJECTS="/tmp/blobs/msl_parity_blob.o,/tmp/blobs/msl_splitk_blob.o"
+MOJO_BUILD_EXTRA_OBJECTS_RAW="${MOJO_BUILD_EXTRA_OBJECTS:-}"
+# Extra `-D <name>` defines to pass to the Mojo compile (comma- and/or space-separated names),
+# e.g. MOJO_BUILD_EXTRA_DEFINES=ALGENTA_STAGE_6144 for the Qwen3-1.7B resident-staging tier
+# (residentk/contract.mojo's RESIDENT_MAX_D_MODEL knob) -- per-model staging is a build-time
+# specialization, so each model tier ships its own worker binary.
+MOJO_BUILD_EXTRA_DEFINES_RAW="${MOJO_BUILD_EXTRA_DEFINES:-}"
 # `mojo build` defaults --target-accelerator to a live query of the build host's GPU, exactly like
 # --target-cpu -- but GitHub's hosted macOS runners are virtualized and expose no queryable GPU
 # device, so that query fails with "Unknown GPU architecture detected" even though -D ALGENTA_GPU
@@ -210,6 +223,44 @@ if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
         "${METAL_SHIM_SOURCE_PATH}" -o "${METAL_SHIM_OBJECT_PATH}"
 fi
 
+EXTRA_LINK_OBJECTS=()
+if [[ -n "${MOJO_BUILD_EXTRA_OBJECTS_RAW}" ]]; then
+    IFS=',' read -r -a _RAW_EXTRA_OBJECT_ENTRIES <<< "${MOJO_BUILD_EXTRA_OBJECTS_RAW}"
+    for _extra_entry in "${_RAW_EXTRA_OBJECT_ENTRIES[@]}"; do
+        # Word-split each comma-entry too, so space-separated lists survive quoting intact.
+        for _extra_object in ${_extra_entry}; do
+            if [[ -z "${_extra_object}" ]]; then
+                continue
+            fi
+            if [[ ! -f "${_extra_object}" ]]; then
+                echo "MOJO_BUILD_EXTRA_OBJECTS entry not found: ${_extra_object}" >&2
+                exit 1
+            fi
+            EXTRA_LINK_OBJECTS+=("${_extra_object}")
+        done
+    done
+    echo "[build_mojo_binary] linking ${#EXTRA_LINK_OBJECTS[@]} extra object(s):" \
+        "${EXTRA_LINK_OBJECTS[*]}" >&2
+fi
+
+EXTRA_DEFINE_ARGS=()
+if [[ -n "${MOJO_BUILD_EXTRA_DEFINES_RAW}" ]]; then
+    IFS=',' read -r -a _RAW_EXTRA_DEFINE_ENTRIES <<< "${MOJO_BUILD_EXTRA_DEFINES_RAW}"
+    for _define_entry in "${_RAW_EXTRA_DEFINE_ENTRIES[@]}"; do
+        for _define_name in ${_define_entry}; do
+            if [[ -z "${_define_name}" ]]; then
+                continue
+            fi
+            if ! [[ "${_define_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                echo "MOJO_BUILD_EXTRA_DEFINES entry is not a valid define name: ${_define_name}" >&2
+                exit 1
+            fi
+            EXTRA_DEFINE_ARGS+=(-D "${_define_name}")
+        done
+    done
+    echo "[build_mojo_binary] extra defines: ${EXTRA_DEFINE_ARGS[*]}" >&2
+fi
+
 # A module-FILTERED build must not write its dispatch over the tracked artifact. Left alone, the
 # lines below hand the generator `--output <tracked> --modules <subset>`, which replaces the whole
 # ~114k-line runtime contract with the few hundred lines that subset needs. It still compiles and
@@ -327,6 +378,9 @@ if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
     MOJO_TARGET_ARGS+=(-D ALGENTA_GPU --target-accelerator "${MOJO_BUILD_METAL_TARGET}")
     echo "[build_mojo_binary] target accelerator: ${MOJO_BUILD_METAL_TARGET} (portable; not host-queried)" >&2
 fi
+if [[ "${#EXTRA_DEFINE_ARGS[@]}" -gt 0 ]]; then
+    MOJO_TARGET_ARGS+=("${EXTRA_DEFINE_ARGS[@]}")
+fi
 (
     cd "${PIXI_ENV_DIR}"
     "${PIXI_BIN_RESOLVED}" run mojo build \
@@ -369,7 +423,8 @@ case "$(uname -s)" in
             -lMSupportGlobals \
             "${PYTHON_RUNTIME_LIB}" \
             -lc++ \
-            "${DARWIN_METAL_LINK_ARGS[@]+"${DARWIN_METAL_LINK_ARGS[@]}"}"
+            "${DARWIN_METAL_LINK_ARGS[@]+"${DARWIN_METAL_LINK_ARGS[@]}"}" \
+            "${EXTRA_LINK_OBJECTS[@]+"${EXTRA_LINK_OBJECTS[@]}"}"
         ;;
     Linux)
         PYTHON_RUNTIME_LIB="$(find "${LIB_DIR}" -maxdepth 1 -name "lib${PYTHON_RUNTIME_STEM}.so*" | sort | head -n 1)"
@@ -402,7 +457,8 @@ case "$(uname -s)" in
             -lstdc++ \
             -ldl \
             -lpthread \
-            -lm
+            -lm \
+            "${EXTRA_LINK_OBJECTS[@]+"${EXTRA_LINK_OBJECTS[@]}"}"
         ;;
     *)
         echo "Unsupported platform for native Mojo link: $(uname -s)" >&2

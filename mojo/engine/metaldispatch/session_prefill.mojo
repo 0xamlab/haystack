@@ -3948,6 +3948,175 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             )
         return MB_OK
 
+    # ── Parity cheap wins (beat-llama.cpp campaign, 2026-08-10): quantized-state persistence ──
+    # The one-shot entry points re-upload weights on EVERY call: read the flat Float64 blob (8
+    # bytes/param), run the two-pass per-row quantization, then write the device buffers. These
+    # three methods persist EXACTLY the post-quantization device bytes -- Int8 weights + per-row
+    # Float32 scales + Float32 norms, 1 byte/param + scales -- so a second call on the same
+    # converted checkpoint reads ~1/8 the bytes and runs NO quantization arithmetic at all. The
+    # entry point owns the file format and the validity gate (manifest hash + dims); this struct
+    # owns only the byte LAYOUT, which is its own business: `dump_quantized_state` writes the
+    # regions below in this exact order, and `load_quantized_state` validates every region length
+    # against its own dimensions and refuses the whole load on any mismatch (never a half-loaded
+    # session). The RoPE tables are deliberately NOT part of this state: they derive from
+    # theta/max_ctx (runtime parameters, not weights) and are cheap to rebuild -- the entry point
+    # uploads them via `upload_rope_tables` on the cached path too.
+
+    def quantized_state_bytes(self) -> Int:
+        """The exact byte count `dump_quantized_state` produces -- lets a caller size its buffer
+        (or a file-length gate) before reading a single byte."""
+        var n_q = self.h_q * self.d_head
+        var per_layer = (
+            4 * (2 * self.d_model + 2 * self.d_head)
+            + self.n_qkv * (self.d_model + 4)
+            + self.d_model * (n_q + 4)
+            + 2 * self.d_ff * (self.d_model + 4)
+            + self.d_model * (self.d_ff + 4)
+        )
+        return self.vocab * (self.d_model + 4) + 4 * self.d_model + self.n_layers * per_layer
+
+    def dump_quantized_state(mut self) raises -> List[UInt8]:
+        """Serialize the EXACT post-quantization device bytes: embed Int8 + per-row Float32 scale,
+        final-norm Float32, then per layer the four norms (Float32) and the four GEMM roles'
+        Int8 weights + per-row Float32 scales, in the fixed region order `load_quantized_state`
+        expects. Byte-identical to what `upload_globals`/`upload_layer` computed -- this reads the
+        very buffers the GPU kernels read, never the f64 source -- so a restored session runs the
+        SAME quantized math, token for token. (`mut self` for the same reason `upload_layer` is:
+        `ref lw = self.layers[layer]` -- the pinned compiler has no implicit copy of
+        `_MBLayerBufI8`, and this method changes nothing the read cannot see.)"""
+        var n_q = self.h_q * self.d_head
+        var out = List[UInt8](capacity=self.quantized_state_bytes())
+        for i in range(self.vocab * self.d_model):
+            out.append(self.embed_ptr[i])
+        for i in range(self.vocab * 4):
+            out.append(self.embed_scale_ptr[i])
+        for i in range(self.d_model * 4):
+            out.append(self.final_norm_ptr[i])
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            for i in range(self.d_model * 4):
+                out.append(lw.ln1_ptr[i])
+            for i in range(self.d_model * 4):
+                out.append(lw.ln2_ptr[i])
+            for i in range(self.d_head * 4):
+                out.append(lw.qn_ptr[i])
+            for i in range(self.d_head * 4):
+                out.append(lw.kn_ptr[i])
+            for i in range(self.n_qkv * self.d_model):
+                out.append(lw.w_qkv_ptr[i])
+            for i in range(self.n_qkv * 4):
+                out.append(lw.w_qkv_scale_ptr[i])
+            for i in range(self.d_model * n_q):
+                out.append(lw.w_o_ptr[i])
+            for i in range(self.d_model * 4):
+                out.append(lw.w_o_scale_ptr[i])
+            for i in range(2 * self.d_ff * self.d_model):
+                out.append(lw.w_gu_ptr[i])
+            for i in range(2 * self.d_ff * 4):
+                out.append(lw.w_gu_scale_ptr[i])
+            for i in range(self.d_model * self.d_ff):
+                out.append(lw.w_down_ptr[i])
+            for i in range(self.d_model * 4):
+                out.append(lw.w_down_scale_ptr[i])
+        return out^
+
+    def load_quantized_state(mut self, raw: List[UInt8]) raises -> Int:
+        """The exact inverse of `dump_quantized_state`: validate the byte count against this
+        session's own dimensions, copy each region into the same device buffers `upload_globals`/
+        `upload_layer` would have written, then rebuild the Float16 dequantized twins the MSL
+        kernels read (from the SAME restored Int8 + scale -- the same `_dequant_i8_into_f16` calls
+        `upload_layer` runs, so the cached path and the f64 path land on byte-identical device
+        state). Returns MB_OK, or MB_ERR_UPLOAD_LENGTH without touching any buffer the count check
+        already ruled out."""
+        if len(raw) != self.quantized_state_bytes():
+            return MB_ERR_UPLOAD_LENGTH
+        var n_q = self.h_q * self.d_head
+        var cursor = 0
+        for i in range(self.vocab * self.d_model):
+            self.embed_ptr[i] = raw[cursor + i]
+        cursor += self.vocab * self.d_model
+        for i in range(self.vocab * 4):
+            self.embed_scale_ptr[i] = raw[cursor + i]
+        cursor += self.vocab * 4
+        for i in range(self.d_model * 4):
+            self.final_norm_ptr[i] = raw[cursor + i]
+        cursor += self.d_model * 4
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            for i in range(self.d_model * 4):
+                lw.ln1_ptr[i] = raw[cursor + i]
+            cursor += self.d_model * 4
+            for i in range(self.d_model * 4):
+                lw.ln2_ptr[i] = raw[cursor + i]
+            cursor += self.d_model * 4
+            for i in range(self.d_head * 4):
+                lw.qn_ptr[i] = raw[cursor + i]
+            cursor += self.d_head * 4
+            for i in range(self.d_head * 4):
+                lw.kn_ptr[i] = raw[cursor + i]
+            cursor += self.d_head * 4
+            for i in range(self.n_qkv * self.d_model):
+                lw.w_qkv_ptr[i] = raw[cursor + i]
+            cursor += self.n_qkv * self.d_model
+            for i in range(self.n_qkv * 4):
+                lw.w_qkv_scale_ptr[i] = raw[cursor + i]
+            cursor += self.n_qkv * 4
+            for i in range(self.d_model * n_q):
+                lw.w_o_ptr[i] = raw[cursor + i]
+            cursor += self.d_model * n_q
+            for i in range(self.d_model * 4):
+                lw.w_o_scale_ptr[i] = raw[cursor + i]
+            cursor += self.d_model * 4
+            for i in range(2 * self.d_ff * self.d_model):
+                lw.w_gu_ptr[i] = raw[cursor + i]
+            cursor += 2 * self.d_ff * self.d_model
+            for i in range(2 * self.d_ff * 4):
+                lw.w_gu_scale_ptr[i] = raw[cursor + i]
+            cursor += 2 * self.d_ff * 4
+            for i in range(self.d_model * self.d_ff):
+                lw.w_down_ptr[i] = raw[cursor + i]
+            cursor += self.d_model * self.d_ff
+            for i in range(self.d_model * 4):
+                lw.w_down_scale_ptr[i] = raw[cursor + i]
+            cursor += self.d_model * 4
+            if self.msl_any_linked:
+                _dequant_i8_into_f16(
+                    self.msl_w_qkv_f16_ptr[layer], lw.w_qkv_ptr, lw.w_qkv_scale_ptr,
+                    self.n_qkv, self.d_model,
+                )
+                _dequant_i8_into_f16(
+                    self.msl_w_o_f16_ptr[layer], lw.w_o_ptr, lw.w_o_scale_ptr,
+                    self.d_model, n_q,
+                )
+                _dequant_i8_into_f16(
+                    self.msl_w_gu_f16_ptr[layer], lw.w_gu_ptr, lw.w_gu_scale_ptr,
+                    2 * self.d_ff, self.d_model,
+                )
+                _dequant_i8_into_f16(
+                    self.msl_w_down_f16_ptr[layer], lw.w_down_ptr, lw.w_down_scale_ptr,
+                    self.d_model, self.d_ff,
+                )
+        return MB_OK
+
+    def upload_rope_tables(
+        mut self, cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        """The RoPE half of `upload_globals`, split out so the quantized-state cache path -- which
+        restores embed/norms/weights from disk and therefore never calls `upload_globals` -- still
+        uploads the cos/sin tables (they are theta/max_ctx-derived, not weight-derived, so they
+        are rebuilt, never cached). Byte-identical loop to `upload_globals`'s own."""
+        var n_pairs = self.d_head // 2
+        if n_pos > self.max_ctx:
+            return MB_ERR_CONTEXT_FULL
+        if len(cos_t) < n_pos * n_pairs or len(sin_t) < n_pos * n_pairs:
+            return MB_ERR_UPLOAD_LENGTH
+        var cos_f = self.cos_ptr.bitcast[Float32]()
+        var sin_f = self.sin_ptr.bitcast[Float32]()
+        for i in range(n_pos * n_pairs):
+            cos_f[i] = Float32(cos_t[i])
+            sin_f[i] = Float32(sin_t[i])
+        return MB_OK
+
     def seal(mut self) -> Int:
         return MB_OK
 

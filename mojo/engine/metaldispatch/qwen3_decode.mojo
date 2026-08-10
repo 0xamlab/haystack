@@ -26,6 +26,12 @@ full calibration record) made callable, and nothing more. A checkpoint of any ot
 host with no Metal accelerator, or a binary built without `-D ALGENTA_GPU`, is refused with a named
 status rather than silently run, downgraded, or faked (rule: no silent fallback).
 
+`max_ctx` is raised above `RESIDENT_DEFAULT_CONTEXT` (512) whenever `n_prompt + max_new_tokens`
+would not fit in it, up to `RESIDENT_MAX_CONTEXT`'s own safety ceiling -- the same auto-raise
+contract the prefill+decode arm (`qwen3_prefill_decode.mojo`) applies, added here by the
+2026-08-09 parity cheap-wins pass (this arm previously always requested the default 512, and had
+never been exercised past it).
+
 What this file does NOT do (rule 3 — call the frozen kernel, never re-derive it)
 ---------------------------------------------------------------------------------
 Every kernel call below — `_MBQwen3I8AllSimd7.__init__`/`.upload_globals`/`.upload_layer`/`.seal`/
@@ -70,6 +76,7 @@ from conv import parse_int
 from attnk.rope import rope_table
 from residentk.contract import (
     RESIDENT_DEFAULT_CONTEXT,
+    RESIDENT_MAX_CONTEXT,
     residentk_dispatch_budget_deep,
     residentk_splitk_should_split,
 )
@@ -277,7 +284,21 @@ def qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) -
         )
 
     var scale = 1.0 / sqrt(Float64(d_head))
+    # Same auto-raise contract as the prefill+decode arm (qwen3_prefill_decode.mojo): a prompt
+    # plus its requested generation that does not fit the 512 default gets exactly the context it
+    # needs, up to RESIDENT_MAX_CONTEXT's ceiling -- never a silent KV-cache overflow, never a
+    # hardcoded clamp that refuses a long prompt the session could otherwise serve.
+    var needed_ctx = n_prompt + max_new_tokens
     var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
     var pre = _mb_preflight(
         d_model, h_q, h_kv, d_head, d_ff, n_layers, n_prompt, max_new_tokens, max_ctx, eps, scale
     )

@@ -36,10 +36,18 @@ batched path sweeps the model weights once per step for all B sequences instead 
 ## Cross-cutting properties
 
 * **Any token count.** The prefill path re-grids per call (padded-destination contract), so prompts
-  and batches of any size work, not just the measured 256 / B values.
+  and batches of any size work, not just the measured 256 / B values. Context auto-raises past the
+  historical 512 default up to a 65,536 ceiling — deep soaks verified at 2,048 new tokens (0.6B)
+  and 1,024 (1.7B), every token reference-checked.
 * **Model-agnostic within the Qwen3 family.** Buffer and grid shapes are derived from the
   checkpoint's own dims. Verified end-to-end on Qwen3-0.6B-Base and Qwen3-1.7B with identical greedy
-  output (first token matches an independent `transformers` CPU reference).
+  output (first token matches an independent `transformers` CPU reference) — runnable through the
+  SDK's model-agnostic path, see [Run Qwen3-family models on Apple
+  Silicon](../guides/run-qwen3-family-inference.md).
+* **Cached weight loading.** The one-shot SDK shape persists the exact post-quantization device
+  bytes next to each converted checkpoint; second-and-later calls load ~8x fewer bytes and skip
+  quantization entirely (3.10x / 1.93x whole-call wall on 0.6B / 1.7B), token-identical to the
+  uncached path.
 * **Correctness-gated, not just fast.** Every path checks generated tokens against a reference; a
   faster wrong answer is not a result.
 
@@ -50,4 +58,5 @@ batched path sweeps the model weights once per step for all B sequences instead 
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
 * [Qwen3-0.6B-Base decode (Apple Silicon, Metal)](../engine/qwen3-metal-decode.md) — call it from Python.
 * [Run Qwen3-0.6B-Base decode on Apple Silicon](../guides/run-qwen3-decode.md) — step-by-step guide.
+* [Run Qwen3-family models on Apple Silicon](../guides/run-qwen3-family-inference.md) — the model-agnostic SDK path (0.6B, 1.7B, and other supported shapes).
 * [Benchmarks](overview.md) — methodology and what is not published.

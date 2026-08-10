@@ -31,6 +31,7 @@ from std.sys import has_accelerator
 from attnk.rope import rope_table
 from metaldispatch.contract import MB_OK, metaldispatch_status_name
 from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill
+from metaldispatch.session_prefill_policy import PF_ATTN_OFF, PF_GEMM_ORIGINAL, UnresolvedPrefillConfig
 
 comptime D_MODEL: Int = 32
 comptime H_Q: Int = 4
@@ -107,6 +108,10 @@ def main() raises:
 
     # ── Instance A: prefill_batch(M=32) -- MMA-eligible, hits _PFROLE_GEMM_*_MMA ──────────────
     var a = _MBQwen3I8AllSimd7Prefill(D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale)
+    # ── Project Redline reopening (2026-08-08), "make unresolved plan state unrepresentable" audit:
+    # declared explicitly (this probe only links mm8_blob.c -- the OFF/original path is the ONLY one
+    # available regardless) rather than relying on the constructor's own default.
+    a.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL))
     var up_a = a.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
     for l in range(N_LAYERS):
         if up_a == MB_OK:
@@ -126,6 +131,9 @@ def main() raises:
 
     # ── Instance B: 32x step(), byte-identical weights, never touches the MMA path ────────────
     var b = _MBQwen3I8AllSimd7Prefill(D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale)
+    # `step()` never reads `self.plan` at all -- declared explicitly anyway, matching instance A
+    # above, so no construction site in this file relies on the constructor's own default.
+    b.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL))
     var up_b = b.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
     for l in range(N_LAYERS):
         if up_b == MB_OK:

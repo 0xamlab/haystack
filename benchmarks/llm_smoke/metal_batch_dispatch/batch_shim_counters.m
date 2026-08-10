@@ -51,8 +51,17 @@
 #include <string.h>
 
 #define ALGENTA_MAX_ARGS 16
-#define ALGENTA_MAX_PIPELINES 32
-#define ALGENTA_MAX_BUFFERS 512
+/* Beat-llama.cpp campaign (2026-08-08 night): bumped 32 -> 64, mirroring `batch_shim.m`'s own
+ * same-night bump and for the same measured reason -- the campaign's counter probes now link the
+ * kvprod_v2 blob (two more metallibs) on top of the MSL/vecload4/AF set, ~36 MTLBs total, over
+ * the old cap; the overflow is silent (the scan stops at the cap). */
+#define ALGENTA_MAX_PIPELINES 64
+/* Phase 3 (2026-08-08): bumped 512 -> 2048 to match `batch_shim.m`'s own earlier bump (its comment
+ * is the full account). The MSL-parity arm materializes FOUR extra per-layer Float16 weight buffers
+ * (28 layers x 4 = 112 extra buffers) on top of the ~469 the vecload4 counter probe already
+ * allocated, which crossed the old 512 ceiling for real (`buffer alloc failed (ck)` at layer 25 of
+ * the counter probe's own session) -- not a theoretical worry. */
+#define ALGENTA_MAX_BUFFERS 2048
 
 typedef struct {
     int32_t tag;       /* 0 = buffer device-address value, 1 = int64 scalar, 2 = float32 scalar */

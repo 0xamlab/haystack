@@ -636,6 +636,14 @@ _LAZY_EXPORTS = {
     ),
     "prepare_qwen3_checkpoint": ("algenta.qwen3_decode", "prepare_checkpoint"),
     "qwen3_i8_allsimd7_decode": ("algenta.qwen3_decode", "qwen3_i8_allsimd7_decode"),
+    # ── Model-agnostic inference: any supported-family model, one hardware family (Apple Silicon/
+    # Metal). Generic-named (not model-specific) door onto the same Metal kernel path. Lazy like the
+    # rest: no GPU/checkpoint work until decode()/prepare_model_checkpoint() is actually called.
+    "InferenceError": ("algenta.inference", "InferenceError"),
+    "InferenceResult": ("algenta.inference", "InferenceResult"),
+    "UnsupportedArchitectureError": ("algenta.inference", "UnsupportedArchitectureError"),
+    "prepare_model_checkpoint": ("algenta.inference", "prepare_model_checkpoint"),
+    "decode": ("algenta.inference", "decode"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(

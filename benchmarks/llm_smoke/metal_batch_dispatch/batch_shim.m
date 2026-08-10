@@ -64,8 +64,19 @@
  * measured need, hit 512 for real (`buffer alloc failed (ck)` at the 11th instance), not a
  * theoretical worry. Pipelines (`ALGENTA_MAX_PIPELINES`, a SEPARATE, one-time-discovered, process-
  * wide table `algenta_open_session` reuses across every instance) are unaffected by this and stay
- * unchanged. */
-#define ALGENTA_MAX_BUFFERS 2048
+ * unchanged.
+ *
+ * Parity cheap wins (2026-08-10): bumped 2048 -> 8192. The SDK's one-shot shape runs MANY
+ * independent sessions through ONE long-lived runtime worker (every `algenta.inference.decode()`
+ * call is a fresh session), and one Qwen3-0.6B anyqwen3 session allocates ~526 buffers (14/layer
+ * weights+norms+KV x 28 layers, + 4/layer MSL f16 twins, globals, activations, split-K partials),
+ * so the 4th SDK call in one worker process hit 2048 for real (`buffer alloc failed
+ * (w_qkv_scale)` in tests/test_inference_gpu_e2e.py). 8192 gives ~15 sessions of headroom; the
+ * table itself is 64 KB of static pointers. The HONEST long-term fix is session teardown (freeing
+ * a session's buffers when its one-shot call completes) -- that is the parity-gap-4 persistent-
+ * sessions work, not a cheap win, so until then the cap is the gate and this comment is the
+ * record of why it moves. */
+#define ALGENTA_MAX_BUFFERS 8192
 
 typedef struct {
     int32_t tag;       /* 0 = buffer device-address value, 1 = int64 scalar, 2 = float32 scalar */

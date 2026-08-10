@@ -19,7 +19,7 @@ This is a narrow, real capability, not a general LLM-serving surface. Read [Requ
 
 ## Limitations
 
-* **One model, one exact shape.** Qwen3-0.6B-Base's exact architecture only (`hidden_size=1024`, 28 layers, 16 query heads, 8 key/value heads, `head_dim=128`, `vocab_size=151936`, tied embeddings). A checkpoint of any other shape — including other Qwen3 sizes — is refused by name before any conversion or GPU work starts.
+* **One model, one exact shape.** Qwen3-0.6B-Base's exact architecture only (`hidden_size=1024`, 28 layers, 16 query heads, 8 key/value heads, `head_dim=128`, `vocab_size=151936`, tied embeddings). A checkpoint of any other shape is refused by name before any conversion or GPU work starts. Other Qwen3 sizes (for example Qwen3-1.7B) run through the model-agnostic path instead — see [Run Qwen3-family models on Apple Silicon](run-qwen3-family-inference.md).
 * **One hardware family.** Apple Silicon with Metal, and nothing else. A host with no Metal accelerator gets a named refusal, never a slower silent substitute.
 * **Greedy decode only.** Every generated token is the argmax at that step. There is no sampling, no temperature, no top-p/top-k, and no beam search.
 * **One call, start to finish.** There is no session you open once and step token-by-token across separate calls — a single call prefills the prompt and decodes to `max_new_tokens` or an end-of-text token in one round trip.
@@ -149,6 +149,10 @@ except Qwen3DecodeError as error:
 ```
 
 ## Next steps
+
+{% content-ref url="run-qwen3-family-inference.md" %}
+[run-qwen3-family-inference.md](run-qwen3-family-inference.md)
+{% endcontent-ref %}
 
 {% content-ref url="../engine/qwen3-metal-decode.md" %}
 [qwen3-metal-decode.md](../engine/qwen3-metal-decode.md)

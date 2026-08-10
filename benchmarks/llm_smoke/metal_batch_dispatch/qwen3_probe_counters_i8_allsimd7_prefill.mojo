@@ -30,6 +30,7 @@ from attnk.rope import rope_table
 from metaldispatch.contract import MB_OK, metaldispatch_status_name
 from metaldispatch.session import _mb_preflight, MB_GPU_BUILD
 from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill, PREFILL_MAX_TILE
+from metaldispatch.session_prefill_policy import PF_ATTN_OFF, PF_GEMM_ORIGINAL, UnresolvedPrefillConfig
 
 comptime MANIFEST_PATH: String = "/tmp/qwen3smoke/manifest.json"
 comptime BLOB_PATH: String = "/tmp/qwen3smoke/weights.blob"
@@ -273,6 +274,12 @@ def main() raises:
         var s = _MBQwen3I8AllSimd7Prefill(
             d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
         )
+        # ── Project Redline reopening (2026-08-08), "make unresolved plan state unrepresentable"
+        # audit: this probe measures the plain, pre-Attention-Compiler-Plan batched path (only
+        # mm8_blob.c is linked, no attention_forge/vecload4/bm64 blobs) -- declared explicitly rather
+        # than relying on `__init__`'s own constructor default, so a future default change cannot
+        # silently change what this probe measures.
+        s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL))
         print("  n_cores detected:", s.n_cores)
 
         var rt = rope_table(d_head, max_ctx, theta)

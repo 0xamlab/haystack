@@ -10035,3 +10035,121 @@ PRIORITIZED gaps for "usable end-to-end as a llama.cpp replacement":
 
 The engine KERNELS are fast and correct (this whole campaign); the parity work is the serving/sampling/
 tokenizer/model-loading stack around them.
+
+## Parity cheap wins LANDED: SDK anyqwen3 routing e2e-verified, max_ctx auto-raise on BOTH arms, quantized-state cache (2026-08-10)
+
+The parity section's item 5 -- "MODEL GENERALITY within reach (CHEAP WINS)" -- is now three landed,
+measured, test-gated facts instead of a roadmap. All three are engine/SDK wiring around UNTOUCHED
+kernels; no kernel math changed.
+
+### 1. SDK -> anyqwen3 arm: first real SDK-to-GPU decodes, both models, oracle-verified
+
+`algenta.inference.decode()` (model-agnostic SDK module, built the session before this entry) now has
+its wire proof: built GPU runtime workers from THIS TREE and ran the real path -- SDK `decode()` ->
+`MojoRuntime` -> AF_UNIX worker -> `metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_
+nomirror_msl_anyqwen3` -> Metal GPU -- on both models, greedy tokens checked against the campaign
+oracle:
+
+```
+ model        wall(cold)  first_gen  continuation (8 tokens)                      prefill(cold)  decode
+ Qwen3-0.6B    4.77 s     374 ✓      [374, 12095, 13, 576, 6722, 315, 9625, 374]   4,474 tok/s    269 tok/s
+ Qwen3-1.7B    9.32 s     374 ✓      identical to 0.6B's                          1,241 tok/s    111 tok/s
+```
+
+199 dispatches/token on both (the expected decode budget), no EOS at 8 tokens. First token 374 is the
+exact oracle value every prior gate recorded for the 256-token race prompt on BOTH models. The 1.7B
+run is the model-agnostic proof: same SDK call shape, different dims (hidden 2048 / d_ff 6144 / two-
+shard checkpoint), same arm, same oracle.
+
+THE WORKER BUILD (new, reusable): `scripts/build_mojo_binary.sh` gained two opt-in hooks --
+`MOJO_BUILD_EXTRA_OBJECTS` (comma/space-separated .o paths appended to the link -- the Metal kernel
+BLOBS, compiled `clang -c` from mma_forge/generated/*.c + attention_forge/generated/*.c, without
+which the session degrades to the blobs-absent plan) and `MOJO_BUILD_EXTRA_DEFINES` (extra `-D`
+names). A filtered build (`MOJO_RUNTIME_MODULE_FILTER=metaldispatch.qwen3_prefill_decode,
+metaldispatch.qwen3_decode,metaldispatch.contract,metaldispatch.session_prefill_policy`, staged
+MOJO_SRC per the script's own recipe) produces `mojo_build/gpu-worker/algenta-gpu-worker` (~2.5 MB,
+~40 s on this machine) with the campaign's full blob set linked: mm8/mm8_vecload4/mm8_accum_vecload4/
+mm8_swiglu_vecload4/mm8_bm64/msl_parity/msl_splitk/candidate_a/native_kv_producer/kvprod_v2/
+native_kv_decode_attn/native_kv_decode_attn_splitk. SDK resolution goes through the documented dev
+knobs `ALGENTA_NATIVE_WORKER` + `ALGENTA_RUNTIME_FALLBACK_MODE=allow` (release builds stay
+fail-closed; nothing about the signed-bundled path changed).
+
+### 2. max_ctx: auto-raise on BOTH arms, SDK guard honest, 556-token e2e proof
+
+The prefill+decode arm already auto-raised `max_ctx` past the 512 default; the pinned 0.6B arm
+(`qwen3_decode.mojo`) still hardcoded it -- this pass made the two arms ONE contract: the pinned arm
+now computes `needed_ctx = n_prompt + max_new_tokens`, raises `max_ctx` to it, and refuses past
+`RESIDENT_MAX_CONTEXT` (65536) with a named status, byte-for-byte the prefill arm's logic; both files'
+docstrings state the shared contract (the prefill arm's old "unlike qwen3_decode" contrast was
+updated to match). SDK side: `inference.py`'s `max_ctx` parameter is a caller-side GUARD, not an
+override -- the docstring previously claimed "pass it to override upward", which was never true on
+the wire (the engine derives the size itself); the docstring now says exactly what happens (values
+below the need are refused client-side; larger values are accepted but cannot change a one-shot run).
+E2E PROOF: 256-token race prompt + max_new_tokens=300 = 556 total > 512 through the SDK: complete
+300-token generation, oracle first token intact, decode 258.9 tok/s.
+
+LONG-GENERATION SOAK (the "any token amount" claim, exercised far past every prior gate,
+2026-08-10, same workers): 0.6B decoded 2048 NEW tokens (ctx 2304 -- 4.5x the 512 default) in
+15.81 s at 145.7 tok/s deep; 1.7B decoded 1024 new tokens (ctx 1280) in 19.37 s at 78.2 tok/s
+deep. Both sequences stay on the model's exact expected continuation (the repeating race-prompt
+pattern) start to finish, oracle first token intact, no EOS inside the budget, and the per-step
+dispatch-budget assertion (shallow vs deep split-K) held for EVERY step -- a budget mismatch
+returns an error status rather than a sequence, so a completed soak is itself the proof. Deep
+tok/s sits below the shallow band (260/110 shallow) because attention cost grows with key count
+-- expected, not a regression: the 8-token numbers above and these are the same kernels.
+
+### 3. Quantized-state cache: second-call load 3.10x (0.6B) / 1.93x (1.7B), tokens byte-identical
+
+The one-shot shape re-uploads weights on EVERY call: read the f64 blob (8 bytes/param), run the
+two-pass per-row quantization, fill the device buffers. `_MBQwen3I8AllSimd7Prefill` gained
+`quantized_state_bytes` / `dump_quantized_state` / `load_quantized_state` / `upload_rope_tables`:
+dump serializes EXACTLY the post-quantization device bytes (Int8 weights + per-row Float32 scales +
+Float32 norms, ~1 byte/param), load validates the total length against its own dims and restores the
+same buffers (rebuilding the MSL f16 twins from the SAME restored Int8+scale via the same
+`_dequant_i8_into_f16` calls `upload_layer` runs -- cached and f64 paths land on byte-identical
+device state). The anyqwen3 entry point orchestrates the file: `weights_i8.cache` next to the
+manifest, header = magic "ALGI8C01" + SHA-256(manifest.json bytes) + dims + length, gate = ALL of
+magic/dims/manifest-hash/length/short-read, ANY miss falls through to the f64 path, which then
+WRITES the cache best-effort (a failed write never fails the call; the cache is a load-time
+optimization, not part of the correctness contract). RoPE tables are deliberately never cached
+(theta/max_ctx-derived, cheap to rebuild). Recorded residual edge: a hand-edit of weights.blob that
+leaves manifest.json untouched would not be caught -- the manifest hash is the anchor by design,
+matching the one writer (prepare_model_checkpoint) that produces the pair.
+
+MEASURED (M4 Max, 256-token race prompt, 8 greedy tokens, wall = whole SDK call; harness
+`benchmarks/llm_smoke/sdk_quant_cache_check.py`, three legs per model, each a fresh session):
+
+```
+ model       f64 blob   cache file   A cold    B cached   speedup   C corrupt-cache fallback
+ 0.6B        4.77 GB    0.598 GB     4.87 s    1.57 s     3.10x     3.45 s, cache rewritten valid
+ 1.7B       13.76 GB    1.724 GB    10.98 s    5.70 s     1.93x    11.81 s, cache rewritten valid
+```
+
+Tokens BYTE-IDENTICAL across all three legs on both models (the gate that matters: the cache is the
+very bytes the GPU kernels read). Fresh-process cached loads (separate python + worker process, cache
+already on disk): 0.6B 2.10 s, 1.7B 4.99 s. Cache files are exactly 8.0x smaller than the f64 blobs
+on both models. HONEST NOTES: (a) the cached path still pays the f16-twin dequant pass and the per-
+byte list-append read loop -- v1 chose correctness and simplicity over a typed bulk read; a second
+version could persist the twins or read into a preallocated buffer. (b) 1.7B's smaller speedup is the
+larger fixed per-session costs (buffer allocation, pipeline discovery, first-touch) amortizing less.
+
+FOUND + FIXED ON THE WAY (recorded, not buried): the shim's `ALGENTA_MAX_BUFFERS` was 2048, and one
+anyqwen3 session allocates ~526 buffers (14/layer x 28 + 4/layer MSL twins + globals/activations/
+partials), NEVER freed (one-shot design, parity gap 4) -- the 4th SDK call in one worker process hit
+the cap for real (`buffer alloc failed (w_qkv_scale)` in tests/test_inference_gpu_e2e.py). Bumped
+2048 -> 8192 (~15 sessions of headroom, 64 KB static table), with the shim comment recording that
+the honest fix is session teardown -- parity gap 4's persistent-sessions work, not a cheap win.
+
+### Gates + artifacts
+
+Permanent tests: `tests/test_inference_gpu_e2e.py` (2 GPU-free guard tests -- always run; 0.6B oracle,
+0.6B cache three-leg token-identity + corrupt-fallback, 1.7B oracle -- skip-unless-present on machines
+without the dev workers/checkpoints, same convention as test_qwen3_decode_checkpoint_conversion.py),
+plus the prior session's `tests/test_inference_model_agnostic.py` (9 tests, re-run green this pass).
+Engine files touched: residentk/contract.mojo (the `-D ALGENTA_STAGE_6144` staging-tier knob --
+per-model staging stays a BUILD-time specialization, one binary per tier, exactly as its design
+docstring said; 1.7B runs through the stage6144 worker), metaldispatch/qwen3_decode.mojo (auto-raise),
+metaldispatch/qwen3_prefill_decode.mojo (cache orchestration + helpers), metaldispatch/
+session_prefill.mojo (the four session methods), batch_shim.m (buffer cap), scripts/
+build_mojo_binary.sh (the two build hooks). NOTHING committed -- the worktree stays dirty for review,
+per the campaign's standing rule.

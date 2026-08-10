@@ -35,10 +35,10 @@ each call only ever depends on the KV cache and per-layer weights, which persist
 same struct instance, never on the PREVIOUS call's activation-buffer contents.
 
 `max_ctx` is raised above `RESIDENT_DEFAULT_CONTEXT` (512) whenever `n_prompt + max_new_tokens`
-would not fit in it, up to `RESIDENT_MAX_CONTEXT`'s own safety ceiling (65536) -- unlike
-`qwen3_decode.qwen3_i8_allsimd7_decode_flat`, which always requests the default 512 regardless of
-prompt length (never previously exercised past it, since that arm had no batched prefill fast
-enough to make a long prompt practical to test at all).
+would not fit in it, up to `RESIDENT_MAX_CONTEXT`'s own safety ceiling (65536) -- the SAME
+auto-raise contract `qwen3_decode.qwen3_i8_allsimd7_decode_flat` applies (since the 2026-08-09
+parity cheap-wins pass; before that it always requested the default 512 regardless of prompt
+length).
 """
 
 from std.math import sqrt
@@ -47,6 +47,7 @@ from std.time import perf_counter_ns
 from json.parser import json_get_array, json_get_float, json_get_int, json_get_object, json_array_tokens
 from conv import parse_int
 from attnk.rope import rope_table
+from crypto.pbkdf2 import sha256_bytes
 from residentk.contract import (
     RESIDENT_DEFAULT_CONTEXT,
     RESIDENT_MAX_CONTEXT,
@@ -160,6 +161,64 @@ def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> L
 def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
+
+
+# ── Parity cheap wins (beat-llama.cpp campaign, 2026-08-10): quantized-state cache ─────────────
+#
+# `weights_i8.cache` lives next to a converted checkpoint's manifest.json/weights.blob and holds
+# the session's EXACT post-quantization device bytes (Int8 weights + per-row Float32 scales +
+# Float32 norms -- ~1 byte/param against the f64 blob's 8). A one-shot call re-uploads weights
+# every time (that is the design, parity gap 4), so the second-and-later call on the same
+# converted checkpoint otherwise re-reads the whole f64 blob and re-runs the two-pass per-row
+# quantization; with a valid cache it does neither. File format, little-endian:
+#
+#   bytes   0..7   magic "ALGI8C01"
+#   bytes   8..39  SHA-256 of manifest.json's bytes -- the validity gate. `prepare_model_
+#                  checkpoint` writes manifest+blob atomically per conversion, so the manifest
+#                  hash keys the pair. (Honest residual edge, recorded rather than ignored: a
+#                  hand-edit of weights.blob that left manifest.json untouched would not be
+#                  caught -- the manifest hash is the anchor by design, matching the one writer
+#                  that produces the pair.)
+#   bytes  40..95  u64 x7: n_layers, d_model, h_q, h_kv, d_head, d_ff, vocab
+#   bytes  96..103 u64: quantized-state byte count
+#   bytes 104..    `_MBQwen3I8AllSimd7Prefill.dump_quantized_state`'s own region bytes
+
+comptime _I8_CACHE_HEADER_BYTES: Int = 104
+comptime _I8_CACHE_CHUNK_BYTES: Int = 1 << 27  # 128 MiB -- same chunking `_read_f64_slice` uses
+
+
+def _i8_cache_magic_ok(header: List[UInt8]) -> Bool:
+    if len(header) < 8:
+        return False
+    # "ALGI8C01"
+    return (
+        header[0] == 65 and header[1] == 76 and header[2] == 71 and header[3] == 73
+        and header[4] == 56 and header[5] == 67 and header[6] == 48 and header[7] == 49
+    )
+
+
+def _le64(raw: List[UInt8], off: Int) -> Int:
+    var v = 0
+    for i in range(8):
+        v = v | (Int(raw[off + i]) << (8 * i))
+    return v
+
+
+def _sha256_of_string(s: String) -> List[Int]:
+    var raw = s.as_bytes()
+    var ints = List[Int](capacity=len(raw))
+    for i in range(len(raw)):
+        ints.append(Int(raw[i]))
+    return sha256_bytes(ints^)
+
+
+def _sha256_matches(header: List[UInt8], digest: List[Int]) -> Bool:
+    if len(digest) != 32:
+        return False
+    for i in range(32):
+        if Int(header[8 + i]) != digest[i]:
+            return False
+    return True
 
 
 def _slice_ids(ids: List[Int], start: Int, count: Int) -> List[Int]:
@@ -2509,43 +2568,171 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                   "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
 
             var rt = rope_table(d_head, max_ctx, theta)
-            var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
-            var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
-            var up_status = s.upload_globals(
-                embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
-            )
-            if up_status != MB_OK:
-                return _decode_err(
-                    up_status, "upload_globals failed: " + metaldispatch_status_name(up_status)
-                )
+            # ── Parity cheap wins (2026-08-10): quantized-state cache. A VALID
+            # `weights_i8.cache` next to the manifest restores the EXACT post-quantization device
+            # bytes (~1 byte/param, zero quantization arithmetic); anything else -- missing file,
+            # bad magic, stale manifest hash, mismatched dims, wrong length, short read, any
+            # error -- falls through to the f64 path below, which then WRITES the cache
+            # best-effort for the next call. Never a hard error either way: the cache is a load-
+            # time optimization, not part of the correctness contract.
+            var cache_path = checkpoint_dir + "/weights_i8.cache"
+            var loaded_from_cache = False
+            try:
+                var cf = open(cache_path, "r")
+                var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
+                if (
+                    len(header) == _I8_CACHE_HEADER_BYTES
+                    and _i8_cache_magic_ok(header)
+                    and _le64(header, 40) == n_layers
+                    and _le64(header, 48) == d_model
+                    and _le64(header, 56) == h_q
+                    and _le64(header, 64) == h_kv
+                    and _le64(header, 72) == d_head
+                    and _le64(header, 80) == d_ff
+                    and _le64(header, 88) == vocab_size
+                    and _sha256_matches(header, _sha256_of_string(manifest))
+                    and _le64(header, 96) == s.quantized_state_bytes()
+                ):
+                    var state_bytes = _le64(header, 96)
+                    var state = List[UInt8](capacity=state_bytes)
+                    var remaining = state_bytes
+                    var read_ok = True
+                    while read_ok and remaining > 0:
+                        var take = _I8_CACHE_CHUNK_BYTES
+                        if remaining < take:
+                            take = remaining
+                        var chunk = cf.read_bytes(take)
+                        if len(chunk) != take:
+                            read_ok = False
+                        else:
+                            for i in range(take):
+                                state.append(chunk[i])
+                        remaining -= take
+                    cf.close()
+                    if read_ok and s.load_quantized_state(state^) == MB_OK:
+                        var rope_status = s.upload_rope_tables(
+                            rt.cos_table, rt.sin_table, max_ctx
+                        )
+                        loaded_from_cache = rope_status == MB_OK
+                else:
+                    cf.close()
+            except:
+                loaded_from_cache = False
 
-            for layer in range(n_layers):
-                var prefix = "model.layers." + String(layer) + "."
-                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
-                var ln2 = _load_tensor(
-                    blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+            if not loaded_from_cache:
+                var embed_table = _load_tensor(
+                    blob_path, tensors_obj, "model.embed_tokens.weight"
                 )
-                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
-                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
-                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
-                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
-                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
-                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
-                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
-                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
-                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
-                var layer_status = s.upload_layer(
-                    layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+                var up_status = s.upload_globals(
+                    embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
                 )
-                if layer_status != MB_OK:
+                if up_status != MB_OK:
                     return _decode_err(
-                        layer_status,
-                        "upload_layer " + String(layer) + " failed: "
-                        + metaldispatch_status_name(layer_status),
+                        up_status,
+                        "upload_globals failed: " + metaldispatch_status_name(up_status),
                     )
 
-            _ = s.seal()
+                for layer in range(n_layers):
+                    var prefix = "model.layers." + String(layer) + "."
+                    var ln1 = _load_tensor(
+                        blob_path, tensors_obj, prefix + "input_layernorm.weight"
+                    )
+                    var ln2 = _load_tensor(
+                        blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                    )
+                    var qn = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
+                    )
+                    var kn = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
+                    )
+                    var wq = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.q_proj.weight"
+                    )
+                    var wk = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.k_proj.weight"
+                    )
+                    var wv = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.v_proj.weight"
+                    )
+                    var wo = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.o_proj.weight"
+                    )
+                    var wg = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.gate_proj.weight"
+                    )
+                    var wu = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.up_proj.weight"
+                    )
+                    var wd = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.down_proj.weight"
+                    )
+                    var layer_status = s.upload_layer(
+                        layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                    )
+                    if layer_status != MB_OK:
+                        return _decode_err(
+                            layer_status,
+                            "upload_layer " + String(layer) + " failed: "
+                            + metaldispatch_status_name(layer_status),
+                        )
+
+                _ = s.seal()
+
+                # Best-effort: persist the exact post-quantization device bytes so the next call
+                # on this converted checkpoint skips the f64 read + quantization entirely. A
+                # write failure (read-only dir, disk full) must never fail the decode itself.
+                try:
+                    var state_out = s.dump_quantized_state()
+                    var header_out = List[UInt8](capacity=_I8_CACHE_HEADER_BYTES)
+                    for _h in range(_I8_CACHE_HEADER_BYTES):
+                        header_out.append(0)
+                    header_out[0] = 65  # 'A'
+                    header_out[1] = 76  # 'L'
+                    header_out[2] = 71  # 'G'
+                    header_out[3] = 73  # 'I'
+                    header_out[4] = 56  # '8'
+                    header_out[5] = 67  # 'C'
+                    header_out[6] = 48  # '0'
+                    header_out[7] = 49  # '1'
+                    var digest = _sha256_of_string(manifest)
+                    for _d in range(32):
+                        header_out[8 + _d] = UInt8(digest[_d])
+                    var header_fields = List[Int]()
+                    header_fields.append(n_layers)
+                    header_fields.append(d_model)
+                    header_fields.append(h_q)
+                    header_fields.append(h_kv)
+                    header_fields.append(d_head)
+                    header_fields.append(d_ff)
+                    header_fields.append(vocab_size)
+                    header_fields.append(len(state_out))
+                    for _f in range(len(header_fields)):
+                        for _b in range(8):
+                            header_out[40 + _f * 8 + _b] = UInt8(
+                                (header_fields[_f] >> (8 * _b)) & 255
+                            )
+                    var wf = open(cache_path, "w")
+                    wf.write_bytes(Span[UInt8, origin_of(header_out)](
+                        ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
+                    ))
+                    var written = 0
+                    while written < len(state_out):
+                        var take = _I8_CACHE_CHUNK_BYTES
+                        if len(state_out) - written < take:
+                            take = len(state_out) - written
+                        wf.write_bytes(Span[UInt8, origin_of(state_out)](
+                            ptr=state_out.unsafe_ptr() + written, length=take
+                        ))
+                        written += take
+                    wf.close()
+                except:
+                    pass
+            else:
+                _ = s.seal()
 
             var generated_ids = List[Int]()
             for i in range(n_prompt):
