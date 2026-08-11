@@ -11043,3 +11043,24 @@ shallow regime is now a GEMM-clock/DVFS question, not a kernel-structure one); (
 vs MLX (solo 162 vs their 169 = 4% -- inside the rotation noise, but must be settled fairly);
 (3) the concurrent front (batched decode serving wiring) is untouched. Steel mid-depth attention
 (10.9 TF/s @4K vs 11.8 @8K) remains the one kernel-family lever with measured headroom.
+
+## STEEL BQ=64 REFUTED (2026-08-11 night): BQ=32 is the structural optimum of the steel family at every depth
+
+Hypothesis: doubling the steel q-tile (8 simdgroups x 8 rows/TG, block_dim 256, Q smem 16KB)
+halves the q-block count = halves KV re-read traffic, the mid/deep lever. Kernel = exact BQ=32
+body with scaled constants (steel's structure is perfectly simdgroup-local; dev files
+grouped_fa_steel_bq64.mojo + grouped_fa_steel_bq64_ab_driver.mojo). Correctness: all Float64
+causal-oracle gates pass (aligned + ragged 300/1025/4097 through 4096, worst_ratio <= 3.7e-4).
+Head-to-head vs BQ=32 (steady-state, per-dispatch): 1024: 0.714 vs 0.656ms (0.92x); 2048:
+1.952 vs 1.815ms (0.93x); 4096: 6.695 vs 6.372ms (0.95x, 10.3 vs 10.8 TF/s); 8192: 24.95 vs
+23.65ms (0.95x, 11.0 vs 11.6 TF/s). SLOWER at every depth: the doubled Q smem (halving
+threadgroups-per-core) outweighs the halved re-reads even at 8K where traffic should dominate.
+CONCLUSION of the full lever series (q8 loses at depth; q32-old-layout loses everywhere;
+KV-resident/device-direct-Q refuted; bq64-steel refuted): **BQ=32 steel = the structural local
+optimum of this kernel family on M4 Max**; the remaining 10.8->~14 TF/s headroom is
+microarchitectural (MMA issue / device-direct operand latency), not restructuring. The remaining
+cool-condition prefill gap vs MLX is therefore NOT kernel structure -- it is the DVFS/clock
+behavior gap (MLX sustains higher effective GEMM TF/s at shallow depths) and the measurement
+rotation itself. NEXT fronts: (1) DVFS-attribution control runs to settle whether the cool-gap
+is clocks; (2) the concurrent front -- Slipstream batched decode serving wiring (kernels merged
+#603/#604, NOT serving-wired) is the untouched "beat them on all fronts" item.
