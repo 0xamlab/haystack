@@ -3252,9 +3252,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # cleanly into 256-deep splits (S=8: K % 256 == 0; S=12: K % 384 == 0 -- split depth K/S
         # must be a multiple of the kernels' 32 K-step). Any miss degrades that ONE role to the
         # parity accum kernel, exactly as before this strike.
+        # ── Beat-llama.cpp campaign (2026-08-11, msl_prefillm_bench): FOURTH gate -- m_rows <=
+        # 1024. Split-K is the SMALL-M GPU-fill fix: the prefill-M bench measured the crossover at
+        # exactly M=1024 (splitk 1.29x/1.32x faster @256, tied @1024, then parity WINS 2.5-5.1%
+        # o_proj / 3.8-7.7% down_proj @2048-8192 as the plain grid already fills the 40 cores and
+        # the S-fold over-partitioning + atomic-add epilogue become pure cost). Before this gate
+        # the substitution ran at EVERY m_rows (the K-divisibility checks are model constants), so
+        # 4K/8K prefills paid the penalty (~4ms / ~12ms per prefill). Decode and <=1024-token
+        # prefills keep split-K, unchanged.
         var n_q = self.h_q * self.d_head
-        var use_splitk_o = use_msl_accum and self.msl_splitk8_pipeline_idx >= 0 and n_q % 256 == 0
-        var use_splitk_down = use_msl_accum and self.msl_splitk12_pipeline_idx >= 0 and self.d_ff % 384 == 0
+        var use_splitk_o = use_msl_accum and self.msl_splitk8_pipeline_idx >= 0 and n_q % 256 == 0 and m_rows <= 1024
+        var use_splitk_down = use_msl_accum and self.msl_splitk12_pipeline_idx >= 0 and self.d_ff % 384 == 0 and m_rows <= 1024
         var pf_accum_o = self.msl_splitk8_pipeline_idx if use_splitk_o else pf_accum
         var pf_accum_down = self.msl_splitk12_pipeline_idx if use_splitk_down else pf_accum
         var grid_gemv_o = grid_gemv * 8 if use_splitk_o else grid_gemv

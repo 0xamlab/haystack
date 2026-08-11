@@ -10993,3 +10993,53 @@ three-way (141) and MLX's stable three-way (134); 4K decode 207 leads both (175/
 page gaps: shallow prefill (1K: ~7814 three-way vs 8041/7379 -- ~ties llama) and mid prefill vs
 MLX (4K: 6686 vs 7795), both GEMM-dominated regimes; and 8K decode's thermal-band overlap with
 MLX's hot runs (153) -- needs a cool-session three-way to settle.
+
+## PREFILL-M GEMM BENCH: split-K accum is a SMALL-M fix wired for ALL M (2026-08-11) -- parity WINS o/down at M>=2048
+
+Steel roofline bench (QT fixed to 32/128 for the steel layout): isolated steel attention per layer
+1.511ms@1K, 2.069@2K, 6.279@4K (10.9 TF/s), 23.24@8K (11.8 TF/s = 88% of the MMA wall). All-28-layer
+decomposition: attention is 31% of 4K and 38% of 8K prefill wall; GEMM+other is the remaining ~65%.
+NEW msl_prefillm_bench.m (benchmarks/llm_smoke/metal_llama_parity_replica, timing-only, DVFS heater
++ per-shape reheat + 3-round medians, same discipline as msl_batchsweep_bench.m) measured the
+PRODUCTION MSL-parity GEMM tier at prefill M (batchsweep had only covered M<=1024, the batched-
+decode regime): qkv parity runs 13.9-14.5 TF/s @M>=1024 = AT the compute wall, no room; swiglu
+fuses TWO GEMMs (gate+up) so its apparent 7 TF/s is really ~14 (the bench's gf counted one); and
+the split-K accum substitution (fourth strike's GPU-fill fix, validated 1.30-1.33x at M<=512)
+CROSSES OVER at exactly M=1024: @256 splitk8/12 win 1.29x/1.32x (reproduced), @1024 ties
+(0.3325 vs 0.3328 o; 0.4944 vs 0.4951 down), @2048 parity wins 2.5%/3.8%, @4096 4.7%/4.4%, @8192
+5.1%/7.7%. PRODUCTION wires split-K at EVERY M (`_apply_m_rows_af_nomirror` gates use_splitk_o/
+down on n_q=h_q*d_head and d_ff K-divisibility -- constants, never m_rows), so 4K/8K prefills pay
+the over-partitioning + atomic-add penalty: ~4ms/4K-prefill and ~12ms/8K-prefill (~0.7% e2e each).
+FIX = gate on m_rows <= 1024. The BIGGER 4K-vs-MLX-prefill story: our GEMM alone (257ms@4K) is
+already faster than MLX's estimated GEMM+other, so the residual mid-prefill gap is steel attention
+at MID depths (10.9 TF/s @4K vs 14.5 at the GEMM wall; 8K is 11.8) + the ~130ms norm/embed/kvprod/
+lmhead/dispatch remainder -- NOT the GEMM tier.
+
+SPLIT-K M_ROWS GATE VERIFIED (same day): `_apply_m_rows_af_nomirror` now gates use_splitk_o/down
+on m_rows <= 1024 (engine-only change; parity accum is the proven base kernel for M >= 2048).
+Solo A/B (cooldown + reversed-order to dodge the DVFS drift that faked a u2g LOSS in the first
+hot-run pass): @4096 prefill 7991 vs 8001 tok/s (neutral, the predicted +0.7% is inside the noise
+floor), @8192 prefill **5520 vs 5405 (+2%)**; decode identical both depths (gate is prefill-only),
+correct=True throughout. Cool-session solo context: prefill 8000@4K / 5500@8K now sits ABOVE MLX's
+three-way best (7795/4704) on this session's thermals -- the fair settle is a cool three-way.
+## COOL-SESSION THREE-WAY, FULL STACK u2g (2026-08-11 night): decode LEADS 4 of 5 cells; MLX cool-session prefill + 8K decode still ahead
+
+THREE-WAY (u2g worker = retuned n_splits + f4u2 unrolled partial + split-K m_rows gate; ~30 min
+GPU-idle cool start, median pf/dc): 1024/512: 6083/**261** vs llama 7516/203 vs MLX 8951/205;
+4101/512: 6181/**204** vs 5382/173 vs 7699/199; 8198/512: 4643/143 vs 3771/**154** vs
+5018/**169**; 1024/2048: 6843/**228** vs 7926/186 vs 7471/165; 1024/4096: 6488/**204** vs
+8597/177 vs 8922/180. DECODE now LEADS BOTH controls at 1K, 4K, and both output-scaling cells
+(261/204/228/204 vs 205/199/165/180 best-of-controls) -- the 4K flip and the shallow lead are
+stack-solid. The DEEP cell (8198/512) under COOL conditions flips the other way from the hot
+session: 143 decode vs llama 154 / MLX 169, and prefill 4643 BEATS llama 3771 (1.23x) but trails
+MLX 5018. HONEST READ: thermal state moves all three engines, and the controls gain MORE from
+cool conditions than Algenta does in the three-way rotation (llama 8K decode 121->141->154, MLX
+134->153->169 across hot->hot->cool sessions, Algenta 125->119->143); solo cool u2g 8K decode was
+162 tok/s (within 4% of MLX's cool 169), solo cool 8K prefill 5520 vs MLX's cool three-way 5018
+-- the rotation suppresses Algenta's three-way numbers ~16% below its own solo, more than the
+controls. Remaining gaps, ranked: (1) MLX's cool deep prefill (5018@8K, 7699@4K, 8951@1K -- its
+bf16 GEMM sustains ~14.4 effective TF/s at 1K, at/above our measured MMA-sustained band: the
+shallow regime is now a GEMM-clock/DVFS question, not a kernel-structure one); (2) cool 8K decode
+vs MLX (solo 162 vs their 169 = 4% -- inside the rotation noise, but must be settled fairly);
+(3) the concurrent front (batched decode serving wiring) is untouched. Steel mid-depth attention
+(10.9 TF/s @4K vs 11.8 @8K) remains the one kernel-family lever with measured headroom.
