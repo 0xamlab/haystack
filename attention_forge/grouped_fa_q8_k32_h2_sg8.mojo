@@ -172,9 +172,12 @@ comptime _F16P = UnsafePointer[Float16, origin=MutAnyOrigin]
 comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 
 comptime _D: Int64 = 128
-comptime _QT: Int64 = 8
-"""Per-head query tile: one 8-row block per sibling head per dispatch (the `q8` fallback -- see
-module docstring -- from the plan's aggressive `q16` two-sub-block-per-head schedule)."""
+comptime _QT: Int64 = 16
+"""Per-head query tile, raised 8 -> 16 on 2026-08-11 to halve deep-KV re-read traffic (each
+threadgroup now re-reads the KV cache for 16 query rows instead of 8). The output accumulator moved
+OUT of shared memory into per-lane registers to free the budget this doubles (see module docstring
+and the register-resident `o_*` accumulators below). NOTE: the file/module name still says `q8`
+(legacy); the kernel is Q_TILE=16."""
 comptime _KT: Int64 = 32
 """K_TILE fallback from the plan's aggressive 64, for shared-memory budget -- see module
 docstring's worked arithmetic."""
@@ -182,9 +185,21 @@ comptime _NSG_PER_HEAD: Int64 = 4
 comptime _NSG: Int64 = 8
 comptime _NTHREADS: Int64 = 256
 comptime _NROWS: Int64 = _QT * 2
-"""Combined rows across BOTH sibling heads sharing this dispatch's one K/V load: 16."""
+"""Combined rows across BOTH sibling heads sharing this dispatch's one K/V load: 32."""
 comptime _NEG_MASK: Float32 = -1.0e9
 comptime _NEG_SENTINEL: Float32 = -3.0e38
+
+
+def _frag_row_col(tid: Int64) -> SIMD[DType.int64, 2]:
+    """This lane's (row_lo, col_base) within its 8x8 MMA fragment -- the SAME per-lane mapping
+    `apple_mma_load_8x8`/`apple_mma_store_8x8` use internally, copied verbatim from
+    `mma_forge/mm8.mojo`'s `_frag_row_col` (this file does not import mma_forge). Needed by the
+    register-resident output accumulator to know which row/col each lane owns for the per-row corr
+    rescale and the bounds-checked final store."""
+    var lane = tid % 32
+    var row_lo = ((lane & 6) >> 1) + ((lane & 16) >> 2)
+    var col_base = ((lane & 1) << 1) + ((lane & 8) >> 1)
+    return SIMD[DType.int64, 2](row_lo, col_base)
 
 
 def _attn_grouped_fa_kernel(
@@ -194,7 +209,9 @@ def _attn_grouped_fa_kernel(
     scale: Float32, pos_base: Int64, n_blocks: Int64,
 ):
     var sq = stack_allocation[Int(_NROWS * _D), DType.float16, address_space = AddressSpace.SHARED]()
-    var so = stack_allocation[Int(_NROWS * _D), DType.float32, address_space = AddressSpace.SHARED]()
+    # NOTE: the output accumulator `so` (previously [_NROWS,_D] F32 in shared memory) is now
+    # REGISTER-RESIDENT (the `o_*` SIMD accumulators declared below) -- at Q_TILE=16 the shared
+    # budget cannot hold it, so it moved to per-lane registers (see module docstring).
     # `skv` is now V-ONLY -- K reads device-direct (see module docstring), so this buffer is never
     # written for K at all anymore; kept at the same size/name (still sized for a full [_D,_KT] or
     # [_KT,_D] tile, both equal at 4096 elements) to minimize churn on the rest of the file.
@@ -219,9 +236,9 @@ def _attn_grouped_fa_kernel(
 
     var row0 = q_block * _QT
 
-    # Q load: both sibling heads' 8-row blocks, at the SAME query positions row0..row0+7 --
+    # Q load: both sibling heads' 16-row blocks, at the SAME query positions row0..row0+15 --
     # combined row index cr = hh*_QT + r_local packs head hh's row r_local into one buffer.
-    for s in range(Int64(8)):
+    for s in range(Int64(16)):
         var idx = tid + s * _NTHREADS
         var cr = idx // _D
         var d = idx % _D
@@ -233,20 +250,37 @@ def _attn_grouped_fa_kernel(
             sq[Int(idx)] = q_ptr[Int((gi * h_q + h_sel) * _D + d)]
         else:
             sq[Int(idx)] = Float16(0.0)
-        so[Int(idx)] = Float32(0.0)
 
     var hh = sg // _NSG_PER_HEAD
     var sg_local = sg % _NSG_PER_HEAD
     var h = h0 if hh == 0 else h1
-    var r0 = sg_local * 2
-    var r1 = r0 + 1
-    var cr0 = hh * _QT + r0
-    var cr1 = hh * _QT + r1
 
+    # This SG's REGISTER-RESIDENT output accumulator: head hh's full 16 rows x this sg_local's
+    # 32 output dims, as 2 row-blocks x 4 col-blocks of 8x8 MMA fragments (each SIMD[F32,2] is this
+    # lane's owned same-row pair). Persistent across the whole K-tile loop -- the old `so` lived in
+    # shared memory and was seeded/stored every tile; registers keep it resident instead.
+    var o_r0_c0 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r0_c1 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r0_c2 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r0_c3 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r1_c0 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r1_c1 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r1_c2 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_r1_c3 = SIMD[DType.float32, 2](0.0, 0.0)
+    # This lane's owned (row_lo, col_base) within each 8x8 accumulator fragment -- constant per lane.
+    var rc = _frag_row_col(tid)
+    var row_lo = rc[0]
+    var col_base = rc[1]
+
+    # Per-owned-row online-softmax state: this sg_local owns 4 rows (sg_local*4 .. sg_local*4+3).
     var m0 = _NEG_SENTINEL
     var m1 = _NEG_SENTINEL
+    var m2 = _NEG_SENTINEL
+    var m3 = _NEG_SENTINEL
     var l0 = Float32(0.0)
     var l1 = Float32(0.0)
+    var l2 = Float32(0.0)
+    var l3 = Float32(0.0)
 
     barrier()
 
@@ -266,27 +300,33 @@ def _attn_grouped_fa_kernel(
         var v_block_off = (hk * n_blocks + block) * _KT * _D
 
         # QK^T: this SG's head (hh), one 8-key column block (sg_local owns [sg_local*8,+8)),
-        # all 8 of that head's local rows via the a_frag row-offset hh*_QT*_D. K's "B" operand is
-        # read DEVICE-DIRECT from the native packed buffer -- no shared-memory staging at all; see
-        # module docstring's "K: DEVICE-DIRECT MMA LOAD" section for why this is both safe and
-        # runtime-proven, not merely type-checked.
+        # all 16 of that head's local rows as TWO 8-row blocks (a_frag row-offset
+        # (hh*_QT + rb*8)*_D). K's "B" operand is read DEVICE-DIRECT from the native packed buffer
+        # -- no shared-memory staging at all; see module docstring's "K: DEVICE-DIRECT MMA LOAD"
+        # section for why this is both safe and runtime-proven, not merely type-checked.
         var col_blk = sg_local
-        var acc = SIMD[DType.float32, 2](0.0, 0.0)
-        for dstep in range(Int64(16)):
-            var a_frag = apple_mma_load_8x8[DType.float16](sq + Int(hh * _QT * _D + dstep * 8), Int(_D))
-            var b_frag = apple_mma_load_8x8[DType.float16](
-                k_ptr + Int(k_block_off + dstep * 8 * _KT + col_blk * 8), Int(_KT)
+        for rb in range(Int64(2)):
+            var acc = SIMD[DType.float32, 2](0.0, 0.0)
+            for dstep in range(Int64(16)):
+                var a_frag = apple_mma_load_8x8[DType.float16](
+                    sq + Int((hh * _QT + rb * 8) * _D + dstep * 8), Int(_D)
+                )
+                var b_frag = apple_mma_load_8x8[DType.float16](
+                    k_ptr + Int(k_block_off + dstep * 8 * _KT + col_blk * 8), Int(_KT)
+                )
+                _mma_apple_8x8(acc, a_frag, b_frag, acc)
+            apple_mma_store_8x8[DType.float32](
+                ss + Int((hh * _QT + rb * 8) * _KT + col_blk * 8), Int(_KT), acc
             )
-            _mma_apple_8x8(acc, a_frag, b_frag, acc)
-        apple_mma_store_8x8[DType.float32](ss + Int(hh * _QT * _KT + col_blk * 8), Int(_KT), acc)
 
         barrier()
 
-        # Softmax update: this SG's 2 owned rows; K_TILE == warp size, so each lane owns exactly
-        # one key column (simpler than parity_replica's 2-per-lane at K_TILE=64).
-        for which in range(Int64(2)):
-            var cr = cr0 if which == 0 else cr1
-            var r_local = r0 if which == 0 else r1
+        # Softmax update: this SG's 4 owned rows (sg_local*4 .. sg_local*4+3); K_TILE == warp size,
+        # so each lane owns exactly one key column (simpler than parity_replica's 2-per-lane at
+        # K_TILE=64).
+        for which in range(Int64(4)):
+            var r_local = sg_local * 4 + which
+            var cr = hh * _QT + r_local
             var c = lane
             var gk = j0 + c
             var raw = ss[Int(cr * _KT + c)]
@@ -302,12 +342,25 @@ def _attn_grouped_fa_kernel(
                     local_max = other
                 off //= 2
 
-            var m_old = m0 if which == 0 else m1
+            var m_old = _NEG_SENTINEL
+            var l_old = Float32(0.0)
+            if which == 0:
+                m_old = m0
+                l_old = l0
+            elif which == 1:
+                m_old = m1
+                l_old = l1
+            elif which == 2:
+                m_old = m2
+                l_old = l2
+            else:
+                m_old = m3
+                l_old = l3
+
             var m_new = local_max if local_max > m_old else m_old
             var corr = exp(m_old - m_new)
             var e = exp(s_val - m_new)
             var block_sum = _warp_sum(e)
-            var l_old = l0 if which == 0 else l1
             var l_new = l_old * corr + block_sum
 
             sp[Int(cr * _KT + c)] = Float16(e)
@@ -317,9 +370,15 @@ def _attn_grouped_fa_kernel(
             if which == 0:
                 m0 = m_new
                 l0 = l_new
-            else:
+            elif which == 1:
                 m1 = m_new
                 l1 = l_new
+            elif which == 2:
+                m2 = m_new
+                l2 = l_new
+            else:
+                m3 = m_new
+                l3 = l_new
 
         barrier()
 
@@ -339,31 +398,55 @@ def _attn_grouped_fa_kernel(
 
         barrier()
 
-        # Rescale THIS head's own output-accumulator rows by this iteration's corr -- disjoint
-        # per (hh, sg_local), matching parity_replica.mojo's own per-SG rescale exactly.
-        for e in range(Int64(8)):
-            var idx = lane + e * 32
-            var rr = idx // 32
-            var dd = idx % 32
-            var col = sg_local * 32 + dd
-            var cr_rs = hh * _QT + rr
-            var corr_r = s_corr[Int(cr_rs)]
-            so[Int(cr_rs * _D + col)] = so[Int(cr_rs * _D + col)] * corr_r
+        # Rescale THIS head's own REGISTER-resident output accumulator by this iteration's corr.
+        # Each accumulator o_r{rb}_c{cb} owns a same-row element pair; the row is
+        # hh*_QT + rb*8 + row_lo, so there are two corr values (rb=0 and rb=1). s_corr holds all
+        # 16 of the head's rows (populated by the 4 sg_local's softmax above), so every row this SG
+        # accumulates has its corr available.
+        var corr_r0 = s_corr[Int(hh * _QT + row_lo)]
+        var corr_r1 = s_corr[Int(hh * _QT + 8 + row_lo)]
+        o_r0_c0 = SIMD[DType.float32, 2](o_r0_c0[0] * corr_r0, o_r0_c0[1] * corr_r0)
+        o_r0_c1 = SIMD[DType.float32, 2](o_r0_c1[0] * corr_r0, o_r0_c1[1] * corr_r0)
+        o_r0_c2 = SIMD[DType.float32, 2](o_r0_c2[0] * corr_r0, o_r0_c2[1] * corr_r0)
+        o_r0_c3 = SIMD[DType.float32, 2](o_r0_c3[0] * corr_r0, o_r0_c3[1] * corr_r0)
+        o_r1_c0 = SIMD[DType.float32, 2](o_r1_c0[0] * corr_r1, o_r1_c0[1] * corr_r1)
+        o_r1_c1 = SIMD[DType.float32, 2](o_r1_c1[0] * corr_r1, o_r1_c1[1] * corr_r1)
+        o_r1_c2 = SIMD[DType.float32, 2](o_r1_c2[0] * corr_r1, o_r1_c2[1] * corr_r1)
+        o_r1_c3 = SIMD[DType.float32, 2](o_r1_c3[0] * corr_r1, o_r1_c3[1] * corr_r1)
 
         barrier()
 
-        # PV: this SG's head (hh), one 32-wide output-dim chunk, all 8 of that head's rows, all
-        # KT keys -- p_frag's row-offset hh*_QT*_KT selects this head's own probability rows;
-        # v_frag reads the SAME shared skv tile every SG (of both heads) just staged once above.
-        for cb in range(Int64(4)):
-            var col_blk_d = sg_local * 4 + cb
-            var seed = apple_mma_load_8x8[DType.float32](so + Int(hh * _QT * _D + col_blk_d * 8), Int(_D))
-            var acc2 = seed
-            for kstep in range(Int64(4)):
-                var p_frag = apple_mma_load_8x8[DType.float16](sp + Int(hh * _QT * _KT + kstep * 8), Int(_KT))
-                var v_frag = apple_mma_load_8x8[DType.float16](skv + Int(kstep * 8 * _D + col_blk_d * 8), Int(_D))
-                _mma_apple_8x8(acc2, p_frag, v_frag, acc2)
-            apple_mma_store_8x8[DType.float32](so + Int(hh * _QT * _D + col_blk_d * 8), Int(_D), acc2)
+        # PV: this SG's head (hh), its 32-wide output-dim chunk (sg_local*32..+32), all 16 of that
+        # head's rows (2 row-blocks), all KT keys -- accumulated into the register-resident
+        # accumulators. v_frag depends only on (kstep, cb) so it is loaded once and reused for both
+        # row-blocks; p_frag is per row-block. skv was staged once above, shared by all SGs.
+        for kstep in range(Int64(4)):
+            var v_frag0 = apple_mma_load_8x8[DType.float16](
+                skv + Int(kstep * 8 * _D + (sg_local * 4) * 8), Int(_D)
+            )
+            var v_frag1 = apple_mma_load_8x8[DType.float16](
+                skv + Int(kstep * 8 * _D + (sg_local * 4 + 1) * 8), Int(_D)
+            )
+            var v_frag2 = apple_mma_load_8x8[DType.float16](
+                skv + Int(kstep * 8 * _D + (sg_local * 4 + 2) * 8), Int(_D)
+            )
+            var v_frag3 = apple_mma_load_8x8[DType.float16](
+                skv + Int(kstep * 8 * _D + (sg_local * 4 + 3) * 8), Int(_D)
+            )
+            var p_frag_r0 = apple_mma_load_8x8[DType.float16](
+                sp + Int(hh * _QT * _KT + kstep * 8), Int(_KT)
+            )
+            _mma_apple_8x8(o_r0_c0, p_frag_r0, v_frag0, o_r0_c0)
+            _mma_apple_8x8(o_r0_c1, p_frag_r0, v_frag1, o_r0_c1)
+            _mma_apple_8x8(o_r0_c2, p_frag_r0, v_frag2, o_r0_c2)
+            _mma_apple_8x8(o_r0_c3, p_frag_r0, v_frag3, o_r0_c3)
+            var p_frag_r1 = apple_mma_load_8x8[DType.float16](
+                sp + Int((hh * _QT + 8) * _KT + kstep * 8), Int(_KT)
+            )
+            _mma_apple_8x8(o_r1_c0, p_frag_r1, v_frag0, o_r1_c0)
+            _mma_apple_8x8(o_r1_c1, p_frag_r1, v_frag1, o_r1_c1)
+            _mma_apple_8x8(o_r1_c2, p_frag_r1, v_frag2, o_r1_c2)
+            _mma_apple_8x8(o_r1_c3, p_frag_r1, v_frag3, o_r1_c3)
 
         # Extra safety barrier vs. parity_replica.mojo's own loop back-edge -- see module
         # docstring's "Deviation from parity_replica.mojo's own barrier placement" section.
@@ -371,28 +454,87 @@ def _attn_grouped_fa_kernel(
 
         j0 += _KT
 
+    # Write the normalizers l for this sg_local's 4 softmax-owned rows (sg_local*4 .. +3).
     if lane == 0:
-        s_l[Int(cr0)] = l0
-        s_l[Int(cr1)] = l1
+        s_l[Int(hh * _QT + sg_local * 4)] = l0
+        s_l[Int(hh * _QT + sg_local * 4 + 1)] = l1
+        s_l[Int(hh * _QT + sg_local * 4 + 2)] = l2
+        s_l[Int(hh * _QT + sg_local * 4 + 3)] = l3
 
     barrier()
 
-    for which in range(Int64(2)):
-        var r_local = r0 if which == 0 else r1
+    # lse for this sg_local's 4 softmax-owned rows.
+    for which in range(Int64(4)):
+        var r_local = sg_local * 4 + which
         var gi = row0 + r_local
         if gi < n_tok_q and lane == 0:
-            var mm = m0 if which == 0 else m1
-            var ll = l0 if which == 0 else l1
+            var mm = m0
+            var ll = l0
+            if which == 1:
+                mm = m1
+                ll = l1
+            elif which == 2:
+                mm = m2
+                ll = l2
+            elif which == 3:
+                mm = m3
+                ll = l3
             lse_ptr[Int(h * n_tok_q + gi)] = (mm + log(ll)) if ll > 0.0 else _NEG_SENTINEL
 
-    for e in range(Int64(8)):
-        var idx = lane + e * 32
-        var rr = idx // 32
-        var dd = idx % 32
-        var col = sg_local * 32 + dd
-        var cr_out = hh * _QT + rr
-        var gi = row0 + rr
-        if gi < n_tok_q:
-            var ll = s_l[Int(cr_out)]
-            var val = so[Int(cr_out * _D + col)]
-            out_ptr[Int((gi * h_q + h) * _D + col)] = (val / ll) if ll > 0.0 else Float32(0.0)
+    # Output from the REGISTER-resident accumulators: this sg_local writes all 16 of the head's rows
+    # for its own 32 output dims. rb=0 -> head-row row_lo, rb=1 -> head-row 8+row_lo; cb -> col
+    # offset (sg_local*4+cb)*8 + col_base. s_l for every row was populated by the combined softmax
+    # of the 4 sg_local above.
+    var base_col = (sg_local * 4) * 8 + col_base
+    # rb = 0
+    var gi_r0 = row0 + row_lo
+    if gi_r0 < n_tok_q:
+        var ll_r0 = s_l[Int(hh * _QT + row_lo)]
+        var out_base_r0 = (gi_r0 * h_q + h) * _D + base_col
+        for cb in range(Int64(4)):
+            var v0 = Float32(0.0)
+            var v1 = Float32(0.0)
+            if cb == 0:
+                v0 = o_r0_c0[0]
+                v1 = o_r0_c0[1]
+            elif cb == 1:
+                v0 = o_r0_c1[0]
+                v1 = o_r0_c1[1]
+            elif cb == 2:
+                v0 = o_r0_c2[0]
+                v1 = o_r0_c2[1]
+            else:
+                v0 = o_r0_c3[0]
+                v1 = o_r0_c3[1]
+            if ll_r0 > 0.0:
+                out_ptr[Int(out_base_r0 + cb * 8)] = v0 / ll_r0
+                out_ptr[Int(out_base_r0 + cb * 8 + 1)] = v1 / ll_r0
+            else:
+                out_ptr[Int(out_base_r0 + cb * 8)] = Float32(0.0)
+                out_ptr[Int(out_base_r0 + cb * 8 + 1)] = Float32(0.0)
+    # rb = 1
+    var gi_r1 = row0 + 8 + row_lo
+    if gi_r1 < n_tok_q:
+        var ll_r1 = s_l[Int(hh * _QT + 8 + row_lo)]
+        var out_base_r1 = (gi_r1 * h_q + h) * _D + base_col
+        for cb in range(Int64(4)):
+            var v0 = Float32(0.0)
+            var v1 = Float32(0.0)
+            if cb == 0:
+                v0 = o_r1_c0[0]
+                v1 = o_r1_c0[1]
+            elif cb == 1:
+                v0 = o_r1_c1[0]
+                v1 = o_r1_c1[1]
+            elif cb == 2:
+                v0 = o_r1_c2[0]
+                v1 = o_r1_c2[1]
+            else:
+                v0 = o_r1_c3[0]
+                v1 = o_r1_c3[1]
+            if ll_r1 > 0.0:
+                out_ptr[Int(out_base_r1 + cb * 8)] = v0 / ll_r1
+                out_ptr[Int(out_base_r1 + cb * 8 + 1)] = v1 / ll_r1
+            else:
+                out_ptr[Int(out_base_r1 + cb * 8)] = Float32(0.0)
+                out_ptr[Int(out_base_r1 + cb * 8 + 1)] = Float32(0.0)

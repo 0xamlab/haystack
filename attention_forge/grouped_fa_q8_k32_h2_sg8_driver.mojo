@@ -177,7 +177,7 @@ def test_correctness(
         for i in range(n_tok_q * h_q * d):
             h[i] = Float32(-999.0)  # canary: must be fully overwritten for every valid row
 
-    var n_q_blocks = (n_tok_q + 7) // 8
+    var n_q_blocks = (n_tok_q + 15) // 16
     var grid = n_q_blocks * (h_q // 2)
     ctx.enqueue_function[_attn_grouped_fa_kernel](
         out_buf.unsafe_ptr(), lse_buf.unsafe_ptr(),
@@ -226,7 +226,7 @@ def test_h_tile_pairing_isolation(
     var k64 = _pseudo_f16(n_tok_k * h_kv * d, 11)
     var v64 = _pseudo_f16(n_tok_k * h_kv * d, 29)
     var scale = 1.0 / Float64(d) ** 0.5
-    var n_q_blocks = (n_tok_q + 7) // 8
+    var n_q_blocks = (n_tok_q + 15) // 16
     var key_block_size = 32
     var n_blocks = _n_blocks_for(n_tok_k, key_block_size)
 
@@ -364,7 +364,7 @@ def test_determinism_soak(
         for i in range(h_kv * n_blocks * key_block_size * d):
             h[i] = Float16(v_native[i])
     var scale = 1.0 / Float64(d) ** 0.5
-    var n_q_blocks = (n_tok_q + 7) // 8
+    var n_q_blocks = (n_tok_q + 15) // 16
     var grid = n_q_blocks * (h_q // 2)
 
     var first = List[Float32](capacity=n_tok_q * h_q * d)
@@ -491,7 +491,7 @@ def test_native_packing_hand_built(ctx: DeviceContext) raises -> Bool:
         for i in range(n_tok_q * h_q * d):
             h[i] = Float32(-999.0)
 
-    var n_q_blocks = (n_tok_q + 7) // 8
+    var n_q_blocks = (n_tok_q + 15) // 16
     var grid = n_q_blocks * (h_q // 2)
     ctx.enqueue_function[_attn_grouped_fa_kernel](
         out_buf.unsafe_ptr(), lse_buf.unsafe_ptr(),
