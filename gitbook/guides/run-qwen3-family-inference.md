@@ -3,7 +3,7 @@ icon: gauge-high
 description: Run any supported Qwen3-family checkpoint on Apple Silicon through Algenta's model-agnostic SDK path — supported shapes, long context, and the quantized load cache.
 ---
 
-# Run Qwen3-family models on Apple Silicon
+# Qwen3-family inference
 
 By the end of this guide you will have installed Algenta, downloaded a Qwen3-family checkpoint of
 your choice, and run real greedy inference through the model-agnostic Metal GPU kernel path —

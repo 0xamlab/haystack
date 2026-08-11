@@ -3,7 +3,7 @@ icon: gauge-high
 description: Install Algenta, get the Qwen3-0.6B-Base checkpoint, and run greedy decode on your own Apple Silicon GPU — requirements, limitations, and a complete working example.
 ---
 
-# Run Qwen3-0.6B-Base decode on Apple Silicon
+# Qwen3-0.6B decode
 
 By the end of this guide you will have installed Algenta, downloaded the one checkpoint this capability supports, tokenized a prompt, and run a real greedy decode through a compiled int8 Metal GPU kernel path — reading back the generated token ids on your own Apple Silicon machine. Everything runs inside the runtime that ships with the `algenta` package; there is nothing separate to start or manage.
 

@@ -108,8 +108,8 @@
 * [Device binding](guides/device-binding.md)
 * [Run air-gapped](guides/air-gapped.md)
 * [Use Algenta in CI/CD](guides/ci-cd.md)
-* [Run Qwen3-0.6B-Base decode on Apple Silicon](guides/run-qwen3-decode.md)
-* [Run Qwen3-family models on Apple Silicon](guides/run-qwen3-family-inference.md)
+* [Qwen3-0.6B decode](guides/run-qwen3-decode.md)
+* [Qwen3-family inference](guides/run-qwen3-family-inference.md)
 
 ## LLM API
 
