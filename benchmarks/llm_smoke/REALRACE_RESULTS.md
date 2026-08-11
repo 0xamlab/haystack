@@ -10439,3 +10439,47 @@ PERMANENT GATES: tests/test_llm_load_gpu_e2e.py runs a small slice of the harnes
 (skip-unless-present) -- stress determinism + a throughput floor, and concurrent no-error +
 deterministic outputs under queueing. Full matrix is the on-demand measurement (harness above).
 Docs: gitbook/benchmarks/llm-load-testing.md.
+
+## Three-way LARGE-TOKEN load test + two refuted single-stream decode levers (2026-08-10)
+
+The load test above measured Algenta alone; this entry adds the two serious Apple-Silicon controls
+(llama.cpp F16, MLX-LM bf16) on the SAME large-token matrix, and records the two single-stream
+decode-attention optimization attempts that were tried this pass and REFUTED. Harness:
+`benchmarks/llm_smoke/load_test_3way.py` (byte-identical prompts across engines, rotating engine
+order, median of passes). Docs: gitbook/benchmarks/llm-load-testing.md (republished finished).
+
+THREE-WAY RESULTS (Qwen3-0.6B-Base, M4 Max, resident, greedy; prefill/decode tok/s):
+```
+ cell         Algenta(int8)   llama.cpp(F16)   MLX(bf16)
+ 1024/512      6621 / 183      8658 / 220      8319 / 206
+ 4101/512      4063 /  94      4918 / 140      7854 / 173
+ 8198/512      2460 /  57      3713 / 120      5046 / 164
+ 1024/2048     6088 / 143      7681 / 134      7074 / 187
+ 1024/4096     5835 / 112      9208 / 190      8703 / 179
+```
+HONEST READING: at these volumes Algenta trails both controls on single-stream prefill and decode.
+This does NOT contradict the 256-token race (where the int8 path leads): that is the GEMM-bound fast
+regime; here attention over a deep KV cache dominates, and Algenta's single-stream decode attention
+is the limiting term (57 tok/s at 8,198 input vs llama.cpp 120 / MLX 164). Every engine slows with
+context (attention cost); Algenta's decode falls fastest as output grows (183 -> 112 from 512->4096
+output).
+
+REFUTED LEVER 1 -- decode split-K key-block tiling. Hypothesis: the flash-decoding partial kernel
+(`attention_forge/native_kv_decode_attn_splitk.mojo`) is per-key reduction/barrier-bound at depth
+(the 8K decode collapse), so tile 32 keys per threadgroup-pass to amortize the two per-key barriers
+and fold the online-softmax rescale to once per tile. IMPLEMENTED + VERIFIED CORRECT (all Float64
+oracle gates + naive cross-check passed, worst_ratio <= 0.011, incl. 4096/4097 deep ragged). But
+kernel-level A/B (native_kv_decode_attn_splitk_driver.mojo, steady-state) shows it SLOWER, worsening
+with depth: 256k 0.028->0.038 ms, 1024k 0.070->0.119, 4096k 0.236->0.462, 8192k 0.459->0.817
+(~1.3-2.0x worse). The two-pass restructure (recomputed cross-group sums, larger shared grp array,
+loop reorg) costs more than the barrier savings. REVERTED (blob + worker restored byte-identical).
+
+REFUTED LEVER 2 -- depth-adaptive n_splits. Hypothesis: at deep context more splits = more
+threadgroups = better occupancy (campaign found 32 splits WORSE only at shallow 456 keys). Measured
+split-K partial at depth: 4096k 16->32 splits 0.235->0.228 ms, 8192k 16/32/64 = 0.457/0.454/0.450 ms
+-- ~1-3%, i.e. measurement noise. Not a lever.
+
+CONCLUSION: single-stream decode attention is already well-tuned; there is no cheap kernel win at
+depth. The throughput lever for concurrent serving remains batching (amortize weight reads across B
+sequences) -- Slipstream kernels built + race-verified (PR #603/#604) but not yet serving-wired; the
+serving-side gap is prompt ingestion into the per-sequence batched KV caches + a scheduler.
