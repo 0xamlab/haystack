@@ -21,27 +21,29 @@ Qwen3-0.6B-Base, Apple M4 Max, resident weights, greedy; median of two rotating-
 
 | Input tokens | Context | Algenta pf/dc | llama.cpp F16 pf/dc | MLX-LM bf16 pf/dc |
 | --- | --- | --- | --- | --- |
-| 1,024 | 1,536 | 6,621 / 183 | 8,658 / 220 | 8,319 / 206 |
-| 4,101 | 4,613 | 4,063 / 94 | 4,918 / 140 | 7,854 / 173 |
-| 8,198 | 8,710 | 2,460 / 57 | 3,713 / 120 | 5,046 / 164 |
+| 1,024 | 1,536 | 6,882 / **241** | 8,118 / 218 | 8,377 / 182 |
+| 4,101 | 4,613 | 4,110 / 146 | 4,950 / 188 | 7,773 / 172 |
+| 8,198 | 8,710 | 2,222 / 100 | 3,589 / 159 | 5,040 / 158 |
 
 **Output scaling** (prompt fixed at 1,024 tokens):
 
 | Output tokens | Context | Algenta pf/dc | llama.cpp F16 pf/dc | MLX-LM bf16 pf/dc |
 | --- | --- | --- | --- | --- |
-| 512 | 1,536 | 6,621 / 183 | 8,658 / 220 | 8,319 / 206 |
-| 2,048 | 3,072 | 6,088 / 143 | 7,681 / 134 | 7,074 / 187 |
-| 4,096 | 5,120 | 5,835 / 112 | 9,208 / 190 | 8,703 / 179 |
+| 512 | 1,536 | 6,882 / **241** | 8,118 / 218 | 8,377 / 182 |
+| 2,048 | 3,072 | 6,421 / **199** | 6,718 / 196 | 6,422 / 178 |
+| 4,096 | 5,120 | 6,091 / 170 | 8,746 / 180 | 8,615 / 178 |
 
 Reading the two tables together:
 
 * **Every engine slows as context grows** — prefill and decode both fall with deeper KV caches; that
   is the attention cost, not an engine defect.
-* **At these volumes Algenta currently trails both controls.** Its int8 path leads the 256-token
-  race (see the prefill/decode throughput pages), but once attention dominates, its single-stream
-  decode attention is the limiting term: 57 tok/s at 8,198 input vs llama.cpp's 120 and MLX's 164.
-* **Decode falls faster than prefill** for Algenta as output length grows (183 → 112 tok/s from 512
-  to 4,096 output), the per-step KV-read cost compounding over the generation.
+* **Algenta's decode leads both controls at 1,024-token input** — 241 tok/s vs llama.cpp's 218 and
+  MLX-LM's 182 (512-token generation), and 199 vs 196 / 178 at 2,048-token generation. The lever is
+  the float4 SIMD split-K decode-attention kernel: each key's dot product now reduces in a single
+  SIMD-width sum, the operation deep-context decode spends its time on.
+* **Prefill is the remaining single-stream gap**, largest at deep context — 2,222 tok/s at 8,198
+  input vs llama.cpp's 3,589 and MLX-LM's 5,040. Decode at 4K/8K input (146 / 100 vs 188 / 159) is
+  the same deep-KV attention regime, narrowed by float4 but still behind.
 
 ## Method
 

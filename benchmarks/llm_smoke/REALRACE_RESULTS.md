@@ -10483,3 +10483,42 @@ CONCLUSION: single-stream decode attention is already well-tuned; there is no ch
 depth. The throughput lever for concurrent serving remains batching (amortize weight reads across B
 sequences) -- Slipstream kernels built + race-verified (PR #603/#604) but not yet serving-wired; the
 serving-side gap is prompt ingestion into the per-sequence batched KV caches + a scheduler.
+
+## UPDATE -- the conclusion above was REFUTED: float4 SIMD split-K decode attention, 1.3-1.8x at depth (PR #613, merged 30392860, 2026-08-11)
+
+The "no cheap kernel win at depth" conclusion survived exactly one more session. The lever the two
+refuted attempts above missed was NOT tiling or split-count -- it was the per-key REDUCTION shape.
+The split-K partial kernel reduced each key's q.k dot with a full 128-thread two-level reduction
+(4 warp-sums + a cross-group shared-memory sum + 2 barriers, PER KEY); llama.cpp/MLX reduce the same
+dot with a single `simd_sum` over SIMD-wide (`float4`) dot products. Fix: `_native_kv_decode_splitk_
+partial_kernel_f4` (attention_forge/native_kv_decode_attn_splitk.mojo) -- one simdgroup per
+(head,split), block_dim = d_head//4, each lane owns 4 head-elements (K strided scalars, V
+contiguous), each key's dot = ONE simd_sum, NO cross-group barrier. Same (m,l,o) partial contract, so
+the merge kernel is unchanged. Requires d_head % 4 == 0 (Qwen3 d_head=128). Verified: all Float64
+oracle gates pass (worst_ratio <= 0.021, deep ragged 4096/4097), race oracle intact (first token
+374, full continuation byte-identical), greedy deterministic, 7 GPU e2e pass.
+
+POST-FLOAT4 THREE-WAY re-measure (same harness `load_test_3way.py`, merged main 30392860, median of
+2 passes; Algenta int8 / llama.cpp F16 / MLX bf16; prefill/decode tok/s):
+```
+ cell         Algenta(int8)   llama.cpp(F16)   MLX(bf16)
+ 1024/512      6882 / 241      8118 / 218      8377 / 182
+ 4101/512      4110 / 146      4950 / 188      7773 / 172
+ 8198/512      2222 / 100      3589 / 159      5040 / 158
+ 1024/2048     6421 / 199      6718 / 196      6422 / 178
+ 1024/4096     6091 / 170      8746 / 180      8615 / 178
+```
+DECODE vs the pre-float4 table: 1024/512 183->241 (1.32x), 4101/512 94->146 (1.55x), 8198/512
+57->100 (1.75x), 1024/2048 143->199 (1.39x), 1024/4096 112->170 (1.52x).
+
+HONEST READING, post-float4:
+1. DECODE now LEADS BOTH controls at 1K input: 241 vs llama.cpp 218 / MLX 182 (512-out), 199 vs
+   196 / 178 (2048-out), and ~ties at 4096-out (170 vs 180 / 178). The shallow-context decode front
+   is won.
+2. DECODE at 4K/8K input still TRAILS (146 vs 188/172; 100 vs 159/158). float4 closed most of the
+   8K gap (57->100) but not all; the residual is the same deep-KV attention regime.
+3. PREFILL TRAILS EVERYWHERE and is now the dominant single-stream gap, worst at large input:
+   2222 tok/s at 8K vs llama.cpp 3589 / MLX 5040 (1.6x / 2.3x behind). Even at 1K input prefill
+   trails (~1.2x). Prefill attention (grouped-FA, O(n^2)) -- NOT decode, NOT GEMM -- is the limiter.
+   The prefill-at-depth front is OPEN and is the next target.
+4. CONCURRENT front unchanged: Slipstream batched decode kernels remain built-but-not-serving-wired.
