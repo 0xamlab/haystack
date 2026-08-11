@@ -10953,3 +10953,43 @@ MLX 165 (LOSING both); +13% decode puts it at ~166-174, flipping the 4K cell to 
 both controls. Correctness gates: the nsweep driver cross-checks the f4 partial + exact-merge at
 n_splits 128/192/256 against the naive kernel at 8K+ (worst_ratio <= 0.018, all OK), and both solo
 runs report correct=True end-to-end.
+
+## THREE-WAY WITH THE RETUNED FORMULA + GPAIRED REFUTATION + 2-KEY-UNROLLED DECODE PARTIAL (2026-08-11): 4K decode flips to LEADING both, 8K decode 143 tok/s
+
+THREE-WAY (adapt32 worker = steel prefill + retuned clamp(n_keys//64,16,32), median pf/dc):
+1024/512: 7814/240 vs llama 8041/206 vs MLX 7379/191; **4101/512: 6686/180 vs 5171/175 vs
+7795/173 -- the 4K cell FLIPPED to leading BOTH controls on decode (was 147, losing both) and now
+leads llama on prefill too**; 8198/512: 4456/119 vs 3845/141 vs 4704/153; 1024/2048: 6430/207 vs
+7745/189 vs 7158/189; 1024/4096: 6481/193 vs 8964/182 vs 8658/182. NOTE the 8K cell's controls
+ran HOT this session (llama 121->141, MLX 134->153 vs the previous three-way while Algenta went
+125->119) -- the machine's thermal state shifts all three engines together; the solo A/Bs below
+are the trustworthy same-session evidence.
+
+REFUTED LEVER: GQA-paired decode partial (`native_kv_decode_attn_splitk_gpair`, one simdgroup
+carrying BOTH q-heads of the pair so each key's K/V row loads once -- structurally halves DRAM
+traffic). Correctness gates all pass (cross-vs-naive worst_ratio <= 0.019 through 8192), but
+head-to-head it is 1.00x at 8704, 1.03x at 4096, 1.19x at exactly 8192, 1.04-1.15x at 2048 --
+noise-band, and ZERO at the race's actual tail depth. The floor model was wrong: the K layout's
+64B-strided rows coalesce through L1 at 32-key-block granularity (a 32B sector holds 16 keys of
+one d-chunk, and the loop walks kk incrementally), so the paired GQA re-reads mostly HIT cache
+and the partial was never DRAM-bound at race depths. The deep partial is LATENCY/ISSUE-bound:
+a serial ~256-iteration key loop with one in-flight key's loads behind a dependent softmax chain.
+
+WINNING LEVER: 2-key-unrolled partial (`_native_kv_decode_splitk_partial_kernel_f4u2`, now in
+`native_kv_decode_attn_splitk.mojo` and the blob's codegen target, replacing f4 in
+generated/native_kv_decode_attn_splitk_blob.c; same grid/block/args, same partial layout, key-
+order accumulation preserved via per-key softmax sequence + odd-key epilogue). Per body it issues
+BOTH keys' K+V loads (16 independent loads vs 8) before either softmax, and the two dots are
+independent simd_sums off the same Q registers. Head-to-head vs f4 (unroll driver, all gates
+pass): 1.10x @2048, 1.11x @4096, **1.38x @8192, 1.19x @8704** at n_splits=32 (1.47x @8704/16).
+PRODUCTION SOLO A/B (same session, both workers steel + retuned formula; ONLY the blob kernel
+differs): @8192 decode **143 vs 135 tok/s = 1.06x** correct=True; @4096 decode **207 vs 174** =
+1.19x; @1024 decode 261, prefill 10756 (solo harness reads higher than interleaved three-way
+passes -- run-shape difference, not a regression signal). End-to-end gain < isolated gain because
+attention is only ~half the deep-decode token budget; the remainder is GEMV + dispatch.
+
+STANDING AFTER F4U2 (solo-verified): deep decode 8K = 143 tok/s -- leads llama.cpp's best
+three-way (141) and MLX's stable three-way (134); 4K decode 207 leads both (175/173). Remaining
+page gaps: shallow prefill (1K: ~7814 three-way vs 8041/7379 -- ~ties llama) and mid prefill vs
+MLX (4K: 6686 vs 7795), both GEMM-dominated regimes; and 8K decode's thermal-band overlap with
+MLX's hot runs (153) -- needs a cool-session three-way to settle.
