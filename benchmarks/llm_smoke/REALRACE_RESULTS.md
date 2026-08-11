@@ -10856,3 +10856,73 @@ the kernel work. Remaining gaps for the load-test page: deep DECODE (8K: 95 vs l
 still trails, and 1K/4K prefill still trail MLX. The page stays UNpublished until deep decode also
 leads. session_prefill.mojo AF grid updated to _ceil_div(m_rows,32) (block_dim 128), blob +
 blob-driver regenerated (grid 32), worker rebuilt.
+
+## DEEP-DECODE LEVER PROBE, K-block-staged split-K REFUTED at depth (2026-08-11): coalescing the strided K reads WINS shallow but LOSES deep -- the staging's 8KB shared cuts occupancy more than coalescing saves
+
+Hypothesis: the f4 decode split-K kernel (`native_kv_decode_attn_splitk._..._f4`) reads each key's
+K-vector as 128 SCATTERED 2-byte transactions (native K is d-major, so K[key][d] for fixed key is
+strided by key_block_size) -> latency/transaction bound at depth. FIX probed: stage each native K
+block `[128][32]` into threadgroup memory once COALESCED, read K per-key from shared
+(`native_kv_decode_attn_kblk.mojo`, `_native_kv_decode_splitk_partial_kblk_kernel`). CORRECTNESS:
+bit-identical to f4 (0.0 worst-abs-delta at 456/1024/4096/8192) + Float64 oracle worst-ratio 0.0036.
+TIMING kblk-vs-f4 (isolated partial kernel): 1024:1.77x FASTER, 4096:0.90x, 8192@16splits:0.87x,
+8192@32splits:0.63x. So the 8KB staged-K shared (~4 TG/core vs f4's near-zero shared) costs MORE
+at depth than the coalesced reads save -- the coalescing win is real but shallow-only. REFUTED as a
+deep-decode lever. SECOND FINDING from the same bench: f4 at 8192 is FASTER at 32 splits (0.232ms)
+than 16 splits (0.270ms), even though production holds `_NATIVE_DECODE_N_SPLITS=16` on the
+"occupancy already saturated" note -- so at deep context MORE splits help and the fixed n_splits=16
+is likely sub-optimal at 8K. NEXT deep-decode lever = a depth-adaptive n_splits (raise it at depth),
+NOT K coalescing; then re-examine whether decode attention is even the limiter vs the GEMV.
+
+## LLAMA.CPP DECODE-ATTN TEARDOWN + SPLIT-FACTOR SWEEP (2026-08-11): deep decode is PARALLELISM-bound; f4 optimal n_splits at 8K is 32 (1.65x the production 16), production `_NATIVE_DECODE_N_SPLITS=16` is the deep-decode lever
+
+WHITE-BOX TEARDOWN of llama.cpp's decode attention `flash_attn_ext_vec` (used when ne01<20, i.e.
+always for decode; ggml-metal.metal ~7246+, dispatch ggml-metal-ops.cpp ~3015): it is flash-decoding
+split-K with a TWO-LEVEL split -- NWG=32 workgroups x NSG=1..4 simdgroups per (query, head), where
+NSG is sized by sequence length (`while(2*nwg*nsg*32 < seq_len && nsg<4) nsg*=2`; at 8K NSG=4, so
+32x4 = 128 key-slices per head). Keys are processed BLOCKED, C=32/iteration (softmax costs 1
+simd_max + 1 simd_sum per 32 keys, amortized 32:1, vs our 1 simd_sum PER KEY). K/V are read
+coalesced 128-bit float4 from a CONTIGUOUS-PER-KEY `[key][D]` layout (no staging), each lane owns a
+fixed D-slice of O in registers (zero cross-lane work in the V phase), and ALL strides/counts are
+baked as compile-time function constants (inner loop fully unrolled). THE KEY TRICK per the teardown
+is PARALLELISM: at 8K it spreads the ~4MB/head KV read across ~128 concurrent key-slices, saturating
+bandwidth. Its dk128 path ALSO pays one simd_sum per key for the QK dot (same as our f4), so the
+95-vs-156 gap is the parallelism + blocked-softmax + coalesced layout, NOT the dot reduction.
+
+SPLIT-FACTOR SWEEP of OUR f4 kernel @8192 (isolated partial kernel): 16 splits=0.274ms,
+**32 splits=0.166ms (1.65x faster)**, 64=0.213ms, 128=0.353ms. @16384: 32=0.399, 64=0.383. So the
+optimal split factor GROWS with depth (8K:32, 16K:64) and production's FIXED n_splits=16 is far too
+low at depth. Attention is ~70% of deep-decode time, so raising n_splits 16->32 at 8K projects to
+~1.3-1.4x end-to-end deep decode (95 -> ~125-135 tok/s), closing most of the gap to llama (156).
+THIS is the concrete deep-decode lever (NOT a full KV-layout change). IMPLEMENTATION = depth-adaptive
+n_splits: raise `_NATIVE_DECODE_N_SPLITS` ceiling, size the split-K scratch for the max, and select
+n_splits by depth in the decode dispatch (`_apply_n_splits`/`deep_last_n_splits` already exist).
+CAVEAT: too many splits HURTS (merge overhead + too few keys/slice), so it must be depth-adaptive,
+not a blanket raise; shallow depths keep ~16.
+
+## DEPTH-ADAPTIVE N_SPLITS IMPLEMENTED + CONFIRMED (2026-08-11): deep decode 8K 95 -> 125 tok/s, now BEATS llama.cpp at deep decode
+
+Implemented depth-adaptive n_splits in `session_prefill.mojo` (`_step_native_kv_impl` AND
+`step_logits`, both dispatch the same native split-K table): n_splits = clamp(n_keys // 256,
+_NATIVE_DECODE_N_SPLITS=16, _NATIVE_DECODE_N_SPLITS_MAX=64), patched into the partial grid +
+partial n_splits arg (arg 7) + merge n_splits arg (arg 4, merge descriptor = partial descriptor+1)
+only when the value changes (crosses a 256-key boundary). The single-stream split-K scratch
+(splitk_m/l/o) is now sized for the MAX (64); the partial table is built at the MAX grid
+(h_q*64) and narrowed per step. Shallow depths (n_keys<4096) keep n_splits=16 unchanged (no
+regression); n_splits grows 32@8K, 64@16K.
+
+SOLO A/B @8192 (same config, both workers have the steel prefill): adaptive n_splits DECODE =
+**128 tok/s vs fixed-16's 103 = 1.24x**, correct=True. THREE-WAY (adaptive worker, median pf/dc):
+1024/512: 5187/232 vs llama 8386/209 vs MLX 8607/165; 4101/512: 4686/147 vs 4853/167 vs 7796/165;
+**8198/512: 4008/125 vs llama 3604/121 vs MLX 4622/134.** So at 8K the adaptive n_splits lifts
+deep decode 95 -> 125, which now BEATS llama.cpp (121) at deep decode; MLX (134) still narrowly
+leads. NOTE: the 8K prefill reads 4008 here vs the steel three-way's 4647 -- that is run-to-run
+THERMAL variance between the two three-way sessions (both workers carry the identical steel prefill
+kernel; the 4K cell shows the same offset, 4686 vs 5979), NOT a prefill regression from this change.
+
+HONEST STANDING AFTER ADAPTIVE N_SPLITS: deep PREFILL (8K) leads llama.cpp and ~ties MLX (the steel
+kernel). deep DECODE (8K) now LEADS llama.cpp (125 vs 121) but still trails MLX (134). Remaining for
+the load-test page: close the narrow MLX deep-decode gap (125 vs 134, ~7%) and confirm deep prefill
+beats MLX consistently. The remaining levers: the blocked/coalesced decode attention (llama's other
+tricks: 32-key blocking amortizing softmax 32:1, coalesced per-key [key][D] reads) and/or a higher
+n_splits ceiling tuning.

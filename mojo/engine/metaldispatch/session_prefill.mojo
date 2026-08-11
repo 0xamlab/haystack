@@ -277,15 +277,23 @@ from, so the two kernels' own independently-hardcoded assumptions about this val
 apart from what this struct actually allocates."""
 
 comptime _NATIVE_DECODE_N_SPLITS: Int = 16
-"""Beat-llama.cpp campaign (2026-08-08 night): the FIXED split count the native-KV decode split-K
-table (`self.descriptors_decode_native_splitk`) is built with -- grid = `h_q * _NATIVE_DECODE_N_
-SPLITS` for the partial dispatch, `h_q` for the merge. 16 is the campaign driver's measured sweet
-spot at the race's own decode depths (`attention_forge/native_kv_decode_attn_splitk_driver.mojo`'s
-bench: 8.1x at n_keys=456 vs the naive kernel, 6.5x at 256; 32 splits measurably WORSE than 16 at
-both -- occupancy already saturated, the same finding the legacy path's own n_splits retune
-recorded). The legacy deep path's DYNAMIC per-step n_splits policy (`residentk`'s own) is
-deliberately NOT replicated here: this table is one fixed grid, built once, matching this struct's
-own decode-native table discipline of never re-calling `_mb_set_header` after construction."""
+"""Beat-llama.cpp campaign (2026-08-08 night): the BASE split count the native-KV decode split-K
+table (`self.descriptors_decode_native_splitk`) is built for. As of the 2026-08-11 llama.cpp
+decode-attention teardown this is the SHALLOW default only -- deep context now uses a DEPTH-ADAPTIVE
+n_splits (see `_NATIVE_DECODE_N_SPLITS_MAX` and `_step_native_kv_impl`'s per-step patching), because
+the f4 split-factor sweep measured the optimum growing with depth (8K:32 splits is 1.65x the old
+fixed 16; 16K:64). The table is built at the MAX grid (h_q * _NATIVE_DECODE_N_SPLITS_MAX) and
+narrowed per step, matching this struct's own "build wide, narrow before first use" discipline."""
+
+comptime _NATIVE_DECODE_N_SPLITS_MAX: Int = 64
+"""Beat-llama.cpp campaign (2026-08-11): the MAXIMUM split count for the depth-adaptive native-KV
+decode split-K. The f4 split-factor sweep (REALRACE_RESULTS.md llama.cpp decode-attn teardown entry)
+measured the optimal split factor growing with depth: @8K the optimum is 32 (1.65x the old fixed 16),
+@16K it is 64; beyond ~64 the merge overhead + too-few-keys-per-slice makes more splits slower. The
+partial dispatch's scratch (`splitk_m/l/o`) is sized for this max, and `_step_native_kv_impl` selects
+n_splits = clamp(n_keys // 256, _NATIVE_DECODE_N_SPLITS, _NATIVE_DECODE_N_SPLITS_MAX) per step and
+re-narrows the partial grid + n_splits args only when the value changes."""
+
 
 comptime _BATCH_DECODE_MAX_SEQS: Int = 32
 """Project Slipstream Phase 3 (2026-08-09): the FIXED maximum number of sequences the batched /
@@ -1000,6 +1008,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     `pos_offsets_native`/`nkeys_offsets_native` (the split-K table's embed token_id arg, per-layer
     producer pos_base arg, per-layer partial-kernel n_keys arg) -- `_step_native_kv_impl` patches
     whichever table it dispatches, never both."""
+    var native_splitk_last_n_splits: Int
+    """Depth-adaptive split count last patched into the native split-K table (2026-08-11).
+    `_step_native_kv_impl` recomputes n_splits from the current key count each step and only
+    re-narrows the partial grid + n_splits args when this value changes (it changes rarely, only
+    when the depth crosses a 256-key boundary). -1 sentinel = never patched."""
     var splitk_m_addr: UInt64
     var splitk_l_addr: UInt64
     var splitk_o_addr: UInt64
@@ -1606,11 +1619,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var splitk_m_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         var splitk_l_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         var splitk_o_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS * 4, self.splitk_m_addr, splitk_m_ptr) < 0:
+        if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS_MAX * 4, self.splitk_m_addr, splitk_m_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (splitk m)")
-        if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS * 4, self.splitk_l_addr, splitk_l_ptr) < 0:
+        if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS_MAX * 4, self.splitk_l_addr, splitk_l_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (splitk l)")
-        if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS * d_head * 4, self.splitk_o_addr, splitk_o_ptr) < 0:
+        if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS_MAX * d_head * 4, self.splitk_o_addr, splitk_o_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (splitk o)")
 
         # ── Project Slipstream Phase 3: B-sized split-K scratch for the batched partial+merge pair,
@@ -1721,6 +1734,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.token_id_offset_native_splitk = -1
         self.pos_offsets_native_splitk = List[Int]()
         self.nkeys_offsets_native_splitk = List[Int]()
+        self.native_splitk_last_n_splits = -1
 
         self._build_descriptors(n_qkv)
         self._build_descriptors_prefill(n_qkv)
@@ -3750,7 +3764,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # Xcode or the Metal compiler falls back to CommandLineTools and fails.
             _mb_set_header(
                 self.descriptors_decode_native_splitk, d, self.native_decode_splitk_partial_pipeline_idx,
-                self.h_q * _NATIVE_DECODE_N_SPLITS, self.d_head // 4, 14,
+                self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.d_head // 4, 14,
             )
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.splitk_m_addr)
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.splitk_l_addr)
@@ -4583,6 +4597,30 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var n_descriptors = self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native
             var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
             _mb_set_arg_int(table, token_id_offset, 3, token_id)
+
+            # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown): DEPTH-ADAPTIVE
+            # n_splits. The f4 split-factor sweep measured the optimal split count growing with depth
+            # (8K:32 is 1.65x the old fixed 16; 16K:64); the table was built at the MAX grid, so here
+            # we narrow the partial grid + both n_splits args to clamp(n_keys//256, 16, MAX), patching
+            # only when the value changes (it only changes crossing a 256-key boundary). The merge
+            # descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
+            if use_splitk:
+                var n_splits_adapt = n_keys // 256
+                if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
+                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS
+                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_MAX:
+                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_MAX
+                if n_splits_adapt != self.native_splitk_last_n_splits:
+                    for lyr in range(self.n_layers):
+                        var d_partial = self.nkeys_offsets_native_splitk[lyr]
+                        _mb_set_header(
+                            table, d_partial, self.native_decode_splitk_partial_pipeline_idx,
+                            self.h_q * n_splits_adapt, self.d_head // 4, 14,
+                        )
+                        _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
+                        _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
+                    self.native_splitk_last_n_splits = n_splits_adapt
+
             for layer in range(self.n_layers):
                 if use_splitk:
                     _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
@@ -4682,6 +4720,30 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var n_descriptors = self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native
             var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
             _mb_set_arg_int(table, token_id_offset, 3, token_id)
+
+            # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown): DEPTH-ADAPTIVE
+            # n_splits. The f4 split-factor sweep measured the optimal split count growing with depth
+            # (8K:32 is 1.65x the old fixed 16; 16K:64); the table was built at the MAX grid, so here
+            # we narrow the partial grid + both n_splits args to clamp(n_keys//256, 16, MAX), patching
+            # only when the value changes (it only changes crossing a 256-key boundary). The merge
+            # descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
+            if use_splitk:
+                var n_splits_adapt = n_keys // 256
+                if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
+                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS
+                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_MAX:
+                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_MAX
+                if n_splits_adapt != self.native_splitk_last_n_splits:
+                    for lyr in range(self.n_layers):
+                        var d_partial = self.nkeys_offsets_native_splitk[lyr]
+                        _mb_set_header(
+                            table, d_partial, self.native_decode_splitk_partial_pipeline_idx,
+                            self.h_q * n_splits_adapt, self.d_head // 4, 14,
+                        )
+                        _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
+                        _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
+                    self.native_splitk_last_n_splits = n_splits_adapt
+
             for layer in range(self.n_layers):
                 if use_splitk:
                     _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
