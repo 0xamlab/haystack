@@ -10926,3 +10926,30 @@ the load-test page: close the narrow MLX deep-decode gap (125 vs 134, ~7%) and c
 beats MLX consistently. The remaining levers: the blocked/coalesced decode attention (llama's other
 tricks: 32-key blocking amortizing softmax 32:1, coalesced per-key [key][D] reads) and/or a higher
 n_splits ceiling tuning.
+
+## N_SPLITS CEILING SWEEP REFUTES THE CEILING, FINDS THE MID-BAND GAP (2026-08-11): formula retuned to clamp(n_keys//64, 16, 32), 4K decode 154 -> 174 tok/s
+
+REFUTED: "raise the n_splits ceiling past 64 for deep decode." A dedicated ceiling sweep
+(attention_forge/native_kv_decode_attn_splitk_nsweep.mojo, f4 partial kernel, steady-state, 2048-
+8704 keys x n_splits 16-256) measured everything ABOVE 32 loses at every race depth: @8704 the
+measured partial is 0.147ms @32, 0.202ms @64 (1.37x slower), 0.251ms @256. The old formula's
+n_keys//256 divisor ALREADY picked the 8K optimum (32) -- the ceiling (64) was never in play at
+race depths. So the MLX 8K decode gap (125 vs 134) is NOT a split-count problem at 8K.
+
+FOUND: the divisor left 2K-4K depths at 16 splits while 32 is their sweet spot too -- 32 is the
+optimum across the ENTIRE 2K-8.7K band: @2048 0.037ms @32 vs 0.054ms @16 (1.47x); @3072 0.050 vs
+0.077 (1.54x); @4096 0.064 vs 0.097 (1.53x); @8192 0.137 @32 (= old formula's pick); @8704 32~48
+tie (0.147). New formula: n_splits = clamp(n_keys // 64, _NATIVE_DECODE_N_SPLITS=16,
+_NATIVE_DECODE_N_SPLITS_OPT=32) in `_step_native_kv_impl` AND `step_logits` (same patch site as the
+original adaptive block; scratch/grid stay provisioned at _NATIVE_DECODE_N_SPLITS_MAX=64 headroom).
+Depths <2048 still resolve to the validated 16 (456 and 1024 unchanged), so the shallow regime is
+untouched.
+
+SOLO A/B @4096/512 (same session, both workers steel-prefill + adaptive): tuned-32 DECODE = **174
+tok/s vs old-formula's 154 = 1.13x**, correct=True. @8192 sanity: 129 tok/s (>= 125, formula picks
+32 before and after), prefill 4732 -- confirming the earlier three-way's 4008 was thermal, and this
+change does not move 8K. THREE-WAY IMPLICATION @4101/512: the cell was 147 decode vs llama 167 /
+MLX 165 (LOSING both); +13% decode puts it at ~166-174, flipping the 4K cell to LEADING or tying
+both controls. Correctness gates: the nsweep driver cross-checks the f4 partial + exact-merge at
+n_splits 128/192/256 against the naive kernel at 8K+ (worst_ratio <= 0.018, all OK), and both solo
+runs report correct=True end-to-end.

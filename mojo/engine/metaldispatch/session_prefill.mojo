@@ -279,20 +279,28 @@ apart from what this struct actually allocates."""
 comptime _NATIVE_DECODE_N_SPLITS: Int = 16
 """Beat-llama.cpp campaign (2026-08-08 night): the BASE split count the native-KV decode split-K
 table (`self.descriptors_decode_native_splitk`) is built for. As of the 2026-08-11 llama.cpp
-decode-attention teardown this is the SHALLOW default only -- deep context now uses a DEPTH-ADAPTIVE
-n_splits (see `_NATIVE_DECODE_N_SPLITS_MAX` and `_step_native_kv_impl`'s per-step patching), because
-the f4 split-factor sweep measured the optimum growing with depth (8K:32 splits is 1.65x the old
-fixed 16; 16K:64). The table is built at the MAX grid (h_q * _NATIVE_DECODE_N_SPLITS_MAX) and
-narrowed per step, matching this struct's own "build wide, narrow before first use" discipline."""
+decode-attention teardown this is the SHALLOW default + the adaptive formula's LOWER bound -- deep
+context uses a DEPTH-ADAPTIVE n_splits (see `_NATIVE_DECODE_N_SPLITS_OPT` and
+`_step_native_kv_impl`'s per-step patching), because the f4 sweeps measured 32 splits as the sweet
+spot across the whole 2K-8.7K band while depths <2048 keep 16. The table is built at the MAX grid
+(h_q * _NATIVE_DECODE_N_SPLITS_MAX) and narrowed per step, matching this struct's own "build wide,
+narrow before first use" discipline."""
 
 comptime _NATIVE_DECODE_N_SPLITS_MAX: Int = 64
-"""Beat-llama.cpp campaign (2026-08-11): the MAXIMUM split count for the depth-adaptive native-KV
-decode split-K. The f4 split-factor sweep (REALRACE_RESULTS.md llama.cpp decode-attn teardown entry)
-measured the optimal split factor growing with depth: @8K the optimum is 32 (1.65x the old fixed 16),
-@16K it is 64; beyond ~64 the merge overhead + too-few-keys-per-slice makes more splits slower. The
-partial dispatch's scratch (`splitk_m/l/o`) is sized for this max, and `_step_native_kv_impl` selects
-n_splits = clamp(n_keys // 256, _NATIVE_DECODE_N_SPLITS, _NATIVE_DECODE_N_SPLITS_MAX) per step and
-re-narrows the partial grid + n_splits args only when the value changes."""
+"""Beat-llama.cpp campaign (2026-08-11): the MAXIMUM split count the depth-adaptive native-KV
+decode split-K's scratch (`splitk_m/l/o`) and build-wide partial grid are provisioned for. Kept at
+64 as headroom even though the adaptive formula's own cap is `_NATIVE_DECODE_N_SPLITS_OPT` (32) --
+provisioning wider than the formula can select matches this struct's own "build wide, narrow before
+first use" discipline and keeps a future cap raise a one-constant change."""
+
+comptime _NATIVE_DECODE_N_SPLITS_OPT: Int = 32
+"""Beat-llama.cpp campaign (2026-08-11, n_splits CEILING sweep, attention_forge/
+native_kv_decode_attn_splitk_nsweep.mojo): the depth-adaptive formula's UPPER cap. The ceiling
+sweep over the f4 partial kernel measured n_splits=32 as the sweet spot across the ENTIRE
+2K-8.7K race band (2048: 32 is 1.47x the old 16; 4096: 1.53x; 8192/8704: 32 is already optimal
+and everything above it loses -- 64 is 1.29x SLOWER at 8704), so the formula is
+n_splits = clamp(n_keys // 64, _NATIVE_DECODE_N_SPLITS, _NATIVE_DECODE_N_SPLITS_OPT): depths
+<2048 keep the validated shallow default 16, depths >=2048 all land on 32."""
 
 
 comptime _BATCH_DECODE_MAX_SEQS: Int = 32
@@ -4598,18 +4606,19 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
             _mb_set_arg_int(table, token_id_offset, 3, token_id)
 
-            # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown): DEPTH-ADAPTIVE
-            # n_splits. The f4 split-factor sweep measured the optimal split count growing with depth
-            # (8K:32 is 1.65x the old fixed 16; 16K:64); the table was built at the MAX grid, so here
-            # we narrow the partial grid + both n_splits args to clamp(n_keys//256, 16, MAX), patching
-            # only when the value changes (it only changes crossing a 256-key boundary). The merge
-            # descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
+            # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown + n_splits
+            # CEILING sweep): DEPTH-ADAPTIVE n_splits. The f4 sweeps measured 32 splits as the sweet
+            # spot across the whole 2K-8.7K band (2048: 1.47x the old fixed 16; 4096: 1.53x; 8192+:
+            # already optimal, everything above 32 loses); the table was built at the MAX grid, so
+            # here we narrow the partial grid + both n_splits args to clamp(n_keys//64, 16, 32),
+            # patching only when the value changes (it only changes crossing a 64-key boundary). The
+            # merge descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
             if use_splitk:
-                var n_splits_adapt = n_keys // 256
+                var n_splits_adapt = n_keys // 64
                 if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
                     n_splits_adapt = _NATIVE_DECODE_N_SPLITS
-                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_MAX:
-                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_MAX
+                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_OPT:
+                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_OPT
                 if n_splits_adapt != self.native_splitk_last_n_splits:
                     for lyr in range(self.n_layers):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
@@ -4721,18 +4730,19 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
             _mb_set_arg_int(table, token_id_offset, 3, token_id)
 
-            # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown): DEPTH-ADAPTIVE
-            # n_splits. The f4 split-factor sweep measured the optimal split count growing with depth
-            # (8K:32 is 1.65x the old fixed 16; 16K:64); the table was built at the MAX grid, so here
-            # we narrow the partial grid + both n_splits args to clamp(n_keys//256, 16, MAX), patching
-            # only when the value changes (it only changes crossing a 256-key boundary). The merge
-            # descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
+            # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown + n_splits
+            # CEILING sweep): DEPTH-ADAPTIVE n_splits. The f4 sweeps measured 32 splits as the sweet
+            # spot across the whole 2K-8.7K band (2048: 1.47x the old fixed 16; 4096: 1.53x; 8192+:
+            # already optimal, everything above 32 loses); the table was built at the MAX grid, so
+            # here we narrow the partial grid + both n_splits args to clamp(n_keys//64, 16, 32),
+            # patching only when the value changes (it only changes crossing a 64-key boundary). The
+            # merge descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
             if use_splitk:
-                var n_splits_adapt = n_keys // 256
+                var n_splits_adapt = n_keys // 64
                 if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
                     n_splits_adapt = _NATIVE_DECODE_N_SPLITS
-                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_MAX:
-                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_MAX
+                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_OPT:
+                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_OPT
                 if n_splits_adapt != self.native_splitk_last_n_splits:
                     for lyr in range(self.n_layers):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
