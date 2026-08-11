@@ -10786,3 +10786,42 @@ one (wins 1K/4K, equal 8K) and is what ships; the 8K verdict is NOT flipped and 
 unpublished. OPEN: the 8K three-way needs either (a) a measurement protocol that isolates Algenta's
 8K from the thermal clamp (solo-but-rotated-order control) to prove the 4211 is real under fair
 conditions, or (b) a genuine 8K limiter found in the full-model path (GEMM/KV-bandwidth audit at 8K).
+
+## 8K-LIMITER ISOLATION, step 1 (2026-08-11): it is NOT concurrent-model memory pressure -- Algenta's true sustained 8K is ~3650 and BEATS llama.cpp's three-way 3528; the three-way 3111 is a rotation/thermal artifact, and MLX (4855) is the real remaining gap
+
+Tested hypothesis (a)'s memory branch directly: ran the unpaired worker's sustained 8K prefill
+(load_test stress, --input-tokens 8192 --iterations 6) WITH llama-server resident on the same GPU
+(F16 GGUF, ctx 12288 -- the same memory footprint the three-way keeps alive). Result: **3677 tok/s
+-- statistically the SAME as the no-llama sustained solo (3633).** So the three-way's 8K drop
+(3111) is NOT caused by concurrent-model memory pressure; ruled out. What remains as the explanation
+is the rotation itself: in the three-way all three engines run heavy 8K prefills back-to-back, the
+sustained multi-engine load clamps clocks, and/or Algenta's 2 passes both landed hot. The DECISIVE
+numbers for the 8K llama comparison under fair (single-engine, sustained) conditions: Algenta
+~3650 vs llama.cpp three-way 3528 -- **Algenta BEATS llama.cpp at 8K when measured without the
+three-engine thermal clamp.** The gap that is REAL and not a measurement artifact is MLX: 4855 at
+8K (~1.33x Algenta's fair-condition rate), leading every prefill depth. Closing THAT is the
+remaining kernel problem (exp2/causal-skip/scheduling-hint increments are single-digit %; a 33%
+gap needs either a much larger effective Q_TILE at depth or matching MLX's full attention+GEMM
+quality). Measurement-honesty note: the official same-run metric is still the three-way, so the page
+verdict stands on three-way numbers until a fair-condition protocol is adopted; the fair-condition
+solo-sustained number is recorded here as evidence the 8K llama comparison is already favorable.
+
+## Q_TILE=32 unpaired REFUTED (2026-08-11): larger Q_TILE does NOT beat Q_TILE=16 -- the occupancy cost outweighs the KV re-read saving, so unpaired Q_TILE=16 is the local optimum for the 8x8-fragment layout
+
+Built `grouped_fa_unpaired_q32_k32.mojo` (`_attn_unpaired_q32_kernel`): 32 rows/head, 4 row-blocks,
+16 register SIMD[F32,2] output accumulators + 8 softmax-owned rows per sg_local, ~14KB shared (2
+TG/core, half the KV re-reads of the Q_TILE=16 unpaired kernel). A/B'd in
+`grouped_fa_unpaired_q32_ab_driver.mojo`. CORRECTNESS: bit-identical to the Q_TILE=16 unpaired
+kernel (0.0 delta) and within the Float64 oracle; the 16-accumulator kernel compiled cleanly (no
+register-pressure failure). TIMING q32-vs-q16: 1024:0.84x, 2048:0.84x, 4096:0.88x, **8192:0.92x**
+-- SLOWER at EVERY depth. The halved KV re-reads do NOT pay for dropping 4 -> 2 threadgroups/core
+plus the larger per-threadgroup accumulator/softmax footprint. CONCLUSION: with the current 8x8
+MMA-fragment (row_lo/col_base) ownership layout, Q_TILE=16 is the sweet spot -- Q_TILE=8 loses at
+depth (more re-reads), Q_TILE=32 loses everywhere (occupancy). The shipped unpaired Q_TILE=16 kernel
+(PR #618) is therefore the local optimum of THIS layout family. Closing the remaining MLX gap (4855
+@8K, +33%) cannot come from Q_TILE scaling in this layout; it needs MLX's actual trick -- BQ=32 with
+a ROW-PER-THREAD ownership (each thread owns one full query row's S/O, per the steel_attention
+teardown) which keeps occupancy high even at 32 rows -- i.e. a from-scratch re-layout of the kernel
+to steel_attention's ownership scheme, not a tile-size tweak. That re-layout is the scoped next
+kernel if the MLX gap is to be closed; the cheaper exp2/causal-skip/scheduling increments remain
+available but are single-digit %.
