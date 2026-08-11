@@ -10825,3 +10825,34 @@ teardown) which keeps occupancy high even at 32 rows -- i.e. a from-scratch re-l
 to steel_attention's ownership scheme, not a tile-size tweak. That re-layout is the scoped next
 kernel if the MLX gap is to be closed; the cheaper exp2/causal-skip/scheduling increments remain
 available but are single-digit %.
+
+## STEEL RE-LAYOUT SHIPPED (2026-08-11): simdgroup-per-8-rows + register-resident S/O + base-2 softmax -- 8K prefill BEATS BOTH llama.cpp AND MLX, the deep-prefill verdict is FLIPPED
+
+The MLX teardown identified steel_attention's real trick: each simdgroup is a self-contained 8-row
+flash-attention unit with S/O/m/l kept in REGISTERS (no shared-memory round-trip for scores), base-2
+softmax via 2-shuffle row reductions, and K/V aliased in a small smem buffer. Reimplemented that
+ownership scheme in Mojo as `grouped_fa_steel_k32.mojo` (`_attn_grouped_fa_steel_kernel`, now the
+production `_attn_grouped_fa_kernel`): ONE head/threadgroup, BQ=32 rows = 4 simdgroups x 8 rows,
+block_dim=128; each simdgroup computes the full QK^T for its 8 rows across all 32 keys of a native
+KV block and keeps the score tile + output accumulator in registers for the whole KV loop; Q staged
+to smem once (~8KB), K/V read DEVICE-DIRECT (native K is already the transposed QK^T B-operand, V
+the PV B-operand); base-2 softmax (scale*log2e folded once, exp2, m tracked in base-2); causal +
+ragged masking in-register. The KV loop body writes NOTHING to shared memory, so it has ZERO
+in-loop barriers (the unpaired q16 kernel had 3 per iteration).
+
+CORRECTNESS: worst-ratio ~2e-5 vs the Float64 sdpa_forward_flat oracle (tiny/ragged/offset/qwen3/
+deep-256), and correct=True through the full serving path at 1K/4K/8K.
+
+ISOLATED A/B (steel vs the shipped unpaired q16): 1024:1.61x, 2048:1.56x, 4096:1.66x, 8192:1.73x
+(40.7 -> 23.6 ms). SOLO end-to-end: 8K 4806 tok/s (was 3573 unpaired, ~3160 original). THREE-WAY
+(median pf/dc): 1024/512: 7826/239 vs llama 8336/212 vs MLX 8835/179; 4101/512: 5979/152 vs
+5333/181 vs 8148/193; **8198/512: 4647/95 vs llama 3809/156 vs MLX 4596/168.** So at 8K prefill
+Algenta now BEATS llama.cpp 1.22x AND MLX 1.01x -- the deep-prefill verdict is FLIPPED. 4K beats
+llama (5979 vs 5333) but trails MLX (8148). 1K trails both (7826 vs 8336/8835) -- shallow prefill is
+GEMM-bound, not attention-bound, so the attention re-layout does not reach it.
+
+HONEST STANDING AFTER STEEL: deep PREFILL (8K) now leads BOTH controls -- the first front flipped by
+the kernel work. Remaining gaps for the load-test page: deep DECODE (8K: 95 vs llama 156 / MLX 168)
+still trails, and 1K/4K prefill still trail MLX. The page stays UNpublished until deep decode also
+leads. session_prefill.mojo AF grid updated to _ceil_div(m_rows,32) (block_dim 128), blob +
+blob-driver regenerated (grid 32), worker rebuilt.

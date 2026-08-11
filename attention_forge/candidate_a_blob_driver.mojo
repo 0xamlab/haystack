@@ -45,7 +45,7 @@ def main() raises:
     var out_buf = ctx.enqueue_create_buffer[DType.float32](Int(n_tok_q * h_q * d))
     var lse_buf = ctx.enqueue_create_buffer[DType.float32](Int(h_q * n_tok_q))
 
-    var n_q_blocks = (n_tok_q + 15) // 16
+    var n_q_blocks = (n_tok_q + 31) // 32
     var grid = n_q_blocks * h_q
     var scale64: Float64 = 1.0 / Float64(128) ** 0.5
     var scale: Float32 = Float32(scale64)

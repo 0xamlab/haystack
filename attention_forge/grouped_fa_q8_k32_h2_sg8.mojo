@@ -1,209 +1,70 @@
-"""attention_forge.grouped_fa_q8_k32_h2_sg8 -- Attention Compiler Plan v1.0, Phase 2A Round 1,
-CANDIDATE A: grouped-head fused FlashAttention. Two GQA-sibling query heads sharing ONE K/V head
-LOAD (staged into shared memory exactly once per K-tile, then consumed by BOTH heads) instead of
-`parity_replica.mojo`'s one-head-per-dispatch organization -- the axis this candidate is built to
-measure is whether halving K/V shared-memory staging traffic (one load serves two heads) beats the
-extra bookkeeping of running two heads' online-softmax recurrences side by side in one threadgroup.
+"""attention_forge.grouped_fa_steel_k32 -- beat-llama.cpp campaign (2026-08-11): a from-scratch
+RE-LAYOUT of the prefill flash-attention kernel to MLX `steel_attention`'s ownership scheme, the
+structure the MLX teardown (REALRACE_RESULTS.md) identified as the reason MLX leads every prefill
+depth by ~33%.
 
-CONCRETE VARIANT SHIPPED, AND WHY IT DEVIATES FROM THE PLAN'S "AGGRESSIVE" SCHEDULE
--------------------------------------------------------------------------------------
-The plan's own concrete first schedule for Candidate A is `q16/h2/k64/d128/sg8`: Q_TILE=16 PER
-HEAD (two 8-row sub-blocks per head, four logical 8-row blocks total = 32 combined rows), 2 SIMD
-groups per row block (a pair splits QK by KEY range and PV by OUTPUT-DIM range), K_TILE=64. That
-schedule's own register-pressure risk -- explicitly called out in the plan ("8 output fragments
-per SG at k64") -- comes from wanting the running PV accumulator (`O` in the online-softmax
-recurrence) to live in PER-SG REGISTERS, persisted across the whole K-tile loop via
-`_frag_row_col`-style per-lane row bookkeeping (the same technique `mma_forge/mm8.mojo`'s
-`_gemm_accum_mma8x8_narrow` uses to seed/store an MMA accumulator straight from/to a DEVICE
-pointer) -- because a SHARED-MEMORY-resident `O` accumulator sized for all 32 combined rows, at
-F32, does not fit the 32KiB threadgroup budget alongside `sq`/`skv`/`ss`/`sp` at ANY K_TILE this
-session tried (worked out by hand below). Implementing that register-resident accumulator
-correctly -- extending `_frag_row_col`'s per-lane (row, col) formula through the online-softmax
-rescale step, which `mm8.mojo` never needed because its accumulator carries no per-row rescale --
-was assessed as materially higher implementation risk than this deliverable's correctness bar
-justifies in the available time. So: **this file implements one of the plan's OWN explicitly
-named fallback points in the Round-1 sweep** ("A variants q8/q16 x k32/k64 x sg4/sg8 (h2)",
-Implementation sequence, PR 4) -- `q8` (Q_TILE=8 PER HEAD, one 8-row sub-block per head, not two),
-`k32` (K_TILE=32, not 64), `sg8` (8 SIMD groups / 256 threads, still used fully -- see below), `h2`
-(two sibling heads per dispatch, one shared K/V load) -- keeping the SAME proven
-shared-memory-resident `O` accumulator technique `parity_replica.mojo` already uses (lowest
-implementation risk, directly reusable), which fits comfortably at this smaller shape. This is a
-real, itemized, honestly-reported scope cut, not a silent substitution.
+THE ARCHITECTURE (vs the prior `grouped_fa_unpaired_lean_k32`):
+- ONE query head per threadgroup, BQ=32 query rows, split as 4 simdgroups x 8 rows (simdgroup sg
+  owns rows [sg*8, sg*8+8)). block_dim=128.
+- Each simdgroup is a SELF-CONTAINED 8-row flash-attention unit: it computes the full QK^T for its
+  8 rows across ALL 32 keys of the block, keeps the score tile S and the output accumulator O in
+  REGISTERS for the whole KV loop, and runs the online softmax with a 2-shuffle row reduction.
+  There is NO shared-memory round-trip for S or P (the prior kernel stored QK^T to `ss`, read it
+  back for softmax, wrote P to `sp`, and read it back for PV).
+- Base-2 softmax: the attention scale is folded with log2(e) once, all exp/softmax runs as `exp2`
+  on base-2 scores, and the running max m is tracked in base-2 units (converted back for lse).
+- Q is staged to shared memory once (8KB); K and V are read DEVICE-DIRECT from the native packed
+  layout (K is already the transposed `[d][k]` QK^T B-operand; V is the `[k][d]` PV B-operand).
+  Shared footprint is just the Q tile (~8KB) and NOTHING is written to shared inside the KV loop,
+  so the loop body has ZERO barriers (the prior kernel had 3 per iteration).
 
-Worked shared-memory budget (why q16/k64 does not fit, and why q8/k32 does):
-- `so` (F32 running output accumulator) alone at 32 combined rows x 128 dims x 4B = 16384B; adding
-  `sq` (32 x 128 x 2B F16 = 8192B) already reaches 24576B, leaving only 8192B for `skv`+`ss`+`sp`+
-  scalars -- `skv` alone at K_TILE=64 (128 x 64 x 2B = 16384B) blows the remaining budget by itself,
-  and even at K_TILE=32 (128 x 32 x 2B = 8192B) leaves zero room for `ss`/`sp`. q16/h2 simply cannot
-  keep a shared-memory-resident `O` for both heads' full 32 rows AND a K/V tile AND score/prob
-  scratch under 32KiB at any K_TILE -- hence needing the register-resident accumulator this file
-  does not attempt.
-- At q8/h2 (16 combined rows, this file's shape), K_TILE=32: `sq` 16x128x2B=4096B, `so`
-  16x128x4B=8192B, `skv` 128x32x2B=8192B (STAGED ONCE, shared by both heads -- the whole point),
-  `ss` 16x32x4B=2048B, `sp` 16x32x2B=1024B, `s_corr`/`s_l` 16x4B each = 64B+64B. Total = 23680B
-  (~23.1KiB), comfortably under the 32KiB static threadgroup-memory limit, with ~9KiB of headroom
-  this session chose not to spend chasing K_TILE=64 (34944B there, per the same arithmetic --
-  still over budget by ~2.2KiB) given q8/k32/h2/sg8 already faithfully demonstrates the candidate's
-  core claim (one K/V load consumed by two heads).
+Fragment layout: the `apple_mma` 8x8 fragment owns, per lane, 2 contiguous columns of one row
+(`_frag_row_col`: row_lo=((lane&6)>>1)+((lane&16)>>2), col_base=((lane&1)<<1)+((lane&8)>>1)); the 4
+lanes sharing a row are {l, l^1, l^8, l^9}, so a full-row reduction is exactly two `shuffle_xor`
+(masks 1 and 8) -- the same butterfly MLX uses.
 
-Grid and SIMD-group organization ("sg8" is genuinely used, not padding): `block_idx.x` encodes
-`(q_block, pair_idx)` -- `pair_idx` ranges over `h_q // 2`, and this dispatch's two sibling heads
-are `h0 = pair_idx*2`, `h1 = h0+1`, sharing KV head `hk = h0 // group` (`group = h_q // h_kv`; this
-generalizes beyond group=2 as long as `group` is even, which holds for every GQA config this plan
-targets, including Qwen3-0.6B-Base's group=2). Of the 8 SIMD groups (256 threads), SGs 0-3 own
-head `h0`'s 8-row block and SGs 4-7 own head `h1`'s -- `hh = sg // 4` selects the head, `sg_local =
-sg % 4` plays EXACTLY the role `parity_replica.mojo`'s own `sg` (0..3) plays for a single head:
-`sg_local` owns one 8-key QK column-block (K_TILE=32 / 8 = 4 column-blocks = 4 SGs, one each --
-simpler than parity's 2-per-SG at K_TILE=64/4SGs), 2 softmax-owned rows (`r0=sg_local*2,
-r1=r0+1`), and one 32-wide PV output-dim chunk (`sg_local*32`). Both head-groups run the identical
-per-head recurrence CONCURRENTLY against the SAME K/V tile -- ONE K-tile's worth of K/V data is
-read ONCE per K-tile iteration and consumed by SGs 0-3 for head `h0` and SGs 4-7 for head `h1`
-without any second device read -- this is the 2x K/V-read-traffic reduction this candidate exists
-to prove is a net win (measured separately from this file, per the plan's own note that latency
-comparisons happen outside this task to avoid cross-run GPU contention). (Historical note: at the
-time this paragraph was first written, "read once" meant "staged into shared memory `skv` once";
-per the "K/V CONSUMPTION UPDATE" section below, K has since moved to a device-direct MMA load with
-no shared-memory staging at all, while V still stages into `skv` once per tile exactly as
-described here -- the "read once, consumed by both heads" claim itself is unchanged for either.)
-
-Deviation from `parity_replica.mojo`'s own barrier placement, stated explicitly: this kernel adds
-one EXTRA `barrier()` at the bottom of the K-tile while-loop (after the PV MMA, before the loop
-back-edge re-stages V into the SAME `skv` buffer) that `parity_replica.mojo` does not have at the
-equivalent point. Reasoning: `parity_replica.mojo`'s own K-tile loop restages K/V into `skv` via
-ALL SIMD groups cooperatively (`idx = tid + s*_NTHREADS`, striding across every SG's thread range),
-while the immediately-preceding PV MMA reads `skv` (V data) via each SG's OWN disjoint
-`col_blk_d`-range fragment loads -- meaning a straggling SIMD group's PV read and another SIMD
-group's next-iteration V write can, in principle, touch overlapping shared memory addresses without
-an intervening synchronization point. This candidate has TWICE the SIMD-group count of
-`parity_replica.mojo` (8 vs 4) sharing the SAME `skv` tile across two independent per-head
-recurrences, which only widens that theoretical window -- so this file closes it explicitly with
-one more `barrier()` than the read-only reference uses, at negligible cost, rather than inheriting
-an assumption this session did not need to take on faith. (`parity_replica.mojo` itself is treated
-as read-only and unmodified per this task's constraints; this is not a claim that it is wrong, only
-that this candidate does not need to take the same risk.) This reasoning was written when `skv`
-staged BOTH K and V every iteration; it still holds verbatim for V now that K has moved to
-device-direct loads (see below) -- `skv` is V-only now, but the same straggler/restage hazard this
-barrier closes is unchanged for V's own restaging.
-
-Everything else -- F16 K/V storage, F32 softmax state (`m`/`l` running max/sum, kept as per-SG
-registers exactly like `parity_replica.mojo`), hardware MMA for both QK^T and PV, analytic
-causal/ragged masking (`j < n_tok_k and j <= pos_base+i`, no additional key offset), the 5-step
-`shuffle_xor` max butterfly, `Int64`-typed kernel scalar arguments, `Int(...)`-wrapped
-pointer/index arithmetic -- is `parity_replica.mojo`'s own proven pattern, reused directly per this
-task's own instruction to do so wherever the algorithm doesn't require something different.
-
-K/V CONSUMPTION UPDATE (Attention Compiler Plan v1.0, Phase 2B wiring): NATIVE PACKED LAYOUT,
-NOT NATURAL [position][kv_head][d_head]
--------------------------------------------------------------------------------------------------
-`q_ptr`/`k_ptr`/`v_ptr` used to all be natural `[position][kv_head][d_head]` device buffers, with
-K re-staged into shared memory transposed (`d = idx // _KT; kk = idx % _KT`) and V re-staged
-reordered (`kk = idx // _D; d = idx % _D`) every single K-tile dispatch. `k_ptr`/`v_ptr` are now
-`attention_forge.abi.KV_LAYOUT_NATIVE_PACKED_V2`-shaped buffers -- the exact layout
-`native_kv_producer.mojo`'s `_native_kv_producer_kernel` writes, at `key_block_size=32` (== this
-file's own `_KT`, by construction, so every K-tile iteration maps to EXACTLY one native block, no
-remainder ever needed):
-
-  K: `((hk * n_blocks + block) * _D + d) * _KT + kk`  -- `[kv_head][key_block][d_chunk][key_in_block]`
-  V: `((hk * n_blocks + block) * _KT + kk) * _D + d`  -- `[kv_head][key_block][key_in_block][d_chunk]`
-
-`n_blocks` is a NEW kernel parameter (the packed buffer's own per-`kv_head` block count, a property
-of how the caller sized the scratch buffer -- see `native_kv_producer.mojo`'s docstring item 5 for
-why this can't be derived from any other argument). `block = j0 // _KT` is exact with zero
-remainder because `j0` starts at 0 and increments by exactly `_KT` every iteration -- the same
-`pos // key_block_size` convention the producer uses, at the same block size, so this kernel's own
-per-tile block index and the producer's own per-position block index always agree.
-
-Caller contract: `n_blocks` must be `>= ceil(n_tok_k / _KT)` -- large enough to cover every
-position this dispatch's own `kv_upper` can reach -- otherwise a `block` computed above indexes
-outside the allocated K/V buffer. This is a new obligation, but the same KIND of obligation the
-old natural-layout kernel already had implicitly (that `k_ptr`/`v_ptr` be sized to at least
-`n_tok_k * h_kv * d_head` elements) -- not a new category of caller trust, just a differently
-shaped one.
-
-K: DEVICE-DIRECT MMA LOAD, NO SHARED-MEMORY STAGING AT ALL. The old "stage K, transposed" loop
-(and the `barrier()` that guarded it) is gone -- `apple_mma_load_8x8[DType.float16]` now reads the
-QK^T "B" operand straight from `k_ptr`, a per-thread-group READ-ONLY device buffer, so no
-producer/consumer hazard exists between threads and no barrier is needed at that point (the
-`barrier()` immediately after QK^T-store, before the softmax read of `ss`, is untouched -- that one
-guards a real intra-threadgroup hazard, unrelated to K staging). This choice was made, not merely
-attempted and left in a hopeful state: Phase 2B's own `native_kv_producer_driver.mojo` already
-proved `apple_mma_load_8x8[DType.float16]` against a device (non-shared) pointer is exact-correct
-at runtime (`worst abs diff = 0.0`, identity-matmul extraction, reproduced on two independent runs)
-for the SAME primitive composition (`_mma_apple_8x8` with the B operand loaded off-device) this
-file's own QK^T loop already uses for every OTHER load -- and this file's own driver
-(`grouped_fa_q8_k32_h2_sg8_driver.mojo`) re-validates it end-to-end (not just via an isolated
-identity-multiply probe) by running every existing correctness/determinism case through the real
-attention math against the CPU oracle. It is SAFE even for the ragged K-tile tail (positions
-`>= n_tok_k` within the last, partially-filled native block, whose bytes this kernel never
-initializes and may be garbage/NaN): those columns' `raw` score is read from `ss` but the
-`s_val = raw*scale if vis else _NEG_MASK` ternary NEVER assigns the `raw*scale` branch's value when
-`vis` is false -- it is computed and discarded, never stored, never fed into `exp`/`m`/`l` -- so no
-garbage or NaN in the unread tail of a native K block can ever reach the final output, regardless
-of what bit pattern happens to live there. (This is exactly why the old kernel's explicit
-`else: skv[idx] = Float16(0.0)` zero-fill for K's ragged tail was DEFENSIVE, not load-bearing --
-dropping it is not a silent risk, it is removing dead-weight safety that was never actually needed
-for K specifically.)
-
-V: STILL STAGED INTO SHARED MEMORY, BUT THE COPY IS NOW TRIVIAL. V's native block
-(`[key_in_block][d_chunk]`) is byte-identical, in order AND address arithmetic, to what `skv`
-already needs (`skv[idx] = v_ptr[v_block_off + idx]`, a single add, no `d`/`kk` recombination at
-all) -- this removes the reorder/transpose-adjacent index math the old natural-layout gather did
-(`(gk*h_kv+hk)*_D+d`), even though V's old gather was already axis-order-preserving and never
-needed a true transpose. The boundary zero-fill (`kk < nb`) is KEPT for V, deliberately NOT dropped
-the way K's was: V's masked contribution is a REAL multiply-by-probability inside the PV MMA sum
-(`p_frag * v_frag`, `p ≈ 0` for masked keys, not a discarded ternary branch), and IEEE754
-`0.0 * NaN == NaN` -- an unguarded read of a garbage/NaN tail byte would corrupt the ENTIRE output
-row's accumulator, not just one discarded scalar. K and V are NOT treated the same way here on
-purpose; this asymmetry is itemized, not an oversight.
+Causal masking is applied per score element in-register (key position vs query position), and fully
+masked keys are set to a finite -3e38 so exp2 -> 0. Ragged Q rows (gi >= n_tok_q) are zero-staged
+and skipped at the output store.
 """
 from std.gpu import thread_idx, block_idx
 from max.gpu.sync import barrier
 from max.gpu.memory import AddressSpace
 from std.memory import stack_allocation
-from std.math import exp, log
-from std.gpu.primitives.warp import shuffle_xor as _shuffle_xor, sum as _warp_sum
+from std.math import exp2, log
+from std.gpu.primitives.warp import shuffle_xor as _shuffle_xor
 from max.gpu.compute.arch.mma_apple import (
     _mma_apple_8x8,
     apple_mma_load_8x8,
-    apple_mma_store_8x8,
 )
 
 comptime _F16P = UnsafePointer[Float16, origin=MutAnyOrigin]
 comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 
 comptime _D: Int64 = 128
-comptime _QT: Int64 = 16
-"""Per-head query tile, raised 8 -> 16 on 2026-08-11 to halve deep-KV re-read traffic (each
-threadgroup now re-reads the KV cache for 16 query rows instead of 8). The output accumulator moved
-OUT of shared memory into per-lane registers to free the budget this doubles (see module docstring
-and the register-resident `o_*` accumulators below). NOTE: the file/module name still says `q8`
-(legacy); the kernel is Q_TILE=16."""
+comptime _QT: Int64 = 32
 comptime _KT: Int64 = 32
-"""K_TILE fallback from the plan's aggressive 64, for shared-memory budget -- see module
-docstring's worked arithmetic."""
-comptime _NSG_PER_HEAD: Int64 = 4
 comptime _NSG: Int64 = 4
 comptime _NTHREADS: Int64 = 128
-comptime _NROWS: Int64 = _QT
-"""UNPAIRED occupancy experiment (MLX teardown, 2026-08-11): ONE query head per threadgroup (no
-GQA sibling pairing), 128 threads = 4 simdgroups, so ~4 threadgroups/core can be resident (vs 2
-for the paired 256-thread kernel). The trade under test: 2x more KV re-reads (each query head reads
-its KV head's cache separately) vs double the residency + no pairing bookkeeping. This mirrors
-MLX steel_attention's structure, which beats our paired kernel at every depth."""
-comptime _NEG_MASK: Float32 = -1.0e9
-comptime _NEG_SENTINEL: Float32 = -3.0e38
+comptime _LOG2E: Float32 = 1.4426950408889634
+comptime _LN2: Float32 = 0.6931471805599453
+comptime _NEG_INF: Float32 = -3.0e38
 
 
 def _frag_row_col(tid: Int64) -> SIMD[DType.int64, 2]:
-    """This lane's (row_lo, col_base) within its 8x8 MMA fragment -- the SAME per-lane mapping
-    `apple_mma_load_8x8`/`apple_mma_store_8x8` use internally, copied verbatim from
-    `mma_forge/mm8.mojo`'s `_frag_row_col` (this file does not import mma_forge). Needed by the
-    register-resident output accumulator to know which row/col each lane owns for the per-row corr
-    rescale and the bounds-checked final store."""
     var lane = tid % 32
     var row_lo = ((lane & 6) >> 1) + ((lane & 16) >> 2)
     var col_base = ((lane & 1) << 1) + ((lane & 8) >> 1)
     return SIMD[DType.int64, 2](row_lo, col_base)
+
+
+def _row_max2(v: Float32, off: UInt32) -> Float32:
+    var other = _shuffle_xor(v, off)
+    return v if v >= other else other
+
+
+def _row_sum2(v: Float32, off: UInt32) -> Float32:
+    return v + _shuffle_xor(v, off)
 
 
 def _attn_grouped_fa_kernel(
@@ -212,20 +73,8 @@ def _attn_grouped_fa_kernel(
     n_tok_q: Int64, n_tok_k: Int64, h_q: Int64, h_kv: Int64,
     scale: Float32, pos_base: Int64, n_blocks: Int64,
 ):
-    # UNPAIRED production kernel (MLX teardown, 2026-08-11): ONE query head per threadgroup, 128
-    # threads (4 simdgroups), no GQA pairing. The MLX steel_attention teardown showed the winning
-    # structure is small-threadgroup high-occupancy with no head pairing; A/B confirmed this unpaired
-    # kernel is bit-identical to the paired version yet faster at EVERY depth (8K +7.5% over the
-    # paired lean kernel, ~1.19x over the pre-lean original) -- doubled residency (~4 threadgroups/
-    # core) more than pays for the 2x KV re-reads the pairing used to avoid. V device-direct (lean),
-    # register O, Q_TILE=16, K_TILE=32, 3 in-loop barriers. With 4 simdgroups, `hh` is always 0.
-    # NOTE: grid is n_q_blocks * h_q and block_dim is 128 (NOT the old paired * h_q//2 / 256) --
-    # session_prefill.mojo's AF tables were updated to match.
-    var sq = stack_allocation[Int(_NROWS * _D), DType.float16, address_space = AddressSpace.SHARED]()
-    var ss = stack_allocation[Int(_NROWS * _KT), DType.float32, address_space = AddressSpace.SHARED]()
-    var sp = stack_allocation[Int(_NROWS * _KT), DType.float16, address_space = AddressSpace.SHARED]()
-    var s_corr = stack_allocation[Int(_NROWS), DType.float32, address_space = AddressSpace.SHARED]()
-    var s_l = stack_allocation[Int(_NROWS), DType.float32, address_space = AddressSpace.SHARED]()
+    # Q tile: this head's 32 rows x 128 dims, staged once, shared by the 4 simdgroups.
+    var sq = stack_allocation[Int(_QT * _D), DType.float16, address_space = AddressSpace.SHARED]()
 
     var tid = Int64(thread_idx.x)
     var sg = tid // 32
@@ -240,48 +89,50 @@ def _attn_grouped_fa_kernel(
 
     var row0 = q_block * _QT
 
-    # Q load: head h's 16-row block at query positions row0..row0+15. _NROWS=_QT=16 rows ->
-    # 16*128 = 2048 elems / 128 threads = 16 iterations. cr indexes the head's rows directly.
-    for s in range(Int64(16)):
+    # Q staging: 32 rows x 128 = 4096 elems / 128 threads = 32 iters.
+    for s in range(Int64(32)):
         var idx = tid + s * _NTHREADS
-        var cr = idx // _D
+        var r_l = idx // _D
         var d = idx % _D
-        var r_l = cr
         var gi = row0 + r_l
         if gi < n_tok_q:
             sq[Int(idx)] = q_ptr[Int((gi * h_q + h) * _D + d)]
         else:
             sq[Int(idx)] = Float16(0.0)
 
-    var hh = sg // _NSG_PER_HEAD
-    var sg_local = sg % _NSG_PER_HEAD
+    # This simdgroup's 8 rows within the 32-row tile.
+    var sg_row0 = sg * 8
 
-    # This SG's REGISTER-RESIDENT output accumulator: head hh's full 16 rows x this sg_local's
-    # 32 output dims, as 2 row-blocks x 4 col-blocks of 8x8 MMA fragments (each SIMD[F32,2] is this
-    # lane's owned same-row pair). Persistent across the whole K-tile loop -- the old `so` lived in
-    # shared memory and was seeded/stored every tile; registers keep it resident instead.
-    var o_r0_c0 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r0_c1 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r0_c2 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r0_c3 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r1_c0 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r1_c1 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r1_c2 = SIMD[DType.float32, 2](0.0, 0.0)
-    var o_r1_c3 = SIMD[DType.float32, 2](0.0, 0.0)
-    # This lane's owned (row_lo, col_base) within each 8x8 accumulator fragment -- constant per lane.
+    # Lane's owned (row_lo, col_base) within an 8x8 fragment.
     var rc = _frag_row_col(tid)
     var row_lo = rc[0]
     var col_base = rc[1]
+    # Global query position of this lane's owned row.
+    var lane_qpos = pos_base + row0 + sg_row0 + row_lo
 
-    # Per-owned-row online-softmax state: this sg_local owns 4 rows (sg_local*4 .. sg_local*4+3).
-    var m0 = _NEG_SENTINEL
-    var m1 = _NEG_SENTINEL
-    var m2 = _NEG_SENTINEL
-    var m3 = _NEG_SENTINEL
-    var l0 = Float32(0.0)
-    var l1 = Float32(0.0)
-    var l2 = Float32(0.0)
-    var l3 = Float32(0.0)
+    # Output accumulator O: this simdgroup's 8 rows x 128 dims = 16 8x8 frags, each SIMD[F32,2].
+    var o_f0 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f1 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f2 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f3 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f4 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f5 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f6 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f7 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f8 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f9 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f10 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f11 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f12 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f13 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f14 = SIMD[DType.float32, 2](0.0, 0.0)
+    var o_f15 = SIMD[DType.float32, 2](0.0, 0.0)
+
+    # Running softmax state (base-2 units), one row per lane.
+    var m_b2 = _NEG_INF
+    var l_sum = Float32(0.0)
+
+    var scale2 = scale * _LOG2E
 
     barrier()
 
@@ -290,245 +141,218 @@ def _attn_grouped_fa_kernel(
 
     var j0: Int64 = 0
     while j0 <= kv_upper:
-        var nb = _KT if (_KT < n_tok_k - j0) else (n_tok_k - j0)
-
-        # `j0` starts at 0 and increments by exactly `_KT` every iteration, and `_KT == 32 ==
-        # key_block_size` (the native producer's own block size), so `block` below is always
-        # exact -- this K-tile iteration IS native block `block` of kv_head `hk`, with zero
-        # remainder, never needing any re-derivation from a query-side offset.
         var block = j0 // _KT
         var k_block_off = (hk * n_blocks + block) * _D * _KT
         var v_block_off = (hk * n_blocks + block) * _KT * _D
 
-        # QK^T: this SG's head (hh), one 8-key column block (sg_local owns [sg_local*8,+8)),
-        # all 16 of that head's local rows as TWO 8-row blocks (a_frag row-offset
-        # (hh*_QT + rb*8)*_D). K's "B" operand is read DEVICE-DIRECT from the native packed buffer
-        # -- no shared-memory staging at all; see module docstring's "K: DEVICE-DIRECT MMA LOAD"
-        # section for why this is both safe and runtime-proven, not merely type-checked.
-        var col_blk = sg_local
-        for rb in range(Int64(2)):
-            var acc = SIMD[DType.float32, 2](0.0, 0.0)
-            for dstep in range(Int64(16)):
-                var a_frag = apple_mma_load_8x8[DType.float16](
-                    sq + Int((hh * _QT + rb * 8) * _D + dstep * 8), Int(_D)
-                )
-                var b_frag = apple_mma_load_8x8[DType.float16](
-                    k_ptr + Int(k_block_off + dstep * 8 * _KT + col_blk * 8), Int(_KT)
-                )
-                _mma_apple_8x8(acc, a_frag, b_frag, acc)
-            apple_mma_store_8x8[DType.float32](
-                ss + Int((hh * _QT + rb * 8) * _KT + col_blk * 8), Int(_KT), acc
+        # ── QK^T: S[8 rows x 32 keys] = Q[8x128] x K^T[128x32], kept in registers (4 frags).
+        var s_f0 = SIMD[DType.float32, 2](0.0, 0.0)
+        var s_f1 = SIMD[DType.float32, 2](0.0, 0.0)
+        var s_f2 = SIMD[DType.float32, 2](0.0, 0.0)
+        var s_f3 = SIMD[DType.float32, 2](0.0, 0.0)
+        for dd in range(Int64(16)):
+            var q_frag = apple_mma_load_8x8[DType.float16](
+                sq + Int(sg_row0 * _D + dd * 8), Int(_D)
             )
-
-        barrier()
-
-        # Softmax update: this SG's 4 owned rows (sg_local*4 .. sg_local*4+3); K_TILE == warp size,
-        # so each lane owns exactly one key column (simpler than parity_replica's 2-per-lane at
-        # K_TILE=64).
-        for which in range(Int64(4)):
-            var r_local = sg_local * 4 + which
-            var cr = hh * _QT + r_local
-            var c = lane
-            var gk = j0 + c
-            var raw = ss[Int(cr * _KT + c)]
-            var qpos = pos_base + row0 + r_local
-            var vis = (gk < n_tok_k) and (gk <= qpos)
-            var s_val = raw * scale if vis else _NEG_MASK
-
-            var local_max = s_val
-            var off: UInt32 = 16
-            while off > 0:
-                var other = _shuffle_xor(local_max, off)
-                if other > local_max:
-                    local_max = other
-                off //= 2
-
-            var m_old = _NEG_SENTINEL
-            var l_old = Float32(0.0)
-            if which == 0:
-                m_old = m0
-                l_old = l0
-            elif which == 1:
-                m_old = m1
-                l_old = l1
-            elif which == 2:
-                m_old = m2
-                l_old = l2
-            else:
-                m_old = m3
-                l_old = l3
-
-            var m_new = local_max if local_max > m_old else m_old
-            var corr = exp(m_old - m_new)
-            var e = exp(s_val - m_new)
-            var block_sum = _warp_sum(e)
-            var l_new = l_old * corr + block_sum
-
-            sp[Int(cr * _KT + c)] = Float16(e)
-            if lane == 0:
-                s_corr[Int(cr)] = corr
-
-            if which == 0:
-                m0 = m_new
-                l0 = l_new
-            elif which == 1:
-                m1 = m_new
-                l1 = l_new
-            elif which == 2:
-                m2 = m_new
-                l2 = l_new
-            else:
-                m3 = m_new
-                l3 = l_new
-
-        barrier()
-
-        # (LEAN: the old shared-memory V staging loop + its barrier are gone -- V is read
-        # device-direct in the PV MMA below, same [kk][d] addressing, see the PV section. This
-        # barrier -- the one AFTER softmax -- is kept: it guards both `sp` (read by PV) and
-        # `s_corr` (read by the corr rescale immediately below) across SIMD groups.)
-
-        # Rescale THIS head's own REGISTER-resident output accumulator by this iteration's corr.
-        # Each accumulator o_r{rb}_c{cb} owns a same-row element pair; the row is
-        # hh*_QT + rb*8 + row_lo, so there are two corr values (rb=0 and rb=1). s_corr holds all
-        # 16 of the head's rows (populated by the 4 sg_local's softmax above), so every row this SG
-        # accumulates has its corr available.
-        var corr_r0 = s_corr[Int(hh * _QT + row_lo)]
-        var corr_r1 = s_corr[Int(hh * _QT + 8 + row_lo)]
-        o_r0_c0 = SIMD[DType.float32, 2](o_r0_c0[0] * corr_r0, o_r0_c0[1] * corr_r0)
-        o_r0_c1 = SIMD[DType.float32, 2](o_r0_c1[0] * corr_r0, o_r0_c1[1] * corr_r0)
-        o_r0_c2 = SIMD[DType.float32, 2](o_r0_c2[0] * corr_r0, o_r0_c2[1] * corr_r0)
-        o_r0_c3 = SIMD[DType.float32, 2](o_r0_c3[0] * corr_r0, o_r0_c3[1] * corr_r0)
-        o_r1_c0 = SIMD[DType.float32, 2](o_r1_c0[0] * corr_r1, o_r1_c0[1] * corr_r1)
-        o_r1_c1 = SIMD[DType.float32, 2](o_r1_c1[0] * corr_r1, o_r1_c1[1] * corr_r1)
-        o_r1_c2 = SIMD[DType.float32, 2](o_r1_c2[0] * corr_r1, o_r1_c2[1] * corr_r1)
-        o_r1_c3 = SIMD[DType.float32, 2](o_r1_c3[0] * corr_r1, o_r1_c3[1] * corr_r1)
-
-        # (LEAN: the old pre-PV barrier is gone -- corr rescale touched only registers, `sp` is
-        # already visible via the post-softmax barrier, and V now comes from device memory, so
-        # nothing needs synchronizing here.)
-
-        # PV: this SG's head (hh), its 32-wide output-dim chunk (sg_local*32..+32), all 16 of that
-        # head's rows (2 row-blocks), all KT keys -- accumulated into the register-resident
-        # accumulators. v_frag depends only on (kstep, cb) so it is loaded once and reused for both
-        # row-blocks; p_frag is per row-block. V is read DEVICE-DIRECT from the native packed buffer
-        # at `v_block_off` (LEAN): its [key_in_block][d_chunk] order is byte-identical to the old
-        # `skv` [KT,D] tile, so only the base pointer changes, stride stays _D. No shared staging.
-        for kstep in range(Int64(4)):
-            var v_frag0 = apple_mma_load_8x8[DType.float16](
-                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4) * 8), Int(_D)
+            var k_frag0 = apple_mma_load_8x8[DType.float16](
+                k_ptr + Int(k_block_off + dd * 8 * _KT + 0), Int(_KT)
             )
-            var v_frag1 = apple_mma_load_8x8[DType.float16](
-                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4 + 1) * 8), Int(_D)
+            _mma_apple_8x8(s_f0, q_frag, k_frag0, s_f0)
+            var k_frag1 = apple_mma_load_8x8[DType.float16](
+                k_ptr + Int(k_block_off + dd * 8 * _KT + 8), Int(_KT)
             )
-            var v_frag2 = apple_mma_load_8x8[DType.float16](
-                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4 + 2) * 8), Int(_D)
+            _mma_apple_8x8(s_f1, q_frag, k_frag1, s_f1)
+            var k_frag2 = apple_mma_load_8x8[DType.float16](
+                k_ptr + Int(k_block_off + dd * 8 * _KT + 16), Int(_KT)
             )
-            var v_frag3 = apple_mma_load_8x8[DType.float16](
-                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4 + 3) * 8), Int(_D)
+            _mma_apple_8x8(s_f2, q_frag, k_frag2, s_f2)
+            var k_frag3 = apple_mma_load_8x8[DType.float16](
+                k_ptr + Int(k_block_off + dd * 8 * _KT + 24), Int(_KT)
             )
-            var p_frag_r0 = apple_mma_load_8x8[DType.float16](
-                sp + Int(hh * _QT * _KT + kstep * 8), Int(_KT)
-            )
-            _mma_apple_8x8(o_r0_c0, p_frag_r0, v_frag0, o_r0_c0)
-            _mma_apple_8x8(o_r0_c1, p_frag_r0, v_frag1, o_r0_c1)
-            _mma_apple_8x8(o_r0_c2, p_frag_r0, v_frag2, o_r0_c2)
-            _mma_apple_8x8(o_r0_c3, p_frag_r0, v_frag3, o_r0_c3)
-            var p_frag_r1 = apple_mma_load_8x8[DType.float16](
-                sp + Int((hh * _QT + 8) * _KT + kstep * 8), Int(_KT)
-            )
-            _mma_apple_8x8(o_r1_c0, p_frag_r1, v_frag0, o_r1_c0)
-            _mma_apple_8x8(o_r1_c1, p_frag_r1, v_frag1, o_r1_c1)
-            _mma_apple_8x8(o_r1_c2, p_frag_r1, v_frag2, o_r1_c2)
-            _mma_apple_8x8(o_r1_c3, p_frag_r1, v_frag3, o_r1_c3)
+            _mma_apple_8x8(s_f3, q_frag, k_frag3, s_f3)
 
-        # Extra safety barrier vs. parity_replica.mojo's own loop back-edge -- see module
-        # docstring's "Deviation from parity_replica.mojo's own barrier placement" section.
-        barrier()
+        # Fold attention scale + log2(e) into the scores (base-2 units) and apply the causal +
+        # ragged mask in-register. This lane's owned keys in frag j are j*8+col_base, j*8+col_base+1.
+        var s00 = s_f0[0] * scale2
+        var s01 = s_f0[1] * scale2
+        var s10 = s_f1[0] * scale2
+        var s11 = s_f1[1] * scale2
+        var s20 = s_f2[0] * scale2
+        var s21 = s_f2[1] * scale2
+        var s30 = s_f3[0] * scale2
+        var s31 = s_f3[1] * scale2
+        var k00 = j0 + 0 + col_base
+        var k01 = j0 + 0 + col_base + 1
+        var k10 = j0 + 8 + col_base
+        var k11 = j0 + 8 + col_base + 1
+        var k20 = j0 + 16 + col_base
+        var k21 = j0 + 16 + col_base + 1
+        var k30 = j0 + 24 + col_base
+        var k31 = j0 + 24 + col_base + 1
+        if (k00 >= n_tok_k) or (k00 > lane_qpos):
+            s00 = _NEG_INF
+        if (k01 >= n_tok_k) or (k01 > lane_qpos):
+            s01 = _NEG_INF
+        if (k10 >= n_tok_k) or (k10 > lane_qpos):
+            s10 = _NEG_INF
+        if (k11 >= n_tok_k) or (k11 > lane_qpos):
+            s11 = _NEG_INF
+        if (k20 >= n_tok_k) or (k20 > lane_qpos):
+            s20 = _NEG_INF
+        if (k21 >= n_tok_k) or (k21 > lane_qpos):
+            s21 = _NEG_INF
+        if (k30 >= n_tok_k) or (k30 > lane_qpos):
+            s30 = _NEG_INF
+        if (k31 >= n_tok_k) or (k31 > lane_qpos):
+            s31 = _NEG_INF
+
+        # ── Online softmax (base-2). Row max: local over this lane's 8 elems, then 2 shuffles.
+        var local_max = s00
+        if s01 > local_max:
+            local_max = s01
+        if s10 > local_max:
+            local_max = s10
+        if s11 > local_max:
+            local_max = s11
+        if s20 > local_max:
+            local_max = s20
+        if s21 > local_max:
+            local_max = s21
+        if s30 > local_max:
+            local_max = s30
+        if s31 > local_max:
+            local_max = s31
+        local_max = _row_max2(local_max, UInt32(1))
+        local_max = _row_max2(local_max, UInt32(8))
+
+        var new_m_b2 = m_b2 if m_b2 >= local_max else local_max
+        var factor = exp2(m_b2 - new_m_b2)
+
+        # P = exp2(S - new_m) for this lane's 8 elems.
+        var p00 = exp2(s00 - new_m_b2)
+        var p01 = exp2(s01 - new_m_b2)
+        var p10 = exp2(s10 - new_m_b2)
+        var p11 = exp2(s11 - new_m_b2)
+        var p20 = exp2(s20 - new_m_b2)
+        var p21 = exp2(s21 - new_m_b2)
+        var p30 = exp2(s30 - new_m_b2)
+        var p31 = exp2(s31 - new_m_b2)
+
+        # Row sum of P: local over 8 elems, then 2 shuffles.
+        var local_sum = p00 + p01 + p10 + p11 + p20 + p21 + p30 + p31
+        local_sum = _row_sum2(local_sum, UInt32(1))
+        local_sum = _row_sum2(local_sum, UInt32(8))
+
+        l_sum = l_sum * factor + local_sum
+        m_b2 = new_m_b2
+
+        # Rescale the running output accumulator by factor.
+        o_f0 = SIMD[DType.float32, 2](o_f0[0] * factor, o_f0[1] * factor)
+        o_f1 = SIMD[DType.float32, 2](o_f1[0] * factor, o_f1[1] * factor)
+        o_f2 = SIMD[DType.float32, 2](o_f2[0] * factor, o_f2[1] * factor)
+        o_f3 = SIMD[DType.float32, 2](o_f3[0] * factor, o_f3[1] * factor)
+        o_f4 = SIMD[DType.float32, 2](o_f4[0] * factor, o_f4[1] * factor)
+        o_f5 = SIMD[DType.float32, 2](o_f5[0] * factor, o_f5[1] * factor)
+        o_f6 = SIMD[DType.float32, 2](o_f6[0] * factor, o_f6[1] * factor)
+        o_f7 = SIMD[DType.float32, 2](o_f7[0] * factor, o_f7[1] * factor)
+        o_f8 = SIMD[DType.float32, 2](o_f8[0] * factor, o_f8[1] * factor)
+        o_f9 = SIMD[DType.float32, 2](o_f9[0] * factor, o_f9[1] * factor)
+        o_f10 = SIMD[DType.float32, 2](o_f10[0] * factor, o_f10[1] * factor)
+        o_f11 = SIMD[DType.float32, 2](o_f11[0] * factor, o_f11[1] * factor)
+        o_f12 = SIMD[DType.float32, 2](o_f12[0] * factor, o_f12[1] * factor)
+        o_f13 = SIMD[DType.float32, 2](o_f13[0] * factor, o_f13[1] * factor)
+        o_f14 = SIMD[DType.float32, 2](o_f14[0] * factor, o_f14[1] * factor)
+        o_f15 = SIMD[DType.float32, 2](o_f15[0] * factor, o_f15[1] * factor)
+
+        # ── PV: O[8 rows x 128 dims] += P[8 rows x 32 keys] x V[32 keys x 128 dims]. P comes
+        # straight from the registers (rebuilt into the 4 score frags); V is device-direct.
+        s_f0 = SIMD[DType.float32, 2](p00, p01)
+        s_f1 = SIMD[DType.float32, 2](p10, p11)
+        s_f2 = SIMD[DType.float32, 2](p20, p21)
+        s_f3 = SIMD[DType.float32, 2](p30, p31)
+        for j in range(Int64(4)):
+            var p_frag = s_f0
+            if j == 1:
+                p_frag = s_f1
+            elif j == 2:
+                p_frag = s_f2
+            elif j == 3:
+                p_frag = s_f3
+            var v_base = v_block_off + j * 8 * _D
+            var v_frag0 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 0 * 8), Int(_D))
+            _mma_apple_8x8(o_f0, p_frag, v_frag0, o_f0)
+            var v_frag1 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 1 * 8), Int(_D))
+            _mma_apple_8x8(o_f1, p_frag, v_frag1, o_f1)
+            var v_frag2 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 2 * 8), Int(_D))
+            _mma_apple_8x8(o_f2, p_frag, v_frag2, o_f2)
+            var v_frag3 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 3 * 8), Int(_D))
+            _mma_apple_8x8(o_f3, p_frag, v_frag3, o_f3)
+            var v_frag4 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 4 * 8), Int(_D))
+            _mma_apple_8x8(o_f4, p_frag, v_frag4, o_f4)
+            var v_frag5 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 5 * 8), Int(_D))
+            _mma_apple_8x8(o_f5, p_frag, v_frag5, o_f5)
+            var v_frag6 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 6 * 8), Int(_D))
+            _mma_apple_8x8(o_f6, p_frag, v_frag6, o_f6)
+            var v_frag7 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 7 * 8), Int(_D))
+            _mma_apple_8x8(o_f7, p_frag, v_frag7, o_f7)
+            var v_frag8 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 8 * 8), Int(_D))
+            _mma_apple_8x8(o_f8, p_frag, v_frag8, o_f8)
+            var v_frag9 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 9 * 8), Int(_D))
+            _mma_apple_8x8(o_f9, p_frag, v_frag9, o_f9)
+            var v_frag10 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 10 * 8), Int(_D))
+            _mma_apple_8x8(o_f10, p_frag, v_frag10, o_f10)
+            var v_frag11 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 11 * 8), Int(_D))
+            _mma_apple_8x8(o_f11, p_frag, v_frag11, o_f11)
+            var v_frag12 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 12 * 8), Int(_D))
+            _mma_apple_8x8(o_f12, p_frag, v_frag12, o_f12)
+            var v_frag13 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 13 * 8), Int(_D))
+            _mma_apple_8x8(o_f13, p_frag, v_frag13, o_f13)
+            var v_frag14 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 14 * 8), Int(_D))
+            _mma_apple_8x8(o_f14, p_frag, v_frag14, o_f14)
+            var v_frag15 = apple_mma_load_8x8[DType.float16](v_ptr + Int(v_base + 15 * 8), Int(_D))
+            _mma_apple_8x8(o_f15, p_frag, v_frag15, o_f15)
 
         j0 += _KT
 
-    # Write the normalizers l for this sg_local's 4 softmax-owned rows (sg_local*4 .. +3).
-    if lane == 0:
-        s_l[Int(hh * _QT + sg_local * 4)] = l0
-        s_l[Int(hh * _QT + sg_local * 4 + 1)] = l1
-        s_l[Int(hh * _QT + sg_local * 4 + 2)] = l2
-        s_l[Int(hh * _QT + sg_local * 4 + 3)] = l3
-
-    barrier()
-
-    # lse for this sg_local's 4 softmax-owned rows.
-    for which in range(Int64(4)):
-        var r_local = sg_local * 4 + which
-        var gi = row0 + r_local
-        if gi < n_tok_q and lane == 0:
-            var mm = m0
-            var ll = l0
-            if which == 1:
-                mm = m1
-                ll = l1
-            elif which == 2:
-                mm = m2
-                ll = l2
-            elif which == 3:
-                mm = m3
-                ll = l3
-            lse_ptr[Int(h * n_tok_q + gi)] = (mm + log(ll)) if ll > 0.0 else _NEG_SENTINEL
-
-    # Output from the REGISTER-resident accumulators: this sg_local writes all 16 of the head's rows
-    # for its own 32 output dims. rb=0 -> head-row row_lo, rb=1 -> head-row 8+row_lo; cb -> col
-    # offset (sg_local*4+cb)*8 + col_base. s_l for every row was populated by the combined softmax
-    # of the 4 sg_local above.
-    var base_col = (sg_local * 4) * 8 + col_base
-    # rb = 0
-    var gi_r0 = row0 + row_lo
-    if gi_r0 < n_tok_q:
-        var ll_r0 = s_l[Int(hh * _QT + row_lo)]
-        var out_base_r0 = (gi_r0 * h_q + h) * _D + base_col
-        for cb in range(Int64(4)):
-            var v0 = Float32(0.0)
-            var v1 = Float32(0.0)
-            if cb == 0:
-                v0 = o_r0_c0[0]
-                v1 = o_r0_c0[1]
-            elif cb == 1:
-                v0 = o_r0_c1[0]
-                v1 = o_r0_c1[1]
-            elif cb == 2:
-                v0 = o_r0_c2[0]
-                v1 = o_r0_c2[1]
-            else:
-                v0 = o_r0_c3[0]
-                v1 = o_r0_c3[1]
-            if ll_r0 > 0.0:
-                out_ptr[Int(out_base_r0 + cb * 8)] = v0 / ll_r0
-                out_ptr[Int(out_base_r0 + cb * 8 + 1)] = v1 / ll_r0
-            else:
-                out_ptr[Int(out_base_r0 + cb * 8)] = Float32(0.0)
-                out_ptr[Int(out_base_r0 + cb * 8 + 1)] = Float32(0.0)
-    # rb = 1
-    var gi_r1 = row0 + 8 + row_lo
-    if gi_r1 < n_tok_q:
-        var ll_r1 = s_l[Int(hh * _QT + 8 + row_lo)]
-        var out_base_r1 = (gi_r1 * h_q + h) * _D + base_col
-        for cb in range(Int64(4)):
-            var v0 = Float32(0.0)
-            var v1 = Float32(0.0)
-            if cb == 0:
-                v0 = o_r1_c0[0]
-                v1 = o_r1_c0[1]
-            elif cb == 1:
-                v0 = o_r1_c1[0]
-                v1 = o_r1_c1[1]
-            elif cb == 2:
-                v0 = o_r1_c2[0]
-                v1 = o_r1_c2[1]
-            else:
-                v0 = o_r1_c3[0]
-                v1 = o_r1_c3[1]
-            if ll_r1 > 0.0:
-                out_ptr[Int(out_base_r1 + cb * 8)] = v0 / ll_r1
-                out_ptr[Int(out_base_r1 + cb * 8 + 1)] = v1 / ll_r1
-            else:
-                out_ptr[Int(out_base_r1 + cb * 8)] = Float32(0.0)
-                out_ptr[Int(out_base_r1 + cb * 8 + 1)] = Float32(0.0)
+    # ── Epilogue: normalize O by l and write; lse = m_b2*ln2 + log(l). The lane owning col_base==0
+    # is the unique per-row writer of lse (all 4 row-lanes hold the same m_b2/l_sum).
+    var gi = row0 + sg_row0 + row_lo
+    if gi < n_tok_q:
+        var inv_l = Float32(0.0)
+        if l_sum > 0.0:
+            inv_l = Float32(1.0) / l_sum
+        var out_base = (gi * h_q + h) * _D + col_base
+        out_ptr[Int(out_base + 0 * 8)] = o_f0[0] * inv_l
+        out_ptr[Int(out_base + 0 * 8 + 1)] = o_f0[1] * inv_l
+        out_ptr[Int(out_base + 1 * 8)] = o_f1[0] * inv_l
+        out_ptr[Int(out_base + 1 * 8 + 1)] = o_f1[1] * inv_l
+        out_ptr[Int(out_base + 2 * 8)] = o_f2[0] * inv_l
+        out_ptr[Int(out_base + 2 * 8 + 1)] = o_f2[1] * inv_l
+        out_ptr[Int(out_base + 3 * 8)] = o_f3[0] * inv_l
+        out_ptr[Int(out_base + 3 * 8 + 1)] = o_f3[1] * inv_l
+        out_ptr[Int(out_base + 4 * 8)] = o_f4[0] * inv_l
+        out_ptr[Int(out_base + 4 * 8 + 1)] = o_f4[1] * inv_l
+        out_ptr[Int(out_base + 5 * 8)] = o_f5[0] * inv_l
+        out_ptr[Int(out_base + 5 * 8 + 1)] = o_f5[1] * inv_l
+        out_ptr[Int(out_base + 6 * 8)] = o_f6[0] * inv_l
+        out_ptr[Int(out_base + 6 * 8 + 1)] = o_f6[1] * inv_l
+        out_ptr[Int(out_base + 7 * 8)] = o_f7[0] * inv_l
+        out_ptr[Int(out_base + 7 * 8 + 1)] = o_f7[1] * inv_l
+        out_ptr[Int(out_base + 8 * 8)] = o_f8[0] * inv_l
+        out_ptr[Int(out_base + 8 * 8 + 1)] = o_f8[1] * inv_l
+        out_ptr[Int(out_base + 9 * 8)] = o_f9[0] * inv_l
+        out_ptr[Int(out_base + 9 * 8 + 1)] = o_f9[1] * inv_l
+        out_ptr[Int(out_base + 10 * 8)] = o_f10[0] * inv_l
+        out_ptr[Int(out_base + 10 * 8 + 1)] = o_f10[1] * inv_l
+        out_ptr[Int(out_base + 11 * 8)] = o_f11[0] * inv_l
+        out_ptr[Int(out_base + 11 * 8 + 1)] = o_f11[1] * inv_l
+        out_ptr[Int(out_base + 12 * 8)] = o_f12[0] * inv_l
+        out_ptr[Int(out_base + 12 * 8 + 1)] = o_f12[1] * inv_l
+        out_ptr[Int(out_base + 13 * 8)] = o_f13[0] * inv_l
+        out_ptr[Int(out_base + 13 * 8 + 1)] = o_f13[1] * inv_l
+        out_ptr[Int(out_base + 14 * 8)] = o_f14[0] * inv_l
+        out_ptr[Int(out_base + 14 * 8 + 1)] = o_f14[1] * inv_l
+        out_ptr[Int(out_base + 15 * 8)] = o_f15[0] * inv_l
+        out_ptr[Int(out_base + 15 * 8 + 1)] = o_f15[1] * inv_l
+        if col_base == 0:
+            lse_ptr[Int(h * n_tok_q + gi)] = (m_b2 * _LN2 + log(l_sum)) if l_sum > 0.0 else _NEG_INF

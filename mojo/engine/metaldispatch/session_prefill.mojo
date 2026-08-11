@@ -2378,7 +2378,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         var n_units_kvprod_max = (self.h_q + self.h_kv) * PREFILL_MAX_TILE
         var n_kv_tiles_max = _ceil_div(PREFILL_MAX_TILE, _AF_KEY_BLOCK_SIZE)
-        var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 16)
+        var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 32)
         var n_units_attn_af_max = n_q_blocks_max * self.h_q
 
         for layer in range(self.n_layers):
@@ -2654,7 +2654,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         var n_units_kvprod_max = (self.h_q + self.h_kv) * PREFILL_MAX_TILE
         var n_kv_tiles_max = _ceil_div(PREFILL_MAX_TILE, _AF_KEY_BLOCK_SIZE)
-        var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 16)
+        var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 32)
         var n_units_attn_af_max = n_q_blocks_max * self.h_q
 
         for layer in range(self.n_layers):
@@ -2907,7 +2907,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_tile_cols_gemv = _ceil_div(self.d_model, _GEMM_BN)
         var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
         var n_units_kvprod = self.h_q + self.h_kv
-        var n_q_blocks = _ceil_div(m_rows, 16)
+        var n_q_blocks = _ceil_div(m_rows, 32)
         var n_units_attn_af = n_q_blocks * self.h_q
 
         var use_mma = True
@@ -3131,7 +3131,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_tile_cols_gemv = _ceil_div(self.d_model, _GEMM_BN)
         var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
         var n_units_kvprod = self.h_q + self.h_kv
-        var n_q_blocks = _ceil_div(m_rows, 16)
+        var n_q_blocks = _ceil_div(m_rows, 32)
         var n_units_attn_af = n_q_blocks * self.h_q
 
         var use_mma = True
