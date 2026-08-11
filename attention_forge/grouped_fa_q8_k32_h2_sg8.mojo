@@ -1,7 +1,17 @@
 """attention_forge.grouped_fa_q8_k32_h2_sg8 -- Attention Compiler Plan v1.0, Phase 2A Round 1,
 CANDIDATE A: grouped-head fused FlashAttention. Two GQA-sibling query heads sharing ONE K/V head
-LOAD (staged into shared memory exactly once per K-tile, then consumed by BOTH heads) instead of
-`parity_replica.mojo`'s one-head-per-dispatch organization -- the axis this candidate is built to
+LOAD (consumed by BOTH heads) instead of `parity_replica.mojo`'s one-head-per-dispatch organization.
+
+LEAN RESTRUCTURE (beat-llama.cpp, 2026-08-11, supersedes the staging description below): following
+the white-box teardown of llama.cpp's `kernel_flash_attn_ext_impl` (REALRACE_RESULTS.md DISSECTION
+entry of the same date), this kernel now reads V DEVICE-DIRECT in the PV MMA (no shared `skv`
+staging) and uses 3 in-loop barriers instead of 5, dropping the per-threadgroup shared footprint
+from ~22KB to ~14KB (1 -> 2 threadgroups resident per core). It is BIT-IDENTICAL to the prior
+staged version and +11% faster at 8K. The historical docstring below is retained for the design
+provenance but its "stage V into skv every tile" and "5 barriers" descriptions are OUTDATED -- the
+code (V device-direct, 3 barriers) and the REALRACE entry are authoritative.
+
+ORIGINAL PROVENANCE: the axis this candidate is built to
 measure is whether halving K/V shared-memory staging traffic (one load serves two heads) beats the
 extra bookkeeping of running two heads' online-softmax recurrences side by side in one threadgroup.
 
@@ -208,14 +218,14 @@ def _attn_grouped_fa_kernel(
     n_tok_q: Int64, n_tok_k: Int64, h_q: Int64, h_kv: Int64,
     scale: Float32, pos_base: Int64, n_blocks: Int64,
 ):
+    # LEAN production kernel (beat-llama.cpp teardown, 2026-08-11): V is read DEVICE-DIRECT in the
+    # PV MMA (no shared `skv` staging), dropping the per-threadgroup shared footprint from ~22KB to
+    # ~14KB so 2 threadgroups can be resident per core instead of 1 -- llama.cpp's own
+    # kernel_flash_attn_ext_impl runs ~10KB/threadgroup for exactly this occupancy reason (see the
+    # REALRACE_RESULTS.md 2026-08-11 DISSECTION entry). Dropping the staging also removes two
+    # barriers (the V-stage barrier and the pre-PV barrier), leaving 3 in-loop barriers. A/B'd
+    # bit-identical to the prior staged kernel and +11% faster at 8K.
     var sq = stack_allocation[Int(_NROWS * _D), DType.float16, address_space = AddressSpace.SHARED]()
-    # NOTE: the output accumulator `so` (previously [_NROWS,_D] F32 in shared memory) is now
-    # REGISTER-RESIDENT (the `o_*` SIMD accumulators declared below) -- at Q_TILE=16 the shared
-    # budget cannot hold it, so it moved to per-lane registers (see module docstring).
-    # `skv` is now V-ONLY -- K reads device-direct (see module docstring), so this buffer is never
-    # written for K at all anymore; kept at the same size/name (still sized for a full [_D,_KT] or
-    # [_KT,_D] tile, both equal at 4096 elements) to minimize churn on the rest of the file.
-    var skv = stack_allocation[Int(_D * _KT), DType.float16, address_space = AddressSpace.SHARED]()
     var ss = stack_allocation[Int(_NROWS * _KT), DType.float32, address_space = AddressSpace.SHARED]()
     var sp = stack_allocation[Int(_NROWS * _KT), DType.float16, address_space = AddressSpace.SHARED]()
     var s_corr = stack_allocation[Int(_NROWS), DType.float32, address_space = AddressSpace.SHARED]()
@@ -382,21 +392,10 @@ def _attn_grouped_fa_kernel(
 
         barrier()
 
-        # Stage V, ONCE for this tile -- consumed by BOTH sibling heads below. The native V block's
-        # own [key_in_block][d_chunk] order is byte-identical to `skv`'s own [KT,D] shape, so this
-        # is now a trivial 1:1 copy (`v_block_off + idx`, no `d`/`kk` recombination at all) instead
-        # of the old natural-layout gather's `(gk*h_kv+hk)*_D+d`. The `kk < nb` boundary zero-fill
-        # is KEPT (unlike K's) -- see module docstring's "V: STILL STAGED" section for why V's
-        # ragged tail genuinely needs it and K's did not.
-        for s in range(Int64(16)):
-            var idx = tid + s * _NTHREADS
-            var kk = idx // _D
-            if kk < nb:
-                skv[Int(idx)] = v_ptr[Int(v_block_off + idx)]
-            else:
-                skv[Int(idx)] = Float16(0.0)
-
-        barrier()
+        # (LEAN: the old shared-memory V staging loop + its barrier are gone -- V is read
+        # device-direct in the PV MMA below, same [kk][d] addressing, see the PV section. This
+        # barrier -- the one AFTER softmax -- is kept: it guards both `sp` (read by PV) and
+        # `s_corr` (read by the corr rescale immediately below) across SIMD groups.)
 
         # Rescale THIS head's own REGISTER-resident output accumulator by this iteration's corr.
         # Each accumulator o_r{rb}_c{cb} owns a same-row element pair; the row is
@@ -414,24 +413,28 @@ def _attn_grouped_fa_kernel(
         o_r1_c2 = SIMD[DType.float32, 2](o_r1_c2[0] * corr_r1, o_r1_c2[1] * corr_r1)
         o_r1_c3 = SIMD[DType.float32, 2](o_r1_c3[0] * corr_r1, o_r1_c3[1] * corr_r1)
 
-        barrier()
+        # (LEAN: the old pre-PV barrier is gone -- corr rescale touched only registers, `sp` is
+        # already visible via the post-softmax barrier, and V now comes from device memory, so
+        # nothing needs synchronizing here.)
 
         # PV: this SG's head (hh), its 32-wide output-dim chunk (sg_local*32..+32), all 16 of that
         # head's rows (2 row-blocks), all KT keys -- accumulated into the register-resident
         # accumulators. v_frag depends only on (kstep, cb) so it is loaded once and reused for both
-        # row-blocks; p_frag is per row-block. skv was staged once above, shared by all SGs.
+        # row-blocks; p_frag is per row-block. V is read DEVICE-DIRECT from the native packed buffer
+        # at `v_block_off` (LEAN): its [key_in_block][d_chunk] order is byte-identical to the old
+        # `skv` [KT,D] tile, so only the base pointer changes, stride stays _D. No shared staging.
         for kstep in range(Int64(4)):
             var v_frag0 = apple_mma_load_8x8[DType.float16](
-                skv + Int(kstep * 8 * _D + (sg_local * 4) * 8), Int(_D)
+                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4) * 8), Int(_D)
             )
             var v_frag1 = apple_mma_load_8x8[DType.float16](
-                skv + Int(kstep * 8 * _D + (sg_local * 4 + 1) * 8), Int(_D)
+                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4 + 1) * 8), Int(_D)
             )
             var v_frag2 = apple_mma_load_8x8[DType.float16](
-                skv + Int(kstep * 8 * _D + (sg_local * 4 + 2) * 8), Int(_D)
+                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4 + 2) * 8), Int(_D)
             )
             var v_frag3 = apple_mma_load_8x8[DType.float16](
-                skv + Int(kstep * 8 * _D + (sg_local * 4 + 3) * 8), Int(_D)
+                v_ptr + Int(v_block_off + kstep * 8 * _D + (sg_local * 4 + 3) * 8), Int(_D)
             )
             var p_frag_r0 = apple_mma_load_8x8[DType.float16](
                 sp + Int(hh * _QT * _KT + kstep * 8), Int(_KT)

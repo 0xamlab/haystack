@@ -10592,3 +10592,93 @@ loop nesting so the KV load is amortized over a Q-major sweep), which is what li
 intensity without inflating the per-lane accumulator footprint. That is a from-scratch kernel
 (grouped_fa KV-resident), not an increment on the q16 file -- scope it as its own oracle-gated PR.
 Target: flip 8K prefill to >= llama.cpp 3642 and >= MLX 4254.
+
+## DISSECTION (2026-08-11): roofline + white-box teardown of llama.cpp's flash-attn + a LEAN kernel A/B -- the 8K prefill kernel is OCCUPANCY-limited (1 threadgroup/core from a ~22KB shared footprint) AND KV-traffic-limited at depth; the KV-resident flash-decoding restructure is NOT the free win it looked, the lean-restructure is
+
+Four measurements, in order, each constraining the next:
+
+**1. Roofline of the current grouped-FA prefill kernel (Q_TILE=16), standalone (`grouped_fa_prefill_
+roofline_bench.mojo`):** N=1024/2048/4096/8192 -> 1.25/3.55/12.69/48.11 ms, i.e. 3435/4844/5417/
+5715 GFLOP/s. GFLOP/s PLATEAUS near ~5.7 TFLOP/s as the grid grows (512->4096 threadgroups), so by
+8K the kernel has hit a machine limit, not a parallelism limit. ~5.7 TFLOP/s is ~36% of the M4 Max
+F16 peak. The min-traffic model (each of Q/K/V/out moved exactly once) is only 2.8 GB/s at 8K --
+trivial -- so IF the KV cache were read once, bandwidth would not be the limit; but the kernel
+re-reads the causal KV once per q-block threadgroup (x512 at 8K), and at ~16 FLOP/byte on that
+re-read traffic it sits BELOW the ~26-29 FLOP/byte ridge point. Ambiguous between bandwidth- and
+occupancy-limited from this alone -- resolved by the teardown + A/B below.
+
+**2. White-box teardown of llama.cpp's `kernel_flash_attn_ext_impl` (the kernel that BEATS us at 8K
+prefill; `upstream_src/ggml-metal.metal` body lines 6415-7024, d=128 variant = `<FA_TYPES,...,128,
+128>` at 7136, defaults NQPSG=8/NCPSG=64 from ggml-metal-impl.h 109-110):** it is a q-block-
+parallel flash attention -- the SAME structure family as ours (grid = 8-row Q-blocks x heads,
+sequential KV loop in chunks of 64, NO KV-residency, NO split-K; every threadgroup re-streams the
+full KV from device). So the gap is NOT algorithm structure, it is kernel efficiency. Concretely it
+runs: ~10KB threadgroup shared memory (FATTN_SMEM = 8*(128+2*128+2*128) halves for d=128/nqptg=8)
+so MULTIPLE threadgroups are resident per core (high occupancy for latency hiding); 3
+`threadgroup_barrier` per KV chunk (not 5); K and V read DEVICE-DIRECT via simdgroup_load with the
+transpose done in the load (NO shared staging pass for f16 K/V -- sk/sv scratch exists only for the
+quantized branches); O kept in shared but only because O-columns are split across simdgroups while
+the row-correction is applied by the row-owner; a precomputed mask-block classification (blk 0/1/2)
+that `continue`-skips fully-masked causal chunks before touching K/V; and ~32 `simdgroup_barrier(
+mem_none)` scheduling hints per chunk. NSG=4 -> 128 threads/threadgroup at d=128.
+
+**3. LEAN restructure of OUR kernel, A/B'd (`grouped_fa_lean_k32_h2_sg8.mojo`, driver
+`grouped_fa_lean_ab_driver.mojo`):** drop the shared V staging (read V device-direct in the PV MMA,
+same [kk][d] addressing), drop the two barriers it required (V-stage barrier + pre-PV barrier),
+leaving 3 in-loop barriers. Shared footprint ~22KB -> ~14KB (1 -> 2 threadgroups/core). Result:
+BIT-IDENTICAL to the current kernel (worst abs delta 0.0 on every shape; the math, tiling, masking
+and reduction order are unchanged) and +11-19% faster at every depth: 1024:1.19x 2048:1.11x
+4096:1.10x **8192:1.11x (48.8->43.9 ms)**. This PROVES the current kernel is latency/occupancy-
+limited, not purely bandwidth-limited -- removing a staging copy and two barriers (no change to KV
+re-read count) bought 11% at 8K.
+
+**4. Q_TILE=8 lean occupancy probe (`grouped_fa_lean_q8_k32_h2_sg8.mojo`):** halve the combined rows
+(32->16) to cut shared ~14KB -> ~7KB (2 -> 4 threadgroups/core). Bit-identical again (0.0 delta).
+Timing vs the CURRENT kernel: 1024:1.23x (occupancy wins at shallow depth) BUT 2048:1.08x,
+4096:1.00x, **8192:0.97x (SLOWER than the original)**. The crossover is the decisive finding: at
+SHALLOW depth occupancy dominates (more resident threadgroups hides latency), but at DEEP prefill
+KV-TRAFFIC dominates -- Q_TILE=8 doubles the q-block count, so every KV element is re-read 2x more,
+and that costs MORE than the extra occupancy buys. Q_TILE=16 lean (item 3) is therefore the optimal
+safe operating point: 1.11x at 8K.
+
+**Implication for the KV-resident hypothesis above, stated honestly:** the naive "invert the loop
+nesting / flash-decoding for prefill" is NOT the free win it looked. (a) Splitting KV across
+threadgroups while ALSO parallelizing q-blocks does not reduce KV traffic at all (the split factor
+cancels in total bytes). (b) Genuinely reading each KV element once requires one threadgroup to hold
+a KV range and stream q-blocks, producing a per-(q_block, kv_chunk) partial that must be reduced --
+for prefill that partial scratch is n_q x h_q x d x n_chunks (hundreds of MB to >1GB at 8K) and its
+write+read eats most of the saved re-read traffic. (c) llama.cpp and MLX beat us with q-block-
+parallel flash attention (same family), confirming structure is not the lever. The real, measured
+levers are the three this entry already pulled: fewer barriers + no staging copy (occupancy/latency,
++11% shipped-pending in the lean kernel), and KV re-read count (Q_TILE) which dominates at depth.
+The remaining 8K deficit vs MLX (1.43x attention needed) therefore needs to come from cutting KV
+re-read traffic WITHOUT inflating the shared footprint -- i.e. larger effective Q_TILE at small
+shared (device-direct Q to free the 8KB `sq`, or a KV-resident scheme that keeps O resident and
+avoids the big partial scratch) -- not from flash-decoding-for-prefill. Next lever scoped there.
+
+## LEAN kernel SHIPPED to production (2026-08-11): drop-in candidate_a, bit-identical, +13% solo 8K prefill, flips 4K prefill vs llama.cpp
+
+The Q_TILE=16 lean kernel (item 3 above) was promoted to the production candidate_a drop-in:
+`grouped_fa_q8_k32_h2_sg8._attn_grouped_fa_kernel`'s body replaced with the lean implementation
+(same name/signature/grid -- `session_prefill.mojo`'s `_ceil_div(m_rows,16)` is untouched),
+`generated/candidate_a_blob.c` regenerated from `candidate_a_blob_driver.mojo`, blob `.o`
+recompiled, and the GPU worker relinked (`algenta-gpu-worker-lean`, same 12-blob set). GATES: the
+FULL original oracle suite passes against the lean production kernel (correct vs CPU oracle,
+paired==solo-pair 0.0 delta, hand-built native packing, 1,000-dispatch determinism soak -- all OK).
+
+END-TO-END (clean solo stress A/B, same cells, both workers on this tree): 8K prefill 3160 -> 3573
+tok/s (+13.1%), 4K prefill 5405 -> 5677 (+5.0%), decode unchanged (~102; the prefill attention
+kernel does not touch decode). THREE-WAY (lean worker, median tok/s, pf/dc): 1024/512 =
+7161/237 vs llama 8951/200 vs MLX 8674/176; 4101/512 = 5278/148 vs 4659/185 vs 7380/163;
+8198/512 = 3170/99 vs 3424/158 vs 4682/148. (The three-way 8K delta reads smaller than the solo
++13% because the three-way rotates three engines and runs cooler -- the established cross-run
+gotcha; the solo A/B is the clean kernel measurement.)
+
+STANDING AFTER LEAN, stated honestly: decode LEADS at 1K (237 vs 200/176). Prefill now BEATS
+llama.cpp at 4K (5278 vs 4659, 1.13x) and is 0.93x of llama at 8K (3170 vs 3424, +8% to flip).
+Prefill still trails MLX at every depth (MLX's bf16 flash-attn is the stronger control: 8674/7380/
+4682). Deep decode (8K, 99 vs 158/148) also still trails -- same deep-KV regime. The gitbook
+llm-load-testing page stays UNPUBLISHED until Algenta leads BOTH controls on deep prefill + deep
+decode. The remaining 8K prefill gap needs the KV-traffic lever (cut re-reads without inflating
+shared -- device-direct Q or a scratch-light KV-resident scheme), and the deep-decode gap needs the
+same; MLX's margin means attention alone must improve substantially, not just a few percent.
