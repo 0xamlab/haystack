@@ -46,7 +46,7 @@ def main() raises:
     var lse_buf = ctx.enqueue_create_buffer[DType.float32](Int(h_q * n_tok_q))
 
     var n_q_blocks = (n_tok_q + 15) // 16
-    var grid = n_q_blocks * (h_q // 2)
+    var grid = n_q_blocks * h_q
     var scale64: Float64 = 1.0 / Float64(128) ** 0.5
     var scale: Float32 = Float32(scale64)
 
@@ -55,6 +55,6 @@ def main() raises:
         q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
         n_tok_q, n_tok_k, h_q, h_kv,
         scale, Int64(0), n_blocks,
-        grid_dim=Int(grid), block_dim=256,
+        grid_dim=Int(grid), block_dim=128,
     )
     print("CANDIDATE A BLOB DRIVER: codegen forced")

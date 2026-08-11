@@ -1,17 +1,7 @@
 """attention_forge.grouped_fa_q8_k32_h2_sg8 -- Attention Compiler Plan v1.0, Phase 2A Round 1,
 CANDIDATE A: grouped-head fused FlashAttention. Two GQA-sibling query heads sharing ONE K/V head
-LOAD (consumed by BOTH heads) instead of `parity_replica.mojo`'s one-head-per-dispatch organization.
-
-LEAN RESTRUCTURE (beat-llama.cpp, 2026-08-11, supersedes the staging description below): following
-the white-box teardown of llama.cpp's `kernel_flash_attn_ext_impl` (REALRACE_RESULTS.md DISSECTION
-entry of the same date), this kernel now reads V DEVICE-DIRECT in the PV MMA (no shared `skv`
-staging) and uses 3 in-loop barriers instead of 5, dropping the per-threadgroup shared footprint
-from ~22KB to ~14KB (1 -> 2 threadgroups resident per core). It is BIT-IDENTICAL to the prior
-staged version and +11% faster at 8K. The historical docstring below is retained for the design
-provenance but its "stage V into skv every tile" and "5 barriers" descriptions are OUTDATED -- the
-code (V device-direct, 3 barriers) and the REALRACE entry are authoritative.
-
-ORIGINAL PROVENANCE: the axis this candidate is built to
+LOAD (staged into shared memory exactly once per K-tile, then consumed by BOTH heads) instead of
+`parity_replica.mojo`'s one-head-per-dispatch organization -- the axis this candidate is built to
 measure is whether halving K/V shared-memory staging traffic (one load serves two heads) beats the
 extra bookkeeping of running two heads' online-softmax recurrences side by side in one threadgroup.
 
@@ -192,10 +182,14 @@ comptime _KT: Int64 = 32
 """K_TILE fallback from the plan's aggressive 64, for shared-memory budget -- see module
 docstring's worked arithmetic."""
 comptime _NSG_PER_HEAD: Int64 = 4
-comptime _NSG: Int64 = 8
-comptime _NTHREADS: Int64 = 256
-comptime _NROWS: Int64 = _QT * 2
-"""Combined rows across BOTH sibling heads sharing this dispatch's one K/V load: 32."""
+comptime _NSG: Int64 = 4
+comptime _NTHREADS: Int64 = 128
+comptime _NROWS: Int64 = _QT
+"""UNPAIRED occupancy experiment (MLX teardown, 2026-08-11): ONE query head per threadgroup (no
+GQA sibling pairing), 128 threads = 4 simdgroups, so ~4 threadgroups/core can be resident (vs 2
+for the paired 256-thread kernel). The trade under test: 2x more KV re-reads (each query head reads
+its KV head's cache separately) vs double the residency + no pairing bookkeeping. This mirrors
+MLX steel_attention's structure, which beats our paired kernel at every depth."""
 comptime _NEG_MASK: Float32 = -1.0e9
 comptime _NEG_SENTINEL: Float32 = -3.0e38
 
@@ -218,13 +212,15 @@ def _attn_grouped_fa_kernel(
     n_tok_q: Int64, n_tok_k: Int64, h_q: Int64, h_kv: Int64,
     scale: Float32, pos_base: Int64, n_blocks: Int64,
 ):
-    # LEAN production kernel (beat-llama.cpp teardown, 2026-08-11): V is read DEVICE-DIRECT in the
-    # PV MMA (no shared `skv` staging), dropping the per-threadgroup shared footprint from ~22KB to
-    # ~14KB so 2 threadgroups can be resident per core instead of 1 -- llama.cpp's own
-    # kernel_flash_attn_ext_impl runs ~10KB/threadgroup for exactly this occupancy reason (see the
-    # REALRACE_RESULTS.md 2026-08-11 DISSECTION entry). Dropping the staging also removes two
-    # barriers (the V-stage barrier and the pre-PV barrier), leaving 3 in-loop barriers. A/B'd
-    # bit-identical to the prior staged kernel and +11% faster at 8K.
+    # UNPAIRED production kernel (MLX teardown, 2026-08-11): ONE query head per threadgroup, 128
+    # threads (4 simdgroups), no GQA pairing. The MLX steel_attention teardown showed the winning
+    # structure is small-threadgroup high-occupancy with no head pairing; A/B confirmed this unpaired
+    # kernel is bit-identical to the paired version yet faster at EVERY depth (8K +7.5% over the
+    # paired lean kernel, ~1.19x over the pre-lean original) -- doubled residency (~4 threadgroups/
+    # core) more than pays for the 2x KV re-reads the pairing used to avoid. V device-direct (lean),
+    # register O, Q_TILE=16, K_TILE=32, 3 in-loop barriers. With 4 simdgroups, `hh` is always 0.
+    # NOTE: grid is n_q_blocks * h_q and block_dim is 128 (NOT the old paired * h_q//2 / 256) --
+    # session_prefill.mojo's AF tables were updated to match.
     var sq = stack_allocation[Int(_NROWS * _D), DType.float16, address_space = AddressSpace.SHARED]()
     var ss = stack_allocation[Int(_NROWS * _KT), DType.float32, address_space = AddressSpace.SHARED]()
     var sp = stack_allocation[Int(_NROWS * _KT), DType.float16, address_space = AddressSpace.SHARED]()
@@ -238,32 +234,27 @@ def _attn_grouped_fa_kernel(
     var n_q_blocks = (n_tok_q + _QT - 1) // _QT
     var bidx = Int64(block_idx.x)
     var q_block = bidx % n_q_blocks
-    var pair_idx = bidx // n_q_blocks
+    var h = bidx // n_q_blocks
     var group = h_q // h_kv
-    var h0 = pair_idx * 2
-    var h1 = h0 + 1
-    var hk = h0 // group
+    var hk = h // group
 
     var row0 = q_block * _QT
 
-    # Q load: both sibling heads' 16-row blocks, at the SAME query positions row0..row0+15 --
-    # combined row index cr = hh*_QT + r_local packs head hh's row r_local into one buffer.
+    # Q load: head h's 16-row block at query positions row0..row0+15. _NROWS=_QT=16 rows ->
+    # 16*128 = 2048 elems / 128 threads = 16 iterations. cr indexes the head's rows directly.
     for s in range(Int64(16)):
         var idx = tid + s * _NTHREADS
         var cr = idx // _D
         var d = idx % _D
-        var hh_l = cr // _QT
-        var r_l = cr % _QT
-        var h_sel = h0 if hh_l == 0 else h1
+        var r_l = cr
         var gi = row0 + r_l
         if gi < n_tok_q:
-            sq[Int(idx)] = q_ptr[Int((gi * h_q + h_sel) * _D + d)]
+            sq[Int(idx)] = q_ptr[Int((gi * h_q + h) * _D + d)]
         else:
             sq[Int(idx)] = Float16(0.0)
 
     var hh = sg // _NSG_PER_HEAD
     var sg_local = sg % _NSG_PER_HEAD
-    var h = h0 if hh == 0 else h1
 
     # This SG's REGISTER-RESIDENT output accumulator: head hh's full 16 rows x this sg_local's
     # 32 output dims, as 2 row-blocks x 4 col-blocks of 8x8 MMA fragments (each SIMD[F32,2] is this

@@ -2379,7 +2379,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_units_kvprod_max = (self.h_q + self.h_kv) * PREFILL_MAX_TILE
         var n_kv_tiles_max = _ceil_div(PREFILL_MAX_TILE, _AF_KEY_BLOCK_SIZE)
         var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 16)
-        var n_units_attn_af_max = n_q_blocks_max * (self.h_q // 2)
+        var n_units_attn_af_max = n_q_blocks_max * self.h_q
 
         for layer in range(self.n_layers):
             ref lw = self.layers[layer]
@@ -2523,7 +2523,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # the `gemv_o` dispatch right after this one needs no changes at all, AF table or not.
             _mb_set_header(
                 self.descriptors_prefill_af, d, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
-                n_units_attn_af_max, 256, 12,
+                n_units_attn_af_max, 128, 12,
             )
             _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.attn_out_addr)
             _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.lse_scratch_addr)
@@ -2655,7 +2655,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_units_kvprod_max = (self.h_q + self.h_kv) * PREFILL_MAX_TILE
         var n_kv_tiles_max = _ceil_div(PREFILL_MAX_TILE, _AF_KEY_BLOCK_SIZE)
         var n_q_blocks_max = _ceil_div(PREFILL_MAX_TILE, 16)
-        var n_units_attn_af_max = n_q_blocks_max * (self.h_q // 2)
+        var n_units_attn_af_max = n_q_blocks_max * self.h_q
 
         for layer in range(self.n_layers):
             ref lw = self.layers[layer]
@@ -2760,7 +2760,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # `_build_descriptors_prefill_af`'s own equivalent dispatch.
             _mb_set_header(
                 self.descriptors_prefill_af_nomirror, d, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
-                n_units_attn_af_max, 256, 12,
+                n_units_attn_af_max, 128, 12,
             )
             _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 0, self.attn_out_addr)
             _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 1, self.lse_scratch_addr)
@@ -2908,7 +2908,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
         var n_units_kvprod = self.h_q + self.h_kv
         var n_q_blocks = _ceil_div(m_rows, 16)
-        var n_units_attn_af = n_q_blocks * (self.h_q // 2)
+        var n_units_attn_af = n_q_blocks * self.h_q
 
         var use_mma = True
         var use_narrow = residentk_prefill_gemm_use_narrow_tile(m_rows)
@@ -3051,7 +3051,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var d_attn = self.attn_af_d[layer]
             _mb_set_header(
                 self.descriptors_prefill_af, d_attn, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
-                n_units_attn_af, 256, 12,
+                n_units_attn_af, 128, 12,
             )
             _mb_set_arg_int(self.descriptors_prefill_af, d_attn, 5, m_rows)
             _mb_set_arg_int(self.descriptors_prefill_af, d_attn, 6, pos_base + m_rows)
@@ -3132,7 +3132,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
         var n_units_kvprod = self.h_q + self.h_kv
         var n_q_blocks = _ceil_div(m_rows, 16)
-        var n_units_attn_af = n_q_blocks * (self.h_q // 2)
+        var n_units_attn_af = n_q_blocks * self.h_q
 
         var use_mma = True
         var use_narrow = residentk_prefill_gemm_use_narrow_tile(m_rows)
@@ -3297,7 +3297,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var d_attn = self.attn_af2_d[layer]
             _mb_set_header(
                 self.descriptors_prefill_af_nomirror, d_attn, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
-                n_units_attn_af, 256, 12,
+                n_units_attn_af, 128, 12,
             )
             _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_attn, 5, m_rows)
             _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_attn, 6, pos_base + m_rows)

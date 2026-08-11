@@ -10682,3 +10682,107 @@ llm-load-testing page stays UNPUBLISHED until Algenta leads BOTH controls on dee
 decode. The remaining 8K prefill gap needs the KV-traffic lever (cut re-reads without inflating
 shared -- device-direct Q or a scratch-light KV-resident scheme), and the deep-decode gap needs the
 same; MLX's margin means attention alone must improve substantially, not just a few percent.
+
+## DEVICE-DIRECT Q occupancy probe REFUTED at depth (2026-08-11): the coalesced shared-Q staging is worth its 8KB; safe occupancy levers are now exhausted at Q_TILE=16
+
+Hypothesis under test: free the 8KB `sq` by reading Q device-direct in QK^T (strided h_q*_D across
+the 8 rows of a row-block), raising residency 2 -> ~5 threadgroups/core at UNCHANGED KV re-read
+count (still Q_TILE=16). Built `grouped_fa_lean_dq_k32_h2_sg8.mojo`, A/B'd in
+`grouped_fa_lean_dq_ab_driver.mojo` (dq Q buffer padded by Q_TILE zero rows, which exactly
+reproduces the staged kernel's invalid-row zero-fill). CORRECTNESS: bit-identical to the lean
+kernel (0.0 delta) and within the Float64 oracle on every shape. TIMING vs lean: 1024:1.13x (wins,
+occupancy headroom at shallow) BUT 2048:0.87x, 4096:0.84x, **8192:0.83x (43.9 -> 53.2 ms, a 17%
+LOSS)**. The strided device Q loads (8 separate cache lines per 8x8 a_frag tile, re-read every KV
+tile) cost more than the extra residency buys.
+
+SYNTHESIS of the three 2026-08-11 occupancy/traffic probes, which together bracket the design
+space at this structure: (a) LEAN16 (device V, 3 barriers, 2 TG/core) = +11% at 8K -- latency/
+barrier/staging overhead was real; (b) LEAN8 (half the rows, 4 TG/core) = -3% at 8K -- the 2x KV
+re-read from smaller Q_TILE costs more than doubled residency buys; (c) LEAN-DQ (no sq, ~5 TG/core)
+= -17% at 8K -- strided device Q costs more than tripled residency buys. CONCLUSION: at Q_TILE=16
+the coalesced shared-Q staging + 2 threadgroups/core is a local optimum; further occupancy via
+fewer rows or un-staged Q both regress at depth. The ONLY remaining lever for the deep-prefill
+verdict is cutting KV re-read traffic via a LARGER effective Q_TILE, which is the register/shared-
+pressure-risky direction (Q_TILE=32 needs 16 output SIMD accumulators + 8 softmax-owned rows and
+~28KB shared = back to 1 TG/core). That, or matching MLX's flash-attn quality, is the honest scope
+of the remaining 8K gap -- there are no more free occupancy wins at this structure.
+
+## MLX TEARDOWN (2026-08-11): steel_attention.h -- WHY MLX leads every prefill depth, and the lever we are still missing = small-threadgroup occupancy + row-owned softmax
+
+White-box teardown of MLX 0.32.0's prefill attention (installed package kernel source
+`mlx/include/mlx/backend/metal/kernels/steel/attn/kernels/steel_attention.h`, body lines 61-476;
+the AOT-instantiated config for d=128 is `attention<T, BQ=32, BK=16, BD=128, WM=4, WN=1>`,
+extracted from mangled symbols in mlx.metallib; the "nax" variant is a MetalPerformancePrimitives
+rewrite NOT present as AOT kernels in this wheel, so steel_attention is what raced us):
+
+- **128 threads/threadgroup = 4 simdgroups; ONE query head per threadgroup** (GQA sharing only via
+  cache, `kv_head_idx = tid.y / gqa_factor` -- NO in-threadgroup head pairing). Each simdgroup owns
+  exactly one 8-row query frag (BQ=32 / 4 sg = 8 rows); with the 8x8 frag layout **each THREAD owns
+  exactly ONE query row** (kRowsPerThread=1), so the row's m/l live in one thread and the online-
+  softmax row reductions finish with **two simd_shuffle_xor butterflies (masks 1 and 8) and ZERO
+  cross-simdgroup synchronization**.
+- **Register-resident everything**: the BQ x BK score tile, the m/l state, and the output
+  accumulator all stay in simdgroup_matrix registers for the ENTIRE KV loop; only Q is staged to
+  threadgroup memory once, and each K/V chunk is staged into ONE aliased, padded threadgroup buffer
+  (K and V share the same pointer). Total smem ~8.7KB(Q) + 6.1KB(KV) ~ 15KB. K is transposed on the
+  way into smem so QK^T is a plain MMA; the V device->smem load is issued BEFORE the softmax ALU
+  block to hide latency. 4 threadgroup_barriers per KV chunk.
+- **base-2 softmax**: scale*log2(e) folded into the scores once, `fast::exp2` for every exp/rescale.
+- **block-granularity causal skip**: the KV loop bound is clamped at the causal horizon (blocks past
+  it are never loaded) and per-element causal masking is applied ONLY on the single diagonal-
+  crossing block.
+- fp16 storage, fp32 MMA + accumulation; K/V loads are 16-elem (32B) vectors, Q 32-elem at d=128.
+
+THE DECISIVE ARITHMETIC: MLX does NOT pair GQA heads -- it re-reads the KV cache once per QUERY
+head (2x more KV traffic than our paired Candidate A at group=2), yet it beats us by 1.48x at 8K
+(4682 vs 3170). Per byte of KV, MLX is therefore ~3x more efficient than us. That cannot be the
+algorithm (both are q-block-parallel flash attention) -- it is OCCUPANCY: 128-thread threadgroups
+with no cross-simdgroup softmax sync let many more threadgroups be resident per core and hide the
+KV-streaming latency that our 256-thread, s_corr-broadcasting, 5-shuffle-per-row paired kernel
+exposes. Our pairing halves KV reads but the teardown shows that advantage is MORE than given back by
+the occupancy + softmax-sync deficit. LEVER TO REPLICATE: an MLX-style kernel -- 1 head/TG, 128
+threads, each thread owning its query row (2-shuffle row softmax, no cross-SG corr broadcast),
+register-resident S/m/l/O, exp2, causal block-skip -- then A/B against the paired lean kernel to see
+whether MLX's occupancy beats our KV-save at depth. This is the next kernel.
+
+## UNPAIRED (MLX-style) kernel CONFIRMED (2026-08-11): occupancy beats GQA pairing at EVERY depth -- the MLX teardown prediction reproduces on our engine
+
+Built `grouped_fa_unpaired_lean_k32.mojo` (`_attn_unpaired_lean_kernel`): same lean structure (V
+device-direct, register O, Q_TILE=16, K_TILE=32, 3 in-loop barriers) but ONE query head per
+threadgroup, 128 threads = 4 simdgroups (hh is always 0, so the per-head QK/softmax/PV code is the
+paired kernel's unchanged), grid = n_q_blocks * h_q. A/B'd in
+`grouped_fa_unpaired_ab_driver.mojo`. CORRECTNESS: bit-identical to the paired kernel (0.0 delta,
+same per-element KV recurrence order) and within the Float64 oracle on every shape. TIMING
+unpaired vs paired: 1024:1.39x, 2048:1.13x, 4096:1.09x, **8192:1.075x (43.5 -> 40.4 ms)**.
+Unpaired reads 2x MORE KV (no sibling pairing) yet wins at EVERY depth including 8K -- the doubled
+residency (~4 threadgroups/core from 128-thread threadgroups) more than pays for the extra KV
+traffic. This is the MLX steel_attention trade, reproduced on our engine: **occupancy dominates the
+GQA-pairing KV-save.** CUMULATIVE vs the pre-lean original: ~1.19x at 8K, ~1.65x at 1K.
+
+COST: the unpaired kernel is NOT a drop-in -- its grid is n_q_blocks * h_q (not * h_q//2) and its
+block_dim is 128 (not 256), so wiring it into `session_prefill.mojo` needs both the AF descriptor
+grid and the dispatch block_dim updated in the with-mirror and no-mirror tables. Remaining MLX
+techniques NOT yet adopted (next increments): exp2/base-2 softmax, causal block-skip at block
+granularity, K-transposed-on-load staging with the V-load-before-softmax overlap.
+
+## UNPAIRED kernel WIRED TO PRODUCTION + THREE-WAY (2026-08-11): beats llama.cpp at 4K; 8K three-way is THERMALLY flat -- the solo-vs-three-way 8K gap is the open problem
+
+Wired the unpaired kernel into `session_prefill.mojo` (both AF tables): `n_units_attn_af = n_q_blocks
+* self.h_q` and block_dim 128 in all four sites (2 descriptor builders + 2 `_apply_m_rows_af*`),
+regenerated `candidate_a_blob.c`, rebuilt the worker (`algenta-gpu-worker-unpaired`, DEVELOPER_DIR).
+CORRECT through the full serving path (greedy tokens valid, correctness_note ok). SOLO stress A/B
+(same tree, end-to-end): 8K prefill 3160 (original) -> 3573 (lean paired) -> **4211 (unpaired)**
+= ~1.33x over the original; 1K 8345. But the THREE-WAY (the apples-to-apples verdict metric) tells a
+different story at 8K: unpaired pf/dc = 1024/512: 7512/236, 4101/512: 5636/146, 8198/512: 3111/92
+vs llama.cpp 8637/224, 5104/189, 3528/162 vs MLX 7961/179, 7962/182, 4855/170. So unpaired BEATS
+llama.cpp at 4K (5636 vs 5104, 1.10x) and is +5-7% at 1K/4K over the paired lean, BUT at 8K the
+three-way reads 3111 -- essentially FLAT with the paired lean three-way (3170) and the q16 three-way
+(3077), all ~3100. The isolated/solo 8K gain (4211) does NOT survive into the three-way. HONEST
+READING: at 8K the three-way is the bottleneck-leveler -- every prefill kernel variant lands ~3100,
+which points to a COMMON 8K limiter the attention-kernel swap doesn't touch (sustained-thermal clock
+clamping across the rotating three engines, and/or full-model KV+weight bandwidth at 8K), NOT a
+remaining attention-kernel gap alone. The unpaired kernel is still strictly better than the paired
+one (wins 1K/4K, equal 8K) and is what ships; the 8K verdict is NOT flipped and the page stays
+unpublished. OPEN: the 8K three-way needs either (a) a measurement protocol that isolates Algenta's
+8K from the thermal clamp (solo-but-rotated-order control) to prove the 4211 is real under fair
+conditions, or (b) a genuine 8K limiter found in the full-model path (GEMM/KV-bandwidth audit at 8K).
