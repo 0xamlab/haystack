@@ -234,7 +234,6 @@
 * [Prefill (token input) throughput](benchmarks/llm-prefill-throughput.md)
 * [Decode throughput](benchmarks/decode-throughput.md)
 * [Batched decode throughput](benchmarks/batched-decode-throughput.md)
-* [LLM large-token load testing](benchmarks/llm-load-testing.md)
 * [LLM tool-calling uplift](benchmarks/llm-tool-calling-uplift.md)
 
 ## Help
