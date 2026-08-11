@@ -3744,9 +3744,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             # ── THE substitution, dispatch 1/2: split-K PARTIAL over this step's full key range --
             # 14 args, exact order of `_native_kv_decode_splitk_partial_kernel`'s own signature.
+            # float4 SIMD split-K partial (2026-08-10): one simdgroup per (head,split), each lane
+            # owns 4 head-elements, each key's dot = single simd_sum; block_dim = d_head//4.
+            # Requires d_head % 4 == 0 (Qwen3 d_head=128). Worker builds need DEVELOPER_DIR=full
+            # Xcode or the Metal compiler falls back to CommandLineTools and fails.
             _mb_set_header(
                 self.descriptors_decode_native_splitk, d, self.native_decode_splitk_partial_pipeline_idx,
-                self.h_q * _NATIVE_DECODE_N_SPLITS, self.d_head, 14,
+                self.h_q * _NATIVE_DECODE_N_SPLITS, self.d_head // 4, 14,
             )
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.splitk_m_addr)
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.splitk_l_addr)
