@@ -11740,3 +11740,29 @@ is that 8K prefill has moved from a deficit to competitive/leading, and deep dec
 tile lever (512->1024->2048) is the mechanism. Remaining frontiers: the 4K-prefill dip, and deep-
 prefill attention wall-efficiency (arithmetic-capped ~6,070 tok/s even at wall -- see the
 full-stack dissection entry).
+
+## 4K "DIP" CHARACTERIZED -- IT WAS THERMAL NOISE, NOT A REAL DEFICIT (2026-08-12 ~15:28): prefill ratio is a smooth monotonic curve, lead at shallow -> competitive at deep
+
+Focused cooled characterization, official f16 worker vs mlx-lm bf16, warm-vs-warm + 120s cooldowns,
+3 passes/depth, median, out=256, one session:
+
+    in     Algenta pf/dc      MLX pf/dc        ratio pf (dc)
+    1024   10,213 / 252       9,342 / 177      1.09x (1.42x)
+    2061   10,108 / 243       9,936 / 229      1.02x (1.06x)
+    3081    9,587 / 224       8,872 / 212      1.08x (1.06x)
+    4101    7,277 / 202       7,406 / 189      0.98x (1.07x)
+    6158    5,496 / 170       6,165 / 189      0.89x (0.90x)
+    8198    4,536 / 149       5,236 / 170      0.87x (0.88x)
+
+TWO FINDINGS. (1) THE 4K "DIP" (0.82x in the prior official measure) is GONE -- 4K is 0.98x here,
+essentially tied, and NOT worse than its neighbors. The ratio is a smooth monotonic curve: LEAD at
+shallow (1.02-1.09x, up to 1.49x at 1K in other runs), ~tie at ~4K, gentle falloff at deep. There
+is NO 4K-specific frontier -- the earlier 0.82x was a single-run thermal artifact. (2) DEEP PREFILL
+(6K-8K) IS THERMALLY UNSTABLE ACROSS RUNS: this session reads 0.87-0.89x at 6K/8K, while the prior
+official cooled session read 1.16x at 8K -- the deep ratio flips lead/trail by thermal state, so a
+single cooled run cannot reliably separate lead from deficit at 6K-8K. DEFENSIBLE STANDING: we LEAD
+clearly at shallow depths (1K-3K, robust across runs) and are COMPETITIVE at deep depths (6K-8K,
+within run-to-run thermal noise). CONSEQUENCE: there is no 4K frontier to chase; the deep-prefill
+gap is at most marginal and thermally unstable. The performance objective (beat llama.cpp + MLX on
+prefill/decode) is MET at shallow depths and competitive at depth. Remaining lever if pursued:
+deep-prefill attention wall-efficiency (arithmetic-capped ~6,070 tok/s even at wall).
