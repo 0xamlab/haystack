@@ -11583,3 +11583,34 @@ ownership/layout family; remaining attention mechanisms would need a different f
 TG KV streaming, occupancy trading), and per the frontier arithmetic even wall-rate attention does
 not beat MLX at 8K -- so campaign priority shifts to deep DECODE (0.82x warm-vs-warm; the int8-KV
 lever from the decode-budget entry, standalone milestone kernel in flight).
+
+## INT8-KV DECODE PARTIAL: standalone milestone REFUTED in two iterations (2026-08-12 late morning) -- scalar-lane dequant costs more issue slots than the saved bytes buy; SIMD dequant is the only untested path
+
+The decode-budget entry's lever #1 (halve the 939MB KV/token) gets its standalone kernel milestone,
+two iterations, both REFUTED at depth (files attention_forge/native_kv_decode_attn_splitk_i8kv{,_driver}.mojo,
+untracked dev convention). DESIGN: 2-key-unrolled split-K partial matching f4u2's grid/lane-mapping/
+key-order-online-softmax; int8 KV stored CONTIGUOUS per key ([hk][key][d_head] bytes -- the scalar
+decode kernel wants contiguous key rows, not the prefill-MMA transposed packing), packed UInt32
+loads (one instruction per 4 bytes), dequant folded at the natural points (K scale post-warp-sum,
+V scale into dequantized values). V1: per-key absmax scales loaded per key-pair + branchy unpack.
+NUMERICS (n_keys=257, n_splits=32 vs Float64 oracle): f16 reference path 3.8e-6 OK; i8kv worst
+rel-diff 8.9% vs oracle (the expected int8 budget); argmax stability on RANDOM pseudo-data 9/16
+heads -- DRIFT, but random data maximizes near-ties; any engine phase needs real-activation token
+validation. TIMING (partial only, 512 TGs, warmup + best-of-3): 2048 keys 1.17x (suspect outlier),
+4096 **0.38x**, 8192 **0.38x** -- the deep regime is 2.6x SLOWER. DIAGNOSIS: the f4u2 loop is
+issue-bound (its own docstring: latency/issue, one in-flight key's loads behind a dependent softmax
+chain); v1 adds ~4 scattered scale loads + ~40 unpack ALU per key-pair (~97 issue slots vs f4u2's
+~57). V2 attacked both: q8_0-style PER-BLOCK scales (one f32 per 32-key block, tracked
+incrementally with f4u2's block/kk discipline) + BRANCHLESS unpack (b - (b>>7)*256). RESULT:
+0.89x @2048, **0.36x @4096/8192** -- no better. MECHANISM NAILED: byte-halving is irrelevant when
+every 4-byte group is already ONE load instruction; the dequant ALU itself is the cost, and no
+scale-placement fix removes it. HARNESS ARTIFACT (recorded for honesty): v1-vs-v2 numerics matched
+to 15 digits because the pseudo-data LCG (i*61 mod 47; period 47 < row length 128) makes per-key
+max == per-block max for EVERY group -- zero quantized bytes differ; per-block numerics remain
+UNEXERCISED by this harness. VERDICT: scalar-lane int8-KV is exhaustively refuted (two variants,
+consistent mechanism). The only untested int8 path is SIMD-vector dequant (fewer, WIDER loads +
+vector int8->f16 conversion, amortizing issue) -- gated on a Mojo-on-Apple-GPU SIMD-conversion
+feasibility probe; if that probe fails, the decode levers fall back to GEMV bandwidth utilization
+and dispatch-count reduction, or accepting decode-attention as-is. NOTE also the f4u2 timing
+non-monotonicity in both runs (4096 faster than 2048): zero-filled-buffer cache artifact; the
+per-depth ratios are unaffected.
