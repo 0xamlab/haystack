@@ -11194,3 +11194,25 @@ deeper ILP -- an 11% ceiling gain, the same order as the DVFS-controlled 1K-4K p
 (13-16%). NEXT: restructure the prefill GEMM tier's inner loop for deeper independent MMA chains
 (wider per-simdgroup N work or longer unrolled K chains without growing the register footprint
 that killed sg8+NACC16), judged by the DVFS-controlled 1K/4K three-way cells.
+
+## SHALLOW ATTENTION CROSSOVER HUNT + A MEASUREMENT CORRECTION (2026-08-11 night): lean-q8 loses at EVERY depth; the 1.5ms @1K steel number was a DVFS-ramp artifact; the real 1K gap is the small-kernel/dispatch bucket
+
+(1) STEEL vs LEAN-Q8 head-to-head (attention_forge/grouped_fa_shallow_ab_bench.mojo, same
+resident buffers, 4 alternating rounds, medians): lean/steel = 0.82x @512, 0.64x @1K, 0.53x @2K,
+0.50x @4K, 0.47x @8K -- the lean family LOSES everywhere; the old "lean-q8 wins 1.23x @1K"
+result was measured against the PRE-lean q16 kernel, not steel. DEPTH-SWITCHED ATTENTION IS
+DEAD: steel owns the family at all depths; the attention front is closed.
+(2) CORRECTION: the morning roofline bench's 1.511ms @1K (and tonight's 1.087) is a DVFS-RAMP
+ARTIFACT -- it measures N=1024 as the FIRST shape right after process start, at pre-ramp idle
+clocks (the MMA probe v2 measured 8.54 TF/s idle-clock vs 13.37 ramped). At >=2K the two benches
+agree exactly (1.81/6.42/23.47 vs 1.79/6.29/23.48). True ramped steel @1K = ~0.57ms/layer (7.6
+TF/s). The DVFS-controlled three-way numbers themselves are NOT affected (each engine's runs
+start warm-ish inside rotating passes; the artifact only touched the isolated roofline bench).
+(3) REVISED 1K prefill attribution (129ms total at 7907 tok/s): attention = 28 x 0.57 = ~16ms
+(12%, NOT the 33% the artifact implied); GEMM = ~69ms (53%, at llama.cpp's own wall -- they run
+the SAME kernel structure, so GEMM cannot explain why they lead 1K); remainder = rope/kvprod/
+embed/norms/lm_head/DISPATCH GAPS = ~44ms (34%) vs llama's estimated ~23ms. VERDICT: the real
+shallow front is the small-kernel + dispatch-overhead bucket, not attention, not GEMM. NEXT
+engineering targets (next session): small-kernel fusion (rmsnorm+scale, rope+kvprod) and
+concurrent-dispatch encoding (llama.cpp packs ~515 dispatches/token into one command buffer with
+MTLDispatchTypeConcurrent; our shim is sequential encoding); then the decode-8K 0.93x residue.
