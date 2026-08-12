@@ -207,6 +207,9 @@ def main() -> int:
     ap.add_argument("--out-sizes", default="512,2048,4096")
     ap.add_argument("--in-fixed", type=int, default=1024)
     ap.add_argument("--passes", type=int, default=2)
+    ap.add_argument("--engines", type=str, default="algenta,llama.cpp,mlx-lm",
+                    help="comma-separated subset/order of engines to run (solo-control runs for "
+                         "interference attribution use a single engine)")
     ap.add_argument("--engine-cooldown", type=float, default=0.0,
                     help="idle seconds before EACH engine's run (DVFS-controlled protocol: "
                          "decouples engines from each other's heat; 0 = legacy behavior)")
@@ -232,7 +235,11 @@ def main() -> int:
     llama = start_llama_server(args.gguf, LLAMA_PORT, args.llama_ctx)
     log("llama-server healthy")
 
-    engines = ["algenta", "llama.cpp", "mlx-lm"]
+    engines = [e.strip() for e in args.engines.split(",") if e.strip()]
+    for e in engines:
+        if e not in ("algenta", "llama.cpp", "mlx-lm"):
+            print(f"unknown engine: {e}")
+            return 1
     collected = {e: [] for e in engines}
     try:
         for p in range(args.passes):
@@ -281,7 +288,7 @@ def main() -> int:
             row[eng] = match[0] if match else None
 
         def fmt(e, _row=row):
-            r = _row[e]
+            r = _row.get(e)
             if not r:
                 return "        n/a       "
             return f"{r['prefill_tok_s_median']:7.0f}/{r['decode_tok_s_median']:6.0f}"

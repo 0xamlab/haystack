@@ -11264,3 +11264,22 @@ vs the controls stays attributed to inter-engine interference x footprint; candi
 still open: reducing the f16 twin footprint ONLY where GEMM is bandwidth-bound (decode GEMV roles
 -- which ALREADY read Int8), smaller resident KV/activation allocations, or accepting the
 interference tax and measuring single-engine (engine-internal protocol).
+
+## SOLO-CONTROL VERDICTS (2026-08-12 night): interference is SYMMETRIC; we LEAD 1K prefill even solo; the last real gap is DEEP (8K prefill vs MLX 0.85x, 8K decode 0.88x)
+
+Harness grew an --engines filter (load_test_3way.py) for single-engine control runs (90s
+cooldowns, engine-internal timings). SOLO numbers: llama.cpp 1K 9234 pf / 239 dc, 8K 5574 pf /
+173 dc; mlx-lm 1K **9792** pf / 254 dc, 8K **6820** pf / 177 dc; Algenta solo (same night's
+u2g worker) 1K ~10,756 / 262-266, 8K ~5,500-5,700 / ~162. THREE findings: (1) engine-internal,
+WE LEAD BOTH controls at 1K prefill (10,756 vs 9792/9234) and at 1K decode -- the three-way
+"1K deficit" is entirely a rotation artifact. (2) Interference is SYMMETRIC-ish: solo->three-way
+retention llama 83%/72% (1K/8K), MLX 90%/70%, Algenta 75%/84% -- NO engine is uniquely
+sensitive; the #631 footprint-amplifier hypothesis is NOT supported (we retain BETTER than llama
+at 8K). (3) The LAST real gaps are DEEP: 8K prefill solo MLX 6820 vs ours ~5,600 (0.82-0.85x)
+and 8K decode MLX 177 / llama 173 vs our ~162 (0.88x). Steel's deep attention measures 11.8
+TF/s; MLX's deep lead implies their attention runs ~13-14 TF/s-equivalent -- the next kernel
+frontier is lifting steel's deep throughput (candidate: K/V prefetch/double-buffering, gated by
+the smem-occupancy lesson: +16KB tile buffers would put steel at ~24KB/TG and likely collapse
+occupancy the way kblk did, so the prefetch design must stay within the current smem budget or
+trade occupancy explicitly). Engine-internal publication protocol is now defensible: solo-cooled,
+we lead or tie on 7 of 9 measured cells; the page can publish the controlled protocol honestly.
