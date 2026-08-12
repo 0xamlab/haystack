@@ -1,6 +1,6 @@
 ---
 icon: compass
-description: Algenta is a self-hosted computational runtime — deploy it, then integrate over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here to pick your path.
+description: Algenta is self-hosted building blocks for AI applications — 6,000+ deterministic functions on custom Mojo kernels, integrated over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here to pick your path.
 cover: .gitbook/assets/brand/algenta-hero.png
 coverY: 0
 layout:
@@ -19,9 +19,9 @@ layout:
     visible: true
 ---
 
-# Simulate. Decide. Prove.
+# Build. Run. Prove.
 
-Algenta is a deterministic computational runtime you run yourself — feed it scenarios and governed data, get decisions you can audit, reached over the HTTP API, the SDKs, or MCP.
+Algenta is self-hosted building blocks for AI applications: 6,000+ deterministic functions on custom Mojo kernels, run on your own infrastructure and reached over the HTTP API, the typed SDKs, or MCP. You write the Python and TypeScript you already ship — the kernels carry the speed, and there is no new language to learn. Feed it scenarios and governed data; get results you can audit.
 
 ## Start here
 
