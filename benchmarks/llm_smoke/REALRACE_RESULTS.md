@@ -11488,3 +11488,19 @@ with the gap bucket nearly closed (28ms at 8K) and GEMM at wall, the remaining 8
 solo (6820) must come from attention's 75%-of-wall efficiency or from the SDK/host tax -- the
 next cooled-session measurement will establish where the post-tile engine actually lands (tonight's
 hot-machine SDK-path 8K reads ~4429; the cold-solo equivalent should be materially higher).
+
+## SDK/HOST TAX DISSECTED (2026-08-12 night): CLOSED as a deep-prefill lever -- one AF_UNIX round trip per REQUEST, engine-internal timing already tax-free
+
+Read-only dissection of the serving path (packages/algenta/inference.py + mojo_runtime.py +
+native/worker.py): `decode()` is ONE `runtime.execute()` = ONE AF_UNIX request frame + ONE
+response frame for the WHOLE call (prompt out, all generated tokens + timing back). The chunked
+prefill loop runs WORKER-SIDE inside the Mojo entry point (no per-chunk IPC); decode steps are
+worker-side too (no per-token IPC). Checkpoint conversion is cached in `<ckpt>/.algenta-cache`
+(one-time). `prefill_tokens_per_sec`/`decode_tokens_per_sec` are measured INSIDE the worker
+around the prefill/decode phases -- so load_test's pf/dc metrics carry NO SDK tax at all. The
+per-request host tax is just: 1 IPC round trip + JSON of the prompt ids (8K ints ~ ms-scale) +
+result parse -- single-digit ms against a ~2s deep request = NEGLIGIBLE. CONSEQUENCE for the deep
+frontier: the remaining 8K delta vs MLX solo is 100% engine-internal GPU-side work (attention's
+75%-of-wall efficiency first, per the frontier arithmetic); "reduce SDK/host tax" is removed from
+the lever queue as a prefill item. (Serving-latency items -- per-request IPC for streaming,
+tokenizer cost -- belong to the llama.cpp-parity feature queue, not the throughput frontier.)
