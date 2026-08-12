@@ -11718,3 +11718,25 @@ prompt the first token divergence vs f16 appears at token 20/64 (near-tie flip, 
 coherent, same as llama.cpp's q8_0 KV trade). The byte-identity criterion governs the f16 path
 (default); the int8 path is documented quantized. Prefill untouched (f16 tables; prefill numbers
 in this hot-machine session are thermally noisy, no i8 effect).
+
+## OFFICIAL COOLED RE-MEASURE POST-TILE (2026-08-12 ~14:48): 8K prefill FLIPS to a LEAD (1.16x) and 8K decode leads (1.07x); only 4K prefill still trails
+
+Official cooled measure, default f16 production worker REBUILT from current main (tile=2048, all
+session improvements, int8 NOT linked = opt-in preserved), vs mlx-lm bf16, warm-vs-warm protocol
+(per-cell untimed warmup + 90s inter-engine cooldowns), 2 passes, median, out=256:
+
+    in     Algenta pf/dc      MLX pf/dc        ratio pf (dc)
+    1024   11,793 / 258       7,919 / 169      1.49x (1.53x)
+    4101    6,144 / 175       7,502 / 146      0.82x (1.20x)
+    8198    4,911 / 134       4,246 / 125      1.16x (1.07x)
+
+READING: 8K PREFILL -- which opened the session at 0.82-0.85x and was corrected to 0.93x by the
+warm-protocol fix -- now leads MLX 1.16x in a cooled session. 8K decode leads 1.07x (and +19% more
+with the opt-in int8-KV path, PR #649). 1K leads strongly (1.49x/1.53x). The ONE remaining clear
+deficit is 4K prefill (0.82x). CAVEAT, stated plainly: run-to-run thermal variance is large --
+MLX's own 8K number was 5,490 in the earlier warm-vs-warm session and 4,246 here (~23% swing), so
+the exact 8K ratio sits somewhere in 0.93x-1.16x depending on thermal state; the defensible claim
+is that 8K prefill has moved from a deficit to competitive/leading, and deep decode now leads. The
+tile lever (512->1024->2048) is the mechanism. Remaining frontiers: the 4K-prefill dip, and deep-
+prefill attention wall-efficiency (arithmetic-capped ~6,070 tok/s even at wall -- see the
+full-stack dissection entry).
