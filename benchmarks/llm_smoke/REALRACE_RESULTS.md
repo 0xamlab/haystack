@@ -11639,3 +11639,22 @@ steel prefill reads) + v3 blob + session dispatch switch + end-to-end token-orac
 dual-cache costs +50% KV memory (int8 mirror = half the f16 size); single-cache int8-everywhere
 stays deferred (steel prefill would need in-kernel dequant of the transposed K -- compute-bound
 steel is the wrong place to pay it).
+
+## INT8-KV V4 PER-KEY SCALES: the wiring-design variant is ALSO the fastest (2026-08-12 midday) -- 1.34x @4K, 1.48x @8K vs f4u2, bit-identical to v3 on the harness
+
+The wiring phase needs INCREMENTAL-FRIENDLY quantization: decode appends one key per token, and
+per-BLOCK absmax (v2/v3's q8_0 scheme) would force re-quantizing the whole 32-key block on every
+append. V4 switches to PER-KEY absmax scales -- each key quantized ONCE, forever; tighter numerics
+(each key scaled by its own max); same scale-load count in the kernel; and the block/kk
+bookkeeping (the last vestige of the packed-f16 index arithmetic) deleted outright. NUMERICS: v4
+vs oracle 8.88e-2 (the int8 budget, unchanged); v4 vs v3 merged output **0.0 -- bit-identical**
+(this harness's LCG pseudo-data makes per-key max == per-block max for every group -- the earlier
+verified property -- so v4-vs-v3 is an exact consistency proof here; on real activations per-key is
+strictly finer-grained). TIMING (same driver/protocol): 4096 keys 0.0576 -> 0.0429ms = **1.34x**
+(v3: 1.18x); 8192 keys 0.1127 -> 0.0764ms = **1.48x** (v3: 1.30x); 2048 5.06x in f4u2's zero-fill
+outlier regime (v3 4.46x there; the deep ratios are the honest ones). Dropping the block/kk index
+arithmetic bought a further ~13% over v3 at depth. DECISION: v4 is the engine-wiring kernel --
+incremental-friendly AND fastest. Wiring plan UNCHANGED otherwise (int8 mirror cache beside f16
+native, per-key quantization fused into the KV writers at write time -- no separate quant pass
+needed now that scales are per-key, v4 blob + discovery + session dispatch switch + e2e
+token-oracle numerics; +50% KV memory).
