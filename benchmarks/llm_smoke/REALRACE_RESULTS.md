@@ -11324,3 +11324,26 @@ KV packing _KBS=32/_AF_KEY_BLOCK_SIZE=32; (c) MEMORY/POLICY policy constants: PR
 expose yet); (e) QWEN3-FAMILY assumptions to flag for other-model support: QK-norm inside kvprod
 (llama-family has none), tied word embeddings REQUIRED by the SDK prep gate, exact GQA grouping.
 QUEUED: parametric-d_head attention kernels; device-derived n_splits; optional QK-norm.
+
+## DEVICE-DERIVED n_splits CEILING (2026-08-12 night): audit item (d) CLOSED -- the adaptive clamp now derives from the GPU's own core count, value-identical on this device (32 == 32)
+
+The model-agnosticism audit queued "device-derived n_splits" because the clamp [16,32] froze THIS
+device's sweep optimum for h_q=16. CLOSED: the shim ALREADY exposed the device core count
+(algenta_gpu_core_count -- IOKit AGXAccelerator "gpu-core-count" read, validated against
+system_profiler when residentk added it; the audit's "not exposed yet" was wrong, so net-zero shim
+change, the duplicate wrapper first drafted was REMOVED in favor of the established one). NEW
+CONSTANT _DECODE_RESIDENT_TG_PER_CORE=13 = the measured resident-TG-per-core at the f4 kernel's
+optimum (nsweep peaked at 512 TG / 40 cores -- occupancy is a PER-CORE property), and
+session_prefill's __init__ now computes native_splitk_derived_opt = clamp(cores*13//h_q, 16, 32)
+ONCE per session; BOTH depth-adaptive clamps (_step_native_kv_impl + step_logits) narrow against
+the derived field instead of the constant; probe failure (cores<=0) falls back to the validated
+conservative constant 32 per the shim's typed-failure contract. On THIS device: probe returns 40
+(verified in-process via a direct call against the rebuilt shim .o), 40*13//16 = 32 = EXACTLY the
+old constant -- so the change is value-identical here and correctness/perf A/B must show parity.
+VALIDATION (same-tree control build: devopt WITH the change vs devoptctl WITHOUT, identical blobs):
+interleaved 4K stress (3 iters, warm) pf 7821/7862 (0.995x) dc 212/210 (1.01x); 1K pf
+10885/11066 (0.98x) dc 265/267 -- PARITY within DVFS noise (an earlier 0.83x 4K-prefill "gap"
+between non-interleaved runs was re-measured away once interleaved: the documented DVFS-ramp
+artifact, not the change). Greedy determinism gates green on every run. The batched path keeps its
+fixed 16 (= the recipe's clamp(cores*13//(h_q*B),16,32) at B=32, already at the derived batch
+target). The formula now sizes smaller/wider GPUs and other GQA widths automatically.

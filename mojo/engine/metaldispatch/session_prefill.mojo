@@ -302,6 +302,17 @@ and everything above it loses -- 64 is 1.29x SLOWER at 8704), so the formula is
 n_splits = clamp(n_keys // 64, _NATIVE_DECODE_N_SPLITS, _NATIVE_DECODE_N_SPLITS_OPT): depths
 <2048 keep the validated shallow default 16, depths >=2048 all land on 32."""
 
+comptime _DECODE_RESIDENT_TG_PER_CORE: Int = 13
+"""Beat-llama.cpp campaign model-agnosticism (2026-08-12): the measured resident threadgroups-per-
+GPU-core at the f4 partial kernel's optimum -- the nsweep harness peaked at 512 resident TGs on this
+40-core device (512 / 40 ~= 13), i.e. the optimum occupancy is a PER-CORE property, not a device
+property. The derive-don't-hardcode source for the adaptive n_splits CEILING: the total useful
+parallelism is cores * this, divided by h_q threadgroups-per-split-row-group, so
+opt = clamp(cores * _DECODE_RESIDENT_TG_PER_CORE // h_q, _NATIVE_DECODE_N_SPLITS,
+_NATIVE_DECODE_N_SPLITS_OPT) -- 40 cores x 13 // 16 heads = 32 on this device, EXACTLY the
+2026-08-11 sweep-measured constant, but the same formula now sizes smaller/wider GPUs and other
+GQA widths instead of freezing the M4-Max/Qwen3-4B measurement in stone."""
+
 
 comptime _BATCH_DECODE_MAX_SEQS: Int = 32
 """Project Slipstream Phase 3 (2026-08-09): the FIXED maximum number of sequences the batched /
@@ -1028,6 +1039,16 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     `_step_native_kv_impl` recomputes n_splits from the current key count each step and only
     re-narrows the partial grid + n_splits args when this value changes (it changes rarely, only
     when the depth crosses a 256-key boundary). -1 sentinel = never patched."""
+    var native_splitk_derived_opt: Int
+    """Beat-llama.cpp campaign model-agnosticism (2026-08-12): the DEVICE-DERIVED ceiling the two
+    depth-adaptive n_splits clamps (`_step_native_kv_impl`, `step_logits`) narrow against, computed
+    ONCE at construction from `_mb_gpu_core_count()` (the GPU's own AGXAccelerator `gpu-core-count`
+    IORegistry property -- works on any Apple Silicon, no lookup table):
+    clamp(cores * _DECODE_RESIDENT_TG_PER_CORE // h_q, _NATIVE_DECODE_N_SPLITS,
+    _NATIVE_DECODE_N_SPLITS_OPT). On this 40-core device with h_q=16 that resolves to 32 -- exactly
+    the sweep-measured `_NATIVE_DECODE_N_SPLITS_OPT` this replaces -- but it now tracks the device.
+    Falls back to `_NATIVE_DECODE_N_SPLITS_OPT` when the probe fails (cores <= 0), the documented
+    conservative constant, matching the shim's own typed-failure contract."""
     var splitk_m_addr: UInt64
     var splitk_l_addr: UInt64
     var splitk_o_addr: UInt64
@@ -1765,6 +1786,22 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.pos_offsets_native_splitk = List[Int]()
         self.nkeys_offsets_native_splitk = List[Int]()
         self.native_splitk_last_n_splits = -1
+
+        # ── Beat-llama.cpp campaign model-agnosticism (2026-08-12): DEVICE-DERIVED n_splits
+        # ceiling, computed once per session from the GPU's own core count instead of freezing this
+        # device's sweep optimum in stone (see `native_splitk_derived_opt`'s field docstring and
+        # `_DECODE_RESIDENT_TG_PER_CORE`). Typed-failure fallback: probe <= 0 keeps the validated
+        # conservative constant `_NATIVE_DECODE_N_SPLITS_OPT`, matching the shim's contract.
+        var gpu_cores = _mb_gpu_core_count()
+        if gpu_cores > 0:
+            var derived_opt = gpu_cores * _DECODE_RESIDENT_TG_PER_CORE // h_q
+            if derived_opt < _NATIVE_DECODE_N_SPLITS:
+                derived_opt = _NATIVE_DECODE_N_SPLITS
+            if derived_opt > _NATIVE_DECODE_N_SPLITS_OPT:
+                derived_opt = _NATIVE_DECODE_N_SPLITS_OPT
+            self.native_splitk_derived_opt = derived_opt
+        else:
+            self.native_splitk_derived_opt = _NATIVE_DECODE_N_SPLITS_OPT
 
         self._build_descriptors(n_qkv)
         self._build_descriptors_prefill(n_qkv)
@@ -4746,15 +4783,18 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # CEILING sweep): DEPTH-ADAPTIVE n_splits. The f4 sweeps measured 32 splits as the sweet
             # spot across the whole 2K-8.7K band (2048: 1.47x the old fixed 16; 4096: 1.53x; 8192+:
             # already optimal, everything above 32 loses); the table was built at the MAX grid, so
-            # here we narrow the partial grid + both n_splits args to clamp(n_keys//64, 16, 32),
-            # patching only when the value changes (it only changes crossing a 64-key boundary). The
-            # merge descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
+            # here we narrow the partial grid + both n_splits args to clamp(n_keys//64, 16,
+            # self.native_splitk_derived_opt) -- the CEILING itself device-derived at construction
+            # from the GPU's own core count (2026-08-12 model-agnosticism; 32 on this 40-core
+            # device, exactly the sweep optimum), patching only when the value changes (it only
+            # changes crossing a 64-key boundary). The merge descriptor is the partial's immediate
+            # successor (nkeys_offsets_native_splitk[layer]+1).
             if use_splitk:
                 var n_splits_adapt = n_keys // 64
                 if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
                     n_splits_adapt = _NATIVE_DECODE_N_SPLITS
-                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_OPT:
-                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_OPT
+                if n_splits_adapt > self.native_splitk_derived_opt:
+                    n_splits_adapt = self.native_splitk_derived_opt
                 if n_splits_adapt != self.native_splitk_last_n_splits:
                     for lyr in range(self.n_layers):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
@@ -4870,15 +4910,18 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # CEILING sweep): DEPTH-ADAPTIVE n_splits. The f4 sweeps measured 32 splits as the sweet
             # spot across the whole 2K-8.7K band (2048: 1.47x the old fixed 16; 4096: 1.53x; 8192+:
             # already optimal, everything above 32 loses); the table was built at the MAX grid, so
-            # here we narrow the partial grid + both n_splits args to clamp(n_keys//64, 16, 32),
-            # patching only when the value changes (it only changes crossing a 64-key boundary). The
-            # merge descriptor is the partial's immediate successor (nkeys_offsets_native_splitk[layer]+1).
+            # here we narrow the partial grid + both n_splits args to clamp(n_keys//64, 16,
+            # self.native_splitk_derived_opt) -- the CEILING itself device-derived at construction
+            # from the GPU's own core count (2026-08-12 model-agnosticism; 32 on this 40-core
+            # device, exactly the sweep optimum), patching only when the value changes (it only
+            # changes crossing a 64-key boundary). The merge descriptor is the partial's immediate
+            # successor (nkeys_offsets_native_splitk[layer]+1).
             if use_splitk:
                 var n_splits_adapt = n_keys // 64
                 if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
                     n_splits_adapt = _NATIVE_DECODE_N_SPLITS
-                if n_splits_adapt > _NATIVE_DECODE_N_SPLITS_OPT:
-                    n_splits_adapt = _NATIVE_DECODE_N_SPLITS_OPT
+                if n_splits_adapt > self.native_splitk_derived_opt:
+                    n_splits_adapt = self.native_splitk_derived_opt
                 if n_splits_adapt != self.native_splitk_last_n_splits:
                     for lyr in range(self.n_layers):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
