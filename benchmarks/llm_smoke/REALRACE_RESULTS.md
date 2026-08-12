@@ -11940,3 +11940,50 @@ mechanism-resolution entry is closed with direct measurement:
 Files added (all additive): `benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_async.m`,
 `mma_forge/probes/gemm_qkv_proj_dualstream.mojo`, `benchmarks/competitors/llama_cpp/
 operator_harness/mm_operator_harness_dualstream.m`. Existing files untouched.
+## RECONCILIATION (2026-08-12): the 2.7x GEMM gap + inner-loop-floor verdict characterized TODAY'S LEGACY KERNEL -- the production engine already runs llama.cpp's exact GEMM structure at parity via the MSL-parity tier; there is no GEMM gap in the shipped path
+
+Owner directive: "fix it -- you identified how they did it, implement it here as well." The
+implementation audit this entry records found the fix ALREADY SHIPPED -- and reconciles today's
+three measurement entries (mechanism resolution, dual-stream test) with that fact, so the ledger
+cannot be misread as "production has a 2.7x GEMM gap."
+
+**Today's entries measured `_qkv_proj_gemm_mma8x8` (mma_forge/mm8.mojo) -- the LEGACY Mojo GEMM
+kernel.** Its 2.7x dense-stream gap vs llama.cpp, the overlap-vs-residency mechanism resolution,
+and the dual-stream inner-loop-floor verdict all stand as measured for that kernel. But that
+kernel is NOT the production GEMM path, and has not been since the Project Redline work.
+
+**The production chain, verified link-by-link today (not assumed):**
+1. SDK default: `packages/algenta/algenta/inference.py:395` -- `use_msl_parity_all_roles: bool =
+   True` (and `use_native_grouped_fa_attn_no_mirror=True`), for both greedy and sampled decode.
+2. Entry: `qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3` (the SDK's `_FUNCTION_NAME`,
+   inference.py:79) resolves `PF_GEMM_MSL_PARITY_ALL_ROLES` when that flag is set.
+3. Resolver: `session_prefill_policy.resolve_prefill_execution_plan` keeps tier 3 whenever ANY of
+   the three MSL parity metallibs is linked (else degrades vecload4 -> BM64 -> ORIGINAL -- the
+   blobs-absent graceful path, never a hard error).
+4. Binary: the CURRENT official worker (`mojo_build/gpu-worker/algenta-gpu-worker`, rebuilt
+   2026-08-12 14:39 for the official cooled measure) embeds ALL FIVE MSL metallibs -- string scan
+   finds `msl_parity__qkv_proj_mul_mm`, `msl_parity__gemm_accum_mul_mm`, `msl_parity__swiglu_
+   mul_mm`, `msl_splitk8__gemm_accum`, `msl_splitk12__gemm_accum` (4 hits each) alongside the
+   legacy mm8 names. All three parity pipelines + both split-K variants discover; all four GEMM
+   roles dispatch MSL.
+5. Kernels: the five `.metal` files in `benchmarks/llm_smoke/metal_llama_parity_replica/` are
+   disassembly-verified replicas of llama.cpp's `kernel_mul_mm_f16_f32` structure (this ledger's
+   "Winning-Origin Bisection" entry: identical MMA intrinsic count, identical barrier count,
+   identical load widths, identical accumulator topology; bit-identical CPU-oracle correctness),
+   measured within 0.3-0.5% of the REAL llama.cpp kernel at qkv_proj, o_proj, and down_proj
+   under a common harness; the swiglu replica follows the same scheme. F16 weight twins
+   materialize once per layer at session build (Phase-3 allocation, gated on `msl_any_linked`).
+6. E2E: this exact path won the 256-token resident race (23.85-23.98ms = 1.151x the pin, beating
+   llama.cpp's fast regime) and produced ALL of today's official cooled depth numbers. The
+   dispatch-readback probe (`qwen3_probe_counters_i8_allsimd7_prefill_af_nomirror_msl`) verified
+   the production MSL table dispatches splitk8/12 at m_rows 512/1024 and parity accum at 2048 on
+   the current tree -- the #625 gate behaving exactly as production.
+
+**What remains, restated precisely:** the legacy mm8 kernel stays in the binary as the
+blobs-absent/degraded fallback and for the shapes the MSL gates don't cover (none, at the
+production row counts measured); its inner-loop floor is a legacy-path fact, not a production
+gap. The honest remaining frontiers are unchanged by today's kernel-level findings: deep-prefill
+attention wall-efficiency (arithmetic-capped ~6,070 tok/s even at wall), the thermally-noisy
+6K-8K prefill band, and serving/concurrent wiring of the already-built batched kernels -- NOT
+GEMM, where the shipped engine already runs the competitor's own winning structure at measured
+parity.
