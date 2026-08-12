@@ -11150,3 +11150,47 @@ for the deep end is the SAME one single-stream used -- depth-adaptive n_splits f
 partial (16 -> clamp(n_keys//64,16,32) per sequence depth), which needs per-sequence split
 grids or per-depth table re-narrowing (batch members share one dispatch; ragged-depth batching
 is the continuous-batching scheduler question, not a kernel question).
+
+## DVFS-CONTROLLED THREE-WAY (2026-08-11 night): thermal explains PART of the gap, not all -- deep prefill now ~ties MLX and beats llama; 1K-4K prefill deficit is REAL (~0.84-0.88x)
+
+Protocol (load_test_3way.py --passes 3 --engine-cooldown 60, after a 10-min machine pre-cool:
+3 rotated passes, 60s idle before every engine run, /tmp/load_3way_dvfs_controlled.json):
+  1024/512 : Algenta **7907**/254 vs llama 9132/225 vs MLX 8281/193
+  4101/512 : Algenta **6789**/199 vs llama 7693/195 vs MLX 8042/186
+  8198/512 : Algenta **4938**/149 vs llama 4234/161 vs MLX 4950/159
+  1024/2048: Algenta **7318**/226 vs llama 8430/208 vs MLX 8054/196
+  1024/4096: Algenta **6718**/200 vs llama 9875/195 vs MLX 9242/165
+vs the earlier HOT three-way: Algenta prefill jumped +30% @1K (6083->7907), +10% @4K, +6% @8K
+under controlled conditions -- but the controls jumped too (llama +21% @1K, +43% @4K), so the
+rotation/thermal artifact was SYMMETRIC, not one-sided. VERDICTS: (1) deep prefill 8K: 4938
+BEATS llama 4234 (1.17x) and ~exactly TIES MLX 4950 (0.998x); (2) deep decode 8K: 149 vs 161/159
+= 0.93x -- narrowed from 0.85x hot but still behind; (3) decode 1K/4K and all output-scaling
+cells: WINS (254/199/226/200 vs best controls 225/195/208/195); (4) shallow/mid prefill 1K-4K:
+REAL deficit remains, 0.87x llama + 0.95x MLX @1K, 0.88x llama + 0.84x MLX @4K. The solo
+10756-tok/s @1K measurement was itself a cool-session outlier above what even the controlled
+protocol reproduces (7907) -- the honest 1K number is ~7900. REMAINING FRONT = 1K-4K prefill
+GEMM regime (~13-16% behind): next probe is the MMA-wall re-test (mma_rate_probe_v2) -- whether
+the 13.3 TF wall is silicon or hot-sustained, and whether layout variants (NACC=16, 8 simdgroups,
+GRID sweep) expose scheduling headroom in the prefill GEMM tier.
+
+## MMA WALL RE-TEST (2026-08-11 night, mma_rate_probe_v2): the 13.3 TF wall is LAYOUT-dependent -- 14.87 TF/s (+11%) reachable with deeper accumulator ILP
+
+Probe v2 (benchmarks/llm_smoke/metal_llama_parity_replica/mma_rate_probe_v2.{metal,m}; same
+8x8x8 f16->f32 simd MMA loop family, register-only, DCE-guarded stores): COOL phase after 10-min
+idle measured 8.54 TF/s -- NOT a boost-clock reward: that is the GPU's IDLE clock before DVFS
+ramp (Apple GPUs do not clock up cold; the e2e cool-controlled gains come from ramped clocks
+meeting less accumulated heat, not from higher peaks). HOT phase: baseline (4 simdgroups/TG,
+NACC=8, GRID=320) reproduces the 2026-08-09 wall exactly (13.37 TF/s). VARIANTS: **NACC=16
+(twice the independent accumulator chains per simdgroup) = 14.87 TF/s (+11.2%)** and sg8 (8
+simdgroups/TG, NACC=8) = 14.82 (+10.8%); sg8+NACC16 COLLAPSES to 10.23 (-23.5%, register
+pressure: 16 acc x 8 simdgroups kills residency). CAVEATS: (1) these are early-hot numbers --
+sustained MMA load then throttles (the trailing GRID sweep is throttle-contaminated: the
+identical baseline arm measured 13.37 right after the heater but 8.80 in the late sweep;
+GRID=640/1280 collapsed to 2.3/1.65 in the same hot state, uninterpretable as grid sensitivity);
+(2) the sustained-throttle floor is somewhere between, so kernel work must be judged by
+end-to-end prefill, not probe peaks. IMPLICATION: the prefill GEMM tier (MSL parity kernels,
+4 simdgroups x NACC~8 shaped) is capped at the 13.3 wall while ~14.8 is silicon-reachable with
+deeper ILP -- an 11% ceiling gain, the same order as the DVFS-controlled 1K-4K prefill deficit
+(13-16%). NEXT: restructure the prefill GEMM tier's inner loop for deeper independent MMA chains
+(wider per-simdgroup N work or longer unrolled K chains without growing the register footprint
+that killed sg8+NACC16), judged by the DVFS-controlled 1K/4K three-way cells.
