@@ -11216,3 +11216,26 @@ shallow front is the small-kernel + dispatch-overhead bucket, not attention, not
 engineering targets (next session): small-kernel fusion (rmsnorm+scale, rope+kvprod) and
 concurrent-dispatch encoding (llama.cpp packs ~515 dispatches/token into one command buffer with
 MTLDispatchTypeConcurrent; our shim is sequential encoding); then the decode-8K 0.93x residue.
+
+## 1K PREFILL ATTRIBUTION, CLOSED (2026-08-11 night): kernels already WIN engine-internal -- the three-way deficit is interference + residency, and our 1.9GB weight footprint is the amplifier
+
+Per-role GPU-counter probe at m_rows=1024 (AF-nomirror + MSL parity, 5 precondition + 5 timed
+reps, /tmp/probe_counters_1k built from the nomirror-MSL probe with M_ROWS=1024): qkv 17.21ms
+(14.0 TF/s), swiglu 26.52 (13.6), down 13.77 (13.1), o 9.19 (13.1) -- ALL four GEMM roles already
+at the SUSTAINED MMA wall; steel attention 15.83ms (matches the corrected 0.57ms/layer); small
+kernels (embed/norms/kvprod/lmhead) total only ~6ms; GPU-sum 87.0ms vs wall 94.8ms = dead time
+8.2%. Implied engine-internal 1K prefill = 10,800 tok/s -- FASTER than llama.cpp's best
+three-way showing (9132) and MLX (9270). Solo stress (no other engines) measures 10,756 -- the
+probe reproduces it; the three-way's 7907-8271 does NOT. Single-pass three-way (algenta first,
+120s cooldowns): algenta 8271 / llama 7903 / MLX 9270 -- llama COLLAPSED from 9132 to 7903
+running second (after our run evicted its cache): the slot-order interference is SYMMETRIC and
+large for all three engines. VERDICT: the 1K-4K "deficit" is NOT kernel compute -- it is (a)
+inter-engine SLC/L2 eviction between passes, amplified by (b) our WEIGHT FOOTPRINT: the MSL
+parity tier materializes F16 GEMM twins (~1.2GB) ON TOP of the Int8 twins (~0.6GB) = ~1.9GB
+working set vs ~1.2GB for both controls -- 60% more to re-fault after every eviction. STRATEGIC
+FIX for serving scenarios: Int8-direct GEMM (dequant-in-kernel, no f16 twins -- the original mm8
+path) halves GEMM weight traffic AND the footprint; at M>=1024 GEMM is compute-bound so isolated
+prefill wouldn't change, but interference-resistance and decode GEMV bandwidth both improve.
+ALSO queued from this: engine-internal prefill timing wraps the CHUNKED loop (2x512 tiles at 1K;
+PREFILL_MAX_TILE=512 compile-time) -- chunking overhead is inside the number; and first-touch
+buffer cost (Front-1) lands inside the first prefill of any fresh session.
