@@ -35,6 +35,8 @@ PUBLIC_PATHS = {
     "/v1/meta/contract",
     # Published promise: "Always available, no auth required" — pre-sign-in tools/list is normal MCP.
     "/mcp/tools",
+    # Counts only (no surface): algenta.ai renders its catalog counters from it (lib/engine-stats.ts).
+    "/v1/runtime/library-stats",
 }
 
 # Public by OMISSION, now gated. Zero pre-auth consumers in the tree; both in-repo callers send a key.

@@ -234,6 +234,35 @@ async def runtime_manifest() -> RuntimeManifestResponse:
     )
 
 
+class RuntimeLibraryStatsResponse(BaseModel):
+    """Counts only — the contract's function surface itself is never exposed here."""
+
+    schema_version: int
+    function_count: int
+    module_count: int
+
+
+@router.get(
+    "/v1/runtime/library-stats",
+    response_model=RuntimeLibraryStatsResponse,
+    summary="Runtime library contract counts",
+)
+async def runtime_library_stats() -> RuntimeLibraryStatsResponse:
+    """Public counts from the sanitized runtime-library contract — the same source
+    the docs are generated from. algenta.ai renders its catalog counters from this
+    route (fail-soft to pinned values), so the site can never drift from docs."""
+    from apps.api_server.services.library_stats import (
+        LibraryStatsUnavailableError,
+        library_stats,
+    )
+
+    try:
+        stats = library_stats()
+    except LibraryStatsUnavailableError as exc:
+        raise HTTPException(status_code=503, detail="library contract unavailable") from exc
+    return RuntimeLibraryStatsResponse(**stats)
+
+
 @router.get(
     "/v1/admin/runtime/modules",
     response_model=RuntimeAdminModulesResponse,
