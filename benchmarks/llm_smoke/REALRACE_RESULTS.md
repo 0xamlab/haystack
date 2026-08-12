@@ -11676,3 +11676,21 @@ int8->f32 conversion compiles to a NATIVE vector conversion (the mm8 vecload4 pa
 end-to-end through codegen); clang -c of the blob .c clean. NEXT (wiring PR): session field +
 discovery elif, per-layer int8 mirror buffers + per-key scale arrays, KV-writer-fused quant, v4
 dispatch switch at depth, e2e token-oracle numerics on real activations.
+
+## INT8-KV QUANT KERNEL VERIFIED + BLOB (2026-08-12 early afternoon): write-side quant for the mirror, byte-exact on first run, collision-safe blob ready
+
+The wiring's second component (after the v4 partial blob): `attention_forge/kv_i8_quant.mojo` --
+one threadgroup per (kv-head, new key), reads the f16 K COLUMN (transposed native layout: 128
+strided reads) + V ROW (128 contiguous), threadgroup absmax reduction, writes the FLAT int8 mirror
+row ([hk][key][d_head], exactly what the v4 partial reads) + per-key scale. Round-half-away-from-
+zero, byte-identical quantization to the milestone driver. SEPARATE-DISPATCH design (after each
+kvprod in the prefill/decode tables): zero churn to the committed kvprod blob, the mirror stays
+additive/gated. STANDALONE ROUND-TRIP (kv_i8_quant_driver.mojo, 96 keys x 8 heads x 128 dims, two
+dispatches exercising key0=0 and key0=64 decode-style appends): scale mismatches 0/768, byte
+mismatches **0/196,608** (every int8 byte equals the host reference), worst dequant |err| 0.00469
+within the scale/2 bound 0.00472 -- OK FIRST RUN. BLOB: AIR name `kv_i8_quant__kv_i8_quant_
+kernel6A6A_db69e723fd7c5570`, discovery substring `kv_i8_quant` (unique family), clang -c clean.
+REMAINING for the wiring PR: session discovery fields + elifs, per-layer mirror buffers + scale
+arrays, quant dispatches inserted after each kvprod (prefill + decode tables), an int8 split-K
+descriptor table (v4 partials, 16 args vs f4u2's 14 -- separate table, not in-place patch), depth-
+gated dispatch switch, e2e token-oracle on real activations.
