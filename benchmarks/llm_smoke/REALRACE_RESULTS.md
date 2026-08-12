@@ -11304,3 +11304,23 @@ tok/s = 1.20s -> their attention equivalent runs ~1.75x faster than steel's 28.6
 (the probe-at->512 gotcha): single-dispatch probes with m_rows > PREFILL_MAX_TILE overflow the
 tile-sized activation buffers -- probe depths must respect the tile or replicate production
 chunking (the simulation harness does the latter honestly).
+
+## MODEL-AGNOSTICISM AUDIT (2026-08-12 night): d_head!=128 silent-wrong-math hazard FIXED with a loud refusal; hardcoded-value classification complete
+
+Per the never-hardcode-silently mandate. FINDING + FIX: the steel prefill kernel
+(grouped_fa_q8_k32_h2_sg8) takes NO d_head argument at all (comptime _D=128 throughout), and
+kvprod_v2 + the naive/split-K decode attention kernels size smem to _MAX_HEAD_DIM=128 -- yet the
+session constructor only validated d_head % 32 == 0, so a d_head=64/256 model would have passed
+and computed SILENTLY-WRONG attention. FIXED: explicit `d_head != 128` refusal in
+_MBQwen3I8AllSimd7Prefill.__init__ with a message naming the constraint (build-verified,
+Qwen3-0.6B/1.7B both d_head=128 so both supported models unaffected; 1K stress regression
+7979/266 correct=True). CLASSIFICATION of remaining hardcoded values: (a) DEVICE constants, fine:
+_WARP_SIZE=32 (Apple simdgroup width), MSL tile shapes NR0=64/NR1=32 (device tuning), math
+constants; (b) KERNEL LAYOUT choices, documented design: steel _QT=32/_KT=32/_NSG=4/_NTHREADS=128,
+KV packing _KBS=32/_AF_KEY_BLOCK_SIZE=32; (c) MEMORY/POLICY policy constants: PREFILL_MAX_TILE=512
+(activation budget), _BATCH_DECODE_MAX_SEQS=32 (batch KV memory), _NATIVE_DECODE_SPLITK_THRESHOLD=128;
+(d) TUNED-FOR-0.6B, derivation queued: the n_splits clamp [16,32] assumes h_q=16 parallelism
+(ideal n_splits = f(h_q, device core count) -- needs a device-core-count query the shim does not
+expose yet); (e) QWEN3-FAMILY assumptions to flag for other-model support: QK-norm inside kvprod
+(llama-family has none), tied word embeddings REQUIRED by the SDK prep gate, exact GQA grouping.
+QUEUED: parametric-d_head attention kernels; device-derived n_splits; optional QK-norm.

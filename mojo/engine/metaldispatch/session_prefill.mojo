@@ -1082,6 +1082,21 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(WARP_SIZE) + " -- _sdpa_kernel_simd's SIMD-group reduction requires every "
                 + "group full; use _MBQwen3I8 (the barrier-tree _sdpa_kernel) for this shape instead"
             )
+        # ── Beat-llama.cpp campaign model-agnosticism audit (2026-08-12): LOUD refusal instead of
+        # silent wrong math. Every kernel this struct can dispatch on the AF/native paths is built
+        # EXCLUSIVELY for d_head=128: the steel prefill kernel (`grouped_fa_q8_k32_h2_sg8`) takes
+        # NO d_head argument at all (comptime `_D=128` throughout), and kvprod_v2 / the naive +
+        # split-K decode attention kernels size their smem staging to `_MAX_HEAD_DIM=128`. A model
+        # with any other d_head that passed the d_head%WARP_SIZE check above (64, 256, ...) would
+        # otherwise compute silently-wrong attention. Parametric-d_head kernels are queued future
+        # work; until then, refuse loudly per the never-hardcode-silently mandate.
+        if d_head != 128:
+            raise Error(
+                "_MBQwen3I8AllSimd7Prefill: d_head=" + String(d_head) + " unsupported -- the "
+                + "attention-forge kernels (steel prefill, kvprod_v2, native decode attention) are "
+                + "built for d_head=128 only (comptime _D/_MAX_HEAD_DIM); refusing loudly instead "
+                + "of computing wrong attention"
+            )
         self.d_model = d_model
         self.h_q = h_q
         self.h_kv = h_kv
