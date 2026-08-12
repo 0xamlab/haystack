@@ -313,7 +313,14 @@ exact uniform-stride indirection the batched attention partial blob and the batc
 built and verified around (their `kv_stride` argument). 16 is the prototype cap (tuning knob): the
 batched KV buffers are allocated ONLY when `decode_batched_built` (both batched blobs + the engine-side
 merge discovered), so a blobs-absent binary pays none of this memory. The actual in-flight batch may be
-any B <= this; the weight-sweep win grows with B (REALRACE_RESULTS.md batched-decode GEMM M-sweep)."""
+any B <= this; the weight-sweep win grows with B (REALRACE_RESULTS.md batched-decode GEMM M-sweep).
+Exported read-only to other modules as `BATCH_DECODE_MAX_SEQS` immediately below."""
+
+comptime BATCH_DECODE_MAX_SEQS: Int = _BATCH_DECODE_MAX_SEQS
+"""Beat-llama.cpp campaign concurrent front (2026-08-11): the public read-only alias of
+`_BATCH_DECODE_MAX_SEQS` for cross-module callers (the batched entry point in
+`metaldispatch.qwen3_prefill_decode` validates B against THIS constant, so the two can never
+drift)."""
 
 comptime _NATIVE_DECODE_SPLITK_THRESHOLD: Int = 128
 """Beat-llama.cpp campaign (2026-08-08 night): `n_keys` at and above which `_step_native_kv_impl`
@@ -4372,9 +4379,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # batched attention PARTIAL (blob): per-seq flash-decoding over [0, nkeys[b])
+            # Beat-llama.cpp campaign concurrent front (2026-08-11): the blob now carries the
+            # 2-key-unrolled float4 kernel (`_native_kv_decode_splitk_partial_batched_kernel_f4u2`,
+            # one simdgroup per (seq, head, split)) -- same partial (m,l,o) contract, threadgroup
+            # is d_head // 4 threads instead of d_head.
             _mb_set_header(
                 self.descriptors_decode_batched, d, self.native_decode_splitk_partial_batched_pipeline_idx,
-                B * self.h_q * _NATIVE_DECODE_N_SPLITS, self.d_head, 15,
+                B * self.h_q * _NATIVE_DECODE_N_SPLITS, self.d_head // 4, 15,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_splitk_m_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_splitk_l_addr)
@@ -4545,6 +4556,108 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 raise Error("metaldispatch: _step_batched seq " + String(b) + " produced out-of-range token " + String(t))
             toks.append(t)
         return toks^
+
+    def step_batched(mut self, token_ids: List[Int], poss: List[Int]) raises -> List[Int]:
+        """Beat-llama.cpp campaign concurrent front (2026-08-11): the public wrapper around
+        `_step_batched` for cross-module callers (precedent: `step_native_kv`'s own thin-wrapper
+        role). The batched entry point in `metaldispatch.qwen3_prefill_decode` drives the shared
+        decode loop through this method."""
+        return self._step_batched(token_ids, poss)
+
+    def batched_dispatch_count(mut self, B: Int) raises -> Int:
+        """The number of descriptors one `_step_batched(B)` submission dispatches (builds the
+        table for B first if needed) -- the batched entry point reports this in its result."""
+        self._ensure_decode_batched_ready(B)
+        return self.n_descriptors_decode_batched
+
+    # ── Beat-llama.cpp campaign concurrent front (2026-08-11): per-sequence PROMPT INGESTION for
+    # the batched decode path. `_step_batched`'s own table only ever appends ONE token per sequence
+    # per step (its kvprod_batched writes at poss[b]); a batched session therefore needs each
+    # sequence's prompt prefilled INTO its own slot of the per-layer batched KV caches
+    # (`b * batch_kv_stride_elems`) before the shared loop starts. This method does exactly that by
+    # REUSING the production AF-nomirror prefill table: the kvprod-blk and attention descriptors'
+    # cache POINTER args (kvprod arg0/arg1, attn arg3/arg4) are build-time bindings that
+    # `_apply_m_rows_af_nomirror` never re-patches (it patches grids + int args + the GEMM weight
+    # pointers only), so pointing them at the seq-th batched slot for the duration of one
+    # `prefill_batch()` call ingests the whole prompt there -- GEMMs/norms/tail all run exactly as
+    # production, and the returned `_StepOut` is this sequence's first generated token, the exact
+    # state `_step_batched` continues from at poss=[prompt_len]. The pointers are RESTORED to the
+    # single-stream `af_ck/cv_native_addr` bindings byte-exactly afterwards, so a subsequent
+    # ordinary `prefill_batch()` on this same session sees the build-time table again. Zero new
+    # kernels; gated to the NO_MIRROR plan (the only plan paired with the batched decode caches).
+    def prefill_batch_batched_ingest(mut self, prompt_ids: List[Int], seq: Int) raises -> _StepOut:
+        """Ingest `prompt_ids` into sequence slot `seq` of the batched KV caches via full
+        AF-nomirror prefills whose KV writes/reads are temporarily retargeted to that slot.
+        Long prompts are chunked at `PREFILL_MAX_TILE` with advancing `pos_base`, exactly the way
+        the production entry points chunk ordinary prefills (each chunk re-runs the tail; the LAST
+        chunk's tail is the first generated token, same as production). Returns that first
+        generated token (same `_StepOut` contract as `prefill_batch`)."""
+        @parameter
+        if not MB_GPU_BUILD:
+            return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            self._require_resolved_plan()
+            if self.plan.attention != PF_ATTN_GROUPED_FA_NO_MIRROR:
+                return _StepOut(-1, 0.0, 0, MB_ERR_PIPELINE_NOT_FOUND)
+            if not self.decode_batched_built or not self.kvprod_v2_built:
+                return _StepOut(-1, 0.0, 0, MB_ERR_PIPELINE_NOT_FOUND)
+            if seq < 0 or seq >= _BATCH_DECODE_MAX_SEQS:
+                return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+            var n = len(prompt_ids)
+            if n < 1:
+                return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
+            if n > self.max_ctx:
+                return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+
+            var kv_off_bytes = UInt64(seq) * UInt64(self.batch_kv_stride_elems) * 2
+            for layer in range(self.n_layers):
+                var d_kv = self.kvprod_af2_d[layer]
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_kv, 0,
+                    self.batch_ck_native_addr[layer] + kv_off_bytes,
+                )
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_kv, 1,
+                    self.batch_cv_native_addr[layer] + kv_off_bytes,
+                )
+                var d_attn = self.attn_af2_d[layer]
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_attn, 3,
+                    self.batch_ck_native_addr[layer] + kv_off_bytes,
+                )
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_attn, 4,
+                    self.batch_cv_native_addr[layer] + kv_off_bytes,
+                )
+
+            var last_out = _StepOut(-1, 0.0, 0, MB_ERR_DISPATCH_FAILED)
+            var pos = 0
+            while pos < n:
+                var take = PREFILL_MAX_TILE if n - pos > PREFILL_MAX_TILE else n - pos
+                var chunk = List[Int](capacity=take)
+                for i in range(pos, pos + take):
+                    chunk.append(prompt_ids[i])
+                last_out = self.prefill_batch(chunk, pos)
+                if last_out.status != MB_OK:
+                    break
+                pos += take
+
+            for layer in range(self.n_layers):
+                var d_kv = self.kvprod_af2_d[layer]
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_kv, 0, self.af_ck_native_addr[layer],
+                )
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_kv, 1, self.af_cv_native_addr[layer],
+                )
+                var d_attn = self.attn_af2_d[layer]
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_attn, 3, self.af_ck_native_addr[layer],
+                )
+                _mb_set_arg_ptr(
+                    self.descriptors_prefill_af_nomirror, d_attn, 4, self.af_cv_native_addr[layer],
+                )
+            return last_out^
 
     def _step_native_kv_impl(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """Project Redline reopening (2026-08-08): a NEW, additive decode entry point -- reads the

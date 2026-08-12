@@ -68,15 +68,19 @@ from typing import Any
 __all__ = [
     "InferenceError",
     "InferenceResult",
+    "BatchedInferenceResult",
     "UnsupportedArchitectureError",
     "prepare_model_checkpoint",
     "decode",
+    "decode_batched",
 ]
 
 _MODULE_NAME = "metaldispatch.qwen3_prefill_decode"
 _FUNCTION_NAME = "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3"
 _FUNCTION_NAME_SAMPLED = "qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled"
+_FUNCTION_NAME_BATCHED = "qwen3_batched_prefill_decode_anyqwen3"
 _CONVERSION_CACHE_DIRNAME = ".algenta-cache"
+_BATCH_DECODE_MAX_SEQS = 32
 
 # GEMM weights the engine consumes pre-transposed [out,in] -> [in,out]; embed and norm weights stay
 # native. Same set as `generate_manifest_anyqwen3.py`'s `_TRANSPOSE_SUFFIXES`.
@@ -581,6 +585,128 @@ def decode(
             if tokenizer is not None
             else None
         ),
+    )
+
+
+@dataclass(frozen=True)
+class BatchedInferenceResult:
+    """A batched decode call's whole outcome (beat-llama.cpp campaign concurrent front,
+    2026-08-11). `generated_token_ids[b]` is sequence b's generated tokens (exactly
+    `max_new_tokens` each; prompts are NOT echoed back -- the caller supplied them).
+    `decode_tokens_per_sec` is the SYSTEM throughput: all B sequences' decode steps divided by
+    the shared decode wall (this is the concurrent-throughput number). `prefill_tokens_per_sec`
+    covers all B prompt ingests. `prefill_chunks` reports B."""
+
+    generated_token_ids: list[list[int]]
+    n_prompt_total: int
+    stopped_on_eos: bool
+    dispatches_per_token: int
+    decode_tokens_per_sec: float
+    prefill_tokens_per_sec: float
+    prefill_chunks: int
+
+
+def decode_batched(
+    runtime: Any,
+    *,
+    checkpoint_dir: str | Path,
+    prompt_token_ids_list: list[list[int]],
+    max_new_tokens: int = 16,
+    use_msl_parity_all_roles: bool = True,
+    converted_checkpoint_dir: str | Path | None = None,
+) -> BatchedInferenceResult:
+    """Decode B prompts TOGETHER through the Slipstream batched decode path: one weight sweep
+    per generated token for all B sequences (continuous-batching kernel tier, B <= 32), greedy.
+
+    Wire contract mirrors the engine entry point: the prompts are flattened into one list with
+    per-sequence lengths; the engine ingests each into its own batched KV-cache slot and steps
+    all B in one descriptor-table submission per token. Every sequence generates exactly
+    `max_new_tokens` (v1 has no per-sequence early stop). Returns a `BatchedInferenceResult`
+    whose `decode_tokens_per_sec` is the SYSTEM throughput across the batch.
+
+    Raises `InferenceError` for any refusal (invalid B, empty/oversized prompts, engine
+    refusals) with the same stable `code` discipline as `decode()`."""
+    if not isinstance(prompt_token_ids_list, list) or not prompt_token_ids_list:
+        raise InferenceError(
+            "invalid_arguments", "prompt_token_ids_list must be a non-empty list of id lists"
+        )
+    n_seqs = len(prompt_token_ids_list)
+    if n_seqs > _BATCH_DECODE_MAX_SEQS:
+        raise InferenceError(
+            "invalid_arguments",
+            f"batched decode supports at most {_BATCH_DECODE_MAX_SEQS} sequences, got {n_seqs}",
+        )
+    prompt_lens: list[int] = []
+    flat_ids: list[int] = []
+    for b, ids in enumerate(prompt_token_ids_list):
+        if not isinstance(ids, list) or not ids:
+            raise InferenceError(
+                "invalid_arguments", f"prompt {b} must be a non-empty list of token ids"
+            )
+        prompt_lens.append(len(ids))
+        flat_ids.extend(int(t) for t in ids)
+    if not isinstance(max_new_tokens, int) or isinstance(max_new_tokens, bool) or max_new_tokens < 1:
+        raise InferenceError(
+            "invalid_arguments", f"max_new_tokens must be a positive int, got {max_new_tokens!r}"
+        )
+
+    checkpoint_dir = str(checkpoint_dir)
+    if converted_checkpoint_dir is not None:
+        resolved_dir = Path(converted_checkpoint_dir)
+        if not (resolved_dir / "manifest.json").is_file() or not (
+            resolved_dir / "weights.blob"
+        ).is_file():
+            raise InferenceError(
+                "checkpoint_not_found",
+                f"{resolved_dir} has no manifest.json/weights.blob; convert it first with "
+                "prepare_model_checkpoint(), or omit converted_checkpoint_dir to convert "
+                "automatically.",
+            )
+    else:
+        cache_dir = Path(checkpoint_dir) / _CONVERSION_CACHE_DIRNAME
+        if (cache_dir / "manifest.json").is_file() and (cache_dir / "weights.blob").is_file():
+            resolved_dir = cache_dir
+        else:
+            # The manifest bakes ONE input_ids array; the batched entry point never reads it
+            # (prompts travel over the wire), so the FIRST sequence's prompt stands in.
+            resolved_dir = prepare_model_checkpoint(
+                checkpoint_dir, prompt_token_ids_list[0], out_dir=cache_dir
+            )
+
+    wire_args: list[Any] = [
+        str(resolved_dir),
+        max_new_tokens,
+        use_msl_parity_all_roles,
+        flat_ids,
+        prompt_lens,
+    ]
+    envelope = runtime.execute(_MODULE_NAME, _FUNCTION_NAME_BATCHED, wire_args)
+    error = _envelope_error(envelope)
+    if error is not None:
+        raise InferenceError("runtime_execution_failed", error)
+
+    result = envelope.get("result")
+    if not isinstance(result, dict):
+        raise InferenceError(
+            "runtime_execution_failed", "the local runtime returned a malformed inference result"
+        )
+    status = result.get("status")
+    if status != 620:  # metaldispatch.contract.MB_OK
+        code = _status_code_name(status)
+        raise InferenceError(code, str(result.get("error_message") or code))
+
+    flat_gen = list(result.get("token_ids") or [])
+    per_seq: list[list[int]] = []
+    for b in range(n_seqs):
+        per_seq.append(flat_gen[b * max_new_tokens : (b + 1) * max_new_tokens])
+    return BatchedInferenceResult(
+        generated_token_ids=per_seq,
+        n_prompt_total=int(result.get("n_prompt") or 0),
+        stopped_on_eos=bool(result.get("stopped_on_eos")),
+        dispatches_per_token=int(result.get("dispatches_per_token") or 0),
+        decode_tokens_per_sec=float(result.get("decode_tokens_per_sec") or 0.0),
+        prefill_tokens_per_sec=float(result.get("prefill_tokens_per_sec") or 0.0),
+        prefill_chunks=int(result.get("prefill_chunks") or 0),
     )
 
 

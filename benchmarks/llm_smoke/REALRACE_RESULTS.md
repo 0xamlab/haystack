@@ -11064,3 +11064,58 @@ behavior gap (MLX sustains higher effective GEMM TF/s at shallow depths) and the
 rotation itself. NEXT fronts: (1) DVFS-attribution control runs to settle whether the cool-gap
 is clocks; (2) the concurrent front -- Slipstream batched decode serving wiring (kernels merged
 #603/#604, NOT serving-wired) is the untouched "beat them on all fronts" item.
+
+## CONCURRENT FRONT OPENED: batched decode WIRED INTO SERVING (2026-08-11 night) -- B=32 system decode 374.8 tok/s = 1.33x own single-stream, ~1.8x both controls
+
+The Slipstream Phase-3 batched kernels (#603/#604) were kernel-complete but NOT serving-wired;
+this lands the wiring end-to-end: (1) `prefill_batch_batched_ingest` (session_prefill.mojo) --
+per-sequence prompt ingestion into the batched KV caches by REUSING the production AF-nomirror
+prefill table with its kvprod/attn cache pointer args temporarily retargeted to the seq-th slot
+(zero new kernels; chunked at PREFILL_MAX_TILE like production; byte-exact pointer restore);
+(2) public `step_batched`/`batched_dispatch_count` wrappers; (3) entry point
+`qwen3_batched_prefill_decode_anyqwen3` (qwen3_prefill_decode.mojo, copy-and-extend of the
+anyqwen3 arm): B wire prompts -> ingest -> shared `_step_batched` loop, result token_ids
+seq-major; (4) SDK `decode_batched()` + `BatchedInferenceResult` (system throughput semantics)
++ contract/capability/catalog refresh (6065 functions); (5) batched blobs
+(native_kv_decode_attn_splitk_batched + native_kv_producer_batched) now part of the worker blob
+set (14 blobs). CORRECTNESS (batched_decode_smoke.py + load_test_batched.py): B identical
+prompts -> B byte-identical generations, each byte-identical to single-stream decode() of the
+same prompt (greedy determinism across kernel tiers), at every B tested. MEASURED (512in/128out,
+3 iters, medians, /tmp/load_batched.json): single-stream reference 282.8 tok/s; batched SYSTEM
+decode B=4 112.7, B=8 178.2, B=16 279.5, **B=32 374.8 tok/s** (prefill ingest 8974-11775 tok/s).
+The crossover (batched system == single-stream) sits at B~16 for this shape; below it the
+batched-table overhead outweighs the weight-sweep amortization. FRAME: llama.cpp/MLX serve ONE
+request at a time here (206/205 tok/s single-stream at the nearest three-way cell) -- Algenta
+serves 32 together at 374.8 system = ~1.8x either control. SHALLOW-DEPTH CAVEAT: the batched
+attention partial is still the PRE-f4 reduction-era kernel (2026-08-09), which is why the quick
+sweep at 128in/64out ran higher (546.3 @B=32) than this deeper 512in shape -- porting f4u2-style
+simdgroup-per-(seq,head,split) ownership into the batched partial is the identified next lever
+for this front.
+
+## BATCHED PARTIAL -> f4u2 (2026-08-11 night, same session): the pre-f4 batched kernel WAS the deep-shape rate limit -- B=32 system decode 374.8 -> 563.4 tok/s (+50%)
+
+Ported the single-stream f4u2 design into the batched partial
+(`native_kv_decode_attn_splitk_batched._native_kv_decode_splitk_partial_batched_kernel_f4u2`,
+blob swapped, engine partial header d_head -> d_head//4 threads): one simdgroup per
+(sequence, head, split), 16 independent loads in flight, pipelined simd_sums, odd-key epilogue,
+per-seq nkeys[b] bound + kv_off = b*kv_stride indirection UNCHANGED, partial (m,l,o) contract
+UNCHANGED (the engine-side B-aware merge is untouched). CORRECTNESS: smoke + load test -- B
+identical prompts -> B byte-identical generations, each byte-identical to single-stream decode(),
+at every B. MEASURED (512in/128out, 3 iters, medians, /tmp/load_batched_f4.json): single-stream
+reference 285.4; batched SYSTEM decode B=8 178.2->229.8 (+29%), B=16 279.5->369.1 (+32%),
+**B=32 374.8->563.4 tok/s (+50%)**. FRAME vs controls (single-stream): B=32 system 563.4 =
+**2.7x llama.cpp (206) and 2.7x MLX (205)** at the nearest three-way cell; 1.97x Algenta's own
+single-stream. The concurrent front now leads by a wide margin at B>=16; the batched partial was
+the deep-shape rate limit exactly as the shallow-vs-deep spread predicted (the quick 128in sweep
+ran 546 pre-port because attention was trivially shallow there).
+
+## BATCHED DEPTH PROFILE (2026-08-11 night, f4u2 batched partial): the concurrent margin HOLDS at depth -- B=32 system decode 563/468/348 tok/s at 512/1024/2048-in
+
+load_test_batched.py across prompt depths (128 out, medians; /tmp/load_batched_f4_in{1024,2048}
+.json), single-stream references 267.4 @1K / 247.9 @2K: at 1024in B=8 218.4, B=16 338.8 (1.27x
+single), B=32 **467.5** (1.75x single); at 2048in B=8 191.2, B=16 271.6 (1.10x), B=32 **347.9**
+(1.40x single). Batch scaling degrades with depth exactly as the per-seq KV-sweep growth predicts
+(B=32: 563 -> 468 -> 348 across 512/1K/2K), but even at 2K context B=32 system throughput is
+1.69x llama.cpp and 1.70x MLX single-stream (206/205) -- the concurrent front leads by a wide
+margin at every depth measured, all runs byte-correct vs single-stream. Batched prefill ingest
+holds 7355-11051 tok/s across the batch at these depths.

@@ -25,7 +25,7 @@ unambiguous (a hex hash can never spell `_bat`, so it cannot false-match the sin
       --symbol algenta_native_kv_decode_attn_splitk_batched_blob
 """
 from max.gpu.host import DeviceContext
-from native_kv_decode_attn_splitk_batched import _native_kv_decode_splitk_partial_batched_kernel
+from native_kv_decode_attn_splitk_batched import _native_kv_decode_splitk_partial_batched_kernel_f4u2
 
 
 def main() raises:
@@ -52,11 +52,11 @@ def main() raises:
     var scale64: Float64 = 1.0 / Float64(128) ** 0.5
     var scale: Float32 = Float32(scale64)
 
-    ctx.enqueue_function[_native_kv_decode_splitk_partial_batched_kernel](
+    ctx.enqueue_function[_native_kv_decode_splitk_partial_batched_kernel_f4u2](
         m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
         q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
         nkeys_buf.unsafe_ptr(), kv_stride,
         n_splits, h_q, h_kv, d_head, scale, key_block_size, n_blocks,
-        grid_dim=Int(B * h_q * n_splits), block_dim=Int(d_head),
+        grid_dim=Int(B * h_q * n_splits), block_dim=Int(d_head // 4),
     )
-    print("NATIVE KV DECODE ATTN SPLITK BATCHED BLOB DRIVER: codegen forced (partial only)")
+    print("NATIVE KV DECODE ATTN SPLITK BATCHED BLOB DRIVER: codegen forced (f4u2 partial only)")

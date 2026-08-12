@@ -62,11 +62,13 @@ from residentk.contract import (
 )
 from metaldispatch.contract import (
     MB_ERR_CHECKPOINT_UNREADABLE,
+    MB_ERR_CONTEXT_FULL,
     MB_ERR_DISPATCH_COUNT_MISMATCH,
     MB_ERR_NO_DEVICE,
     MB_ERR_SESSION_OPEN_FAILED,
     MB_ERR_SHADER_TOOLCHAIN_ABSENT,
     MB_ERR_UNSUPPORTED_ARCHITECTURE,
+    MB_ERR_UPLOAD_LENGTH,
     MB_OK,
     metaldispatch_status_name,
 )
@@ -78,7 +80,7 @@ from metaldispatch.ffi import (
     _mb_get_resident_key,
     _mb_set_resident_key,
 )
-from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill, PREFILL_MAX_TILE
+from metaldispatch.session_prefill import _MBQwen3I8AllSimd7Prefill, PREFILL_MAX_TILE, BATCH_DECODE_MAX_SEQS
 from metaldispatch.session_prefill_policy import (
     PF_ATTN_OFF,
     PF_ATTN_GROUPED_FA_WITH_MIRROR,
@@ -3585,6 +3587,485 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
             return Qwen3PrefillDecodeResult(
                 MB_OK, "", generated_ids^, n_prompt, stopped_on_eos, dispatches_per_token,
                 tok_per_sec, prefill_tok_per_sec, n_chunks
+            )
+        except e:
+            _mb_end_adopt()
+            return _decode_err(
+                MB_ERR_SESSION_OPEN_FAILED, "metaldispatch session error: " + String(e)
+            )
+
+
+def qwen3_batched_prefill_decode_anyqwen3(
+    checkpoint_dir: String, max_new_tokens: Int,
+    use_msl_parity_all_roles: Bool,
+    wire_prompt_ids: List[Int], prompt_lens: List[Int],
+) -> Qwen3PrefillDecodeResult:
+    """Beat-llama.cpp campaign concurrent front (2026-08-11): BATCHED decode -- B sequences share
+ONE weight sweep per token. Copy-and-extend of `qwen3_prefill_decode_flat_af_nomirror_msl_
+anyqwen3` (this file's own established precedent for a new arm), identical checkpoint load /
+model-agnostic gate / quantized-state cache / resident adoption, with the single-stream
+prefill+step loop REPLACED by the Slipstream Phase-3 batched path: each sequence's prompt is
+ingested into its own slot of the per-layer batched KV caches via
+`prefill_batch_batched_ingest` (the production AF-nomirror prefill table with its KV pointer
+args temporarily retargeted per sequence), then ALL B sequences generate together through
+`step_batched` -- every projection is the prefill tiled-GEMM shape at m_rows=B, attention is
+the per-sequence flash-decoding pair, one descriptor-table submission per token for all B.
+
+Wire contract: `wire_prompt_ids` is the FLAT concatenation of the B prompts and `prompt_lens`
+their lengths (len(prompt_lens) == B, sum(prompt_lens) == len(wire_prompt_ids)); a wire prompt
+is REQUIRED (there is no baked-in batch). B is bounded by `BATCH_DECODE_MAX_SEQS` (32). The
+attention plan is FORCED to `PF_ATTN_GROUPED_FA_NO_MIRROR` -- the only plan paired with the
+batched decode caches.
+
+Result contract: `token_ids` carries the FLAT concatenation of the B generated sequences, each
+exactly `max_new_tokens` long (v1 generates the full length for every sequence; there is no
+per-sequence early stop on EOS -- race prompts are base-model continuations that do not emit
+EOS inside the race horizon). `decode_tokens_per_sec` is the SYSTEM throughput: B sequences x
+decode steps / decode wall. `prefill_tokens_per_sec` covers all B ingests. `n_prompt` is the
+TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per sequence).
+
+    @capability qwen3_batched_prefill_decode_anyqwen3
+    complexity: O(sum(prompt_lens) + B * max_new_tokens)
+    counts:
+    - dim max_new_tokens <= RESIDENT_MAX_CONTEXT [kernel_validated]
+    @endcapability
+    """
+    if max_new_tokens < 1:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "max_new_tokens must be >= 1, got " + String(max_new_tokens),
+        )
+
+    var manifest_path = checkpoint_dir + "/manifest.json"
+    var blob_path = checkpoint_dir + "/weights.blob"
+
+    var manifest: String
+    try:
+        manifest = _read_text_file(manifest_path)
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, "could not read " + manifest_path + ": " + String(e)
+        )
+
+    var d_model: Int
+    var n_layers: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var vocab_size: Int
+    var theta: Float64
+    var eps: Float64
+    var n_prompt: Int
+    var tensors_obj: String
+    var prompt_ids: List[Int]
+    try:
+        var config = json_get_object(manifest, "config")
+        d_model = json_get_int(config, "hidden_size", -1)
+        n_layers = json_get_int(config, "num_hidden_layers", -1)
+        h_q = json_get_int(config, "num_attention_heads", -1)
+        h_kv = json_get_int(config, "num_key_value_heads", -1)
+        d_head = json_get_int(config, "head_dim", -1)
+        d_ff = json_get_int(config, "intermediate_size", -1)
+        vocab_size = json_get_int(config, "vocab_size", -1)
+        theta = json_get_float(config, "rope_theta", -1.0)
+        eps = json_get_float(config, "rms_norm_eps", -1.0)
+        n_prompt = json_get_int(config, "n_tokens", -1)
+        tensors_obj = json_get_object(manifest, "tensors")
+
+        var ids_arr = json_get_array(manifest, "input_ids")
+        var id_tokens = json_array_tokens(ids_arr)
+        prompt_ids = List[Int]()
+        for i in range(len(id_tokens)):
+            prompt_ids.append(parse_int(id_tokens[i]))
+    except e:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " did not parse: " + String(e)
+        )
+
+    if (
+        d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1
+        or vocab_size < 1 or n_prompt < 1 or theta <= 0.0 or eps <= 0.0
+    ):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if len(prompt_ids) != n_prompt:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares n_tokens=" + String(n_prompt) + " but input_ids has "
+            + String(len(prompt_ids)) + " entries",
+        )
+
+    # ── Model-agnostic variant (beat-llama.cpp campaign, 2026-08-09): instead of pinning to
+    # Qwen3-0.6B-Base's exact shape, validate ONLY the structural invariants the kernels rely on
+    # for ANY Qwen3-family model. The split-K GEMM gates (n_q % 256 for o_proj, d_ff % 384 for
+    # down_proj) degrade gracefully per-role in `_apply_m_rows_af_nomirror`, so a model whose dims
+    # are not divisible simply keeps the parity accum kernel for that role -- never a hard error.
+    if (h_q % h_kv) != 0:
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "model-agnostic prefill requires num_attention_heads % num_key_value_heads == 0 (GQA);"
+            + " got " + String(h_q) + " % " + String(h_kv),
+        )
+    if (d_model % 32) != 0 or (d_ff % 32) != 0 or ((h_q * d_head) % 32) != 0:
+        return _decode_err(
+            MB_ERR_UNSUPPORTED_ARCHITECTURE,
+            "model-agnostic prefill requires d_model, d_ff, and n_q=h_q*d_head all divisible by 32"
+            + " (GEMM tile alignment); got d_model=" + String(d_model) + " d_ff=" + String(d_ff)
+            + " n_q=" + String(h_q * d_head),
+        )
+
+    # ── Beat-llama.cpp campaign concurrent front (2026-08-11): the batched arm REQUIRES the
+    # prompts over the wire -- `wire_prompt_ids` is the FLAT concatenation of the B prompts,
+    # `prompt_lens` their per-sequence lengths. The manifest's baked-in input_ids is never used
+    # here (there is no baked-in BATCH).
+    var B = len(prompt_lens)
+    if B < 1 or B > BATCH_DECODE_MAX_SEQS:
+        return _decode_err(
+            MB_ERR_CONTEXT_FULL,
+            "batched decode requires 1 <= B <= " + String(BATCH_DECODE_MAX_SEQS) + ", got " + String(B),
+        )
+    if len(wire_prompt_ids) < 1:
+        return _decode_err(
+            MB_ERR_UPLOAD_LENGTH,
+            "batched decode requires a non-empty wire prompt (flat concatenation of B prompts)",
+        )
+    var lens_sum = 0
+    var min_len = -1
+    for b in range(B):
+        if prompt_lens[b] < 1:
+            return _decode_err(
+                MB_ERR_UPLOAD_LENGTH,
+                "batched decode prompt_lens[" + String(b) + "] must be >= 1",
+            )
+        lens_sum += prompt_lens[b]
+        if min_len < 0 or prompt_lens[b] < min_len:
+            min_len = prompt_lens[b]
+    if lens_sum != len(wire_prompt_ids):
+        return _decode_err(
+            MB_ERR_UPLOAD_LENGTH,
+            "batched decode sum(prompt_lens)=" + String(lens_sum) + " != len(wire_prompt_ids)="
+            + String(len(wire_prompt_ids)),
+        )
+    var wire_copy = List[Int](capacity=len(wire_prompt_ids))
+    for i in range(len(wire_prompt_ids)):
+        wire_copy.append(wire_prompt_ids[i])
+    prompt_ids = wire_copy^
+    n_prompt = len(prompt_ids)
+
+    var scale = 1.0 / sqrt(Float64(d_head))
+    # The LONGEST sequence governs the context (all B caches stride at max_ctx).
+    var needed_ctx = min_len + max_new_tokens
+    for b in range(B):
+        if prompt_lens[b] + max_new_tokens > needed_ctx:
+            needed_ctx = prompt_lens[b] + max_new_tokens
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
+    if needed_ctx > max_ctx:
+        max_ctx = needed_ctx
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            "n_prompt=" + String(n_prompt) + " + max_new_tokens=" + String(max_new_tokens)
+            + " needs max_ctx=" + String(needed_ctx) + ", past RESIDENT_MAX_CONTEXT="
+            + String(RESIDENT_MAX_CONTEXT),
+        )
+    var pre = _mb_preflight(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, min_len, max_new_tokens, max_ctx, eps, scale
+    )
+    if pre != MB_OK:
+        return _decode_err(pre, "preflight refused this run: " + metaldispatch_status_name(pre))
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return _decode_err(
+            MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            + "compiled out of this binary",
+        )
+    else:
+        if not has_accelerator():
+            return _decode_err(MB_ERR_NO_DEVICE, "no Metal accelerator was detected on this host")
+
+        try:
+            # ── Parity gap 4 (persistent sessions, 2026-08-10): resident weights. A matching
+            # resident key adopts the shim's existing buffers in allocation order -- zero Metal
+            # traffic, zero re-quantization, zero cache read. A different key tears the old
+            # model's buffers down first, so a model switch always starts clean.
+            var resident_key = _resident_key_of(
+                checkpoint_dir, d_model, n_layers, h_q, h_kv, d_head, d_ff, vocab_size, max_ctx,
+                True, use_msl_parity_all_roles,
+            )
+            var resident_match = resident_key != 0 and _mb_get_resident_key() == resident_key
+            if not resident_match and _mb_get_resident_key() != 0:
+                _mb_free_all_buffers()
+            if resident_match:
+                _mb_begin_adopt()
+            var s = _MBQwen3I8AllSimd7Prefill(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+            )
+            if resident_match:
+                _mb_end_adopt()
+            # ── the ONE difference over `qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4`: the
+            # `gemm` request is the OPT-IN MSL-parity tier when asked, else byte-for-byte the
+            # current production default's vecload4 tier. A blobs-absent binary degrades the MSL
+            # request to that same vecload4 tier in `resolve_prefill_execution_plan` (graceful
+            # fallback, never a hard error).
+            s.resolve_plan(UnresolvedPrefillConfig(
+                PF_ATTN_GROUPED_FA_NO_MIRROR,
+                PF_GEMM_MSL_PARITY_ALL_ROLES if use_msl_parity_all_roles else PF_GEMM_VECLOAD4_ALL_ROLES,
+            ))
+            # Phase 3 diagnostic (benchmark-facing entry point only, printed BEFORE any timed
+            # section): makes the resolved plan externally visible -- the graceful-fallback proof
+            # reads exactly this line on a blobs-absent binary (requested MSL -> resolved gemm=2
+            # PF_GEMM_VECLOAD4_ALL_ROLES), and the routing proof on a blobs-present one (resolved
+            # gemm=3 PF_GEMM_MSL_PARITY_ALL_ROLES). Attention: 0=OFF, 1=with-mirror, 2=no-mirror.
+            print("  resolved plan: attention =", s.plan.attention,
+                  "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
+
+            var rt = rope_table(d_head, max_ctx, theta)
+
+            # ── Parity cheap wins (2026-08-10): quantized-state cache. A VALID
+            # `weights_i8.cache` next to the manifest restores the EXACT post-quantization device
+            # bytes (~1 byte/param, zero quantization arithmetic); anything else -- missing file,
+            # bad magic, stale manifest hash, mismatched dims, wrong length, short read, any
+            # error -- falls through to the f64 path below, which then WRITES the cache
+            # best-effort for the next call. Never a hard error either way: the cache is a load-
+            # time optimization, not part of the correctness contract.
+            var cache_path = checkpoint_dir + "/weights_i8.cache"
+            var loaded_from_cache = False
+            if resident_match:
+                # The resident buffers already hold this model's weights + rope tables.
+                loaded_from_cache = True
+            else:
+                try:
+                    var cf = open(cache_path, "r")
+                    var header = cf.read_bytes(_I8_CACHE_HEADER_BYTES)
+                    if (
+                        len(header) == _I8_CACHE_HEADER_BYTES
+                        and _i8_cache_magic_ok(header)
+                        and _le64(header, 40) == n_layers
+                        and _le64(header, 48) == d_model
+                        and _le64(header, 56) == h_q
+                        and _le64(header, 64) == h_kv
+                        and _le64(header, 72) == d_head
+                        and _le64(header, 80) == d_ff
+                        and _le64(header, 88) == vocab_size
+                        and _sha256_matches(header, _sha256_of_string(manifest))
+                        and _le64(header, 96) == s.quantized_state_bytes()
+                    ):
+                        var state_bytes = _le64(header, 96)
+                        var state = List[UInt8](capacity=state_bytes)
+                        var remaining = state_bytes
+                        var read_ok = True
+                        while read_ok and remaining > 0:
+                            var take = _I8_CACHE_CHUNK_BYTES
+                            if remaining < take:
+                                take = remaining
+                            var chunk = cf.read_bytes(take)
+                            if len(chunk) != take:
+                                read_ok = False
+                            else:
+                                for i in range(take):
+                                    state.append(chunk[i])
+                            remaining -= take
+                        cf.close()
+                        if read_ok and s.load_quantized_state(state^) == MB_OK:
+                            var rope_status = s.upload_rope_tables(
+                                rt.cos_table, rt.sin_table, max_ctx
+                            )
+                            loaded_from_cache = rope_status == MB_OK
+                    else:
+                        cf.close()
+                except:
+                    loaded_from_cache = False
+
+            if not loaded_from_cache:
+                var embed_table = _load_tensor(
+                    blob_path, tensors_obj, "model.embed_tokens.weight"
+                )
+                var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+
+                var up_status = s.upload_globals(
+                    embed_table, final_norm_w, rt.cos_table, rt.sin_table, max_ctx
+                )
+                if up_status != MB_OK:
+                    return _decode_err(
+                        up_status,
+                        "upload_globals failed: " + metaldispatch_status_name(up_status),
+                    )
+
+                for layer in range(n_layers):
+                    var prefix = "model.layers." + String(layer) + "."
+                    var ln1 = _load_tensor(
+                        blob_path, tensors_obj, prefix + "input_layernorm.weight"
+                    )
+                    var ln2 = _load_tensor(
+                        blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
+                    )
+                    var qn = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
+                    )
+                    var kn = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
+                    )
+                    var wq = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.q_proj.weight"
+                    )
+                    var wk = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.k_proj.weight"
+                    )
+                    var wv = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.v_proj.weight"
+                    )
+                    var wo = _load_tensor(
+                        blob_path, tensors_obj, prefix + "self_attn.o_proj.weight"
+                    )
+                    var wg = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.gate_proj.weight"
+                    )
+                    var wu = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.up_proj.weight"
+                    )
+                    var wd = _load_tensor(
+                        blob_path, tensors_obj, prefix + "mlp.down_proj.weight"
+                    )
+                    var layer_status = s.upload_layer(
+                        layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd
+                    )
+                    if layer_status != MB_OK:
+                        return _decode_err(
+                            layer_status,
+                            "upload_layer " + String(layer) + " failed: "
+                            + metaldispatch_status_name(layer_status),
+                        )
+
+                _ = s.seal()
+
+                # Best-effort: persist the exact post-quantization device bytes so the next call
+                # on this converted checkpoint skips the f64 read + quantization entirely. A
+                # write failure (read-only dir, disk full) must never fail the decode itself.
+                try:
+                    var state_out = s.dump_quantized_state()
+                    var header_out = List[UInt8](capacity=_I8_CACHE_HEADER_BYTES)
+                    for _h in range(_I8_CACHE_HEADER_BYTES):
+                        header_out.append(0)
+                    header_out[0] = 65  # 'A'
+                    header_out[1] = 76  # 'L'
+                    header_out[2] = 71  # 'G'
+                    header_out[3] = 73  # 'I'
+                    header_out[4] = 56  # '8'
+                    header_out[5] = 67  # 'C'
+                    header_out[6] = 48  # '0'
+                    header_out[7] = 49  # '1'
+                    var digest = _sha256_of_string(manifest)
+                    for _d in range(32):
+                        header_out[8 + _d] = UInt8(digest[_d])
+                    var header_fields = List[Int]()
+                    header_fields.append(n_layers)
+                    header_fields.append(d_model)
+                    header_fields.append(h_q)
+                    header_fields.append(h_kv)
+                    header_fields.append(d_head)
+                    header_fields.append(d_ff)
+                    header_fields.append(vocab_size)
+                    header_fields.append(len(state_out))
+                    for _f in range(len(header_fields)):
+                        for _b in range(8):
+                            header_out[40 + _f * 8 + _b] = UInt8(
+                                (header_fields[_f] >> (8 * _b)) & 255
+                            )
+                    var wf = open(cache_path, "w")
+                    wf.write_bytes(Span[UInt8, origin_of(header_out)](
+                        ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
+                    ))
+                    var written = 0
+                    while written < len(state_out):
+                        var take = _I8_CACHE_CHUNK_BYTES
+                        if len(state_out) - written < take:
+                            take = len(state_out) - written
+                        wf.write_bytes(Span[UInt8, origin_of(state_out)](
+                            ptr=state_out.unsafe_ptr() + written, length=take
+                        ))
+                        written += take
+                    wf.close()
+                except:
+                    pass
+                _mb_set_resident_key(resident_key)
+            else:
+                _ = s.seal()
+                _mb_set_resident_key(resident_key)
+
+            var generated_ids = List[Int]()
+            for i in range(n_prompt):
+                generated_ids.append(prompt_ids[i])
+
+            # ── Beat-llama.cpp campaign concurrent front (2026-08-11): per-sequence ingest into
+            # the batched KV caches, timed across the whole batch, then the shared decode loop.
+            var dispatches_per_token = s.batched_dispatch_count(B)
+
+            var first_toks = List[Int](capacity=B)
+            var t_prefill_start = perf_counter_ns()
+            var cur = 0
+            for b in range(B):
+                var L = prompt_lens[b]
+                var ids_b = List[Int](capacity=L)
+                for i in range(cur, cur + L):
+                    ids_b.append(prompt_ids[i])
+                var r_ing = s.prefill_batch_batched_ingest(ids_b^, b)
+                if r_ing.status != MB_OK:
+                    return _decode_err(
+                        r_ing.status,
+                        "batched ingest seq " + String(b) + " failed: "
+                        + metaldispatch_status_name(r_ing.status),
+                    )
+                first_toks.append(r_ing.token_id)
+                cur += L
+            var t_prefill_end = perf_counter_ns()
+
+            var prefill_tok_per_sec = 0.0
+            if n_prompt > 0:
+                var prefill_ms = Float64(Int(t_prefill_end - t_prefill_start)) / 1.0e6
+                if prefill_ms > 0.0:
+                    prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
+
+            var step_flat = List[Int](capacity=B * max_new_tokens)
+            for b in range(B):
+                step_flat.append(first_toks[b])
+            var cur_toks = first_toks^
+            var n_decoded = 1
+
+            var t_decode_start = perf_counter_ns()
+            for step in range(1, max_new_tokens):
+                # All sequences advance together: poss[b] = prompt_lens[b] + step.
+                var poss = List[Int](capacity=B)
+                for b in range(B):
+                    poss.append(prompt_lens[b] + step)
+                var toks = s.step_batched(cur_toks, poss^)
+                for b in range(B):
+                    step_flat.append(toks[b])
+                cur_toks = toks^
+                n_decoded += 1
+            var t_decode_end = perf_counter_ns()
+
+            # Transpose step-major [t*B + b] into the DOCUMENTED seq-major contract: B contiguous
+            # runs of exactly max_new_tokens generated tokens each.
+            var generated = List[Int](capacity=B * n_decoded)
+            for b in range(B):
+                for t in range(n_decoded):
+                    generated.append(step_flat[t * B + b])
+
+            # SYSTEM decode throughput: B sequences stepped together per token interval.
+            var decode_steps = n_decoded - 1
+            var tok_per_sec = 0.0
+            if decode_steps > 0:
+                var decode_ms = Float64(Int(t_decode_end - t_decode_start)) / 1.0e6
+                if decode_ms > 0.0:
+                    tok_per_sec = Float64(B * decode_steps) / (decode_ms / 1000.0)
+
+            return Qwen3PrefillDecodeResult(
+                MB_OK, "", generated^, n_prompt, False, dispatches_per_token,
+                tok_per_sec, prefill_tok_per_sec, B
             )
         except e:
             _mb_end_adopt()
