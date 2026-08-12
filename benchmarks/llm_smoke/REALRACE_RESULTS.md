@@ -11524,3 +11524,41 @@ parallelism pays nothing -- any pairing retry must add intra-TG key-parallelism 
 x 2-key-unroll x wider simd_sums, not pairing alone). NOTE the shallow/mid decode regime is a
 different animal (dispatch/latency-bound, already leading both controls) -- these levers target
 DEEP only.
+
+## COOLED SOLO RE-MEASURE POST-TILE (2026-08-12 late morning): warm-vs-warm at last -- 8K prefill gap narrows 0.82-0.85x -> 0.93x MLX, 1K leads 1.34x; but FIRST the cold-first-call confound that poisoned every earlier cooled comparison
+
+THE SAGA (honest, in full): v1 (09:35, original cooled protocol) returned algenta prefill
+2,246/1,370/1,792 -- garbage, non-monotonic (8K faster than 4K). First hypothesis: DVFS ramp after
+the 90s cooldowns; harness got an untimed largest-cell warmup (v2: still ~half rate 4,135/4,554/
+3,061) then a sustained 3x warmup (v3: still 4,288/4,597/2,255). Meanwhile the SAME worker through
+load_test.py kept reading 8,320-8,408 @1K. The decisive warmth test (same runtime, identical calls
+back-to-back): in=1024 call#1 pf=5,037 vs call#2 pf=**11,770**; in=4096 call#1 4,966 vs call#2
+**8,954**. ROOT CAUSE: the FIRST decode() at a NEW context size is cold -- session rebuild + buffer
+first-touch + PSO first-dispatch + DVFS still ramping -- and the cost lands INSIDE the prefill
+window; the second identical call is warm. Every median-of-2-iterations number in this ledger's
+cooled entries silently averaged cold+warm (load_test's 8,390 @1K = (5,037+11,770)/2 exactly), and
+load_test_3way's per-pass 90s cooldowns re-dropped clocks so EVERY pass re-measured cold. MLX's
+worker does n_warmup=1 per cell = warm -- so the 0.82-0.85x 8K ratios were warm-MLX vs
+cold-algenta: biased against us by protocol, not by engines. PROTOCOL FIX (load_test_3way.py):
+per-cell UNTIMED warmup at the EXACT timed shape (same prompt + max_new_tokens so max_ctx/buffer
+sizing match) before each timed call; the global DVFS warmup removed as redundant.
+
+CORRECTED NUMBERS (v4, warm-vs-warm, cooled session, 90s inter-engine cooldowns, 2 passes, tile=2048
+production worker vs mlx-lm bf16):
+
+    in     Algenta pf/dc      MLX pf/dc        ratio pf (dc)
+    1024   11,795 / 262       8,795 / 208      1.34x  (1.26x)
+    4101    7,600 / 194       8,308 / 215      0.91x  (0.90x)
+    8198    5,134 / 141       5,493 / 171      0.93x  (0.82x)
+
+VERDICTS: (1) 1K prefill lead EXPANDED to 1.34x (pre-tile warm-era ~1.10x) -- the tile lever +
+engine-internal efficiency dominate shallow serving. (2) Deep prefill gap NARROWED from the
+poisoned 0.82-0.85x to **0.93x** -- the tile lever bought what the dissection predicted; the
+remaining ~7% is attention's 75%-of-wall efficiency + MLX's bf16-vs-our-i8 bandwidth arithmetic.
+(3) A 4K dip (0.91x) appears between the two regimes -- noted for the next dissection. (4) Deep
+DECODE is now proportionally the larger frontier (0.82x @8K): the decode-budget entry's KV-traffic
+lever (int8 KV cache) is the right next campaign phase. (5) ABSOLUTE numbers run below the
+all-night-saturated era (MLX itself reads 8,795/5,493 tonight vs 9,792/6,820 in the hot-night
+baseline) -- cooled ambient silicon boosts less than saturated silicon; same-night same-protocol
+ratios are the honest verdict. Campaign standing after correction: we LEAD warm-vs-warm on 1K
+prefill+decode outright, trail ~7-9% on 4K/8K prefill, and deep decode (0.82x) is the open front.

@@ -92,6 +92,8 @@ def start_llama_server(gguf: str, port: int, ctx: int):
 
 
 def stop_llama_server(proc) -> None:
+    if proc is None:
+        return
     proc.terminate()
     try:
         proc.wait(timeout=10)
@@ -116,6 +118,19 @@ def run_algenta(cells, runtime, tokenizer, checkpoint: str) -> list[dict]:
     out = []
     for cell in cells:
         prompt_ids = tokenizer.encode(cell["prompt"])
+        # Per-cell untimed warmup at the EXACT timed shape (2026-08-12 session-warmth diagnosis):
+        # the FIRST decode() at a new context size is cold (session build + buffer first-touch +
+        # PSO first-dispatch + DVFS still ramping); the warmth test measured call#1=5,037 vs
+        # call#2=11,770 prefill tok/s at 1K -- a 2.3x artifact. load_test.py's median-of-2 had been
+        # silently averaging cold+warm (its 8,390 = (5,037+11,770)/2). MLX's worker already does
+        # n_warmup=1 per cell; give algenta the same so the comparison is warm-vs-warm. The warmup
+        # must use the SAME max_new_tokens so max_ctx (and hence the session's buffer sizing) is
+        # identical, otherwise the timed call rebuilds to fresh buffers and pays first-touch inside
+        # the timed window.
+        decode(
+            runtime, checkpoint_dir=checkpoint,
+            prompt_token_ids=prompt_ids, max_new_tokens=cell["out"],
+        )
         wall, result = 0.0, None
         t0 = time.time()
         result = decode(
@@ -231,11 +246,12 @@ def main() -> int:
         prompt_token_ids=tokenizer.encode(PROMPT_UNIT + PROMPT_TAIL), max_new_tokens=4,
     )
 
-    log("starting llama-server ...")
-    llama = start_llama_server(args.gguf, LLAMA_PORT, args.llama_ctx)
-    log("llama-server healthy")
-
     engines = [e.strip() for e in args.engines.split(",") if e.strip()]
+    log("starting llama-server ..." if "llama.cpp" in engines else "llama.cpp filtered out -- skipping llama-server")
+    llama = start_llama_server(args.gguf, LLAMA_PORT, args.llama_ctx) if "llama.cpp" in engines else None
+    if llama is not None:
+        log("llama-server healthy")
+
     for e in engines:
         if e not in ("algenta", "llama.cpp", "mlx-lm"):
             print(f"unknown engine: {e}")
@@ -250,8 +266,9 @@ def main() -> int:
                     log(f"    idle cooldown {args.engine_cooldown:.0f}s before {eng} ...")
                     time.sleep(args.engine_cooldown)
                 if eng == "algenta":
-                    # Warm the session on this pass's largest cell once (untimed) is already done
-                    # globally; just time the matrix.
+                    # Session-warmth + DVFS handled per-cell inside run_algenta (untimed warmup at
+                    # the exact timed shape before each timed call, 2026-08-12 diagnosis). No global
+                    # warmup needed: the first per-cell warmup ramps clocks from the cooled state.
                     collected[eng] += run_algenta(cells, runtime, tokenizer, args.checkpoint)
                 elif eng == "llama.cpp":
                     collected[eng] += run_llama(cells, LLAMA_PORT)
