@@ -11239,3 +11239,28 @@ prefill wouldn't change, but interference-resistance and decode GEMV bandwidth b
 ALSO queued from this: engine-internal prefill timing wraps the CHUNKED loop (2x512 tiles at 1K;
 PREFILL_MAX_TILE=512 compile-time) -- chunking overhead is inside the number; and first-touch
 buffer cost (Front-1) lands inside the first prefill of any fresh session.
+
+## INT8-DIRECT MSL GEMM REFUTED (2026-08-12 night): byte-exact but 0.63-0.79x prefill -- in-kernel dequant fights the MMA wall; the #631 "strategic fix" conclusion is WITHDRAWN
+
+Implemented end-to-end and measured BEFORE shipping: all FOUR MSL GEMM kernels (msl_parity qkv/
+accum/swiglu + the msl_splitk8/12 o/down replacements) converted to read per-row-symmetric Int8
+weights DIRECTLY with in-kernel dequant (half(float(i8)*row_scale) -- the SAME rounding the
+removed host-side F16-twin materialization used, so fragments are bit-identical), the per-layer
+F16 twins deleted (allocation, materialization, struct fields, the `_dequant_i8_into_f16` helper),
+weight descriptors repointed at the Int8 buffers (the wscale descriptor arg finally used), and
+the resident layout version bumped (_RESIDENT_LAYOUT_VERSION=2 in the resident key hash, so
+old-layout resident sessions can never be adopted). VERIFIED BYTE-EXACT: 512-token prompt + 64
+greedy tokens IDENTICAL to the f16-twin stack. PERFORMANCE (interleaved solo stress, u2g vs
+i8direct): prefill 1K 9564->7569 (0.79x), 4K 7626->4794 (0.63x), 8K 5692->3527 (0.62x); decode
+unchanged (decode GEMV never used the MSL tier). VERDICT: REFUTED for production -- the GEMM
+roles sit AT the MMA wall (13.1-14.0 TF/s, this morning's probe), and the per-element int8->f16
+conversion in the B-tile staging competes with MMA issue for slots; halving weight DRAM traffic
+cannot pay for it where compute, not bandwidth, bounds. The footprint/interference hypothesis
+from the #631 attribution remains plausible in principle but this mechanism is net-negative even
+there (the ~30% compute penalty offsets any eviction-recovery). REVERTED completely (all four
+metal files, engine, blobs -- committed artifacts byte-restored). CORRECTION to the #631 entry:
+"Int8-direct GEMM is the strategic fix" is WITHDRAWN. The remaining shallow/mid prefill deficit
+vs the controls stays attributed to inter-engine interference x footprint; candidate mechanisms
+still open: reducing the f16 twin footprint ONLY where GEMM is bandwidth-bound (decode GEMV roles
+-- which ALREADY read Int8), smaller resident KV/activation allocations, or accepting the
+interference tax and measuring single-engine (engine-internal protocol).
