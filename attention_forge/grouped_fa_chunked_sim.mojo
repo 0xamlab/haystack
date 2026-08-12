@@ -1,12 +1,15 @@
 """attention_forge.grouped_fa_chunked_sim -- beat-llama.cpp campaign (2026-08-12): SIMULATION
-harness for the chunked production prefill. Production prefills >512 tokens as sequential
-PREFILL_MAX_TILE=512-row prefill_batch calls (activations are tile-sized), so an 8K prefill = 16
-chunks, chunk i attending n_q=512 rows against keys [0, 512(i+1)) with pos_base=512i. This bench
-measures the steel attention kernel at EACH chunk's exact (n_q, n_kv, offset) shape and sums --
-the attention half of a roofline SIMULATION of whole-prefill wall time (the probe's per-role
-budgets in REALRACE_RESULTS.md supply the non-attention constants). Purpose: predict
-whole-prefill attention cost at any depth WITHOUT the full engine, and locate where the
-deep-prefill attention budget concentrates (MLX leads 8K prefill solo 6820 vs ~5600).
+harness for the chunked production prefill. Production prefills chunk into sequential
+PREFILL_MAX_TILE-row prefill_batch calls (activations are tile-sized); production's tile was RAISED
+512 -> 1024 this same night (see REALRACE_RESULTS.md "PREFILL TILE 512 -> 1024"), so `sim_prefill`
+is TILE-PARAMETRIC and `main` A/Bs 512 vs 1024 at 4K/8K. Chunk i attends n_q=tile rows against keys
+[0, tile(i+1)) with pos_base=tile*i. This bench measures the steel attention kernel at EACH chunk's
+exact (n_q, n_kv, offset) shape and sums -- the attention half of a roofline SIMULATION of
+whole-prefill wall time (the probe's per-role budgets in REALRACE_RESULTS.md supply the
+non-attention constants). Purpose: predict whole-prefill attention cost at any depth WITHOUT the
+full engine, and locate where the deep-prefill attention budget concentrates (MLX leads 8K prefill
+solo 6820 vs ~5600). NOTE: this captures ONLY the attention-kernel cost; the tile win measured in
+production came from the HOST/DISPATCH gap (chunks halved), which this GPU-only sim does not model.
 Timing-only (steel correctness is PR #621's gates); buffers sized for the deepest n_kv,
 warmup per chunk, best-of-3 rounds.
 
@@ -23,7 +26,7 @@ comptime _H_Q: Int = 16
 comptime _H_KV: Int = 8
 comptime _D: Int = 128
 comptime _KBS: Int = 32
-comptime _TILE: Int = 512
+comptime _TILE: Int = 1024
 
 
 def _fill_f16(n: Int, seed: Int) -> List[Float64]:
@@ -34,11 +37,10 @@ def _fill_f16(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
-def sim_prefill(ctx: DeviceContext, total_tokens: Int) raises:
-    """Sum steel attention over all 512-row chunks of a `total_tokens` production prefill, each
+def sim_prefill(ctx: DeviceContext, total_tokens: Int, tile: Int) raises:
+    """Sum steel attention over all `tile`-row chunks of a `total_tokens` production prefill, each
     measured at its real (n_q, n_kv, offset) shape."""
     var h_q = _H_Q
-    var tile = _TILE
     var n_chunks = (total_tokens + tile - 1) // tile
     var n_blocks_max = (total_tokens + _KBS - 1) // _KBS
     var scale = Float32(1.0 / Float64(_D) ** 0.5)
@@ -97,14 +99,15 @@ def sim_prefill(ctx: DeviceContext, total_tokens: Int) raises:
                 best = ms
         attn_total_ms += best
         print("  [chunk-sim] chunk ", c, " n_kv=", n_kv, " attn=", best, "ms")
-    print("  [chunk-sim] total_tokens=", total_tokens, " chunks=", n_chunks,
+    print("  [chunk-sim] tile=", tile, " total_tokens=", total_tokens, " chunks=", n_chunks,
           " attention-total=", attn_total_ms, "ms (per layer)")
 
 
 def main() raises:
     var ctx = DeviceContext()
-    print("=== chunked-prefill attention simulation (steel, production tile=512) ===")
-    sim_prefill(ctx, 1024)
-    sim_prefill(ctx, 4096)
-    sim_prefill(ctx, 8192)
+    print("=== chunked-prefill attention simulation (steel): tile 512 vs 1024 (production now 1024) ===")
+    sim_prefill(ctx, 4096, 512)
+    sim_prefill(ctx, 4096, 1024)
+    sim_prefill(ctx, 8192, 512)
+    sim_prefill(ctx, 8192, 1024)
     print("done")

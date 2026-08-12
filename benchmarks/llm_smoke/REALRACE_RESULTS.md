@@ -11347,3 +11347,78 @@ between non-interleaved runs was re-measured away once interleaved: the document
 artifact, not the change). Greedy determinism gates green on every run. The batched path keeps its
 fixed 16 (= the recipe's clamp(cores*13//(h_q*B),16,32) at B=32, already at the derived batch
 target). The formula now sizes smaller/wider GPUs and other GQA widths automatically.
+
+## STEEL V-STAGE PREFETCH REFUTED AT DEPTH (2026-08-12 night): the MLX "V-load-before-softmax" trick costs more than it buys below 2K (occupancy+barriers dominate)
+
+Built `grouped_fa_steel_prefetch.mojo` (`_attn_grouped_fa_prefetch_kernel`): shipped steel
+unchanged EXCEPT V is staged device->smem (one KT x D = 8KB buffer, issued before the softmax ALU
+per the teardown) and PV reads V back from smem; K stays device-direct. smem 8KB(Q)+8KB(sv)=16KB/TG
+(at MLX's own ~15KB, below the 24KB kblk-collapse). 2 barriers/block (one guards sv vs the previous
+block's PV, placed after QK^T so QK^T overlaps the drain; one after V stage). CORRECTNESS: all six
+oracle shapes OK (worst-ratio ~4e-5). TIMING prefetch-vs-steel (isolated A/B, warm): **1024: 1.29x
+FASTER, 2048: 0.89x, 4096: 0.89x, 8192: 0.88x.** The latency-hiding pays ONLY at 1K (few blocks,
+barriers cheap, overlap wins); at every depth >=2K the per-block barrier pair + the halved residency
+from the +8KB smem + the extra smem write/read traffic for V overwhelm the hidden device latency.
+VERDICT: REFUTED for the deep frontier (which is the only frontier that matters). Consistent with
+the whole campaign: at depth, structural/occupancy/barrier costs beat micro-latency-hiding. The
+device->smem staging idea is DEAD for this kernel; next lever is barrier-free ALU reduction
+(block-granularity causal skip -- steel masks every element of EVERY block even when the whole block
+is below the causal diagonal, ~c/(c+1) of blocks at chunk c).
+
+## STEEL CAUSAL-BLOCK-SKIP NEUTRAL AT DEPTH (2026-08-12 night): mask ALU was never the limiter -- the two principled deep-attention levers are now BOTH refuted
+
+Built `grouped_fa_steel_causalskip.mojo` (`_attn_grouped_fa_causalskip_kernel`): shipped steel
+minus the per-element causal mask on every block that provably cannot mask (block top key <= the
+simdgroup's lowest query row AND not the n_tok_k tail; uniform per simdgroup, zero smem, zero
+barriers -- the MLX teardown's "block-granularity causal skip" technique). CORRECTNESS: all eight
+oracle shapes OK incl. chunk-production shapes (512x512 off=0, 512x1024 off=512, 512x2048 off=1536)
+and a mid-block diagonal crossing (worst-ratio ~8e-5). TIMING skip-vs-steel (isolated A/B): SQUARE
+1024: 1.23x, 2048: 0.97x, 4096: 0.98x, 8192: 0.99x; PRODUCTION CHUNKED-SUM (the real 8K metric):
+4096: 0.991x, 8192: 0.992x. VERDICT: NEUTRAL-to-slightly-negative at depth. Deleting ~90% of the
+mask compare/select ALU at deep chunks moves NOTHING -> the mask is not the bottleneck; the added
+divergent branch roughly cancels the removed ALU.
+
+THE BRACKET IS NOW CLOSED BY TWO REFUTATIONS: (1) ADDING smem+barriers to hide KV latency LOSES at
+depth (V-stage 0.88x); (2) REMOVING softmax-adjacent ALU gains nothing (causal-skip 0.99x). Steel's
+deep attention therefore sits at a practical wall for its ownership/tile structure. THE ARITHMETIC
+WHY THE MLX GAP IS NOT CLOSED BY THE ATTENTION KERNEL ALONE: steel deep attention = 2.92e11 FLOPs/
+layer / 28.83ms = 10.1 TF/s = 75% of the 13.5 TF/s sustained MMA wall. Even a PERFECT attention
+kernel at 100% of the MMA wall would be only 1.34x faster (28.83 -> 21.6 ms/layer), saving ~202ms
+of the 1552ms 8K budget -> ~6070 tok/s, STILL short of MLX's solo 6820. Conclusion: the 8K
+prefill gap vs MLX is NOT closable by the attention kernel alone; the remaining lever must be
+structural -- the 153ms (10%) inter-chunk DISPATCH GAP, and/or MLX's chunking/dispatch strategy.
+Next: dissect the 16-chunk dispatch gap and whether a larger resident tile (fewer, fatter chunks)
+shrinks it without overflowing the activation budget.
+
+## PREFILL TILE 512 -> 1024 (2026-08-12 night): the dispatch-gap lever PAYS -- +4-7% prefill at every depth, zero decode change, first structural win of the deep-frontier dissection
+
+The full-stack dissection put 153ms (10%) of the 8K budget in the per-chunk wall-minus-GPU gap
+(~9.5ms x 16 chunks). Kernel-side levers are bracketed-out by the two refutations above, so the
+next lever was STRUCTURAL: PREFILL_MAX_TILE raised 512 -> 1024 (decoupled from
+RESIDENT_DEFAULT_CONTEXT -- default max_ctx unchanged; activation buffers scale tile-linearly,
+~49MB -> ~197MB at this model, trivial on 128GB; the #625 split-K-accum gate m_rows<=1024 holds at
+exactly this tile; pos_base still 32-aligned for kvprod). An 8K prefill now runs 8 chunks instead
+of 16 (4K: 4 vs 8, 1K: 1 vs 2). VALIDATION (same-tree interleaved A/B, tile1024 vs devoptctl
+tile-512 control, load_test stress medians): 1K pf 8445+8392 vs 7968+7991 = **+5.7%**, 4K pf
+6716+6460 vs 6268+6052 = **+6.8%**, 8K pf 4380+4428 vs 4324+4112 = **+4.4%**; decode IDENTICAL at
+every depth (268/268, 212/212, 163/163 -- prefill-only change); greedy determinism green at all
+depths; batched_decode_smoke byte-identical B=4 on the tile1024 worker (prefill 9597 tok/s). The
+measured +4.4% at 8K is below the naive 9.5ms-x-8-chunks prediction (~5%): part of the per-chunk
+"gap" scales with dispatch COUNT (unchanged per chunk), only the fixed per-chunk host/IPC portion
+halves. NOTE these load_test SDK-path numbers (~4400 @8K) sit below the engine-internal solo
+numbers (~5600) by the SDK/IPC tax; the interleaved A/B ratio is the honest metric. QUEUED NEXT:
+tile=2048 (4 chunks at 8K; crosses the split-K gate into the #625-proven parity path at o/down;
+~400MB activations) as a follow-up experiment.
+
+## TILE=1024 ATTENTION BONUS (2026-08-12 night): the chunked sim (now tile-parametric) shows the larger tile ALSO speeds the attention kernel itself ~13% -- the +4.4% end-to-end 8K win is dispatch-gap + attention efficiency
+
+grouped_fa_chunked_sim.mojo grew a `tile` parameter (production honesty: tile is 1024 now) and
+A/B'd both tiles at the exact production chunk shapes: 4K attention-sum/layer 7.53ms (tile=512,
+8 chunks) -> 6.67ms (tile=1024, 4 chunks) = 1.13x; 8K 28.63ms (16 chunks) -> 25.35ms (8 chunks) =
+1.13x. Same total FLOPs (the full causal triangle) -- the win is per-chunk efficiency: n_q=1024
+puts 512 threadgroups in the steel grid (vs 256) = better 40-core fill, and the fixed per-chunk
+kernel-launch/Q-staging costs halve. So the tile change pays TWICE: the host/dispatch gap (chunks
+halved) AND the attention kernel (~13% faster on its own 52% budget share). The end-to-end +4.4%
+measured through the SDK path is the conservative floor of the two combined (SDK IPC tax + night
+thermals compress it); the engine-internal gain should be larger. Sim re-validated against the
+ledger's tile-512 numbers first (28.63 vs 28.65 = exact).

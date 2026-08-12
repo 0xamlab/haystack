@@ -137,7 +137,6 @@ a new formula.
 from std.builtin.type_aliases import MutAnyOrigin
 from std.gpu import WARP_SIZE
 from residentk.contract import (
-    RESIDENT_DEFAULT_CONTEXT,
     residentk_dispatch_budget_deep,
     residentk_prefill_gemm_use_narrow_tile,
     residentk_splitk_max_n_splits,
@@ -260,12 +259,18 @@ from metaldispatch.session_prefill_policy import (
     UnresolvedPrefillConfig,
 )
 
-comptime PREFILL_MAX_TILE: Int = RESIDENT_DEFAULT_CONTEXT
+comptime PREFILL_MAX_TILE: Int = 1024
 """Ceiling on `m_rows` for one `prefill_batch()` call -- `self.descriptors_prefill`'s grid widths
-are built at this ceiling once, then narrowed per call (see module docstring). Set to
-`RESIDENT_DEFAULT_CONTEXT` (512) rather than restated: a prompt longer than this needs more than one
-`prefill_batch()` call (chunked by the caller, `metaldispatch.qwen3_prefill_decode`'s own job), the
-same ceiling the KV cache itself already imposes by default."""
+are built at this ceiling once, then narrowed per call (see module docstring). Beat-llama.cpp
+campaign (2026-08-12): RAISED from 512 (the old `RESIDENT_DEFAULT_CONTEXT` alias) to 1024 to halve
+the chunked-prefill DISPATCH GAP -- the full-stack dissection measured 153ms (10% of the 8K
+budget) in the per-chunk wall-minus-GPU gap, ~9.5ms x 16 chunks; an 8K prefill now runs as 8
+chunks instead of 16. Decoupled from `RESIDENT_DEFAULT_CONTEXT` on purpose: the default max_ctx
+stays 512 (callers still raise it for long prompts exactly as before), only the per-call row
+ceiling moves. Cost is tile-linear activation memory (~2x, to ~200MB at this model on a 128GB
+device); the m_rows<=1024 split-K-accum gate (#625) still holds at exactly this tile. pos_base
+advances in 1024-steps, still a multiple of the KV `key_block_size`=32 the kvprod alignment
+invariant needs. The buffer-overflow probe gotcha is unchanged: probes must respect THIS ceiling."""
 
 comptime _AF_KEY_BLOCK_SIZE: Int = 32
 """Attention Compiler Plan v1.0, Phase 2C wiring: the native-packed KV block size BOTH
