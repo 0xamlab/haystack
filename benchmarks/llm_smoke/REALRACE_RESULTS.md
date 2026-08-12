@@ -11766,3 +11766,110 @@ within run-to-run thermal noise). CONSEQUENCE: there is no 4K frontier to chase;
 gap is at most marginal and thermally unstable. The performance objective (beat llama.cpp + MLX on
 prefill/decode) is MET at shallow depths and competitive at depth. Remaining lever if pursued:
 deep-prefill attention wall-efficiency (arithmetic-capped ~6,070 tok/s even at wall).
+## GEMM tournament Gate 0, MECHANISM RESOLVED (2026-08-12): llama.cpp's batch amortization is DISPATCH OVERLAP, not cache residency -- fresh-weight differential refutes residency outright; same-day re-measure holds the gap at 2.7x; the lever reframes from scheduling/cache to MMA micro-efficiency
+
+Gate 0's follow-up entry settled that the ~2.7x real GEMM gap (Algenta ~0.596ms/dispatch GPU-only
+marginal vs llama.cpp ~0.207ms under dense batching, same real qkv_proj shape M=256/K=1024/N=4096)
+is GPU-side, not CPU-encoding, and left ONE open mechanistic question: WHY does llama.cpp's kernel
+get ~2x cheaper per dispatch in a dense batch while Algenta's shows zero amortization? The entry's
+own named next tool was an Instruments GPU capture; this entry replaces it with two cheaper, more
+direct instruments, and resolves the question.
+
+### Instrument 1 (attempted, refuted as an instrument): per-dispatch GPU timestamps
+
+`mm_operator_harness_timestamped.m` (new, additive sibling of `mm_operator_harness_batched.m`,
+same pinned kernel/constants/shape/grid): `MTLCommonCounterSetTimestamp` via `MTLCounterSample
+Buffer`, sampling around every dispatch inside the batch. The device (AGXG16X / M4 Max) advertises
+the timestamp counter set but REJECTS encoder-level sampling at runtime: `-[AGXG16XFamilyCompute
+Context sampleCountersInBuffer:atSampleIndex:withBarrier:]: failed assertion '... not supported on
+this device'`. Recorded as an API-limitation finding: per-dispatch GPU timestamps inside a compute
+stream are NOT available on this Apple silicon generation, which is exactly why the campaign (and
+Gate 0's entry) could never measure them. The file guards the unsupported path and still runs the
+uninstrumented same-session sweep.
+
+### Machine-state finding (disclosed first, it governs every number below)
+
+This machine has been up **9 days 4 hours** (no reboot since before the tournament), and its GPU
+steady state is dramatically different from the Aug 7 cooled state the ledger's absolute numbers
+were taken in:
+
+| quantity | Aug 7 (cooled, up ~4-5 days) | Aug 12 (this entry) | drift |
+|---|---|---|---|
+| llama.cpp isolated GPU-only | 0.410 ms | **0.747 ms** (p10 0.745 / p90 0.749, reproducible across process launches) | **+82%** |
+| llama.cpp batched GPU marginal | 0.205-0.209 ms | **0.204-0.209 ms** | **unchanged** |
+| Algenta isolated GPU-only | 0.561-0.573 ms | **0.561 ms** | unchanged |
+| Algenta batched GPU marginal | 0.576-0.615 ms | **0.557 ms** (OLS, 8 sweep points) | unchanged |
+
+`pmset -g therm` shows no thermal/performance warnings recorded; macOS 26.5.2 and Xcode-26.6.0
+toolchain unchanged since Aug 7 (mtimes verified). The drift manifests as a per-invocation latency
+inflation that DENSE STREAMS HIDE (llama.cpp's batched marginal is bit-for-bit stable while its
+isolated cost nearly doubled) -- and it does not touch Algenta's kernel at all. Consequence, stated
+as a measurement rule: **cross-day absolute comparisons against Aug 7/8 ledger numbers are invalid
+on this machine until it is rebooted or the state normalizes; only same-session ratios are
+load-bearing.** Every comparison below is same-session.
+
+### Instrument 2 (decisive): the fresh-weight differential -- cache residency REFUTED
+
+If llama.cpp's batch amortization came from the 8MB f16 weight slice staying cache-resident across
+back-to-back dispatches (mechanism B), then rotating or freshening the weight buffers should kill
+the amortization. `mm_operator_harness_residency.m` (new, additive) batches N=28 and N=112
+dispatches three ways -- V0 "shared" (every dispatch reads the same wBuf, the original recipe),
+V1 "rot8" (dispatch d reads weight copy d%8, a 64MB rotating working set), V2 "fresh" (dispatch d
+reads weight copy d -- N distinct copies, 224MB at N=28 and **896MB at N=112, far beyond any L2/SLC
+capacity, every dispatch guaranteed cache-cold**) -- all copies holding identical data, GPU-only
+timed per whole command buffer:
+
+| variant | N | GPU-total median (ms) | marginal (ms/dispatch) |
+|---|---|---|---|
+| shared | 28 | 5.842 | 0.2086 |
+| rot8 (64MB set) | 28 | 5.757 | 0.2056 |
+| **fresh (224MB, all cache-cold)** | 28 | 5.754 | **0.2055** |
+| shared | 112 | 22.799 | 0.2036 |
+| rot8 | 112 | 22.963 | 0.2050 |
+| **fresh (896MB, all cache-cold)** | 112 | 23.071 | **0.2060** |
+| shared-again (drift control) | 28 | 5.703 | 0.2037 |
+
+**The amortization is IDENTICAL across all three variants** -- fresh, guaranteed-cache-cold
+weights at every dispatch buy nothing back (0.2055-0.2060 vs 0.2036-0.2086; the spread is
+within the 0.976 drift-control ratio). **Mechanism B (cache residency) is refuted outright.** The
+amortization also cannot be weight-DRAM-bandwidth-bound: fresh-112 streams 896MB in 23.1ms = ~39
+GB/s, trivial against the ~546 GB/s DRAM budget.
+
+### Mechanism conclusion: temporal overlap / latency-hiding in the dense stream
+
+With residency and (per Gate 0) CPU-encoding both excluded, the remaining explanation is that
+consecutive llama.cpp dispatches OVERLAP in execution inside the batch: a lone dispatch runs
+latency-dominated at ~2.9 TF/s (today's 0.747ms), while a dense stream keeps enough concurrent
+work in flight to hide the latency and run the same kernel at aggregate ~10.5 TF/s. Same-day
+same-session comparison, FLOPs = 2x256x1024x4096 = 2.147 GFLOP/dispatch, f16 MMA sustained wall
+ceiling 13.3-14.0 TF/s:
+
+| engine (format) | isolated GPU | batched GPU marginal | amortization | batched efficiency |
+|---|---|---|---|---|
+| llama.cpp `kernel_mul_mm_f16_f32` (F16) | 0.747 ms (2.9 TF/s) | **0.205 ms** | **3.6x** | **~10.5 TF/s ~= 77% of sustained f16 peak** |
+| Algenta `_qkv_proj_gemm_mma8x8` (Int8) | 0.561 ms (3.8 TF/s) | **0.557 ms** | **1.01x (none)** | ~3.9 TF/s ~= 28% of f16 peak (and Int8 MMA ceilings at ~2x f16, so ~14% of its own format's ceiling) |
+
+**The gap is NOT a scheduling trick we are missing at the command-buffer layer, NOT cache staging,
+NOT tile shape / operand width / datatype (all refuted earlier in this tournament). It is MMA
+micro-efficiency**: llama.cpp's kernel is latency-bound per dispatch and its dense stream hides the
+latency to reach ~77% of sustained peak; Algenta's kernel runs at ~14% of its format ceiling in
+EVERY context -- isolated, batched, today, Aug 7 -- which is the signature of an inner loop that
+does not keep the MMA units fed (per-tile Int8 dequant + fragment shuffles on the critical path),
+not of a kernel waiting for work that batching could supply.
+
+### What this changes, and the pre-registered next experiment
+
+- The "GEMM tournament round 2" scope the Phase 4 entry called for is re-scoped by this evidence:
+  it is a MICROKERNEL-efficiency project (software-pipelined loads, deeper BK, fragment layout,
+  moving dequant off the MMA critical path), not a dispatch-scheduling or cache-staging project.
+  Comparable-scale undertaking, as the Phase 4 entry already warned.
+- Pre-registered next experiment (cheap, decisive for attribution): a DUAL-STREAM concurrency
+  test -- two queues committing N/2-dispatch batches simultaneously, aggregate GPU throughput vs
+  the single-stream marginal. If aggregate throughput rises materially above single-stream, our
+  kernel leaves occupancy headroom on the table (grid/fragment lever); if flat, the single-dispatch
+  SIMD utilization is the floor and only the inner loop moves it. This doubles as the first probe
+  of the campaign's concurrent-throughput axis.
+- Files added (all additive): `mm_operator_harness_timestamped.m`, `mm_operator_harness_residency.m`
+  (both in `benchmarks/competitors/llama_cpp/operator_harness/`); `mm_operator_harness_batched.m`
+  from Gate 0 is bundled into the same PR (it was never committed). Re-run unmodified:
+  `gemm_qkv_proj_batching_sim_gpuonly.mojo` + `batch_shim_gputime.m`.
