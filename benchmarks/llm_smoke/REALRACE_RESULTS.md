@@ -11422,3 +11422,25 @@ halved) AND the attention kernel (~13% faster on its own 52% budget share). The 
 measured through the SDK path is the conservative floor of the two combined (SDK IPC tax + night
 thermals compress it); the engine-internal gain should be larger. Sim re-validated against the
 ledger's tile-512 numbers first (28.63 vs 28.65 = exact).
+
+## PREFILL TILE 1024 -> 2048 (2026-08-12 night): SECOND structural step PAYS +6.8%/+7.2% at 4K/8K with fully-separated distributions -- the dispatch-gap bucket keeps giving
+
+The tile lever (PR #637) was a validated +4-7%; this follow-up doubles again: PREFILL_MAX_TILE
+1024 -> 2048 (8K prefill = 4 chunks instead of 16 pre-#637; activations ~230MB, trivial here).
+The chunked sim gated the experiment first: attention-sum/layer keeps improving but with
+DIMINISHING returns (8K: 28.59 -> 25.35 -> 24.43 ms = 1.13x then only 1.037x), so the attention
+side alone predicted a marginal step -- the MEASURED end-to-end win is bigger because the lever is
+ADDITIVE: gap-halving again + the #625 split-K gate crossing (m_rows=2048 -> parity accum at
+o/down, the path the prefill-M bench measured winning 2.5-5.1% at M>=2048). VALIDATION
+(interleaved A/B, 4 rounds/worker, both orders pooled, load_test stress medians): 4K pf tile2048
+median 6682 [6089,6420,6944,6971] vs tile1024 6259 [5799,6124,6394,6789] = **1.068x**; 8K pf 4601
+[4363,4555,4648,5007] vs 4293 [4282,4283,4303,4342] = **1.072x** -- at 8K the tile2048 MINIMUM
+(4363) exceeds the tile1024 MAXIMUM (4342): fully-separated distributions, not noise. Decode
+unchanged (212/212 @4K); 1K unchanged by construction (1 chunk of m_rows=1024 under both tiles).
+CORRECTNESS: greedy determinism green at 1K/4K/5K/6K/8K (5000 = ragged last chunk 904 rows, 6144 =
+3x2048 exact); batched_decode_smoke byte-identical B=4 (prefill 9611 tok/s). CUMULATIVE since the
+dissection: 8 chunks pre-#637 -> 4 now at 8K; the solo engine-internal 8K prefill number should be
+re-measured on the next cooled session (expect the ~5,600 to move up by ~the compounded tile gain).
+The tile lever is NOT infinite: attention sim diminishing returns + activation memory growth
+(~2x/tile) mean tile=4098 needs its OWN gated experiment (expected small; the honest next probe is
+the per-chunk host/gap breakdown at m_rows=2048 first).

@@ -259,18 +259,21 @@ from metaldispatch.session_prefill_policy import (
     UnresolvedPrefillConfig,
 )
 
-comptime PREFILL_MAX_TILE: Int = 1024
+comptime PREFILL_MAX_TILE: Int = 2048
 """Ceiling on `m_rows` for one `prefill_batch()` call -- `self.descriptors_prefill`'s grid widths
 are built at this ceiling once, then narrowed per call (see module docstring). Beat-llama.cpp
-campaign (2026-08-12): RAISED from 512 (the old `RESIDENT_DEFAULT_CONTEXT` alias) to 1024 to halve
-the chunked-prefill DISPATCH GAP -- the full-stack dissection measured 153ms (10% of the 8K
-budget) in the per-chunk wall-minus-GPU gap, ~9.5ms x 16 chunks; an 8K prefill now runs as 8
-chunks instead of 16. Decoupled from `RESIDENT_DEFAULT_CONTEXT` on purpose: the default max_ctx
-stays 512 (callers still raise it for long prompts exactly as before), only the per-call row
-ceiling moves. Cost is tile-linear activation memory (~2x, to ~200MB at this model on a 128GB
-device); the m_rows<=1024 split-K-accum gate (#625) still holds at exactly this tile. pos_base
-advances in 1024-steps, still a multiple of the KV `key_block_size`=32 the kvprod alignment
-invariant needs. The buffer-overflow probe gotcha is unchanged: probes must respect THIS ceiling."""
+campaign (2026-08-12): raised 512 -> 1024 -> 2048, each step halving the chunked-prefill DISPATCH
+GAP (the full-stack dissection's 10%-of-8K budget bucket): an 8K prefill runs as 4 chunks instead
+of 16. The chunked-sim shows the attention-kernel side ALSO keeps improving with fatter chunks
+(8K attn/layer 28.59 -> 25.35 -> 24.43 ms), though with diminishing returns (1.13x then 1.037x).
+Decoupled from `RESIDENT_DEFAULT_CONTEXT` on purpose: the default max_ctx stays 512 (callers still
+raise it for long prompts exactly as before), only the per-call row ceiling moves. Cost is
+tile-linear activation memory (~4x the original 512, to ~230MB at this model on a 128GB device).
+At this tile m_rows=2048 CROSSES the #625 split-K-accum gate (m_rows<=1024): o/down switch to the
+parity accum path, which the prefill-M bench measured WINS 2.5-5.1% at M>=2048 -- a tailwind.
+pos_base advances in 2048-steps, still a multiple of the KV `key_block_size`=32 the kvprod
+alignment invariant needs. The buffer-overflow probe gotcha is unchanged: probes must respect THIS
+ceiling."""
 
 comptime _AF_KEY_BLOCK_SIZE: Int = 32
 """Attention Compiler Plan v1.0, Phase 2C wiring: the native-packed KV block size BOTH
