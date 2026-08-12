@@ -11873,3 +11873,70 @@ not of a kernel waiting for work that batching could supply.
   (both in `benchmarks/competitors/llama_cpp/operator_harness/`); `mm_operator_harness_batched.m`
   from Gate 0 is bundled into the same PR (it was never committed). Re-run unmodified:
   `gemm_qkv_proj_batching_sim_gpuonly.mojo` + `batch_shim_gputime.m`.
+
+## DUAL-STREAM CONCURRENCY TEST (2026-08-12): the attribution fork is CLOSED -- zero cross-stream overlap for BOTH kernels, aggregate throughput FALLS with concurrency; the GEMM lever is definitively inner-loop-only, and concurrent scaling must come from batched weight-sweeps, not concurrent streams
+
+The "Gate 0, MECHANISM RESOLVED" entry pre-registered this experiment to split the remaining fork:
+does `_qkv_proj_gemm_mma8x8` leave OCCUPANCY HEADROOM (two concurrent streams would raise
+aggregate throughput -> a grid/fragment lever exists), or is its single-stream ~3.9 TF/s an
+INNER-LOOP FLOOR (only a microkernel restructure moves it)? Built the commit/wait-split shim
+(`batch_shim_async.m`: `algenta_commit_token_as` commits without waiting, `algenta_wait_token_as`
+waits + returns GPUStartTime/GPUEndTime so the two-stream span and overlap are measured directly),
+the Mojo probe `mma_forge/probes/gemm_qkv_proj_dualstream.mojo` (same plumbing/correctness-gate
+convention as `gemm_qkv_proj_batching_sim_gpuonly.mojo`), and the identical-pairing ObjC control
+`mm_operator_harness_dualstream.m` for llama.cpp's kernel.
+
+### Algenta `_qkv_proj_gemm_mma8x8` (real qkv_proj shape, 15 reps/cell, medians)
+
+| cell | median (ms) | marginal (ms/dispatch) | vs single |
+|---|---|---|---|
+| S1 single N=112 | 62.801 | 0.5607 | baseline |
+| S2 single N=56 | 32.082 | 0.5729 | (paired check) |
+| D1 two streams x56 (112 total) | span 72.188 (durA 35.958 / durB 36.230) | 0.6445 | **0.87x** |
+| D2 two streams x112 (224 total) | span 165.168 (durA 82.468 / durB 82.471) | 0.7374 | **0.76x** |
+
+**Overlap is ZERO** -- D1 span (72.188) equals durA+durB (72.188) to four decimals; D2 the same
+within 0.23ms. The two command buffers execute SERIALLY, and each stream runs ~12% SLOWER
+co-scheduled (35.96/36.23 vs 32.08 single at N=56) -- concurrency is a pure loss here.
+
+### llama.cpp `kernel_mul_mm_f16_f32` control (same session, same pairing)
+
+| cell | median (ms) | marginal (ms/dispatch) | vs single |
+|---|---|---|---|
+| S1 single N=112 | 18.160 | 0.1621 | baseline |
+| S2 single N=56 | 9.186 | 0.1640 | (paired check) |
+| D1 two streams x56 | span 19.368 (durA 9.659 / durB 9.687) | 0.1729 | **0.94x** |
+| D2 two streams x112 | span 40.273 (durA 20.068 / durB 20.145) | 0.1798 | 0.90x |
+
+**The control shows the SAME signature**: zero overlap across command buffers (span == durA+durB
+within 0.03ms) and aggregate throughput slightly BELOW single-stream. Two consequences:
+1. **llama.cpp's 3.6x batch amortization happens INSIDE one command buffer/encoder** (dispatches
+   pipelining against each other within a single dense stream), NOT across streams -- cross-stream
+   concurrency buys nothing even for the kernel that benefits most from intra-stream overlap.
+2. This session's single-stream marginal (0.162ms = ~13.3 TF/s) sits essentially AT the sustained
+   f16 MMA wall (13.3-14.0 TF/s) -- the earlier same-day residency session measured 0.204-0.209ms;
+   the GPU clock state drifted again within the day (their latency-sensitive kernel tracks it, our
+   kernel does not: 0.557-0.561 both sessions). Same-session ratios remain the valid axis; the
+   cross-session absolute drift is disclosed, not smoothed.
+
+### Verdict (per the pre-registered rule) and what it closes
+
+Aggregate speedup was required to be >= 1.15x for "occupancy headroom"; measured 0.87x (Algenta)
+and 0.94x (control) -- **VERDICT: INNER-LOOP FLOOR, confirmed**. The attribution fork from the
+mechanism-resolution entry is closed with direct measurement:
+- There is NO grid/fragment/occupancy lever for `_qkv_proj_gemm_mma8x8`: its 1024-threadgroup x
+  256-thread grid already fills the machine (262K threads in flight); a second stream cannot
+  interleave and only steals cycles.
+- There is also NO concurrent-stream lever for serving throughput at the GEMM level, for ANY
+  kernel on this machine: even peak-efficiency streams serialize across command buffers. The
+  campaign's concurrent-throughput axis stays where the Slipstream work already put it --
+  BATCHING (one weight sweep amortized over B sequences), not concurrent dispatch streams.
+- The remaining 2.7x-class GEMM gap is exclusively inner-loop MMA issue efficiency (per-tile Int8
+  dequant + fragment shuffles on the critical path, ~14% of the Int8 ceiling vs llama.cpp's ~77%
+  of f16 peak in-stream). "GEMM tournament round 2" is therefore confirmed as a microkernel
+  project: software-pipelined loads, deeper BK, fragment layout, dequant off the MMA critical
+  path. Comparable-scale undertaking, now with no remaining ambiguity about where the lever is.
+
+Files added (all additive): `benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_async.m`,
+`mma_forge/probes/gemm_qkv_proj_dualstream.mojo`, `benchmarks/competitors/llama_cpp/
+operator_harness/mm_operator_harness_dualstream.m`. Existing files untouched.
