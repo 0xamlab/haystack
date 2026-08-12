@@ -11658,3 +11658,21 @@ incremental-friendly AND fastest. Wiring plan UNCHANGED otherwise (int8 mirror c
 native, per-key quantization fused into the KV writers at write time -- no separate quant pass
 needed now that scales are per-key, v4 blob + discovery + session dispatch switch + e2e
 token-oracle numerics; +50% KV memory).
+
+## INT8-KV BLOB FOUNDATION (2026-08-12 midday): v4 kernel codegenned under a COLLISION-SAFE module name -- AIR name + native SIMD int8->f32 conversion verified, ready for engine wiring
+
+The wiring phase's riskiest piece (blob naming/discovery) is de-risked FIRST. The dev file's
+module name (`native_kv_decode_attn_splitk_i8kv`, 33 chars) truncates at the AIR 28-char limit to
+EXACTLY `native_kv_decode_attn_splitk` -- byte-identical to the f4u2 blob's name family, an
+unresolvable discovery collision (the THIRD-collision class documented for the batched kernels).
+FIX: v4 lives in its own tracked module `attention_forge/native_kv_decode_attn_i8kv.mojo` (26-char
+name, under the truncation limit), blob driver `native_kv_decode_attn_i8kv_blob_driver.mojo`,
+extracted `generated/native_kv_decode_attn_i8kv_blob.c` (symbol `algenta_native_kv_decode_attn_
+i8kv_blob`). VERIFIED: AIR name = `native_kv_decode_attn_i8kv__nat6A6A_11d4c92b464f02dc` --
+contains the discovery substring `native_kv_decode_attn_i8kv` (longer than the naive kernel's
+`native_kv_decode_attn`, so it slots into the longest-first elif chain before it), contains NO
+other decode-attn family substring; the metallib carries `air.convert.f.v4f32.s.v4i8` -- the SIMD
+int8->f32 conversion compiles to a NATIVE vector conversion (the mm8 vecload4 pattern confirmed
+end-to-end through codegen); clang -c of the blob .c clean. NEXT (wiring PR): session field +
+discovery elif, per-layer int8 mirror buffers + per-key scale arrays, KV-writer-fused quant, v4
+dispatch switch at depth, e2e token-oracle numerics on real activations.
