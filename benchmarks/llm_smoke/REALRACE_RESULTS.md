@@ -11562,3 +11562,24 @@ all-night-saturated era (MLX itself reads 8,795/5,493 tonight vs 9,792/6,820 in 
 baseline) -- cooled ambient silicon boosts less than saturated silicon; same-night same-protocol
 ratios are the honest verdict. Campaign standing after correction: we LEAD warm-vs-warm on 1K
 prefill+decode outright, trail ~7-9% on 4K/8K prefill, and deep decode (0.82x) is the open front.
+
+## STEEL KT=64 NEUTRAL AT DEPTH (2026-08-12 late morning): halved block count pays only at 1K-square -- the steel attention kernel frontier is now closed by THREE neutral/refuted structural attempts
+
+Built `attention_forge/grouped_fa_steel_kt64.mojo` (`_attn_grouped_fa_kt64_kernel`): the shipped
+steel with a 64-key flash block spanning TWO packed 32-key KV slabs (per-slab 8x8 frag loads,
+ld=32), 8 S/P frags + 16-element masked softmax, plus a byte-identical 32-key fallback body for the
+odd-slab tail (any n_tok_k whose packed-slab count is odd). CORRECTNESS: 9/9 oracle shapes
+including odd-slab (96, 160 keys), ragged-K, odd offsets, and the production 5000-token ragged
+chunk shape (worst-ratio ~1.7e-4, within the f16 bound). TIMING kt64-vs-steel (A/B driver, warmup
++ best-of-3): SQUARE 1024: **1.20x WIN** (small-grid regime), 2048: 1.00x, 4096: 0.99x, 8192:
+1.00x; PRODUCTION CHUNKED-SUM (tile=2048): 4K 1.00x, 8K 0.995x. VERDICT: register pressure did NOT
+blow up, but halving the block count buys NOTHING where it matters -- the per-block overhead
+(softmax reduction pair + O rescale + cold K-load restart) is NOT the deep limiter, consistent with
+the causal-skip finding (mask ALU neutral). The 1.20x at N=1024 is invisible end-to-end (attention
+is ~2% of the 1K prefill budget) and does not pay for the two-slab complexity. FRONTIER CLOSED:
+three structural steel attempts now bracketed -- V-stage smem prefetch 0.88x at depth (REFUTED),
+causal-block-skip 0.99x (NEUTRAL), KT=64 1.00x (NEUTRAL). Steel sits at a practical wall for its
+ownership/layout family; remaining attention mechanisms would need a different family (persistent-
+TG KV streaming, occupancy trading), and per the frontier arithmetic even wall-rate attention does
+not beat MLX at 8K -- so campaign priority shifts to deep DECODE (0.82x warm-vs-warm; the int8-KV
+lever from the decode-budget entry, standalone milestone kernel in flight).
