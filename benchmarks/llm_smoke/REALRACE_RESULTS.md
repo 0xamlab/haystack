@@ -11694,3 +11694,27 @@ REMAINING for the wiring PR: session discovery fields + elifs, per-layer mirror 
 arrays, quant dispatches inserted after each kvprod (prefill + decode tables), an int8 split-K
 descriptor table (v4 partials, 16 args vs f4u2's 14 -- separate table, not in-place patch), depth-
 gated dispatch switch, e2e token-oracle on real activations.
+
+## INT8-KV DECODE WIRED E2E (2026-08-12 afternoon): +19% 8K decode (144 -> 172 tok/s), the 0.82x gap vs MLX closes to ~0.97x -- opt-in path, one integration bug found + fixed by the e2e gate
+
+WIRING (session_prefill.mojo): per-layer int8 MIRROR buffers ([hk][key][d_head] int8 + per-key f32
+scales, +50% KV memory, gated on both blobs) + an INT8 decode table (1 + 8*layers + 2: the f16
+split-K table with a re-patchable `_kv_i8_quant_kernel` dispatch after each kvprod and the v4
+partial in place of f4u2) + dispatch switch (i8 table takes priority at depth when built) +
+budget-count arm. MIRROR UPKEEP via watermark: LAZY SWEEP (quantize [0, n_keys) on the first deep
+step after any prefill -- prefill tables write f16 only) then APPEND (the single new key per step);
+pos_base=0 prefills reset the watermark. DEFAULT WORKER UNCHANGED: without the two blobs linked,
+decode_i8kv_built is False and every path stays byte-identical f16 -- int8 KV is build-time OPT-IN.
+INTEGRATION BUG FOUND BY THE E2E GATE: first e2e run violated greedy determinism -- the v4 kernel
+indexed the mirror with stride = RUNTIME n_keys (changes every step) while the quant writer uses
+the FIXED capacity stride (n_blocks*key_block_size); the partial read a different garbage row each
+step. FIXED (mirror stride = fixed capacity, layout note in the module), blob regenerated; the
+standalone v4 driver could not catch this (it never ran the quant writer -- recorded as the gap
+class e2e gates exist for). RESULTS (post-fix): greedy determinism green at 1K/4K/8K; interleaved
+8K decode (256 out @ 8192 in, 3 rounds each): i8kv **172 [135,172,177]** vs f16 tile2048 **144
+[144,144,160]** = **+19% median** -- vs MLX's warm-vs-warm 8K decode 177 this moves the campaign's
+0.82x to ~0.97x. NUMERICS (the honest trade): int8 KV is QUANTIZED KV -- on the repetitive 1K
+prompt the first token divergence vs f16 appears at token 20/64 (near-tie flip, both continuations
+coherent, same as llama.cpp's q8_0 KV trade). The byte-identity criterion governs the f16 path
+(default); the int8 path is documented quantized. Prefill untouched (f16 tables; prefill numbers
+in this hot-machine session are thermally noisy, no i8 effect).

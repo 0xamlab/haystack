@@ -610,6 +610,25 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     Float16, sized `h_kv * self.af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE` elements each (same total
     element count for both; only the byte ORDER differs, per the producer's own module docstring)."""
 
+    var af_ck_i8_addr: List[UInt64]
+    var af_ck_i8_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_cv_i8_addr: List[UInt64]
+    var af_cv_i8_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_ck_i8_scale_addr: List[UInt64]
+    var af_ck_i8_scale_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_cv_i8_scale_addr: List[UInt64]
+    var af_cv_i8_scale_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    """Beat-llama.cpp campaign (2026-08-12, int8-KV decode mirror): per-layer INT8 mirrors of the
+    f16 native-packed K/V caches above, in the FLAT `[hk][key][d_head]` layout the v4 partial reads
+    (NOT the transposed f16 packing), plus per-key Float32 absmax scale arrays sized
+    `h_kv * af_n_blocks * _AF_KEY_BLOCK_SIZE` (= one scale per key of the full cache). Populated by
+    the `_kv_i8_quant_kernel` dispatch appended after each kvprod in the decode table (write-side
+    quant, byte-exact round-trip validated); read ONLY by the v4 int8 partial. Allocated ONLY when
+    `decode_i8kv_built` (both int8 blobs discovered), keeping per-layer lists parallel to
+    `self.layers` with placeholder appends otherwise -- the same gated/parallel discipline as the
+    batched KV caches below. Memory: +50% of the f16 native KV footprint (int8 mirror = half the
+    f16 size; the f16 cache stays for the steel prefill reads)."""
+
     var batch_kv_stride_elems: Int
     var batch_ck_native_addr: List[UInt64]
     var batch_ck_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
@@ -715,6 +734,23 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     constructing successfully and simply never gets the split-K decode table -- `_step_native_kv_
     impl` falls back to the naive table unconditionally, byte-unmodified, and `expected_decode_
     dispatch_count` reports the naive count at every depth."""
+
+    var native_decode_attn_i8kv_pipeline_idx: Int
+    var kv_i8_quant_pipeline_idx: Int
+    var decode_i8kv_built: Bool
+    """Beat-llama.cpp campaign (2026-08-12, int8-KV decode mirror): the two kernels of the int8-KV
+    deep-decode path. `native_decode_attn_i8kv_pipeline_idx` = the v4 SIMD-dequant split-K partial
+    (`attention_forge/native_kv_decode_attn_i8kv._native_kv_decode_splitk_partial_i8kv4`, 1.34x/
+    1.48x vs f4u2 at 4K/8K keys against HALF the KV bytes); its module name is 26 chars (under the
+    AIR truncation limit -- the DEV file's 33-char name truncates onto the f4u2 family, an
+    unresolvable collision, which is why the kernel lives in its own module), discovered via the
+    substring `"native_kv_decode_attn_i8kv"` -- checked in the elif chain AFTER the two splitk
+    substrings and BEFORE the naive `"native_kv_decode_attn"` check (the i8kv name contains the
+    naive substring but not the splitk ones). `kv_i8_quant_pipeline_idx` = the write-side quant
+    kernel (`attention_forge/kv_i8_quant._kv_i8_quant_kernel`, byte-exact round-trip 0/196,608),
+    discovered via the unique substring `"kv_i8_quant"`. `decode_i8kv_built` = BOTH discovered --
+    the ONE flag the int8 decode table builder/dispatch read; either blob absent -> False, the f16
+    splitk path stays byte-unmodified, non-fatal-miss exactly like every optional pipeline field."""
 
     var kvprod_blk_pipeline_idx: Int
     var kvprod_qvec_pipeline_idx: Int
@@ -1057,6 +1093,28 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     the sweep-measured `_NATIVE_DECODE_N_SPLITS_OPT` this replaces -- but it now tracks the device.
     Falls back to `_NATIVE_DECODE_N_SPLITS_OPT` when the probe fails (cores <= 0), the documented
     conservative constant, matching the shim's own typed-failure contract."""
+    var descriptors_decode_native_splitk_i8: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors_decode_native_splitk_i8: Int
+    var native_decode_splitk_i8_built: Bool
+    var token_id_offset_native_splitk_i8: Int
+    var pos_offsets_native_splitk_i8: List[Int]
+    var quant_offsets_native_splitk_i8: List[Int]
+    var nkeys_offsets_native_splitk_i8: List[Int]
+    var native_splitk_i8_last_n_splits: Int
+    var i8_mirror_quantized_keys: Int
+    """Beat-llama.cpp campaign (2026-08-12, int8-KV decode mirror): the INT8 twin of the split-K
+    decode table -- `1 + n_layers*8 + 2`: the split-K table's seven per-layer roles PLUS one
+    `_kv_i8_quant_kernel` dispatch per layer (after kvprod), and the v4 SIMD-dequant partial
+    (`native_decode_attn_i8kv_pipeline_idx`, 16 args, reading the int8 mirror + per-key scales)
+    in place of the f4u2 partial. The per-layer quant descriptor is RE-PATCHED per step for two
+    jobs: (a) APPEND mode (grid h_kv x 1, key0=pos, m_new=1) quantizes the single key kvprod just
+    wrote; (b) LAZY SWEEP mode (grid h_kv x n_keys, key0=0, m_new=n_keys) quantizes the WHOLE
+    cache once, on the first step that finds `i8_mirror_quantized_keys < n_keys` (the prefill
+    table writes f16 only; the mirror catches up in one pass, then appends keep it current).
+    `i8_mirror_quantized_keys` is the watermark, reset to 0 whenever a prefill starts rewinding
+    the cache. Built ONLY when `decode_i8kv_built`; `_step_native_kv_impl` dispatches this table
+    when built AND `pos + 1 >= _NATIVE_DECODE_SPLITK_THRESHOLD`, falling back to the f16 split-K
+    table otherwise. Same patch-point conventions as the f16 split-K table."""
     var splitk_m_addr: UInt64
     var splitk_l_addr: UInt64
     var splitk_o_addr: UInt64
@@ -1205,6 +1263,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # kernel -- see this field's own docstring for the full non-fatal-miss precedent this follows.
         self.native_decode_attn_pipeline_idx = -1
         self.native_decode_splitk_partial_pipeline_idx = -1
+        # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): discovery slots, same pattern.
+        self.native_decode_attn_i8kv_pipeline_idx = -1
+        self.kv_i8_quant_pipeline_idx = -1
+        self.decode_i8kv_built = False
         self.kvprod_blk_pipeline_idx = -1
         self.kvprod_qvec_pipeline_idx = -1
         self.kvprod_v2_built = False
@@ -1277,8 +1339,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.native_decode_splitk_partial_batched_pipeline_idx = i
             elif name.find("native_kv_decode_attn_splitk") >= 0:
                 self.native_decode_splitk_partial_pipeline_idx = i
+            # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the v4 int8 partial's name
+            # contains the naive substring but NOT the splitk ones, so this check sits between the
+            # splitk and naive arms (longest-first preserved).
+            elif name.find("native_kv_decode_attn_i8kv") >= 0:
+                self.native_decode_attn_i8kv_pipeline_idx = i
             elif name.find("native_kv_decode_attn") >= 0:
                 self.native_decode_attn_pipeline_idx = i
+            # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the write-side quant kernel,
+            # unique substring, independent check.
+            if name.find("kv_i8_quant") >= 0:
+                self.kv_i8_quant_pipeline_idx = i
             # ── Beat-llama.cpp campaign Phase C (2026-08-08 night): the V2 producer's two
             # kernels, unique substrings -- see their field docstrings above.
             if name.find("kvprod_blk") >= 0:
@@ -1355,6 +1426,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # ── Beat-llama.cpp campaign Phase C: V2 producer availability, both-or-neither.
         self.kvprod_v2_built = (
             self.kvprod_blk_pipeline_idx >= 0 and self.kvprod_qvec_pipeline_idx >= 0
+        )
+        # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): both-or-neither -- the int8
+        # decode table needs the quant writer AND the v4 partial.
+        self.decode_i8kv_built = (
+            self.native_decode_attn_i8kv_pipeline_idx >= 0
+            and self.kv_i8_quant_pipeline_idx >= 0
         )
         # ── Project Slipstream Phase 3: batched-decode availability, all-five (both blobs + the
         # engine-side B-aware merge + the fused B-row lm_head + B-row argmax reduce) discovered or
@@ -1435,6 +1512,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.af_ck_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
         self.af_cv_native_addr = List[UInt64]()
         self.af_cv_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+
+        # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): per-layer int8 mirror + scale
+        # lists (allocated per layer below, gated on `decode_i8kv_built`).
+        self.af_ck_i8_addr = List[UInt64]()
+        self.af_ck_i8_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_cv_i8_addr = List[UInt64]()
+        self.af_cv_i8_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_ck_i8_scale_addr = List[UInt64]()
+        self.af_ck_i8_scale_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_cv_i8_scale_addr = List[UInt64]()
+        self.af_cv_i8_scale_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
 
         # ── Project Slipstream Phase 3: batched-decode per-sequence KV cache lists (allocated per
         # layer below, gated on `decode_batched_built`). `batch_kv_stride_elems` = one sequence's
@@ -1517,6 +1605,42 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.af_ck_native_ptr.append(cknp)
             self.af_cv_native_addr.append(cvna)
             self.af_cv_native_ptr.append(cvnp)
+
+            # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): int8 mirror rows + per-key
+            # scales for this layer, ONLY when both int8 blobs were discovered (gated memory, same
+            # discipline as the batched caches below); placeholders keep the lists parallel otherwise.
+            if self.decode_i8kv_built:
+                var ckia = UInt64(0); var ckip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var cvia = UInt64(0); var cvip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var cksa = UInt64(0); var cksip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var cvsa = UInt64(0); var cvsip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var i8_elems = h_kv * self.af_n_blocks * _AF_KEY_BLOCK_SIZE * d_head
+                var n_keys_cap = self.af_n_blocks * _AF_KEY_BLOCK_SIZE
+                if _mb_alloc_buffer(i8_elems * 1, ckia, ckip) < 0:
+                    raise Error("metaldispatch: buffer alloc failed (af ck_i8)")
+                if _mb_alloc_buffer(i8_elems * 1, cvia, cvip) < 0:
+                    raise Error("metaldispatch: buffer alloc failed (af cv_i8)")
+                if _mb_alloc_buffer(h_kv * n_keys_cap * 4, cksa, cksip) < 0:
+                    raise Error("metaldispatch: buffer alloc failed (af ck_i8_scale)")
+                if _mb_alloc_buffer(h_kv * n_keys_cap * 4, cvsa, cvsip) < 0:
+                    raise Error("metaldispatch: buffer alloc failed (af cv_i8_scale)")
+                self.af_ck_i8_addr.append(ckia)
+                self.af_ck_i8_ptr.append(ckip)
+                self.af_cv_i8_addr.append(cvia)
+                self.af_cv_i8_ptr.append(cvip)
+                self.af_ck_i8_scale_addr.append(cksa)
+                self.af_ck_i8_scale_ptr.append(cksip)
+                self.af_cv_i8_scale_addr.append(cvsa)
+                self.af_cv_i8_scale_ptr.append(cvsip)
+            else:
+                self.af_ck_i8_addr.append(UInt64(0))
+                self.af_ck_i8_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_cv_i8_addr.append(UInt64(0))
+                self.af_cv_i8_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_ck_i8_scale_addr.append(UInt64(0))
+                self.af_ck_i8_scale_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_cv_i8_scale_addr.append(UInt64(0))
+                self.af_cv_i8_scale_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
 
             # ── Project Slipstream Phase 3 (2026-08-09): per-sequence BATCHED-decode KV caches for
             # this layer -- `_BATCH_DECODE_MAX_SEQS` concatenated sequence-caches per K and per V,
@@ -1795,6 +1919,19 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.nkeys_offsets_native_splitk = List[Int]()
         self.native_splitk_last_n_splits = -1
 
+        # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): int8 decode table placeholders,
+        # same convention -- count `1 + n_layers*8 + 2` (the split-K table's seven per-layer roles
+        # + one quant dispatch), allocated only if `decode_i8kv_built` survives pipeline discovery.
+        self.n_descriptors_decode_native_splitk_i8 = 1 + n_layers * 8 + 2
+        self.descriptors_decode_native_splitk_i8 = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.native_decode_splitk_i8_built = False
+        self.token_id_offset_native_splitk_i8 = -1
+        self.pos_offsets_native_splitk_i8 = List[Int]()
+        self.quant_offsets_native_splitk_i8 = List[Int]()
+        self.nkeys_offsets_native_splitk_i8 = List[Int]()
+        self.native_splitk_i8_last_n_splits = -1
+        self.i8_mirror_quantized_keys = 0
+
         # ── Beat-llama.cpp campaign model-agnosticism (2026-08-12): DEVICE-DERIVED n_splits
         # ceiling, computed once per session from the GPU's own core count instead of freezing this
         # device's sweep optimum in stone (see `native_splitk_derived_opt`'s field docstring and
@@ -1858,6 +1995,18 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.descriptors_decode_native_splitk = _mb_alloc_descriptors(self.n_descriptors_decode_native_splitk)
             self._build_descriptors_decode_native_splitk(n_qkv)
             self.native_decode_splitk_built = True
+
+        # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the int8 decode table's guard --
+        # the split-K table's own guard pieces PLUS both int8 blobs (v4 partial + quant writer).
+        # Any missing piece leaves the table unbuilt and deep decode on the f16 split-K path.
+        if (
+            self.decode_i8kv_built
+            and self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
+            and self.pipeline_idx_merge >= 0
+        ):
+            self.descriptors_decode_native_splitk_i8 = _mb_alloc_descriptors(self.n_descriptors_decode_native_splitk_i8)
+            self._build_descriptors_decode_native_splitk_i8(n_qkv)
+            self.native_decode_splitk_i8_built = True
 
     def resolve_plan(mut self, requested: UnresolvedPrefillConfig) raises:
         """Project Redline reopening (2026-08-08), resolved-execution-plan refactor: the PUBLIC,
@@ -3954,6 +4103,203 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
+    def _build_descriptors_decode_native_splitk_i8(mut self, n_qkv: Int) raises:
+        """Beat-llama.cpp campaign (2026-08-12, int8-KV decode mirror): the INT8 twin of
+        `_build_descriptors_decode_native_splitk` immediately above -- byte-for-byte the same table
+        with EXACTLY TWO substitutions per layer: (1) a `_kv_i8_quant_kernel` dispatch immediately
+        AFTER kvprod (re-patched per step for APPEND mode grid h_kv x 1 / key0=pos / m_new=1, or
+        LAZY SWEEP mode grid h_kv x n_keys / key0=0 / m_new=n_keys -- see the table field's
+        docstring); (2) the f4u2 partial slot becomes the v4 SIMD-dequant int8 partial (16 args:
+        the f4u2 14 with the f16 K/V pointers replaced by the int8 mirror + per-key scale pairs).
+        The merge kernel and every other role are byte-identical to the f16 split-K table."""
+        var n_q = self.h_q * self.d_head
+        var n_units_kvprod = self.h_q + self.h_kv
+        var d = 0
+
+        _mb_set_header(self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 3, 0)  # token_id, patched per call
+        self.token_id_offset_native_splitk_i8 = d
+        _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 4, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            var ck_native_addr = self.af_ck_native_addr[layer]
+            var cv_native_addr = self.af_cv_native_addr[layer]
+
+            # ── role NORM_GEMV: byte-identical wiring to the f16 split-K table's own.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 6, n_qkv)
+            _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 7, self.eps)
+            d += 1
+
+            # ── native-KV-producer at m_rows=1: byte-identical wiring to the f16 split-K table.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
+                n_units_kvprod, self.d_head, 16,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.q_native_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, ck_native_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, cv_native_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 8, 0)  # pos_base, patched per call
+            self.pos_offsets_native_splitk_i8.append(d)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 11, self.d_head)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 12, _AF_KEY_BLOCK_SIZE)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 13, self.af_n_blocks)
+            _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 14, self.eps)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 15, 1)  # m_rows, CONSTANT (decode = 1 row)
+            d += 1
+
+            # ── SUBSTITUTION 1/2: the write-side quant dispatch, RE-PATCHED per step (header grid
+            # + key0 + m_new) for append vs lazy-sweep duty. 12 args, exact order of
+            # `_kv_i8_quant_kernel`'s own signature.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.kv_i8_quant_pipeline_idx,
+                self.h_kv, 32, 12,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, ck_native_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, cv_native_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.af_ck_i8_addr[layer])
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.af_cv_i8_addr[layer])
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, self.af_ck_i8_scale_addr[layer])
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 5, self.af_cv_i8_scale_addr[layer])
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 6, 0)  # key0, patched per call
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 7, 1)  # m_new, patched per call
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 8, self.h_kv)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 9, self.d_head)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 10, _AF_KEY_BLOCK_SIZE)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 11, self.af_n_blocks)
+            self.quant_offsets_native_splitk_i8.append(d)
+            d += 1
+
+            # ── SUBSTITUTION 2/2: the v4 int8 partial, 16 args (f4u2's 14 with the f16 K/V
+            # pointers replaced by the int8 mirror + per-key scale pairs), same grid/block shape.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.native_decode_attn_i8kv_pipeline_idx,
+                self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.d_head // 4, 16,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.splitk_m_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.splitk_l_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.splitk_o_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.q_native_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, self.af_ck_i8_addr[layer])
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 5, self.af_cv_i8_addr[layer])
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 6, self.af_ck_i8_scale_addr[layer])
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 7, self.af_cv_i8_scale_addr[layer])
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 8, 0)  # n_keys, patched per call
+            self.nkeys_offsets_native_splitk_i8.append(d)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 9, _NATIVE_DECODE_N_SPLITS)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 10, self.h_q)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 11, self.h_kv)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 12, self.d_head)
+            _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 13, self.scale)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 14, _AF_KEY_BLOCK_SIZE)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 15, self.af_n_blocks)
+            d += 1
+
+            # ── merge: byte-identical wiring to the f16 split-K table's own.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx_merge,
+                self.h_q, self.d_head, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.splitk_m_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.splitk_l_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.splitk_o_addr)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 4, _NATIVE_DECODE_N_SPLITS)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 5, self.d_head)
+            d += 1
+
+            # ── role GEMV_ACCUM (o_proj): byte-identical wiring to the f16 split-K table's own.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 4, n_q)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 5, self.d_model)
+            d += 1
+
+            # ── role NORM_GEMV2_SWIGLU: byte-identical wiring to the f16 split-K table's own.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 6, self.d_ff)
+            _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 7, self.eps)
+            d += 1
+
+            # ── role GEMV_ACCUM (down_proj): byte-identical wiring to the f16 split-K table's own.
+            _mb_set_header(
+                self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 4, self.d_ff)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 5, self.d_model)
+            d += 1
+
+        # ── final-norm+lm_head+argmax pair: byte-identical wiring to the f16 split-K table's tail.
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 5, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 9, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors_decode_native_splitk_i8, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors_decode_native_splitk_i8:
+            raise Error(
+                "metaldispatch: built " + String(d) + " decode-native-splitk-i8 descriptors but the budget says "
+                + String(self.n_descriptors_decode_native_splitk_i8) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
     def device_name(self) -> String:
         return "metal (batched shim, int8 weights, batched prefill + SDPA/GEMV/lm_head/argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction, DYNAMIC per-step n_splits policy)"
 
@@ -4782,9 +5128,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # runs, byte-unmodified. Both tables share every buffer this step reads or writes
             # EXCEPT the attention partials scratch, so the rest of this method is table-agnostic.
             var use_splitk = self.native_decode_splitk_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD
-            var table = self.descriptors_decode_native_splitk if use_splitk else self.descriptors_decode_native
-            var n_descriptors = self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native
-            var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
+            # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the int8 table takes
+            # PRIORITY over the f16 split-K table whenever built (same depth gate) -- the v4
+            # partial reads HALF the KV bytes at 1.34-1.48x the f4u2 rate at depth.
+            var use_i8 = self.native_decode_splitk_i8_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD
+            var table = self.descriptors_decode_native_splitk_i8 if use_i8 else (self.descriptors_decode_native_splitk if use_splitk else self.descriptors_decode_native)
+            var n_descriptors = self.n_descriptors_decode_native_splitk_i8 if use_i8 else (self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native)
+            var token_id_offset = self.token_id_offset_native_splitk_i8 if use_i8 else (self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native)
             _mb_set_arg_int(table, token_id_offset, 3, token_id)
 
             # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown + n_splits
@@ -4797,7 +5147,47 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # device, exactly the sweep optimum), patching only when the value changes (it only
             # changes crossing a 64-key boundary). The merge descriptor is the partial's immediate
             # successor (nkeys_offsets_native_splitk[layer]+1).
-            if use_splitk:
+            if use_i8:
+                # ── Mirror upkeep, per step: LAZY SWEEP when keys before the new one are not yet
+                # quantized (the first deep step after any prefill -- the prefill tables write f16
+                # only), APPEND (just the new key at `pos`) thereafter; watermark tracks the
+                # quantized prefix exactly (prefill rewinds reset it to 0).
+                if self.i8_mirror_quantized_keys < pos:
+                    for lyr in range(self.n_layers):
+                        var dq = self.quant_offsets_native_splitk_i8[lyr]
+                        _mb_set_header(
+                            table, dq, self.kv_i8_quant_pipeline_idx,
+                            self.h_kv * n_keys, 32, 12,
+                        )
+                        _mb_set_arg_int(table, dq, 6, 0)
+                        _mb_set_arg_int(table, dq, 7, n_keys)
+                else:
+                    for lyr in range(self.n_layers):
+                        var dq = self.quant_offsets_native_splitk_i8[lyr]
+                        _mb_set_header(
+                            table, dq, self.kv_i8_quant_pipeline_idx,
+                            self.h_kv, 32, 12,
+                        )
+                        _mb_set_arg_int(table, dq, 6, pos)
+                        _mb_set_arg_int(table, dq, 7, 1)
+                self.i8_mirror_quantized_keys = n_keys
+                # Adaptive n_splits on the i8 table (partial arg 9, merge arg 4 at partial+1).
+                var n_splits_adapt_i8 = n_keys // 64
+                if n_splits_adapt_i8 < _NATIVE_DECODE_N_SPLITS:
+                    n_splits_adapt_i8 = _NATIVE_DECODE_N_SPLITS
+                if n_splits_adapt_i8 > self.native_splitk_derived_opt:
+                    n_splits_adapt_i8 = self.native_splitk_derived_opt
+                if n_splits_adapt_i8 != self.native_splitk_i8_last_n_splits:
+                    for lyr in range(self.n_layers):
+                        var d_partial = self.nkeys_offsets_native_splitk_i8[lyr]
+                        _mb_set_header(
+                            table, d_partial, self.native_decode_attn_i8kv_pipeline_idx,
+                            self.h_q * n_splits_adapt_i8, self.d_head // 4, 16,
+                        )
+                        _mb_set_arg_int(table, d_partial, 9, n_splits_adapt_i8)
+                        _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt_i8)
+                    self.native_splitk_i8_last_n_splits = n_splits_adapt_i8
+            elif use_splitk:
                 var n_splits_adapt = n_keys // 64
                 if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
                     n_splits_adapt = _NATIVE_DECODE_N_SPLITS
@@ -4815,7 +5205,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     self.native_splitk_last_n_splits = n_splits_adapt
 
             for layer in range(self.n_layers):
-                if use_splitk:
+                if use_i8:
+                    _mb_set_arg_int(table, self.pos_offsets_native_splitk_i8[layer], 8, pos)
+                    _mb_set_arg_int(table, self.nkeys_offsets_native_splitk_i8[layer], 8, n_keys)
+                elif use_splitk:
                     _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
                     _mb_set_arg_int(table, self.nkeys_offsets_native_splitk[layer], 6, n_keys)
                 else:
@@ -4909,9 +5302,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             var n_keys = pos + 1
             var use_splitk = self.native_decode_splitk_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD
-            var table = self.descriptors_decode_native_splitk if use_splitk else self.descriptors_decode_native
-            var n_descriptors = self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native
-            var token_id_offset = self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native
+            # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the int8 table takes
+            # PRIORITY over the f16 split-K table whenever built (same depth gate) -- the v4
+            # partial reads HALF the KV bytes at 1.34-1.48x the f4u2 rate at depth.
+            var use_i8 = self.native_decode_splitk_i8_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD
+            var table = self.descriptors_decode_native_splitk_i8 if use_i8 else (self.descriptors_decode_native_splitk if use_splitk else self.descriptors_decode_native)
+            var n_descriptors = self.n_descriptors_decode_native_splitk_i8 if use_i8 else (self.n_descriptors_decode_native_splitk if use_splitk else self.n_descriptors_decode_native)
+            var token_id_offset = self.token_id_offset_native_splitk_i8 if use_i8 else (self.token_id_offset_native_splitk if use_splitk else self.token_id_offset_native)
             _mb_set_arg_int(table, token_id_offset, 3, token_id)
 
             # ── Beat-llama.cpp campaign (2026-08-11, llama.cpp decode-attn teardown + n_splits
@@ -4924,7 +5321,47 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # device, exactly the sweep optimum), patching only when the value changes (it only
             # changes crossing a 64-key boundary). The merge descriptor is the partial's immediate
             # successor (nkeys_offsets_native_splitk[layer]+1).
-            if use_splitk:
+            if use_i8:
+                # ── Mirror upkeep, per step: LAZY SWEEP when keys before the new one are not yet
+                # quantized (the first deep step after any prefill -- the prefill tables write f16
+                # only), APPEND (just the new key at `pos`) thereafter; watermark tracks the
+                # quantized prefix exactly (prefill rewinds reset it to 0).
+                if self.i8_mirror_quantized_keys < pos:
+                    for lyr in range(self.n_layers):
+                        var dq = self.quant_offsets_native_splitk_i8[lyr]
+                        _mb_set_header(
+                            table, dq, self.kv_i8_quant_pipeline_idx,
+                            self.h_kv * n_keys, 32, 12,
+                        )
+                        _mb_set_arg_int(table, dq, 6, 0)
+                        _mb_set_arg_int(table, dq, 7, n_keys)
+                else:
+                    for lyr in range(self.n_layers):
+                        var dq = self.quant_offsets_native_splitk_i8[lyr]
+                        _mb_set_header(
+                            table, dq, self.kv_i8_quant_pipeline_idx,
+                            self.h_kv, 32, 12,
+                        )
+                        _mb_set_arg_int(table, dq, 6, pos)
+                        _mb_set_arg_int(table, dq, 7, 1)
+                self.i8_mirror_quantized_keys = n_keys
+                # Adaptive n_splits on the i8 table (partial arg 9, merge arg 4 at partial+1).
+                var n_splits_adapt_i8 = n_keys // 64
+                if n_splits_adapt_i8 < _NATIVE_DECODE_N_SPLITS:
+                    n_splits_adapt_i8 = _NATIVE_DECODE_N_SPLITS
+                if n_splits_adapt_i8 > self.native_splitk_derived_opt:
+                    n_splits_adapt_i8 = self.native_splitk_derived_opt
+                if n_splits_adapt_i8 != self.native_splitk_i8_last_n_splits:
+                    for lyr in range(self.n_layers):
+                        var d_partial = self.nkeys_offsets_native_splitk_i8[lyr]
+                        _mb_set_header(
+                            table, d_partial, self.native_decode_attn_i8kv_pipeline_idx,
+                            self.h_q * n_splits_adapt_i8, self.d_head // 4, 16,
+                        )
+                        _mb_set_arg_int(table, d_partial, 9, n_splits_adapt_i8)
+                        _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt_i8)
+                    self.native_splitk_i8_last_n_splits = n_splits_adapt_i8
+            elif use_splitk:
                 var n_splits_adapt = n_keys // 64
                 if n_splits_adapt < _NATIVE_DECODE_N_SPLITS:
                     n_splits_adapt = _NATIVE_DECODE_N_SPLITS
@@ -4942,7 +5379,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     self.native_splitk_last_n_splits = n_splits_adapt
 
             for layer in range(self.n_layers):
-                if use_splitk:
+                if use_i8:
+                    _mb_set_arg_int(table, self.pos_offsets_native_splitk_i8[layer], 8, pos)
+                    _mb_set_arg_int(table, self.nkeys_offsets_native_splitk_i8[layer], 8, n_keys)
+                elif use_splitk:
                     _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
                     _mb_set_arg_int(table, self.nkeys_offsets_native_splitk[layer], 6, n_keys)
                 else:
@@ -5032,6 +5472,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # partial+merge replacing the naive single dispatch), and this generated source of
             # truth reports exactly that. Binaries without the split-K blob keep `native_decode_
             # splitk_built` False and the naive count at every depth, byte-identical to before.
+            # Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the int8 table takes priority
+            # over the f16 split-K table (same depth gate) -- one more dispatch per layer again
+            # (the quant writer), reported off its own self-checked field.
+            if self.native_decode_splitk_i8_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD:
+                return self.n_descriptors_decode_native_splitk_i8
             if self.native_decode_splitk_built and n_keys >= _NATIVE_DECODE_SPLITK_THRESHOLD:
                 return self.n_descriptors_decode_native_splitk
             return self.n_descriptors_decode_native
@@ -5121,6 +5566,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
             if pos_base < 0 or pos_base + m_rows > self.max_ctx:
                 return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+            # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): a pos_base=0 prefill
+            # REWINDS the f16 KV cache, so the int8 mirror's watermark drops with it (the lazy
+            # sweep on the next deep decode step re-quantizes from scratch); continuation chunks
+            # (pos_base > 0) leave earlier keys' mirror rows valid.
+            if pos_base == 0:
+                self.i8_mirror_quantized_keys = 0
             var ids_i32 = self.prompt_ids_ptr.bitcast[Int32]()
             for m in range(m_rows):
                 var tid = prompt_ids[m]

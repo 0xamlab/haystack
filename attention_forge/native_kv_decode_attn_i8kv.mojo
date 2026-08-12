@@ -17,8 +17,10 @@ dequant on mm8.mojo's production-proven vecload4 pattern (load[width=4] -> SIMD[
 appends one key per token, no block re-quant; tighter numerics; the block/kk index arithmetic
 deleted), Q splatted once, SIMD[Float32,4] O accumulator, f4u2's key-order online-softmax
 recurrence preserved. Validated in the dev driver: consistency 0.0 vs v3 on the harness, 1.34x
-@4096 / 1.48x @8192 vs f4u2. `key_block_size`/`n_blocks` stay in the signature for dispatch parity
-with f4u2 (unused here).
+@4096 / 1.48x @8192 vs f4u2. LAYOUT NOTE (engine-integration fix, 2026-08-12): the mirror row
+stride is the FIXED cache capacity `n_blocks * key_block_size`, NOT the runtime `n_keys` -- the
+mirror is a persistent cache written by `_kv_i8_quant_kernel` with exactly that stride; indexing by
+the runtime n_keys (changes every decode step) reads a garbage row each step = nondeterminism.
 
     cd mma_forge
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \\
@@ -87,7 +89,11 @@ def _native_kv_decode_splitk_partial_i8kv4(
     var o_v = SIMD[DType.float32, 4](0.0, 0.0, 0.0, 0.0)
 
     var row_words = d_head // 4
-    var kv_row_base = hk * n_keys
+    # Mirror row stride is the FIXED cache capacity (n_blocks*key_block_size), NOT the runtime
+    # n_keys -- the mirror is a persistent [hk][key][d_head] cache written by `_kv_i8_quant_kernel`
+    # with exactly this stride; indexing by the runtime n_keys (which changes every decode step)
+    # would read a different, garbage row each step (nondeterminism). Must match the quant writer.
+    var kv_row_base = hk * (n_blocks * key_block_size)
 
     var j = key_start
     while j + 1 < key_end:
