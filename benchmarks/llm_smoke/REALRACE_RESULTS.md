@@ -11504,3 +11504,23 @@ frontier: the remaining 8K delta vs MLX solo is 100% engine-internal GPU-side wo
 75%-of-wall efficiency first, per the frontier arithmetic); "reduce SDK/host tax" is removed from
 the lever queue as a prefill item. (Serving-latency items -- per-request IPC for streaming,
 tokenizer cost -- belong to the llama.cpp-parity feature queue, not the throughput frontier.)
+
+## DECODE FRONTIER BUDGET (2026-08-12 night): 8K decode is KV-traffic-bound -- 939MB KV/token + 0.6GB weights vs 249GB/s achieved; the next big decode levers, ranked
+
+The remaining decode gap (8K: us ~162 vs MLX 177 / llama 173 = 0.88x) gets the same budget
+treatment prefill got. ARITHMETIC per generated token at 8K depth: KV read = 2(K+V) x 28 layers x
+8 kv-heads x 8192 keys x 128 d_head x 2B = **939MB**; weights ~0.6GB i8 + embed -> ~0.66GB; total
+~1.6GB/token. At the measured 162 tok/s that is ~249GB/s achieved = 46% of the 546GB/s DRAM wall
+(MLX 177 -> ~273GB/s, 50%). The 8K decode ceiling at wall bandwidth would be ~340 tok/s -- BOTH
+engines sit far below it, so decode is BANDWIDTH-UTILIZATION-bound, not at the traffic floor.
+Lever ranking: (1) KV-quantized decode cache (int8 K/V halves the 939MB -> ceiling ~1.6x higher;
+requires kvprod write-side scales + decode partial/merge read-side dequant + full token-oracle
+numerics validation = multi-PR campaign phase, the genuine structural lever -- llama.cpp ships q8_0
+KV for exactly this reason); (2) bandwidth utilization (wider vectorized KV reads in the f4u2
+partial, fewer/larger dispatches per token, concurrent-dispatch overlap of GEMV+attention --
+incremental); (3) GQA pairing in the decode partial was ALREADY REFUTED (gpair = 1.00x, ledgered
+with f4u2: deep partial is LATENCY-bound per threadgroup, so halving KV reads without more in-TG
+parallelism pays nothing -- any pairing retry must add intra-TG key-parallelism too, e.g. pairing
+x 2-key-unroll x wider simd_sums, not pairing alone). NOTE the shallow/mid decode regime is a
+different animal (dispatch/latency-bound, already leading both controls) -- these levers target
+DEEP only.
