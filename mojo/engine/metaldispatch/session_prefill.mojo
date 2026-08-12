@@ -4733,6 +4733,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             ref lw = self.layers[layer]
             var ck_addr = self.batch_ck_native_addr[layer]
             var cv_addr = self.batch_cv_native_addr[layer]
+            # Round-3 split-K gates, computed once per layer (same shape gates as
+            # `_apply_m_rows_af_nomirror`'s own; m_rows=B<=32 trivially <= 1024).
+            var db_use_splitk_o = self.msl_splitk8_pipeline_idx >= 0 and (self.h_q * self.d_head) % 256 == 0
+            var db_use_splitk_down = self.msl_splitk12_pipeline_idx >= 0 and self.d_ff % 384 == 0
 
             # rmsnorm -> xn
             _mb_set_header(
@@ -4825,13 +4829,33 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # o_proj GEMM accum: hidden += attn_out [B,n_q] @ w_o
+            # Beat-llama.cpp campaign concurrent front, round 3 (2026-08-12): the batched table
+            # originally ran the plain MSL-parity accum kernel here, whose (M/32)x(N/64) grid at
+            # m_rows=B<=32 is only 16 threadgroups = ~2% of the GPU -- the counter probe measured
+            # 0.220 ms/dispatch, latency-bound (REALRACE_RESULTS.md "CONCURRENT AXIS, ROUND 2").
+            # The SAME split-K substitution `_apply_m_rows_af_nomirror` already applies to the
+            # single-stream/nomirror path (S=8, atomic-float-add partials, "+=" residual-safe,
+            # m_rows<=1024 gate trivially met here) multiplies the grid to 128 threadgroups.
             _mb_set_header(
-                self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
-                n_rows_tile * _ceil_div(self.d_model, _GEMM_BN), _GEMM_NTHREADS, 7,
+                self.descriptors_decode_batched, d,
+                self.msl_splitk8_pipeline_idx if db_use_splitk_o
+                else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                # MSL tiles are 32 rows x 64 cols (`_ceil_div(..., 64)`, NOT `_GEMM_BN`=32 -- the
+                # Mojo kernel's tile constant would double the grid and let the MSL kernel's
+                # unguarded tiles run past N), times S=8 splits; threads 128 = the MSL kernels'
+                # max_total_threads_per_threadgroup, exactly `_apply_m_rows_af_nomirror`'s pattern.
+                n_rows_tile * _ceil_div(self.d_model, 64) * (8 if db_use_splitk_o else 1),
+                128 if db_use_splitk_o else _GEMM_NTHREADS, 7,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.attn_out_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_o_addr)
+            # The split-K kernels read the F16 weight twins, EXACTLY as `_apply_m_rows_af_nomirror`
+            # swaps arg 2 under `use_msl_accum` -- passing the Int8 originals corrupts the output
+            # (caught by the 2026-08-12 token-identity validation: degenerate 374-repeat stream).
+            _mb_set_arg_ptr(
+                self.descriptors_decode_batched, d, 2,
+                self.msl_w_o_f16_addr[layer] if db_use_splitk_o else lw.w_o_addr,
+            )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_o_scale_addr)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 5, n_q)
@@ -4866,13 +4890,21 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # down_proj GEMM accum: hidden += act [B,d_ff] @ w_down
+            # Round-3 split-K substitution, same account as the o_proj block above (S=12 -> 16x12
+            # = 192 threadgroups at m_rows<=32 instead of 16; the nomirror path's exact gate).
             _mb_set_header(
-                self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
-                n_rows_tile * _ceil_div(self.d_model, _GEMM_BN), _GEMM_NTHREADS, 7,
+                self.descriptors_decode_batched, d,
+                self.msl_splitk12_pipeline_idx if db_use_splitk_down
+                else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                n_rows_tile * _ceil_div(self.d_model, 64) * (12 if db_use_splitk_down else 1),
+                128 if db_use_splitk_down else _GEMM_NTHREADS, 7,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.act_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(
+                self.descriptors_decode_batched, d, 2,
+                self.msl_w_down_f16_addr[layer] if db_use_splitk_down else lw.w_down_addr,
+            )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_down_scale_addr)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_ff)

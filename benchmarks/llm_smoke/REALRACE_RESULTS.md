@@ -11987,3 +11987,162 @@ attention wall-efficiency (arithmetic-capped ~6,070 tok/s even at wall), the the
 6K-8K prefill band, and serving/concurrent wiring of the already-built batched kernels -- NOT
 GEMM, where the shipped engine already runs the competitor's own winning structure at measured
 parity.
+
+## CONCURRENT AXIS, FIRST 3-WAY BATCHED RACE (2026-08-12): Algenta's shipped Slipstream batched decode BEATS its own serial behavior 2.77x at B=32 but LOSES to llama.cpp's slot batching 1.68x-2.26x -- the limiter is the per-sequence part of the batched step, NOT the GEMMs
+
+New harness `concurrent_3way.py` (this directory): B prompts in flight at once, aggregate SYSTEM
+decode tok/s, each engine measured doing its OWN production concurrent thing -- Algenta
+`decode_batched()` (one call, B sequences, Slipstream one-weight-sweep-per-token path, SDK-
+exposed) vs Algenta B sequential single-stream `decode()` calls (internal control) vs llama.cpp B
+concurrent `/completion` requests against ONE resident `llama-server --parallel 32` (its slot-
+based continuous batching) vs MLX-LM B sequential generations (its honest story: no server, no
+batching). B in {8, 16, 32}, in=264 tokens (whole-unit prompts, distinct per sequence, shared
+bytes/tokenizer across engines), out=128, greedy, untimed warmup at the exact timed shape per
+engine per cell, rotating engine order, 45s inter-engine cooldowns, 2 passes, medians. Env note:
+the SDK needs the documented dev knobs to resolve the local worker (ALGENTA_NATIVE_WORKER +
+ALGENTA_RUNTIME_FALLBACK_MODE=allow) -- the harness's first launch attempt died on exactly this
+and the usage block now states it.
+
+| B | algenta-batched | algenta-serial | llama.cpp concurrent | mlx-lm serial |
+|---|---|---|---|---|
+| 8 | 216.8 | 176.9 | **489.6** | 183.6 |
+| 16 | 360.0 | 197.8 | **588.8** | 129.6 |
+| 32 | 540.4 | 195.3 | **909.7** | 134.1 |
+
+(system decode tok/s, medians of 2 passes; precisions as shipped: algenta int8, llama.cpp F16,
+mlx-lm bf16)
+
+**VERDICT, stated plainly: this axis is a LOSS against llama.cpp today** (2.26x behind at B=8,
+1.64x at B=16, 1.68x at B=32). Two things are simultaneously true and both matter:
+1. Batched decode is REAL for us: 540.4 vs 195.3 system tok/s at B=32 = 2.77x over our own
+   serial behavior, and batched scales while serial is flat (176.9/197.8/195.3 across B) -- the
+   Slipstream weight-sweep amortization works through the full SDK path, as engine-internal
+   benches predicted.
+2. But OUR scaling is sublinear: B x4 (8->32) buys only 2.49x throughput, while llama.cpp's
+   slot batching buys 1.86x over the same range and lands at 909.7. Their per-request decode
+   median falls 91.3 -> 38.8 tok/s across B while system throughput CLIMBS -- their scheduler
+   keeps amortizing the weight sweep across slots far past where ours does.
+
+**Per-step arithmetic pinning the limiter** (same-session, engine-reported): at B=32 our engine
+system rate 540.4 tok/s means one batched step (all 32 sequences advance one token) takes
+32/540.4 = ~59 ms. A single-stream decode step on this same worker is ~3.6-3.8 ms (~263-277
+tok/s, the serial lane's pass-1 per-sequence rate). The Phase-3 M-sweep already proved the
+batched GEMM cost at m_rows=32 is ~1.1 ms per step (the per-token GEMM collapse to the compute
+floor). So of the ~59 ms batched step, GEMM is ~1-2 ms: the remaining ~57 ms lives in the
+PER-SEQUENCE part of the step -- batched per-seq decode attention (the split-K partial+merge
+pair over B=32 growing KV caches at depth ~264-390), per-seq KV writes/quant, and the
+descriptor/dispatch structure around them -- NOT in the projections. The dual-stream entry's
+conclusion (concurrency comes from batched weight-sweeps, never concurrent streams) is confirmed
+on the GEMM side and now sharpened: the sweep amortizes, the per-sequence attention tail does
+not, and that tail is where llama.cpp's slot batching still beats us.
+
+**Caveats, disclosed:** 2-pass medians are fragile -- the serial lane swung 277.1 -> 176.9 at
+B=8 across passes (thermal state after a full day of sustained GPU work today), and mlx-lm's
+B=16 median (129.6) came from one anomalously slow pass (129.6 vs 205.6). The LOSS verdict does
+not depend on any fragile number: llama.cpp leads every engine at every B by >= 1.6x with
+separated distributions. MLX's lane is sequential BY DESIGN (it ships no server); its numbers
+state that honestly, they are not a batching failure. Per the standing no-loss-pages rule, this
+stays ledger-internal until the axis flips.
+
+**Pre-registered next experiment** (before any kernel change): a `step_batched` counter probe at
+B=32 (existing GPU-counter probe pattern, batched descriptor table) splitting that ~59 ms step
+into attention-partial / attention-merge / kvprod / GEMM / lm_head / dispatch-gap buckets, the
+same way the Phase-4 operator-differential table split prefill. The bucket that owns the ~57 ms
+names the round-3 target.
+
+## CONCURRENT AXIS, ROUND 2 -- THE COUNTER PROBE REFUTES OUR OWN SUBTRACTION DIAGNOSIS (2026-08-12): the batched step's limiter is SMALL-M GEMM UNDERFILL (31 ms, B-independent) + an under-parallelized batched lm_head (10 ms at B=32), NOT the per-sequence attention tail
+
+Owner pushback ("you are doing something completely wrong... we are missing some crucial
+components, heavy delay") triggered the pre-registered counter probe EARLY: new probe
+`qwen3_probe_counters_decode_batched.mojo` (this directory; campaign counter-shim pattern,
+per-dispatch hardware timestamps over the session's OWN `descriptors_decode_batched` table,
+tick rate calibrated, 5 samples, medians). Synthetic uniform depth=300 state (timing is
+shape-driven, value-independent).
+
+### Measured per-role GPU totals for ONE batched step
+
+| role | B=32 (ms) | B=1 (ms) | scaling |
+|---|---|---|---|
+| qkv_gemm (28 dispatches) | 6.61 (0.236 ea) | 6.31 | B-INDEPENDENT |
+| swiglu_gemm | 9.28 (0.331 ea) | 9.10 | B-INDEPENDENT |
+| down_proj_accum | 9.03 (0.323 ea) | 8.17 | B-INDEPENDENT |
+| o_proj_accum | 6.15 (0.220 ea) | 5.51 | B-INDEPENDENT |
+| **GEMM subtotal** | **31.07** | **29.09** | ~flat -> LATENCY-BOUND |
+| lmhead_batched (1 dispatch) | **10.15** | 0.69 | ~15x for 32x rows |
+| attn_PARTIAL | 4.81 (0.178 ea) | 0.57 | ~B-scaling |
+| kvprod_batched | 0.82 | 0.33 | mild |
+| attn_merge / norms / embed / argmax | ~0.9 | ~0.5 | small |
+| GPU-sum | 47.72 | 31.22 | |
+| wall median | 55.81 | 40.59 | |
+| wall-GPU gap (256 dispatches) | 8.08 | 9.37 | dispatch overhead |
+
+**CORRECTION to the round-1 entry's subtraction diagnosis**: "GEMM is ~1-2 ms of the ~59 ms
+step (Phase-3 M-sweep proven)" is WRONG for this path. The M-sweep's ~7.3 TF/s-at-M=32 figure
+came from `msl_batchsweep_bench.m`'s own configuration; the ACTUAL in-step MSL-parity GEMM
+dispatches at m_rows<=32 run 0.22-0.33 ms EACH. Mechanism, read off the table: the prefill-tuned
+MSL-parity kernels' geometry (NR1=32 rows x NR0=64 cols per threadgroup) caps the grid at
+(M/32) x (N/64) threadgroups -- at M<=32 that is 16 (o_proj/down), 16 (o), 64 (qkv), 96 (swiglu)
+threadgroups of 128 threads = 2-12% of a 40-core GPU. Every GEMM is latency-bound at ~1-3%
+machine occupancy, and adding rows up to one full M-tile (B<=32) costs almost nothing -- hence
+the ~30 ms B-INDEPENDENT fixed cost the round-1 fit found but could not name. The batched lm_head
+(Option B) is the second component: one dispatch sweeps 155 MB of vocab weights for all B rows,
+but its `_LM_BLOCKS`-sized grid gives it ~10.1 ms at B=32 (~1 TF/s effective; bandwidth floor is
+~0.3 ms; at B=1 it is 0.69 ms) -- B rows of accumulator work serialized through too few
+threadgroups. Attention's 4.8 ms is real but THIRD.
+
+**Everything now reconciles**: round-1's fitted F=29.5 ms fixed + 0.93 ms/seq == GEMM-underfill
+(fixed) + attention/kvprod/lmhead (B-scaling). The "heavy delay" is not one thing: it is (1)
+running prefill-geometry GEMMs at decode batch sizes, (2) an lm_head grid sized for B=1-era
+workloads, (3) 256-dispatch per-step overhead (~8 ms), in descending order.
+
+**The fix this names (round-3 scope, next)**: small-M GEMM geometry for the batched decode table
+-- split-K across the K axis to multiply threadgroups (the campaign ALREADY built exactly this for
+single-stream decode: `msl_splitk_accum.metal`, S=8/S=12 partials + atomic accumulate, proven
+1.32-1.34x standalone at M=1); raise lm_head parallelism (more blocks, less serial per-block
+work); then re-measure. Ceiling estimate if GEMM reaches its M-sweep efficiency and lm_head its
+bandwidth floor: ~12-15 ms/step at B=32 -> ~2,100-2,600 system tok/s, ~2.5x llama.cpp's 910.
+Probe file + build recipe committed alongside this entry.
+
+## CONCURRENT AXIS, ROUND 3 INCREMENT 1 LANDED (2026-08-12): split-K MSL GEMMs wired into the batched decode table -- o_proj 9.6x, down_proj 11.9x faster; batched step 55.8->42.0ms at B=32; the B=32 race reaches PARITY with llama.cpp (788 vs 807 system tok/s = 0.98x, was 0.59x)
+
+The round-2 counter probe named the limiter (small-M GEMM underfill); this is the first fix. The
+batched decode table ran the plain Mojo accum GEMM for o_proj/down_proj at m_rows=B<=32 -- grid
+(M/32)x(N/32)=16 threadgroups, ~2% of the GPU. Wired in the SAME split-K substitution
+`_apply_m_rows_af_nomirror` already uses for the single-stream path: `msl_splitk8` (o_proj, S=8:
+16x8=128 threadgroups) and `msl_splitk12` (down_proj, S=12: 16x12=192), atomic-float-add partials
+(residual-safe "+=", no zeroing), same shape gates (n_q%256==0 / d_ff%384==0), F16 weight twins.
+
+TWO wiring bugs caught by the token-identity validation BEFORE any timing was trusted (both
+produced the degenerate 374-repeat stream): (1) the MSL split-K kernels read the F16 weight twins
+-- arg 2 must swap to `msl_w_o/down_f16_addr` exactly as the nomirror path does under
+`use_msl_accum`; passing the Int8 originals corrupts the products. (2) MSL tiles are 32x64: the
+grid must use `_ceil_div(N, 64)` (NOT `_GEMM_BN`=32, which doubles the grid and lets the MSL
+kernel's unguarded tiles run past N into adjacent memory) and the dispatch must use 128 threads
+(the kernels' `max_total_threads_per_threadgroup`), NOT `_GEMM_NTHREADS`=256. Post-fix validation:
+decode_batched(B=4, 24 steps) == serial == official worker, all four prompts, oracle continuation
+[374, 12095, 13, 576, ...] intact; cross-worker serial byte-identical.
+
+Counter probe at B=32, depth=300 (per-role medians, ms): o_proj 6.15 -> 0.64 (9.6x), down_proj
+9.03 -> 0.76 (11.9x); step wall 55.8 -> 42.0 ms, GPU-sum 47.7 -> 33.6 ms. GEMM subtotal now 17.2
+ms (qkv 6.59 + swiglu 9.26 still unfixed + o/down 1.4); lm_head 9.88; attn 4.74; gap 8.5.
+
+Re-race (same harness/protocol, 2 passes, medians; worker algenta-gpu-worker-dbsplitk):
+
+| B | before fix | after fix | llama.cpp | ratio after |
+|---|---|---|---|---|
+| 8 | 216.8 | 369.7 | 540.6 | 0.68x |
+| 16 | 360.0 | 576.8 | 691.8 | 0.83x |
+| 32 | 540.4 | 788.4 | 807.3 | **0.98x (parity)** |
+
+llama.cpp's own numbers drifted vs the round-1 race (B=32: 909.7 -> 807.3; B=16: 588.8 -> 691.8;
+B=8: 489.6 -> 540.6 -- session thermal/load state; per-request decode medians moved with it), so
+the honest comparison is same-race only: at B=32 the distributions now overlap (our passes
+788.4/801.5 vs theirs 807.3/966.4). The round-1 LOSS stands at B=8/16 but narrowed from
+2.26x/1.64x to 1.46x/1.20x.
+
+What remains, in the step at B=32 (42 ms): swiglu 9.26 ms (grid 96 TG -- same underfill class;
+split-K needs a partial-buffer variant because the swiglu nonlinearity blocks atomic accumulation,
+or narrow-N tiles), lm_head 9.88 ms (B rows of vocab-sweep work through the _LM_BLOCKS grid, ~1
+TF/s vs ~0.3 ms bandwidth floor -- needs the GEMM-style rebuild), qkv 6.59 ms (grid 64 TG --
+needs a split-K ASSIGN variant: zero-init + atomics or two-stage reduce), attn 4.74 ms, gap ~8.5
+ms (256 dispatches). Landing those names the ~2.1-2.6k tok/s ceiling at B=32 and flips B=8/16.
