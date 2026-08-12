@@ -11283,3 +11283,24 @@ the smem-occupancy lesson: +16KB tile buffers would put steel at ~24KB/TG and li
 occupancy the way kblk did, so the prefetch design must stay within the current smem budget or
 trade occupancy explicitly). Engine-internal publication protocol is now defensible: solo-cooled,
 we lead or tie on 7 of 9 measured cells; the page can publish the controlled protocol honestly.
+
+## FULL-STACK DISSECTION COMPLETE + CHUNKED-PREFILL SIMULATION VALIDATED (2026-08-12 night): 8K prefill budget = attention 52% / GEMM 38% (AT WALL) / dispatch gap 10%
+
+PER-ROLE PROBE at m_rows=512 in an 8K-context session (the production CHUNK unit -- activations
+are PREFILL_MAX_TILE=512-sized, so production prefills >512 tokens run as sequential 512-row
+prefill_batch calls; an 8K prefill = 16 chunks): per chunk (28 layers summed): qkv 8.85ms
+(13.6 TF/s), o 4.70 (12.8), swiglu 13.98 (12.9), down 6.94 (13.1) -- ALL FOUR GEMM ROLES AT THE
+SUSTAINED MMA WALL (13.5 TF/s aggregate); GEMM IS UNIMPROVABLE. Norms 0.64ms, kvprod 1.67,
+embed/lmhead ~0.5, attention(chunk 0) 6.0, GPU-sum 43.3ms, wall 52.8ms = 18% dispatch gap.
+SIMULATION (attention_forge/grouped_fa_chunked_sim.mojo, new persistent harness): steel attention
+measured at every chunk's exact (n_q=512, n_kv=512(i+1), offset=512i) shape; chunk time scales
+linearly in n_kv (~0.21ms per added 512 keys per layer); totals 0.64ms @1K, 7.53ms @4K, 28.65ms
+@8K per layer. PREDICTED 8K prefill = 16x(37.3ms non-attn) + 28x28.65ms attn + 16x9.5ms gap =
+1552ms = 5278 tok/s vs MEASURED solo ~5600-5700 (within 7% -- simulation VALIDATED). BUDGET @8K:
+attention 802ms (52%), GEMM+small 597ms (38%), dispatch gap 153ms (10%). MLX solo 8K = 6820
+tok/s = 1.20s -> their attention equivalent runs ~1.75x faster than steel's 28.65ms/chunk-sum
+(the deep frontier, quantified). NOTE the earlier 1K per-role "14.0 TF/s" numbers are per-role
+28-LAYER sums (recomputed: qkv 240GF/17.2ms = 14.0 TF/s aggregate, consistent). ALSO LEARNED
+(the probe-at->512 gotcha): single-dispatch probes with m_rows > PREFILL_MAX_TILE overflow the
+tile-sized activation buffers -- probe depths must respect the tile or replicate production
+chunking (the simulation harness does the latter honestly).
