@@ -11614,3 +11614,28 @@ feasibility probe; if that probe fails, the decode levers fall back to GEMV band
 and dispatch-count reduction, or accepting decode-attention as-is. NOTE also the f4u2 timing
 non-monotonicity in both runs (4096 faster than 2048): zero-filled-buffer cache artifact; the
 per-depth ratios are unaffected.
+
+## INT8-KV V3 SIMD-DEQUANT WINS (2026-08-12 midday): 1.15-1.73x the f4u2 partial at ALL depths -- the v1/v2 mechanism diagnosis was correct, and deep decode finally has a kernel win
+
+The v1/v2 refutations diagnosed the issue-bound dequant ALU and named the only untested path:
+SIMD-vector dequant. FEASIBILITY was already ANSWERED by production: `mma_forge/mm8.mojo`'s vecload4
+GEMM family has shipped `w.load[width=4]` -> SIMD[Int8,4] -> `.cast[DType.float32]()` -> SIMD
+scale-multiply since the Qwen3-0.6B GEMM work (the B-tile fast path). V3 (`_native_kv_decode_
+splitk_partial_i8kv3`) rebuilds the int8 partial on that pattern: SIMD int8 loads + ONE vector
+cast per key-matrix (the whole scalar shift/mask/branchless-fix unpack deleted), Q splatted ONCE
+into a SIMD register, V accumulation on a SIMD[Float32,4] O accumulator (2 SIMD FMAs where v1/v2
+had 8 scalar ops), per-block q8_0 scales, f4u2's key-order recurrence preserved byte-order.
+CONSISTENCY GATE: v3 merged output vs v2 merged output worst |rel-diff| = 2.9e-7 (f32 association
+noise only) -- same quantized math, SIMD execution. TIMING (isolated partial, 512 TGs, warmup +
+best-of-3): 2048 keys f4u2 0.054ms -> v3 0.031ms = **1.73x**; 4096 0.059 -> 0.051 = **1.15x**;
+8192 0.113 -> 0.092 = **1.22x**. The 2048 outlier pattern (f4u2's own non-monotonic point,
+zero-fill cache artifact) inflates the first ratio; the deep-regime verdict is the honest one:
+~1.15-1.22x where it matters, against HALF the KV bytes. CAMPAIGN SIGNIFICANCE: first deep-decode
+attention WIN after a long string of kernel refutations; expected end-to-end 8K-decode lift ~5-10%
+(attention partial's share of token time), narrowing the warm-vs-warm 0.82x decode gap. NEXT
+(engine-wiring phase, follow-up PR): int8 MIRROR cache beside the f16 native cache -- a per-block
+quant pass over the f16 blocks at prefill time (one small dispatch/layer, f16 cache stays for the
+steel prefill reads) + v3 blob + session dispatch switch + end-to-end token-oracle numerics. The
+dual-cache costs +50% KV memory (int8 mirror = half the f16 size); single-cache int8-everywhere
+stays deferred (steel prefill would need in-kernel dequant of the transposed K -- compute-bound
+steel is the wrong place to pay it).
