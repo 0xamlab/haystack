@@ -614,6 +614,7 @@ def decode_batched(
     max_new_tokens: int = 16,
     use_msl_parity_all_roles: bool = True,
     converted_checkpoint_dir: str | Path | None = None,
+    timeout: float | None = None,
 ) -> BatchedInferenceResult:
     """Decode B prompts TOGETHER through the Slipstream batched decode path: one weight sweep
     per generated token for all B sequences (continuous-batching kernel tier, B <= 32), greedy.
@@ -625,7 +626,11 @@ def decode_batched(
     whose `decode_tokens_per_sec` is the SYSTEM throughput across the batch.
 
     Raises `InferenceError` for any refusal (invalid B, empty/oversized prompts, engine
-    refusals) with the same stable `code` discipline as `decode()`."""
+    refusals) with the same stable `code` discipline as `decode()`.
+
+    `timeout` bounds the single runtime call (ingest of ALL prompts + the whole shared decode
+    loop); the default is budgeted from the batch's total token count because deep batches run
+    far past the runtime's 30s single-request default."""
     if not isinstance(prompt_token_ids_list, list) or not prompt_token_ids_list:
         raise InferenceError(
             "invalid_arguments", "prompt_token_ids_list must be a non-empty list of id lists"
@@ -680,7 +685,13 @@ def decode_batched(
         flat_ids,
         prompt_lens,
     ]
-    envelope = runtime.execute(_MODULE_NAME, _FUNCTION_NAME_BATCHED, wire_args)
+    # One call ingests ALL prompts and generates B*max_new_tokens tokens -- deep batches run far
+    # longer than the runtime's 30s single-request default (measured: 8K x B=16 needs ~30s for the
+    # ingest alone). Budget >=1000 tok/s aggregate plus headroom unless the caller overrides.
+    if timeout is None:
+        total_tokens = sum(prompt_lens) + n_seqs * max_new_tokens
+        timeout = max(60.0, total_tokens / 1000.0 + 30.0)
+    envelope = runtime.execute(_MODULE_NAME, _FUNCTION_NAME_BATCHED, wire_args, timeout=timeout)
     error = _envelope_error(envelope)
     if error is not None:
         raise InferenceError("runtime_execution_failed", error)

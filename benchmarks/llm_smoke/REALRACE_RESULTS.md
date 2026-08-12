@@ -11119,3 +11119,34 @@ single), B=32 **467.5** (1.75x single); at 2048in B=8 191.2, B=16 271.6 (1.10x),
 1.69x llama.cpp and 1.70x MLX single-stream (206/205) -- the concurrent front leads by a wide
 margin at every depth measured, all runs byte-correct vs single-stream. Batched prefill ingest
 holds 7355-11051 tok/s across the batch at these depths.
+
+## BATCHED SERVING FINAL DEPTH PROFILE + TWO BUGS FOUND BY THE DEEP PROFILE (2026-08-11 night)
+
+TWO REAL BUGS the shallow byte-parity runs masked, caught by extending the profile to 4K/8K:
+(1) POSS OFF-BY-ONE: the batched loop fed step `s` at position L+s instead of L+s-1 (the first
+generated token must land at position L, matching the single-stream convention pos = n_prompt +
+step - 1). Shallow runs stayed byte-"correct" only because their degenerate repetitive outputs
+([198,83,198,83...] / [198,198,...]) are robust to the logit perturbation; the 4K/8K richer
+sequences flipped from token 1/2 onward. Fixed + byte-parity restored at ALL depths. (2) SDK
+CALL TIMEOUT: one decode_batched call ingests ALL prompts + generates the whole shared loop;
+8K x B=16 needs ~30s for the ingest alone, past MojoRuntime's 30s single-request default -- the
+client killed the worker mid-call ("could not execute", silent, no crash report: the shim's
+algenta_fail never fired). Fixed: MojoRuntime.execute grew an optional per-call timeout;
+decode_batched budgets max(60, total_tokens/1000 + 30) by default, caller-overridable.
+
+FINAL PROFILE (fixed build, load_test_batched.py, /tmp/load_batched_final_in*.json, all
+byte-correct vs single-stream at every cell):
+  in=512 : single 283.7 | B=16 380.2 | B=32 **531.4** system tok/s (1.87x single)
+  in=1024: single 256.2 | B=16 329.0 | B=32 **440.1** (1.72x)
+  in=2048: single ~248  | B=16 ~279  | B=32 **335.6** (1.35x)
+  in=4096: single 206.2 | B=16 193.6 | B=32 **216.0** (1.05x -- crossover depth)
+  in=8192: single 160.6 | B=16 123.8 | B=32 125.3 (0.78x -- deep batched decode currently LOSES
+           to own single-stream: per-seq KV sweeps dominate and the batched partial still runs
+           FIXED n_splits=16)
+vs controls' single-stream (cool three-way decode 206/205 @1K, 175/173 @4K, 154/169 @8K): the
+concurrent margin is 2.6x @512in, 2.1x @1K, 1.6x @2K, 1.25x @4K, and ~parity @8K. HONEST READ:
+batched serving wins wide at serving-typical depths (<=2K), ~parity at 8K; the identified lever
+for the deep end is the SAME one single-stream used -- depth-adaptive n_splits for the batched
+partial (16 -> clamp(n_keys//64,16,32) per sequence depth), which needs per-sequence split
+grids or per-depth table re-narrowing (batch members share one dispatch; ragged-depth batching
+is the continuous-batching scheduler question, not a kernel question).

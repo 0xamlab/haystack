@@ -48,7 +48,9 @@ class _BundledRuntime:
 
         return _fallback_mode() != "allow"
 
-    def execute(self, module: str, function: str, args: Any = None) -> dict[str, Any]:
+    def execute(
+        self, module: str, function: str, args: Any = None, *, timeout: float | None = None
+    ) -> dict[str, Any]:
         from algenta.native import worker
         from algenta.runtime_library_contract import RuntimeLibraryContractError
         from algenta.runtime_library_transport import build_worker_request, parse_worker_response
@@ -58,7 +60,7 @@ class _BundledRuntime:
             module_spec, function_spec, request = build_worker_request(module, function, args)
             response = worker.execute(
                 request,
-                timeout=self._timeout,
+                timeout=timeout if timeout is not None else self._timeout,
                 require_verified=self._require_verified_runtime(),
             )
             result = parse_worker_response(module_spec, function_spec, response)
@@ -636,8 +638,15 @@ class MojoRuntime:
             self._runtime = runtime_class(**self._runtime_config)
         return self._runtime
 
-    def execute(self, module: str, function: str, args: Any = None) -> dict[str, Any]:
-        return self._ensure_runtime().execute(module, function, args)
+    def execute(
+        self, module: str, function: str, args: Any = None, *, timeout: float | None = None
+    ) -> dict[str, Any]:
+        # Forward `timeout` ONLY when set: alternate runtime implementations (test fakes, future
+        # shards) keep the legacy 3-arg `execute(module, function, args)` signature, and a None
+        # override means "use the runtime's own default" anyway.
+        if timeout is None:
+            return self._ensure_runtime().execute(module, function, args)
+        return self._ensure_runtime().execute(module, function, args, timeout=timeout)
 
     def execute_batch(
         self,

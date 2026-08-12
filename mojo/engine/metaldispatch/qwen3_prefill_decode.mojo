@@ -4037,10 +4037,13 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
 
             var t_decode_start = perf_counter_ns()
             for step in range(1, max_new_tokens):
-                # All sequences advance together: poss[b] = prompt_lens[b] + step.
+                # All sequences advance together. The token fed at batch-step `step` is the
+                # `step`-th generated token, whose position is prompt_lens[b] + step - 1 -- the
+                # SAME convention the single-stream loop above uses (pos = n_prompt + step - 1):
+                # the first generated token lands at position L, not L+1.
                 var poss = List[Int](capacity=B)
                 for b in range(B):
-                    poss.append(prompt_lens[b] + step)
+                    poss.append(prompt_lens[b] + step - 1)
                 var toks = s.step_batched(cur_toks, poss^)
                 for b in range(B):
                     step_flat.append(toks[b])

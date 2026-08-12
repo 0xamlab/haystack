@@ -207,6 +207,9 @@ def main() -> int:
     ap.add_argument("--out-sizes", default="512,2048,4096")
     ap.add_argument("--in-fixed", type=int, default=1024)
     ap.add_argument("--passes", type=int, default=2)
+    ap.add_argument("--engine-cooldown", type=float, default=0.0,
+                    help="idle seconds before EACH engine's run (DVFS-controlled protocol: "
+                         "decouples engines from each other's heat; 0 = legacy behavior)")
     ap.add_argument("--llama-ctx", type=int, default=12288)
     ap.add_argument("--out", default="/tmp/load_3way.json")
     args = ap.parse_args()
@@ -236,6 +239,9 @@ def main() -> int:
             order = engines[p % 3:] + engines[:p % 3]
             log(f"--- pass {p + 1}/{args.passes}: order = {order}")
             for eng in order:
+                if args.engine_cooldown > 0:
+                    log(f"    idle cooldown {args.engine_cooldown:.0f}s before {eng} ...")
+                    time.sleep(args.engine_cooldown)
                 if eng == "algenta":
                     # Warm the session on this pass's largest cell once (untimed) is already done
                     # globally; just time the matrix.
