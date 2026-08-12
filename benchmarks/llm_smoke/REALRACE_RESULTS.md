@@ -11444,3 +11444,47 @@ re-measured on the next cooled session (expect the ~5,600 to move up by ~the com
 The tile lever is NOT infinite: attention sim diminishing returns + activation memory growth
 (~2x/tile) mean tile=4098 needs its OWN gated experiment (expected small; the honest next probe is
 the per-chunk host/gap breakdown at m_rows=2048 first).
+
+## DISPATCH-GAP BREAKDOWN (2026-08-12 night): the per-chunk gap is a CONSTANT ~7ms, independent of m_rows -- the tile lever amortizes a fixed per-chunk cost, and its remaining headroom is now QUANTIFIED
+
+Probe (`qwen3_probe_counters_i8_allsimd7_prefill_af_nomirror_msl`, now argv-parametric on m_rows,
+max_ctx 9216 per the preflight gotcha, production blob set incl. msl_splitk+kvprod_v2; production
+AF-nomirror+MSL table, dispatch readback verified at every row count: splitk8/12 at 512/1024,
+parity accum at 2048 = the #625 gate behaving exactly as production):
+
+    m_rows   GPU-sum     wall       gap      gap%    isolated tok/s
+    512      43.17ms     50.12ms    6.96ms   13.9%   10,215
+    1024     86.78ms     94.40ms    7.62ms    8.1%   10,847
+    2048     186.45ms    193.44ms   6.99ms    3.6%   10,587
+
+THREE findings. (1) THE GAP IS FLAT ~7ms PER CHUNK ACROSS 512/1024/2048 ROWS -- it is a fixed
+per-chunk cost (host descriptor patching + ~115 kernel-launch boundaries + command-buffer
+overhead), NOT per-row work. The tile lever works purely by amortizing this constant: total 8K
+gap = (8192/T) x ~7ms -> 112ms @512, 56ms @1024, 28ms @2048, 14ms @4096, 7ms unchunked. Each
+doubling's remaining payoff is now known: 4096 saves ~14ms, unchunked another ~7ms. (2) GPU-sum is
+slightly SUPERlinear in m_rows (43.17 x 4 = 172.7 < 186.45): each chunk computes the PADDED
+rectangle up to its last row's causal horizon, so padding overhead grows with tile (+25% of the
+strict triangle at T=2048, +50% at 4096, +100% unchunked) -- the counter-force to the per-dispatch
+efficiency gain, and why the attention sim shows diminishing returns. (3) Isolated per-chunk rate
+~10.2-10.8k tok/s at every row count -- the engine-internal lead number holds per chunk; the gap
+bucket is the only thing the tile moves. VERDICT for the queue: tile=4096's theoretical end-to-end
+payoff at 8K is ~14ms gap + the (pending) sim attention delta -- gated by the sim run in flight;
+unchunked (T=8192) must overcome +100% attention padding and is likely DEAD unless the sim says
+otherwise.
+
+## TILE=4096 REFUTED + TILE LEVER CLOSED (2026-08-12 night): +0.9% @8K / +2.7% @4K with OVERLAPPING distributions -- production stays at tile=2048
+
+The sim + gap breakdown predicted ~14ms gap + ~16ms attention = ~+2% at 8K for tile=4096; the
+measurement (worker algenta-gpu-worker-tile4096 vs tile2048, interleaved 3 rounds/worker, 2 iters,
+load_test stress medians) delivered only 8K: 4469 [4255,4469,4487] vs 4429 [4350,4429,4444] =
+**1.009x**; 4K: 6201 [6029,6201,7105] vs 6040 [5965,6040,6537] = **1.027x** -- both distributions
+OVERLAP, unlike the fully-separated tile-2048 win. Correctness was green (1K/4K/5K-ragged/8K) but
+a sub-3% overlapping win does not pay for doubling activation memory again (~400MB) under the
+campaign's ship-criteria. LEVER CLOSED: the tile lever captured its value in the first two
+doublings (8K gap 112 -> 56 -> 28ms); the remaining 28 -> 14 -> 7ms headroom is intrinsically
+small, and the unchunked option (sim attention 23.27ms, still best) is the same ~+3% territory
+at ~785MB -- not worth it. Production tile stays 2048. NOTE the implication for the deep frontier:
+with the gap bucket nearly closed (28ms at 8K) and GEMM at wall, the remaining 8K delta vs MLX
+solo (6820) must come from attention's 75%-of-wall efficiency or from the SDK/host tax -- the
+next cooled-session measurement will establish where the post-tile engine actually lands (tonight's
+hot-machine SDK-path 8K reads ~4429; the cold-solo equivalent should be materially higher).

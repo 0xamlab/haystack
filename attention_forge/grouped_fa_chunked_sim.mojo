@@ -105,11 +105,10 @@ def sim_prefill(ctx: DeviceContext, total_tokens: Int, tile: Int) raises:
 
 def main() raises:
     var ctx = DeviceContext()
-    print("=== chunked-prefill attention simulation (steel): tile 512/1024/2048 (production now 1024) ===")
-    sim_prefill(ctx, 4096, 512)
-    sim_prefill(ctx, 4096, 1024)
-    sim_prefill(ctx, 4096, 2048)
+    print("=== chunked-prefill attention simulation (steel): 8K tile sweep 512..8192 (production now 2048) ===")
     sim_prefill(ctx, 8192, 512)
     sim_prefill(ctx, 8192, 1024)
     sim_prefill(ctx, 8192, 2048)
+    sim_prefill(ctx, 8192, 4096)
+    sim_prefill(ctx, 8192, 8192)
     print("done")
