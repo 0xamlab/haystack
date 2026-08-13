@@ -279,7 +279,12 @@ async def invite_member(
         raise HTTPException(status_code=409, detail={"error": {"code": "already_member", "message": f"{email} is already on this team."}})
 
     # Seat cap = the seats purchased on the Stripe subscription (per-seat Team billing).
-    purchased = await db.scalar(select(Organization.seats).where(Organization.id == org_id)) or 1
+    org_row = (
+        await db.execute(
+            select(Organization.name, Organization.seats).where(Organization.id == org_id)
+        )
+    ).first()
+    purchased = (org_row.seats if org_row else None) or 1
     used = await _seats_used(db, org_id)
     if not can_add_member(plan, used, purchased):
         raise HTTPException(
@@ -300,7 +305,7 @@ async def invite_member(
 
     # Best-effort email (no-op + logs if Resend unconfigured — flow still works).
     await resend_email.send_team_invite_email(
-        to=email, org_name=str(org_id), role=payload.role,
+        to=email, org_name=org_row.name if org_row else "", role=payload.role,
         accept_url=f"{INVITE_ACCEPT_BASE}?token={invite.token}",
     )
     return {

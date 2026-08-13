@@ -61,7 +61,7 @@ class TestVerifyStripeWebhook:
 
 class TestSendQuotaAlert:
     def test_80pct_alert_sends_email(self):
-        with patch("apps.api_server.services.email_service._send") as mock_send:
+        with patch("apps.api_server.services.email_service._send_template") as mock_send:
             send_quota_alert(
                 email="dev@example.com",
                 org_name="Acme Corp",
@@ -74,12 +74,11 @@ class TestSendQuotaAlert:
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
             assert args[0] == "dev@example.com"
-            assert "80%" in args[1]
-            assert "Algenta" in args[1]
-            assert "quota" in args[1].lower()
+            assert args[1] == "engine-quota-80"
+            assert args[2]["pct"] == "80"
 
     def test_100pct_alert_sends_exhausted_email(self):
-        with patch("apps.api_server.services.email_service._send") as mock_send:
+        with patch("apps.api_server.services.email_service._send_template") as mock_send:
             send_quota_alert(
                 email="dev@example.com",
                 org_name="Acme Corp",
@@ -91,11 +90,11 @@ class TestSendQuotaAlert:
             )
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
-            assert "Algenta" in args[1]
-            assert "exhausted" in args[1].lower() or "100%" in args[1]
+            assert args[1] == "engine-quota-100"
+            assert "exhausted" in mock_send.call_args[1]["fallback_subject"].lower()
 
-    def test_alert_html_contains_usage_numbers(self):
-        with patch("apps.api_server.services.email_service._send") as mock_send:
+    def test_alert_variables_contain_usage_numbers(self):
+        with patch("apps.api_server.services.email_service._send_template") as mock_send:
             send_quota_alert(
                 email="test@test.com",
                 org_name="Test Org",
@@ -105,9 +104,9 @@ class TestSendQuotaAlert:
                 billing_period="2026-03",
                 pct=80.0,
             )
-            html = mock_send.call_args[0][2]
-            assert "8,000" in html or "8000" in html
-            assert "10,000" in html or "10000" in html
+            variables = mock_send.call_args[0][2]
+            assert variables["used"] == "8,000"
+            assert variables["limit"] == "10,000"
 
     def test_smtp_failure_does_not_raise(self):
         """Email send failure should log and not propagate."""
@@ -130,18 +129,18 @@ class TestSendQuotaAlert:
 
 class TestSendWelcomeEmail:
     def test_welcome_email_sent(self):
-        with patch("apps.api_server.services.email_service._send") as mock_send:
+        with patch("apps.api_server.services.email_service._send_template") as mock_send:
             send_welcome_email("user@example.com", "Alice", "de_live_abc123")
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
             assert args[0] == "user@example.com"
-            assert "Welcome" in args[1]
+            assert args[1] == "engine-welcome"
 
     def test_welcome_email_contains_key_prefix(self):
-        with patch("apps.api_server.services.email_service._send") as mock_send:
+        with patch("apps.api_server.services.email_service._send_template") as mock_send:
             send_welcome_email("user@example.com", "Bob", "de_live_xyz789")
-            html = mock_send.call_args[0][2]
-            assert "de_live_xyz789" in html
+            variables = mock_send.call_args[0][2]
+            assert variables["api_key_prefix"] == "de_live_xyz789"
 
     def test_welcome_email_smtp_failure_does_not_raise(self):
         with patch("apps.api_server.services.email_service.smtplib.SMTP") as mock_smtp:

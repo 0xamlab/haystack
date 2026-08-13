@@ -249,7 +249,7 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
     assert "Algenta API and runtime" in mcp_init
     assert "decision engine" not in mcp_init.lower()
     assert "Quota exhausted — Algenta" in email_service
-    assert "80% quota used — Algenta" in email_service
+    assert "% of your monthly quota used — Algenta" in email_service
     assert "Decision Engine (" not in email_service
     assert "test webhook from the Algenta API" in jobs_router
     assert "test webhook from the Decision Engine" not in jobs_router

@@ -682,13 +682,13 @@ async def test_stripe_service_accepts_legacy_dashboard_alias(
 def test_email_service_honors_environment_updates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured_messages: list[tuple[str, str, str]] = []
+    captured_messages: list[tuple[str, str, dict[str, str]]] = []
 
-    def _capture_send(to: str, subject: str, html: str, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    def _capture_send(to: str, template: str, variables: dict[str, str], **kwargs) -> None:  # type: ignore[no-untyped-def]
         del kwargs
-        captured_messages.append((to, subject, html))
+        captured_messages.append((to, template, variables))
 
-    monkeypatch.setattr(email_service, "_send", _capture_send)
+    monkeypatch.setattr(email_service, "_send_template", _capture_send)
 
     try:
         monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
@@ -696,11 +696,12 @@ def test_email_service_honors_environment_updates(
         monkeypatch.setenv("ALGENTA_API_PUBLIC_BASE_URL", "https://api-a.customer.internal")
         _refresh_api_server_settings()
         email_service.send_welcome_email("user@example.com", "Alice", "de_live_alpha")
-        welcome_html = captured_messages[-1][2]
-        assert "https://api-a.customer.internal/v1/simulate" in welcome_html
-        assert "https://console-a.customer.internal/dashboard" in welcome_html
-        assert "https://app.algenta.ai" not in welcome_html
-        assert "https://api.algenta.ai" not in welcome_html
+        welcome_vars = captured_messages[-1][2]
+        assert welcome_vars["simulate_url"] == "https://api-a.customer.internal/v1/simulate"
+        assert welcome_vars["dashboard_url"] == "https://console-a.customer.internal/dashboard"
+        joined = " ".join(welcome_vars.values())
+        assert "https://app.algenta.ai" not in joined
+        assert "https://api.algenta.ai" not in joined
 
         monkeypatch.setenv("ALGENTA_APP_BASE_URL", "https://console-b.customer.internal")
         monkeypatch.setenv("ALGENTA_API_PUBLIC_BASE_URL", "https://api-b.customer.internal")
@@ -714,9 +715,9 @@ def test_email_service_honors_environment_updates(
             billing_period="2026-05",
             pct=80.0,
         )
-        quota_html = captured_messages[-1][2]
-        assert "https://console-b.customer.internal/dashboard/billing" in quota_html
-        assert "https://app.algenta.ai" not in quota_html
+        quota_vars = captured_messages[-1][2]
+        assert quota_vars["billing_url"] == "https://console-b.customer.internal/dashboard/billing"
+        assert "https://app.algenta.ai" not in " ".join(quota_vars.values())
 
         monkeypatch.delenv("ALGENTA_DEPLOYMENT_MODE", raising=False)
         monkeypatch.delenv("ALGENTA_APP_BASE_URL", raising=False)
@@ -724,10 +725,10 @@ def test_email_service_honors_environment_updates(
         monkeypatch.setenv("ALGENTA_BASE_URL", "https://internal.customer.example")
         _refresh_api_server_settings()
         email_service.send_welcome_email("user@example.com", "Alice", "de_live_alpha")
-        cloud_managed_html = captured_messages[-1][2]
-        assert "https://api.algenta.ai/v1/simulate" in cloud_managed_html
-        assert "https://app.algenta.ai/dashboard" in cloud_managed_html
-        assert "https://internal.customer.example" not in cloud_managed_html
+        cloud_vars = captured_messages[-1][2]
+        assert cloud_vars["simulate_url"] == "https://api.algenta.ai/v1/simulate"
+        assert cloud_vars["dashboard_url"] == "https://app.algenta.ai/dashboard"
+        assert "https://internal.customer.example" not in " ".join(cloud_vars.values())
     finally:
         _refresh_api_server_settings()
 
@@ -735,13 +736,13 @@ def test_email_service_honors_environment_updates(
 def test_email_service_accepts_legacy_dashboard_alias(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured_messages: list[tuple[str, str, str]] = []
+    captured_messages: list[tuple[str, str, dict[str, str]]] = []
 
-    def _capture_send(to: str, subject: str, html: str, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    def _capture_send(to: str, template: str, variables: dict[str, str], **kwargs) -> None:  # type: ignore[no-untyped-def]
         del kwargs
-        captured_messages.append((to, subject, html))
+        captured_messages.append((to, template, variables))
 
-    monkeypatch.setattr(email_service, "_send", _capture_send)
+    monkeypatch.setattr(email_service, "_send_template", _capture_send)
 
     try:
         monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
@@ -759,9 +760,9 @@ def test_email_service_accepts_legacy_dashboard_alias(
             billing_period="2026-05",
             pct=80.0,
         )
-        quota_html = captured_messages[-1][2]
-        assert "https://console.customer.internal/dashboard/billing" in quota_html
-        assert "https://app.algenta.ai" not in quota_html
+        quota_vars = captured_messages[-1][2]
+        assert quota_vars["billing_url"] == "https://console.customer.internal/dashboard/billing"
+        assert "https://app.algenta.ai" not in " ".join(quota_vars.values())
     finally:
         _refresh_api_server_settings()
 

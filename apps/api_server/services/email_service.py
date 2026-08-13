@@ -2,19 +2,26 @@
 Email notification service.
 
 Provides:
-- send_quota_alert()   — Send 80% and 100% usage threshold emails
-- send_welcome_email() — Welcome email after signup
+- send_quota_alert()          — 80% and 100% usage threshold emails
+- send_welcome_email()        — Welcome email after signup
+- send_verification_email()   — Email verification link
+- send_password_reset_email() — Password reset link
 
-Uses SMTP (defaults to dev mailhog on port 1025, configure for SendGrid/SES in prod).
+Every email BODY lives as a published Resend Template (engine-* aliases) —
+design and copy are managed in the Resend dashboard, never in this repo. When
+Resend is unconfigured (self-hosted operators pointing SMTP at their own
+relay), a minimal plain-text rendering of the same variables goes out instead;
+there is deliberately no HTML in this file.
 """
 
 import smtplib
-from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 from email.mime.text import MIMEText
 
 import structlog
 
 from apps.api_server.config import SettingsProxy
+from apps.api_server.services import plan_limits
 from apps.api_server.services.egress_guard import (
     EgressAuditContext,
     EgressPolicyDeniedError,
@@ -32,24 +39,44 @@ logger = structlog.get_logger(__name__)
 settings = SettingsProxy()
 
 
-def _send(
+def _plan_display_name(plan: str) -> str:
+    """Customer-facing plan name — internal lookup keys (sqai_developer, …) must
+    never render in an email."""
+    return plan_limits.get(plan).display_name.title()
+
+
+def _billing_period_display(billing_period: str) -> str:
+    """'2026-08' → 'August 2026'; unknown formats pass through unchanged."""
+    try:
+        return datetime.strptime(billing_period, "%Y-%m").strftime("%B %Y")
+    except ValueError:
+        return billing_period
+
+
+# In-flight fire-and-forget sends (the loop holds only weak task references).
+_background_sends: set = set()
+
+
+def _send_template(
     to: str,
-    subject: str,
-    html: str,
+    template: str,
+    variables: dict[str, str],
     *,
+    fallback_subject: str,
+    fallback_text: str,
     audit_context: EgressAuditContext | None = None,
 ) -> None:
-    """Send an email. Routes through Resend when configured (the platform's working
-    transactional channel — the SMTP default of localhost:1025 silently dropped
-    every message); falls back to SMTP only when Resend is unconfigured, for
-    self-hosted operators who point SMTP at their own relay."""
+    """Send one platform email. Routes through a published Resend Template when
+    Resend is configured (the platform's transactional channel); falls back to a
+    plain-text SMTP message only for self-hosted operators running their own
+    relay — the fallback carries the same links, but no styled body."""
     from apps.api_server.services import resend_email
 
     if resend_email.is_configured():
         import asyncio
 
         async def _via_resend() -> None:
-            await resend_email.send_email(to=to, subject=subject, html_body=html)
+            await resend_email.send_template_email(to=to, template=template, variables=variables)
 
         try:
             loop = asyncio.get_running_loop()
@@ -58,14 +85,17 @@ def _send(
         else:
             # Called from request handlers — schedule and return; email is a
             # best-effort side effect and must never block or fail the request.
-            loop.create_task(_via_resend())
+            # Hold a reference until done: the event loop only keeps weak refs,
+            # so an unreferenced task can be garbage-collected mid-send.
+            task = loop.create_task(_via_resend())
+            _background_sends.add(task)
+            task.add_done_callback(_background_sends.discard)
         return
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
+        msg = MIMEText(fallback_text, "plain")
+        msg["Subject"] = fallback_subject
         msg["From"] = settings.email_from
         msg["To"] = to
-        msg.attach(MIMEText(html, "html"))
 
         with smtp_connection(
             host=settings.smtp_host,
@@ -80,16 +110,16 @@ def _send(
                 smtp.login(settings.smtp_username, settings.smtp_password)
             smtp.sendmail(settings.email_from, [to], msg.as_string())
 
-        logger.info("email_sent", to=to, subject=subject)
+        logger.info("email_sent", to=to, subject=fallback_subject)
     except EgressPolicyDeniedError as exc:
         logger.error(
             "email_send_blocked",
             to=to,
-            subject=subject,
+            subject=fallback_subject,
             reason=exc.decision.reason,
         )
     except Exception as exc:
-        logger.error("email_send_failed", to=to, subject=subject, error=str(exc))
+        logger.error("email_send_failed", to=to, subject=fallback_subject, error=str(exc))
 
 
 def send_quota_alert(
@@ -108,84 +138,40 @@ def send_quota_alert(
     """
     is_exhausted = pct >= 100
     billing_url = resolve_billing_dashboard_url(settings_obj=settings)
+    period = _billing_period_display(billing_period)
+    plan_name = _plan_display_name(plan)
 
+    variables = {
+        "org": org_name,
+        "used": f"{used:,}",
+        "limit": f"{limit:,}",
+        "billing_period": period,
+        "plan": plan_name,
+        "billing_url": billing_url,
+    }
     if is_exhausted:
-        subject = f"⚠️ Quota exhausted — Algenta ({billing_period})"
-        headline = "You've used 100% of your monthly quota"
-        body = (
-            f"Your organization <strong>{org_name}</strong> has exhausted its "
-            f"{limit:,} simulation quota for {billing_period}. "
-            f"New simulations will be blocked until the period resets or you upgrade your plan."
+        template = "engine-quota-100"
+        fallback_subject = f"Quota exhausted — Algenta ({period})"
+        fallback_text = (
+            f"{org_name} has used all {limit:,} simulations for {period}. "
+            f"New simulations are paused until the period resets or you upgrade: {billing_url}"
         )
-        cta = "Upgrade now"
-        cta_color = "#ef4444"
     else:
-        subject = f"⚡ 80% quota used — Algenta ({billing_period})"
-        headline = f"You've used {pct:.0f}% of your monthly quota"
-        body = (
-            f"Your organization <strong>{org_name}</strong> has used "
-            f"{used:,} of {limit:,} simulations in {billing_period}. "
-            f"Consider upgrading your plan before you hit the limit."
+        template = "engine-quota-80"
+        variables["pct"] = f"{pct:.0f}"
+        fallback_subject = f"{pct:.0f}% of your monthly quota used — Algenta ({period})"
+        fallback_text = (
+            f"{org_name} has used {used:,} of {limit:,} simulations in {period}. "
+            f"Manage billing: {billing_url}"
         )
-        cta = "View usage"
-        cta_color = "#eab308"
-
-    html = f"""
-<!DOCTYPE html>
-<html>
-<body
-  style="font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 40px;"
->
-  <div
-    style="
-      max-width: 560px;
-      margin: 0 auto;
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 32px;
-    "
-  >
-    <div style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 8px;">
-      Algenta
-    </div>
-    <div style="height: 1px; background: #334155; margin-bottom: 24px;"></div>
-    <h1 style="font-size: 20px; color: #fff; margin: 0 0 12px;">{headline}</h1>
-    <p style="color: #94a3b8; line-height: 1.6; margin: 0 0 24px;">{body}</p>
-    <div style="background: #0f172a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: #64748b; font-size: 14px;">Used</span>
-        <span style="color: #fff; font-size: 14px; font-weight: 600;">{used:,} / {limit:,}</span>
-      </div>
-      <div style="background: #1e293b; border-radius: 99px; height: 8px; overflow: hidden;">
-        <div
-          style="
-            background: {cta_color};
-            height: 8px;
-            width: {min(pct, 100):.0f}%;
-            border-radius: 99px;
-          "
-        ></div>
-      </div>
-    </div>
-    <a href="{billing_url}" style="
-      display: inline-block;
-      background: {cta_color};
-      color: #fff;
-      text-decoration: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-    ">{cta} →</a>
-    <p style="color: #475569; font-size: 12px; margin-top: 24px;">
-      You're on the <strong>{plan}</strong> plan.
-      <a href="{billing_url}" style="color: #818cf8;">Manage billing</a>
-    </p>
-  </div>
-</body>
-</html>
-"""
-    _send(email, subject, html, audit_context=audit_context)
+    _send_template(
+        email,
+        template,
+        variables,
+        fallback_subject=fallback_subject,
+        fallback_text=fallback_text,
+        audit_context=audit_context,
+    )
 
 
 def send_welcome_email(
@@ -199,67 +185,21 @@ def send_welcome_email(
     simulate_url = resolve_simulate_endpoint_url(settings_obj=settings)
     dashboard_url = resolve_dashboard_url(settings_obj=settings)
     billing_url = resolve_billing_dashboard_url(settings_obj=settings)
-    html = f"""
-<!DOCTYPE html>
-<html>
-<body
-  style="font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 40px;"
->
-  <div
-    style="
-      max-width: 560px;
-      margin: 0 auto;
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 32px;
-    "
-  >
-    <div style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 24px;">
-      Welcome to Algenta
-    </div>
-    <p style="color: #94a3b8; line-height: 1.6;">Hi {name},</p>
-    <p style="color: #94a3b8; line-height: 1.6;">
-      Your account is ready. Here's your first API call:
-    </p>
-    <pre
-      style="
-        background: #0f172a;
-        border-radius: 8px;
-        padding: 16px;
-        font-size: 13px;
-        color: #a5b4fc;
-        overflow-x: auto;
-      "
-    >
-curl -X POST {simulate_url} \\
-  -H "Authorization: Bearer {api_key_prefix}..." \\
-  -d '{{"mode":"auto","scenario":{{"variables":{{"revenue":{{"low":80000,"high":200000}}}}}}}}'
-    </pre>
-    <a href="{dashboard_url}" style="
-      display: inline-block;
-      background: #4f63ff;
-      color: #fff;
-      text-decoration: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      margin-top: 16px;
-    ">Open Dashboard →</a>
-    <p style="color: #475569; font-size: 12px; margin-top: 24px;">
-      You're on the free plan — 500 simulations/month.
-      <a href="{billing_url}" style="color: #818cf8;">
-        Upgrade anytime.
-      </a>
-    </p>
-  </div>
-</body>
-</html>
-"""
-    _send(
+    _send_template(
         email,
-        "Welcome to Algenta — your API key is ready",
-        html,
+        "engine-welcome",
+        {
+            "name": name,
+            "api_key_prefix": api_key_prefix,
+            "simulate_url": simulate_url,
+            "dashboard_url": dashboard_url,
+            "billing_url": billing_url,
+        },
+        fallback_subject="Welcome to Algenta — your API key is ready",
+        fallback_text=(
+            f"Hi {name}, your account is ready. Your API key starts with {api_key_prefix}. "
+            f"Dashboard: {dashboard_url}"
+        ),
         audit_context=audit_context,
     )
 
@@ -267,93 +207,22 @@ curl -X POST {simulate_url} \\
 async def send_verification_email(email: str, token: str) -> None:
     """Send an email verification link after signup."""
     verify_url = resolve_email_verification_url(token, settings_obj=settings)
-
-    html = f"""
-<!DOCTYPE html>
-<html>
-<body
-  style="font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 40px;"
->
-  <div
-    style="
-      max-width: 520px;
-      margin: 0 auto;
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 32px;
-    "
-  >
-    <div style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 20px;">
-      Verify your email
-    </div>
-    <p style="color: #94a3b8; line-height: 1.6; margin-bottom: 24px;">
-      Click the button below to verify your email address and activate your Algenta account.
-      This link expires in 24 hours.
-    </p>
-    <a href="{verify_url}" style="
-      display:inline-block;
-      background:#6b42fc;
-      color:#fff;
-      text-decoration:none;
-      padding:12px 24px;
-      border-radius:8px;
-      font-weight:600;
-      font-size:14px;
-    ">
-      Verify Email →
-    </a>
-    <p style="color:#475569;font-size:12px;margin-top:24px;">
-      If you didn't create an Algenta account, ignore this email.
-    </p>
-  </div>
-</body>
-</html>
-"""
-    _send(email, "Verify your email — Algenta", html)
+    _send_template(
+        email,
+        "engine-verify",
+        {"link": verify_url},
+        fallback_subject="Verify your email — Algenta",
+        fallback_text=f"Verify your email address (link expires in 24 hours): {verify_url}",
+    )
 
 
 async def send_password_reset_email(email: str, token: str) -> None:
     """Send a password reset link."""
     reset_url = resolve_password_reset_url(token, settings_obj=settings)
-
-    html = f"""
-<!DOCTYPE html>
-<html>
-<body
-  style="font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 40px;"
->
-  <div
-    style="
-      max-width: 520px;
-      margin: 0 auto;
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 32px;
-    "
-  >
-    <div style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 20px;">
-      Reset your password
-    </div>
-    <p style="color: #94a3b8; line-height: 1.6; margin-bottom: 24px;">
-      Click the button below to reset your password. This link expires in 15 minutes.
-    </p>
-    <a href="{reset_url}" style="
-      display:inline-block;
-      background:#ef4444;
-      color:#fff;
-      text-decoration:none;
-      padding:12px 24px;
-      border-radius:8px;
-      font-weight:600;
-      font-size:14px;
-    ">
-      Reset Password →
-    </a>
-    <p style="color:#475569;font-size:12px;margin-top:24px;">
-      If you didn't request this, ignore this email — your password won't change.
-    </p>
-  </div>
-</body>
-</html>
-"""
-    _send(email, "Reset your Algenta password", html)
+    _send_template(
+        email,
+        "engine-password-reset",
+        {"link": reset_url},
+        fallback_subject="Reset your Algenta password",
+        fallback_text=f"Reset your password (link expires in 15 minutes): {reset_url}",
+    )
