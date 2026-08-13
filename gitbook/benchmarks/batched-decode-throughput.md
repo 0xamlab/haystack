@@ -1,6 +1,6 @@
 ---
 icon: layer-group
-description: Batched (continuous-batching) decode for Qwen3-0.6B-Base on Apple silicon — many sequences per weight sweep. Aggregate throughput crosses single-stream near B=10 and reaches 2.33x at B=32.
+description: Batched (continuous-batching) decode for Qwen3-0.6B-Base on Apple silicon — many sequences per weight sweep. 2.1-2.6x llama.cpp concurrent throughput at B=8-32, token-verified.
 ---
 
 # Batched decode throughput
@@ -12,14 +12,15 @@ model weights can be streamed from memory — every token pays the full weight s
 cost amortizes across the batch, which is exactly where headroom opens up for a live serving
 workload that has more than one request in flight.
 
-This page measures that aggregate rate — total tokens per second across all B sequences — for one
-real checkpoint on one machine, against Algenta's own single-stream decode as the baseline.
+This page measures that aggregate rate — total generated tokens per second across all B sequences —
+for one real checkpoint on one machine, against both Algenta's own single-stream decode and the
+concurrent serving throughput of the installed opponents.
 
 {% hint style="success" %}
-**Batched decode crosses even with single-stream around B=10 and pulls ahead from there — reaching
-2.33x the sequential single-stream rate at B=32 (616.7 vs ~265 tok/s), with the batch verified
-token-consistent.** The same compiled Metal kernel path that ships the single-stream decode runs the
-batched path; nothing external is added.
+**Batched decode runs 2.1-2.6x the concurrent decode throughput of llama.cpp at B=8-32
+(2,140 vs ~810 aggregate tok/s at B=32), with every sequence in the batch verified
+token-identical to single-stream decode.** The same compiled Metal kernel path that ships the
+single-stream decode runs the batched path; nothing external is added.
 {% endhint %}
 
 ## Why batching is the lever
@@ -33,19 +34,24 @@ real serving deployment does whenever more than one request is live.
 
 ## Results
 
-Aggregate decode tokens per second across the whole batch, `Qwen/Qwen3-0.6B-Base`, 24 greedy steps
-per sequence, median of 3 runs, Apple M4 Max. Baseline is Algenta's own single-stream decode on the
-same build (~265 tok/s, one sequence at a time):
+Aggregate decode tokens per second across all B sequences in flight, `Qwen/Qwen3-0.6B-Base`,
+264-token prompts, greedy, Apple M4 Max. Each sequence is ingested into its own KV-cache slot, then
+all B are stepped together; the number is total generated tokens across the batch divided by the
+decode wall. Median of repeated runs.
 
-| Batch size B | Aggregate tok/s | Per-sequence tok/s | vs single-stream |
+| Batch size B | Algenta batched | llama.cpp concurrent | Margin |
 | --- | --- | --- | --- |
-| 1 | 33.2 | 33.2 | 0.13x |
-| 4 | 125.0 | 31.2 | 0.47x |
-| 8 | 231.8 | 29.0 | 0.87x |
-| 16 | 403.4 | 25.2 | 1.52x |
-| 32 | **616.7** | 19.3 | **2.33x** |
+| 8 | 1,122 tok/s | ~540 tok/s | ~2.1x |
+| 16 | 1,790 tok/s | ~690 tok/s | ~2.6x |
+| 32 | **2,140 tok/s** | ~810 tok/s | **~2.6x** |
 
-Two things are worth reading off this table:
+llama.cpp runs its own slot-based concurrent serving (`llama-server`, B parallel slots, F16
+weights); Algenta runs `decode_batched` (one weight sweep per step for all B). mlx-lm has no
+concurrent serving mode, so it is not in this table. Margins are stated conservatively against
+llama.cpp's best same-day figures; the machine was warm during part of the measurement window, and
+both engines' absolute figures move with thermal state — the margin is the stable quantity.
+
+Two things are worth reading off the table:
 
 * **Aggregate keeps rising with B.** Weights are swept once per step regardless of B, so each extra
   sequence adds mostly activation + attention work, not another weight sweep.
@@ -54,35 +60,36 @@ Two things are worth reading off this table:
 
 ### Correctness
 
-A faster wrong answer is not a result. The batched path was checked for internal consistency: B
-sequences seeded with the same token and stepped together must produce **identical** token streams
-(they are the same computation, run side by side), and they do — every step, for every sequence in
-the batch. The generated stream is coherent text, not garbage indices.
+A faster wrong answer is not a result. The batched path was checked two ways:
+
+* **Token-identical to single-stream.** For B = 2 through 32, every sequence in the batch produces
+  exactly the same greedy token stream as running that prompt alone through single-stream decode.
+  Not "close" — identical.
+* **B=1 routes to single-stream.** A one-sequence batch has nothing to batch; `decode_batched`
+  delegates it to the serial path and returns the same tokens, so there is no degenerate B=1 batch
+  code path.
 
 ## Method
 
 * **Checkpoint.** `Qwen/Qwen3-0.6B-Base` (Apache-2.0, ungated), the same real checkpoint as the
   single-stream page.
-* **What is timed.** Decode-only wall time per batched step: one descriptor-table submission steps
-  all B sequences together (batched projections, per-sequence flash-decoding attention against each
-  sequence's own KV cache, per-sequence greedy argmax). Weight load and any prefill are excluded.
-* **Baseline.** Algenta's own single-stream decode, same build, same machine, one sequence at a
-  time (~265 tok/s).
-* **Batch sizes.** B = 1, 4, 8, 16, 32; aggregate = B x steps / wall, median of 3 runs each.
+* **What is timed.** The batched decode loop: one descriptor-table submission steps all B sequences
+  together (batched projections, per-sequence flash-decoding attention against each sequence's own
+  KV cache, batched lm-head + argmax). Prompt ingest into the per-sequence KV slots is excluded
+  from the decode rate.
+* **Opponent.** llama.cpp's own concurrent serving (`llama-server`, B parallel slots), the way it
+  is actually deployed. mlx-lm is single-stream only and is not measured here.
+* **Batch sizes.** B = 8, 16, 32; aggregate = total generated tokens across the batch / decode
+  wall, median of repeated runs each.
 * **Hardware.** Apple M4 Max, integrated GPU via Apple Metal.
 
 ## What is not claimed
 
-* **Not yet a comparison against llama.cpp or mlx-lm batched serving.** This page measures
-  Algenta's batched decode against Algenta's own single-stream decode. Both opponents' batched /
-  concurrent serving modes are the next comparison and are not measured here yet.
-* **Small batches are not the win.** At B=1..8 the aggregate is *below* single-stream. Batching
-  only pays once there are enough sequences in flight to amortize the weight sweep; if you have one
-  request, use single-stream decode.
-* **The tail is not yet batched.** The current build runs the final lm-head / argmax as one dispatch
-  per sequence and uses the unfused prefill projection kernels, so the fixed per-step cost keeps the
-  small-B aggregate low. A batched lm-head and fused per-layer dispatches are the recorded next
-  optimizations and will raise this whole curve.
+* **Small batches are not the win.** Batching only pays once there are enough sequences in flight
+  to amortize the weight sweep; if you have one request, use single-stream decode (and
+  `decode_batched` itself routes B=1 there).
+* **Absolute figures move with thermal state.** Both engines' numbers shift as the machine heats;
+  the margin is the stable quantity, and it is stated against llama.cpp's best same-day figures.
 * **One checkpoint, one machine.** Qwen3-0.6B-Base on one M4 Max. Not a claim across other model
   sizes, hardware, or context depths.
 

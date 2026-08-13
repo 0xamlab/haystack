@@ -13,12 +13,13 @@ each with a different bottleneck and its own benchmark here:
 | --- | --- | --- | --- | --- |
 | **Prefill (token input)** | Read the whole prompt, build the KV cache | Compute (batched matmul) | ~10,700 tok/s, 1.049x llama.cpp | [Prefill throughput](llm-prefill-throughput.md) |
 | **Decode (single-stream)** | Generate one token at a time, one request | Memory bandwidth (weight sweep/token) | Ahead of llama.cpp & mlx-lm at N>=16 | [Decode throughput](decode-throughput.md) |
-| **Batched decode (continuous batching)** | Generate for B requests at once | Weight sweep amortized over B | 2.33x single-stream at B=32 | [Batched decode throughput](batched-decode-throughput.md) |
+| **Batched decode (continuous batching)** | Generate for B requests at once | Weight sweep amortized over B | 2.1-2.6x llama.cpp concurrent at B=8-32 | [Batched decode throughput](batched-decode-throughput.md) |
 
 {% hint style="info" %}
 **The one-line summary:** Algenta is fastest at prefill (token input), competitive-to-fastest at
-single-stream decode, and opens a wide margin when decoding many sequences at once — because the
-batched path sweeps the model weights once per step for all B sequences instead of once per token.
+single-stream decode, and runs 2.1-2.6x llama.cpp's concurrent decode throughput when decoding
+many sequences at once — because the batched path sweeps the model weights once per step for all B
+sequences instead of once per token.
 {% endhint %}
 
 ## Why the three workloads behave differently
