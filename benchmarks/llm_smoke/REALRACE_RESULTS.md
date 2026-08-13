@@ -12223,3 +12223,28 @@ any-model: a d_head != 128 end-to-end oracle (needs a non-Qwen3 checkpoint or a 
 gate), and eventually structural parametric versions of the AF kernels themselves so a non-128 model
 gets a fast path, not just a correct one. No performance change at d_head=128 (the fast path is
 untouched by construction).
+
+---
+
+## Llama-family support, increment 1 -- SDK foundation (2026-08-13)
+
+First increment toward running architectures beyond Qwen3 (the model-agnostic mandate's next
+frontier; the full blocker map is dissected in the campaign memory). This one is deliberately the
+SAFE, additive foundation -- no gate that guards against silently-wrong math is relaxed yet.
+
+**What changed (SDK, `algenta.inference`):**
+- `_normalize_config()` derives `head_dim = hidden_size // num_attention_heads` when a config omits
+  it (the llama-family convention). An already-present `head_dim` is always trusted, never re-derived
+  -- correct because Qwen3's explicit `head_dim` (128) is NOT `hidden_size/num_attention_heads`
+  (64); its q/k/v project to `h_q*head_dim`. This clears the FIRST llama refusal (missing `head_dim`).
+- `prepare_model_checkpoint` now carries the checkpoint's own `eos_token_id` into the manifest config
+  (written only when present), preparing the replacement of the engine's hardcoded Qwen3 EOS constant.
+
+**What is deliberately NOT done yet** (each would be silently-wrong without its engine half): the
+tied-embeddings gate stays (no separate lm_head path yet), and q/k_norm are still required (no
+QK-norm skip in the kernels yet). Those land with their engine/kernel changes.
+
+**Verification:** `tests/test_inference_model_agnostic.py` 10 passed / 1 skipped (the two new
+`_normalize_config` tests + all pre-existing gates); Qwen3 GPU e2e `tests/test_inference_gpu_e2e.py`
+6 passed / 1 skipped -- the change is a byte-for-byte no-op for Qwen3 (head_dim present and trusted,
+eos carried), oracle token 374 intact.

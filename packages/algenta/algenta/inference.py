@@ -148,6 +148,20 @@ class InferenceResult:
     generated_text: str | None = None
 
 
+def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Fill in shape fields a family may leave implicit, so validation + the manifest see a complete
+    config. Llama-family checkpoints omit `head_dim` (it is implicit `hidden_size //
+    num_attention_heads`); Qwen3 carries it explicitly -- and note the two are NOT the same formula
+    for Qwen3 (its q/k/v project to `h_q * head_dim`, which differs from `hidden_size`), so an
+    already-present `head_dim` is always trusted, never re-derived. Returns a new dict; the caller's
+    config is not mutated."""
+    if "head_dim" not in config and "hidden_size" in config and "num_attention_heads" in config:
+        h_q = config["num_attention_heads"]
+        if isinstance(h_q, int) and h_q > 0:
+            return {**config, "head_dim": config["hidden_size"] // h_q}
+    return config
+
+
 def _validate_architecture(checkpoint_dir: Path, config: dict[str, Any]) -> None:
     """Validate the structural invariants the kernels rely on, from config.json alone."""
     missing = [key for key in _STRUCTURAL_FIELDS if key not in config]
@@ -267,7 +281,7 @@ def prepare_model_checkpoint(
             f"{checkpoint_dir} does not look like a HuggingFace checkpoint snapshot: "
             f"{config_path.name} is missing.",
         )
-    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config = _normalize_config(json.loads(config_path.read_text(encoding="utf-8")))
     _validate_architecture(checkpoint_dir, config)
 
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
@@ -355,19 +369,26 @@ def prepare_model_checkpoint(
     blob = np.concatenate(blob_chunks)
     (resolved_out_dir / "weights.blob").write_bytes(blob.astype("<f8").tobytes())
 
+    manifest_config: dict[str, Any] = {
+        "hidden_size": config["hidden_size"],
+        "num_hidden_layers": config["num_hidden_layers"],
+        "num_attention_heads": config["num_attention_heads"],
+        "num_key_value_heads": config["num_key_value_heads"],
+        "head_dim": config["head_dim"],
+        "intermediate_size": config["intermediate_size"],
+        "vocab_size": config["vocab_size"],
+        "rope_theta": float(config["rope_theta"]),
+        "rms_norm_eps": config["rms_norm_eps"],
+        "n_tokens": len(prompt_token_ids),
+    }
+    # End-of-sequence id(s) the engine should stop on, carried from the checkpoint's own config
+    # instead of a hardcoded constant. Absent on some configs -- only written when present, so an
+    # older manifest consumer sees no new key unless the checkpoint declares one.
+    if "eos_token_id" in config and config["eos_token_id"] is not None:
+        manifest_config["eos_token_id"] = config["eos_token_id"]
+
     manifest = {
-        "config": {
-            "hidden_size": config["hidden_size"],
-            "num_hidden_layers": config["num_hidden_layers"],
-            "num_attention_heads": config["num_attention_heads"],
-            "num_key_value_heads": config["num_key_value_heads"],
-            "head_dim": config["head_dim"],
-            "intermediate_size": config["intermediate_size"],
-            "vocab_size": config["vocab_size"],
-            "rope_theta": float(config["rope_theta"]),
-            "rms_norm_eps": config["rms_norm_eps"],
-            "n_tokens": len(prompt_token_ids),
-        },
+        "config": manifest_config,
         "input_ids": list(prompt_token_ids),
         "tensors": manifest_tensors,
     }

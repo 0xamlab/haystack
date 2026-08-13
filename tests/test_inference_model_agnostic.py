@@ -31,6 +31,7 @@ if str(_ALGENTA) not in sys.path:
 from algenta.inference import (  # noqa: E402
     InferenceError,
     UnsupportedArchitectureError,
+    _normalize_config,
     _validate_architecture,
     prepare_model_checkpoint,
 )
@@ -71,6 +72,24 @@ def test_larger_supported_config_accepted() -> None:
         Path("/tmp/unused"),
         _supported_config(hidden_size=2048, intermediate_size=6144),
     )
+
+
+def test_normalize_config_trusts_explicit_head_dim() -> None:
+    # Qwen3 carries head_dim explicitly (and it is NOT hidden_size//num_attention_heads: the q/k/v
+    # project to h_q*head_dim=2048, past hidden_size=1024), so it must be trusted, never re-derived.
+    cfg = _supported_config()
+    assert _normalize_config(cfg)["head_dim"] == 128
+    assert _normalize_config(cfg) == cfg  # nothing rewritten when head_dim is present
+
+
+def test_normalize_config_derives_implicit_head_dim() -> None:
+    # Llama-family configs omit head_dim (it is implicit hidden_size // num_attention_heads).
+    cfg = _supported_config(hidden_size=2048, num_attention_heads=32, num_key_value_heads=4)
+    del cfg["head_dim"]
+    assert _normalize_config(cfg)["head_dim"] == 2048 // 32  # 64
+    assert "head_dim" not in cfg  # the caller's dict is not mutated
+    # And the derived shape passes the architecture gate end to end.
+    _validate_architecture(Path("/tmp/unused"), _normalize_config(cfg))
 
 
 def test_missing_field_refused() -> None:
