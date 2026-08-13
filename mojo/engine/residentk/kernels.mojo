@@ -215,7 +215,14 @@ five runs each) — fewer, fatter threadgroups did not amortize the redundant pe
 normalization into a measurable win, and did not cost one either. Kept at 256 rather than raised:
 `o_proj`/`down_proj` at `n = d_model = 1024` would drop to 32 threadgroups at `_SUBS = 32`, close
 enough to this GPU's 40 cores that a smaller or differently-shaped model could under-occupy where
-256 would not, for a change this measurement says buys nothing."""
+256 would not, for a change this measurement says buys nothing.
+
+RE-MEASURED AFTER DE-STAGING (feat/gemv-streaming, 2026-08-13, TinyLlama-1.1B int8): with this
+branch's shared-memory occupancy ceiling removed from the GEMV triple, the TG-size trade was re-run
+at full occupancy — 512 (16 columns/TG) LOST ~4% (270→261 tok/s, interleaved A/B, byte-identical
+output both arms) and 128 (4 columns/TG) tied (277 vs 278). 256 remains the optimum: fatter
+threadgroups halve the threadgroup count of the narrow roles (o_proj/down_proj) below what 40
+cores balance; thinner ones buy nothing back either."""
 
 comptime _LANES: Int = 32
 """Lanes cooperating on ONE output column. Apple's SIMD width; also the number of contiguous weight
@@ -662,8 +669,25 @@ def _norm_gemv_kernel_simd_i8(
     on load), the vectorized `char4` load, the accumulation order within one lane — is copied
     byte-for-byte from `_norm_gemv_kernel_i8`, because the math this kernel computes must be, and
     is verified to be, IDENTICAL; only the summation order across lanes/groups differs.
+
+    STAGING REMOVED (feat/gemv-streaming, 2026-08-13): this kernel no longer materializes the
+    normalized vector in threadgroup memory at all. The old form staged `xs[s] = x[s]*inv*gamma[s]`
+    into a `_STAGE`-sized `stack_allocation` so the `_SUBS` output columns could share one copy of
+    it — but `stack_allocation` sizes are fixed per pipeline-state object, so EVERY model whose
+    `d_ff` forced the 6144 staging tier (TinyLlama's 5632) pinned this kernel at 24 KiB of
+    threadgroup memory and therefore ONE resident threadgroup per core (32 KiB budget) — the exact
+    occupancy regression the campaign first measured on Qwen3-0.6B (262→214 tok/s when staging went
+    3072→6144). A decode GEMV is weight-streaming bound: each threadgroup streams `n` rows × `k`
+    int8 weights and touches the `k`-length input vector ONCE per row, so re-reading `x` and
+    `gamma` from device memory per SIMD group — they are the same `k` floats for every column and
+    every threadgroup of the layer, resident in the SLC/L2 after the first touch — costs a rounding
+    error of extra traffic against the weight stream. Each SIMD group now applies the normalization
+    ON THE FLY inside its dot loop, with the SAME left-to-right Float32 expression the staging loop
+    evaluated (`(x * inv) * gamma`), so every staged value is reproduced bit-for-bit and the greedy
+    sequence is unchanged; the staging barrier disappears with the staging array, and the only
+    surviving shared allocation is `_SUBS` floats for the sum-of-squares combine. Occupancy stops
+    being staging-bound.
     """
-    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
     var lane = tid % _LANES
@@ -685,24 +709,38 @@ def _norm_gemv_kernel_simd_i8(
         ss_total += grp[g]
     var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
 
-    # ── 2. stage the normalized, gamma-scaled vector in threadgroup memory ──────
-    var s = tid
-    while s < k:
-        xs[s] = x[s] * inv * gamma[s]
-        s += _TG
-    barrier()
-
-    # ── 3. one SIMD group per output column, single-level SIMD-shuffle reduction ─
+    # ── 2. one SIMD group per output column, single-level SIMD-shuffle reduction ─
+    # The normalized, gamma-scaled input is applied on the fly from device memory — no
+    # `_STAGE` shared staging (see the STAGING REMOVED note in this kernel's docstring). The
+    # vectorized loop is UNROLLED TWO STEPS (feat/gemv-streaming, 2026-08-13): both steps' loads
+    # are issued before either step's products are consumed, doubling the outstanding loads per
+    # lane without changing a single operation's ORDER — the second step's products are added
+    # after the first step's, exactly as two sequential loop iterations would have added them,
+    # so the per-lane accumulation stays bit-for-bit the unrolled loop's.
     var j = Int(block_idx.x) * _SUBS + sub
     var acc = Float32(0.0)
     if j < n:
         var base = j * k
         var srow = wscale[j]
         var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var inv_v = SIMD[DType.float32, _VEC_I8](inv)
         var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
         var t = lane * _VEC_I8
+        while t + _VEC_STRIDE_I8 < k_vec:
+            var xv0 = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
+            var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var t1 = t + _VEC_STRIDE_I8
+            var xv1 = (x.load[width=_VEC_I8](t1) * inv_v) * gamma.load[width=_VEC_I8](t1)
+            var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+            var pv0 = xv0 * wv0
+            for lane_e in range(_VEC_I8):
+                acc += pv0[lane_e]
+            var pv1 = xv1 * wv1
+            for lane_e2 in range(_VEC_I8):
+                acc += pv1[lane_e2]
+            t += 2 * _VEC_STRIDE_I8
         while t < k_vec:
-            var xv = xs.load[width=_VEC_I8](t)
+            var xv = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
             var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
             var pv = xv * wv
             for lane_e in range(_VEC_I8):
@@ -710,7 +748,7 @@ def _norm_gemv_kernel_simd_i8(
             t += _VEC_STRIDE_I8
         var tt = k_vec + lane
         while tt < k:
-            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            acc += ((x[tt] * inv) * gamma[tt]) * (Float32(w[base + tt]) * srow)
             tt += _LANES
     var total = _warp_sum(acc)
     if lane == 0 and j < n:
@@ -957,15 +995,19 @@ def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: 
     `_norm_gemv_kernel_simd_i8`'s docstring for the fuller account of why this shape needs no
     cross-group combine, unlike `_sdpa_kernel_simd`'s or that other kernel's own sum-of-squares
     stage. Every other line is copied byte-for-byte from `_gemv_accum_kernel_i8`.
-    """
-    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
-    var tid = Int(thread_idx.x)
 
-    var s = tid
-    while s < k:
-        xs[s] = x[s]
-        s += _TG
-    barrier()
+    STAGING REMOVED (feat/gemv-streaming, 2026-08-13): the `_STAGE` shared copy of `x` — and the
+    copy loop plus barrier that fed it — are gone; each SIMD group streams `x` straight from device
+    memory inside its dot loop. See `_norm_gemv_kernel_simd_i8`'s STAGING REMOVED note for the full
+    mechanism (the `_STAGE` allocation is what pinned a `d_ff = 5632` model at one resident
+    threadgroup per core; a weight-streaming-bound GEMV does not need the input vector staged).
+    This kernel's staging was a PLAIN COPY (`xs[s] = x[s]`, no arithmetic), so reading `x` directly
+    is bit-for-bit the same values in the same order — this is the one GEMV role where de-staging
+    cannot perturb a single rounding decision. This is also the kernel `down_proj` runs through
+    (`k = d_ff`, the ONLY role whose staging genuinely needed the 6144 tier), so de-staging it is
+    what frees the whole tier from the one-threadgroup-per-core ceiling.
+    """
+    var tid = Int(thread_idx.x)
 
     var lane = tid % _LANES
     var sub = tid // _LANES
@@ -976,9 +1018,37 @@ def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: 
         var srow = wscale[j]
         var srow_v = SIMD[DType.float32, _VEC_I8](srow)
         var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        # Four-step unroll, same ORDER-preserving discipline as `_norm_gemv_kernel_simd_i8`'s:
+        # all four steps' loads in flight before any is consumed, additions still in step order
+        # (feat/gemv-streaming, 2026-08-13).
         var t = lane * _VEC_I8
+        while t + 3 * _VEC_STRIDE_I8 < k_vec:
+            var xv0 = x.load[width=_VEC_I8](t)
+            var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var t1 = t + _VEC_STRIDE_I8
+            var xv1 = x.load[width=_VEC_I8](t1)
+            var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+            var t2 = t + 2 * _VEC_STRIDE_I8
+            var xv2 = x.load[width=_VEC_I8](t2)
+            var wv2 = w.load[width=_VEC_I8](base + t2).cast[DType.float32]() * srow_v
+            var t3 = t + 3 * _VEC_STRIDE_I8
+            var xv3 = x.load[width=_VEC_I8](t3)
+            var wv3 = w.load[width=_VEC_I8](base + t3).cast[DType.float32]() * srow_v
+            var pv0 = xv0 * wv0
+            for lane_e in range(_VEC_I8):
+                acc += pv0[lane_e]
+            var pv1 = xv1 * wv1
+            for lane_e2 in range(_VEC_I8):
+                acc += pv1[lane_e2]
+            var pv2 = xv2 * wv2
+            for lane_e3 in range(_VEC_I8):
+                acc += pv2[lane_e3]
+            var pv3 = xv3 * wv3
+            for lane_e4 in range(_VEC_I8):
+                acc += pv3[lane_e4]
+            t += 4 * _VEC_STRIDE_I8
         while t < k_vec:
-            var xv = xs.load[width=_VEC_I8](t)
+            var xv = x.load[width=_VEC_I8](t)
             var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
             var pv = xv * wv
             for lane_e in range(_VEC_I8):
@@ -986,7 +1056,7 @@ def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: 
             t += _VEC_STRIDE_I8
         var tt = k_vec + lane
         while tt < k:
-            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            acc += x[tt] * (Float32(w[base + tt]) * srow)
             tt += _LANES
     var total = _warp_sum(acc)
     if lane == 0 and j < n:
@@ -1381,10 +1451,30 @@ def _norm_gemv2_swiglu_kernel_simd_i8(
 
     19 barriers per launch (`8 + 6 + 5`, ignoring the one unrelated staging barrier that protects
     `xs`) collapse to 2. Every other line is copied byte-for-byte from `_norm_gemv2_swiglu_kernel_i8`.
+
+    STAGING REMOVED (feat/gemv-streaming, 2026-08-13): same change, same rationale, same
+    bit-for-bit discipline as `_norm_gemv_kernel_simd_i8`'s STAGING REMOVED note documents — the
+    `_STAGE` shared materialization of the normalized vector is gone, and BOTH the gate and the up
+    dot loops apply `(x * inv) * gamma` on the fly from device memory, each with its own weight row
+    and scale. This is the LARGEST single GEMV role of a decode step on TinyLlama-class models
+    (2 × `d_ff` weight rows streamed per layer), and its old staging barrier disappears with the
+    staging array; only `grp` (sum-of-squares combine) and `gsh` (gate→combine handoff) remain in
+    threadgroup memory, `_SUBS` floats each.
+
+    GATE/UP FUSED INTO ONE PASS (feat/gemv-streaming, 2026-08-13): the gate and up dots are the
+    SAME `(x * inv) * gamma` vector against two different weight rows (row `j` and row
+    `n_ff + j`), yet the two-pass form streamed `x` and `gamma` twice, paid a mid-kernel
+    `barrier()` to hand the gate scalar to the combine through `gsh`, and kept each threadgroup's
+    weight streams serial (all gate rows, then all up rows). The fused form runs ONE loop per
+    output column with TWO register accumulators — `acc` for the gate row, `acc2` for the up row —
+    loading `x` and `gamma` once per step and both weight rows alongside them, then reduces each
+    accumulator with its own `_warp_sum` and combines in-lane. Every per-accumulator addition still
+    arrives in the SAME element order the separate loops produced (the two accumulators merely
+    interleave where the old passes serialized), so both partial sums are bit-for-bit the old ones
+    and the SwiGLU combine is untouched. The `gsh` array and its barrier are gone; `grp` is the
+    only threadgroup allocation left. Measured effect recorded in REALRACE_RESULTS.md.
     """
-    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
-    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
     var lane = tid % _LANES
     var sub = tid // _LANES
@@ -1404,60 +1494,64 @@ def _norm_gemv2_swiglu_kernel_simd_i8(
         ss_total += grp[g]
     var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
 
-    var s = tid
-    while s < k:
-        xs[s] = x[s] * inv * gamma[s]
-        s += _TG
-    barrier()
-
     var j = Int(block_idx.x) * _SUBS + sub
     var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+    var inv_v = SIMD[DType.float32, _VEC_I8](inv)
 
-    # ── gate ────────────────────────────────────────────────────────────────────
+    # ── gate + up in one pass: two register accumulators, shared x/gamma loads; the loop is
+    # UNROLLED TWO STEPS with the same ORDER-preserving discipline as the other GEMV kernels ──
     var acc = Float32(0.0)
+    var acc2 = Float32(0.0)
     if j < n_ff:
         var base = j * k
+        var base2 = (n_ff + j) * k
         var srow = wscale[j]
         var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var srow2 = wscale[n_ff + j]
+        var srow2_v = SIMD[DType.float32, _VEC_I8](srow2)
         var t = lane * _VEC_I8
+        while t + _VEC_STRIDE_I8 < k_vec:
+            var xv0 = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
+            var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var wv02 = w.load[width=_VEC_I8](base2 + t).cast[DType.float32]() * srow2_v
+            var t1 = t + _VEC_STRIDE_I8
+            var xv1 = (x.load[width=_VEC_I8](t1) * inv_v) * gamma.load[width=_VEC_I8](t1)
+            var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+            var wv12 = w.load[width=_VEC_I8](base2 + t1).cast[DType.float32]() * srow2_v
+            var pv0 = xv0 * wv0
+            var pv02 = xv0 * wv02
+            for lane_e in range(_VEC_I8):
+                acc += pv0[lane_e]
+            for lane_e2 in range(_VEC_I8):
+                acc2 += pv02[lane_e2]
+            var pv1 = xv1 * wv1
+            var pv12 = xv1 * wv12
+            for lane_e3 in range(_VEC_I8):
+                acc += pv1[lane_e3]
+            for lane_e4 in range(_VEC_I8):
+                acc2 += pv12[lane_e4]
+            t += 2 * _VEC_STRIDE_I8
         while t < k_vec:
-            var xv = xs.load[width=_VEC_I8](t)
+            var xv = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
             var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var wv2 = w.load[width=_VEC_I8](base2 + t).cast[DType.float32]() * srow2_v
             var pv = xv * wv
+            var pv2 = xv * wv2
             for lane_e in range(_VEC_I8):
                 acc += pv[lane_e]
+            for lane_e2 in range(_VEC_I8):
+                acc2 += pv2[lane_e2]
             t += _VEC_STRIDE_I8
         var tt = k_vec + lane
         while tt < k:
-            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            var xtt = (x[tt] * inv) * gamma[tt]
+            acc += xtt * (Float32(w[base + tt]) * srow)
+            acc2 += xtt * (Float32(w[base2 + tt]) * srow2)
             tt += _LANES
     var gate_total = _warp_sum(acc)
-    if lane == 0:
-        gsh[sub] = gate_total
-    barrier()
-
-    # ── up ──────────────────────────────────────────────────────────────────────
-    var acc2 = Float32(0.0)
-    if j < n_ff:
-        var base2 = (n_ff + j) * k
-        var srow2 = wscale[n_ff + j]
-        var srow2_v = SIMD[DType.float32, _VEC_I8](srow2)
-        var t2 = lane * _VEC_I8
-        while t2 < k_vec:
-            var xv2 = xs.load[width=_VEC_I8](t2)
-            var wv2 = w.load[width=_VEC_I8](base2 + t2).cast[DType.float32]() * srow2_v
-            var pv2 = xv2 * wv2
-            for lane_e2 in range(_VEC_I8):
-                acc2 += pv2[lane_e2]
-            t2 += _VEC_STRIDE_I8
-        var tt2 = k_vec + lane
-        while tt2 < k:
-            acc2 += xs[tt2] * (Float32(w[base2 + tt2]) * srow2)
-            tt2 += _LANES
     var up_total = _warp_sum(acc2)
     if lane == 0 and j < n_ff:
-        var g = gsh[sub]
-        act[j] = (g / (1.0 + exp(-g))) * up_total
+        act[j] = (gate_total / (1.0 + exp(-gate_total))) * up_total
 
 
 def _norm_gemv2_swiglu_kernel_i4(
@@ -2913,8 +3007,17 @@ def _lmhead_argmax_kernel_simd_i8(
     byte-for-byte from `_lmhead_argmax_kernel_i8`, because the math this kernel computes must be,
     and is verified to be, IDENTICAL; only the summation order across lanes/groups (and which
     barriers that reordering makes unnecessary) differs.
+
+    STAGING REMOVED (feat/gemv-streaming, 2026-08-13): the same change as
+    `_norm_gemv_kernel_simd_i8`'s STAGING REMOVED note, for the same reason — the `_STAGE` shared
+    materialization of the normalized vector pinned this kernel at one resident threadgroup per
+    core on 6144-tier builds, and the grid of `_LM_BLOCKS` threadgroups streaming the vocabulary
+    rows is weight-bound, not input-bound. Each dot loop applies `(x * inv) * gamma` on the fly
+    from device memory with the SAME left-to-right Float32 expression the staging loop evaluated,
+    reproducing every staged value bit-for-bit; the staging barrier disappears with the staging
+    array, and the per-`it`-iteration reuse of the normalized vector becomes a re-read of two
+    SLC/L2-resident `k`-vectors instead of a shared-memory hit.
     """
-    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var si = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
@@ -2938,19 +3041,14 @@ def _lmhead_argmax_kernel_simd_i8(
         ss_total += grp[g]
     var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
 
-    # ── 2. stage the normalized, gamma-scaled vector in threadgroup memory ──────
-    var st0 = tid
-    while st0 < k:
-        xs[st0] = x[st0] * inv * gamma[st0]
-        st0 += _TG
-    barrier()
-
-    # ── 3. one SIMD group per output column, single-level SIMD-shuffle reduction, no barrier at
-    # all across the whole `it` loop -- `red[]` is gone entirely, `best`/`best_i` are registers ──
+    # ── 2. one SIMD group per output column, single-level SIMD-shuffle reduction, no barrier at
+    # all across the whole `it` loop -- `red[]` is gone entirely, `best`/`best_i` are registers;
+    # the normalized input is applied on the fly (no `_STAGE` staging) ──────────────────────────
     var stride_cols = Int(grid_dim.x) * _SUBS
     var best = _NEG_HUGE
     var best_i = Int32(-1)
     var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+    var inv_v = SIMD[DType.float32, _VEC_I8](inv)
 
     for it in range(n_iters):
         var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
@@ -2960,8 +3058,22 @@ def _lmhead_argmax_kernel_simd_i8(
             var srow = wscale[j]
             var srow_v = SIMD[DType.float32, _VEC_I8](srow)
             var t = lane * _VEC_I8
+            # Two-step unroll, same ORDER-preserving discipline as the GEMV triple's.
+            while t + _VEC_STRIDE_I8 < k_vec:
+                var xv0 = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
+                var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+                var t1 = t + _VEC_STRIDE_I8
+                var xv1 = (x.load[width=_VEC_I8](t1) * inv_v) * gamma.load[width=_VEC_I8](t1)
+                var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+                var pv0 = xv0 * wv0
+                for lane_e in range(_VEC_I8):
+                    acc += pv0[lane_e]
+                var pv1 = xv1 * wv1
+                for lane_e2 in range(_VEC_I8):
+                    acc += pv1[lane_e2]
+                t += 2 * _VEC_STRIDE_I8
             while t < k_vec:
-                var xv = xs.load[width=_VEC_I8](t)
+                var xv = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
                 var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
                 var pv = xv * wv
                 for lane_e in range(_VEC_I8):
@@ -2969,7 +3081,7 @@ def _lmhead_argmax_kernel_simd_i8(
                 t += _VEC_STRIDE_I8
             var tt = k_vec + lane
             while tt < k:
-                acc += xs[tt] * (Float32(w[base + tt]) * srow)
+                acc += ((x[tt] * inv) * gamma[tt]) * (Float32(w[base + tt]) * srow)
                 tt += _LANES
         var total = _warp_sum(acc)
         if lane == 0 and j < n:
@@ -3014,8 +3126,12 @@ def _lmhead_logits_kernel_simd_i8(
     written exactly once, by exactly one SIMD group (the `j = block * _SUBS + sub + it * stride`
     partition covers `[0, n)` exactly once, `n_iters = ceil(n / (grid * _SUBS))`), so there is
     nothing to reduce. 9 arguments (the argmax kernel's 10 minus the two block outputs, `logits`
-    taking the first slot)."""
-    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    taking the first slot).
+
+    STAGING REMOVED (feat/gemv-streaming, 2026-08-13): the same de-staging as its argmax twin
+    (see `_lmhead_argmax_kernel_simd_i8`'s STAGING REMOVED note) — the `_STAGE` shared vector is
+    gone and each dot loop applies `(x * inv) * gamma` on the fly with the identical left-to-right
+    Float32 expression, so `logits[j]` stays bit-for-bit the value the argmax kernel compares."""
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
     var lane = tid % _LANES
@@ -3038,16 +3154,11 @@ def _lmhead_logits_kernel_simd_i8(
         ss_total += grp[g]
     var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
 
-    # ── 2. stage the normalized, gamma-scaled vector in threadgroup memory (byte-identical) ──
-    var st0 = tid
-    while st0 < k:
-        xs[st0] = x[st0] * inv * gamma[st0]
-        st0 += _TG
-    barrier()
-
-    # ── 3. same per-column dot products; write them out instead of argmaxing them ──
+    # ── 2. same per-column dot products (on-the-fly normalization, no `_STAGE` staging); write
+    # them out instead of argmaxing them ──
     var stride_cols = Int(grid_dim.x) * _SUBS
     var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+    var inv_v = SIMD[DType.float32, _VEC_I8](inv)
 
     for it in range(n_iters):
         var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
@@ -3057,8 +3168,22 @@ def _lmhead_logits_kernel_simd_i8(
             var srow = wscale[j]
             var srow_v = SIMD[DType.float32, _VEC_I8](srow)
             var t = lane * _VEC_I8
+            # Two-step unroll, same ORDER-preserving discipline as the argmax twin's.
+            while t + _VEC_STRIDE_I8 < k_vec:
+                var xv0 = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
+                var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+                var t1 = t + _VEC_STRIDE_I8
+                var xv1 = (x.load[width=_VEC_I8](t1) * inv_v) * gamma.load[width=_VEC_I8](t1)
+                var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+                var pv0 = xv0 * wv0
+                for lane_e in range(_VEC_I8):
+                    acc += pv0[lane_e]
+                var pv1 = xv1 * wv1
+                for lane_e2 in range(_VEC_I8):
+                    acc += pv1[lane_e2]
+                t += 2 * _VEC_STRIDE_I8
             while t < k_vec:
-                var xv = xs.load[width=_VEC_I8](t)
+                var xv = (x.load[width=_VEC_I8](t) * inv_v) * gamma.load[width=_VEC_I8](t)
                 var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
                 var pv = xv * wv
                 for lane_e in range(_VEC_I8):
@@ -3066,7 +3191,7 @@ def _lmhead_logits_kernel_simd_i8(
                 t += _VEC_STRIDE_I8
             var tt = k_vec + lane
             while tt < k:
-                acc += xs[tt] * (Float32(w[base + tt]) * srow)
+                acc += ((x[tt] * inv) * gamma[tt]) * (Float32(w[base + tt]) * srow)
                 tt += _LANES
         var total = _warp_sum(acc)
         if lane == 0 and j < n:

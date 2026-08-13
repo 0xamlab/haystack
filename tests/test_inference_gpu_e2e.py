@@ -166,8 +166,12 @@ def test_sdk_decode_06b_matches_campaign_oracle() -> None:
     assert not result.stopped_on_eos
     # Campaign bands: cold first prefill lands well under the warm resident rate but far above
     # anything CPU-shaped; decode sits in the long-established 250-280 tok/s single-stream band.
+    # feat/gemv-streaming (2026-08-13): the de-staged + fused + unrolled int8 decode GEMV kernels
+    # lifted 0.6B single-stream decode to ~330-350 tok/s (measured 346 interleaved vs the pre-
+    # change worker's 301 on the same harness, oracle tokens unchanged), so the ceiling moved up;
+    # the floor still guards against a regression.
     assert result.prefill_tokens_per_sec > 1000.0
-    assert 200.0 < result.decode_tokens_per_sec < 330.0
+    assert 200.0 < result.decode_tokens_per_sec < 420.0
     assert result.dispatches_per_token > 0
 
 

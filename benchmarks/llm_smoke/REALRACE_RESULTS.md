@@ -12290,3 +12290,90 @@ model, so the raw question form trips its template into an early EOS (statement 
 attention-forge FAST path still assumes QK-norm/d_head=128 -- a llama d_head=128 model (e.g. 3.x 8B)
 runs correct on the parametric path but not the fast path yet. Remaining for full parity: llama-family
 tokenizer, rope_scaling (llama-3.1+), and AF-blob QK-norm variants for the llama d_head=128 fast path.
+
+---
+
+## Llama-vs-llama.cpp BASELINE -- we currently TRAIL; root cause = legacy path (2026-08-13)
+
+First llama-on-llama.cpp race (TinyLlama-1.1B-Chat-v1.0, M4 Max, llama.cpp build 10210 Metal,
+converted F16 GGUF from the SAME safetensors Algenta ran + a q8_0 quant for the quant-matched arm):
+
+| Arm | TinyLlama decode tok/s | prefill (pp512) |
+|---|---|---|
+| Algenta int8 (steady-state, 3 runs) | 174 | (6-tok prompt, n/a) |
+| llama.cpp F16 | ~192 (189.9/194.1) | ~6580 |
+| llama.cpp Q8_0 (quant-matched) | ~302 | ~6260 |
+
+VERDICT: we TRAIL llama.cpp on llama decode -- 9% vs F16, 42% vs quant-matched Q8_0. Sanity check
+validates the harness: llama.cpp Qwen3-0.6B F16 = 265.7 tok/s here vs ~253 prior races (consistent).
+
+ROOT CAUSE (normalized for model size): Qwen3-0.6B runs the FAST native path (d_head=128, packed-F16
+KV, split-K decode) at ~300 tok/s = ~500 tok/s per B-params; TinyLlama runs the LEGACY parametric
+path (d_head=64 routes off the AF/native path, natural-F32 KV + single-dispatch sdpa) at 174 tok/s =
+~158 tok/s per B-params. The legacy path is ~3x less efficient per-param. The fast path is hardwired
+to d_head=128 + QK-norm, so llama models can't use it. NOT a quant or GEMV problem.
+
+FIX PLAN: bring llama onto the native fast path: (1) no-QK-norm AF KV-producer blob variant
+(packed-F16 KV without the RMSNorm); (2) a d_head=64 split-K decode attention variant. Expected to
+lift llama decode from the legacy ~158 toward the native ~500 tok/s-per-B-params regime = past
+llama.cpp Q8_0's 302.
+
+---
+
+## feat/gemv-streaming -- GEMV weight-streaming overhaul lifts TinyLlama 174->289 tok/s (1.64x), Qwen3 +15% (2026-08-13)
+
+CORRECTS the previous entry's diagnosis. The GPU-counter profile (tinyllama_probe_counters_decode)
+showed GEMV projections = 87.6% of per-token GPU time and Algenta int8 streaming at only ~181 GB/s
+(33% of the M4 Max ~546 GB/s ceiling) while moving HALF the bytes llama.cpp F16 moves -- so the gap
+WAS kernel efficiency in the decode GEMV triple, not (only) the attention path. Branch
+`feat/gemv-streaming` rebuilt the int8 decode GEMV kernels in `residentk/kernels.mojo`:
+
+1. DE-STAGING (the big one). Every fused GEMV kernel staged the k-length input vector into a
+   `_STAGE` shared `stack_allocation` so the 8 output columns could share it. `stack_allocation` size
+   is fixed per pipeline-state object, so TinyLlama (`d_ff=5632` -> `-D ALGENTA_STAGE_6144`) pinned
+   ALL of them at 24 KiB threadgroup memory = ONE resident threadgroup per core. A decode GEMV is
+   weight-streaming bound (n*k int8 bytes streamed, the k-vector touched once per row), so the
+   staging copy was a rounding error of traffic buying a 4-8x occupancy hit. Removed it: the
+   o_proj/down_proj accum kernel reads x straight from device (was a plain copy, bit-for-bit); the
+   norm + gate/up + lm_head kernels apply `(x*inv)*gamma` on the fly with the SAME left-to-right
+   Float32 expression the staging loop evaluated (every staged value reproduced bit-for-bit). Shared
+   drops from 24 KiB to 32-64 bytes/TG; the lm_head argmax/logits pair de-staged too.
+2. FUSED GATE/UP SWIGLU into one pass (two register accumulators, one x/gamma stream, dropped the
+   mid-kernel barrier + gsh handoff). Largest single role.
+3. ORDER-PRESERVING UNROLLS. Two-step unroll across all GEMV dot loops (both steps' loads in flight
+   before either is consumed, additions still in step order); the o_proj/down_proj accum loop went to
+   FOUR steps. Every per-lane partial sum stays bit-for-bit, so the greedy sequence is unchanged.
+4. RE-MEASURED `_TG` with the occupancy ceiling gone: 512 (16 cols/TG) LOST ~4%, 128 tied, 256 kept.
+
+MEASURED (harness `benchmarks/llm_smoke/tinyllama_gemv_bench.py`, warmup + median-of-3, interleaved
+baseline/variant same session; TinyLlama-1.1B int8, France prompt, 128 new tokens):
+  * baseline (worker `-llama`): 174.7/175.8/175.9 -> ~175 tok/s
+  * de-staging only: 238 tok/s (1.36x)
+  * + fused swiglu: 265 tok/s
+  * + unrolls + 4-step accum: FINAL 288.1/288.7/290.8 -> ~289 tok/s = 1.64x baseline
+  Per-role GPU-counter before->after (n_keys=7): qkv 0.83->0.50ms, o_proj 0.55->0.30, swiglu
+  2.32->1.25, down_proj 1.37->0.65, lm_head 0.26->0.18; GEMV subtotal 5.07->2.69ms. Implied
+  weight-streaming bandwidth on the big roles now ~390-410 GB/s (was ~181 aggregate).
+
+CORRECTNESS: greedy output byte-identical to baseline across every variant and run (first tokens
+[3900,29889,13,...], full 128-token periodic sequence). Qwen3-0.6B regression: test_inference_gpu_e2e
+6 passed / 1 skipped, oracle token 374 + long-gen + sampling all green -- and the SAME kernels lifted
+Qwen3-0.6B single-stream decode 301->346 tok/s (+15%, interleaved A/B), so the shared-kernel change is
+a win there too (the stale `< 330` throughput ceiling in that test raised to `< 420` with the floor
+untouched). Kernel-level suite test_residentk_gemv_simd_kernel.mojo does not compile on this pinned
+toolchain on origin/main either (DeviceContext.enqueue_function_unchecked API drift) -- pre-existing,
+not caused by this change; the e2e oracle gates above carry the correctness evidence.
+
+HONEST REMAINDER: 289 still trails llama.cpp Q8_0's ~302 by ~4%. The probe's shallow-depth floor is
+~304-306 tok/s; the e2e number averages over the growing context (n_keys 7->134 crosses into the deep
+split-K table at >=32, where attention grows). The remaining gap is attention/context-scaling and
+host/dispatch overhead, NOT the GEMV weight stream -- the GEMV triple now runs at ~390-410 GB/s, above
+llama.cpp Q8_0's ~314 GB/s aggregate. REFUTED on the way (measured, not retried): prefetching the first
+unrolled step across the norm reduction (register pressure, -1%); 4-step unroll on the norm/swiglu
+kernels (register pressure, ~-3%, kept 2-step there); 16-columns-per-TG (_TG=512, -4%); 128-bit
+reinterpreted int8 loads (never built -- lane-assignment changes break the byte-identical summation
+order, and the 32-bit manual-bitcast ancestor was already refuted).
+
+NOTE: the earlier "FIX PLAN" above (no-QK-norm AF KV-producer blob + d_head=64 split-K) is the
+COMPLEMENTARY next lever for deep-context llama decode (attention is ~22% of the step at 1K keys);
+this entry closed the GEMV weight-streaming gap that dominated short-context decode.
