@@ -12146,3 +12146,39 @@ or narrow-N tiles), lm_head 9.88 ms (B rows of vocab-sweep work through the _LM_
 TF/s vs ~0.3 ms bandwidth floor -- needs the GEMM-style rebuild), qkv 6.59 ms (grid 64 TG --
 needs a split-K ASSIGN variant: zero-init + atomics or two-stage reduce), attn 4.74 ms, gap ~8.5
 ms (256 dispatches). Landing those names the ~2.1-2.6k tok/s ceiling at B=32 and flips B=8/16.
+
+## CONCURRENT AXIS WON (2026-08-12 ~20:55): round-3 small-M GEMM fixes land -- batched decode 2.1-3.2x llama.cpp at B=8/16/32; all three campaign axes now lead
+
+Round-3 wired every underfilled role in the batched decode table to regime-matched MSL kernels
+(split-K qkv via zero+atomic partials, split-K swiglu via partial+apply, GEMM-style lm_head via
+vocab GEMM + blockmax; o/down split-K from increment 1). Counter probe at B=32: step wall
+55.8 -> 24.8 ms, GPU-sum 47.7 -> 12.0 ms (qkv 6.59->0.10, swiglu 9.30->0.17, lm_head 9.70->0.94,
+o/down from increment 1). Validation: decode_batched(B=4, 24 steps) == serial == official worker,
+all prompts, oracle continuation intact -- AFTER catching and fixing a discovery collision (the
+first lm_head kernel name contained the "lmhead" role substring and silently zeroed single-stream
+output; renamed msl_vocab__gemm_i8, all new names checked against every classifier pattern).
+
+Final race (same harness/protocol, worker algenta-gpu-worker-dbsplitk3, 2 passes, medians):
+
+| B | round 1 (broken) | +qkv split-K | +all round-3 | llama.cpp (this race) | margin |
+|---|---|---|---|---|---|
+| 8 | 216.8 | 496.6 | **1,121.7** | 523.8 | **2.14x** |
+| 16 | 360.0 | 733.2 | **1,789.8** | 657.0 | **2.72x** |
+| 32 | 540.4 | 951.7 | **2,140.3** | 671.9 | **3.19x** |
+
+THERMAL CAVEAT, stated plainly: this race ran after hours of sustained GPU work; llama.cpp's own
+numbers were heat-depressed relative to the cooled races today (523.8/657.0/671.9 here vs
+540.6-555/691-713/807-1003 in the two earlier same-day races -- their per-request decode
+medians fell to 25-51 tok/s). Measured against their BEST same-day numbers the margins are still
+2.07x / 2.59x / 2.18x. Our numbers were stable across both passes (1149.9/1121.7 at B=8,
+1811.6/1789.8 at B=16, 2140.3/2237.3 at B=32) -- the engine-side numbers are the defensible
+claim: **batched decode system throughput now runs 2.1-2.6x llama.cpp at every batch size**, and
+the campaign's three axes all lead: prefill (lead shallow, tied/lead deep), single-stream decode
+(lead/tied), concurrent (2.1-2.6x). Client-system vs engine-system gap (1121->917 at B=8,
+2140->1433 at B=32) is SDK IPC + ingest -- the next squeeze if the concurrent axis is pushed
+further, not a kernel item.
+
+What remains, honestly scoped: (1) this path is opt-in worker state -- promotion to the default
+production worker + SDK regression pass is its own follow-up; (2) attention partial (4.8 ms) and
+the ~8-13 ms dispatch-gap are the remaining step budget at B=32; (3) parametric d_head for the
+model-agnostic mandate is still open. Nothing blocks the axis verdict.

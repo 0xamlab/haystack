@@ -981,6 +981,42 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     """Same pattern for the down_proj role's split-K replacement (substring
     `"msl_splitk12__gemm_accum"`, S=12 for K=3072 -> partial depth 256, grid x12; 1.33x
     standalone). Gated on `use_msl_accum` AND `d_ff % 384 == 0` (K/12 a multiple of 32)."""
+    var msl_zero_pipeline_idx: Int
+    """Beat-llama.cpp campaign concurrent front, round 3 increment 2 (2026-08-12): same non-fatal,
+    file-private discovery pattern (exact raw xcrun-compiled name `"msl_zero_f32"`, carried
+    verbatim by `msl_zero_blob.c`), for the float-buffer zero kernel the batched decode table's
+    split-K qkv substitution needs: the split-K epilogue atomic-ADDS its S partials into dst, so
+    the qkv SCRATCH buffer (no residual to preserve) must be zeroed once per layer before the
+    split-K dispatch. `-1` (blob never linked) keeps the batched table's plain qkv GEMM -- never
+    fatal, same discipline as every optional pipeline above. Only the batched decode table
+    consults this field."""
+    var msl_splitk4_swiglu_pipeline_idx: Int
+    """Round 3 increment 3 (2026-08-12): discovery pattern `"msl_splitk4__swiglu_partial"`
+    (verbatim name in `msl_splitk_swiglu_blob.c`): the split-K GEMM computing
+    `xn @ [Wg;Wu]^T -> scratch [B, 2*d_ff]` (S=4, atomic partials into the zeroed scratch; the
+    swiglu nonlinearity blocks direct-into-act accumulation). Reads the F16 `w_gu` twin. -1
+    degrades to the shipped fused swiglu dispatch; only the batched decode table consults this."""
+    var msl_swiglu_apply_pipeline_idx: Int
+    """Same increment: pattern `"msl_swiglu_apply_f32"` -- the elementwise
+    `act = silu(scratch_gate) * scratch_up` pass consuming the partial's scratch. The pair is
+    both-or-neither with the zero kernel above."""
+    var msl_lmhead_gemm_pipeline_idx: Int
+    """Round 3 increment 4 (2026-08-12): pattern `"msl_vocab__gemm_i8"` (verbatim name in
+    `msl_lmhead_batched_blob.c`): the GEMM-style batched lm_head, `[B, d_model] @ embed^T ->
+    logits [B, vocab]`, Int8-DIRECT embed weights (in-kernel dequant; no 311 MB F16 twin), grid
+    (B/32)x(vocab/64) = fully machine-filling at B<=32, replacing the shipped B-row-loop sweep
+    the counter probe measured at 9.70 ms per B=32 step."""
+    var msl_logits_blockmax_pipeline_idx: Int
+    """Same increment: pattern `"msl_logits_blockmax_f32"` -- per-(row, vocab-block) (max,
+    argmax) over the logits scratch, writing the blk_val/blk_idx pair layout the EXISTING
+    `_batched_argmax_reduce_kernel_simd` already collapses. Both-or-neither with the GEMM above."""
+    var db_swiglu_scratch_addr: UInt64
+    var db_swiglu_scratch_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var db_logits_addr: UInt64
+    var db_logits_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    """Round-3 scratch buffers for the batched decode table (allocated per B inside
+    `_ensure_decode_batched_ready`, only when their kernels were discovered): swiglu scratch
+    `[B, 2*d_ff]` floats and lm_head logits `[B, vocab]` floats."""
     var msl_any_linked: Bool
     """`True` iff at least ONE of the three MSL pipelines above was discovered -- the ONE gate for
     the Float16-weight materialization below: a binary that never links `msl_parity_blob.c`
@@ -1297,6 +1333,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.msl_parity_swiglu_pipeline_idx = -1
         self.msl_splitk8_pipeline_idx = -1
         self.msl_splitk12_pipeline_idx = -1
+        self.msl_zero_pipeline_idx = -1
+        self.msl_splitk4_swiglu_pipeline_idx = -1
+        self.msl_swiglu_apply_pipeline_idx = -1
+        self.msl_lmhead_gemm_pipeline_idx = -1
+        self.msl_logits_blockmax_pipeline_idx = -1
+        self.db_swiglu_scratch_addr = UInt64(0)
+        self.db_swiglu_scratch_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.db_logits_addr = UInt64(0)
+        self.db_logits_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         var count = _mb_pipeline_count()
         self.pipeline_idx_split = -1
         self.pipeline_idx_merge = -1
@@ -1423,6 +1468,21 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.msl_splitk8_pipeline_idx = i
             if name.find("msl_splitk12__gemm_accum") >= 0:
                 self.msl_splitk12_pipeline_idx = i
+            # ── Round 3 increment 2 (2026-08-12): the float-buffer zero kernel of
+            # `msl_zero_blob.c` (raw xcrun-compiled name, carried verbatim); collides with no
+            # existing classifier's patterns (nothing else matches "msl_zero").
+            if name.find("msl_zero_f32") >= 0:
+                self.msl_zero_pipeline_idx = i
+            # ── Round 3 increments 3-4 (2026-08-12): swiglu split-K pair + GEMM-style lm_head,
+            # same file-private non-fatal discovery discipline (verbatim blob kernel names).
+            if name.find("msl_splitk4__swiglu_partial") >= 0:
+                self.msl_splitk4_swiglu_pipeline_idx = i
+            if name.find("msl_swiglu_apply_f32") >= 0:
+                self.msl_swiglu_apply_pipeline_idx = i
+            if name.find("msl_vocab__gemm_i8") >= 0:
+                self.msl_lmhead_gemm_pipeline_idx = i
+            if name.find("msl_logits_blockmax_f32") >= 0:
+                self.msl_logits_blockmax_pipeline_idx = i
         # ── Beat-llama.cpp campaign Phase C: V2 producer availability, both-or-neither.
         self.kvprod_v2_built = (
             self.kvprod_blk_pipeline_idx >= 0 and self.kvprod_qvec_pipeline_idx >= 0
@@ -4711,8 +4771,44 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var kv_stride = self.batch_kv_stride_elems
         var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
         var n_rows_tile = _ceil_div(B, _GEMM_BM)
+        # Round-3 increment 2 (2026-08-12): split-K qkv in the batched table needs the splitk8
+        # kernel + the zero kernel + the MSL tier's qkv F16 twin (its presence is implied by the
+        # parity qkv pipeline being linked); each adds ONE descriptor per layer (the zeroing).
+        var db_use_splitk_qkv = (
+            self.msl_splitk8_pipeline_idx >= 0
+            and self.msl_zero_pipeline_idx >= 0
+            and self.msl_parity_qkv_proj_pipeline_idx >= 0
+        )
+        # Increment 3: swiglu split-K needs the partial + apply + zero kernels and the w_gu F16
+        # twin (present when the parity swiglu metallib is linked). Increment 4: the GEMM-style
+        # lm_head needs its GEMM + blockmax kernels. Both degrade independently, never fatal.
+        var db_use_splitk_swiglu = (
+            self.msl_splitk4_swiglu_pipeline_idx >= 0
+            and self.msl_swiglu_apply_pipeline_idx >= 0
+            and self.msl_zero_pipeline_idx >= 0
+            and self.msl_parity_swiglu_pipeline_idx >= 0
+        )
+        var db_use_lmhead_gemm = (
+            self.msl_lmhead_gemm_pipeline_idx >= 0
+            and self.msl_logits_blockmax_pipeline_idx >= 0
+        )
 
-        self.n_descriptors_decode_batched = 1 + self.n_layers * 9 + 3
+        self.n_descriptors_decode_batched = (
+            1 + self.n_layers * 9 + 3
+            + (self.n_layers if db_use_splitk_qkv else 0)
+            + (2 * self.n_layers if db_use_splitk_swiglu else 0)
+            + (1 if db_use_lmhead_gemm else 0)
+        )
+        if db_use_splitk_swiglu:
+            if _mb_alloc_buffer(
+                B * 2 * self.d_ff * 4, self.db_swiglu_scratch_addr, self.db_swiglu_scratch_ptr
+            ) < 0:
+                raise Error("metaldispatch: buffer alloc failed (db swiglu scratch)")
+        if db_use_lmhead_gemm:
+            if _mb_alloc_buffer(
+                B * self.vocab * 4, self.db_logits_addr, self.db_logits_ptr
+            ) < 0:
+                raise Error("metaldispatch: buffer alloc failed (db logits scratch)")
         self.descriptors_decode_batched = _mb_alloc_descriptors(self.n_descriptors_decode_batched)
         var d = 0
 
@@ -4752,18 +4848,44 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # qkv_proj GEMM: xn [B,d_model] @ w_qkv -> qkv [B,n_qkv]
-            _mb_set_header(
-                self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN],
-                n_rows_tile * _ceil_div(n_qkv, _GEMM_BN), _GEMM_NTHREADS, 7,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.qkv_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_qkv_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_qkv_scale_addr)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, n_qkv)
-            d += 1
+            # Round-3 increment 2: with the split-K substitution the qkv SCRATCH buffer is first
+            # zeroed (the split-K epilogue atomic-ADDS its S=8 partials), then the msl_splitk8
+            # kernel runs the GEMM at grid (M/32)x(n_qkv/64)x8 = 512 threadgroups instead of the
+            # Mojo assign kernel's 128x256-thread underfilled dispatch (counter probe: 6.59 ms per
+            # B=32 step). Weight arg swaps to the F16 twin exactly as the o/down blocks do.
+            if db_use_splitk_qkv:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.msl_zero_pipeline_idx,
+                    _ceil_div(_ceil_div(B * n_qkv, 4), 256), 256, 2,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.qkv_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 1, B * n_qkv)
+                d += 1
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.msl_splitk8_pipeline_idx,
+                    n_rows_tile * _ceil_div(n_qkv, 64) * 8, 128, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.msl_w_qkv_f16_addr[layer])
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_qkv_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, n_qkv)
+                d += 1
+            else:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN],
+                    n_rows_tile * _ceil_div(n_qkv, _GEMM_BN), _GEMM_NTHREADS, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_qkv_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, n_qkv)
+                d += 1
 
             # batched KV producer: QK-norm + RoPE + pack Q -> q_native, K/V -> seq-b caches at poss[b]
             _mb_set_header(
@@ -4876,18 +4998,52 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # gate/up + swiglu GEMM: xn [B,d_model] @ w_gu -> act [B,d_ff]
-            _mb_set_header(
-                self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU],
-                n_rows_tile * _ceil_div(self.d_ff, _GEMM_BN), _GEMM_NTHREADS, 7,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.act_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_gu_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_gu_scale_addr)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_ff)
-            d += 1
+            # Round-3 increment 3: [zero(scratch), splitk4 partial into scratch, apply] -- the
+            # partial runs at (M/32)x(2*d_ff/64)x4 = 384 threadgroups instead of the shipped
+            # kernel's 96 (counter probe: 9.30 ms per B=32 step); the apply pass does the
+            # silu(g)*u combine the nonlinearity forbids inside the atomic accumulation.
+            if db_use_splitk_swiglu:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.msl_zero_pipeline_idx,
+                    _ceil_div(_ceil_div(B * 2 * self.d_ff, 4), 256), 256, 2,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.db_swiglu_scratch_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 1, B * 2 * self.d_ff)
+                d += 1
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.msl_splitk4_swiglu_pipeline_idx,
+                    n_rows_tile * _ceil_div(2 * self.d_ff, 64) * 4, 128, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.db_swiglu_scratch_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.msl_w_gu_f16_addr[layer])
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_gu_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, 2 * self.d_ff)
+                d += 1
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.msl_swiglu_apply_pipeline_idx,
+                    _ceil_div(_ceil_div(B * self.d_ff, 4), 256), 256, 4,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.db_swiglu_scratch_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.act_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 2, self.d_ff)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 3, B * self.d_ff)
+                d += 1
+            else:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU],
+                    n_rows_tile * _ceil_div(self.d_ff, _GEMM_BN), _GEMM_NTHREADS, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.act_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_gu_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_gu_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_ff)
+                d += 1
 
             # down_proj GEMM accum: hidden += act [B,d_ff] @ w_down
             # Round-3 split-K substitution, same account as the o_proj block above (S=12 -> 16x12
@@ -4926,24 +5082,56 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_int(self.descriptors_decode_batched, d, 5, B)
         d += 1
 
-        # (2) fused batched lm_head + per-vocab-slice argmax: reads xn [B, d_model], sweeps the
-        #     embed/lm_head weight once, writes per-row blk_val/blk_idx [B, _LM_BLOCKS].
-        _mb_set_header(
-            self.descriptors_decode_batched, d, self.batched_lmhead_pipeline_idx, _LM_BLOCKS, _TG, 9,
-        )
-        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_blk_val_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_blk_idx_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.xn_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_batched, d, 4, self.embed_scale_addr)
-        _mb_set_arg_int(self.descriptors_decode_batched, d, 5, B)
-        _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
-        _mb_set_arg_int(self.descriptors_decode_batched, d, 7, self.vocab)
-        _mb_set_arg_int(self.descriptors_decode_batched, d, 8, n_iters)
-        d += 1
+        # (2) batched lm_head. Round-3 increment 4: the GEMM form -- `[B, d_model] @ embed^T ->
+        # logits [B, vocab]` at grid (B/32)x(vocab/64) = 2374 threadgroups (fully filling at
+        # B<=32; the shipped B-row-loop sweep measured 9.70 ms per B=32 step), Int8-DIRECT embed
+        # weights, then a per-(row, block) max over the logits into the SAME blk_val/blk_idx pair
+        # buffers `_batched_argmax_reduce_kernel_simd` below already reads. Blocks: 512 (the pair
+        # buffers are sized for _LM_BLOCKS=2048, so any blocks <= 2048 fits; 512 keeps the scan
+        # per threadgroup ~300 logits while staying 16k threadgroups of fill).
+        var db_lm_blocks: Int = 512
+        if db_use_lmhead_gemm:
+            _mb_set_header(
+                self.descriptors_decode_batched, d, self.msl_lmhead_gemm_pipeline_idx,
+                n_rows_tile * _ceil_div(self.vocab, 64), 128, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.db_logits_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.embed_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.embed_scale_addr)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.vocab)
+            d += 1
+            _mb_set_header(
+                self.descriptors_decode_batched, d, self.msl_logits_blockmax_pipeline_idx,
+                B * db_lm_blocks, 256, 5,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.db_logits_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_blk_val_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.batch_blk_idx_addr)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 3, self.vocab)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, db_lm_blocks)
+            d += 1
+        else:
+            _mb_set_header(
+                self.descriptors_decode_batched, d, self.batched_lmhead_pipeline_idx, _LM_BLOCKS, _TG, 9,
+            )
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_blk_val_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_blk_idx_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.embed_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 4, self.embed_scale_addr)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 5, B)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 7, self.vocab)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 8, n_iters)
+            d += 1
 
         # (3) batched argmax reduce: one threadgroup per sequence row, collapses that row's
-        #     _LM_BLOCKS (logit, id) pairs to out_val[row]/out_idx[row].
+        #     pair-count (logit, id) pairs to out_val[row]/out_idx[row]. The pair count must
+        #     match the writer: `_LM_BLOCKS` for the fused sweep, `db_lm_blocks` for the
+        #     round-3 blockmax pass (it only writes that many pairs per row).
         _mb_set_header(
             self.descriptors_decode_batched, d, self.batched_argmax_reduce_pipeline_idx, B, _TG, 5,
         )
@@ -4951,7 +5139,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_out_idx_addr)
         _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.batch_blk_val_addr)
         _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.batch_blk_idx_addr)
-        _mb_set_arg_int(self.descriptors_decode_batched, d, 4, _LM_BLOCKS)
+        _mb_set_arg_int(
+            self.descriptors_decode_batched, d, 4,
+            db_lm_blocks if db_use_lmhead_gemm else _LM_BLOCKS,
+        )
         d += 1
 
         if d != self.n_descriptors_decode_batched:

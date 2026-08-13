@@ -312,10 +312,14 @@ def main() raises:
     role_names.append("rms_final")
     role_names.append("lmhead_batched")
     role_names.append("argmax_reduce")
+    role_names.append("qkv_zero")
 
-    var role_sum = List[Float64](capacity=13)
-    for r in range(13):
+    var role_sum = List[Float64](capacity=14)
+    for r in range(14):
         role_sum.append(0.0)
+
+    # Layer descriptor stride: 9 (plain table) or 10 (round-3 zero+split-K qkv substitution).
+    var stride = (n_desc - 4) // n_layers
 
     print("")
     print("per-dispatch median ms (first layer + tail):")
@@ -324,18 +328,28 @@ def main() raises:
         var role = 0
         if d == 0:
             role = 0
-        elif d < 1 + n_layers * 9:
-            role = 1 + (d - 1) % 9
+        elif d < 1 + n_layers * stride:
+            var pos = (d - 1) % stride
+            if stride == 10:
+                # [rms1, qkv_zero, qkv, kvprod, partial, merge, o, rms2, swiglu, down]
+                if pos == 0:
+                    role = 1
+                elif pos == 1:
+                    role = 13
+                else:
+                    role = pos
+            else:
+                role = 1 + pos
         else:
-            role = 10 + (d - (1 + n_layers * 9))
+            role = 10 + (d - (1 + n_layers * stride))
         role_sum[role] = role_sum[role] + med
-        if d <= 10 or d >= 1 + n_layers * 9:
+        if d <= 11 or d >= 1 + n_layers * stride:
             print("  d=", d, " role=", role_names[role], " median_ms=", med)
 
     var gpu_sum = 0.0
     print("")
     print("per-role totals (sum of per-dispatch medians across the step):")
-    for r in range(13):
+    for r in range(14):
         gpu_sum = gpu_sum + role_sum[r]
         print("  ", role_names[r], ":", role_sum[r], "ms")
 
