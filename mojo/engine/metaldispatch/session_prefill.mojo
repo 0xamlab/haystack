@@ -137,6 +137,7 @@ a new formula.
 from std.builtin.type_aliases import MutAnyOrigin
 from std.gpu import WARP_SIZE
 from residentk.contract import (
+    RESIDENT_MAX_HEAD_DIM,
     residentk_dispatch_budget_deep,
     residentk_prefill_gemm_use_narrow_tile,
     residentk_splitk_max_n_splits,
@@ -350,6 +351,19 @@ than the legacy kernel's does; 128 is the campaign's first-cut value (the race's
 257-457 sits comfortably above it), flagged for tuning, not claimed optimal. Below threshold --
 and on any binary that never linked the split-K blob -- the naive table stays the one dispatched,
 byte-unmodified."""
+
+comptime _AF_STRUCTURAL_D_HEAD: Int = 128
+"""Beat-llama.cpp campaign, parametric d_head (2026-08-13): the head dimension the fast
+attention-forge path is STRUCTURALLY compiled for -- the steel prefill kernel
+(`grouped_fa_q8_k32_h2_sg8`) takes no d_head argument at all (comptime `_D=128` throughout), and
+kvprod_v2/v3 + the f4u2/i8kv split-K decode partials hard-code a one-simdgroup-per-head lane×4
+layout that covers exactly 128 elements. This is a fact about those kernels, NOT a model value: the
+model's own d_head is read from its config and routed around it. Plan resolution gates
+`af_grouped_fa_available` on `d_head == _AF_STRUCTURAL_D_HEAD`, so any other (valid) d_head is
+degraded onto the runtime-parametric path (`PF_ATTN_OFF` prefill attention `_pf_attn_tiled_kernel_simd`
++ legacy `_sdpa_kernel_simd` decode, both validated for any power-of-two d_head up to
+`RESIDENT_MAX_HEAD_DIM`) instead of computing wrong attention. Named, never a bare literal, per the
+never-hardcode-silently mandate."""
 
 
 def _dequant_i8_into_f16(
@@ -1205,20 +1219,30 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(WARP_SIZE) + " -- _sdpa_kernel_simd's SIMD-group reduction requires every "
                 + "group full; use _MBQwen3I8 (the barrier-tree _sdpa_kernel) for this shape instead"
             )
-        # ── Beat-llama.cpp campaign model-agnosticism audit (2026-08-12): LOUD refusal instead of
-        # silent wrong math. Every kernel this struct can dispatch on the AF/native paths is built
-        # EXCLUSIVELY for d_head=128: the steel prefill kernel (`grouped_fa_q8_k32_h2_sg8`) takes
-        # NO d_head argument at all (comptime `_D=128` throughout), and kvprod_v2 / the naive +
-        # split-K decode attention kernels size their smem staging to `_MAX_HEAD_DIM=128`. A model
-        # with any other d_head that passed the d_head%WARP_SIZE check above (64, 256, ...) would
-        # otherwise compute silently-wrong attention. Parametric-d_head kernels are queued future
-        # work; until then, refuse loudly per the never-hardcode-silently mandate.
-        if d_head != 128:
+        # ── Beat-llama.cpp campaign, parametric d_head (2026-08-13): supersedes the 2026-08-12
+        # blanket `d_head != 128` refusal. The fast attention-forge path (steel prefill, kvprod_v2/
+        # v3, f4u2/i8kv split-K decode partials) is STRUCTURALLY d_head == _AF_STRUCTURAL_D_HEAD,
+        # but this struct ALSO carries a fully runtime-parametric path (PF_ATTN_OFF prefill attention
+        # `_pf_attn_tiled_kernel_simd` + legacy `_sdpa_kernel_simd` decode), validated for any
+        # power-of-two d_head up to RESIDENT_MAX_HEAD_DIM. So a model whose d_head differs from 128
+        # is NOT refused and does NOT run wrong math: plan resolution (both call sites below) gates
+        # `af_grouped_fa_available` on `d_head == _AF_STRUCTURAL_D_HEAD`, which degrades it onto that
+        # parametric path. We refuse ONLY what genuinely cannot run -- a d_head past the parametric
+        # shared-mem ceiling, or a non-power-of-two d_head the residentk reduction is not validated
+        # for -- loudly and by name, never silently wrong.
+        if d_head > RESIDENT_MAX_HEAD_DIM:
             raise Error(
-                "_MBQwen3I8AllSimd7Prefill: d_head=" + String(d_head) + " unsupported -- the "
-                + "attention-forge kernels (steel prefill, kvprod_v2, native decode attention) are "
-                + "built for d_head=128 only (comptime _D/_MAX_HEAD_DIM); refusing loudly instead "
-                + "of computing wrong attention"
+                "_MBQwen3I8AllSimd7Prefill: d_head=" + String(d_head) + " exceeds the parametric "
+                + "ceiling RESIDENT_MAX_HEAD_DIM=" + String(RESIDENT_MAX_HEAD_DIM) + " -- the "
+                + "runtime-parametric prefill/decode attention kernels stage their shared reduction "
+                + "to that ceiling; a larger d_head needs a build staged to its value"
+            )
+        if d_head & (d_head - 1) != 0:
+            raise Error(
+                "_MBQwen3I8AllSimd7Prefill: d_head=" + String(d_head) + " is not a power of two -- "
+                + "the runtime-parametric residentk attention path (the one a d_head != "
+                + String(_AF_STRUCTURAL_D_HEAD) + " model is routed onto) is validated for "
+                + "power-of-two head dims only"
             )
         self.d_model = d_model
         self.h_q = h_q
@@ -1537,7 +1561,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # "explicit request beats default, unconditionally, by construction" account.
         self.plan = requested_plan.resolve(PrefillPipelineAvailability(
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
-            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0,
+            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
+            # ── parametric d_head (2026-08-13): the AF kernels are structural
+            # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
+            and self.d_head == _AF_STRUCTURAL_D_HEAD,
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
             self.gemm_accum_vecload4_pipeline_idx >= 0,
@@ -2093,7 +2120,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         it in any way this method would need to invalidate."""
         self.plan = requested.resolve(PrefillPipelineAvailability(
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
-            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0,
+            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
+            # ── parametric d_head (2026-08-13): the AF kernels are structural
+            # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
+            and self.d_head == _AF_STRUCTURAL_D_HEAD,
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
             self.gemm_accum_vecload4_pipeline_idx >= 0,

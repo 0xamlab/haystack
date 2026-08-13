@@ -12182,3 +12182,44 @@ What remains, honestly scoped: (1) this path is opt-in worker state -- promotion
 production worker + SDK regression pass is its own follow-up; (2) attention partial (4.8 ms) and
 the ~8-13 ms dispatch-gap are the remaining step budget at B=32; (3) parametric d_head for the
 model-agnostic mandate is still open. Nothing blocks the axis verdict.
+
+---
+
+## Parametric d_head -- the model-agnostic mandate increment (2026-08-13)
+
+**What changed.** `_MBQwen3I8AllSimd7Prefill` no longer refuses every `d_head != 128`. It now
+accepts any **power-of-two `d_head` up to `RESIDENT_MAX_HEAD_DIM` (256)** and routes a non-128
+model onto the engine's already-validated runtime-parametric path: plan resolution gates
+`af_grouped_fa_available` on `d_head == _AF_STRUCTURAL_D_HEAD`, so a d_head != 128 request for the
+fast attention-forge plan degrades to `PF_ATTN_OFF` (prefill attention `_pf_attn_tiled_kernel_simd`
++ legacy `_sdpa_kernel_simd` decode, both parametric for power-of-two d_head <= 256) instead of
+computing wrong attention. d_head == 128 keeps the exact fast path -- the gate adds a literal
+`and True`, byte-for-byte unchanged. The prior blanket refusal (2026-08-12 audit) is superseded;
+only what genuinely cannot run is still refused, loudly and by name: `d_head > 256` (parametric
+shared-mem ceiling) and non-power-of-two d_head (the residentk reduction is not validated for it).
+
+**Why.** The owner mandate: "never hardcode values -- must work on any Qwen/other LLM model." The
+fast AF kernels (steel prefill comptime `_D=128`, kvprod_v3/f4u2/i8kv one-simdgroup lane-x4) are
+structurally 128; the engine has always ALSO carried the parametric path, so the honest fix is
+routing, not a silent hardcode or a blanket refusal.
+
+**Verification (same session, M4 Max, worker `algenta-gpu-worker-dhead` rebuilt from this tree on
+Mojo 1.0.0b2).** `tests/test_inference_gpu_e2e.py`: **6 passed, 1 skipped** -- the campaign oracle
+(`test_sdk_decode_06b_matches_campaign_oracle`, first token 374 + byte-identical continuation),
+long-generation-past-512, quantized-cache token-identity, and sampling greedy-equivalence/
+determinism all green; the skip is the 1.7B test (needs the separate stage-6144 worker). Decisive
+for the no-regression claim: the d_head=128 decode ran at **199 dispatches/token -- the documented
+AF-nomirror-MSL production budget -- i.e. the FAST path was dispatched, not the degraded parametric
+one**, and the rebuilt worker's recorded source hash is byte-identical to the committed
+`session_prefill.mojo`. The standalone session test at d_head=32 now gets PAST construction
+(previously the blanket refusal raised there), confirming the constructor accepts a non-128
+power-of-two head dim.
+
+**Honest scope.** Every Qwen3 checkpoint is d_head=128, so this unlocks no NEW model today -- it is
+mandate-compliance: the engine is now correct-by-routing for any power-of-two d_head <= 256 rather
+than hardcoded/refusing. The architecture gates (GQA, QK-norm, tied embeddings) still bound the
+supported FAMILY to Qwen3; llama-family support is separate work. Remaining follow-ups for full
+any-model: a d_head != 128 end-to-end oracle (needs a non-Qwen3 checkpoint or a synthetic-weight
+gate), and eventually structural parametric versions of the AF kernels themselves so a non-128 model
+gets a fast path, not just a correct one. No performance change at d_head=128 (the fast path is
+untouched by construction).

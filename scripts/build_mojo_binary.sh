@@ -57,7 +57,9 @@ MOJO_BUILD_EXTRA_DEFINES_RAW="${MOJO_BUILD_EXTRA_DEFINES:-}"
 # choice MOJO_BUILD_MCPU already makes for CPU builds. Override with MOJO_BUILD_METAL_TARGET if a
 # narrower target is ever needed.
 MOJO_BUILD_METAL_TARGET="${MOJO_BUILD_METAL_TARGET:-apple-m1}"
-# The pinned Mojo compiler (0.26.3.0.dev2026042305) has a genuine, upstream, still-open bug: an
+# The pinned Mojo compiler (Mojo 1.0.0b2; this ceiling was first reproduced on the earlier
+# 0.26.3.0.dev nightly and is retained on 1.0 as a precaution) has a genuine, upstream, still-open
+# bug: an
 # internal compiler pass recurses once per top-level declaration in a single translation unit
 # instead of iterating, and blows a worker thread's stack (EXC_BAD_ACCESS/KERN_PROTECTION_FAILURE
 # on macOS) once the combined module count crosses a threshold -- confirmed by minidump analysis to
@@ -343,7 +345,8 @@ print(len(discover_runtime_library_modules(executable_only=True)))
             "${MOJO_BUILD_MAX_SAFE_MODULES}-module safety ceiling." >&2
         echo "   This is a confirmed upstream Mojo compiler bug (stack-overflow in an internal" \
             "recursive pass, not an RSS/memory limit -- see modular/modular#2766), reproduced" \
-            "deterministically on the pinned toolchain (mojo 0.26.3.0.dev2026042305) between" \
+            "deterministically on the pinned toolchain (first on the 0.26.3.0.dev nightly, ceiling" \
+            "retained on Mojo 1.0.0b2) between" \
             "500 (compiles) and 600 (crashes) modules. It will not simply go away with more RAM." >&2
         echo "   Use one of:" >&2
         echo "     - scripts/build_runtime_shards.py -- the production-authoritative, already-" \
