@@ -534,7 +534,9 @@ def decode(
         except ChatTemplateError as exc:
             raise InferenceError("unsupported_chat_template", str(exc)) from exc
         tokenizer = load_tokenizer(checkpoint_dir)
-        prompt_token_ids = tokenizer.encode(prompt_text)
+        # add_special_tokens=True is the transformers default-encode convention: a no-op on
+        # Qwen3 prompts, and the BOS prepend a llama-family prompt expects.
+        prompt_token_ids = tokenizer.encode(prompt_text, add_special_tokens=True)
     elif prompt_text is not None:
         if not isinstance(prompt_text, str) or not prompt_text:
             raise InferenceError(
@@ -543,7 +545,9 @@ def decode(
         from algenta.tokenizer import load_tokenizer
 
         tokenizer = load_tokenizer(checkpoint_dir)
-        prompt_token_ids = tokenizer.encode(prompt_text)
+        # add_special_tokens=True is the transformers default-encode convention: a no-op on
+        # Qwen3 prompts, and the BOS prepend a llama-family prompt expects.
+        prompt_token_ids = tokenizer.encode(prompt_text, add_special_tokens=True)
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
         raise InferenceError(
             "invalid_arguments", "the prompt must tokenize to at least one token id"

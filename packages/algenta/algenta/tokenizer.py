@@ -1,31 +1,60 @@
-"""Text in, token ids out: the Qwen3-family BPE tokenizer, implemented here.
+"""Text in, token ids out: the checkpoint's own BPE tokenizer, implemented here.
 
 This is parity gap 1 from the beat-llama.cpp campaign's end-to-end gap analysis (2026-08-09):
 until this module the kernel path was token-ids-in only, and any text had to be tokenized by an
 external `transformers` install. This module reads the checkpoint's OWN `tokenizer.json` (the
 Hugging Face tokenizers format) and implements exactly what it declares -- nothing more, nothing
-imported from a tokenizer library:
+imported from a tokenizer library. Two tokenizer FAMILIES are supported, detected from the file's
+own normalizer/pre-tokenizer shape:
 
+Qwen3/Qwen2 byte-level BPE (normalizer NFC, the byte-level pre-tokenizer Sequence)
+-----------------------------------------------------------------------------------
 * **Normalizer**: NFC, because `tokenizer.json` says `{"type": "NFC"}`.
 * **Pre-tokenizer**: the GPT-4-style regex split (contractions, letter runs, single digits,
   punctuation/newline chunks, whitespace runs) with `behavior: Isolated`, then the byte-level
   alphabet mapping, because `tokenizer.json` says exactly that Sequence.
 * **Model**: byte-level BPE with the file's own vocab + merge list, greedy lowest-rank merging.
-* **Added tokens**: the file's special tokens (e.g. `<|endoftext|>` = 151643) matched verbatim,
-  unnormalized, before any other processing -- `special: true, normalized: false` in the file.
+* **Added tokens**: the file's special tokens (e.g. ENDOFTEXT, id 151643) matched verbatim,
+  unnormalized, before any other processing -- special: true, normalized: false in the file.
 * **Decoder**: the inverse byte-level map, then UTF-8.
+
+llama-family SentencePiece-style BPE (the Prepend/Replace marker normalizer, no pre-tokenizer)
+----------------------------------------------------------------------------------------------
+* **Normalizer**: the SentencePiece marker convention, because tokenizer.json says
+  Sequence [ Prepend the U+2581 marker, Replace space with the marker ]. At encode time this
+  module reproduces what the reference implementation ACTUALLY runs (transformers' unified
+  LlamaTokenizer backend: a Metaspace marking of spaces), which differs from the declared
+  normalizer in one documented corner: when the text starts with a space, the space's own marker
+  takes the prepend's place instead of doubling -- encode(' x') == encode('x'). Which segments
+  get the prepend depends on the checkpoint's tokenizer_config.json legacy flag: legacy=false
+  (TinyLlama) marks only the segment at the start of the text; legacy=true marks every segment.
+* **Pre-tokenizer**: none, because tokenizer.json says null -- the whole marked text is one BPE
+  word. There is NO byte-level alphabet mapping: the pieces ARE the marker-prefixed strings.
+* **Model**: BPE with the file's own vocab + merge list, same greedy lowest-rank merging as the
+  byte-level path. A character with no vocab entry falls back BEFORE merging, in the file's
+  declared order: byte-fallback pieces (uppercase-hex byte tokens in angle brackets) first, then
+  the declared unk piece (fused across a run when fuse_unk says so).
+* **Added tokens**: the file's specials (unk id 0, BOS id 1, EOS id 2) matched verbatim, plus
+  the tokenizer_config.json superset like the Qwen3 path. BOS is prepended by encode only when
+  add_special_tokens=True -- matching transformers' default-encode convention.
+* **Decoder**: the file's declared chain -- marker back to space, byte-fallback runs back to
+  bytes (UTF-8 with replacement characters), fuse, then strip exactly one leading space.
+* **Post-processor**: the file's TemplateProcessing BOS is read to know which id
+  add_special_tokens=True prepends; a post_processor of any other type is refused.
 
 Scope, stated precisely so nothing here overclaims
 ---------------------------------------------------
-* **One tokenizer family.** The Qwen3/Qwen2 byte-level BPE shape above. A `tokenizer.json` of
-  another shape (Unigram, WordPiece, a different pre-tokenizer stack) raises
-  `TokenizerFormatError` naming the unsupported piece rather than half-tokenizing.
+* **Two tokenizer families.** The two shapes above, detected from the file's own normalizer /
+  pre-tokenizer declarations. A tokenizer.json of another shape (Unigram, WordPiece, a different
+  normalizer or pre-tokenizer stack) raises TokenizerFormatError naming the unsupported piece
+  rather than half-tokenizing.
 * **No chat template here.** Chat-template rendering (messages -> prompt text) is the separate
-  `algenta.chat_template` module; this module is BPE encode/decode only.
-* **Cross-validated, not assumed.** `tests/test_tokenizer_qwen3.py` checks encode AND decode
-  against `transformers.AutoTokenizer` on the real checkpoints (the same byte-for-byte-against-
-  the-original convention `algenta.qwen3_decode.prepare_checkpoint` established). Without the
-  checkpoint on disk those oracle tests skip; the structural unit tests always run.
+  algenta.chat_template module; this module is BPE encode/decode only.
+* **Cross-validated, not assumed.** tests/test_tokenizer_qwen3.py checks the Qwen3 encode AND
+  decode against transformers.AutoTokenizer on the real checkpoints (the same byte-for-byte-
+  against-the-original convention algenta.qwen3_decode.prepare_checkpoint established), and
+  tests/test_tokenizer_llama.py checks the llama family the same way against a llama checkpoint.
+  Without the checkpoint on disk those oracle tests skip; the structural unit tests always run.
 
 Usage
 -----
@@ -34,6 +63,10 @@ Usage
     tok = load_tokenizer("/path/to/qwen3-checkpoint")   # reads tokenizer.json
     ids = tok.encode("The capital of France is")
     text = tok.decode(ids)
+
+    llama = load_tokenizer("/path/to/llama-checkpoint") # same loader, family detected
+    ids = llama.encode("The capital of France is", add_special_tokens=True)  # BOS prepended
+    text = llama.decode(ids)
 """
 
 from __future__ import annotations
@@ -49,6 +82,14 @@ __all__ = [
     "Tokenizer",
     "load_tokenizer",
 ]
+
+# The llama-family word-boundary marker (SentencePiece convention): spaces become this, and one
+# is prepended at the start of the text. It is U+2581, NOT an underscore.
+_SP_MARKER = "\u2581"  # '▁'
+
+# The llama-family byte-fallback pieces (0x00..0xFF spelled uppercase-hex in angle brackets,
+# exactly as the reference model formats them). A decode-time run of these turns back into bytes.
+_SP_BYTE_TOKEN_RE = re.compile(r"^<0x([0-9A-F]{2})>$")
 
 # The byte-level BPE alphabet (GPT-2's, which Qwen2/Qwen3 inherit): printable ASCII and Latin-1
 # ranges keep their own code points; every other byte maps to 256+n so all 256 bytes have distinct,
@@ -77,7 +118,8 @@ _init_byte_alphabet()
 
 
 class TokenizerFormatError(ValueError):
-    """The checkpoint's tokenizer.json is not the supported Qwen3-family byte-level BPE shape.
+    """The checkpoint's tokenizer.json is neither supported shape -- not the Qwen3-family
+    byte-level BPE, not the llama-family SentencePiece-style BPE.
 
     Raised at load time, naming the unsupported piece -- never a half-tokenizer."""
 
@@ -158,7 +200,12 @@ _EXPECTED_PRETOKENIZE_PATTERN = (
 
 
 class Tokenizer:
-    """One checkpoint's tokenizer, loaded from its own tokenizer.json. Immutable after load."""
+    """One checkpoint's tokenizer, loaded from its own tokenizer.json. Immutable after load.
+
+    One class carries both supported families: the Qwen3 byte-level BPE (the default
+    construction -- `sentencepiece=False`) and the llama-family SentencePiece-style BPE
+    (`sentencepiece=True`, which switches encode/decode to the marker pipeline and leaves the
+    byte-level fields unused)."""
 
     def __init__(
         self,
@@ -166,7 +213,13 @@ class Tokenizer:
         vocab: dict[str, int],
         merges: dict[tuple[str, str], int],
         special_tokens: dict[str, int],
-        pretokenize_regex: re.Pattern,
+        pretokenize_regex: re.Pattern | None,
+        sentencepiece: bool = False,
+        sp_legacy: bool = True,
+        byte_fallback: bool = False,
+        fuse_unk: bool = False,
+        unk_token: str | None = None,
+        bos_id: int | None = None,
     ) -> None:
         self._vocab = vocab
         self._id_to_token = {token_id: token for token, token_id in vocab.items()}
@@ -176,16 +229,28 @@ class Tokenizer:
         self._pretokenize = pretokenize_regex
         # Longest-first so a shorter special string never shadows a longer one at the same spot.
         self._special_sorted = sorted(special_tokens, key=len, reverse=True)
+        # The llama-family fields (unused by the Qwen3 byte-level path).
+        self._sentencepiece = sentencepiece
+        self._sp_legacy = sp_legacy
+        self._byte_fallback = byte_fallback
+        self._fuse_unk = fuse_unk
+        self._unk_token = unk_token
+        self._bos_id = bos_id
 
     @classmethod
-    def from_tokenizer_json(cls, path: str | Path) -> "Tokenizer":
+    def from_tokenizer_json(cls, path: str | Path, *, legacy: bool = True) -> "Tokenizer":
+        """Load one tokenizer.json. The FAMILY is detected from the file's own shape: the NFC /
+        byte-level pre-tokenizer declarations load the Qwen3 byte-level BPE; the SentencePiece
+        marker normalizer with NO pre-tokenizer loads the llama-family pipeline. `legacy` is the
+        llama-family prepend scheme switch (the checkpoint's tokenizer_config.json `legacy`
+        flag); the Qwen3 path ignores it."""
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
 
         model = raw.get("model") or {}
         if model.get("type") != "BPE":
             raise TokenizerFormatError(
                 f"unsupported tokenizer model type {model.get('type')!r}: this module implements "
-                "the Qwen3-family byte-level BPE only."
+                "the Qwen3-family byte-level BPE and the llama-family SentencePiece BPE only."
             )
         vocab = model.get("vocab")
         merge_rules = model.get("merges")
@@ -195,9 +260,13 @@ class Tokenizer:
             )
 
         normalizer = raw.get("normalizer")
+        if _is_sentencepiece_normalizer(normalizer) and raw.get("pre_tokenizer") is None:
+            return cls._from_sentencepiece_json(raw, vocab, merge_rules, legacy=legacy)
+
         if normalizer not in (None, {"type": "NFC"}):
             raise TokenizerFormatError(
-                f"unsupported normalizer {normalizer!r}: this module implements NFC only."
+                f"unsupported normalizer {normalizer!r}: this module implements the Qwen3 NFC "
+                "normalizer and the llama-family Prepend/Replace marker normalizer only."
             )
 
         pre_tokenizer = raw.get("pre_tokenizer") or {}
@@ -237,26 +306,8 @@ class Tokenizer:
                 "refusing rather than tokenizing against a different split."
             )
 
-        merges: dict[tuple[str, str], int] = {}
-        for rank, rule in enumerate(merge_rules):
-            # Both spellings occur in real checkpoint files: "a b" strings (0.6B) and
-            # ["a", "b"] lists (1.7B). Same rank order, same meaning.
-            pair = rule.split(" ") if isinstance(rule, str) else rule
-            if (
-                not isinstance(pair, list)
-                or len(pair) != 2
-                or not all(isinstance(piece, str) for piece in pair)
-            ):
-                raise TokenizerFormatError(f"malformed merge rule {rule!r} at rank {rank}.")
-            merges[(pair[0], pair[1])] = rank
-
-        special_tokens: dict[str, int] = {}
-        for added in raw.get("added_tokens") or []:
-            content = added.get("content")
-            token_id = added.get("id")
-            if not isinstance(content, str) or not isinstance(token_id, int):
-                raise TokenizerFormatError(f"malformed added token {added!r}.")
-            special_tokens[content] = token_id
+        merges = _parse_merge_rules(merge_rules)
+        special_tokens = _parse_added_tokens(raw)
 
         full_vocab = dict(vocab)
         for content, token_id in special_tokens.items():
@@ -269,15 +320,122 @@ class Tokenizer:
             pretokenize_regex=re.compile(resolved),
         )
 
+    @classmethod
+    def _from_sentencepiece_json(
+        cls,
+        raw: dict,
+        vocab: dict,
+        merge_rules: list,
+        *,
+        legacy: bool,
+    ) -> "Tokenizer":
+        """The llama-family shape: the marker normalizer (validated by the caller), NO
+        pre-tokenizer, BPE directly on the marker-prefixed pieces. Every declared piece of the
+        file is verified verbatim -- a different decoder/post-processor/model-flag set is refused
+        rather than half-tokenized, exactly like the Qwen3 path does for its shape."""
+        model = raw["model"]
+
+        dropout = model.get("dropout")
+        if dropout is not None:
+            raise TokenizerFormatError(
+                f"unsupported BPE dropout {dropout!r}: dropout randomizes merges; this module "
+                "implements deterministic BPE only."
+            )
+        for key in ("continuing_subword_prefix", "end_of_word_suffix"):
+            if model.get(key) not in (None, ""):
+                raise TokenizerFormatError(
+                    f"unsupported BPE {key} {model.get(key)!r}: the llama-family pipeline merges "
+                    "the marked pieces with no extra prefix/suffix."
+                )
+        if model.get("ignore_merges"):
+            raise TokenizerFormatError(
+                "ignore_merges=true is unsupported: this pipeline is merge-driven BPE."
+            )
+        unk_token = model.get("unk_token")
+        if unk_token is not None and not isinstance(unk_token, str):
+            raise TokenizerFormatError(f"malformed unk_token {unk_token!r}.")
+        if unk_token is not None and unk_token not in vocab:
+            raise TokenizerFormatError(
+                f"the declared unk_token {unk_token!r} has no vocab entry; cannot load."
+            )
+        byte_fallback = bool(model.get("byte_fallback"))
+        fuse_unk = bool(model.get("fuse_unk"))
+
+        decoder = raw.get("decoder")
+        if not _is_sentencepiece_decoder(decoder):
+            raise TokenizerFormatError(
+                f"unsupported decoder {decoder!r}: the llama-family shape declares the Sequence "
+                "[Replace marker->space, ByteFallback, Fuse, Strip one leading space]."
+            )
+
+        # The declared TemplateProcessing prepends the BOS special to a single sequence; that is
+        # the id encode(add_special_tokens=True) prepends (the transformers default-encode
+        # convention). No post-processor means no BOS to add.
+        post = raw.get("post_processor")
+        bos_id = None
+        if post is not None:
+            if not isinstance(post, dict) or post.get("type") != "TemplateProcessing":
+                raise TokenizerFormatError(
+                    f"unsupported post_processor {post!r}: the llama-family shape declares the "
+                    "BOS-prepending TemplateProcessing."
+                )
+            single = post.get("single")
+            if (
+                not isinstance(single, list)
+                or not single
+                or not isinstance(single[0], dict)
+                or not isinstance(single[0].get("SpecialToken"), dict)
+            ):
+                raise TokenizerFormatError(
+                    f"unsupported post_processor single template {single!r}: expected a leading "
+                    "SpecialToken (the BOS)."
+                )
+            bos_content = single[0]["SpecialToken"].get("id")
+            if not isinstance(bos_content, str):
+                raise TokenizerFormatError(
+                    f"the post_processor BOS entry carries no token string: {single[0]!r}."
+                )
+            bos_id = vocab.get(bos_content)
+            if bos_id is None:
+                raise TokenizerFormatError(
+                    f"the post_processor BOS {bos_content!r} has no vocab entry; cannot load."
+                )
+
+        merges = _parse_merge_rules(merge_rules)
+        special_tokens = _parse_added_tokens(raw)
+
+        full_vocab = dict(vocab)
+        for content, token_id in special_tokens.items():
+            full_vocab.setdefault(content, token_id)
+
+        return cls(
+            vocab=full_vocab,
+            merges=merges,
+            special_tokens=special_tokens,
+            pretokenize_regex=None,
+            sentencepiece=True,
+            sp_legacy=legacy,
+            byte_fallback=byte_fallback,
+            fuse_unk=fuse_unk,
+            unk_token=unk_token,
+            bos_id=bos_id,
+        )
+
     # ── encode ────────────────────────────────────────────────────────────────────────────────
 
     def encode(self, text: str, *, add_special_tokens: bool = False) -> list[int]:
-        """Text -> token ids, exactly the pipeline tokenizer.json declares: added-token split
-        (verbatim, unnormalized), NFC, the regex split, byte-level mapping, BPE.
+        """Text -> token ids, following the family's pipeline. Qwen3: added-token split
+        (verbatim, unnormalized), NFC, the regex split, byte-level mapping, BPE. llama family:
+        added-token split, the marker Metaspace, BPE on the marked pieces (see
+        `_encode_sentencepiece`).
 
-        `add_special_tokens` matches the transformers naming, but Qwen3 base prompts use no
-        wrapping specials, so True and False behave identically here unless the text itself
-        contains a special string (which is mapped either way)."""
+        `add_special_tokens` matches the transformers naming. The Qwen3 path wraps no specials,
+        so True and False behave identically there unless the text itself contains a special
+        string (which is mapped either way). The llama-family path prepends the BOS id declared
+        by the file's post_processor when True -- the same convention
+        `transformers.AutoTokenizer.encode` defaults to."""
+        if self._sentencepiece:
+            return self._encode_sentencepiece(text, add_special_tokens=add_special_tokens)
         del add_special_tokens
         ids: list[int] = []
         for piece, is_special in self._split_specials(text):
@@ -311,6 +469,96 @@ class Tokenizer:
             pieces.append((best_token, True))
             remaining = remaining[best_pos + len(best_token) :]
         return pieces
+
+    # ── encode, llama family ──────────────────────────────────────────────────────────────────
+
+    def _encode_sentencepiece(self, text: str, *, add_special_tokens: bool) -> list[int]:
+        """The llama-family encode: specials split verbatim; every other segment gets its spaces
+        turned into the U+2581 marker and ONE BPE run over the whole marked segment (the file
+        declares no pre-tokenizer). The marker prepend follows the reference Metaspace scheme:
+        with `legacy=false` (the checkpoint's tokenizer_config.json flag) only the segment at
+        the very start of the text is prepend-eligible, with `legacy=true` every segment is; a
+        segment whose replaced form already starts with the marker (the text began with a space)
+        is never prepended -- the space's own marker takes its place."""
+        ids: list[int] = []
+        if add_special_tokens and self._bos_id is not None:
+            ids.append(self._bos_id)
+        for position, (piece, is_special) in enumerate(self._split_specials(text)):
+            if is_special:
+                ids.append(self._special_tokens[piece])
+                continue
+            if not piece:
+                continue
+            chunk = piece.replace(" ", _SP_MARKER)
+            if not chunk.startswith(_SP_MARKER) and (position == 0 or self._sp_legacy):
+                chunk = _SP_MARKER + chunk
+            ids.extend(self._bpe_sentencepiece(chunk))
+        return ids
+
+    def _bpe_sentencepiece(self, chunk: str) -> list[int]:
+        """BPE over the chunk's own characters -- no byte-level alphabet. A character with no
+        vocab entry falls back BEFORE merging, in the order the file declares: byte_fallback
+        turns it into its UTF-8 bytes as byte-fallback pieces (when every one of them is in the
+        vocab), else the unk piece stands in -- fused into ONE piece across a run when fuse_unk
+        says so. Then the same greedy lowest-rank merging as the byte-level path."""
+        symbols: list[str] = []
+        pending_unk = False
+
+        def flush_unk() -> None:
+            nonlocal pending_unk
+            if pending_unk:
+                symbols.append(self._unk_token)
+                pending_unk = False
+
+        for char in chunk:
+            if char in self._vocab:
+                flush_unk()
+                symbols.append(char)
+                continue
+            if self._byte_fallback:
+                byte_pieces = [f"<0x{byte:02X}>" for byte in char.encode("utf-8")]
+                if all(piece in self._vocab for piece in byte_pieces):
+                    flush_unk()
+                    symbols.extend(byte_pieces)
+                    continue
+            if self._unk_token is None:
+                raise TokenizerFormatError(
+                    f"character {char!r} has no vocab entry and the model declares neither "
+                    "usable byte_fallback pieces nor an unk_token; cannot encode."
+                )
+            if pending_unk and self._fuse_unk:
+                continue  # one unk piece for the whole OOV run
+            flush_unk()
+            pending_unk = True
+        flush_unk()
+
+        while len(symbols) > 1:
+            best_rank = len(self._merges)
+            best_pair: tuple[str, str] | None = None
+            for i in range(len(symbols) - 1):
+                rank = self._merges.get((symbols[i], symbols[i + 1]))
+                if rank is not None and rank < best_rank:
+                    best_rank = rank
+                    best_pair = (symbols[i], symbols[i + 1])
+            if best_pair is None:
+                break
+            merged: list[str] = []
+            i = 0
+            while i < len(symbols):
+                if (
+                    i < len(symbols) - 1
+                    and symbols[i] == best_pair[0]
+                    and symbols[i + 1] == best_pair[1]
+                ):
+                    merged.append(best_pair[0] + best_pair[1])
+                    i += 2
+                else:
+                    merged.append(symbols[i])
+                    i += 1
+            symbols = merged
+        return [self._piece_id(symbol) for symbol in symbols]
+
+    # ── encode, Qwen3 family ──────────────────────────────────────────────────────────────────
 
     def _bpe_chunk(self, chunk: str) -> list[int]:
         symbols = [_BYTE_TO_SYMBOL[b] for b in chunk.encode("utf-8")]
@@ -347,8 +595,9 @@ class Tokenizer:
     def _piece_id(self, piece: str) -> int:
         token_id = self._vocab.get(piece)
         if token_id is None:
-            # Byte-level BPE is total over bytes, so this can only happen for a vocab whose
-            # single-byte pieces were pruned -- refuse loudly rather than invent an id.
+            # Byte-level BPE is total over bytes (and the llama path resolves every OOV piece
+            # before merging), so a merge product with no vocab entry means a malformed vocab --
+            # refuse loudly rather than invent an id.
             raise TokenizerFormatError(f"piece {piece!r} has no vocab entry; cannot encode.")
         return token_id
 
@@ -358,6 +607,8 @@ class Tokenizer:
         """Token ids -> text: piece lookup, inverse byte-level map, UTF-8. Special ids decode to
         their literal strings (e.g. 151643 -> '<|endoftext|>'). Byte sequences that are not valid
         UTF-8 decode with the Unicode replacement character -- a byte-level model can emit them."""
+        if self._sentencepiece:
+            return self._decode_sentencepiece(ids)
         parts: list[str] = []
         for token_id in ids:
             special = self._special_by_id.get(token_id)
@@ -379,6 +630,38 @@ class Tokenizer:
                 raw.append(byte)
         return bytes(raw).decode("utf-8", errors="replace")
 
+    # ── decode, llama family ──────────────────────────────────────────────────────────────────
+
+    def _decode_sentencepiece(self, ids: list[int]) -> str:
+        """The file's declared decoder chain, in order: marker back to space, byte-fallback runs
+        back to raw bytes (UTF-8 with replacement characters for invalid runs), fuse (join),
+        strip EXACTLY ONE leading space -- the marker at the start of the text decodes to a
+        boundary, not a literal space. Special ids pass through as their literal strings (BOS ->
+        '<s>', EOS -> '</s>'), exactly as the reference renders them."""
+        parts: list[str] = []
+        byte_buffer = bytearray()
+
+        def flush_bytes() -> None:
+            if byte_buffer:
+                parts.append(bytes(byte_buffer).decode("utf-8", errors="replace"))
+                byte_buffer.clear()
+
+        for token_id in ids:
+            piece = self._special_by_id.get(token_id)
+            if piece is None:
+                piece = self._id_to_token.get(token_id)
+                if piece is None:
+                    raise TokenizerFormatError(f"id {token_id} is not in this tokenizer's vocab.")
+            byte_match = _SP_BYTE_TOKEN_RE.match(piece)
+            if byte_match is not None:
+                byte_buffer.append(int(byte_match.group(1), 16))
+                continue
+            flush_bytes()
+            parts.append(piece.replace(_SP_MARKER, " "))
+        flush_bytes()
+        text = "".join(parts)
+        return text[1:] if text.startswith(" ") else text
+
     # ── introspection ─────────────────────────────────────────────────────────────────────────
 
     @property
@@ -390,7 +673,14 @@ class Tokenizer:
         return dict(self._special_tokens)
 
     def eos_id(self) -> int | None:
-        return self._special_tokens.get("<|endoftext|>")
+        """The end-of-sequence special id: '<|endoftext|>' on Qwen3, '</s>' on the llama
+        family; None when the checkpoint declares neither."""
+        return self._special_tokens.get("<|endoftext|>", self._special_tokens.get("</s>"))
+
+    def bos_id(self) -> int | None:
+        """The llama-family BOS id declared by the file's post_processor (None on Qwen3 -- its
+        prompts wrap no specials). `encode(text, add_special_tokens=True)` prepends it."""
+        return self._bos_id
 
     def merge_added_tokens(self, extra: dict[str, int]) -> int:
         """Merge added-token entries (content -> id) that tokenizer.json does not list.
@@ -425,10 +715,95 @@ def _assert_byte_level_stage(stage: object, role: str) -> None:
         )
 
 
-def _added_tokens_from_tokenizer_config(checkpoint_dir: Path) -> dict[str, int]:
-    """The checkpoint's `tokenizer_config.json` `added_tokens_decoder` as {content: id}. The Qwen3
-    file lists four added tokens that `tokenizer.json` omits, so it is the superset source. A
-    missing/unreadable file contributes nothing (tokenizer.json alone still loads)."""
+def _is_sentencepiece_normalizer(normalizer: object) -> bool:
+    """The llama-family normalizer shape, verified verbatim: Sequence [ Prepend the U+2581
+    marker, Replace space with the marker ]. Anything else is not this family."""
+    if not isinstance(normalizer, dict) or normalizer.get("type") != "Sequence":
+        return False
+    stages = normalizer.get("normalizers")
+    if not isinstance(stages, list) or len(stages) != 2:
+        return False
+    prepend_stage, replace_stage = stages
+    if (
+        not isinstance(prepend_stage, dict)
+        or prepend_stage.get("type") != "Prepend"
+        or prepend_stage.get("prepend") != _SP_MARKER
+    ):
+        return False
+    if not isinstance(replace_stage, dict) or replace_stage.get("type") != "Replace":
+        return False
+    if replace_stage.get("content") != _SP_MARKER:
+        return False
+    pattern = replace_stage.get("pattern")
+    return isinstance(pattern, dict) and pattern.get("String") == " "
+
+
+def _is_sentencepiece_decoder(decoder: object) -> bool:
+    """The llama-family decoder shape, verified verbatim: Sequence [ Replace marker->space,
+    ByteFallback, Fuse, Strip(content=space, exactly one from the left) ]."""
+    if not isinstance(decoder, dict) or decoder.get("type") != "Sequence":
+        return False
+    stages = decoder.get("decoders")
+    if not isinstance(stages, list) or len(stages) != 4:
+        return False
+    replace_stage, byte_stage, fuse_stage, strip_stage = stages
+    if (
+        not isinstance(replace_stage, dict)
+        or replace_stage.get("type") != "Replace"
+        or replace_stage.get("content") != " "
+    ):
+        return False
+    pattern = replace_stage.get("pattern")
+    if not isinstance(pattern, dict) or pattern.get("String") != _SP_MARKER:
+        return False
+    if not isinstance(byte_stage, dict) or byte_stage.get("type") != "ByteFallback":
+        return False
+    if not isinstance(fuse_stage, dict) or fuse_stage.get("type") != "Fuse":
+        return False
+    if (
+        not isinstance(strip_stage, dict)
+        or strip_stage.get("type") != "Strip"
+        or strip_stage.get("content") != " "
+        or strip_stage.get("start") != 1
+        or strip_stage.get("stop") != 0
+    ):
+        return False
+    return True
+
+
+def _parse_merge_rules(merge_rules: list) -> dict[tuple[str, str], int]:
+    """The file's merge list as {(a, b): rank}. Both spellings occur in real checkpoint files:
+    "a b" strings (Qwen3 0.6B, llama) and ["a", "b"] lists (Qwen3 1.7B). Same rank order, same
+    meaning."""
+    merges: dict[tuple[str, str], int] = {}
+    for rank, rule in enumerate(merge_rules):
+        pair = rule.split(" ") if isinstance(rule, str) else rule
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or not all(isinstance(piece, str) for piece in pair)
+        ):
+            raise TokenizerFormatError(f"malformed merge rule {rule!r} at rank {rank}.")
+        merges[(pair[0], pair[1])] = rank
+    return merges
+
+
+def _parse_added_tokens(raw: dict) -> dict[str, int]:
+    """The tokenizer.json `added_tokens` as {content: id} -- the specials matched verbatim,
+    unnormalized, before any other processing."""
+    special_tokens: dict[str, int] = {}
+    for added in raw.get("added_tokens") or []:
+        content = added.get("content")
+        token_id = added.get("id")
+        if not isinstance(content, str) or not isinstance(token_id, int):
+            raise TokenizerFormatError(f"malformed added token {added!r}.")
+        special_tokens[content] = token_id
+    return special_tokens
+
+
+def _read_tokenizer_config(checkpoint_dir: Path) -> dict:
+    """The checkpoint's `tokenizer_config.json` parsed, or {} when missing/unreadable -- both
+    extractors below then contribute nothing (tokenizer.json alone still loads)."""
     config_path = checkpoint_dir / "tokenizer_config.json"
     if not config_path.is_file():
         return {}
@@ -436,6 +811,12 @@ def _added_tokens_from_tokenizer_config(checkpoint_dir: Path) -> dict[str, int]:
         config = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return {}
+    return config if isinstance(config, dict) else {}
+
+
+def _added_tokens_from_tokenizer_config(config: dict) -> dict[str, int]:
+    """The checkpoint config's `added_tokens_decoder` as {content: id}. The Qwen3 file lists four
+    added tokens that `tokenizer.json` omits, so it is the superset source."""
     decoder = config.get("added_tokens_decoder") or {}
     if not isinstance(decoder, dict):
         return {}
@@ -453,6 +834,15 @@ def _added_tokens_from_tokenizer_config(checkpoint_dir: Path) -> dict[str, int]:
     return extra
 
 
+def _legacy_from_tokenizer_config(config: dict) -> bool:
+    """The checkpoint's `legacy` flag, which fixes the llama-family marker prepend scheme (see
+    `_encode_sentencepiece`). Missing means True -- the same default the reference applies."""
+    legacy = config.get("legacy", True)
+    if isinstance(legacy, bool):
+        return legacy
+    return True
+
+
 def load_tokenizer(checkpoint_dir: str | Path) -> Tokenizer:
     """Load `<checkpoint_dir>/tokenizer.json` into a `Tokenizer`, then merge the added-token
     superset from `<checkpoint_dir>/tokenizer_config.json` (`added_tokens_decoder`). The checkpoint
@@ -464,6 +854,7 @@ def load_tokenizer(checkpoint_dir: str | Path) -> Tokenizer:
         raise TokenizerFormatError(
             f"{path} not found: load_tokenizer needs the checkpoint's own tokenizer.json."
         )
-    tokenizer = Tokenizer.from_tokenizer_json(path)
-    tokenizer.merge_added_tokens(_added_tokens_from_tokenizer_config(directory))
+    config = _read_tokenizer_config(directory)
+    tokenizer = Tokenizer.from_tokenizer_json(path, legacy=_legacy_from_tokenizer_config(config))
+    tokenizer.merge_added_tokens(_added_tokens_from_tokenizer_config(config))
     return tokenizer
