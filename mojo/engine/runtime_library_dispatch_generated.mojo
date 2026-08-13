@@ -87003,9 +87003,29 @@ def _dispatch_metaldispatch__session_prefill_policy(function_name: String, args_
                     "mojo_library_execution_failed",
                     "Mojo library execution failed for metaldispatch.session_prefill_policy.resolve_prefill_execution_plan."
                 )
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_unresolvedprefillconfig_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_bool_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_bool_token(json_array_get(args_array, 9))
+                var result = _metaldispatch_session_prefill_policy__resolve_prefill_execution_plan(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_resolvedsessionexecutionplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.session_prefill_policy.resolve_prefill_execution_plan."
+                )
         return _error_json(
             "invalid_arguments",
-            "Function metaldispatch.session_prefill_policy.resolve_prefill_execution_plan expected 6 or 7 or 8 or 9 arguments, received " + String(arg_count) + "."
+            "Function metaldispatch.session_prefill_policy.resolve_prefill_execution_plan expected 6 or 7 or 8 or 9 or 10 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",

@@ -45,23 +45,24 @@ declared slot via `setBytes:length:atIndex:` (NOT `setBuffer:`) — the ABI reci
 `tag` 1 = an `Int` scalar (Mojo's `Int` is 64-bit on this target; `value` holds it directly).
 `tag` 2 = a `Float32` scalar; `value`'s low 4 bytes hold the IEEE-754 bit pattern.
 
-One descriptor is `16 + ALGENTA_MAX_ARGS * 16` bytes. `ALGENTA_MAX_ARGS = 16` here, matching the
-shim; the largest real argument list among `residentk.kernels`' kernels is `_pf_ropewrt_kernel`'s
-15 (its trailing `qk_norm` family-convention arg added for llama-family support, 2026-08-13), so 16
-still leaves headroom without the stride growing again.
+One descriptor is `16 + ALGENTA_MAX_ARGS * 16` bytes. `ALGENTA_MAX_ARGS = 17` here, matching the
+shim (raised 16 -> 17 by feat/llama-native-deep, 2026-08-13: the attention-forge native-KV-
+producer kernel grew the trailing llama-family `qk_norm` flag to 17 args, and its decode/prefill
+dispatches sit at the ceiling; the previous 16 left headroom only while `residentk.kernels`' own
+largest list -- `_pf_ropewrt_kernel`'s 15 -- bounded the stride).
 """
 
 from std.builtin.type_aliases import MutAnyOrigin
 from std.ffi import external_call
 from std.memory import alloc
 
-comptime MB_MAX_ARGS: Int = 16
+comptime MB_MAX_ARGS: Int = 17
 comptime MB_ARG_STRIDE: Int = 16
 """Bytes per `AlgentaArg`: int32 tag + int32 reserved + uint64 value."""
 comptime MB_DESC_HEADER: Int = 16
 """Bytes before the args array: int32 pipeline_idx, grid_x, threads_x, num_args."""
 comptime MB_DESC_STRIDE: Int = MB_DESC_HEADER + MB_MAX_ARGS * MB_ARG_STRIDE
-"""Bytes per `AlgentaDispatchDesc` — 272 with the constants above."""
+"""Bytes per `AlgentaDispatchDesc` — 288 with the constants above."""
 
 comptime MB_TAG_PTR: Int32 = 0
 comptime MB_TAG_INT: Int32 = 1

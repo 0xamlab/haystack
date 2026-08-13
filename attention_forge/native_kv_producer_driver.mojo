@@ -179,7 +179,7 @@ def test_norm_rope_correctness(
         qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         Int64(pos_base), Int64(h_q), Int64(h_kv), Int64(d_head),
-        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows),
+        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows), Int64(1),
         grid_dim=grid, block_dim=d_head,
     )
     ctx.synchronize()
@@ -290,7 +290,7 @@ def test_packing_hand_indices(ctx: DeviceContext, cos_full: List[Float64], sin_f
         qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         Int64(pos_base), Int64(h_q), Int64(h_kv), Int64(d_head),
-        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows),
+        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows), Int64(1),
         grid_dim=grid, block_dim=d_head,
     )
     ctx.synchronize()
@@ -429,7 +429,7 @@ def test_multi_call_continuation(ctx: DeviceContext, cos_full: List[Float64], si
         qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         Int64(0), Int64(h_q), Int64(h_kv), Int64(d_head),
-        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_total),
+        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_total), Int64(1),
         grid_dim=n_units * m_total, block_dim=d_head,
     )
     ctx.synchronize()
@@ -460,7 +460,7 @@ def test_multi_call_continuation(ctx: DeviceContext, cos_full: List[Float64], si
         qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         Int64(0), Int64(h_q), Int64(h_kv), Int64(d_head),
-        Int64(key_block_size), Int64(n_blocks), eps32, Int64(rows_a),
+        Int64(key_block_size), Int64(n_blocks), eps32, Int64(rows_a), Int64(1),
         grid_dim=n_units * rows_a, block_dim=d_head,
     )
     ctx.synchronize()
@@ -469,7 +469,7 @@ def test_multi_call_continuation(ctx: DeviceContext, cos_full: List[Float64], si
         qkv_buf.unsafe_ptr() + qkv_off_b, qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         Int64(split), Int64(h_q), Int64(h_kv), Int64(d_head),
-        Int64(key_block_size), Int64(n_blocks), eps32, Int64(rows_b),
+        Int64(key_block_size), Int64(n_blocks), eps32, Int64(rows_b), Int64(1),
         grid_dim=n_units * rows_b, block_dim=d_head,
     )
     ctx.synchronize()
@@ -554,7 +554,7 @@ def test_determinism_soak(ctx: DeviceContext, cos_full: List[Float64], sin_full:
             qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
             cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
             Int64(pos_base), Int64(h_q), Int64(h_kv), Int64(d_head),
-            Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows),
+            Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows), Int64(1),
             grid_dim=grid, block_dim=d_head,
         )
         ctx.synchronize()
@@ -634,7 +634,7 @@ def test_direct_load_probe(ctx: DeviceContext, cos_full: List[Float64], sin_full
         qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         Int64(pos_base), Int64(h_q), Int64(h_kv), Int64(d_head),
-        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows),
+        Int64(key_block_size), Int64(n_blocks), eps32, Int64(m_rows), Int64(1),
         grid_dim=n_units * m_rows, block_dim=d_head,
     )
     ctx.synchronize()

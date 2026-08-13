@@ -50,7 +50,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ALGENTA_MAX_ARGS 16
+/* feat/llama-native-deep (2026-08-13): raised 16 -> 17 -- the attention-forge
+ * native-KV-producer kernel grew the trailing llama-family qk_norm flag, and its
+ * decode/prefill dispatches bind 17 args; must match ffi.mojo's MB_MAX_ARGS. */
+#define ALGENTA_MAX_ARGS 17
 /* Beat-llama.cpp campaign (2026-08-08 night): bumped 32 -> 64, mirroring `batch_shim.m`'s own
  * same-night bump and for the same measured reason -- the campaign's counter probes now link the
  * kvprod_v2 blob (two more metallibs) on top of the MSL/vecload4/AF set, ~36 MTLBs total, over

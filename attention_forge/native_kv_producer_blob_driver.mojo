@@ -54,12 +54,17 @@ def main() raises:
     var n_units = h_q + h_kv
     var grid = n_units * m_rows
     var eps: Float32 = 1.0e-6
+    # feat/llama-native-deep (2026-08-13): the kernel grew the TRAILING llama-family `qk_norm`
+    # flag (1 = Qwen3 RMSNorm-then-RoPE, byte-identical to the pre-flag math; 0 = llama rotate-
+    # the-raw-projection). Codegen with 1 -- the blob must carry the SAME math Qwen3 always ran;
+    # the engine passes the model's own flag at dispatch time.
+    var qk_norm: Int64 = 1
 
     ctx.enqueue_function[_native_kv_producer_kernel](
         q_rot_buf.unsafe_ptr(), k_native_buf.unsafe_ptr(), v_native_buf.unsafe_ptr(),
         qkv_buf.unsafe_ptr(), qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(),
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
-        Int64(0), h_q, h_kv, d_head, key_block_size, n_blocks, eps, m_rows,
+        Int64(0), h_q, h_kv, d_head, key_block_size, n_blocks, eps, m_rows, qk_norm,
         grid_dim=Int(grid), block_dim=Int(d_head),
     )
     print("NATIVE KV PRODUCER BLOB DRIVER: codegen forced")

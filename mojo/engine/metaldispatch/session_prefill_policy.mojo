@@ -213,6 +213,27 @@ is no longer the only attention path that consults `.gemm`; it remains the only 
 effect under."""
 
 
+comptime PF_ATTN_PARAMETRIC_NATIVE_DECODE: Int = 3
+"""Llama-family native fast path (feat/llama-native-deep, 2026-08-13): PREFILL attention stays the
+runtime-parametric OFF family (`_pf_ropewrt_kernel` + `_pf_attn_tiled_kernel_simd`, validated for
+any power-of-two d_head up to RESIDENT_MAX_HEAD_DIM), but the prefill table ALSO dispatches the
+attention-forge native-KV-producer per layer, so BOTH persistent KV representations end up
+populated: the natural F32 `ck`/`cv` cache (which this plan's own prefill attention reads) AND the
+packed F16 native buffers (which every subsequent decode step reads). Derives to
+`DECODE_PATH_NATIVE_PACKED_KV` (decode = kvprod-at-m_rows=1 append + split-K flash-decoding
+partial + the engine merge -- the SAME `_step_native_kv_impl` `PF_ATTN_GROUPED_FA_NO_MIRROR` uses).
+
+This is the path a no-QK-norm model (qk_norm=0) and/or a non-`_AF_STRUCTURAL_D_HEAD` power-of-two
+d_head model routes onto when the native decode kernels are linked: the steel grouped-FA prefill
+attention is structurally d_head=128 + QK-norm, but NOTHING about the native DECODE half is -- the
+kvprod carries the qk_norm flag and the split-K partial has a d_head=64 one-simdgroup twin
+(`native_kv_decode_attn_splitk_f2`), so a llama-family model gets the packed-F16-KV + flash-
+decoding decode economics without the structural-128 prefill kernel. Requires the native-KV-
+producer blob + the naive native decode-attn blob + a split-K partial suited to this d_head (the
+f4u2 blob at d_head=128, the f2 blob at d_head=64); degrades to `PF_ATTN_OFF` otherwise. A
+request for `PF_ATTN_GROUPED_FA_NO_MIRROR` that cannot resolve (structural gate fails) degrades to
+THIS plan when its own availability holds -- closest-capability-first -- before `PF_ATTN_OFF`."""
+
 comptime PF_GEMM_ORIGINAL: Int = 0
 """The pre-existing `_PFROLE_GEMM_ASSIGN_MMA` / `_PFROLE_GEMM_ACCUM_MMA` / `_PFROLE_GEMM_SWIGLU_MMA`
 kernel selection for all four GEMM-shaped prefill roles (qkv_proj, o_proj, down_proj, swiglu).
@@ -302,6 +323,16 @@ exactly why `DECODE_PATH_NATIVE_PACKED_KV` below is the ONLY decode path this co
 with."""
 
 
+comptime KV_CONTRACT_MIRRORED_NATIVE_DECODE: Int = 3
+"""Both representations are populated -- the natural F32 `ck`/`cv` cache (written by the plan's own
+`_pf_ropewrt_kernel` dispatch, read by the plan's own parametric prefill attention) AND the packed
+F16 native buffers (written by the same table's native-KV-producer dispatch, read by every
+subsequent native decode step) -- but unlike `KV_CONTRACT_MIRRORED_NATURAL_F32_AND_PACKED_F16`
+(the with-mirror grouped-FA plan's contract, which decodes LEGACY), decode here reads the NATIVE
+side. The ONLY `kv_contract` value `_derive_kv_contract_for_attention` ever returns for
+`attention == PF_ATTN_PARAMETRIC_NATIVE_DECODE`; paired with `DECODE_PATH_NATIVE_PACKED_KV` by the
+same derivation, so the prefill-time double-write and the decode-time read can never disagree."""
+
 comptime DECODE_PATH_LEGACY_NATURAL_KV: Int = 0
 """`step()` must route to `_step_legacy_impl` -- reads the natural F32 `ck`/`cv` cache, byte-
 identical to `_MBQwen3I8AllSimd7.step`. Correct for, and the ONLY value `_derive_decode_path_for_
@@ -336,6 +367,10 @@ def _derive_kv_contract_for_attention(attention: Int) -> Int:
         return KV_CONTRACT_PACKED_F16_NATIVE
     elif attention == PF_ATTN_GROUPED_FA_WITH_MIRROR:
         return KV_CONTRACT_MIRRORED_NATURAL_F32_AND_PACKED_F16
+    elif attention == PF_ATTN_PARAMETRIC_NATIVE_DECODE:
+        # feat/llama-native-deep (2026-08-13): both representations populated (the parametric
+        # prefill attention reads the natural side; native decode reads the packed side).
+        return KV_CONTRACT_MIRRORED_NATIVE_DECODE
     else:
         return KV_CONTRACT_NATURAL_F32
 
@@ -347,6 +382,11 @@ def _derive_decode_path_for_attention(attention: Int) -> Int:
     field; the two are always derived from the same `attention` value, by design, so they can never
     disagree with EACH OTHER either)."""
     if attention == PF_ATTN_GROUPED_FA_NO_MIRROR:
+        return DECODE_PATH_NATIVE_PACKED_KV
+    elif attention == PF_ATTN_PARAMETRIC_NATIVE_DECODE:
+        # feat/llama-native-deep (2026-08-13): the parametric-prefill plan's own prefill table
+        # populates the packed F16 native buffers (alongside the natural cache), so decode reads
+        # the native side exactly as the no-mirror grouped-FA plan does.
         return DECODE_PATH_NATIVE_PACKED_KV
     else:
         return DECODE_PATH_LEGACY_NATURAL_KV
@@ -390,6 +430,7 @@ struct UnresolvedPrefillConfig(Copyable, Movable):
             available.msl_parity_qkv,
             available.msl_parity_accum,
             available.msl_parity_swiglu,
+            available.parametric_native_decode,
         )
 
 
@@ -418,6 +459,16 @@ struct PrefillPipelineAvailability(Copyable, Movable):
     ROLES` request resolve to `PF_GEMM_VECLOAD4_ALL_ROLES` (or lower) -- never a hard error."""
     var msl_parity_accum: Bool
     var msl_parity_swiglu: Bool
+    var parametric_native_decode: Bool
+    """feat/llama-native-deep (2026-08-13): discovery fact for the llama-family native fast path
+    (`PF_ATTN_PARAMETRIC_NATIVE_DECODE`) -- True iff the native-KV-producer blob, the naive native
+    decode-attn blob, and a split-K partial suited to THIS session's own d_head are all linked
+    (computed by `_MBQwen3I8AllSimd7Prefill` from its own discovery slots, never a request).
+    Construction is positional (this pinned toolchain's `@fieldwise_init` takes no field
+    defaults); both `_MBQwen3I8AllSimd7Prefill` resolution sites bind it explicitly, and
+    `resolve_prefill_execution_plan`'s own matching trailing PARAMETER still defaults False for
+    every direct caller that never knew this field existed (the policy suite's pre-existing
+    calls)."""
 
 
 @fieldwise_init
@@ -490,6 +541,10 @@ struct ResolvedSessionExecutionPlan(Copyable, Movable):
             self.attention == PF_ATTN_OFF
             or self.attention == PF_ATTN_GROUPED_FA_WITH_MIRROR
             or self.attention == PF_ATTN_GROUPED_FA_NO_MIRROR
+            # feat/llama-native-deep (2026-08-13): the fourth attention path joins the closed set
+            # -- same single-producer invariant as the other three (`resolve_prefill_execution_
+            # plan`'s own exhaustive branches are the only producer).
+            or self.attention == PF_ATTN_PARAMETRIC_NATIVE_DECODE
         )
         var gemm_ok = (
             self.gemm == PF_GEMM_ORIGINAL
@@ -514,6 +569,8 @@ def pf_attn_path_name(path: Int) -> String:
         return "grouped_fa_with_mirror"
     if path == PF_ATTN_GROUPED_FA_NO_MIRROR:
         return "grouped_fa_no_mirror"
+    if path == PF_ATTN_PARAMETRIC_NATIVE_DECODE:
+        return "parametric_native_decode"
     return "unknown(" + String(path) + ")"
 
 
@@ -541,6 +598,8 @@ def kv_contract_name(contract: Int) -> String:
         return "mirrored_natural_f32_and_packed_f16"
     if contract == KV_CONTRACT_PACKED_F16_NATIVE:
         return "packed_f16_native"
+    if contract == KV_CONTRACT_MIRRORED_NATIVE_DECODE:
+        return "mirrored_native_decode"
     return "unknown(" + String(contract) + ")"
 
 
@@ -565,6 +624,7 @@ def resolve_prefill_execution_plan(
     msl_parity_qkv_available: Bool = False,
     msl_parity_accum_available: Bool = False,
     msl_parity_swiglu_available: Bool = False,
+    parametric_native_decode_available: Bool = False,
 ) -> ResolvedSessionExecutionPlan:
     """The one place this whole plan's own graceful-degrade rule is implemented. Called from BOTH
     `_MBQwen3I8AllSimd7Prefill.__init__` (using the constructor's own `requested_plan` parameter,
@@ -609,9 +669,24 @@ def resolve_prefill_execution_plan(
     resolved()` for the CHECK side that re-derives the identical values from a live `self.attention`."""
     var resolved_attn: Int
     if requested.attention_requested == PF_ATTN_GROUPED_FA_NO_MIRROR:
-        resolved_attn = PF_ATTN_GROUPED_FA_NO_MIRROR if af_grouped_fa_available else PF_ATTN_OFF
+        # feat/llama-native-deep (2026-08-13): CLOSEST-CAPABILITY-FIRST degrade. The no-mirror
+        # request's own intent is "fastest native-KV decode path"; when the structural-128 +
+        # QK-norm steel path cannot resolve (a llama-family d_head=64 / qk_norm=0 model), the
+        # parametric-prefill + native-decode plan carries that same decode half, so it outranks
+        # the plain OFF fallback. A binary linking none of the native blobs still degrades all
+        # the way to PF_ATTN_OFF, byte-for-byte as before this plan existed.
+        if af_grouped_fa_available:
+            resolved_attn = PF_ATTN_GROUPED_FA_NO_MIRROR
+        elif parametric_native_decode_available:
+            resolved_attn = PF_ATTN_PARAMETRIC_NATIVE_DECODE
+        else:
+            resolved_attn = PF_ATTN_OFF
     elif requested.attention_requested == PF_ATTN_GROUPED_FA_WITH_MIRROR:
         resolved_attn = PF_ATTN_GROUPED_FA_WITH_MIRROR if af_grouped_fa_available else PF_ATTN_OFF
+    elif requested.attention_requested == PF_ATTN_PARAMETRIC_NATIVE_DECODE:
+        resolved_attn = (
+            PF_ATTN_PARAMETRIC_NATIVE_DECODE if parametric_native_decode_available else PF_ATTN_OFF
+        )
     else:
         resolved_attn = PF_ATTN_OFF
 

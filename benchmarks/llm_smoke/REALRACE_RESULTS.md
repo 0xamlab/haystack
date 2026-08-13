@@ -12377,3 +12377,66 @@ order, and the 32-bit manual-bitcast ancestor was already refuted).
 NOTE: the earlier "FIX PLAN" above (no-QK-norm AF KV-producer blob + d_head=64 split-K) is the
 COMPLEMENTARY next lever for deep-context llama decode (attention is ~22% of the step at 1K keys);
 this entry closed the GEMV weight-streaming gap that dominated short-context decode.
+
+---
+
+## feat/llama-native-deep -- llama DECODE gets the native fast path: deep-context +20% @1K keys (2026-08-13)
+
+The "FIX PLAN" from the two entries above is LANDED. TinyLlama (llama arch, d_head=64, GQA 32:4,
+no QK-norm, untied) now routes onto the packed-F16 native KV + flash-decoding split-K DECODE path
+that was previously hardwired to d_head=128 + QK-norm (Qwen3-only). Prefill attention stays the
+runtime-parametric OFF family (the steel grouped-FA kernel is structural d_head=128); the KV
+contract is consistent by construction: the new plan's prefill table DOUBLE-WRITES (parametric
+`_pf_ropewrt_kernel` populates the natural F32 cache prefill attention reads; the AF native-KV-
+producer populates the packed F16 native cache decode reads) and derives
+`DECODE_PATH_NATIVE_PACKED_KV`, so prefill-time writes and decode-time reads can never disagree.
+
+WHAT LANDED
+- `native_kv_producer` blob grew the trailing llama-family `qk_norm` flag (1 = Qwen3 RMSNorm-then-
+  RoPE, byte-identical to the pre-flag math; 0 = llama rotate-the-raw-projection, never reads
+  qn_w/kn_w) -- same pattern #665's residentk kernels use. Blob regenerated.
+- NEW d_head=64 split-K decode partial (`attention_forge/native_kv_decode_attn_splitk_f2.mojo`):
+  one 32-lane simdgroup per (head, split), two head-elements per lane, single simd_sum per key,
+  same (m,l,o) contract as f4u2 so the engine merge is untouched. Plain f2 and 2-key-unrolled f2u2
+  both written; interleaved e2e A/B shipped f2u2 (1.086x f2 at 1024 keys: median 267.5 vs 246.3,
+  byte-identical greedy; ~+3% at 256) -- exactly the f4/f4u2 precedent of the 128 blob.
+- NEW plan `PF_ATTN_PARAMETRIC_NATIVE_DECODE` (+ `KV_CONTRACT_MIRRORED_NATIVE_DECODE`): a
+  `PF_ATTN_GROUPED_FA_NO_MIRROR` request whose structural-128/QK-norm gate fails now degrades
+  CLOSEST-CAPABILITY-FIRST onto this plan before bare OFF. Engine: new pnat prefill table (OFF
+  table + kvprod dispatch), d_head-resolved effective split-K partial (f4u2 @128, f2u2 @64, none
+  otherwise -> naive native decode), i8kv/batched tables gated to structural d_head=128.
+- `MB_MAX_ARGS` raised 16 -> 17 (ffi.mojo + both shims) -- the kvprod dispatches bind the qk_norm
+  flag as their 17th arg. Model-parametric throughout: derived from dims + discovered pipelines,
+  never a model name.
+
+MEASURED (harness `benchmarks/llm_smoke/tinyllama_deep_bench.py` = repeated-France-ids prompt at
+depth + warmup + timed run; interleaved baseline/variant rounds, same session; workers: baseline =
+`algenta-gpu-worker-gemvfinal` (legacy path), variant = `algenta-gpu-worker-llamanat`; max_new=64):
+
+| depth | legacy baseline | native fast path | gain |
+|---|---|---|---|
+| 256 prompt | 263.9 tok/s (263.9/255.4/266.4) | 290.2 tok/s (290.7/290.2/289.8) | 1.099x |
+| 1024 prompt | 224.2 tok/s (222.5/224.8/224.2) | 268.1 tok/s (269.7/268.1/267.6) | 1.196x |
+
+Distributions fully separated at both depths (baseline max < variant min @1024: 224.8 < 267.6).
+The gain GROWS with depth exactly as designed (attention is the lever). Same-session llama.cpp
+Q8_0 reference (llama-bench -r 3, build 10210): tg-after-pp256 = 301.8, tg-after-pp1024 = 298.7.
+HONEST STANDING: we now LEAD llama.cpp F16 (~192 short) by ~1.4-1.5x at every depth, but still
+TRAIL quant-matched Q8_0 -- ~4% at 256 (290.2 vs 301.8) and ~10% at 1024 (268.1 vs 298.7). The
+deep residual sits in the ~0.4ms/token non-GEMV remainder (dispatch/host overhead + attention
+kernel efficiency), NOT the KV contract or the split-K structure.
+
+CORRECTNESS: greedy output BYTE-IDENTICAL to the legacy baseline for the SAME model at BOTH a
+short prompt (France, 64 tokens: [3900, 29889, 13, 29902, 626, 263, ...] -- oracle first-3
+intact) and the 1024-deep prompt (64 tokens), full-sequence diff. The f2-vs-f2u2 A/B was also
+byte-identical. QWEN3 REGRESSION: `tests/test_inference_gpu_e2e.py` 6 passed / 1 skipped (oracle
+374 + long-gen + sampling + quantized-cache all green) on worker `algenta-gpu-worker-natq` built
+from this tree with the regenerated kvprod blob -- the qk_norm=1 dispatch evaluates the untouched
+formula sequence. Policy suite: 53/53 (39 pre-existing + 14 new plan checks).
+
+DEFERRED / NOT DONE: steel grouped-FA PREFILL for llama d_head=128 models (llama-3.x 8B -- needs
+no-QK-norm AF prefill attention blobs; llama prefill today stays PF_ATTN_OFF, ~1280 tok/s @1K,
+~1.28s for a 1K prompt -- decode was the priority); rope_scaling (llama-3.1+); multi-chunk
+(pos_base > 2048) pnat continuation is untested end-to-end (single-chunk depths exercised); the
+deep residual vs Q8_0 above. Batched serving for llama stays off by construction (batched blobs
+are structural-128 + QK-norm).

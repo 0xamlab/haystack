@@ -251,6 +251,7 @@ from metaldispatch.session_prefill_policy import (
     PF_ATTN_OFF,
     PF_ATTN_GROUPED_FA_WITH_MIRROR,
     PF_ATTN_GROUPED_FA_NO_MIRROR,
+    PF_ATTN_PARAMETRIC_NATIVE_DECODE,
     PF_GEMM_ORIGINAL,
     PF_GEMM_BM64,
     PF_GEMM_VECLOAD4_ALL_ROLES,
@@ -364,6 +365,16 @@ degraded onto the runtime-parametric path (`PF_ATTN_OFF` prefill attention `_pf_
 + legacy `_sdpa_kernel_simd` decode, both validated for any power-of-two d_head up to
 `RESIDENT_MAX_HEAD_DIM`) instead of computing wrong attention. Named, never a bare literal, per the
 never-hardcode-silently mandate."""
+
+
+comptime _AF_STRUCTURAL_D_HEAD_F2: Int = 64
+"""feat/llama-native-deep (2026-08-13): the head dimension the d_head=64 split-K decode partial
+(`attention_forge/native_kv_decode_attn_splitk_f2._native_kv_decode_splitk_partial_kernel_f2`) is
+STRUCTURALLY compiled for -- one 32-lane simdgroup per (head, split), two head-elements per lane
+(32 x 2 = exactly 64). Same classification as `_AF_STRUCTURAL_D_HEAD`: a fact about that kernel's
+own layout, never a model value; the session derives which partial fits THIS model from its own
+d_head + discovered pipelines (`native_splitk_partial_eff_idx`), routing every other d_head around
+both. Named, never a bare literal, per the never-hardcode-silently mandate."""
 
 
 def _dequant_i8_into_f16(
@@ -773,6 +784,30 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     impl` falls back to the naive table unconditionally, byte-unmodified, and `expected_decode_
     dispatch_count` reports the naive count at every depth."""
 
+    var native_decode_splitk_partial_f2_pipeline_idx: Int
+    """feat/llama-native-deep (2026-08-13): the d_head=64 one-simdgroup split-K PARTIAL (module
+    `attention_forge/native_kv_decode_attn_splitk_f2`; the blob's codegen target is the 2-key-
+    unrolled `_native_kv_decode_splitk_partial_kernel_f2u2` -- measured 1.086x the plain `_f2` at
+    1024-key depth, byte-identical greedy -- exactly the f4/f4u2 precedent of the 128 blob;
+    block_dim=32 fixed, two head-elements per lane) -- the llama-family twin of the structural-128
+    f4u2 partial above. Discovered via the LONGER substring `"native_kv_decode_attn_splitk_f2"`,
+    checked in the elif chain BEFORE the generic `"native_kv_decode_attn_splitk"` arm (the f2
+    module's own name CONTAINS the generic substring, so longest-first keeps the scan order
+    irrelevant -- same discipline the batched `_bat` arm uses). Non-fatal-miss (`-1`) exactly like
+    every other optional pipeline field: without it a d_head=64 session simply never builds the
+    split-K table and keeps the naive native single-dispatch decode at every depth."""
+    var native_splitk_partial_eff_idx: Int
+    var native_splitk_partial_eff_threads: Int
+    """feat/llama-native-deep (2026-08-13): the split-K partial THIS session's own d_head can
+    actually run, resolved ONCE at construction from the discovery slots above -- d_head ==
+    _AF_STRUCTURAL_D_HEAD and the f4u2 blob linked -> the f4u2 pipeline at `d_head // 4` threads;
+    d_head == _AF_STRUCTURAL_D_HEAD_F2 (= 64, the f2 kernel's own structural coverage: 32 lanes x
+    2 elements) and the f2 blob linked -> the f2 pipeline at 32 threads; anything else -> -1 (no
+    split-K table; naive native decode at every depth). `_build_descriptors_decode_native_splitk`
+    builds from these; `_step_native_kv_impl`/`step_logits` re-set the partial header from these
+    SAME two values when they re-narrow n_splits, so the build-time and per-step wiring can never
+    drift. Never a model lookup: both branches derive from dims + discovered pipelines."""
+
     var native_decode_attn_i8kv_pipeline_idx: Int
     var kv_i8_quant_pipeline_idx: Int
     var decode_i8kv_built: Bool
@@ -1107,6 +1142,36 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     suffix marks "AF table, mirror-free variant", parallel to (never replacing) the `af` suffix's own
     with-mirror table."""
 
+    var descriptors_prefill_pnat: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors_prefill_pnat: Int
+    var pnat_built: Bool
+    """feat/llama-native-deep (2026-08-13): the `PF_ATTN_PARAMETRIC_NATIVE_DECODE` prefill table --
+    `1 + n_layers*9 + 2`: the OFF table's own eight per-layer dispatches byte-for-byte (parametric
+    `_pf_ropewrt_kernel` ropewrt with the model's own qk_norm flag + `_pf_attn_tiled_kernel_simd`
+    attention reading the natural F32 cache) PLUS ONE extra per-layer dispatch of the naive
+    attention-forge native-KV-producer (`_native_kv_producer_kernel`, m_rows patched per call, the
+    model's own qk_norm flag bound), which writes the packed F16 native KV buffers every subsequent
+    native decode step reads -- the prefill-time half of `KV_CONTRACT_MIRRORED_NATIVE_DECODE`.
+    Built only when the naive producer blob was discovered (`self.af_pipeline_idx[_AFROLE_NATIVE_
+    KV_PRODUCER] >= 0`) -- deliberately NOT gated on the steel grouped-FA pipeline (this table
+    never dispatches it) nor on the plan (a plan can be re-resolved after construction; the table
+    exists whenever its ONE kernel does, and `prefill_batch` checks `pnat_built` defensively before
+    ever submitting it)."""
+    var embed_pnat_d: Int
+    var rmsnorm_pnat_d: List[Int]
+    var gemm_assign_pnat_d: List[Int]
+    var kvprod_pnat_d: List[Int]
+    var ropewrt_pnat_d: List[Int]
+    var attn_pnat_d: List[Int]
+    var gemv_o_pnat_d: List[Int]
+    var rmsnorm2_pnat_d: List[Int]
+    var swiglu_pnat_d: List[Int]
+    var gemv_down_pnat_d: List[Int]
+    var lmhead_pnat_d: Int
+    """Per-role descriptor-index bookkeeping for the pnat table -- same convention as the OFF
+    table's own `self.embed_d`/`rmsnorm_d`/etc., the `pnat` suffix marking the parametric-prefill
+    + native-KV-write variant, parallel to (never replacing) every other prefill table."""
+
     var descriptors_decode_native: UnsafePointer[UInt8, origin=MutAnyOrigin]
     var n_descriptors_decode_native: Int
     """Same dispatch COUNT as `self.descriptors` (`metaldispatch_dispatch_budget(n_layers)`, `1 +
@@ -1362,6 +1427,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # kernel -- see this field's own docstring for the full non-fatal-miss precedent this follows.
         self.native_decode_attn_pipeline_idx = -1
         self.native_decode_splitk_partial_pipeline_idx = -1
+        # ── feat/llama-native-deep (2026-08-13): d_head=64 split-K partial discovery slot + the
+        # two effective-partial values resolved from it post-discovery (see their field docstrings).
+        self.native_decode_splitk_partial_f2_pipeline_idx = -1
+        self.native_splitk_partial_eff_idx = -1
+        self.native_splitk_partial_eff_threads = 0
         # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): discovery slots, same pattern.
         self.native_decode_attn_i8kv_pipeline_idx = -1
         self.kv_i8_quant_pipeline_idx = -1
@@ -1445,6 +1515,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # first, scan order irrelevant.
             if name.find("native_kv_decode_attn_splitk_bat") >= 0:
                 self.native_decode_splitk_partial_batched_pipeline_idx = i
+            # ── feat/llama-native-deep (2026-08-13): the d_head=64 f2 partial's module name
+            # (`native_kv_decode_attn_splitk_f2`) CONTAINS the generic split-K substring, so the
+            # longer `_f2` check sits BEFORE the generic arm -- four-way longest-first, scan order
+            # irrelevant (same discipline the `_bat` arm above uses).
+            elif name.find("native_kv_decode_attn_splitk_f2") >= 0:
+                self.native_decode_splitk_partial_f2_pipeline_idx = i
             elif name.find("native_kv_decode_attn_splitk") >= 0:
                 self.native_decode_splitk_partial_pipeline_idx = i
             # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the v4 int8 partial's name
@@ -1550,21 +1626,45 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.kvprod_v2_built = (
             self.kvprod_blk_pipeline_idx >= 0 and self.kvprod_qvec_pipeline_idx >= 0
         )
+        # ── feat/llama-native-deep (2026-08-13): resolve the split-K partial THIS d_head can run.
+        # d_head == _AF_STRUCTURAL_D_HEAD keeps the f4u2 kernel at its own `d_head // 4` threads
+        # (byte-for-byte the pre-existing wiring); d_head == _AF_STRUCTURAL_D_HEAD_F2 (64) routes
+        # to the f2 kernel at a fixed 32 threads (one simdgroup x 2 elements/lane); any other
+        # d_head gets NO split-K table (naive native single-dispatch decode at every depth) --
+        # never a wrong-math dispatch, derived purely from dims + discovered pipelines.
+        if self.d_head == _AF_STRUCTURAL_D_HEAD and self.native_decode_splitk_partial_pipeline_idx >= 0:
+            self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_pipeline_idx
+            self.native_splitk_partial_eff_threads = self.d_head // 4
+        elif self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.native_decode_splitk_partial_f2_pipeline_idx >= 0:
+            self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_f2_pipeline_idx
+            self.native_splitk_partial_eff_threads = 32
         # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): both-or-neither -- the int8
-        # decode table needs the quant writer AND the v4 partial.
+        # decode table needs the quant writer AND the v4 partial. feat/llama-native-deep
+        # (2026-08-13): PLUS structural d_head == _AF_STRUCTURAL_D_HEAD -- the v4 i8kv partial is
+        # a lane-x4 one-simdgroup kernel exactly like f4u2 (d_head=128 only), and the quant
+        # writer/mirror buffers assume it; a non-128 model must never build this table (without
+        # this gate it would dispatch a structurally-wrong kernel at depth AND provision the
+        # ~0.9GB batch-free int8 mirror for nothing).
         self.decode_i8kv_built = (
             self.native_decode_attn_i8kv_pipeline_idx >= 0
             and self.kv_i8_quant_pipeline_idx >= 0
+            and self.d_head == _AF_STRUCTURAL_D_HEAD
         )
         # ── Project Slipstream Phase 3: batched-decode availability, all-five (both blobs + the
         # engine-side B-aware merge + the fused B-row lm_head + B-row argmax reduce) discovered or
-        # the batched table cannot run.
+        # the batched table cannot run. feat/llama-native-deep (2026-08-13): PLUS structural
+        # d_head == _AF_STRUCTURAL_D_HEAD AND qk_norm == 1 -- the batched partial blob is the
+        # f4u2 family (d_head=128 one-simdgroup) and the batched kvprod blob applies the Qwen3
+        # QK-norm unconditionally; a non-128 or no-QK-norm model must never build the batched
+        # table (also skips its per-layer oversized B-sequence KV provisioning).
         self.decode_batched_built = (
             self.native_decode_splitk_partial_batched_pipeline_idx >= 0
             and self.kvprod_batched_pipeline_idx >= 0
             and self.batched_splitk_merge_pipeline_idx >= 0
             and self.batched_lmhead_pipeline_idx >= 0
             and self.batched_argmax_reduce_pipeline_idx >= 0
+            and self.d_head == _AF_STRUCTURAL_D_HEAD
+            and self.qk_norm == 1
         )
 
         for role in range(_N_ROLES):
@@ -1604,10 +1704,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # ── parametric d_head (2026-08-13): the AF kernels are structural
             # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
             and self.d_head == _AF_STRUCTURAL_D_HEAD
-            # ── llama-family QK-norm (2026-08-13): the AF kvprod BLOBS apply the Qwen3 per-head
-            # QK-norm unconditionally (baked into the generated kernels); a no-QK-norm model
-            # (qk_norm=0) must never dispatch them, so it degrades to the parametric PF_ATTN_OFF
-            # path whose residentk ropewrt kernels take the qk_norm flag. Same pattern as the
+            # ── llama-family QK-norm (2026-08-13): the steel grouped-FA PREFILL kernel is
+            # structural d_head=128 + QK-norm, so a no-QK-norm model (qk_norm=0) degrades off the
+            # steel path. feat/llama-native-decode (2026-08-13): the kvprod BLOB itself now takes
+            # the qk_norm flag (the engine passes the model's own value), so the NATIVE DECODE
+            # half below is available to qk_norm=0 models -- the degrade target is the
+            # parametric-prefill + native-decode plan, not the bare OFF path. Same pattern as the
             # d_head gate above -- a Qwen3 session (qk_norm=1) adds a literal `and True`.
             and self.qk_norm == 1,
             self.qkv_proj_bm64_pipeline_idx >= 0,
@@ -1617,6 +1719,16 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.msl_parity_qkv_proj_pipeline_idx >= 0,
             self.msl_parity_gemm_accum_pipeline_idx >= 0,
             self.msl_parity_swiglu_pipeline_idx >= 0,
+            # ── feat/llama-native-deep (2026-08-13): availability of the parametric-prefill +
+            # native-decode plan -- the naive producer blob (its qk_norm flag covers both
+            # families), the naive native decode-attn blob (below-threshold depths), and a
+            # split-K partial suited to THIS d_head (already resolved into the eff slot above),
+            # plus the engine-side merge (always present once discovery saw it). Model-parametric:
+            # derived from dims + discovered pipelines, never a model name.
+            self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
+            and self.native_decode_attn_pipeline_idx >= 0
+            and self.native_splitk_partial_eff_idx >= 0
+            and self.pipeline_idx_merge >= 0,
         ))
         # ── Phase 3 (2026-08-08): the ONE gate for the Float16-weight materialization this struct
         # adds -- see `self.msl_any_linked`'s own field docstring for why a blobs-absent binary
@@ -2053,6 +2165,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.gemv_down_af2_d = List[Int]()
         self.lmhead_af2_d = -1
 
+        # ── feat/llama-native-deep (2026-08-13): pnat table placeholders, same "set the real
+        # budget now, allocate/build only if the guard below passes" discipline -- NINE per-layer
+        # dispatches (the OFF table's eight + the native-KV-producer write).
+        self.n_descriptors_prefill_pnat = 1 + self.n_layers * 9 + 2
+        self.descriptors_prefill_pnat = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.pnat_built = False
+        self.embed_pnat_d = -1
+        self.rmsnorm_pnat_d = List[Int]()
+        self.gemm_assign_pnat_d = List[Int]()
+        self.kvprod_pnat_d = List[Int]()
+        self.ropewrt_pnat_d = List[Int]()
+        self.attn_pnat_d = List[Int]()
+        self.gemv_o_pnat_d = List[Int]()
+        self.rmsnorm2_pnat_d = List[Int]()
+        self.swiglu_pnat_d = List[Int]()
+        self.gemv_down_pnat_d = List[Int]()
+        self.lmhead_pnat_d = -1
+
         self.n_descriptors_decode_native = metaldispatch_dispatch_budget(n_layers)
         self.descriptors_decode_native = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.token_id_offset_native = -1
@@ -2139,15 +2269,31 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # pair above, so `self.pipeline_idx_merge` is always set once discovery saw it -- both
         # split-K kernels are pinned-toolchain code, never blobs). Any missing piece leaves the
         # table unbuilt and `_step_native_kv_impl` on the naive path at every depth.
+        # feat/llama-native-deep (2026-08-13): the partial slot is now the d_head-resolved EFFECTIVE
+        # one (`native_splitk_partial_eff_idx` -- f4u2 at d_head=128, f2 at d_head=64, -1 for any
+        # d_head neither covers), so a llama d_head=64 session builds this table around the f2
+        # kernel and a d_head neither partial covers simply leaves it unbuilt (naive native decode
+        # at every depth), never dispatching a structurally-wrong kernel.
         if (
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
             and self.native_decode_attn_pipeline_idx >= 0
-            and self.native_decode_splitk_partial_pipeline_idx >= 0
+            and self.native_splitk_partial_eff_idx >= 0
             and self.pipeline_idx_merge >= 0
         ):
             self.descriptors_decode_native_splitk = _mb_alloc_descriptors(self.n_descriptors_decode_native_splitk)
             self._build_descriptors_decode_native_splitk(n_qkv)
             self.native_decode_splitk_built = True
+
+        # ── feat/llama-native-deep (2026-08-13): the pnat prefill table's OWN guard -- the naive
+        # producer blob alone (the table's only non-always-compiled kernel; the eight parametric
+        # OFF-family dispatches are pinned-toolchain code this struct compiles unconditionally).
+        # Any missing piece leaves the table unbuilt and `pnat_built` False, which `prefill_batch`
+        # checks defensively -- and plan resolution's own availability expression (above) already
+        # degrades a `PF_ATTN_PARAMETRIC_NATIVE_DECODE` request to `PF_ATTN_OFF` on such a binary.
+        if self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0:
+            self.descriptors_prefill_pnat = _mb_alloc_descriptors(self.n_descriptors_prefill_pnat)
+            self._build_descriptors_prefill_pnat(n_qkv)
+            self.pnat_built = True
 
         # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): the int8 decode table's guard --
         # the split-K table's own guard pieces PLUS both int8 blobs (v4 partial + quant writer).
@@ -2191,8 +2337,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
             and self.d_head == _AF_STRUCTURAL_D_HEAD
             # ── llama-family QK-norm (2026-08-13): SAME gate as `__init__`'s own, byte-for-byte
-            # -- both resolution sites must agree, so a no-QK-norm model degrades to the
-            # parametric PF_ATTN_OFF path no matter when the plan is (re-)resolved.
+            # -- both resolution sites must agree, so a no-QK-norm model degrades off the steel
+            # path no matter when the plan is (re-)resolved.
             and self.qk_norm == 1,
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
@@ -2201,6 +2347,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.msl_parity_qkv_proj_pipeline_idx >= 0,
             self.msl_parity_gemm_accum_pipeline_idx >= 0,
             self.msl_parity_swiglu_pipeline_idx >= 0,
+            # ── feat/llama-native-deep (2026-08-13): SAME parametric-native-decode availability
+            # expression as `__init__`'s own -- both resolution sites must agree.
+            self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
+            and self.native_decode_attn_pipeline_idx >= 0
+            and self.native_splitk_partial_eff_idx >= 0
+            and self.pipeline_idx_merge >= 0,
         ))
 
     def _require_resolved_plan(self) raises:
@@ -2741,6 +2893,232 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
+    def _build_descriptors_prefill_pnat(mut self, n_qkv: Int) raises:
+        """feat/llama-native-deep (2026-08-13): builds `self.descriptors_prefill_pnat` -- the
+        `PF_ATTN_PARAMETRIC_NATIVE_DECODE` table: `_build_descriptors_prefill`'s OWN eight
+        per-layer dispatches byte-for-byte (rmsnorm, gemm_assign, the parametric `_pf_ropewrt_
+        kernel` ropewrt with the model's own qk_norm flag, `_pf_attn_tiled_kernel_simd` attention,
+        o_proj accum, rmsnorm2, swiglu, down_proj accum), with ONE additive dispatch inserted
+        after `gemm_assign` per layer: the naive attention-forge native-KV-producer at this
+        chunk's m_rows (grid `(h_q + h_kv) * PREFILL_MAX_TILE`, block `d_head`, 17 args -- the
+        kernel's own signature plus the trailing llama-family qk_norm flag), writing the packed
+        F16 native KV buffers every subsequent native decode step reads. `1 + n_layers*9 + 2`
+        descriptors total. Every M-scaled dispatch is built at its widest grid and recorded in the
+        `self.*_pnat_d` slots exactly like the OFF table's own bookkeeping; `_apply_m_rows_pnat`
+        narrows/patches them all per call (the kvprod dispatch's pos_base/m_rows included).
+        Same buffers as the OFF table for every shared role (safe: `prefill_batch` submits exactly
+        ONE table per call), and the kvprod dispatch shares NOTHING with the OFF roles -- it reads
+        `self.qkv_addr` (already written by this layer's gemm_assign) and writes `self.q_native_
+        addr` + `self.af_ck_native_addr`/`af_cv_native_addr`, none of which the parametric
+        attention reads (that reads `q_rot`/`ck`/`cv`, written by the ropewrt dispatch right after
+        the kvprod one -- dispatches inside one command buffer execute in submission order)."""
+        var n_q = self.h_q * self.d_head
+        var d = 0
+
+        _mb_set_header(
+            self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_EMBED],
+            _ceil_div(self.d_model, _TG) * PREFILL_MAX_TILE, _TG, 6,
+        )
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, self.prompt_ids_addr)
+        _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, self.d_model)
+        _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, 0)  # m_rows, patched per call
+        self.embed_pnat_d = d
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            var ck_native_addr = self.af_ck_native_addr[layer]
+            var cv_native_addr = self.af_cv_native_addr[layer]
+
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                PREFILL_MAX_TILE, _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.ln1_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 3, self.d_model)
+            _mb_set_arg_f32(self.descriptors_prefill_pnat, d, 4, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, 0)  # m_rows, patched per call
+            self.rmsnorm_pnat_d.append(d)
+            d += 1
+
+            var n_tile_rows_qkv_max = _ceil_div(PREFILL_MAX_TILE, _GEMM_BM)
+            var n_tile_cols_qkv = _ceil_div(n_qkv, _GEMM_BN)
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN],
+                n_tile_rows_qkv_max * n_tile_cols_qkv, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 6, n_qkv)
+            self.gemm_assign_pnat_d.append(d)
+            d += 1
+
+            # ── THE additive dispatch: naive native-KV-producer at this chunk's m_rows -- the
+            # packed-F16 native KV write the subsequent native decode reads. Byte-identical wiring
+            # to the AF tables' own naive-producer branch (16 kernel args) PLUS the trailing
+            # llama-family qk_norm flag (17 total -- the MB_MAX_ARGS raise this branch lands with).
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
+                (self.h_q + self.h_kv) * PREFILL_MAX_TILE, self.d_head, 17,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.q_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, ck_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, cv_native_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 8, 0)  # pos_base, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 11, self.d_head)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 12, _AF_KEY_BLOCK_SIZE)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 13, self.af_n_blocks)
+            _mb_set_arg_f32(self.descriptors_prefill_pnat, d, 14, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 15, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 16, self.qk_norm)
+            self.kvprod_pnat_d.append(d)
+            d += 1
+
+            # ── ropewrt: byte-identical wiring to the OFF table's own (15 args, qk_norm trailing).
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
+                (self.h_q + self.h_kv) * PREFILL_MAX_TILE, self.d_head, 15,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 8, 0)  # pos_base, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors_prefill_pnat, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 13, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 14, self.qk_norm)
+            self.ropewrt_pnat_d.append(d)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_ATTN],
+                self.h_q * PREFILL_MAX_TILE, self.d_head, 10,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, 0)  # pos_base, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, self.h_q)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 6, self.h_kv)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 7, self.d_head)
+            _mb_set_arg_f32(self.descriptors_prefill_pnat, d, 8, self.scale)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 9, 0)  # m_rows, patched per call
+            self.attn_pnat_d.append(d)
+            d += 1
+
+            var n_tile_rows_gemv_max = _ceil_div(PREFILL_MAX_TILE, _GEMM_BM)
+            var n_tile_cols_gemv = _ceil_div(self.d_model, _GEMM_BN)
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                n_tile_rows_gemv_max * n_tile_cols_gemv, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, n_q)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 6, self.d_model)
+            self.gemv_o_pnat_d.append(d)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                PREFILL_MAX_TILE, _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.ln2_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 3, self.d_model)
+            _mb_set_arg_f32(self.descriptors_prefill_pnat, d, 4, self.eps)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, 0)  # m_rows, patched per call
+            self.rmsnorm2_pnat_d.append(d)
+            d += 1
+
+            var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU],
+                n_tile_rows_gemv_max * n_tile_cols_ff, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.xn_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 6, self.d_ff)
+            self.swiglu_pnat_d.append(d)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d, self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                n_tile_rows_gemv_max * n_tile_cols_gemv, _GEMM_NTHREADS, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 5, self.d_ff)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d, 6, self.d_model)
+            self.gemv_down_pnat_d.append(d)
+            d += 1
+
+        # ── final-norm+lm_head+argmax: byte-identical to the OFF table's own tail.
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors_prefill_pnat, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, self.hidden_addr)  # patched per call
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 5, self.lm_head_scale_addr)
+        _mb_set_arg_int(self.descriptors_prefill_pnat, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors_prefill_pnat, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors_prefill_pnat, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors_prefill_pnat, d, 9, n_iters)
+        self.lmhead_pnat_d = d
+        d += 1
+
+        _mb_set_header(self.descriptors_prefill_pnat, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors_prefill_pnat, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors_prefill_pnat:
+            raise Error(
+                "metaldispatch: built " + String(d) + " prefill-pnat descriptors but the budget says "
+                + String(self.n_descriptors_prefill_pnat) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
     def _build_descriptors_prefill_af(mut self, n_qkv: Int) raises:
         """Attention Compiler Plan v1.0, Phase 2C (+ the decode-after-AF-prefill gap fix): builds
         `self.descriptors_prefill_af` -- a COMPLETE SEPARATE table, structurally IDENTICAL to
@@ -2858,9 +3236,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.kvprod_q_af_d.append(d)
                 d += 1
             else:
+                # feat/llama-native-deep: the naive producer's signature grew the trailing
+                # llama-family qk_norm flag (17 args total). Only a qk_norm==1 + d_head==128
+                # session ever runs this AF table (see the `af_grouped_fa_available` gate), so
+                # this binds 1 for it -- bound from `self.qk_norm` regardless, never a literal.
                 _mb_set_header(
                     self.descriptors_prefill_af, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                    n_units_kvprod_max, self.d_head, 16,
+                    n_units_kvprod_max, self.d_head, 17,
                 )
                 _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.q_native_addr)
                 _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, ck_native_addr)
@@ -2878,6 +3260,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 _mb_set_arg_int(self.descriptors_prefill_af, d, 13, self.af_n_blocks)
                 _mb_set_arg_f32(self.descriptors_prefill_af, d, 14, self.eps)
                 _mb_set_arg_int(self.descriptors_prefill_af, d, 15, 0)  # m_rows, patched per call
+                _mb_set_arg_int(self.descriptors_prefill_af, d, 16, self.qk_norm)
                 self.kvprod_af_d.append(d)
                 d += 1
 
@@ -3139,9 +3522,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.kvprod_q_af2_d.append(d)
                 d += 1
             else:
+                # feat/llama-native-deep: 17 args (the trailing qk_norm flag), SAME reason and
+                # binding as the with-mirror table's own naive branch above.
                 _mb_set_header(
                     self.descriptors_prefill_af_nomirror, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                    n_units_kvprod_max, self.d_head, 16,
+                    n_units_kvprod_max, self.d_head, 17,
                 )
                 _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 0, self.q_native_addr)
                 _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 1, ck_native_addr)
@@ -3159,6 +3544,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d, 13, self.af_n_blocks)
                 _mb_set_arg_f32(self.descriptors_prefill_af_nomirror, d, 14, self.eps)
                 _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d, 15, 0)  # m_rows, patched per call
+                _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d, 16, self.qk_norm)
                 self.kvprod_af2_d.append(d)
                 d += 1
 
@@ -3436,9 +3822,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 _mb_set_arg_int(self.descriptors_prefill_af, d_qv, 5, pos_base)
                 _mb_set_arg_int(self.descriptors_prefill_af, d_qv, 10, m_rows)
             else:
+                # feat/llama-native-deep: 17 args -- `_mb_set_header` rewrites ONLY the header,
+                # arg 16 (qk_norm) stays whatever the builder bound; the count must still match
+                # the kernel's own signature.
                 _mb_set_header(
                     self.descriptors_prefill_af, d_kv, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                    n_units_kvprod * m_rows, self.d_head, 16,
+                    n_units_kvprod * m_rows, self.d_head, 17,
                 )
                 _mb_set_arg_int(self.descriptors_prefill_af, d_kv, 8, pos_base)
                 _mb_set_arg_int(self.descriptors_prefill_af, d_kv, 15, m_rows)
@@ -3699,9 +4088,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_qv, 5, pos_base)
                 _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_qv, 10, m_rows)
             else:
+                # feat/llama-native-deep: 17 args, SAME reason as `_apply_m_rows_af`'s own twin.
                 _mb_set_header(
                     self.descriptors_prefill_af_nomirror, d_kv, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                    n_units_kvprod * m_rows, self.d_head, 16,
+                    n_units_kvprod * m_rows, self.d_head, 17,
                 )
                 _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_kv, 8, pos_base)
                 _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_kv, 15, m_rows)
@@ -3903,6 +4293,125 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var last_row_addr = self.hidden_addr + UInt64((m_rows - 1) * self.d_model * 4)
         _mb_set_arg_ptr(self.descriptors_prefill, self.lmhead_d, 2, last_row_addr)
 
+    def _apply_m_rows_pnat(mut self, m_rows: Int, pos_base: Int) raises:
+        """feat/llama-native-deep (2026-08-13): `_apply_m_rows`'s own pnat twin -- narrows/patches
+        every M-scaled descriptor of `self.descriptors_prefill_pnat` exactly the way `_apply_m_
+        rows` does for the OFF table (byte-for-byte the same per-role patches), PLUS the one
+        additive role: the native-KV-producer dispatch (grid `(h_q + h_kv) * m_rows`, `pos_base`
+        + `m_rows` scalar args), so the packed F16 native cache this chunk writes carries THIS
+        chunk's own absolute positions. Same unconditional-every-call discipline as `_apply_m_rows`."""
+        var n_qkv = self.n_qkv
+        var n_units_embed = _ceil_div(self.d_model, _TG)
+        var n_tile_cols_qkv = _ceil_div(n_qkv, _GEMM_BN)
+        var n_units_rope = self.h_q + self.h_kv
+        var n_units_attn = self.h_q
+        var n_tile_cols_gemv = _ceil_div(self.d_model, _GEMM_BN)
+        var n_tile_cols_ff = _ceil_div(self.d_ff, _GEMM_BN)
+
+        # Same tile-config decision `_apply_m_rows` makes (hardware-MMA unconditional; see that
+        # method's own docstring for the measured account) -- byte-for-byte the same selection.
+        var use_mma = True
+        var use_block8_attn = False
+        var pf_attn = (
+            self.prefill_pipeline_idx[_PFROLE_ATTN_BLOCK8] if use_block8_attn
+            else self.prefill_pipeline_idx[_PFROLE_ATTN]
+        )
+        var use_narrow = residentk_prefill_gemm_use_narrow_tile(m_rows)
+        var gemm_bm = 32 if use_mma else (_GEMM_BM_NARROW if use_narrow else _GEMM_BM)
+        var gemm_nthreads = 256 if use_mma else (_GEMM_NTHREADS_NARROW if use_narrow else _GEMM_NTHREADS)
+        var n_tile_rows_qkv = _ceil_div(m_rows, gemm_bm)
+        var pf_assign = (
+            self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN_MMA] if use_mma
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN_NARROW] if use_narrow
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ASSIGN]
+        )
+        var pf_accum = (
+            self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM_MMA] if use_mma
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM_NARROW] if use_narrow
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM]
+        )
+        var pf_swiglu = (
+            self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU_MMA] if use_mma
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU_NARROW] if use_narrow
+            else self.prefill_pipeline_idx[_PFROLE_GEMM_SWIGLU]
+        )
+
+        _mb_set_header(
+            self.descriptors_prefill_pnat, self.embed_pnat_d, self.prefill_pipeline_idx[_PFROLE_EMBED],
+            n_units_embed * m_rows, _TG, 6,
+        )
+        _mb_set_arg_int(self.descriptors_prefill_pnat, self.embed_pnat_d, 5, m_rows)
+
+        for layer in range(self.n_layers):
+            var d_norm = self.rmsnorm_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_norm, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                m_rows, _TG, 6,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_norm, 5, m_rows)
+
+            var d_gemm = self.gemm_assign_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_gemm, pf_assign,
+                n_tile_rows_qkv * n_tile_cols_qkv, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_gemm, 4, m_rows)
+
+            var d_kvp = self.kvprod_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_kvp, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
+                n_units_rope * m_rows, self.d_head, 17,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_kvp, 8, pos_base)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_kvp, 15, m_rows)
+
+            var d_rope = self.ropewrt_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_rope, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
+                n_units_rope * m_rows, self.d_head, 15,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_rope, 8, pos_base)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_rope, 13, m_rows)
+
+            var d_attn = self.attn_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_attn, pf_attn,
+                n_units_attn * m_rows, self.d_head, 10,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_attn, 4, pos_base)
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_attn, 9, m_rows)
+
+            var d_go = self.gemv_o_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_go, pf_accum,
+                n_tile_rows_qkv * n_tile_cols_gemv, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_go, 4, m_rows)
+
+            var d_norm2 = self.rmsnorm2_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_norm2, self.prefill_pipeline_idx[_PFROLE_RMSNORM],
+                m_rows, _TG, 6,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_norm2, 5, m_rows)
+
+            var d_sw = self.swiglu_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_sw, pf_swiglu,
+                n_tile_rows_qkv * n_tile_cols_ff, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_sw, 4, m_rows)
+
+            var d_gd = self.gemv_down_pnat_d[layer]
+            _mb_set_header(
+                self.descriptors_prefill_pnat, d_gd, pf_accum,
+                n_tile_rows_qkv * n_tile_cols_gemv, gemm_nthreads, 7,
+            )
+            _mb_set_arg_int(self.descriptors_prefill_pnat, d_gd, 4, m_rows)
+
+        var last_row_addr = self.hidden_addr + UInt64((m_rows - 1) * self.d_model * 4)
+        _mb_set_arg_ptr(self.descriptors_prefill_pnat, self.lmhead_pnat_d, 2, last_row_addr)
+
     def _build_descriptors_decode_native(mut self, n_qkv: Int) raises:
         """Project Redline reopening (2026-08-08): builds `self.descriptors_decode_native` -- ONE
         embed dispatch, SIX per-layer dispatches (`norm_gemv` [fused rmsnorm+qkv_proj, byte-identical
@@ -3951,12 +4460,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             # ── native-KV-producer at `m_rows=1` -- writes `self.q_native_addr` row 0 (F16 Q for
             # THIS decode step) and appends THIS step's own K/V into the native-packed buffers, at
-            # whatever absolute `pos` `step_native_kv` patches into arg 8 below. Same 16-arg order
-            # `_build_descriptors_prefill_af`'s own kvprod dispatch uses; `m_rows` (arg 15) is a
-            # CONSTANT `1` here, never patched -- a decode step is always exactly one row.
+            # whatever absolute `pos` `step_native_kv` patches into arg 8 below. Same 17-arg order
+            # `_build_descriptors_prefill_af`'s own kvprod dispatch uses (feat/llama-native-deep:
+            # the kernel's own signature + the trailing llama-family qk_norm flag); `m_rows`
+            # (arg 15) is a CONSTANT `1` here, never patched -- a decode step is always exactly
+            # one row.
             _mb_set_header(
                 self.descriptors_decode_native, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                n_units_kvprod, self.d_head, 16,
+                n_units_kvprod, self.d_head, 17,
             )
             _mb_set_arg_ptr(self.descriptors_decode_native, d, 0, self.q_native_addr)
             _mb_set_arg_ptr(self.descriptors_decode_native, d, 1, ck_native_addr)
@@ -3975,6 +4486,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_decode_native, d, 13, self.af_n_blocks)
             _mb_set_arg_f32(self.descriptors_decode_native, d, 14, self.eps)
             _mb_set_arg_int(self.descriptors_decode_native, d, 15, 1)  # m_rows, CONSTANT (decode = 1 row)
+            _mb_set_arg_int(self.descriptors_decode_native, d, 16, self.qk_norm)
             # NOTE: no separate per-layer index list needed for THIS dispatch beyond `self.pos_
             # offsets_native` above (already the descriptor index `step_native_kv` patches arg 8 at)
             # -- deliberately NOT reusing `self.kvprod_af2_d` (that list belongs to the UNRELATED
@@ -4132,10 +4644,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # ── native-KV-producer at m_rows=1: byte-identical wiring to the naive table's own
-            # (per-step cache append + F16 Q narrow).
+            # (per-step cache append + F16 Q narrow), PLUS the trailing llama-family qk_norm flag
+            # (feat/llama-native-decode: the kernel's own 17th arg).
             _mb_set_header(
                 self.descriptors_decode_native_splitk, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                n_units_kvprod, self.d_head, 16,
+                n_units_kvprod, self.d_head, 17,
             )
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.q_native_addr)
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, ck_native_addr)
@@ -4154,17 +4667,20 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 13, self.af_n_blocks)
             _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 14, self.eps)
             _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 15, 1)  # m_rows, CONSTANT (decode = 1 row)
+            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 16, self.qk_norm)
             d += 1
 
             # ── THE substitution, dispatch 1/2: split-K PARTIAL over this step's full key range --
-            # 14 args, exact order of `_native_kv_decode_splitk_partial_kernel`'s own signature.
-            # float4 SIMD split-K partial (2026-08-10): one simdgroup per (head,split), each lane
-            # owns 4 head-elements, each key's dot = single simd_sum; block_dim = d_head//4.
-            # Requires d_head % 4 == 0 (Qwen3 d_head=128). Worker builds need DEVELOPER_DIR=full
+            # 14 args, the shared partial signature. feat/llama-native-deep (2026-08-13): the
+            # pipeline + thread count are the d_head-resolved EFFECTIVE pair (`native_splitk_
+            # partial_eff_idx`/`_eff_threads`): the f4u2 kernel at d_head=128 (one simdgroup per
+            # (head,split), lane owns 4 elements, block d_head//4) or the f2 kernel at d_head=64
+            # (one simdgroup, lane owns 2 elements, block 32) -- the SAME (m,l,o) partial contract
+            # either way, so the merge below is untouched. Worker builds need DEVELOPER_DIR=full
             # Xcode or the Metal compiler falls back to CommandLineTools and fails.
             _mb_set_header(
-                self.descriptors_decode_native_splitk, d, self.native_decode_splitk_partial_pipeline_idx,
-                self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.d_head // 4, 14,
+                self.descriptors_decode_native_splitk, d, self.native_splitk_partial_eff_idx,
+                self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.native_splitk_partial_eff_threads, 14,
             )
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.splitk_m_addr)
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.splitk_l_addr)
@@ -4316,7 +4832,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # ── native-KV-producer at m_rows=1: byte-identical wiring to the f16 split-K table.
             _mb_set_header(
                 self.descriptors_decode_native_splitk_i8, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                n_units_kvprod, self.d_head, 16,
+                n_units_kvprod, self.d_head, 17,
             )
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 0, self.q_native_addr)
             _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, ck_native_addr)
@@ -4335,6 +4851,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 13, self.af_n_blocks)
             _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 14, self.eps)
             _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 15, 1)  # m_rows, CONSTANT (decode = 1 row)
+            # feat/llama-native-deep: trailing llama-family qk_norm flag (this table only ever
+            # builds for d_head=128 models anyway -- `decode_i8kv_built`'s own gate -- so this
+            # binds 1 for them; bound for signature completeness, never a silent garbage read).
+            _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 16, self.qk_norm)
             d += 1
 
             # ── SUBSTITUTION 1/2: the write-side quant dispatch, RE-PATCHED per step (header grid
@@ -5568,8 +6088,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     for lyr in range(self.n_layers):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
                         _mb_set_header(
-                            table, d_partial, self.native_decode_splitk_partial_pipeline_idx,
-                            self.h_q * n_splits_adapt, self.d_head // 4, 14,
+                            table, d_partial, self.native_splitk_partial_eff_idx,
+                            self.h_q * n_splits_adapt, self.native_splitk_partial_eff_threads, 14,
                         )
                         _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
                         _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
@@ -5742,8 +6262,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     for lyr in range(self.n_layers):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
                         _mb_set_header(
-                            table, d_partial, self.native_decode_splitk_partial_pipeline_idx,
-                            self.h_q * n_splits_adapt, self.d_head // 4, 14,
+                            table, d_partial, self.native_splitk_partial_eff_idx,
+                            self.h_q * n_splits_adapt, self.native_splitk_partial_eff_threads, 14,
                         )
                         _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
                         _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
@@ -5949,6 +6469,26 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 if tid < 0 or tid >= self.vocab:
                     return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
                 ids_i32[m] = Int32(tid)
+
+            if self.plan.attention == PF_ATTN_PARAMETRIC_NATIVE_DECODE:
+                # feat/llama-native-deep (2026-08-13): the llama-family native fast path -- the
+                # parametric prefill table PLUS the per-layer native-KV-producer write (both KV
+                # representations populated: this table's own attention reads the natural side;
+                # every subsequent `_step_native_kv_impl` decode reads the native side -- the plan's
+                # own `kv_contract`/`decode` derivation makes the pairing the only representable
+                # one). Same single-value dispatch discipline as the other two branches: this plan
+                # only ever resolves when the pnat table's own kernel was discovered, which is the
+                # exact guard the table was built under.
+                self._apply_m_rows_pnat(m_rows, pos_base)
+                var rc_pnat = _mb_run_token(self.descriptors_prefill_pnat, self.n_descriptors_prefill_pnat)
+                if rc_pnat != 0:
+                    return _StepOut(-1, 0.0, self.n_descriptors_prefill_pnat, MB_ERR_DISPATCH_FAILED)
+
+                var tok_pnat = Int(self.out_idx_ptr.bitcast[Int32]()[0])
+                var lg_pnat = Float64(self.out_val_ptr.bitcast[Float32]()[0])
+                if tok_pnat < 0 or tok_pnat >= self.vocab:
+                    return _StepOut(-1, 0.0, self.n_descriptors_prefill_pnat, MB_ERR_DISPATCH_FAILED)
+                return _StepOut(tok_pnat, lg_pnat, self.n_descriptors_prefill_pnat, MB_OK)
 
             if self.plan.attention == PF_ATTN_GROUPED_FA_NO_MIRROR:
                 self._apply_m_rows_af_nomirror(m_rows, pos_base)

@@ -22,6 +22,7 @@ from metaldispatch.session_prefill_policy import (
     PF_ATTN_OFF,
     PF_ATTN_GROUPED_FA_WITH_MIRROR,
     PF_ATTN_GROUPED_FA_NO_MIRROR,
+    PF_ATTN_PARAMETRIC_NATIVE_DECODE,
     PF_GEMM_ORIGINAL,
     PF_GEMM_BM64,
     PF_GEMM_VECLOAD4_ALL_ROLES,
@@ -30,6 +31,7 @@ from metaldispatch.session_prefill_policy import (
     KV_CONTRACT_NATURAL_F32,
     KV_CONTRACT_MIRRORED_NATURAL_F32_AND_PACKED_F16,
     KV_CONTRACT_PACKED_F16_NATIVE,
+    KV_CONTRACT_MIRRORED_NATIVE_DECODE,
     DECODE_PATH_LEGACY_NATURAL_KV,
     DECODE_PATH_NATIVE_PACKED_KV,
     UnresolvedPrefillConfig,
@@ -83,6 +85,10 @@ def main() raises:
         passed, failed, "pf_attn_path_name(NO_MIRROR)",
         pf_attn_path_name(PF_ATTN_GROUPED_FA_NO_MIRROR), "grouped_fa_no_mirror",
     )
+    _check_str(
+        passed, failed, "pf_attn_path_name(PARAMETRIC_NATIVE_DECODE)",
+        pf_attn_path_name(PF_ATTN_PARAMETRIC_NATIVE_DECODE), "parametric_native_decode",
+    )
     _check_str(passed, failed, "pf_attn_path_name(99) unknown", pf_attn_path_name(99), "unknown(99)")
 
     _check_str(passed, failed, "pf_gemm_path_name(ORIGINAL)", pf_gemm_path_name(PF_GEMM_ORIGINAL), "original")
@@ -106,6 +112,10 @@ def main() raises:
     _check_str(
         passed, failed, "kv_contract_name(PACKED_F16_NATIVE)",
         kv_contract_name(KV_CONTRACT_PACKED_F16_NATIVE), "packed_f16_native",
+    )
+    _check_str(
+        passed, failed, "kv_contract_name(MIRRORED_NATIVE_DECODE)",
+        kv_contract_name(KV_CONTRACT_MIRRORED_NATIVE_DECODE), "mirrored_native_decode",
     )
     _check_str(passed, failed, "kv_contract_name(99) unknown", kv_contract_name(99), "unknown(99)")
 
@@ -195,6 +205,51 @@ def main() raises:
         KV_CONTRACT_NATURAL_F32, DECODE_PATH_LEGACY_NATURAL_KV,
     )
     _check_true(passed, failed, "no_mirror attention w/ legacy contract -> not resolved", not bad_pairing.is_resolved())
+
+    # 8. feat/llama-native-decode (2026-08-13): the parametric-prefill + native-decode plan.
+    # 8a. Explicit request honored when its own availability holds -> mirrored-native-decode
+    #     contract (both KV representations populated) + NATIVE decode routing.
+    var p_pnat = resolve_prefill_execution_plan(
+        UnresolvedPrefillConfig(PF_ATTN_PARAMETRIC_NATIVE_DECODE, PF_GEMM_ORIGINAL),
+        False, False, False, False, False, False, False, False, True,
+    )
+    _check(passed, failed, "pnat/available attention", p_pnat.attention, PF_ATTN_PARAMETRIC_NATIVE_DECODE)
+    _check(passed, failed, "pnat/available kv_contract", p_pnat.kv_contract, KV_CONTRACT_MIRRORED_NATIVE_DECODE)
+    _check(passed, failed, "pnat/available decode", p_pnat.decode, DECODE_PATH_NATIVE_PACKED_KV)
+    _check_true(passed, failed, "pnat/available is_resolved", p_pnat.is_resolved())
+
+    # 8b. Explicit request with NO native availability -> degrades to OFF + OFF contract.
+    var p_pnat_deg = resolve_prefill_execution_plan(
+        UnresolvedPrefillConfig(PF_ATTN_PARAMETRIC_NATIVE_DECODE, PF_GEMM_ORIGINAL),
+        False, False, False, False, False,
+    )
+    _check(passed, failed, "pnat/no-blobs degrades attention", p_pnat_deg.attention, PF_ATTN_OFF)
+    _check(passed, failed, "pnat/no-blobs degrades kv_contract", p_pnat_deg.kv_contract, KV_CONTRACT_NATURAL_F32)
+    _check(passed, failed, "pnat/no-blobs degrades decode", p_pnat_deg.decode, DECODE_PATH_LEGACY_NATURAL_KV)
+
+    # 8c. NO_MIRROR request, steel AF absent but native availability present -> closest-
+    #     capability-first degrade lands on the parametric-native plan (not bare OFF).
+    var p_nm_pnat = resolve_prefill_execution_plan(
+        UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_ORIGINAL),
+        False, False, False, False, False, False, False, False, True,
+    )
+    _check(passed, failed, "no_mirror/pnat-available degrades attention", p_nm_pnat.attention, PF_ATTN_PARAMETRIC_NATIVE_DECODE)
+    _check(passed, failed, "no_mirror/pnat-available kv_contract", p_nm_pnat.kv_contract, KV_CONTRACT_MIRRORED_NATIVE_DECODE)
+    _check(passed, failed, "no_mirror/pnat-available decode", p_nm_pnat.decode, DECODE_PATH_NATIVE_PACKED_KV)
+
+    # 8d. NO_MIRROR request, steel AF PRESENT -> the steel path still outranks the pnat plan.
+    var p_nm_both = resolve_prefill_execution_plan(
+        UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_ORIGINAL),
+        True, False, False, False, False, False, False, False, True,
+    )
+    _check(passed, failed, "no_mirror/both-available keeps steel", p_nm_both.attention, PF_ATTN_GROUPED_FA_NO_MIRROR)
+
+    # 8e. is_resolved() rejects a pnat plan paired with the wrong contract.
+    var bad_pnat = ResolvedSessionExecutionPlan(
+        PF_ATTN_PARAMETRIC_NATIVE_DECODE, PF_GEMM_ORIGINAL,
+        KV_CONTRACT_NATURAL_F32, DECODE_PATH_NATIVE_PACKED_KV,
+    )
+    _check_true(passed, failed, "pnat attention w/ natural contract -> not resolved", not bad_pnat.is_resolved())
 
     print("  [metaldispatch.session_prefill_policy] Passed:", passed, "Failed:", failed)
     if failed > 0:
