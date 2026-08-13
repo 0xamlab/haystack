@@ -650,6 +650,28 @@ def decode_batched(
             )
         prompt_lens.append(len(ids))
         flat_ids.extend(int(t) for t in ids)
+    if n_seqs == 1:
+        # The batched decode kernel tier faults at B=1 (out-of-bounds write in the split-K
+        # epilogues' padded rows, which are all-but-one of the 32-row tiles at B=1). A single
+        # sequence has nothing to batch anyway, so delegate to the serial path -- token-identical
+        # and it never touches the faulty B=1 batched table.
+        single = decode(
+            runtime,
+            checkpoint_dir=checkpoint_dir,
+            prompt_token_ids=prompt_token_ids_list[0],
+            max_new_tokens=max_new_tokens,
+            use_msl_parity_all_roles=use_msl_parity_all_roles,
+            converted_checkpoint_dir=converted_checkpoint_dir,
+        )
+        return BatchedInferenceResult(
+            generated_token_ids=[list(single.token_ids[single.n_prompt :])],
+            n_prompt_total=single.n_prompt,
+            stopped_on_eos=single.stopped_on_eos,
+            dispatches_per_token=single.dispatches_per_token,
+            decode_tokens_per_sec=single.decode_tokens_per_sec,
+            prefill_tokens_per_sec=single.prefill_tokens_per_sec,
+            prefill_chunks=1,
+        )
     if not isinstance(max_new_tokens, int) or isinstance(max_new_tokens, bool) or max_new_tokens < 1:
         raise InferenceError(
             "invalid_arguments", f"max_new_tokens must be a positive int, got {max_new_tokens!r}"
