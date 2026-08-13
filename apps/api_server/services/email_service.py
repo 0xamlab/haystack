@@ -39,7 +39,27 @@ def _send(
     *,
     audit_context: EgressAuditContext | None = None,
 ) -> None:
-    """Send an email via SMTP. Logs errors but does not raise."""
+    """Send an email. Routes through Resend when configured (the platform's working
+    transactional channel — the SMTP default of localhost:1025 silently dropped
+    every message); falls back to SMTP only when Resend is unconfigured, for
+    self-hosted operators who point SMTP at their own relay."""
+    from apps.api_server.services import resend_email
+
+    if resend_email.is_configured():
+        import asyncio
+
+        async def _via_resend() -> None:
+            await resend_email.send_email(to=to, subject=subject, html_body=html)
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(_via_resend())  # sync caller (scripts)
+        else:
+            # Called from request handlers — schedule and return; email is a
+            # best-effort side effect and must never block or fail the request.
+            loop.create_task(_via_resend())
+        return
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject

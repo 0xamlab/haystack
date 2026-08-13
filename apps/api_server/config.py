@@ -523,7 +523,7 @@ class Settings(BaseSettings):
     # Resend (transactional email — team invites, dormant-account notices). Empty = disabled
     # (send_* helpers no-op + log a warning instead of raising).
     resend_api_key: str = Field(default="")
-    resend_from_email: str = Field(default="Algenta <noreply@algenta.ai>")
+    resend_from_email: str = Field(default="Thyn <noreply@updates.thyn.ai>")
 
     # ─── Webhooks ─────────────────────────────────────────────────────────────
     webhook_signing_secret: str = Field(default="change-me-in-production")

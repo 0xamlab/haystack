@@ -534,9 +534,17 @@
         "validation": "static_inventory"
       },
       {
+        "bytes": 274,
+        "language": "python",
+        "line": 25,
+        "path": "benchmarks/decode-throughput.md",
+        "sha256": "aedd1d66d7b0e691aa38c89f80cb84857703b4421aeb352284a470fd75d7d82e",
+        "validation": "parsed"
+      },
+      {
         "bytes": 151,
         "language": "bash",
-        "line": 135,
+        "line": 159,
         "path": "benchmarks/decode-throughput.md",
         "sha256": "f46f087d58d8c1e79baa1fe328f40ed609af74808f938348cf96ce158b50c64f",
         "validation": "command_inventory"
@@ -638,6 +646,14 @@
         "validation": "static_inventory"
       },
       {
+        "bytes": 64,
+        "language": "text",
+        "line": 100,
+        "path": "benchmarks/graph-betweenness.md",
+        "sha256": "10263e0f1b262e522abede95ac994c0406a10a887ece430f9bc00569c84157eb",
+        "validation": "static_inventory"
+      },
+      {
         "bytes": 280,
         "language": "python",
         "line": 231,
@@ -678,9 +694,17 @@
         "validation": "static_inventory"
       },
       {
+        "bytes": 2251,
+        "language": "python",
+        "line": 25,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "sha256": "e9dc900b9d05b5a6606bce8d3749dc9e59dab885ea96a3e888ee0e13b538cfb4",
+        "validation": "parsed"
+      },
+      {
         "bytes": 58,
         "language": "text",
-        "line": 104,
+        "line": 183,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "sha256": "db74a416f22769391b205c66d5636f359ad17e181c6a39edef2771f4fa970180",
         "validation": "static_inventory"
@@ -707,6 +731,46 @@
         "line": 138,
         "path": "benchmarks/normalization.md",
         "sha256": "9808128858e45e822cc1919eda8750f9fb40df7ec10fd71076b4de8bb49d675d",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 54,
+        "language": "text",
+        "line": 150,
+        "path": "benchmarks/sort.md",
+        "sha256": "cb3180c1c8e0942dd222f45338038f2ad276203ab98d9f8724df9d6732cfc2ee",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 325,
+        "language": "text",
+        "line": 167,
+        "path": "benchmarks/survival-analysis.md",
+        "sha256": "de305836e84d4fe39399a3369353c5d47d64115d1033b0aa7dea8ec46953289e",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 281,
+        "language": "text",
+        "line": 173,
+        "path": "benchmarks/survival-analysis.md",
+        "sha256": "cff16023304f5de5cfe77c2eb255b058671059507de6a66a6984ae483fe10be7",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 74,
+        "language": "text",
+        "line": 180,
+        "path": "benchmarks/survival-analysis.md",
+        "sha256": "ca1d5566111b1ac94460d6c5dfee1961d849b02bcd37968d649b729cc8c1e670",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 112,
+        "language": "text",
+        "line": 129,
+        "path": "benchmarks/top-k.md",
+        "sha256": "9b101575ebf659b62103feaf9f5bbe119e6c5677b02fc8481c79b21e9f6820fd",
         "validation": "static_inventory"
       },
       {
@@ -3086,9 +3150,17 @@
         "validation": "parsed"
       },
       {
+        "bytes": 566,
+        "language": "python",
+        "line": 272,
+        "path": "engine/columnar-queries.md",
+        "sha256": "0cae8b37a3adb76d9d992b31317baf567e249434d4f79a35dcd0152a7e6492cd",
+        "validation": "parsed"
+      },
+      {
         "bytes": 350,
         "language": "python",
-        "line": 267,
+        "line": 304,
         "path": "engine/columnar-queries.md",
         "sha256": "1283f2c89257698f9d8bdd3002fe002e4d1465ac35b1d48223f27886f6d55160",
         "validation": "parsed"
@@ -3096,7 +3168,7 @@
       {
         "bytes": 423,
         "language": "python",
-        "line": 330,
+        "line": 367,
         "path": "engine/columnar-queries.md",
         "sha256": "908509a88af857a7bdf9dec0a99ad8127ce31adec01ed5fd5fd92c4d290c31d0",
         "validation": "parsed"
@@ -3104,7 +3176,7 @@
       {
         "bytes": 453,
         "language": "python",
-        "line": 358,
+        "line": 395,
         "path": "engine/columnar-queries.md",
         "sha256": "299558526fd53b330f7eead6f7f2604d1468ef4a9589666499e32a551c7eea8a",
         "validation": "parsed"
@@ -3112,7 +3184,7 @@
       {
         "bytes": 374,
         "language": "python",
-        "line": 383,
+        "line": 420,
         "path": "engine/columnar-queries.md",
         "sha256": "11d3aed876d29bd51c7dce7c3fb663ac51bc079acc64b87ec4648cc3afafcf70",
         "validation": "parsed"
@@ -3120,7 +3192,7 @@
       {
         "bytes": 123,
         "language": "python",
-        "line": 396,
+        "line": 433,
         "path": "engine/columnar-queries.md",
         "sha256": "3fe18370c049853169662fcccc98dfd570caf59aeccda867cc0415190be72a24",
         "validation": "parsed"
@@ -3128,7 +3200,7 @@
       {
         "bytes": 154,
         "language": "python",
-        "line": 411,
+        "line": 448,
         "path": "engine/columnar-queries.md",
         "sha256": "ce7203462ab0a1fc042734ff34aa3681a5e9b3c96172674f0df96337cac67302",
         "validation": "parsed"
@@ -3136,7 +3208,7 @@
       {
         "bytes": 359,
         "language": "python",
-        "line": 423,
+        "line": 460,
         "path": "engine/columnar-queries.md",
         "sha256": "9b57a7604594d11a10ad113a331d4a1a9a96a0fcbe57f6ad12071d8b1674e3a6",
         "validation": "parsed"
@@ -4078,27 +4150,11 @@
         "validation": "parsed"
       },
       {
-        "bytes": 485,
+        "bytes": 429,
         "language": "python",
-        "line": 17,
+        "line": 25,
         "path": "engine/qwen3-metal-decode.md",
-        "sha256": "f5b501218bfba43ff1533499a3f59464629290fe3900c57acb7592ddd7c1ebaa",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 233,
-        "language": "python",
-        "line": 54,
-        "path": "engine/qwen3-metal-decode.md",
-        "sha256": "2c332269bc799b415b19983a2c663ae2a788c0182ae763a495d41de2caac9c01",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 193,
-        "language": "python",
-        "line": 75,
-        "path": "engine/qwen3-metal-decode.md",
-        "sha256": "365428952ed39a3b71233766726cba97d2bcf05cbdd4e9a930b2b7c1ed7fda4d",
+        "sha256": "2fafd0cf123d4e20d8a5af0c6b781fb59df70670ec660ecf4da15b9fa747b9fa",
         "validation": "parsed"
       },
       {
@@ -6534,6 +6590,22 @@
         "validation": "parsed"
       },
       {
+        "bytes": 960,
+        "language": "python",
+        "line": 67,
+        "path": "guides/run-qwen3-family-inference.md",
+        "sha256": "7b76fecb134b6eb190ffbab551f89f52d369d753b26c97791500bec4b04b35c8",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 331,
+        "language": "python",
+        "line": 119,
+        "path": "guides/run-qwen3-family-inference.md",
+        "sha256": "9ca02c73030242e56ed81ee4a01681f58926a6f01ff37e55b5f4e7e7ab944454",
+        "validation": "parsed"
+      },
+      {
         "bytes": 607,
         "language": "bash",
         "line": 32,
@@ -7408,15 +7480,31 @@
       {
         "bytes": 181,
         "language": "json",
-        "line": 164,
+        "line": 165,
         "path": "llm/models.md",
         "sha256": "a3b02e06590ea4f0e1f3f44cd4f97e62b0834300b0a72ff9ea1127eabdc3e8ef",
         "validation": "parsed"
       },
       {
+        "bytes": 115,
+        "language": "json",
+        "line": 187,
+        "path": "llm/models.md",
+        "sha256": "1553ab2aeada8599316108e8bf7f6509ebee653676deab6ad3045b05a1047433",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 90,
+        "language": "json",
+        "line": 197,
+        "path": "llm/models.md",
+        "sha256": "bad3f18c1b3c30985084577420d7008d55a361c76b167b1e0d4b1387deefc8cf",
+        "validation": "parsed"
+      },
+      {
         "bytes": 348,
         "language": "json",
-        "line": 186,
+        "line": 212,
         "path": "llm/models.md",
         "sha256": "33d1bf5bfd8b710857fb779d597ab01409a8e4671aec457b372d6fe4623c2910",
         "validation": "parsed"
@@ -7424,7 +7512,7 @@
       {
         "bytes": 85,
         "language": "bash",
-        "line": 222,
+        "line": 248,
         "path": "llm/models.md",
         "sha256": "7c61ae4c915d9bb88025f78be9ed6bec1afa8fc71c5587828cb5dfdeda272385",
         "validation": "command_inventory"
@@ -7432,7 +7520,7 @@
       {
         "bytes": 215,
         "language": "bash",
-        "line": 233,
+        "line": 259,
         "path": "llm/models.md",
         "sha256": "5289a56e06ce556f66948570d28a523a93b037519d342b4c00ddbc5757f7f333",
         "validation": "command_inventory"
@@ -14734,7 +14822,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries*",
-        "line": 40,
+        "line": 43,
         "match_kind": "wildcard_family",
         "method": null,
         "path": "configuration.md",
@@ -17623,7 +17711,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/execute",
-        "line": 104,
+        "line": 67,
         "match_kind": "exact",
         "method": "POST",
         "path": "engine/qwen3-metal-decode.md",
@@ -17767,7 +17855,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries",
-        "line": 765,
+        "line": 768,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17776,7 +17864,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/health",
-        "line": 765,
+        "line": 768,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17785,7 +17873,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/execute",
-        "line": 765,
+        "line": 768,
         "match_kind": "exact",
         "method": "POST",
         "path": "engine/runtime-library-catalog.md",
@@ -21817,7 +21905,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 176,
+        "line": 177,
         "match_kind": "exact",
         "method": "GET",
         "path": "llm/models.md",
@@ -21826,7 +21914,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 205,
+        "line": 231,
         "match_kind": "exact",
         "method": "GET",
         "path": "llm/models.md",
@@ -21835,7 +21923,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 231,
+        "line": 257,
         "match_kind": "exact",
         "method": "POST",
         "path": "llm/models.md",
@@ -21844,7 +21932,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 234,
+        "line": 260,
         "match_kind": "exact",
         "method": null,
         "path": "llm/models.md",
@@ -21853,7 +21941,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 244,
+        "line": 270,
         "match_kind": "exact",
         "method": "GET",
         "path": "llm/models.md",
@@ -28601,595 +28689,643 @@
       },
       {
         "kind": "internal",
-        "line": 115,
+        "line": 112,
         "path": "SUMMARY.md",
-        "target": "llm/models.md"
+        "target": "guides/run-qwen3-family-inference.md"
       },
       {
         "kind": "internal",
         "line": 116,
         "path": "SUMMARY.md",
-        "target": "llm/completions.md"
+        "target": "llm/models.md"
       },
       {
         "kind": "internal",
         "line": 117,
         "path": "SUMMARY.md",
-        "target": "llm/embeddings.md"
+        "target": "llm/completions.md"
       },
       {
         "kind": "internal",
-        "line": 121,
+        "line": 118,
         "path": "SUMMARY.md",
-        "target": "sdk/python.md"
+        "target": "llm/embeddings.md"
       },
       {
         "kind": "internal",
         "line": 122,
         "path": "SUMMARY.md",
-        "target": "sdk/python/overview.md"
+        "target": "sdk/python.md"
       },
       {
         "kind": "internal",
         "line": 123,
         "path": "SUMMARY.md",
-        "target": "sdk/python/simulations-and-queries.md"
+        "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
         "line": 124,
         "path": "SUMMARY.md",
-        "target": "sdk/python/decisions-and-products.md"
+        "target": "sdk/python/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 125,
         "path": "SUMMARY.md",
-        "target": "sdk/python/connectors-and-data.md"
+        "target": "sdk/python/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 126,
         "path": "SUMMARY.md",
-        "target": "sdk/python/repositories.md"
+        "target": "sdk/python/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 127,
         "path": "SUMMARY.md",
-        "target": "sdk/python/llm.md"
+        "target": "sdk/python/repositories.md"
       },
       {
         "kind": "internal",
         "line": 128,
         "path": "SUMMARY.md",
-        "target": "sdk/python/agent-runs.md"
+        "target": "sdk/python/llm.md"
       },
       {
         "kind": "internal",
         "line": 129,
         "path": "SUMMARY.md",
-        "target": "sdk/python/jobs-triggers-capabilities.md"
+        "target": "sdk/python/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 130,
         "path": "SUMMARY.md",
-        "target": "sdk/python/account-and-control-plane.md"
+        "target": "sdk/python/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 131,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript.md"
+        "target": "sdk/python/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 132,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/overview.md"
+        "target": "sdk/typescript.md"
       },
       {
         "kind": "internal",
         "line": 133,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/simulations-and-queries.md"
+        "target": "sdk/typescript/overview.md"
       },
       {
         "kind": "internal",
         "line": 134,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/decisions-and-products.md"
+        "target": "sdk/typescript/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 135,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/llm.md"
+        "target": "sdk/typescript/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 136,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/connectors-and-data.md"
+        "target": "sdk/typescript/llm.md"
       },
       {
         "kind": "internal",
         "line": 137,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/repositories.md"
+        "target": "sdk/typescript/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 138,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/agent-runs.md"
+        "target": "sdk/typescript/repositories.md"
       },
       {
         "kind": "internal",
         "line": 139,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/jobs-triggers-capabilities.md"
+        "target": "sdk/typescript/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 140,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/account-and-control-plane.md"
+        "target": "sdk/typescript/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 141,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp.md"
+        "target": "sdk/typescript/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 142,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp-registry.md"
+        "target": "sdk/mcp.md"
       },
       {
         "kind": "internal",
         "line": 143,
         "path": "SUMMARY.md",
-        "target": "sdk/tool-discovery.md"
+        "target": "sdk/mcp-registry.md"
       },
       {
         "kind": "internal",
         "line": 144,
         "path": "SUMMARY.md",
-        "target": "sdk/testing.md"
+        "target": "sdk/tool-discovery.md"
       },
       {
         "kind": "internal",
         "line": 145,
         "path": "SUMMARY.md",
-        "target": "cli.md"
+        "target": "sdk/testing.md"
       },
       {
         "kind": "internal",
-        "line": 149,
+        "line": 146,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/overview.md"
+        "target": "cli.md"
       },
       {
         "kind": "internal",
         "line": 150,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/data.md"
+        "target": "mcp-tools/overview.md"
       },
       {
         "kind": "internal",
         "line": 151,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/connectors.md"
+        "target": "mcp-tools/data.md"
       },
       {
         "kind": "internal",
         "line": 152,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/query.md"
+        "target": "mcp-tools/connectors.md"
       },
       {
         "kind": "internal",
         "line": 153,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/repository-intelligence.md"
+        "target": "mcp-tools/query.md"
       },
       {
         "kind": "internal",
         "line": 154,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/llm.md"
+        "target": "mcp-tools/repository-intelligence.md"
       },
       {
         "kind": "internal",
         "line": 155,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/capability-plane.md"
+        "target": "mcp-tools/llm.md"
       },
       {
         "kind": "internal",
         "line": 156,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/decisions.md"
+        "target": "mcp-tools/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 157,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/jobs-and-triggers.md"
+        "target": "mcp-tools/decisions.md"
       },
       {
         "kind": "internal",
         "line": 158,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/agent-runs.md"
+        "target": "mcp-tools/jobs-and-triggers.md"
       },
       {
         "kind": "internal",
         "line": 159,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/control-plane.md"
+        "target": "mcp-tools/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 160,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/account-and-meta.md"
+        "target": "mcp-tools/control-plane.md"
       },
       {
         "kind": "internal",
-        "line": 164,
+        "line": 161,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/overview.md"
+        "target": "mcp-tools/account-and-meta.md"
       },
       {
         "kind": "internal",
         "line": 165,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/copilot-teams.md"
+        "target": "integrations/microsoft/overview.md"
       },
       {
         "kind": "internal",
         "line": 166,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/excel.md"
+        "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
         "line": 167,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/entra-sso.md"
+        "target": "integrations/microsoft/excel.md"
       },
       {
         "kind": "internal",
         "line": 168,
         "path": "SUMMARY.md",
-        "target": "integrations/azure/gateway.md"
+        "target": "integrations/microsoft/entra-sso.md"
       },
       {
         "kind": "internal",
-        "line": 172,
+        "line": 169,
         "path": "SUMMARY.md",
-        "target": "self-hosting.md"
+        "target": "integrations/azure/gateway.md"
       },
       {
         "kind": "internal",
         "line": 173,
         "path": "SUMMARY.md",
-        "target": "configuration.md"
+        "target": "self-hosting.md"
       },
       {
         "kind": "internal",
         "line": 174,
         "path": "SUMMARY.md",
-        "target": "operate/monitoring.md"
+        "target": "configuration.md"
       },
       {
         "kind": "internal",
         "line": 175,
         "path": "SUMMARY.md",
-        "target": "operate/byok-kms.md"
+        "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
         "line": 176,
         "path": "SUMMARY.md",
-        "target": "operate/device-key-store.md"
+        "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
         "line": 177,
         "path": "SUMMARY.md",
-        "target": "operate/privacy-egress.md"
+        "target": "operate/device-key-store.md"
       },
       {
         "kind": "internal",
         "line": 178,
         "path": "SUMMARY.md",
-        "target": "operate/teams-rbac.md"
+        "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
         "line": 179,
         "path": "SUMMARY.md",
-        "target": "operate/deployments-and-nodes.md"
+        "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
         "line": 180,
         "path": "SUMMARY.md",
-        "target": "licensing.md"
+        "target": "operate/deployments-and-nodes.md"
       },
       {
         "kind": "internal",
         "line": 181,
         "path": "SUMMARY.md",
-        "target": "billing.md"
+        "target": "licensing.md"
       },
       {
         "kind": "internal",
-        "line": 185,
+        "line": 182,
         "path": "SUMMARY.md",
-        "target": "api/overview.md"
+        "target": "billing.md"
       },
       {
         "kind": "internal",
         "line": 186,
         "path": "SUMMARY.md",
-        "target": "api/reference.md"
+        "target": "api/overview.md"
       },
       {
         "kind": "internal",
         "line": 187,
         "path": "SUMMARY.md",
-        "target": "api/streaming.md"
+        "target": "api/reference.md"
       },
       {
         "kind": "internal",
         "line": 188,
         "path": "SUMMARY.md",
-        "target": "api/explorer.md"
+        "target": "api/streaming.md"
       },
       {
         "kind": "internal",
         "line": 189,
         "path": "SUMMARY.md",
-        "target": "api/errors.md"
+        "target": "api/explorer.md"
       },
       {
         "kind": "internal",
         "line": 190,
         "path": "SUMMARY.md",
-        "target": "api/rate-limits.md"
+        "target": "api/errors.md"
       },
       {
         "kind": "internal",
-        "line": 194,
+        "line": 191,
         "path": "SUMMARY.md",
-        "target": "connectors/overview.md"
+        "target": "api/rate-limits.md"
       },
       {
         "kind": "internal",
         "line": 195,
         "path": "SUMMARY.md",
-        "target": "connectors/databases.md"
+        "target": "connectors/overview.md"
       },
       {
         "kind": "internal",
         "line": 196,
         "path": "SUMMARY.md",
-        "target": "connectors/reference.md"
+        "target": "connectors/databases.md"
       },
       {
         "kind": "internal",
         "line": 197,
         "path": "SUMMARY.md",
-        "target": "connectors/snowflake.md"
+        "target": "connectors/reference.md"
       },
       {
         "kind": "internal",
         "line": 198,
         "path": "SUMMARY.md",
-        "target": "connectors/bigquery.md"
+        "target": "connectors/snowflake.md"
       },
       {
         "kind": "internal",
         "line": 199,
         "path": "SUMMARY.md",
-        "target": "connectors/clickhouse.md"
+        "target": "connectors/bigquery.md"
       },
       {
         "kind": "internal",
         "line": 200,
         "path": "SUMMARY.md",
-        "target": "connectors/postgres.md"
+        "target": "connectors/clickhouse.md"
       },
       {
         "kind": "internal",
         "line": 201,
         "path": "SUMMARY.md",
-        "target": "connectors/oracle.md"
+        "target": "connectors/postgres.md"
       },
       {
         "kind": "internal",
         "line": 202,
         "path": "SUMMARY.md",
-        "target": "connectors/mysql.md"
+        "target": "connectors/oracle.md"
       },
       {
         "kind": "internal",
         "line": 203,
         "path": "SUMMARY.md",
-        "target": "connectors/mssql.md"
+        "target": "connectors/mysql.md"
       },
       {
         "kind": "internal",
         "line": 204,
         "path": "SUMMARY.md",
-        "target": "connectors/sqlite.md"
+        "target": "connectors/mssql.md"
       },
       {
         "kind": "internal",
         "line": 205,
         "path": "SUMMARY.md",
-        "target": "connectors/redshift.md"
+        "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
         "line": 206,
         "path": "SUMMARY.md",
-        "target": "connectors/s3.md"
+        "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
         "line": 207,
         "path": "SUMMARY.md",
-        "target": "connectors/gcs.md"
+        "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
         "line": 208,
         "path": "SUMMARY.md",
-        "target": "connectors/azure-blob.md"
+        "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
         "line": 209,
         "path": "SUMMARY.md",
-        "target": "connectors/redis.md"
+        "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
         "line": 210,
         "path": "SUMMARY.md",
-        "target": "connectors/neo4j.md"
+        "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
         "line": 211,
         "path": "SUMMARY.md",
-        "target": "connectors/elasticsearch.md"
+        "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
         "line": 212,
         "path": "SUMMARY.md",
-        "target": "connectors/files.md"
+        "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
         "line": 213,
         "path": "SUMMARY.md",
-        "target": "connectors/code-repositories.md"
+        "target": "connectors/files.md"
       },
       {
         "kind": "internal",
         "line": 214,
         "path": "SUMMARY.md",
-        "target": "connectors/rest-api.md"
+        "target": "connectors/code-repositories.md"
       },
       {
         "kind": "internal",
-        "line": 218,
+        "line": 215,
         "path": "SUMMARY.md",
-        "target": "benchmarks/overview.md"
+        "target": "connectors/rest-api.md"
       },
       {
         "kind": "internal",
         "line": 219,
         "path": "SUMMARY.md",
-        "target": "benchmarks/compute-kernels.md"
+        "target": "benchmarks/overview.md"
       },
       {
         "kind": "internal",
         "line": 220,
         "path": "SUMMARY.md",
-        "target": "benchmarks/attention.md"
+        "target": "benchmarks/compute-kernels.md"
       },
       {
         "kind": "internal",
         "line": 221,
         "path": "SUMMARY.md",
-        "target": "benchmarks/normalization.md"
+        "target": "benchmarks/attention.md"
       },
       {
         "kind": "internal",
         "line": 222,
         "path": "SUMMARY.md",
-        "target": "benchmarks/feed-forward.md"
+        "target": "benchmarks/normalization.md"
       },
       {
         "kind": "internal",
         "line": 223,
         "path": "SUMMARY.md",
-        "target": "benchmarks/code-retrieval.md"
+        "target": "benchmarks/feed-forward.md"
       },
       {
         "kind": "internal",
         "line": 224,
         "path": "SUMMARY.md",
-        "target": "benchmarks/dataframe-groupby.md"
+        "target": "benchmarks/code-retrieval.md"
       },
       {
         "kind": "internal",
         "line": 225,
         "path": "SUMMARY.md",
-        "target": "benchmarks/least-squares-accuracy.md"
+        "target": "benchmarks/dataframe-groupby.md"
       },
       {
         "kind": "internal",
         "line": 226,
         "path": "SUMMARY.md",
-        "target": "benchmarks/forecasting-joint-axis.md"
+        "target": "benchmarks/sort.md"
       },
       {
         "kind": "internal",
         "line": 227,
         "path": "SUMMARY.md",
-        "target": "benchmarks/finqa-exact-execution.md"
+        "target": "benchmarks/top-k.md"
       },
       {
         "kind": "internal",
         "line": 228,
         "path": "SUMMARY.md",
-        "target": "benchmarks/decode-throughput.md"
+        "target": "benchmarks/graph-betweenness.md"
       },
       {
         "kind": "internal",
         "line": 229,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-tool-calling-uplift.md"
+        "target": "benchmarks/survival-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 230,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/least-squares-accuracy.md"
+      },
+      {
+        "kind": "internal",
+        "line": 231,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/forecasting-joint-axis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 232,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/finqa-exact-execution.md"
       },
       {
         "kind": "internal",
         "line": 233,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/llm-inference-overview.md"
       },
       {
         "kind": "internal",
         "line": 234,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "benchmarks/llm-prefill-throughput.md"
       },
       {
         "kind": "internal",
         "line": 235,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "benchmarks/decode-throughput.md"
       },
       {
         "kind": "internal",
         "line": 236,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "benchmarks/batched-decode-throughput.md"
       },
       {
         "kind": "internal",
         "line": 237,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 241,
+        "path": "SUMMARY.md",
+        "target": "troubleshooting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 242,
+        "path": "SUMMARY.md",
+        "target": "help/glossary.md"
+      },
+      {
+        "kind": "internal",
+        "line": 243,
+        "path": "SUMMARY.md",
+        "target": "help/quick-reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 244,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 245,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -29405,6 +29541,48 @@
       },
       {
         "kind": "internal",
+        "line": 30,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 98,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 99,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 100,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 101,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "../engine/qwen3-metal-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 103,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "../guides/run-qwen3-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 105,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
         "line": 46,
         "path": "benchmarks/code-retrieval.md",
         "target": "overview.md"
@@ -29483,31 +29661,67 @@
       },
       {
         "kind": "internal",
-        "line": 122,
+        "line": 23,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "../guides/run-qwen3-decode.md#get-the-checkpoint"
+      },
+      {
+        "kind": "internal",
+        "line": 37,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "../guides/run-qwen3-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 130,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 143,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 144,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 145,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 146,
         "path": "benchmarks/decode-throughput.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 123,
+        "line": 147,
         "path": "benchmarks/decode-throughput.md",
         "target": "feed-forward.md"
       },
       {
         "kind": "internal",
-        "line": 124,
+        "line": 148,
         "path": "benchmarks/decode-throughput.md",
         "target": "attention.md"
       },
       {
         "kind": "internal",
-        "line": 125,
+        "line": 149,
         "path": "benchmarks/decode-throughput.md",
         "target": "../engine/qwen3-metal-decode.md"
       },
       {
         "kind": "internal",
-        "line": 127,
+        "line": 151,
         "path": "benchmarks/decode-throughput.md",
         "target": "../guides/run-qwen3-decode.md"
       },
@@ -29602,6 +29816,36 @@
         "target": "../engine/runtime-library-catalog.md"
       },
       {
+        "kind": "internal",
+        "line": 86,
+        "path": "benchmarks/graph-betweenness.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 92,
+        "path": "benchmarks/graph-betweenness.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 93,
+        "path": "benchmarks/graph-betweenness.md",
+        "target": "top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 94,
+        "path": "benchmarks/graph-betweenness.md",
+        "target": "survival-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 96,
+        "path": "benchmarks/graph-betweenness.md",
+        "target": "overview.md"
+      },
+      {
         "kind": "anchor",
         "line": 113,
         "path": "benchmarks/least-squares-accuracy.md",
@@ -29632,32 +29876,146 @@
         "target": "../engine/runtime-library-catalog.md"
       },
       {
+        "kind": "internal",
+        "line": 14,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 15,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 16,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 46,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "../guides/run-qwen3-family-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 57,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 58,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 59,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 60,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "../engine/qwen3-metal-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 61,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "../guides/run-qwen3-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 62,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "../guides/run-qwen3-family-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 63,
+        "path": "benchmarks/llm-inference-overview.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 73,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 74,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 79,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 80,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 81,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 82,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "../engine/qwen3-metal-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 83,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "target": "overview.md"
+      },
+      {
         "kind": "anchor",
-        "line": 24,
+        "line": 85,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "target": "#reproduce"
+      },
+      {
+        "kind": "anchor",
+        "line": 93,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "target": "#method"
       },
       {
         "kind": "internal",
-        "line": 118,
+        "line": 197,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 119,
+        "line": 198,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "target": "dataframe-groupby.md"
       },
       {
         "kind": "internal",
-        "line": 120,
+        "line": 199,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "target": "../engine/capabilities.md"
       },
       {
         "kind": "internal",
-        "line": 121,
+        "line": 200,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "target": "../guides/capabilities.md"
       },
@@ -29687,49 +30045,49 @@
       },
       {
         "kind": "internal",
-        "line": 52,
+        "line": 56,
         "path": "benchmarks/overview.md",
         "target": "compute-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 53,
+        "line": 57,
         "path": "benchmarks/overview.md",
         "target": "attention.md"
       },
       {
         "kind": "internal",
-        "line": 54,
+        "line": 58,
         "path": "benchmarks/overview.md",
         "target": "normalization.md"
       },
       {
         "kind": "internal",
-        "line": 55,
+        "line": 59,
         "path": "benchmarks/overview.md",
         "target": "feed-forward.md"
       },
       {
         "kind": "internal",
-        "line": 56,
+        "line": 60,
         "path": "benchmarks/overview.md",
         "target": "forecasting-joint-axis.md"
       },
       {
         "kind": "internal",
-        "line": 57,
+        "line": 61,
         "path": "benchmarks/overview.md",
         "target": "llm-tool-calling-uplift.md"
       },
       {
         "kind": "internal",
-        "line": 58,
+        "line": 62,
         "path": "benchmarks/overview.md",
         "target": "../engine/runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 59,
+        "line": 63,
         "path": "benchmarks/overview.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -29762,6 +30120,186 @@
         "line": 21,
         "path": "benchmarks/overview.md",
         "target": "llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 22,
+        "path": "benchmarks/overview.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 23,
+        "path": "benchmarks/overview.md",
+        "target": "top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 24,
+        "path": "benchmarks/overview.md",
+        "target": "graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 25,
+        "path": "benchmarks/overview.md",
+        "target": "survival-analysis.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 28,
+        "path": "benchmarks/sort.md",
+        "target": "#method"
+      },
+      {
+        "kind": "anchor",
+        "line": 53,
+        "path": "benchmarks/sort.md",
+        "target": "#method"
+      },
+      {
+        "kind": "internal",
+        "line": 113,
+        "path": "benchmarks/sort.md",
+        "target": "top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 138,
+        "path": "benchmarks/sort.md",
+        "target": "graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 140,
+        "path": "benchmarks/sort.md",
+        "target": "survival-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 142,
+        "path": "benchmarks/sort.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 143,
+        "path": "benchmarks/sort.md",
+        "target": "dataframe-groupby.md"
+      },
+      {
+        "kind": "internal",
+        "line": 145,
+        "path": "benchmarks/sort.md",
+        "target": "../engine/runtime-library-catalog.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 43,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "#method"
+      },
+      {
+        "kind": "anchor",
+        "line": 61,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "#method"
+      },
+      {
+        "kind": "internal",
+        "line": 121,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 121,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 128,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 128,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 128,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 157,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 159,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 161,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 163,
+        "path": "benchmarks/survival-analysis.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 28,
+        "path": "benchmarks/top-k.md",
+        "target": "#method"
+      },
+      {
+        "kind": "internal",
+        "line": 84,
+        "path": "benchmarks/top-k.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 118,
+        "path": "benchmarks/top-k.md",
+        "target": "sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 120,
+        "path": "benchmarks/top-k.md",
+        "target": "graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 121,
+        "path": "benchmarks/top-k.md",
+        "target": "survival-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 123,
+        "path": "benchmarks/top-k.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 124,
+        "path": "benchmarks/top-k.md",
+        "target": "dataframe-groupby.md"
       },
       {
         "kind": "internal",
@@ -30089,7 +30627,7 @@
       },
       {
         "kind": "internal",
-        "line": 114,
+        "line": 117,
         "path": "configuration.md",
         "target": "self-hosting.md"
       },
@@ -31337,25 +31875,25 @@
       },
       {
         "kind": "internal",
-        "line": 481,
+        "line": 518,
         "path": "engine/columnar-queries.md",
         "target": "reproducibility.md"
       },
       {
         "kind": "internal",
-        "line": 482,
+        "line": 519,
         "path": "engine/columnar-queries.md",
         "target": "coarse-execution.md"
       },
       {
         "kind": "internal",
-        "line": 483,
+        "line": 520,
         "path": "engine/columnar-queries.md",
         "target": "runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 484,
+        "line": 521,
         "path": "engine/columnar-queries.md",
         "target": "bundled-runtime.md"
       },
@@ -31889,27 +32427,39 @@
       },
       {
         "kind": "internal",
-        "line": 10,
+        "line": 11,
         "path": "engine/qwen3-metal-decode.md",
         "target": "../benchmarks/decode-throughput.md"
       },
       {
         "kind": "internal",
-        "line": 102,
+        "line": 15,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "../guides/run-qwen3-family-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 64,
         "path": "engine/qwen3-metal-decode.md",
         "target": "../benchmarks/decode-throughput.md"
       },
       {
         "kind": "internal",
-        "line": 103,
+        "line": 65,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "../benchmarks/batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 66,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "../guides/run-qwen3-family-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 67,
         "path": "engine/qwen3-metal-decode.md",
         "target": "runtime-libraries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 106,
-        "path": "engine/qwen3-metal-decode.md",
-        "target": "retrieval.md"
       },
       {
         "kind": "internal",
@@ -32015,25 +32565,25 @@
       },
       {
         "kind": "internal",
-        "line": 765,
+        "line": 768,
         "path": "engine/runtime-library-catalog.md",
         "target": "runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 770,
+        "line": 773,
         "path": "engine/runtime-library-catalog.md",
         "target": "runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 771,
+        "line": 774,
         "path": "engine/runtime-library-catalog.md",
         "target": "catalog.md"
       },
       {
         "kind": "internal",
-        "line": 772,
+        "line": 775,
         "path": "engine/runtime-library-catalog.md",
         "target": "../concepts/engine.md"
       },
@@ -33179,21 +33729,69 @@
       },
       {
         "kind": "internal",
+        "line": 22,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "run-qwen3-family-inference.md"
+      },
+      {
+        "kind": "internal",
         "line": 154,
         "path": "guides/run-qwen3-decode.md",
-        "target": "../engine/qwen3-metal-decode.md"
+        "target": "run-qwen3-family-inference.md"
       },
       {
         "kind": "internal",
         "line": 158,
         "path": "guides/run-qwen3-decode.md",
-        "target": "../benchmarks/decode-throughput.md"
+        "target": "../engine/qwen3-metal-decode.md"
       },
       {
         "kind": "internal",
         "line": 162,
         "path": "guides/run-qwen3-decode.md",
+        "target": "../benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 166,
+        "path": "guides/run-qwen3-decode.md",
         "target": "../install.md"
+      },
+      {
+        "kind": "internal",
+        "line": 13,
+        "path": "guides/run-qwen3-family-inference.md",
+        "target": "run-qwen3-decode.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 50,
+        "path": "guides/run-qwen3-family-inference.md",
+        "target": "#sampling"
+      },
+      {
+        "kind": "anchor",
+        "line": 52,
+        "path": "guides/run-qwen3-family-inference.md",
+        "target": "#the-quantized-load-cache"
+      },
+      {
+        "kind": "internal",
+        "line": 171,
+        "path": "guides/run-qwen3-family-inference.md",
+        "target": "../benchmarks/llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 175,
+        "path": "guides/run-qwen3-family-inference.md",
+        "target": "run-qwen3-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 179,
+        "path": "guides/run-qwen3-family-inference.md",
+        "target": "../benchmarks/llm-prefill-throughput.md"
       },
       {
         "kind": "internal",
@@ -33874,50 +34472,56 @@
         "target": "#configure-a-backend"
       },
       {
+        "kind": "anchor",
+        "line": 163,
+        "path": "llm/models.md",
+        "target": "#the-local-gpu-engine-backend"
+      },
+      {
         "kind": "internal",
-        "line": 176,
+        "line": 177,
         "path": "llm/models.md",
         "target": "../self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 176,
+        "line": 177,
         "path": "llm/models.md",
         "target": "../configuration.md"
       },
       {
         "kind": "internal",
-        "line": 240,
+        "line": 266,
         "path": "llm/models.md",
         "target": "../guides/byok.md"
       },
       {
         "kind": "internal",
-        "line": 248,
+        "line": 274,
         "path": "llm/models.md",
         "target": "completions.md"
       },
       {
         "kind": "internal",
-        "line": 249,
+        "line": 275,
         "path": "llm/models.md",
         "target": "embeddings.md"
       },
       {
         "kind": "internal",
-        "line": 250,
+        "line": 276,
         "path": "llm/models.md",
         "target": "../guides/byok.md"
       },
       {
         "kind": "internal",
-        "line": 251,
+        "line": 277,
         "path": "llm/models.md",
         "target": "../api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 252,
+        "line": 278,
         "path": "llm/models.md",
         "target": "../api/errors.md"
       },
@@ -35356,12 +35960,12 @@
         "term": "algenta"
       },
       {
-        "line": 144,
+        "line": 145,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 164,
+        "line": 165,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
@@ -35681,6 +36285,26 @@
         "term": "algenta"
       },
       {
+        "line": 16,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 29,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 42,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 49,
+        "path": "benchmarks/batched-decode-throughput.md",
+        "term": "algenta"
+      },
+      {
         "line": 3,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
@@ -35726,32 +36350,42 @@
         "term": "algenta"
       },
       {
-        "line": 30,
+        "line": 26,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
       {
-        "line": 40,
+        "line": 37,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
       {
-        "line": 76,
+        "line": 50,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
       {
-        "line": 93,
+        "line": 60,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
       {
-        "line": 102,
+        "line": 96,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
       {
-        "line": 143,
+        "line": 113,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 122,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 167,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
@@ -35977,6 +36611,56 @@
       },
       {
         "line": 3,
+        "path": "benchmarks/llm-inference-overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "benchmarks/llm-inference-overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
+        "path": "benchmarks/llm-inference-overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 29,
+        "path": "benchmarks/llm-inference-overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 31,
+        "path": "benchmarks/llm-inference-overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 15,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 26,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 28,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 30,
+        "path": "benchmarks/llm-prefill-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 3,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
@@ -35991,42 +36675,57 @@
         "term": "algenta"
       },
       {
-        "line": 22,
+        "line": 27,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 24,
+        "line": 37,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 63,
+        "line": 43,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 64,
+        "line": 91,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 113,
+        "line": 93,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 114,
+        "line": 134,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 114,
+        "line": 136,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
       {
-        "line": 119,
+        "line": 192,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 193,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 193,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 198,
         "path": "benchmarks/llm-tool-calling-uplift.md",
         "term": "algenta"
       },
@@ -36056,17 +36755,17 @@
         "term": "algenta"
       },
       {
-        "line": 32,
+        "line": 36,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
       {
-        "line": 35,
+        "line": 39,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
       {
-        "line": 45,
+        "line": 49,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
@@ -36526,37 +37225,27 @@
         "term": "algenta"
       },
       {
-        "line": 43,
+        "line": 46,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 50,
+        "line": 53,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 55,
+        "line": 58,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 61,
+        "line": 64,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 63,
-        "path": "configuration.md",
-        "term": "algenta"
-      },
-      {
-        "line": 86,
-        "path": "configuration.md",
-        "term": "algenta"
-      },
-      {
-        "line": 86,
+        "line": 66,
         "path": "configuration.md",
         "term": "algenta"
       },
@@ -37181,7 +37870,7 @@
         "term": "algenta"
       },
       {
-        "line": 424,
+        "line": 461,
         "path": "engine/columnar-queries.md",
         "term": "algenta"
       },
@@ -37256,7 +37945,17 @@
         "term": "algenta"
       },
       {
-        "line": 18,
+        "line": 14,
+        "path": "engine/qwen3-metal-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 26,
+        "path": "engine/qwen3-metal-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 45,
         "path": "engine/qwen3-metal-decode.md",
         "term": "algenta"
       },
@@ -38331,6 +39030,11 @@
         "term": "algenta"
       },
       {
+        "line": 27,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
         "line": 29,
         "path": "guides/run-qwen3-decode.md",
         "term": "algenta"
@@ -38358,6 +39062,56 @@
       {
         "line": 138,
         "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 3,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 14,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 22,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 49,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 68,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 69,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 97,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 97,
+        "path": "guides/run-qwen3-family-inference.md",
         "term": "algenta"
       },
       {
@@ -39131,7 +39885,17 @@
         "term": "algenta"
       },
       {
-        "line": 216,
+        "line": 185,
+        "path": "llm/models.md",
+        "term": "algenta"
+      },
+      {
+        "line": 206,
+        "path": "llm/models.md",
+        "term": "algenta"
+      },
+      {
+        "line": 242,
         "path": "llm/models.md",
         "term": "algenta"
       },
@@ -41002,7 +41766,7 @@
         "classification": "environment_mutating",
         "command": "pip install mlx-lm",
         "executed": false,
-        "line": 136,
+        "line": 160,
         "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
@@ -41010,7 +41774,7 @@
         "classification": "static_only",
         "command": "brew install llama.cpp",
         "executed": false,
-        "line": 137,
+        "line": 161,
         "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
@@ -41018,7 +41782,7 @@
         "classification": "requires_environment",
         "command": "python3 -c \"from huggingface_hub import snapshot_download; snapshot_download(repo_id='Qwen/Qwen3-0.6B-Base')\"",
         "executed": false,
-        "line": 138,
+        "line": 162,
         "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
@@ -46084,7 +46848,7 @@
         "classification": "requires_environment",
         "command": "export OPENAI_API_KEY=\"$OPENAI_API_KEY\"",
         "executed": false,
-        "line": 223,
+        "line": 249,
         "path": "llm/models.md",
         "syntax_valid": true
       },
@@ -46092,7 +46856,7 @@
         "classification": "requires_environment",
         "command": "export ANTHROPIC_API_KEY=\"$ANTHROPIC_API_KEY\"",
         "executed": false,
-        "line": 224,
+        "line": 250,
         "path": "llm/models.md",
         "syntax_valid": true
       },
@@ -46100,7 +46864,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/provider-keys\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d \"{\\\"backend\\\": \\\"anthropic\\\", \\\"api_key\\\": \\\"$ANTHROPIC_API_KEY\\\"}\"",
         "executed": false,
-        "line": 234,
+        "line": 260,
         "path": "llm/models.md",
         "syntax_valid": true
       },
@@ -47564,8 +48328,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 196,
-      "links": 196,
+      "internal_links": 204,
+      "links": 204,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -47789,6 +48553,31 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "benchmarks/batched-decode-throughput.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
       "internal_links": 3,
       "links": 3,
       "path": "benchmarks/code-retrieval.md",
@@ -47853,7 +48642,7 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 1,
+      "code_fences": 2,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 1,
@@ -47864,11 +48653,11 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 5,
-      "links": 5,
+      "internal_links": 11,
+      "links": 11,
       "path": "benchmarks/decode-throughput.md",
       "product_claims": {
-        "algenta": 8,
+        "algenta": 10,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47953,6 +48742,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "benchmarks/graph-betweenness.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 5,
       "command_counts": {
         "destructive_mutation": 0,
@@ -47978,7 +48792,57 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 1,
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 11,
+      "links": 11,
+      "path": "benchmarks/llm-inference-overview.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "benchmarks/llm-prefill-throughput.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -47990,10 +48854,10 @@
       "endpoint_mentions": 0,
       "external_links": 0,
       "internal_links": 4,
-      "links": 5,
+      "links": 6,
       "path": "benchmarks/llm-tool-calling-uplift.md",
       "product_claims": {
-        "algenta": 11,
+        "algenta": 14,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -48039,11 +48903,86 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 13,
-      "links": 13,
+      "internal_links": 17,
+      "links": 17,
       "path": "benchmarks/overview.md",
       "product_claims": {
         "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 8,
+      "path": "benchmarks/sort.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 9,
+      "links": 11,
+      "path": "benchmarks/survival-analysis.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 7,
+      "path": "benchmarks/top-k.md",
+      "product_claims": {
+        "algenta": 0,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -48368,7 +49307,7 @@
       "links": 1,
       "path": "configuration.md",
       "product_claims": {
-        "algenta": 12,
+        "algenta": 10,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -49028,7 +49967,7 @@
       "shell_commands": 3
     },
     {
-      "code_fences": 16,
+      "code_fences": 17,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -49928,7 +50867,7 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 3,
+      "code_fences": 1,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -49939,11 +50878,11 @@
       },
       "endpoint_mentions": 1,
       "external_links": 0,
-      "internal_links": 4,
-      "links": 4,
+      "internal_links": 6,
+      "links": 6,
       "path": "engine/qwen3-metal-decode.md",
       "product_claims": {
-        "algenta": 1,
+        "algenta": 3,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -50839,11 +51778,11 @@
       },
       "endpoint_mentions": 0,
       "external_links": 1,
-      "internal_links": 3,
-      "links": 6,
+      "internal_links": 5,
+      "links": 8,
       "path": "guides/run-qwen3-decode.md",
       "product_claims": {
-        "algenta": 11,
+        "algenta": 12,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -50851,6 +51790,31 @@
         "mission": 0
       },
       "shell_commands": 6
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 6,
+      "path": "guides/run-qwen3-family-inference.md",
+      "product_claims": {
+        "algenta": 10,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
     },
     {
       "code_fences": 7,
@@ -51278,7 +52242,7 @@
       "shell_commands": 7
     },
     {
-      "code_fences": 9,
+      "code_fences": 11,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -51290,10 +52254,10 @@
       "endpoint_mentions": 31,
       "external_links": 0,
       "internal_links": 8,
-      "links": 9,
+      "links": 10,
       "path": "llm/models.md",
       "product_claims": {
-        "algenta": 7,
+        "algenta": 9,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -52479,15 +53443,15 @@
     }
   ],
   "route_authority": {
-    "combined_operations": 244,
-    "combined_paths": 225,
+    "combined_operations": 246,
+    "combined_paths": 227,
     "schema_operations": 122,
     "schema_paths": 110,
-    "source_operations": 241,
-    "source_paths": 222
+    "source_operations": 243,
+    "source_paths": 224
   },
   "snippets": {
-    "code_fences": 1259,
+    "code_fences": 1270,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 823,
@@ -52501,7 +53465,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1039,
+    "claim_mentions": 1071,
     "command_execution_percent": 100.0,
     "commands_classified": 823,
     "commands_executed": 67,
@@ -52509,22 +53473,22 @@
     "endpoint_mentions": 1992,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1221,
+    "links_checked": 1307,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 197,
+    "pages_checked": 205,
     "shell_syntax_validation_percent": 100.0,
     "skips": 757,
-    "snippets_checked": 1259,
+    "snippets_checked": 1270,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6334,
+    "source_items_inventoried": 6463,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1039,
-    "code_fences": 1259,
+    "claim_mentions": 1071,
+    "code_fences": 1270,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
@@ -52536,18 +53500,18 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 756,
-    "internal_links": 1191,
-    "links": 1221,
-    "pages": 197,
+    "internal_links": 1268,
+    "links": 1307,
+    "pages": 205,
     "product_claims": {
-      "algenta": 1030,
+      "algenta": 1062,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 9
     },
-    "public_pages": 196,
+    "public_pages": 204,
     "requires_environment_commands": 378,
     "runnable_commands": 67,
     "safe_static_commands": 67,
@@ -52556,7 +53520,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 757,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6334,
+    "source_items_inventoried": 6463,
     "static_only_commands": 68,
     "static_or_guarded_commands": 756,
     "unexecuted_runnable_commands": 0,

@@ -86,7 +86,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `QUOTA_PRO_SIMULATIONS_MONTH` | `100000` | — | — |
 | `REDIS_URL` | `redis://localhost:6379/0` | — | Redis connection (cache / queue / coordination). |
 | `RESEND_API_KEY` | — | — | — |
-| `RESEND_FROM_EMAIL` | `Algenta <noreply@algenta.ai>` | — | — |
+| `RESEND_FROM_EMAIL` | `Thyn <noreply@updates.thyn.ai>` | — | — |
 | `RESULT_STORAGE_ENABLED` | `False` | — | — |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | — | — |
 | `S3_BUCKET_NAME` | `algenta-results` | — | — |
