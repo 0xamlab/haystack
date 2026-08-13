@@ -21,7 +21,7 @@ layout:
 
 # Build. Run. Prove.
 
-Algenta is self-hosted building blocks for AI applications: 6,000+ deterministic functions on custom Mojo kernels, run on your own infrastructure and reached over the HTTP API, the typed SDKs, or MCP. You write the Python and TypeScript you already ship — the kernels carry the speed, and there is no new language to learn. Feed it scenarios and governed data; get results you can audit.
+Algenta is compiler-driven AI infrastructure — self-hosted building blocks for AI applications: 6,000+ deterministic functions on custom Mojo kernels, run on your own infrastructure and reached over the HTTP API, the typed SDKs, or MCP. You write the Python and TypeScript you already ship — the kernels carry the speed, and there is no new language to learn. Feed it scenarios and governed data; get results you can audit.
 
 ## Start here
 
