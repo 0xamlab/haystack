@@ -1,16 +1,16 @@
 ---
 icon: gauge-high
-description: Run any supported Qwen3-family checkpoint on Apple Silicon through Algenta's model-agnostic SDK path — supported shapes, long context, and the quantized load cache.
+description: Run any supported checkpoint on Apple Silicon through Algenta's model-agnostic SDK path — supported shapes, long context, and the quantized load cache. Currently verified on Qwen3 models.
 ---
 
-# Qwen3-family inference
+# Model-agnostic LLM inference
 
 By the end of this guide you will have installed Algenta, downloaded a Qwen3-family checkpoint of
 your choice, and run real greedy inference through the model-agnostic Metal GPU kernel path —
 one call, prompt token ids in, generated token ids out, on your own Apple Silicon machine.
 
 This is the **model-agnostic** door onto the same race-verified kernels the
-[Qwen3-0.6B-Base guide](run-qwen3-decode.md) uses: instead of one SDK function compiled for one
+[local LLM decode guide](run-qwen3-decode.md) uses: instead of one SDK function compiled for one
 exact shape, `algenta.inference.decode()` accepts any model whose architecture the kernels support
 and routes it to the model-agnostic entry point. Verified end to end on **Qwen3-0.6B-Base** and
 **Qwen3-1.7B** with identical greedy output (first token matches an independent `transformers` CPU
@@ -172,7 +172,7 @@ checkpoint never passes another's gate.
 {% endcontent-ref %}
 
 {% content-ref url="run-qwen3-decode.md" %}
-[run-qwen3-decode.md](run-qwen3-decode.md)
+[Run local LLM decode](run-qwen3-decode.md)
 {% endcontent-ref %}
 
 {% content-ref url="../benchmarks/llm-prefill-throughput.md" %}

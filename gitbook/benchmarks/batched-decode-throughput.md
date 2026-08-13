@@ -98,8 +98,8 @@ A faster wrong answer is not a result. The batched path was checked two ways:
 * [LLM inference overview](llm-inference-overview.md) — prefill + decode together.
 * [Prefill (token input) throughput](llm-prefill-throughput.md) — the token-input half.
 * [Decode throughput](decode-throughput.md) — the single-stream race this extends.
-* [Qwen3 Metal decode](../engine/qwen3-metal-decode.md) — the kernel
+* [Metal LLM decode](../engine/qwen3-metal-decode.md) — the kernel
   path behind both single-stream and batched decode.
-* [Run Qwen3-0.6B-Base decode on Apple Silicon](../guides/run-qwen3-decode.md) — install, get the
+* [Run local LLM decode](../guides/run-qwen3-decode.md) — install, get the
   checkpoint, and run a decode end to end.
 * [Benchmarks](overview.md) — methodology and what is not published.

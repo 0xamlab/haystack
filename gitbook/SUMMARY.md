@@ -17,7 +17,7 @@
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
 * [Runtime library catalog](engine/runtime-library-catalog.md)
-* [Qwen3 Metal decode](engine/qwen3-metal-decode.md)
+* [Metal LLM decode](engine/qwen3-metal-decode.md)
 * [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)
 * [Columnar queries](engine/columnar-queries.md)
@@ -108,8 +108,8 @@
 * [Device binding](guides/device-binding.md)
 * [Run air-gapped](guides/air-gapped.md)
 * [Use Algenta in CI/CD](guides/ci-cd.md)
-* [Qwen3-0.6B decode](guides/run-qwen3-decode.md)
-* [Qwen3-family inference](guides/run-qwen3-family-inference.md)
+* [Run local LLM decode](guides/run-qwen3-decode.md)
+* [Model-agnostic LLM inference](guides/run-qwen3-family-inference.md)
 
 ## LLM API
 

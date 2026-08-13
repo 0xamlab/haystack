@@ -43,8 +43,8 @@ sequences instead of once per token.
 * **Model-agnostic within the Qwen3 family.** Buffer and grid shapes are derived from the
   checkpoint's own dims. Verified end-to-end on Qwen3-0.6B-Base and Qwen3-1.7B with identical greedy
   output (first token matches an independent `transformers` CPU reference) — runnable through the
-  SDK's model-agnostic path, see [Run Qwen3-family models on Apple
-  Silicon](../guides/run-qwen3-family-inference.md).
+  SDK's model-agnostic path, see [Model-agnostic LLM
+  inference](../guides/run-qwen3-family-inference.md).
 * **Cached weight loading.** The one-shot SDK shape persists the exact post-quantization device
   bytes next to each converted checkpoint; second-and-later calls load ~8x fewer bytes and skip
   quantization entirely (3.10x / 1.93x whole-call wall on 0.6B / 1.7B), token-identical to the
@@ -57,7 +57,7 @@ sequences instead of once per token.
 * [Prefill throughput](llm-prefill-throughput.md) — token-input processing.
 * [Decode throughput](decode-throughput.md) — single-stream generation vs llama.cpp & mlx-lm.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
-* [Qwen3 Metal decode](../engine/qwen3-metal-decode.md) — call it from Python.
-* [Run Qwen3-0.6B-Base decode on Apple Silicon](../guides/run-qwen3-decode.md) — step-by-step guide.
-* [Run Qwen3-family models on Apple Silicon](../guides/run-qwen3-family-inference.md) — the model-agnostic SDK path (0.6B, 1.7B, and other supported shapes).
+* [Metal LLM decode](../engine/qwen3-metal-decode.md) — call it from Python.
+* [Run local LLM decode](../guides/run-qwen3-decode.md) — step-by-step guide.
+* [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md) — the model-agnostic SDK path (0.6B, 1.7B, and other supported shapes).
 * [Benchmarks](overview.md) — methodology and what is not published.

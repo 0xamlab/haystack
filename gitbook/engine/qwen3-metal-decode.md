@@ -1,9 +1,9 @@
 ---
 icon: microchip
-description: Greedy decode of Qwen3-0.6B-Base through the int8 Metal GPU kernel path — call surface, checkpoint preparation, refusals, verification.
+description: Greedy decode on Apple Silicon through the int8 Metal GPU kernel path — call surface, checkpoint preparation, refusals, verification. Currently tested on Qwen3 models.
 ---
 
-# Qwen3 Metal decode
+# Metal LLM decode
 
 `metaldispatch.qwen3_decode` runs Qwen3-0.6B-Base end to end on Apple Silicon through the compiled
 int8-weight Metal kernel path (`_MBQwen3I8AllSimd7`): prompt in, generated token ids out, one call.
@@ -12,7 +12,7 @@ shape. Measured throughput: [Decode throughput](../benchmarks/decode-throughput.
 
 The model-agnostic door onto the same kernel family — any supported Qwen3-family shape, seeded
 sampling, text in/text out — is `algenta.inference.decode`; see
-[Run Qwen3-family models on Apple Silicon](../guides/run-qwen3-family-inference.md).
+[Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md).
 
 ## Functions
 
