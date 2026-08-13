@@ -12248,3 +12248,45 @@ QK-norm skip in the kernels yet). Those land with their engine/kernel changes.
 `_normalize_config` tests + all pre-existing gates); Qwen3 GPU e2e `tests/test_inference_gpu_e2e.py`
 6 passed / 1 skipped -- the change is a byte-for-byte no-op for Qwen3 (head_dim present and trusted,
 eos carried), oracle token 374 intact.
+
+---
+
+## Llama-family support -- Algenta runs a llama-architecture model end-to-end (2026-08-13)
+
+The any-model mandate's flagship milestone: the engine now runs a NON-Qwen3 architecture. Target:
+**TinyLlama-1.1B-Chat-v1.0** (Apache-2.0, ungated; model_type=llama, NO head_dim field,
+tie_word_embeddings=false, NO q_norm/k_norm, eos=2, rope_theta=10000, d_head=64, d_ff=5632).
+
+**What landed (across #664 + this change):**
+- SDK: `_normalize_config` derives `head_dim=hidden_size//num_attention_heads` when a config omits it
+  (llama convention; an explicit head_dim is always trusted -- Qwen3's is NOT that formula). Detects
+  `has_qk_norm` from the safetensors and carries it + `tie_word_embeddings` + `eos_token_id` into the
+  manifest. Branches the tied-embeddings gate (untied now accepted) and makes q/k_norm tensors
+  conditional. lm_head.weight is converted for untied models.
+- Engine: a `qk_norm` flag on the three parametric-path ropewrt kernels (`_qk_rope_write_kernel`,
+  `_kvf16`, `_pf_ropewrt_kernel`) -- 1 = Qwen3 RMSNorm-then-RoPE, 0 = llama rotate-the-raw-projection
+  (never reads the absent norm gains); wired at every dispatch of those kernels. An untied model gets
+  a separate int8 lm_head buffer pair (tied aliases it onto embed = zero extra memory); the ~12
+  lm_head/logits descriptor sites repoint to it. No-QK-norm models are gated off the attention-forge
+  blobs (`af_grouped_fa_available and qk_norm == 1`) and route to the runtime-parametric path
+  (PF_ATTN_OFF prefill + legacy decode) that parametric d_head (#663) already opened -- d_head=64
+  lands there. Entry points read the flags + EOS and stop on the model's own eos_token_id.
+- Staging: TinyLlama's d_ff=5632 > the 3072 default tier, so the worker builds with
+  ALGENTA_STAGE_6144 (the same per-model staging tier Qwen3-1.7B uses).
+
+**Verification (same session, M4 Max):**
+- Qwen3 REGRESSION first: `tests/test_inference_gpu_e2e.py` 6 passed / 1 skipped, oracle token 374
+  intact, on the llama-capable worker -- the production path is untouched (qk_norm=1, tied).
+- TinyLlama vs an INDEPENDENT transformers CPU reference (FP32, torch 2.5.1): prompt "The capital of
+  Germany is" -> Algenta `[5115, 29892, 607, 338, 884, 278]` == CPU `[5115, 29892, 607, 338, 884, 278]`
+  **byte-for-byte all 6 tokens**; prompt "The capital of France is" -> first 3 tokens exact
+  (`3900, 29889, 13` = " Paris.\n"), then an expected int8-vs-FP32 near-tie divergence in the
+  repetitive continuation (same trade documented for quantized Qwen3). Greedy-deterministic across
+  runs and cold/warm cache loads; 179.8 decode tok/s.
+
+**Honest scope / residual gap:** the repo tokenizer is Qwen3-only (rejects llama's SentencePiece
+normalizer), so llama serving is token-id prompts until that parity item lands; TinyLlama is a chat
+model, so the raw question form trips its template into an early EOS (statement prompts used). The
+attention-forge FAST path still assumes QK-norm/d_head=128 -- a llama d_head=128 model (e.g. 3.x 8B)
+runs correct on the parametric path but not the fast path yet. Remaining for full parity: llama-family
+tokenizer, rope_scaling (llama-3.1+), and AF-blob QK-norm variants for the llama d_head=128 fast path.

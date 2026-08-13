@@ -410,6 +410,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     var eps: Float32
     var scale: Float32
     var n_qkv: Int
+    var qk_norm: Int
+    """Llama-family support (2026-08-13): the family convention for the Q/K projections, uniform
+    across every layer and both decode+prefill ropewrt dispatches. 1 = Qwen3 convention -- apply the
+    per-head RMSNorm-then-gain (`qn_w`/`kn_w`) before rotating; 0 = llama-family convention -- no
+    QK-norm exists in the checkpoint, the ropewrt kernels rotate the RAW projections and never read
+    `qn_w`/`kn_w` (the buffers still exist, ones-filled, unread). Kernel-uniform, so it is passed as
+    an ordinary kernel argument, never a plan flag. The default 1 keeps every pre-llama call site
+    (all Qwen3) byte-for-byte unchanged."""
 
     var pipeline_idx: List[Int]
     var prefill_pipeline_idx: List[Int]
@@ -419,6 +427,22 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
     var embed_scale_addr: UInt64
     var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var tied_embeddings: Int
+    """Llama-family support (2026-08-13): 1 = the checkpoint ties `lm_head.weight` to
+    `model.embed_tokens.weight` (Qwen3 convention) -- the lm_head dispatches then read the embed
+    buffers, exactly as before this flag existed. 0 = an UNTIED checkpoint carries its OWN
+    `lm_head.weight`; the session allocates a second Int8+scale buffer pair (`lm_head_addr`/
+    `lm_head_scale_addr`), `upload_lm_head` quantizes the checkpoint's matrix into it, and every
+    lm_head/logits descriptor binds that pair instead of the embed pair. The input-embedding lookup
+    always stays on `embed_addr` either way."""
+    var lm_head_addr: UInt64
+    """The lm_head weight bytes the fused lm_head/argmax/logits kernels sweep. For a TIED model
+    this is `embed_addr` itself (aliased at construction, zero extra memory, byte-for-byte the
+    pre-llama wiring); for an UNTIED model it is its own `_mb_alloc_buffer` pair uploaded by
+    `upload_lm_head`."""
+    var lm_head_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var lm_head_scale_addr: UInt64
+    var lm_head_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
     var final_norm_addr: UInt64
     var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
     var cos_addr: UInt64
@@ -1190,6 +1214,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
         requested_plan: UnresolvedPrefillConfig = UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL),
+        qk_norm: Int = 1, tied_embeddings: Int = 1,
     ) raises:
         """`requested_plan` defaults to `UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL)` --
         byte-for-byte the old all-`False`-booleans default -- so every existing call site that never
@@ -1244,6 +1269,18 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 + String(_AF_STRUCTURAL_D_HEAD) + " model is routed onto) is validated for "
                 + "power-of-two head dims only"
             )
+        if qk_norm != 0 and qk_norm != 1:
+            raise Error(
+                "_MBQwen3I8AllSimd7Prefill: qk_norm=" + String(qk_norm) + " is neither 0 (llama-"
+                + "family, no QK-norm) nor 1 (Qwen3 per-head QK-norm) -- it is a family convention "
+                + "flag, not a tunable"
+            )
+        if tied_embeddings != 0 and tied_embeddings != 1:
+            raise Error(
+                "_MBQwen3I8AllSimd7Prefill: tied_embeddings=" + String(tied_embeddings)
+                + " is neither 0 (untied lm_head) nor 1 (tied) -- it is a family convention flag, "
+                + "not a tunable"
+            )
         self.d_model = d_model
         self.h_q = h_q
         self.h_kv = h_kv
@@ -1255,6 +1292,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.eps = Float32(eps)
         self.scale = Float32(scale)
         self.n_qkv = (h_q + 2 * h_kv) * d_head
+        self.qk_norm = qk_norm
+        self.tied_embeddings = tied_embeddings
 
         # ── same eight decode kernels `_MBQwen3I8AllSimd7.__init__` compiles, PLUS the batched-
         # prefill kernels -- this struct's own `step()` needs the first eight; its own `prefill_
@@ -1564,7 +1603,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
             # ── parametric d_head (2026-08-13): the AF kernels are structural
             # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
-            and self.d_head == _AF_STRUCTURAL_D_HEAD,
+            and self.d_head == _AF_STRUCTURAL_D_HEAD
+            # ── llama-family QK-norm (2026-08-13): the AF kvprod BLOBS apply the Qwen3 per-head
+            # QK-norm unconditionally (baked into the generated kernels); a no-QK-norm model
+            # (qk_norm=0) must never dispatch them, so it degrades to the parametric PF_ATTN_OFF
+            # path whose residentk ropewrt kernels take the qk_norm flag. Same pattern as the
+            # d_head gate above -- a Qwen3 session (qk_norm=1) adds a literal `and True`.
+            and self.qk_norm == 1,
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
             self.gemm_accum_vecload4_pipeline_idx >= 0,
@@ -1789,6 +1834,27 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed_scale)")
+        # ── Llama-family untied lm_head (2026-08-13): the fused lm_head/argmax/logits kernels all
+        # take the weight matrix as an ordinary pointer argument, so an untied checkpoint only needs
+        # its OWN Int8+scale pair bound at those descriptor slots -- no kernel math changes. For a
+        # TIED model (every Qwen3) the pair is ALIASED onto the embed buffers just allocated: zero
+        # extra device memory, and the descriptors bind byte-for-byte the same addresses they always
+        # did. The alloc order (embed pair first, then the lm_head pair) is stable across the tied/
+        # untied branches for any ONE model, which is all the resident-adopt replay needs.
+        if self.tied_embeddings == 1:
+            self.lm_head_addr = self.embed_addr
+            self.lm_head_ptr = self.embed_ptr
+            self.lm_head_scale_addr = self.embed_scale_addr
+            self.lm_head_scale_ptr = self.embed_scale_ptr
+        else:
+            self.lm_head_addr = UInt64(0)
+            self.lm_head_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            self.lm_head_scale_addr = UInt64(0)
+            self.lm_head_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            if _mb_alloc_buffer(vocab * d_model * 1, self.lm_head_addr, self.lm_head_ptr) < 0:
+                raise Error("metaldispatch: buffer alloc failed (lm_head i8)")
+            if _mb_alloc_buffer(vocab * 4, self.lm_head_scale_addr, self.lm_head_scale_ptr) < 0:
+                raise Error("metaldispatch: buffer alloc failed (lm_head_scale)")
         if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (final_norm)")
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.cos_addr, self.cos_ptr) < 0:
@@ -2123,7 +2189,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
             # ── parametric d_head (2026-08-13): the AF kernels are structural
             # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
-            and self.d_head == _AF_STRUCTURAL_D_HEAD,
+            and self.d_head == _AF_STRUCTURAL_D_HEAD
+            # ── llama-family QK-norm (2026-08-13): SAME gate as `__init__`'s own, byte-for-byte
+            # -- both resolution sites must agree, so a no-QK-norm model degrades to the
+            # parametric PF_ATTN_OFF path no matter when the plan is (re-)resolved.
+            and self.qk_norm == 1,
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
             self.gemm_accum_vecload4_pipeline_idx >= 0,
@@ -2220,7 +2290,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -2236,6 +2306,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, self.qk_norm)
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -2295,8 +2366,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors, d, 2, self.hidden_addr)
         _mb_set_arg_ptr(self.descriptors, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors, d, 8, self.eps)
@@ -2352,7 +2423,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             _mb_set_header(
                 self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
@@ -2368,6 +2439,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_deep, d, 13, self.qk_norm)
             d += 1
 
             _mb_set_header(
@@ -2442,8 +2514,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.hidden_addr)
         _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_deep, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_deep, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_deep, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_deep, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_deep, d, 8, self.eps)
@@ -2541,7 +2613,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             _mb_set_header(
                 self.descriptors_prefill, d, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
-                (self.h_q + self.h_kv) * PREFILL_MAX_TILE, self.d_head, 14,
+                (self.h_q + self.h_kv) * PREFILL_MAX_TILE, self.d_head, 15,
             )
             _mb_set_arg_ptr(self.descriptors_prefill, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_prefill, d, 1, lw.ck_addr)
@@ -2557,6 +2629,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_prefill, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_prefill, d, 12, self.eps)
             _mb_set_arg_int(self.descriptors_prefill, d, 13, 0)  # m_rows, patched per call
+            _mb_set_arg_int(self.descriptors_prefill, d, 14, self.qk_norm)
             self.ropewrt_d.append(d)
             d += 1
 
@@ -2644,8 +2717,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_prefill, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_prefill, d, 2, self.hidden_addr)  # patched per call
         _mb_set_arg_ptr(self.descriptors_prefill, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_prefill, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_prefill, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_prefill, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_prefill, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_prefill, d, 8, self.eps)
@@ -2818,14 +2891,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # `self.q_rot_addr` (unread anywhere in THIS table; only the OFF table's own `attn` role
             # reads it, and the two tables are never submitted in the same call) -- accepted, not
             # worked around, because `_pf_ropewrt_kernel`'s own grid computes Q and K/V lanes in ONE
-            # dispatch and cannot be told to skip the Q lanes. 14 args, IDENTICAL order to
+            # dispatch and cannot be told to skip the Q lanes. 15 args, IDENTICAL order to
             # `_build_descriptors_prefill`'s own `ropewrt` dispatch -- see that dispatch for the
             # cross-reference. This is a genuinely EXTRA per-layer dispatch (not a replacement of
             # anything), which is why `self.n_descriptors_prefill_af` is `1 + n_layers*9 + 2`, not
             # `...*8...` like the OFF table.
             _mb_set_header(
                 self.descriptors_prefill_af, d, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
-                n_units_kvprod_max, self.d_head, 14,
+                n_units_kvprod_max, self.d_head, 15,
             )
             _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, lw.ck_addr)
@@ -2841,6 +2914,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_prefill_af, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_prefill_af, d, 12, self.eps)
             _mb_set_arg_int(self.descriptors_prefill_af, d, 13, 0)  # m_rows, patched per call
+            # Llama-family qk_norm (2026-08-13): SAME trailing arg the OFF path's own `ropewrt`
+            # binds -- this mirror re-dispatches the SAME 15-param `_pf_ropewrt_kernel`, so it must
+            # bind all 15 or the dispatch reads garbage for `qk_norm`. Only a qk_norm==1 model ever
+            # runs this AF table (see the `af_grouped_fa_available` gate), so this stays 1 here.
+            _mb_set_arg_int(self.descriptors_prefill_af, d, 14, self.qk_norm)
             self.kvprod_mirror_af_d.append(d)
             d += 1
 
@@ -2932,8 +3010,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_prefill_af, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_prefill_af, d, 2, self.hidden_addr)  # patched per call
         _mb_set_arg_ptr(self.descriptors_prefill_af, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_prefill_af, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_prefill_af, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_prefill_af, d, 8, self.eps)
@@ -3169,8 +3247,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 2, self.hidden_addr)  # patched per call
         _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_prefill_af_nomirror, d, 8, self.eps)
@@ -3371,7 +3449,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var d_kvm = self.kvprod_mirror_af_d[layer]
             _mb_set_header(
                 self.descriptors_prefill_af, d_kvm, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
-                n_units_kvprod * m_rows, self.d_head, 14,
+                n_units_kvprod * m_rows, self.d_head, 15,
             )
             _mb_set_arg_int(self.descriptors_prefill_af, d_kvm, 8, pos_base)
             _mb_set_arg_int(self.descriptors_prefill_af, d_kvm, 13, m_rows)
@@ -3779,7 +3857,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             var d_rope = self.ropewrt_d[layer]
             _mb_set_header(
                 self.descriptors_prefill, d_rope, self.prefill_pipeline_idx[_PFROLE_ROPEWRT],
-                n_units_rope * m_rows, self.d_head, 14,
+                n_units_rope * m_rows, self.d_head, 15,
             )
             _mb_set_arg_int(self.descriptors_prefill, d_rope, 8, pos_base)
             _mb_set_arg_int(self.descriptors_prefill, d_rope, 13, m_rows)
@@ -3981,8 +4059,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_decode_native, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_decode_native, d, 2, self.hidden_addr)
         _mb_set_arg_ptr(self.descriptors_decode_native, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_native, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_native, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_decode_native, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_decode_native, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_decode_native, d, 8, self.eps)
@@ -4170,8 +4248,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 2, self.hidden_addr)
         _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 8, self.eps)
@@ -4367,8 +4445,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 2, self.hidden_addr)
         _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, self.embed_addr)
-        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(self.descriptors_decode_native_splitk_i8, d, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 6, self.d_model)
         _mb_set_arg_int(self.descriptors_decode_native_splitk_i8, d, 7, self.vocab)
         _mb_set_arg_f32(self.descriptors_decode_native_splitk_i8, d, 8, self.eps)
@@ -4428,6 +4506,20 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             cos_f[i] = Float32(cos_t[i])
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
+
+    def upload_lm_head(mut self, lm_head: List[Float64]) raises -> Int:
+        """Llama-family untied lm_head (2026-08-13): quantize the checkpoint's OWN `lm_head.weight`
+        (`[vocab, d_model]`, row-major, same layout as the embedding table) into the session's
+        lm_head Int8+scale pair. NEVER called for a tied model -- there the lm_head pair is aliased
+        onto the embed buffers and `upload_globals`'s embed quantization already populated it. The
+        exact same `_quantize_into_i8` per-row scheme the embed table uses, so the lm_head dispatches
+        run the identical quantized math they always did -- just against a different weight matrix."""
+        if self.tied_embeddings == 1:
+            # A tied session has no separate lm_head buffer; the caller must not upload one.
+            return MB_ERR_UPLOAD_LENGTH
+        return _quantize_into_i8(
+            self.lm_head_ptr, self.lm_head_scale_ptr, lm_head, self.vocab, self.d_model, 0, 0
+        )
 
     def upload_layer(
         mut self, layer: Int,
@@ -4530,7 +4622,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
     def quantized_state_bytes(self) -> Int:
         """The exact byte count `dump_quantized_state` produces -- lets a caller size its buffer
-        (or a file-length gate) before reading a single byte."""
+        (or a file-length gate) before reading a single byte. An UNTIED model (llama-family, 2026-
+        08-13) persists a SECOND `[vocab, d_model]` Int8 + per-row scale region for its own
+        lm_head weight -- so the byte count ITSELF encodes the tied/untied convention, and the
+        entry point's length gate can never load a tied cache into an untied session (or the
+        reverse): the counts disagree and the whole load is refused."""
         var n_q = self.h_q * self.d_head
         var per_layer = (
             4 * (2 * self.d_model + 2 * self.d_head)
@@ -4539,7 +4635,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             + 2 * self.d_ff * (self.d_model + 4)
             + self.d_model * (self.d_ff + 4)
         )
-        return self.vocab * (self.d_model + 4) + 4 * self.d_model + self.n_layers * per_layer
+        var total = (
+            self.vocab * (self.d_model + 4) + 4 * self.d_model + self.n_layers * per_layer
+        )
+        if self.tied_embeddings == 0:
+            total += self.vocab * (self.d_model + 4)
+        return total
 
     def dump_quantized_state(mut self) raises -> List[UInt8]:
         """Serialize the EXACT post-quantization device bytes: embed Int8 + per-row Float32 scale,
@@ -4556,6 +4657,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             out.append(self.embed_ptr[i])
         for i in range(self.vocab * 4):
             out.append(self.embed_scale_ptr[i])
+        # Untied llama-family checkpoints persist the SEPARATE lm_head region right after the
+        # embed pair; a tied model writes nothing here (its lm_head IS the embed region above).
+        if self.tied_embeddings == 0:
+            for i in range(self.vocab * self.d_model):
+                out.append(self.lm_head_ptr[i])
+            for i in range(self.vocab * 4):
+                out.append(self.lm_head_scale_ptr[i])
         for i in range(self.d_model * 4):
             out.append(self.final_norm_ptr[i])
         for layer in range(self.n_layers):
@@ -4604,6 +4712,16 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         for i in range(self.vocab * 4):
             self.embed_scale_ptr[i] = raw[cursor + i]
         cursor += self.vocab * 4
+        # Untied llama-family checkpoints: restore the SEPARATE lm_head region; for a tied model
+        # `quantized_state_bytes` left this region out, so the length gate above already refused
+        # any tied/untied mismatch and nothing is read here.
+        if self.tied_embeddings == 0:
+            for i in range(self.vocab * self.d_model):
+                self.lm_head_ptr[i] = raw[cursor + i]
+            cursor += self.vocab * self.d_model
+            for i in range(self.vocab * 4):
+                self.lm_head_scale_ptr[i] = raw[cursor + i]
+            cursor += self.vocab * 4
         for i in range(self.d_model * 4):
             self.final_norm_ptr[i] = raw[cursor + i]
         cursor += self.d_model * 4
@@ -5127,8 +5245,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.db_logits_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.embed_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.embed_scale_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.lm_head_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.lm_head_scale_addr)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.vocab)
@@ -5150,8 +5268,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_blk_val_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_blk_idx_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, self.xn_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.embed_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 4, self.embed_scale_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, self.lm_head_addr)
+            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 4, self.lm_head_scale_addr)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 5, B)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 7, self.vocab)
@@ -5495,8 +5613,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(table, d_lm, 0, self.logits_addr)
         _mb_set_arg_ptr(table, d_lm, 1, x_addr)
         _mb_set_arg_ptr(table, d_lm, 2, self.final_norm_addr)
-        _mb_set_arg_ptr(table, d_lm, 3, self.embed_addr)
-        _mb_set_arg_ptr(table, d_lm, 4, self.embed_scale_addr)
+        _mb_set_arg_ptr(table, d_lm, 3, self.lm_head_addr)
+        _mb_set_arg_ptr(table, d_lm, 4, self.lm_head_scale_addr)
         _mb_set_arg_int(table, d_lm, 5, self.d_model)
         _mb_set_arg_int(table, d_lm, 6, self.vocab)
         _mb_set_arg_f32(table, d_lm, 7, self.eps)
@@ -5511,8 +5629,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_ptr(table, d_lm, 1, self.blk_idx_addr)
         _mb_set_arg_ptr(table, d_lm, 2, x_addr)
         _mb_set_arg_ptr(table, d_lm, 3, self.final_norm_addr)
-        _mb_set_arg_ptr(table, d_lm, 4, self.embed_addr)
-        _mb_set_arg_ptr(table, d_lm, 5, self.embed_scale_addr)
+        _mb_set_arg_ptr(table, d_lm, 4, self.lm_head_addr)
+        _mb_set_arg_ptr(table, d_lm, 5, self.lm_head_scale_addr)
         _mb_set_arg_int(table, d_lm, 6, self.d_model)
         _mb_set_arg_int(table, d_lm, 7, self.vocab)
         _mb_set_arg_f32(table, d_lm, 8, self.eps)

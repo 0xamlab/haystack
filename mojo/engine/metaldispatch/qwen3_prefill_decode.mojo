@@ -2705,6 +2705,9 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
     var theta: Float64
     var eps: Float64
     var n_prompt: Int
+    var has_qk_norm: Int
+    var tied_embeddings: Int
+    var eos_token_id: Int
     var tensors_obj: String
     var prompt_ids: List[Int]
     try:
@@ -2719,6 +2722,13 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
         theta = json_get_float(config, "rope_theta", -1.0)
         eps = json_get_float(config, "rms_norm_eps", -1.0)
         n_prompt = json_get_int(config, "n_tokens", -1)
+        # ── Llama-family convention flags (2026-08-13): both DEFAULT TO THE QWEN3 CONVENTION
+        # (1/1), so a manifest written before these keys existed runs byte-for-byte as it always
+        # did. The stop token defaults to the Qwen3 constant the same way; the llama-family SDK
+        # converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        has_qk_norm = json_get_int(config, "has_qk_norm", 1)
+        tied_embeddings = json_get_int(config, "tie_word_embeddings", 1)
+        eos_token_id = json_get_int(config, "eos_token_id", QWEN3_0_6B_BASE_EOS_TOKEN_ID)
         tensors_obj = json_get_object(manifest, "tensors")
 
         var ids_arr = json_get_array(manifest, "input_ids")
@@ -2737,6 +2747,18 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
     ):
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if (has_qk_norm != 0 and has_qk_norm != 1) or (tied_embeddings != 0 and tied_embeddings != 1):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " carries a convention flag (has_qk_norm=" + String(has_qk_norm)
+            + ", tie_word_embeddings=" + String(tied_embeddings) + ") that is neither 0 nor 1",
+        )
+    if eos_token_id < 0 or eos_token_id >= vocab_size:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares eos_token_id=" + String(eos_token_id)
+            + " outside the vocab [0, " + String(vocab_size) + ")",
         )
     if len(prompt_ids) != n_prompt:
         return _decode_err(
@@ -2822,7 +2844,9 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
             if resident_match:
                 _mb_begin_adopt()
             var s = _MBQwen3I8AllSimd7Prefill(
-                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale,
+                UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL),
+                has_qk_norm, tied_embeddings,
             )
             if resident_match:
                 _mb_end_adopt()
@@ -2915,6 +2939,18 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                         "upload_globals failed: " + metaldispatch_status_name(up_status),
                     )
 
+                # Llama-family untied lm_head (2026-08-13): the checkpoint's OWN output
+                # projection, quantized into the session's separate lm_head buffer pair. A tied
+                # model (has_qk_norm-style flag tie_word_embeddings=1) never reaches this.
+                if tied_embeddings == 0:
+                    var lm_head_table = _load_tensor(blob_path, tensors_obj, "lm_head.weight")
+                    var lm_status = s.upload_lm_head(lm_head_table)
+                    if lm_status != MB_OK:
+                        return _decode_err(
+                            lm_status,
+                            "upload_lm_head failed: " + metaldispatch_status_name(lm_status),
+                        )
+
                 for layer in range(n_layers):
                     var prefix = "model.layers." + String(layer) + "."
                     var ln1 = _load_tensor(
@@ -2923,12 +2959,22 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                     var ln2 = _load_tensor(
                         blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
                     )
-                    var qn = _load_tensor(
-                        blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
-                    )
-                    var kn = _load_tensor(
-                        blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
-                    )
+                    # Llama-family (2026-08-13): a has_qk_norm=0 checkpoint has NO q_norm/k_norm
+                    # tensors -- the session runs its ropewrt kernels with the norm block skipped
+                    # and never reads these gains, so ones fill the upload slot harmlessly.
+                    var qn = List[Float64]()
+                    var kn = List[Float64]()
+                    if has_qk_norm == 1:
+                        qn = _load_tensor(
+                            blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
+                        )
+                        kn = _load_tensor(
+                            blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
+                        )
+                    else:
+                        for _i in range(d_head):
+                            qn.append(1.0)
+                            kn.append(1.0)
                     var wq = _load_tensor(
                         blob_path, tensors_obj, prefix + "self_attn.q_proj.weight"
                     )
@@ -3072,7 +3118,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                     prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
 
             generated_ids.append(first_tok)
-            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var stopped_on_eos = first_tok == eos_token_id
             var n_decoded = 1
             var dispatches_per_token = 0
 
@@ -3090,7 +3136,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                     dispatches_per_token = r2.dispatches
                     generated_ids.append(r2.token_id)
                     n_decoded += 1
-                    if r2.token_id == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                    if r2.token_id == eos_token_id:
                         stopped_on_eos = True
                         break
             var t_decode_end = perf_counter_ns()
@@ -3189,6 +3235,9 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
     var theta: Float64
     var eps: Float64
     var n_prompt: Int
+    var has_qk_norm: Int
+    var tied_embeddings: Int
+    var eos_token_id: Int
     var tensors_obj: String
     var prompt_ids: List[Int]
     try:
@@ -3203,6 +3252,13 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
         theta = json_get_float(config, "rope_theta", -1.0)
         eps = json_get_float(config, "rms_norm_eps", -1.0)
         n_prompt = json_get_int(config, "n_tokens", -1)
+        # ── Llama-family convention flags (2026-08-13): both DEFAULT TO THE QWEN3 CONVENTION
+        # (1/1), so a manifest written before these keys existed runs byte-for-byte as it always
+        # did. The stop token defaults to the Qwen3 constant the same way; the llama-family SDK
+        # converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        has_qk_norm = json_get_int(config, "has_qk_norm", 1)
+        tied_embeddings = json_get_int(config, "tie_word_embeddings", 1)
+        eos_token_id = json_get_int(config, "eos_token_id", QWEN3_0_6B_BASE_EOS_TOKEN_ID)
         tensors_obj = json_get_object(manifest, "tensors")
 
         var ids_arr = json_get_array(manifest, "input_ids")
@@ -3221,6 +3277,18 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
     ):
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if (has_qk_norm != 0 and has_qk_norm != 1) or (tied_embeddings != 0 and tied_embeddings != 1):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " carries a convention flag (has_qk_norm=" + String(has_qk_norm)
+            + ", tie_word_embeddings=" + String(tied_embeddings) + ") that is neither 0 nor 1",
+        )
+    if eos_token_id < 0 or eos_token_id >= vocab_size:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares eos_token_id=" + String(eos_token_id)
+            + " outside the vocab [0, " + String(vocab_size) + ")",
         )
     if len(prompt_ids) != n_prompt:
         return _decode_err(
@@ -3304,7 +3372,9 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
             if resident_match:
                 _mb_begin_adopt()
             var s = _MBQwen3I8AllSimd7Prefill(
-                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale,
+                UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL),
+                has_qk_norm, tied_embeddings,
             )
             if resident_match:
                 _mb_end_adopt()
@@ -3379,6 +3449,18 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                         "upload_globals failed: " + metaldispatch_status_name(up_status),
                     )
 
+                # Llama-family untied lm_head (2026-08-13): the checkpoint's OWN output
+                # projection, quantized into the session's separate lm_head buffer pair. A tied
+                # model (has_qk_norm-style flag tie_word_embeddings=1) never reaches this.
+                if tied_embeddings == 0:
+                    var lm_head_table = _load_tensor(blob_path, tensors_obj, "lm_head.weight")
+                    var lm_status = s.upload_lm_head(lm_head_table)
+                    if lm_status != MB_OK:
+                        return _decode_err(
+                            lm_status,
+                            "upload_lm_head failed: " + metaldispatch_status_name(lm_status),
+                        )
+
                 for layer in range(n_layers):
                     var prefix = "model.layers." + String(layer) + "."
                     var ln1 = _load_tensor(
@@ -3387,12 +3469,22 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                     var ln2 = _load_tensor(
                         blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
                     )
-                    var qn = _load_tensor(
-                        blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
-                    )
-                    var kn = _load_tensor(
-                        blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
-                    )
+                    # Llama-family (2026-08-13): a has_qk_norm=0 checkpoint has NO q_norm/k_norm
+                    # tensors -- the session runs its ropewrt kernels with the norm block skipped
+                    # and never reads these gains, so ones fill the upload slot harmlessly.
+                    var qn = List[Float64]()
+                    var kn = List[Float64]()
+                    if has_qk_norm == 1:
+                        qn = _load_tensor(
+                            blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
+                        )
+                        kn = _load_tensor(
+                            blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
+                        )
+                    else:
+                        for _i in range(d_head):
+                            qn.append(1.0)
+                            kn.append(1.0)
                     var wq = _load_tensor(
                         blob_path, tensors_obj, prefix + "self_attn.q_proj.weight"
                     )
@@ -3535,7 +3627,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
 
             generated_ids.append(first_tok)
             counts[first_tok] += 1
-            var stopped_on_eos = first_tok == QWEN3_0_6B_BASE_EOS_TOKEN_ID
+            var stopped_on_eos = first_tok == eos_token_id
             var n_decoded = 1
             var dispatches_per_token = 0
 
@@ -3559,7 +3651,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                     generated_ids.append(draw.token)
                     counts[draw.token] += 1
                     n_decoded += 1
-                    if draw.token == QWEN3_0_6B_BASE_EOS_TOKEN_ID:
+                    if draw.token == eos_token_id:
                         stopped_on_eos = True
                         break
             var t_decode_end = perf_counter_ns()
@@ -3657,6 +3749,9 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
     var theta: Float64
     var eps: Float64
     var n_prompt: Int
+    var has_qk_norm: Int
+    var tied_embeddings: Int
+    var eos_token_id: Int
     var tensors_obj: String
     var prompt_ids: List[Int]
     try:
@@ -3671,6 +3766,13 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
         theta = json_get_float(config, "rope_theta", -1.0)
         eps = json_get_float(config, "rms_norm_eps", -1.0)
         n_prompt = json_get_int(config, "n_tokens", -1)
+        # ── Llama-family convention flags (2026-08-13): both DEFAULT TO THE QWEN3 CONVENTION
+        # (1/1), so a manifest written before these keys existed runs byte-for-byte as it always
+        # did. The stop token defaults to the Qwen3 constant the same way; the llama-family SDK
+        # converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        has_qk_norm = json_get_int(config, "has_qk_norm", 1)
+        tied_embeddings = json_get_int(config, "tie_word_embeddings", 1)
+        eos_token_id = json_get_int(config, "eos_token_id", QWEN3_0_6B_BASE_EOS_TOKEN_ID)
         tensors_obj = json_get_object(manifest, "tensors")
 
         var ids_arr = json_get_array(manifest, "input_ids")
@@ -3689,6 +3791,18 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
     ):
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE, manifest_path + " is missing a required config field"
+        )
+    if (has_qk_norm != 0 and has_qk_norm != 1) or (tied_embeddings != 0 and tied_embeddings != 1):
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " carries a convention flag (has_qk_norm=" + String(has_qk_norm)
+            + ", tie_word_embeddings=" + String(tied_embeddings) + ") that is neither 0 nor 1",
+        )
+    if eos_token_id < 0 or eos_token_id >= vocab_size:
+        return _decode_err(
+            MB_ERR_CHECKPOINT_UNREADABLE,
+            manifest_path + " declares eos_token_id=" + String(eos_token_id)
+            + " outside the vocab [0, " + String(vocab_size) + ")",
         )
     if len(prompt_ids) != n_prompt:
         return _decode_err(
@@ -3802,7 +3916,9 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
             if resident_match:
                 _mb_begin_adopt()
             var s = _MBQwen3I8AllSimd7Prefill(
-                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, max_ctx, eps, scale,
+                UnresolvedPrefillConfig(PF_ATTN_OFF, PF_GEMM_ORIGINAL),
+                has_qk_norm, tied_embeddings,
             )
             if resident_match:
                 _mb_end_adopt()
@@ -3895,6 +4011,18 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
                         "upload_globals failed: " + metaldispatch_status_name(up_status),
                     )
 
+                # Llama-family untied lm_head (2026-08-13): the checkpoint's OWN output
+                # projection, quantized into the session's separate lm_head buffer pair. A tied
+                # model (has_qk_norm-style flag tie_word_embeddings=1) never reaches this.
+                if tied_embeddings == 0:
+                    var lm_head_table = _load_tensor(blob_path, tensors_obj, "lm_head.weight")
+                    var lm_status = s.upload_lm_head(lm_head_table)
+                    if lm_status != MB_OK:
+                        return _decode_err(
+                            lm_status,
+                            "upload_lm_head failed: " + metaldispatch_status_name(lm_status),
+                        )
+
                 for layer in range(n_layers):
                     var prefix = "model.layers." + String(layer) + "."
                     var ln1 = _load_tensor(
@@ -3903,12 +4031,22 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
                     var ln2 = _load_tensor(
                         blob_path, tensors_obj, prefix + "post_attention_layernorm.weight"
                     )
-                    var qn = _load_tensor(
-                        blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
-                    )
-                    var kn = _load_tensor(
-                        blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
-                    )
+                    # Llama-family (2026-08-13): a has_qk_norm=0 checkpoint has NO q_norm/k_norm
+                    # tensors -- the session runs its ropewrt kernels with the norm block skipped
+                    # and never reads these gains, so ones fill the upload slot harmlessly.
+                    var qn = List[Float64]()
+                    var kn = List[Float64]()
+                    if has_qk_norm == 1:
+                        qn = _load_tensor(
+                            blob_path, tensors_obj, prefix + "self_attn.q_norm.weight"
+                        )
+                        kn = _load_tensor(
+                            blob_path, tensors_obj, prefix + "self_attn.k_norm.weight"
+                        )
+                    else:
+                        for _i in range(d_head):
+                            qn.append(1.0)
+                            kn.append(1.0)
                     var wq = _load_tensor(
                         blob_path, tensors_obj, prefix + "self_attn.q_proj.weight"
                     )

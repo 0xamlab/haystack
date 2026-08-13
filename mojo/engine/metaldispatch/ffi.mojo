@@ -46,8 +46,9 @@ declared slot via `setBytes:length:atIndex:` (NOT `setBuffer:`) — the ABI reci
 `tag` 2 = a `Float32` scalar; `value`'s low 4 bytes hold the IEEE-754 bit pattern.
 
 One descriptor is `16 + ALGENTA_MAX_ARGS * 16` bytes. `ALGENTA_MAX_ARGS = 16` here, matching the
-shim; the largest real argument list among `residentk.kernels`' eight kernels is
-`_qk_rope_write_kernel`'s 13, so 16 leaves headroom without the stride growing again.
+shim; the largest real argument list among `residentk.kernels`' kernels is `_pf_ropewrt_kernel`'s
+15 (its trailing `qk_norm` family-convention arg added for llama-family support, 2026-08-13), so 16
+still leaves headroom without the stride growing again.
 """
 
 from std.builtin.type_aliases import MutAnyOrigin

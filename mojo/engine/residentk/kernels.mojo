@@ -1586,8 +1586,14 @@ def _norm_gemv2_swiglu_kernel_i4(
 def _qk_rope_write_kernel(
     q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
     cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
+    qk_norm: Int,
 ):
     """Per-head rmsnorm on Q and K, RoPE on both, and the KV-cache slot write — all in one dispatch.
+
+    `qk_norm` selects the family convention (llama-family support): 1 = apply the Qwen3 per-head
+    RMSNorm-then-gain to Q and K before rotating; 0 = skip the norm entirely (llama-family rotates
+    the raw projections) and never touch `qn_w`/`kn_w`, which a no-QK-norm checkpoint does not
+    provide. Kernel-uniform, so every thread takes the same branch and the barrier discipline holds.
 
     `grid_dim = h_q + h_kv`, `block_dim = d_head`. Blocks `[0, h_q)` handle a query head and write
     `q_rot`; blocks `[h_q, h_q + h_kv)` handle a key/value head and write BOTH cache slots.
@@ -1619,19 +1625,24 @@ def _qk_rope_write_kernel(
     # `qkv` is the fused projection's output: [ Q | K | V ], each head-major within its section.
     var src_off = head * d_head + e if is_q else (h_q + head) * d_head + e
     var v = qkv[src_off]
-    var g = qn_w[e] if is_q else kn_w[e]
+    if qk_norm == 1:
+        var g = qn_w[e] if is_q else kn_w[e]
 
-    red[e] = v * v
-    barrier()
-    var stride = d_head // 2
-    while stride > 0:
-        if e < stride:
-            red[e] = red[e] + red[e + stride]
+        red[e] = v * v
         barrier()
-        stride //= 2
-    var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
-    xs[e] = v * inv * g
-    barrier()
+        var stride = d_head // 2
+        while stride > 0:
+            if e < stride:
+                red[e] = red[e] + red[e + stride]
+            barrier()
+            stride //= 2
+        var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+        xs[e] = v * inv * g
+        barrier()
+    else:
+        # Llama-family: no QK-norm -- rotate the raw projection; `qn_w`/`kn_w` are never read.
+        xs[e] = v
+        barrier()
 
     var n_pairs = d_head // 2
     if e < n_pairs:
@@ -1659,6 +1670,7 @@ def _qk_rope_write_kernel(
 def _qk_rope_write_kernel_kvf16(
     q_rot: _FP, ck: _HP, cv: _HP, qkv: _FP, qn_w: _FP, kn_w: _FP,
     cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
+    qk_norm: Int,
 ):
     """The fp16-KV-CACHE twin of `_qk_rope_write_kernel` — a THIRD precision axis, orthogonal to the
     `_f16`/`_i8` WEIGHT-storage twins above. `ck`/`cv` are resident Float16 here instead of Float32;
@@ -1691,19 +1703,24 @@ def _qk_rope_write_kernel_kvf16(
 
     var src_off = head * d_head + e if is_q else (h_q + head) * d_head + e
     var v = qkv[src_off]
-    var g = qn_w[e] if is_q else kn_w[e]
+    if qk_norm == 1:
+        var g = qn_w[e] if is_q else kn_w[e]
 
-    red[e] = v * v
-    barrier()
-    var stride = d_head // 2
-    while stride > 0:
-        if e < stride:
-            red[e] = red[e] + red[e + stride]
+        red[e] = v * v
         barrier()
-        stride //= 2
-    var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
-    xs[e] = v * inv * g
-    barrier()
+        var stride = d_head // 2
+        while stride > 0:
+            if e < stride:
+                red[e] = red[e] + red[e + stride]
+            barrier()
+            stride //= 2
+        var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+        xs[e] = v * inv * g
+        barrier()
+    else:
+        # Llama-family: no QK-norm -- rotate the raw projection; `qn_w`/`kn_w` are never read.
+        xs[e] = v
+        barrier()
 
     var n_pairs = d_head // 2
     if e < n_pairs:
@@ -3498,6 +3515,7 @@ def _pf_qkv_proj_kernel_simd_i8(
 def _pf_ropewrt_kernel(
     q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
     cos_t: _FP, sin_t: _FP, pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32, m_rows: Int,
+    qk_norm: Int,
 ):
     """Batched twin of `_qk_rope_write_kernel` -- IDENTICAL per-row q_norm/k_norm/RoPE math and
     IDENTICAL in-place KV-cache write, computed independently for `m_rows` prefill rows in ONE
@@ -3533,19 +3551,24 @@ def _pf_ropewrt_kernel(
 
     var src_off = row_qkv + (head * d_head + e if is_q else (h_q + head) * d_head + e)
     var v = qkv[src_off]
-    var g = qn_w[e] if is_q else kn_w[e]
+    if qk_norm == 1:
+        var g = qn_w[e] if is_q else kn_w[e]
 
-    red[e] = v * v
-    barrier()
-    var stride = d_head // 2
-    while stride > 0:
-        if e < stride:
-            red[e] = red[e] + red[e + stride]
+        red[e] = v * v
         barrier()
-        stride //= 2
-    var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
-    xs[e] = v * inv * g
-    barrier()
+        var stride = d_head // 2
+        while stride > 0:
+            if e < stride:
+                red[e] = red[e] + red[e + stride]
+            barrier()
+            stride //= 2
+        var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+        xs[e] = v * inv * g
+        barrier()
+    else:
+        # Llama-family: no QK-norm -- rotate the raw projection; `qn_w`/`kn_w` are never read.
+        xs[e] = v
+        barrier()
 
     var n_pairs = d_head // 2
     if e < n_pairs:

@@ -1073,7 +1073,7 @@ struct _MBQwen3(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -1089,6 +1089,7 @@ struct _MBQwen3(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -1525,7 +1526,7 @@ struct _MBQwen3F16(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -1541,6 +1542,7 @@ struct _MBQwen3F16(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -2005,7 +2007,7 @@ struct _MBQwen3I8(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -2021,6 +2023,7 @@ struct _MBQwen3I8(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -2509,7 +2512,7 @@ struct _MBQwen3I8SDPASimd(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -2525,6 +2528,7 @@ struct _MBQwen3I8SDPASimd(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -3022,7 +3026,7 @@ struct _MBQwen3I8AllSimd(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -3038,6 +3042,7 @@ struct _MBQwen3I8AllSimd(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -3534,7 +3539,7 @@ struct _MBQwen3I8AllSimd2(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -3550,6 +3555,7 @@ struct _MBQwen3I8AllSimd2(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -4214,7 +4220,7 @@ struct _MBQwen3I8AllSimd3(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -4230,6 +4236,7 @@ struct _MBQwen3I8AllSimd3(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -4367,7 +4374,7 @@ struct _MBQwen3I8AllSimd3(Movable):
 
             _mb_set_header(
                 self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
@@ -4383,6 +4390,7 @@ struct _MBQwen3I8AllSimd3(Movable):
             _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_deep, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             # ── split: unnormalized partial (m, l, o) per (head, split) — replaces the ONE SDPA
@@ -5137,7 +5145,7 @@ struct _MBQwen3I8AllSimd4(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -5153,6 +5161,7 @@ struct _MBQwen3I8AllSimd4(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -5292,7 +5301,7 @@ struct _MBQwen3I8AllSimd4(Movable):
 
             _mb_set_header(
                 self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
@@ -5308,6 +5317,7 @@ struct _MBQwen3I8AllSimd4(Movable):
             _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_deep, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             # ── split: unnormalized partial (m, l, o) per (head, split) — replaces the ONE SDPA
@@ -6080,7 +6090,7 @@ struct _MBQwen3I8AllSimd5(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -6096,6 +6106,7 @@ struct _MBQwen3I8AllSimd5(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -6237,7 +6248,7 @@ struct _MBQwen3I8AllSimd5(Movable):
 
             _mb_set_header(
                 self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
@@ -6253,6 +6264,7 @@ struct _MBQwen3I8AllSimd5(Movable):
             _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_deep, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             # ── split: unnormalized partial (m, l, o) per (head, split) — replaces the ONE SDPA
@@ -6995,7 +7007,7 @@ struct _MBQwen3I8AllSimd6(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -7011,6 +7023,7 @@ struct _MBQwen3I8AllSimd6(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -7155,7 +7168,7 @@ struct _MBQwen3I8AllSimd6(Movable):
 
             _mb_set_header(
                 self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
@@ -7171,6 +7184,7 @@ struct _MBQwen3I8AllSimd6(Movable):
             _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_deep, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             # ── split: unnormalized partial (m, l, o) per (head, split) — replaces the ONE SDPA
@@ -7865,7 +7879,7 @@ struct _MBQwen3I8AllSimd7(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -7881,6 +7895,7 @@ struct _MBQwen3I8AllSimd7(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
@@ -8005,7 +8020,7 @@ struct _MBQwen3I8AllSimd7(Movable):
 
             _mb_set_header(
                 self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
@@ -8021,6 +8036,7 @@ struct _MBQwen3I8AllSimd7(Movable):
             _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors_deep, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             # ── split: unnormalized partial (m, l, o) per (head, split) — grid width seeded from
@@ -8600,7 +8616,7 @@ struct _MBQwen3I8KVF16(Movable):
 
             _mb_set_header(
                 self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
-                self.h_q + self.h_kv, self.d_head, 13,
+                self.h_q + self.h_kv, self.d_head, 14,
             )
             _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
             _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
@@ -8616,6 +8632,7 @@ struct _MBQwen3I8KVF16(Movable):
             _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
             _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
             _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            _mb_set_arg_int(self.descriptors, d, 13, 1)  # qk_norm: these decode-only sessions are Qwen3-family only (per-head QK-norm always on); llama-family runs through _MBQwen3I8AllSimd7Prefill
             d += 1
 
             _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)

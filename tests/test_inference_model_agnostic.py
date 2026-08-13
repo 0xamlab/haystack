@@ -4,8 +4,9 @@ checkpoint's own config.json) and routes it to the model-agnostic entry point, s
 across model sizes without a per-shape SDK function. This file checks:
 
 * the architecture gate, unconditionally (no checkpoint needed): a supported structural config is
-  accepted, and configs that violate the GQA / divisibility / tied-embedding invariants are refused
-  with `UnsupportedArchitectureError`;
+  accepted (tied OR untied embeddings -- both conventions are now branches the engine handles), and
+  configs that violate the GQA / divisibility invariants are refused with
+  `UnsupportedArchitectureError`;
 * the multi-shard conversion, opt-in (needs a real multi-shard Qwen3 checkpoint on disk, never
   fetched by a test): `prepare_model_checkpoint` produces a `manifest.json` + `weights.blob` with the
   expected tensor count and config.
@@ -112,9 +113,19 @@ def test_bad_gqa_ratio_refused() -> None:
         )
 
 
-def test_untied_embeddings_refused() -> None:
-    with pytest.raises(UnsupportedArchitectureError):
-        _validate_architecture(Path("/tmp/unused"), _supported_config(tie_word_embeddings=False))
+def test_untied_embeddings_accepted() -> None:
+    # Llama-family checkpoints untie the lm_head from the input embedding. That convention is now
+    # a BRANCH the engine handles (a separate lm_head buffer pair), not a refusal -- so the gate
+    # must accept it. The engine half of this gate landed with the llama-family increment.
+    _validate_architecture(Path("/tmp/unused"), _supported_config(tie_word_embeddings=False))
+
+
+def test_absent_tie_word_embeddings_defaults_to_tied() -> None:
+    # A config that omits tie_word_embeddings is treated as tied (the transformers default), which
+    # is also accepted -- the gate refuses neither convention, only the structural alignment gates.
+    cfg = _supported_config()
+    del cfg["tie_word_embeddings"]
+    _validate_architecture(Path("/tmp/unused"), cfg)
 
 
 def test_missing_checkpoint_dir_refused() -> None:

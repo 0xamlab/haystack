@@ -939,6 +939,7 @@ struct _ResidentQwen3(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 # 3 ── attention over every cached key, online softmax
@@ -1272,6 +1273,7 @@ struct _ResidentQwen3F16(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(
@@ -1608,6 +1610,7 @@ struct _ResidentQwen3I8(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(
@@ -1971,6 +1974,7 @@ struct _ResidentQwen3I8SDPASimd(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(
@@ -2341,6 +2345,7 @@ struct _ResidentQwen3I8AllSimd(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(
@@ -2702,6 +2707,7 @@ struct _ResidentQwen3I8AllSimd2(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(
@@ -3054,6 +3060,7 @@ struct _ResidentQwen3I4(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(
@@ -3392,6 +3399,7 @@ struct _ResidentQwen3I8KVF16(Movable):
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 self.ctx.enqueue_function_unchecked(

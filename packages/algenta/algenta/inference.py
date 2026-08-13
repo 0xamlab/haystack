@@ -7,12 +7,13 @@ sizes without a per-shape SDK function.
 
 Scope, stated precisely so nothing here overclaims
 ---------------------------------------------------
-* **Architecture family, not one shape.** The kernels implement the Qwen3 decoder family (GQA with
-  RMSNorm on Q/K, tied embeddings, SiLU-gated FFN, RoPE, no attention bias). Any model matching those
-  structural invariants and the kernel alignment gates (d_model / d_ff / n_q divisible by 32, GQA ratio
-  integral) runs; anything else raises `UnsupportedArchitectureError` naming the exact mismatch. This
-  is "any model within the supported family," not "any architecture ever" -- no other architecture
-  family has kernels yet.
+* **Architecture family, not one shape.** The kernels implement the Qwen3/llama decoder family (GQA,
+  SiLU-gated FFN, RoPE, no attention bias; per-head QK RMSNorm optional -- present in Qwen3, absent
+  in llama-family -- and the lm_head either tied to the input embedding or its own matrix). Any model
+  matching those structural invariants and the kernel alignment gates (d_model / d_ff / n_q divisible
+  by 32, GQA ratio integral) runs; anything else raises `UnsupportedArchitectureError` naming the exact
+  mismatch. This is "any model within the supported family," not "any architecture ever" -- no other
+  architecture family has kernels yet.
 * **One hardware family**: Apple Silicon with Metal. A binary built without `-D ALGENTA_GPU`, or a
   host with no Metal accelerator, raises `InferenceError` with a status naming exactly that -- never a
   silent CPU fallback.
@@ -191,15 +192,19 @@ def _validate_architecture(checkpoint_dir: Path, config: dict[str, Any]) -> None
             f"num_attention_heads*head_dim ({h_q * d_head}) must be divisible by 32 "
             "(GEMM tile alignment)"
         )
-    if config.get("tie_word_embeddings") is not True:
-        problems.append("the kernels expect tied word embeddings (tie_word_embeddings=true)")
+    # Llama-family support (2026-08-13): the embedding/lm_head convention is now a BRANCH, not a
+    # refusal -- `tie_word_embeddings` true (Qwen3) reuses the embed table as lm_head; false (llama-
+    # family) converts the checkpoint's own `lm_head.weight` and the engine binds it separately.
+    # Absent means tied (the transformers default). The engine half of this gate (a dedicated
+    # lm_head buffer pair in the session) landed in the same change; the manifest carries
+    # `tie_word_embeddings` so the kernel side knows which branch it is running.
     if config.get("attention_bias") not in (False, None):
         problems.append("the kernels expect no attention bias (attention_bias=false)")
     if problems:
         raise UnsupportedArchitectureError(
             f"unsupported model architecture: {checkpoint_dir} is not a supported model. "
-            f"Problems: {'; '.join(problems)}. This module runs Qwen3-family decoders whose dims "
-            "meet the kernel alignment gates."
+            f"Problems: {'; '.join(problems)}. This module runs Qwen3/llama-family decoders whose "
+            "dims meet the kernel alignment gates."
         )
 
 
@@ -247,6 +252,37 @@ def _resolve_shard_for_tensor(
             "checkpoint_not_found", f"{shard_path} (shard for {tensor_name!r}) is missing."
         )
     return shard_path
+
+
+_QK_NORM_PROBE_TENSOR = "model.layers.0.self_attn.q_norm.weight"
+
+
+def _detect_has_qk_norm(checkpoint_dir: Path, index: dict[str, Any] | None) -> bool:
+    """Llama-family support (2026-08-13): whether the checkpoint carries per-head QK RMSNorm gain
+    tensors, detected by the presence of layer 0's `self_attn.q_norm.weight` in the safetensors
+    (never by config.json -- some configs lie about or omit this; the tensors are the truth the
+    engine consumes). Qwen3 checkpoints have them; llama-family checkpoints do not. The engine gets
+    the answer as the manifest's `has_qk_norm` and routes the ropewrt kernels' norm block on it."""
+    if index is None:
+        single = checkpoint_dir / "model.safetensors"
+        if not single.is_file():
+            raise InferenceError(
+                "checkpoint_not_found",
+                f"{checkpoint_dir} has no model.safetensors and no model.safetensors.index.json.",
+            )
+        header, _ = _read_safetensors_header(single)
+        return _QK_NORM_PROBE_TENSOR in header
+    weight_map = index.get("weight_map") or {}
+    if _QK_NORM_PROBE_TENSOR not in weight_map:
+        return False
+    shard_path = checkpoint_dir / weight_map[_QK_NORM_PROBE_TENSOR]
+    if not shard_path.is_file():
+        raise InferenceError(
+            "checkpoint_not_found",
+            f"{shard_path} (shard for {_QK_NORM_PROBE_TENSOR!r}) is missing.",
+        )
+    header, _ = _read_safetensors_header(shard_path)
+    return _QK_NORM_PROBE_TENSOR in header
 
 
 def prepare_model_checkpoint(
@@ -299,25 +335,34 @@ def prepare_model_checkpoint(
     index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.is_file() else None
 
     n_layers = config["num_hidden_layers"]
+    tied_embeddings = config.get("tie_word_embeddings", True) is True
+    has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
     required = ["model.embed_tokens.weight", "model.norm.weight"]
+    if not tied_embeddings:
+        # Untied llama-family checkpoints carry their OWN output projection; the engine binds it
+        # as a separate lm_head matrix. A tied checkpoint (Qwen3) reuses the embedding table and
+        # has no lm_head.weight tensor to convert.
+        required.append("lm_head.weight")
     for layer in range(n_layers):
         prefix = f"model.layers.{layer}."
-        required += [
-            prefix + suffix
-            for suffix in (
-                "input_layernorm.weight",
-                "post_attention_layernorm.weight",
-                "self_attn.q_norm.weight",
-                "self_attn.k_norm.weight",
-                "self_attn.q_proj.weight",
-                "self_attn.k_proj.weight",
-                "self_attn.v_proj.weight",
-                "self_attn.o_proj.weight",
-                "mlp.gate_proj.weight",
-                "mlp.up_proj.weight",
-                "mlp.down_proj.weight",
-            )
+        suffixes = [
+            "input_layernorm.weight",
+            "post_attention_layernorm.weight",
         ]
+        if has_qk_norm:
+            # Qwen3 convention. Llama-family checkpoints have no q_norm/k_norm tensors; the engine
+            # runs the ropewrt kernels with the norm block skipped (manifest `has_qk_norm`=0).
+            suffixes += ["self_attn.q_norm.weight", "self_attn.k_norm.weight"]
+        suffixes += [
+            "self_attn.q_proj.weight",
+            "self_attn.k_proj.weight",
+            "self_attn.v_proj.weight",
+            "self_attn.o_proj.weight",
+            "mlp.gate_proj.weight",
+            "mlp.up_proj.weight",
+            "mlp.down_proj.weight",
+        ]
+        required += [prefix + suffix for suffix in suffixes]
 
     resolved_out_dir = (
         Path(out_dir) if out_dir is not None else Path(tempfile.mkdtemp(prefix="algenta-model-ckpt-"))
@@ -380,6 +425,13 @@ def prepare_model_checkpoint(
         "rope_theta": float(config["rope_theta"]),
         "rms_norm_eps": config["rms_norm_eps"],
         "n_tokens": len(prompt_token_ids),
+        # Family-convention flags the engine's kernels branch on (llama-family support, 2026-08-13):
+        # has_qk_norm=1 applies the Qwen3 per-head QK RMSNorm before RoPE, 0 rotates the raw
+        # projections (llama-family, whose checkpoints carry no q_norm/k_norm tensors);
+        # tie_word_embeddings=1 reuses the embedding table as lm_head, 0 binds the separately
+        # converted lm_head.weight. Ints (0/1) because the Mojo side reads them with json_get_int.
+        "has_qk_norm": 1 if has_qk_norm else 0,
+        "tie_word_embeddings": 1 if tied_embeddings else 0,
     }
     # End-of-sequence id(s) the engine should stop on, carried from the checkpoint's own config
     # instead of a hardcoded constant. Absent on some configs -- only written when present, so an
