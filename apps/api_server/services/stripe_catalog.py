@@ -27,6 +27,14 @@ _TTL_S = 300.0
 _ENTITLEMENT_KEYS = ("devices", "workers", "seats", "per", "max_concurrent", "allowance_usd")
 
 
+def _as_int(value: object, default: int) -> int:
+    """Coerce a Stripe metadata string to int, falling back on anything non-numeric."""
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
 def _shape(price: dict[str, Any]) -> dict[str, Any] | None:
     prod = price.get("product")
     if not isinstance(prod, dict) or not prod.get("active"):
@@ -50,6 +58,10 @@ def _shape(price: dict[str, Any]) -> dict[str, Any] | None:
         "interval": (price.get("recurring") or {}).get("interval"),
         "lookup_key": price.get("lookup_key"),
         "source": pmeta.get("source"),
+        # Purchasable quantity bounds (PRICE metadata) — Compute-Unit/server tiers set qty_min>=4;
+        # checkout starts at qty_min and Stripe's adjustable_quantity scales up to qty_max.
+        "qty_min": _as_int((price.get("metadata") or {}).get("qty_min"), 1),
+        "qty_max": _as_int((price.get("metadata") or {}).get("qty_max"), 0),
         # The user-facing fix allowance ("150" | "unlimited" | absent) — the
         # unit customers are billed/limited by (simulations etc. are internal).
         "cloud_fix_prs": pmeta.get("cloud_fix_prs"),

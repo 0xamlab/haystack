@@ -88,7 +88,20 @@ _CHECKOUT_PLANS = frozenset(
         "cohenta_team",
         "sqai_pro",
         "sqai_team",
+        # Server (Compute-Unit) tiers are self-serve + scalable: checkout starts at the SKU's
+        # qty_min Compute Units and Stripe's adjustable_quantity lets the buyer scale up on the
+        # checkout page (bounded by the SKU's qty_max). cohenta_server is omitted — cohenta isn't live.
+        "algenta_server",
+        "telys_server",
+        "sqai_server",
+        "codna_server",
     }
+)
+
+# Compute-Unit (server) plans: bill per CU, priced dynamically from Stripe, purchased at >= qty_min
+# units with adjustable scaling on the Stripe checkout page.
+_COMPUTE_UNIT_PLANS = frozenset(
+    {"algenta_server", "telys_server", "sqai_server", "codna_server", "cohenta_server"}
 )
 
 
@@ -311,12 +324,19 @@ async def account_billing_checkout(
     catalogue_price = await resolve_price(_plan_product, plan, "month")
     price_id = catalogue_price.get("id") if catalogue_price else None
 
+    # Compute-Unit (server) plans are sold at >= the SKU's qty_min units; start checkout at that
+    # minimum and let Stripe's adjustable_quantity scale the buyer up. Other plans keep min 1.
+    is_compute_unit = plan in _COMPUTE_UNIT_PLANS
+    qty_min = int((catalogue_price or {}).get("qty_min") or 1) if is_compute_unit else 1
+    quantity = max(payload.quantity, qty_min)
+
     return await create_checkout_session(
         str(org.id),
         email,
         plan,
         price_id=price_id,
-        quantity=payload.quantity,
+        quantity=quantity,
+        min_quantity=qty_min,
         success_url=success_url,
         cancel_url=cancel_url,
     )

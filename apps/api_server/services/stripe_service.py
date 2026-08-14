@@ -274,6 +274,7 @@ async def create_checkout_session(
     audit_context: EgressAuditContext | None = None,
     quantity: int = 1,
     price_id: str | None = None,
+    min_quantity: int = 1,
 ) -> dict[str, str]:
     """
     Create a Stripe Checkout Session for upgrading to the given plan.
@@ -314,7 +315,7 @@ async def create_checkout_session(
                 "line_items[0][price]": price_id,
                 # Quantity axis is caller-decided: per-seat plans (team/telys_team/cohenta_team) bill
                 # by seats, per-device plans (algenta_pro/algenta_team) by devices; solo plans stay at 1.
-                "line_items[0][quantity]": str(max(1, quantity)),
+                "line_items[0][quantity]": str(max(max(1, min_quantity), quantity)),
                 "success_url": resolved_success_url,
                 "cancel_url": resolved_cancel_url,
                 "customer_email": org_email,
@@ -325,14 +326,19 @@ async def create_checkout_session(
                 # (Stripe gives no ordering guarantee) — otherwise the per-device quantity never syncs.
                 "subscription_data[metadata][org_id]": org_id,
                 "subscription_data[metadata][plan]": plan,
-                # Let buyers self-select the quantity for both per-seat (team/telys_team/cohenta_team/
-                # sqai_team) and per-device (algenta_pro/algenta_team) plans.
+                # Let buyers self-select the quantity on the Stripe page: per-seat (team/telys_team/
+                # cohenta_team/sqai_team) and per-device (algenta_pro/algenta_team) plans scale from 1;
+                # Compute-Unit/server plans (min_quantity>1) scale from the SKU's qty_min upward.
                 **(
                     {
                         "line_items[0][adjustable_quantity][enabled]": "true",
-                        "line_items[0][adjustable_quantity][minimum]": "1",
+                        "line_items[0][adjustable_quantity][minimum]": str(max(1, min_quantity)),
                     }
-                    if plan in ("team", "telys_team", "cohenta_team", "sqai_team", "algenta_pro", "algenta_team")
+                    if (
+                        min_quantity > 1
+                        or plan
+                        in ("team", "telys_team", "cohenta_team", "sqai_team", "algenta_pro", "algenta_team")
+                    )
                     else {}
                 ),
             },
