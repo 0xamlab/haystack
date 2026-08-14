@@ -92,6 +92,15 @@ _CHECKOUT_PLANS = frozenset(
 )
 
 
+def _is_free_plan(plan: str) -> bool:
+    """True for every $0 entry tier across the family — the two naming schemes: the community tiers
+    (``free``, ``algenta_free``, …) AND the ``developer`` entry tier (``developer``,
+    ``telys_developer``, ``sqai_developer``). A free plan has no billing cycle and never cancels, so
+    its subscription/renewal state must not be surfaced. Mirrors the accounts BillingCard ``isFree``."""
+    p = (plan or "").strip().lower()
+    return p in ("free", "") or p == "developer" or p.endswith("_free") or p.endswith("_developer")
+
+
 def _require_billing() -> None:
     """503 when Stripe isn't configured (placeholder key) so the dashboard card shows
     "billing not enabled yet", exactly like /account/devices when SUPABASE_URL is unset."""
@@ -199,22 +208,27 @@ async def account_billing_info(
     status = "active"
     renews_at: str | None = None
     cancel_at_period_end = False
-    try:
-        row = (
-            await db.execute(
-                text(
-                    "SELECT status, current_period_end, cancel_at_period_end FROM subscriptions "
-                    "WHERE org_id = :org_id ORDER BY updated_at DESC LIMIT 1"
-                ),
-                {"org_id": str(org.id)},
-            )
-        ).first()
-        if row is not None:
-            status = row[0] or status
-            renews_at = row[1].isoformat() if row[1] else None
-            cancel_at_period_end = bool(row[2])
-    except Exception as exc:  # noqa: BLE001 — billing info must degrade, not 500
-        logger.warning("account_billing_subscription_read_failed", error=str(exc))
+    # A free/Community plan is ALWAYS free and NEVER cancels — it has no billing cycle. A prior paid
+    # subscription that was cancelled/downgraded can leave a stale subscriptions row with
+    # cancel_at_period_end=true + a period end; reading it here made the card show
+    # "Community · canceled · Cancels <date>", which is wrong. Skip the row entirely for free plans.
+    if not _is_free_plan(plan):
+        try:
+            row = (
+                await db.execute(
+                    text(
+                        "SELECT status, current_period_end, cancel_at_period_end FROM subscriptions "
+                        "WHERE org_id = :org_id ORDER BY updated_at DESC LIMIT 1"
+                    ),
+                    {"org_id": str(org.id)},
+                )
+            ).first()
+            if row is not None:
+                status = row[0] or status
+                renews_at = row[1].isoformat() if row[1] else None
+                cancel_at_period_end = bool(row[2])
+        except Exception as exc:  # noqa: BLE001 — billing info must degrade, not 500
+            logger.warning("account_billing_subscription_read_failed", error=str(exc))
 
     return {
         "plan": plan,
