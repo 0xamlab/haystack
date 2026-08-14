@@ -70,6 +70,12 @@ class DeviceInfo(BaseModel):
     device_pubkey_thumbprint: str = Field(
         default="", max_length=DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH
     )
+    # Deployment-class signals (optional/back-compat — enforced only when present).
+    # A machine reporting a hypervisor or container runtime is SERVER-class: desktop
+    # licenses (entitlement deployment_class='desktop') refuse it and point at the
+    # brand's Server tier, whose terms live in Stripe (deploy_class=production_server).
+    virtualization: str = Field(default="", max_length=32)  # '', 'none', 'kvm', 'vmware', …
+    container: bool | None = None  # docker/podman/k8s runtime detected
 
 
 class RegisterRequest(BaseModel):
@@ -171,7 +177,33 @@ async def device_register(
                     "Upgrade to PRO ($99/dev/mo) to unlock the local runtime and register devices."
                 ),
                 "plan": plan,
-                "upgrade_url": "https://algenta.io/pricing",
+                "upgrade_url": "https://algenta.ai/pricing",
+            },
+        )
+
+    # Server-class machines don't get desktop licenses: when the caller reports a
+    # hypervisor or container runtime and the plan's entitlement is desktop-class,
+    # refuse and point at the brand's Server (per-Compute-Unit) tier / Enterprise.
+    # Signals are optional (old CLIs send none) — enforcement fires only on evidence.
+    from apps.api_server.services.entitlement_service import resolve_entitlement
+
+    entitlement = resolve_entitlement(plan)
+    virt = (body.device.virtualization or "").strip().lower()
+    is_server_class = bool(body.device.container) or (virt not in ("", "none"))
+    if is_server_class and getattr(entitlement, "deployment_class", "") == "desktop":
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "server_deployment_requires_server_license",
+                "message": (
+                    f"This machine reports a server-class environment "
+                    f"({'container' if body.device.container else virt}). The '{plan}' plan "
+                    "licenses desktop use only — deploy servers on the Server tier "
+                    "(licensed per Compute Unit) or contact us for Enterprise."
+                ),
+                "plan": plan,
+                "deployment_class": "server",
+                "upgrade_url": "https://algenta.ai/pricing",
             },
         )
 
@@ -255,7 +287,7 @@ async def device_register(
                     "device_count": current_count,
                     "device_limit": device_limit,
                     "plan": plan,
-                    "upgrade_url": "https://algenta.io/pricing",
+                    "upgrade_url": "https://algenta.ai/pricing",
                 },
             )
         # Per-device plans: enforce the ORG-WIDE licensed ceiling (across ALL the org's API keys),
@@ -281,7 +313,7 @@ async def device_register(
                         "device_count": org_count,
                         "device_limit": org_ceiling,
                         "plan": plan,
-                        "upgrade_url": "https://algenta.io/pricing",
+                        "upgrade_url": "https://algenta.ai/pricing",
                     },
                 )
         row = DeviceRegistration(
@@ -374,7 +406,7 @@ async def device_register(
                     "device_count": revival_block,
                     "device_limit": device_limit,
                     "plan": plan,
-                    "upgrade_url": "https://algenta.io/pricing",
+                    "upgrade_url": "https://algenta.ai/pricing",
                 },
             )
 
