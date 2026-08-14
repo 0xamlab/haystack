@@ -368,7 +368,7 @@ jobs:
   clean-machine-contract:
     name: clean-machine contract (no external toolchain)
     needs: build
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -554,7 +554,7 @@ jobs:
     name: publish Algenta Python packages to PyPI
     needs: clean-machine-contract
     if: github.event_name == 'push' || inputs.publish == 'true'
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
