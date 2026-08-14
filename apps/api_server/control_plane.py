@@ -42,6 +42,10 @@ from apps.api_server.routers import (
     metering,
     oauth_device,
     team,
+    website_billing,
+    website_devices,
+    website_team,
+    website_usage,
 )
 from apps.api_server.routers import license as license_router
 from apps.api_server.routers import meta as meta_router
@@ -66,6 +70,14 @@ _CONTROL_PLANE_ROUTERS = (
     license_router.router,
     meta_router.router,
     control_plane.router,
+    # The accounts-portal surface (/account/orgs|devices|billing|team|usage — Supabase-authed,
+    # engine-free). Absent, every portal call against a control-plane host (api.telys.ai) 404'd:
+    # the CLI registered devices HERE while the portal read nothing — "No devices registered yet"
+    # right after a successful `telys login`.
+    website_billing.router,
+    website_devices.router,
+    website_team.router,
+    website_usage.router,
 )
 
 
