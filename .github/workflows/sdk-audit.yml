@@ -22,11 +22,17 @@ on:
 permissions:
   contents: read
 
+# Two overlapping runs of this workflow on the same ref would otherwise collide on
+# execution-sweep's fixed postgres-ci-sdkaudit container name/port (see ci.yml for the same
+# reasoning — this bit us in practice with ci.yml's postgres-ci).
+concurrency:
+  group: sdk-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gap-checks:
     name: SDK gap checks (static)
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
-    timeout-minutes: 15
+    runs-on: [self-hosted, thyn-mac]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,86 +53,42 @@ jobs:
   execution-sweep:
     name: Full execution sweep (compiled workers)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    runs-on: [self-hosted, thyn-mac]
 
     # tests/conftest.py's autouse ensure_test_database_schema fixture runs the Alembic
     # migrations for EVERY pytest session under tests/ — including the ratchet suite —
-    # so this job needs the same postgres service the Test job gets (ci.yml). Without it
-    # the ratchet step errors 4/4 with "connection refused" before the sweep can start.
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    # so this job needs the same postgres the Test job gets (ci.yml). Without it the
+    # ratchet step errors 4/4 with "connection refused" before the sweep can start.
+    # `services:` (GitHub Actions' auto-managed containers) is Linux-runner-only, so this
+    # is a plain `docker run`, same as ci.yml's Postgres/Dragonfly/MinIO.
+    # Distinct container name AND host port from ci.yml's postgres-ci (5432): this job and
+    # ci.yml's `test` job both trigger on push to main, sharing one Docker daemon on one host
+    # — same name or port would let one job's `docker rm -f`/bind collide with the other's
+    # still-running container.
     env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:5432/test_db
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:15433/test_db
+      DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:15433/test_db
+      CI_WAIT_POSTGRES_URL: postgresql://postgres:postgres@localhost:15433/test_db
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Same memory discipline as the release build (build-runtime.yml): the standard
-      # runner has ~7.8 GiB of RAM while a heavy shard's compile peaks near 10 GiB, so
-      # without swap the host tears the VM down and the step dies with a bare exit 143
-      # (run 30971365988). Reclaim the preinstalled toolchains this job never touches and
-      # spend the space on swap BEFORE the pixi environment and build artifacts fill the
-      # disk. /opt/hostedtoolcache is deliberately NOT removed.
-      - name: Provision Linux compiler memory headroom
+      - name: Start Postgres, wait for it
         run: |
-          set -euo pipefail
-          echo "== before =="; free -h; swapon --show || true; df -h /
-          sudo swapoff -a
-          sudo rm -f /swapfile /mnt/swapfile
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/local/.ghcup \
-            /opt/ghc \
-            /usr/share/dotnet \
-            /usr/share/swift \
-            /usr/local/share/boost \
-            /usr/share/miniconda || true
-          sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "== reclaimed =="; df -h /
-          # Keep 12 GiB of the freed space for the build's own artifacts and temp
-          # objects; spend the rest, up to 24 GiB, on swap.
-          avail_gib=$(( $(df --output=avail -k / | tail -1) / 1024 / 1024 ))
-          swap_gib=24
-          if (( avail_gib - 12 < swap_gib )); then swap_gib=$(( avail_gib - 12 )); fi
-          if (( swap_gib < 8 )); then
-            echo "::error::only ${avail_gib} GiB free on / after reclaiming toolchains;" \
-                 "the Mojo compiler peaks at ~11.3 GiB against ~7.8 GiB of runner RAM and" \
-                 "needs at least 8 GiB of swap, or a larger runner"
-            exit 1
-          fi
-          sudo fallocate -l "${swap_gib}G" /algenta-audit-swap
-          sudo chmod 600 /algenta-audit-swap
-          sudo mkswap /algenta-audit-swap >/dev/null
-          sudo swapon /algenta-audit-swap
-          sudo sysctl -w vm.swappiness=10
-          echo "== after =="; free -h; swapon --show; df -h /
-          # Derive the per-shard ceiling from the headroom we actually got rather than
-          # from a constant that can silently exceed it. 80% of RAM+swap leaves room for
-          # the runner agent and page cache. An unreadable total would
-          # arithmetic-evaluate to 0 and silently DISABLE the ceiling — refuse instead.
-          total_mib=$(free -m | awk '/^Mem:/{m=$2} /^Swap:/{s=$2} END{print m+s}')
-          if [ -z "${total_mib}" ] || (( total_mib < 8000 )); then
-            echo "::error::could not read usable memory from free(1) (got '${total_mib}' MiB);" \
-                 "refusing to run without a per-shard footprint ceiling"
-            exit 1
-          fi
-          echo "AUDIT_SHARD_MAX_RSS_MB=$(( total_mib * 80 / 100 ))" >> "$GITHUB_ENV"
+          # Persistent self-hosted runner, not an ephemeral cloud VM — a crashed/cancelled
+          # prior run can leave this container behind, and a fixed --name collides on
+          # `docker run` otherwise.
+          docker rm -f postgres-ci-sdkaudit >/dev/null 2>&1 || true
+          docker run -d --name postgres-ci-sdkaudit -p 15433:5432 \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
+            postgres:16-alpine
+          ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py postgres
+
+      # The previous swap/toolchain-reclaim dance existed only to survive GitHub-hosted
+      # runners' ~7.8 GiB RAM ceiling. The self-hosted macOS runner has ample RAM, so
+      # "Build audit shard workers" below just falls back to its built-in 8000 MiB
+      # per-shard default (no AUDIT_SHARD_MAX_RSS_MB override needed).
 
       - name: Install Pixi
         run: |
@@ -140,7 +102,6 @@ jobs:
         env:
           PIXI_HOME: ${{ github.workspace }}/.pixi
           RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
-          MOJO_BUILD_MCPU: x86-64-v3
         run: |
           set -euo pipefail
           max_rss="${AUDIT_SHARD_MAX_RSS_MB:-8000}"
@@ -178,20 +139,16 @@ jobs:
   published-artifact-proof:
     name: Published artifact install + execute proof
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    runs-on: [self-hosted, thyn-mac]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python (published wheels require 3.14)
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
+      # No actions/setup-python (needs passwordless sudo on macOS, not configured here) —
+      # python3.14 is a Homebrew-installed binary already on this runner's PATH.
       - name: Install published SDK from PyPI
         run: |
-          python -m venv /tmp/algenta-audit-venv
+          python3.14 -m venv /tmp/algenta-audit-venv
           /tmp/algenta-audit-venv/bin/pip install --upgrade pip
           /tmp/algenta-audit-venv/bin/pip install algenta
 

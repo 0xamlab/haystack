@@ -19,8 +19,7 @@ concurrency:
 jobs:
   analyze:
     name: CodeQL (${{ matrix.language }})
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
-    timeout-minutes: 20
+    runs-on: [self-hosted, thyn-mac]
     permissions:
       actions: read
       contents: read

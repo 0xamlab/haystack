@@ -247,7 +247,7 @@ def evaluate(
                     continue
                 var a = av[r]
                 var b = bv[r]
-                var result: Float64 = 0.0
+                var result: Float64
                 if node.op == OP_ADD:
                     result = a + b
                 elif node.op == OP_SUB:

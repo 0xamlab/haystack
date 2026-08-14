@@ -351,7 +351,7 @@ def _build_right_index(
     """
     var null_keys = 0
     var last_row = List[Int]()
-    for r in range(n_rows):
+    for _ in range(n_rows):
         next_row.append(NO_ROW)
     for r in range(n_rows):
         if not is_matchable_key(right_key, r):

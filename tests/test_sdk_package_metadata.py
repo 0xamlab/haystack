@@ -172,7 +172,10 @@ def test_ci_verifies_python_314_sdk_artifacts_and_repo_tests() -> None:
     assert 'python-version: ["3.14"]' in ci
     assert ci.count('python-version: ["3.14"]') == 2
     assert 'PYTHON_VERSION: "3.14"' in release
-    assert 'python-version: "3.14"' in docs
+    # No actions/setup-python here (its macOS .pkg install needs passwordless sudo, not
+    # configured on the self-hosted runner) -- python3.14 is a Homebrew binary invoked
+    # directly instead of a `with: python-version: "3.14"` key.
+    assert "python3.14" in docs
 
     pixi = (_REPO_ROOT / "mojo_env" / "pixi.toml").read_text(encoding="utf-8")
     assert 'python = ">=3.14,<3.15"' in pixi

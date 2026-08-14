@@ -9,6 +9,14 @@ on:
 permissions:
   contents: read
 
+# The self-hosted runner fleet shares one Docker daemon on one host. The `test` job's fixed
+# container names (postgres-ci, dragonfly-ci, minio) and fixed host ports would otherwise let two
+# concurrent runs on the same ref clobber each other's containers mid-test (one run's `docker rm -f`
+# deleting a still-in-use container from another run — this is exactly what happened in practice).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.14"
   NODE_VERSION: "22"
@@ -19,41 +27,21 @@ jobs:
   # ── Test ──────────────────────────────────────────────────────────────────
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     strategy:
       matrix:
         python-version: ["3.14"]
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      # Dragonfly — a Redis-wire-compatible backend (the operator's choice). The coordination +
-      # idempotency locks use only EVAL (compare-and-delete/expire) + SET NX EX + GET + DEL, all
-      # supported by Dragonfly, so REDIS_URL points here unchanged. No health-cmd (the image has no
-      # redis-cli); the "Wait for integration services" step polls it with a Redis PING.
-      dragonfly:
-        image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
-        ports:
-          - 6379:6379
-        options: >-
-          --ulimit memlock=-1
-
     env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:5432/test_db
-      REDIS_URL: redis://localhost:6379/0
+      # Non-standard host ports: this Mac already runs a native Homebrew Postgres bound to
+      # 127.0.0.1:5432 AND [::1]:5432 permanently. colima's docker port-forward binds the
+      # wildcard address on the SAME port number, and macOS routes "localhost" to whichever
+      # bind is more specific -- the native postgres always wins, silently, no bind-conflict
+      # error. Same story for port 9000 (a stale colima SSH-tunnel forward was still holding
+      # it). Sidestepping well-known ports entirely instead of relying on them being free.
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:15432/test_db
+      DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:15432/test_db
+      REDIS_URL: redis://localhost:16379/0
       JWT_SECRET: test-secret-not-for-production
       STRIPE_SECRET_KEY: sk_test_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
@@ -74,16 +62,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ matrix.python-version }}
-          # No `cache: pip` — dependencies come from Pixi (cached separately),
-          # so there's no pip cache dir to save and the post-job cache step
-          # would error otherwise.
+      # `services:` (GitHub Actions' auto-managed containers, which start before ANY step
+      # runs) is Linux-runner-only -- self-hosted macOS/Windows get "Container operations
+      # are only supported on Linux runners" the instant the job starts. This has to run
+      # this early for the same reason: "Verify filtered compiled Mojo worker" below needs
+      # Postgres up, and a manual step only has the ordering GitHub Actions gives it, not
+      # services:'s automatic before-every-step guarantee.
+      - name: Start Postgres + Dragonfly + MinIO, wait for integration services
+        run: |
+          # Persistent self-hosted runner, not an ephemeral cloud VM — a crashed/cancelled
+          # prior run can leave these containers behind, and a fixed --name collides on
+          # `docker run` otherwise.
+          docker rm -f postgres-ci dragonfly-ci minio >/dev/null 2>&1 || true
+          docker run -d --name postgres-ci -p 15432:5432 \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
+            postgres:16-alpine
+          docker run -d --name dragonfly-ci -p 16379:6379 --ulimit memlock=-1 \
+            docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+          docker run -d --name minio -p 19000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py
+
+      # No actions/setup-python here: every Python invocation in this job goes through
+      # scripts/run_repo_python.sh, which routes through Pixi's own isolated interpreter.
+      # setup-python's macOS .pkg installer needs passwordless sudo (only pre-configured
+      # on GitHub-hosted runners), so it's dropped rather than fought.
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
         with:
           version: 10.15.0
 
@@ -108,7 +115,6 @@ jobs:
         env:
           PIXI_HOME: ${{ github.workspace }}/.pixi
           RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
-          MOJO_BUILD_MCPU: x86-64-v3
           MOJO_RUNTIME_MODULE_FILTER: vector_kernels.dot
           MOJO_SRC: ${{ runner.temp }}/algenta-ci-runtime/main.mojo
           DISPATCH_OUTPUT_PATH: ${{ runner.temp }}/algenta-ci-runtime/runtime_library_dispatch_generated.mojo
@@ -151,16 +157,6 @@ jobs:
       - name: Verify kernel inventory artifacts are current (no drift)
         run: make inventory-check
 
-      # Start MinIO (object store) and wait for it + Dragonfly so the s3 / coordination integration
-      # runs against ready backends. MinIO needs the `server /data` arg, which GitHub service
-      # containers can't pass, so it's launched here via docker run.
-      - name: Start MinIO + wait for integration services
-        run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
-          ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py
-
       - name: Run repo check graph
         run: pnpm check
         env:
@@ -178,37 +174,31 @@ jobs:
         env:
           ALGENTA_RI_OBJECT_STORE: s3
           ALGENTA_COORDINATION: redis
-          S3_ENDPOINT_URL: http://localhost:9000
+          S3_ENDPOINT_URL: http://localhost:19000
           ALGENTA_EGRESS_ALLOWLIST: localhost,127.0.0.1
           PYTEST_TIMEOUT: 60
         run: ./scripts/run_repo_python.sh -m pytest -q tests/test_object_store_minio_smoke.py tests/test_multi_replica_chaos.py
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4
-        if: always()
-        with:
-          fail_ci_if_error: false
 
   # ── SDK artifact install ──────────────────────────────────────────────────
   # Proves the public Python SDKs install + import from the BUILT wheel in a fresh venv (not just
   # from source) — the "a user can actually `pip install` it" gate. Lean: no DB/Redis/pixi needed.
   sdk-artifact-install:
     name: SDK artifact install (Python ${{ matrix.python-version }})
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     strategy:
       matrix:
         python-version: ["3.14"]
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ matrix.python-version }}
+      # No actions/setup-python (needs passwordless sudo on macOS, not configured here) —
+      # python3.14 is a Homebrew-installed binary already on this runner's PATH.
       - name: Build + fresh-venv install + import smoke
         run: |
-          python -m pip install --upgrade build
-          python scripts/verify_sdk_artifact_install.py
+          # Homebrew's python3.14 is PEP 668 externally-managed; --user keeps this out of
+          # its Cellar-managed site-packages, --break-system-packages permits it anyway.
+          python3.14 -m pip install --user --break-system-packages --upgrade build
+          python3.14 scripts/verify_sdk_artifact_install.py
 
   # Proves the public TypeScript SDK installs + imports from the PACKED npm tarball (the artifact
   # `npm publish` uploads) in a fresh project — CJS require + ESM named import + @grpc/proto load +
@@ -216,7 +206,7 @@ jobs:
   # differences. Lean: npm-only, no DB/Redis/pixi.
   ts-sdk-artifact-install:
     name: TS SDK artifact install (Node ${{ matrix.node-version }})
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     strategy:
       matrix:
         node-version: ["18", "20", "22"]
@@ -227,7 +217,7 @@ jobs:
       # ("Unable to locate executable file: pnpm") and fails the step. Install pnpm first, as the
       # Test job does. (This — not the Node version — is why this job was red.)
       - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
         with:
           version: 10.15.0
       - name: Set up Node.js ${{ matrix.node-version }}
@@ -246,7 +236,7 @@ jobs:
   # The push-to-main deploy repeats the same smoke against the pushed GHCR image before Fly rollout.
   api-image-mojo-smoke:
     name: API image Mojo runtime smoke
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     needs: test
     if: github.event_name == 'pull_request'
     permissions:
@@ -264,7 +254,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build API image locally
-        run: docker build --pull -f infra/docker/Dockerfile.api.prod -t algenta-api-smoke:pr .
+        # Fly.io production is x86_64 (the bundled Mojo binary is compiled for it), and this
+        # runner is native arm64. The legacy builder only partially honors --platform on a
+        # multi-stage Dockerfile: it correctly pulls linux/amd64 for the mojo stage (which has
+        # no native arm64 manifest to fall back to), but silently resolves the OTHER stages
+        # (FROM python:3.14-slim, which DOES have an arm64 manifest) to the host's native arm64
+        # instead -- producing a mixed-architecture image that would fail on real amd64 hardware.
+        # DOCKER_BUILDKIT=1 propagates --platform to every stage uniformly.
+        run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t algenta-api-smoke:pr .
 
       - name: Verify bundled Mojo server mode
         run: bash scripts/verify_api_image_mojo_server_mode.sh algenta-api-smoke:pr
@@ -272,7 +269,7 @@ jobs:
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -313,6 +310,7 @@ jobs:
         with:
           context: .
           file: infra/docker/Dockerfile.api.prod
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
@@ -333,6 +331,7 @@ jobs:
         with:
           context: .
           file: infra/docker/Dockerfile.worker.prod
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta-worker.outputs.tags }}
           labels: ${{ steps.meta-worker.outputs.labels }}
@@ -369,6 +368,7 @@ jobs:
         with:
           context: .
           file: infra/docker/Dockerfile.engine.prod
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta-engine.outputs.tags }}
           labels: ${{ steps.meta-engine.outputs.labels }}
@@ -384,7 +384,7 @@ jobs:
   # ENGINE (codna-engine) and tag-pinned/one-off deploys still go through the manual deploy.yml.
   deploy:
     name: Deploy to Fly (codna-api)
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -451,7 +451,7 @@ jobs:
   # expand/contract pattern, not by leaving this app un-deployed.
   deploy-control-plane:
     name: Deploy to Fly (algenta-control-plane)
-    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
+    runs-on: [self-hosted, thyn-mac]
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
