@@ -284,10 +284,24 @@ async def account_billing_checkout(
     redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin_base_url(request))
     success_url = _validated_return_url(payload.success_url) or redirect_urls.success_url
     cancel_url = _validated_return_url(payload.cancel_url) or redirect_urls.cancel_url
+
+    # Resolve the Stripe price from the SAME catalogue that /billing/plans renders — exactly like the
+    # v1 checkout (routers/billing.py) already does. WITHOUT this, create_checkout_session falls back to
+    # PLAN_PRICE_IDS, the hand-maintained env map that only carries codna's legacy plans, so every
+    # catalogue-only plan (algenta_pro/algenta_team, telys_pro, sqai_pro, cohenta_*) failed with
+    # invalid_plan → "Couldn't start checkout". The accounts portal upgrades monthly; annual follows
+    # once the UI exposes the cadence toggle. None → create_checkout_session still tries the env map,
+    # so codna's env-configured plans keep working unchanged.
+    from apps.api_server.services.stripe_catalog import resolve_price
+
+    catalogue_price = await resolve_price(_plan_product, plan, "month")
+    price_id = catalogue_price.get("id") if catalogue_price else None
+
     return await create_checkout_session(
         str(org.id),
         email,
         plan,
+        price_id=price_id,
         quantity=payload.quantity,
         success_url=success_url,
         cancel_url=cancel_url,
