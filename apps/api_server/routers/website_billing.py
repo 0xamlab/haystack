@@ -33,14 +33,41 @@ from apps.api_server.services.public_url_policy import (
     resolve_billing_redirect_urls,
 )
 from apps.api_server.services.stripe_service import (
+    StripeCustomerMissingError,
     billing_configured,
     create_billing_portal_session,
     create_checkout_session,
+    customer_exists,
     portal_configuration_for_app,
 )
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["account"])
+
+
+async def _heal_dead_customer(db: AsyncSession, org: Any, *, reason: str) -> None:
+    """The org's stored Stripe customer no longer exists in the ACTIVE Stripe mode.
+
+    Happens after a test→live key flip (test-mode customers are invisible to a live key and can
+    never be migrated — Stripe forbids moving customers/subscriptions/cards across modes) or when a
+    customer is deleted in the dashboard. There is no live billing to manage, so drop the org to its
+    product Community tier, close any stale subscriptions row, and clear the dead reference. The
+    billing card then shows the honest Free state and 'Manage' stops erroring. Commits.
+    """
+    # Imported lazily to avoid a router→router import cycle at module load.
+    from apps.api_server.routers.billing import _downgrade_to_community
+
+    dead = org.stripe_customer_id
+    await _downgrade_to_community(
+        db, org, reason=reason, event_id=None, subscription_resource_id=None
+    )
+    org.stripe_customer_id = None
+    await db.execute(
+        text("UPDATE subscriptions SET status='canceled' WHERE org_id = :org_id"),
+        {"org_id": str(org.id)},
+    )
+    await db.commit()
+    logger.info("billing_dead_customer_healed", org_id=str(org.id), customer_id=dead, reason=reason)
 
 # Plans purchasable from the website Upgrade buttons, across every brand's public ladder: codna
 # pro/proplus/ultra/team, telys_pro, algenta pro/team (per-device), cohenta pro_runner/team. Free
@@ -153,6 +180,14 @@ async def account_billing_info(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
     _require_billing()
+
+    # Self-heal a stale paid plan whose Stripe customer no longer exists in the active mode (a
+    # test-mode leftover after the live flip). Only when there's a customer id AND a paid plan — free
+    # orgs and orgs with no customer never pay the extra Stripe call. `customer_exists` returns None
+    # on any transient/indeterminate outcome, so a Stripe blip can never wrongly downgrade a payer.
+    if org.stripe_customer_id and org.plan.value not in ("free", "algenta_free"):
+        if await customer_exists(org.stripe_customer_id) is False:
+            await _heal_dead_customer(db, org, reason="billing_info_customer_missing")
 
     plan = org.plan.value
     cap_usd = plan_limits.get(plan).llm_spend_cap_usd_month
@@ -301,8 +336,21 @@ async def account_billing_portal(
             request_origin=request_origin_base_url(request)
         )
         return_url = redirect_urls.return_url
-    return await create_billing_portal_session(
-        org.stripe_customer_id,
-        return_url=return_url,
-        configuration=await portal_configuration_for_app(body.app),
-    )
+    try:
+        return await create_billing_portal_session(
+            org.stripe_customer_id,
+            return_url=return_url,
+            configuration=await portal_configuration_for_app(body.app),
+        )
+    except StripeCustomerMissingError:
+        # The stored customer is gone in the active (live) Stripe mode — a test-mode leftover after
+        # the live flip, or a deleted customer. Self-heal to the honest Free state and tell the
+        # caller to subscribe, instead of surfacing an opaque "please try again".
+        await _heal_dead_customer(db, org, reason="portal_customer_missing")
+        raise HTTPException(
+            status_code=400,
+            detail=website_identity.error_body(
+                "no_billing_account",
+                "No live billing account yet — subscribe to a plan to activate billing.",
+            ),
+        ) from None

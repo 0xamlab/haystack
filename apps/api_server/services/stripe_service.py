@@ -32,6 +32,39 @@ logger = structlog.get_logger(__name__)
 settings = SettingsProxy()
 _STRIPE_BASE_URL = "https://api.stripe.com"
 
+
+class StripeCustomerMissingError(Exception):
+    """The stored Stripe customer no longer exists in the ACTIVE Stripe mode.
+
+    Raised (not an HTTP 502) when Stripe answers a customer-scoped call with
+    ``resource_missing`` — e.g. a TEST-mode customer id being used after the account
+    was flipped to a live key, or a customer deleted in the dashboard. The caller
+    self-heals: there is no live billing to manage, so the org is dropped to its
+    Community tier and the dead customer reference is cleared.
+    """
+
+    def __init__(self, customer_id: str) -> None:
+        super().__init__(f"Stripe customer {customer_id} no longer exists")
+        self.customer_id = customer_id
+
+
+def _is_resource_missing(resp: Any) -> bool:
+    """True when a non-200 Stripe response is a definitive 'customer does not exist'.
+
+    Only a 404 with error.code == resource_missing (or the classic 'No such customer'
+    message) counts — never a 402/409/429/5xx, so a transient Stripe hiccup can never be
+    mistaken for a deleted customer and trigger a downgrade.
+    """
+    if getattr(resp, "status_code", None) != 404:
+        return False
+    try:
+        err = (resp.json() or {}).get("error") or {}
+    except Exception:  # noqa: BLE001 — non-JSON body
+        return False
+    code = str(err.get("code") or "")
+    message = str(err.get("message") or "")
+    return code == "resource_missing" or message.startswith("No such customer")
+
 # ─── Plan → Stripe Price ID mapping ──────────────────────────────────────────
 
 class _PlanPriceIdMapping(Mapping[str, str | None]):
@@ -405,6 +438,10 @@ async def create_billing_portal_session(
         ) from exc
 
     if resp.status_code != 200:
+        # A dead customer reference (test-mode id under a live key, or a deleted customer) is not a
+        # server error — signal it so the caller can self-heal instead of surfacing a hard 502.
+        if _is_resource_missing(resp):
+            raise StripeCustomerMissingError(customer_id)
         raise HTTPException(
             status_code=502,
             detail={
@@ -417,6 +454,39 @@ async def create_billing_portal_session(
 
     data = resp.json()
     return {"url": data["url"]}
+
+
+async def customer_exists(
+    customer_id: str,
+    audit_context: EgressAuditContext | None = None,
+) -> bool | None:
+    """Does this customer exist in the ACTIVE Stripe mode? True / False / None (indeterminate).
+
+    Returns None on any non-definitive outcome (network error, 429, 5xx, egress-blocked) so the
+    caller degrades to 'assume valid' rather than downgrading an org on a transient blip. Only a
+    clean 200 → True and a definitive resource_missing → False.
+    """
+    try:
+        resp = await stripe_api_request(
+            method="GET",
+            path=f"/v1/customers/{customer_id}",
+            surface="billing_portal",
+            audit_context=audit_context,
+            headers=_stripe_headers(),
+        )
+    except Exception:  # noqa: BLE001 — egress denied / network — indeterminate, never downgrade
+        return None
+    if resp.status_code == 200:
+        # A deleted customer still returns 200 with {"deleted": true}; treat that as gone.
+        try:
+            if (resp.json() or {}).get("deleted") is True:
+                return False
+        except Exception:  # noqa: BLE001
+            pass
+        return True
+    if _is_resource_missing(resp):
+        return False
+    return None
 
 
 def verify_stripe_webhook(payload: bytes, sig_header: str) -> dict[str, Any]:
