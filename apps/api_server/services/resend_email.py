@@ -146,7 +146,9 @@ async def send_dormant_deleted_email(*, to: str) -> bool:
     )
 
 
-async def send_team_invite_email(*, to: str, org_name: str, role: str, accept_url: str) -> bool:
+async def send_team_invite_email(
+    *, to: str, org_name: str, role: str, accept_url: str, brand: str = "codna"
+) -> bool:
     return await send_template_email(
         to=to,
         template="engine-invite",
@@ -155,5 +157,5 @@ async def send_team_invite_email(*, to: str, org_name: str, role: str, accept_ur
             "role": _plain(role or "member"),
             "link": accept_url,
         },
-        brand="codna",
+        brand=brand,
     )

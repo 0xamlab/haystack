@@ -17,7 +17,7 @@ from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +37,8 @@ _ROLES = {"owner", "admin", "member", "viewer"}
 class InviteBody(BaseModel):
     email: EmailStr
     role: str = "member"
+    # Brand lens the invite is sent from — brands the email (subject/footer links).
+    app: str | None = Field(default=None, max_length=32)
 
 
 class RoleBody(BaseModel):
@@ -55,6 +57,29 @@ def _member(u: User) -> dict[str, str]:
         "role": u.role.value if hasattr(u.role, "value") else str(u.role),
         "status": u.status.value if hasattr(u.status, "value") else str(u.status),
     }
+
+
+async def _require_team_manager(db: AsyncSession, org, identity: dict) -> None:
+    """Invite / role-change / remove require an OWNER or ADMIN.
+
+    This used to be true "by construction" (the resolver only resolved orgs the caller
+    ADMINS via a GitHub App install) — but identity links and verified-email memberships
+    now let ANY member (including viewers) resolve the org, so the gate must be explicit.
+    A caller with a users row in this org must hold owner/admin; a caller with NO row is
+    a GitHub-install admin (the only remaining row-less path) and passes."""
+    email = (identity.get("email") or "").strip().lower()
+    if not email:
+        return
+    member = await db.scalar(
+        select(User).where(User.org_id == org.id, func.lower(User.email) == email)
+    )
+    if member is not None and member.role not in (UserRole.OWNER, UserRole.ADMIN):
+        raise HTTPException(
+            status_code=403,
+            detail=website_identity.error_body(
+                "insufficient_role", "Only owners and admins can manage the team."
+            ),
+        )
 
 
 async def _active_owner_count(db: AsyncSession, org_id: uuid.UUID) -> int:
@@ -118,9 +143,10 @@ async def invite_account_member(
     redis: Any = Depends(get_redis),
 ) -> dict[str, object]:
     response.headers["Cache-Control"] = "no-store"
-    org, _identity = await website_identity.verify_and_resolve_org(
+    org, identity = await website_identity.verify_and_resolve_org(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
+    await _require_team_manager(db, org, identity)
     plan = _plan(org)
     if body.role not in _ROLES:
         raise HTTPException(status_code=422, detail=website_identity.error_body("invalid_role", f"Role must be one of {sorted(_ROLES)}."))
@@ -133,15 +159,33 @@ async def invite_account_member(
     if not can_add_member(plan, used, org.seats):
         raise HTTPException(status_code=403, detail=website_identity.error_body("seat_limit_reached", f"All {seat_limit(plan, org.seats)} seats are in use. Add seats or remove a member first."))
 
-    invite = TeamInvite(
-        org_id=org.id, email=email, role=body.role, token=secrets.token_urlsafe(32),
-        status=InviteStatus.PENDING.value, expires_at=datetime.now(UTC) + timedelta(days=INVITE_TTL_DAYS),
+    # Re-inviting a still-pending address REFRESHES the invite (new token + TTL) and
+    # resends the email — inserting blindly hit the unique constraint and 500'd, which
+    # stranded any invite whose email failed to send the first time.
+    invite = await db.scalar(
+        select(TeamInvite).where(
+            TeamInvite.org_id == org.id,
+            func.lower(TeamInvite.email) == email,
+            TeamInvite.status == InviteStatus.PENDING.value,
+        )
     )
-    db.add(invite)
+    if invite is not None:
+        invite.token = secrets.token_urlsafe(32)
+        invite.role = body.role
+        invite.expires_at = datetime.now(UTC) + timedelta(days=INVITE_TTL_DAYS)
+    else:
+        invite = TeamInvite(
+            org_id=org.id, email=email, role=body.role, token=secrets.token_urlsafe(32),
+            status=InviteStatus.PENDING.value, expires_at=datetime.now(UTC) + timedelta(days=INVITE_TTL_DAYS),
+        )
+        db.add(invite)
     await db.commit()
     await db.refresh(invite)
+    brand = (body.app or "codna").strip().lower()
     await resend_email.send_team_invite_email(
-        to=email, org_name=org.name, role=body.role, accept_url=f"{INVITE_ACCEPT_BASE}?token={invite.token}"
+        to=email, org_name=org.name, role=body.role,
+        accept_url=f"{INVITE_ACCEPT_BASE}?token={invite.token}&app={brand}",
+        brand=brand,
     )
     logger.info("account_team_invited", org_id=str(org.id), email=email, role=body.role)
     return {
@@ -161,9 +205,10 @@ async def update_account_member_role(
     redis: Any = Depends(get_redis),
 ) -> dict[str, object]:
     response.headers["Cache-Control"] = "no-store"
-    org, _identity = await website_identity.verify_and_resolve_org(
+    org, identity = await website_identity.verify_and_resolve_org(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
+    await _require_team_manager(db, org, identity)
     if body.role not in _ROLES:
         raise HTTPException(status_code=422, detail=website_identity.error_body("invalid_role", f"Role must be one of {sorted(_ROLES)}."))
     u = await db.scalar(select(User).where(User.id == user_id, User.org_id == org.id))
@@ -185,9 +230,10 @@ async def remove_account_member(
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> Response:
-    org, _identity = await website_identity.verify_and_resolve_org(
+    org, identity = await website_identity.verify_and_resolve_org(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
+    await _require_team_manager(db, org, identity)
     u = await db.scalar(select(User).where(User.id == user_id, User.org_id == org.id))
     if u is None:
         raise HTTPException(status_code=404, detail=website_identity.error_body("member_not_found", "No such member on your team."))
