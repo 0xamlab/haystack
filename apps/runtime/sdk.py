@@ -416,9 +416,14 @@ class Runtime:
     ) -> dict[str, Any]:
         """Execute directly in-process via Executor (no daemon needed)."""
         from apps.runtime.executor import Executor
+        from apps.runtime.worker_broker import worker_slot
 
+        # Direct mode bypasses the daemon, so it must acquire the licensed worker slot itself —
+        # otherwise `mode="direct"` is a way around the concurrent-worker cap. Dark when
+        # concurrent_worker_limit==0 (a transparent no-op).
         executor = Executor()
-        return await executor.execute_module(module, function, args)
+        async with worker_slot():
+            return await executor.execute_module(module, function, args)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -137,29 +137,58 @@ def get_worker_broker() -> WorkerBroker:
     return _broker
 
 
+_COMMUNITY_WORKER_FLOOR = 1  # a license we cannot verify gets the free-tier cap, never unlimited
+
+
+def _enforce_worker_cap() -> bool:
+    """DARK opt-in that closes the fail-OPEN worker-cap holes.
+
+    By default the broker leaves an UNVERIFIABLE license (missing api key + no stored license, a
+    corrupt/forged token, any resolution error) UNLIMITED — so deleting the license is a trivial way
+    to run unbounded workers. When ``ALGENTA_ENFORCE_WORKER_CAP`` is set, an unverifiable license
+    falls to the Community floor (1 worker) instead of unlimited — the anti-abuse-correct default —
+    without hard-blocking a legitimate dark self-host. Off by default so no paying install is
+    throttled on a transient blip until an operator opts in."""
+    return (os.environ.get("ALGENTA_ENFORCE_WORKER_CAP") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def configure_from_license(*, force: bool = False) -> WorkerBroker:
     """Sync the broker's cap from the local license (lazy, cached).
 
-    Resolved once on first use; pass ``force=True`` (e.g. from the renewal heartbeat) to
-    re-read after the license changes. Never raises — any resolution failure leaves the
-    broker unlimited (dark), so license plumbing can never break execution.
+    Resolved once on first use; pass ``force=True`` (e.g. from the renewal heartbeat) to re-read
+    after the license changes. Never raises — a resolution failure falls to ``_COMMUNITY_WORKER_FLOOR``
+    when ``ALGENTA_ENFORCE_WORKER_CAP`` is set, else stays unlimited (dark), so license plumbing can
+    never break execution.
     """
     global _resolved
     broker = get_worker_broker()
     if _resolved and not force:
         return broker
+    # Fallback for an UNVERIFIABLE license: the Community floor when enforcing, else unlimited (dark).
+    fallback = _COMMUNITY_WORKER_FLOOR if _enforce_worker_cap() else 0
     try:
         from apps.runtime.device import get_device_id
         from apps.runtime.license import load_license
 
         api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
         lic = load_license(api_key)
-        limit = lic.worker_limit() if getattr(lic, "valid", False) else 0
-        node = (getattr(lic, "activation_id", "") or get_device_id()) if limit > 0 else ""
+        if getattr(lic, "valid", False):
+            limit = lic.worker_limit()
+            node = (getattr(lic, "activation_id", "") or get_device_id()) if limit > 0 else ""
+        else:
+            # No verifiable license → the anti-abuse floor (or unlimited when dark), never a free
+            # ride to unlimited concurrency by removing the license.
+            limit = fallback
+            node = get_device_id() if limit > 0 else ""
         broker.configure(limit, node_id=node)
     except Exception:  # noqa: BLE001 — broker resolution must never break execution
         logger.debug("worker_broker_license_unresolved", exc_info=True)
-        broker.configure(0)
+        broker.configure(fallback)
     _resolved = True
     return broker
 

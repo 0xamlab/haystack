@@ -230,3 +230,30 @@ def test_worker_slot_uses_singleton_and_is_dark(monkeypatch) -> None:
         assert get_worker_broker().active == 0
 
     asyncio.run(_run())
+
+
+# ── Fail-closed floor: no free ride to unlimited by removing the license ──────
+
+
+def test_invalid_license_falls_to_community_floor_when_enforcing(monkeypatch) -> None:
+    # ALGENTA_ENFORCE_WORKER_CAP set → an unverifiable license (deleted/corrupt/missing key) gets
+    # the Community floor (1 worker), NOT unlimited — closing the "delete the license" bypass.
+    monkeypatch.setenv("ALGENTA_ENFORCE_WORKER_CAP", "1")
+    monkeypatch.setattr("apps.runtime.license.load_license", lambda key="": _Lic(False, 99))
+    monkeypatch.setattr("apps.runtime.device.get_device_id", lambda: "dev_x")
+    assert configure_from_license().limit == 1
+
+
+def test_valid_license_limit_wins_over_floor(monkeypatch) -> None:
+    # A verifiable license's own cap is authoritative regardless of the enforce flag.
+    monkeypatch.setenv("ALGENTA_ENFORCE_WORKER_CAP", "1")
+    monkeypatch.setattr("apps.runtime.license.load_license", lambda key="": _Lic(True, 3, "act"))
+    assert configure_from_license().limit == 3
+
+
+def test_enforce_flag_off_preserves_fail_open(monkeypatch) -> None:
+    # Default (flag unset): an invalid license stays unlimited — zero behavior change for the many
+    # legitimate dark self-host installs; the floor is strictly opt-in.
+    monkeypatch.delenv("ALGENTA_ENFORCE_WORKER_CAP", raising=False)
+    monkeypatch.setattr("apps.runtime.license.load_license", lambda key="": _Lic(False, 0))
+    assert configure_from_license().limit == 0

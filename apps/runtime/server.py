@@ -266,10 +266,14 @@ class _CodnaRuntimeServicer(runtime_pb2_grpc_module.CodnaRuntimeServicer):  # ty
                 order=request.order or "desc",
             )
 
-            resp = await query_sources(
-                payload=query_payload,
-                auth=local_auth_context,
-            )
+            # Hold a licensed worker slot for this execution too — VerifyAndExecute reaches the same
+            # in-proc query engine as ExecuteQuery, so it must be under the same concurrency cap
+            # (else it's a way around the worker limit). Dark when concurrent_worker_limit==0.
+            async with worker_slot():
+                resp = await query_sources(
+                    payload=query_payload,
+                    auth=local_auth_context,
+                )
             latency_ms = round((time.monotonic() - t0) * 1000, 2)
 
             result_json = json.dumps(resp.result) if resp.result is not None else "null"
