@@ -569,7 +569,11 @@ jobs:
           name: algenta-package
           path: dist-pypi
       - name: Publish Python packages
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        # v1.14.2 bundles Twine v7, which accepts core packaging metadata 2.5. hatchling >=1.32
+        # emits Metadata-Version 2.5 for algenta-runtime-native, and v1.14.0's older Twine rejected
+        # it ("Invalid distribution metadata: '2.5' is not a valid metadata version"), failing every
+        # release since 2026-08-12.
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist-pypi
           password: ${{ secrets.PYPI_TOKEN }}
