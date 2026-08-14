@@ -124,10 +124,21 @@ async def list_eligible_orgs(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Verify the JWT and return every org the caller may act in (0, 1, or many), plus identity.
 
-    Backs the org-picker: a single org resolves normally; multiple orgs come back via the resolver's
-    ``multiple_orgs`` options instead of a 409; no org yields an empty list (not an error here).
+    Backs the org-picker. The list is the UNION of every membership source, because one human
+    legitimately spans several orgs: the identity-linked (or GitHub-resolved) org, PLUS every org
+    where the verified email holds an active membership row (CLI ``<product> login`` onboarding
+    and accepted team invites both create those). Without the union, the resolver's single-org
+    short-circuit hid the org holding the caller's devices ("No devices registered yet" while
+    ``telys login`` had just registered one) and made accepted invites invisible to the portal.
     """
     identity = await verify_identity(authorization)
+    orgs: dict[str, dict[str, Any]] = {}
+
+    # Email-keyed memberships (verified by the OAuth provider — mailbox ownership is proven).
+    orgs_by_email = await byok_org_resolver.orgs_for_member_email(db, identity.get("email"))
+    for org_row in orgs_by_email:
+        orgs[org_row["id"]] = org_row
+
     try:
         org = await byok_org_resolver.resolve_org_for_supabase_user(
             db,
@@ -136,15 +147,18 @@ async def list_eligible_orgs(
             github_user_id=identity.get("github_user_id"),
             github_login=identity.get("github_login"),
             redis=redis,
-            auto_provision=_auto_provision_enabled(),
+            auto_provision=_auto_provision_enabled() and not orgs,
         )
-        return [{"id": str(org.id), "name": org.name}], identity
+        orgs[str(org.id)] = {"id": str(org.id), "name": org.name}
     except byok_org_resolver.OrgResolutionError as exc:
         if exc.code == "multiple_orgs":
-            return exc.orgs, identity
-        if exc.code == "no_org":
-            return [], identity
-        # A real service failure (App unconfigured / GitHub unreachable) — surface it.
-        raise HTTPException(
-            status_code=exc.http_status, detail=error_body(exc.code, str(exc))
-        ) from exc
+            for org_row in exc.orgs:
+                orgs[str(org_row["id"])] = org_row
+        elif exc.code == "no_org":
+            pass
+        else:
+            # A real service failure (App unconfigured / GitHub unreachable) — surface it.
+            raise HTTPException(
+                status_code=exc.http_status, detail=error_body(exc.code, str(exc))
+            ) from exc
+    return list(orgs.values()), identity

@@ -454,7 +454,17 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> str 
         customer_id = obj.get("customer")
         subscription_id = obj.get("id")
         status = obj.get("status", "active")
-        period_end = obj.get("current_period_end")  # Unix timestamp
+        # Unix timestamp. Since the Stripe 2025-03-31 (Basil) API, current_period_end lives on
+        # the SUBSCRIPTION ITEMS, not the subscription — without the items fallback every row
+        # was written NULL and the portal could never show "Renews/Cancels <date>".
+        period_end = obj.get("current_period_end") or max(
+            (
+                item.get("current_period_end")
+                for item in ((obj.get("items") or {}).get("data") or [])
+                if item.get("current_period_end")
+            ),
+            default=None,
+        )
         cancel_at_end = obj.get("cancel_at_period_end", False)
 
         # Get plan from subscription metadata or items
@@ -626,6 +636,17 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> str 
                 event_id=event.get("id"),
                 subscription_resource_id=obj.get("id"),
             )
+            # Close out the subscriptions row too — without this the portal's billing card
+            # keeps reading a stale status='active' row after a full cancellation.
+            if obj.get("id"):
+                await _upsert_subscription(
+                    db,
+                    str(org.id),
+                    obj.get("id"),
+                    customer_id,
+                    "free",
+                    "canceled",
+                )
 
     # ── Invoice paid → reset usage counter ───────────────────────────────────
     elif event_type == "invoice.paid":
@@ -962,4 +983,9 @@ async def _upsert_subscription(
             },
         )
     except Exception as exc:
-        logger.warning("subscription_upsert_failed", error=str(exc))
+        logger.warning(
+            "subscription_upsert_failed",
+            error=str(exc),
+            org_id=org_id,
+            stripe_subscription_id=subscription_id,
+        )

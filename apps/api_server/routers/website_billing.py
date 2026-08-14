@@ -154,7 +154,7 @@ async def account_billing_info(
             renews_at = row[1].isoformat() if row[1] else None
             cancel_at_period_end = bool(row[2])
     except Exception as exc:  # noqa: BLE001 — billing info must degrade, not 500
-        logger.debug("account_billing_subscription_read_failed", error=str(exc))
+        logger.warning("account_billing_subscription_read_failed", error=str(exc))
 
     return {
         "plan": plan,

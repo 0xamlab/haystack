@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.params import Param
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
@@ -315,10 +315,35 @@ async def invite_member(
     }
 
 
+async def _link_accepting_identity(db: AsyncSessionDep, authorization: str | None, org_id: Any) -> bool:
+    """Bind the SIGNED-IN Supabase identity (when present) to the invite's org, so the portal
+    resolves the new member to the team immediately. Token possession proves the invitation;
+    without this link the accept only created a legacy email-keyed users row that the
+    provider-agnostic resolver never consults — the teammate stayed locked out of the org.
+    Best-effort: accepting anonymously (no/invalid bearer) still succeeds."""
+    if not authorization:
+        return False
+    try:
+        from apps.api_server.services import website_identity
+        from apps.api_server.services.byok_org_resolver import repoint_identity_link
+
+        identity = await website_identity.verify_identity(authorization)
+        await repoint_identity_link(db, supabase_uid=identity["supabase_uid"], org_id=org_id)
+        return True
+    except Exception:  # noqa: BLE001 — the invite acceptance itself must never fail on this
+        return False
+
+
 @router.post("/v1/team/accept", status_code=201, summary="Accept a team invitation")
-async def accept_invite(payload: AcceptRequest, db: AsyncSessionDep) -> dict[str, Any]:
+async def accept_invite(
+    payload: AcceptRequest,
+    db: AsyncSessionDep,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
     """Consume an invite token → add the invitee as an active org member. Token-authed
-    (the token proves the invitation); single-use + expiring."""
+    (the token proves the invitation); single-use + expiring. When the caller is also
+    signed in (Supabase bearer), their identity is linked to the org so the portal
+    reflects the membership immediately."""
     invite = await db.scalar(select(TeamInvite).where(TeamInvite.token == payload.token))
     if invite is None or invite.status != InviteStatus.PENDING.value:
         raise HTTPException(status_code=404, detail={"error": {"code": "invite_invalid", "message": "This invitation is invalid or already used."}})
@@ -331,8 +356,9 @@ async def accept_invite(payload: AcceptRequest, db: AsyncSessionDep) -> dict[str
     if existing:
         invite.status = InviteStatus.ACCEPTED.value
         invite.accepted_at = datetime.now(UTC)
+        linked = await _link_accepting_identity(db, authorization, invite.org_id)
         await db.commit()
-        return {"user_id": str(existing.id), "org_id": str(invite.org_id), "already_member": True}
+        return {"user_id": str(existing.id), "org_id": str(invite.org_id), "already_member": True, "identity_linked": linked}
 
     user = User(
         org_id=invite.org_id, email=invite.email, name=invite.email.split("@")[0],
@@ -344,9 +370,10 @@ async def accept_invite(payload: AcceptRequest, db: AsyncSessionDep) -> dict[str
     db.add(user)
     invite.status = InviteStatus.ACCEPTED.value
     invite.accepted_at = datetime.now(UTC)
+    linked = await _link_accepting_identity(db, authorization, invite.org_id)
     await db.commit()
     await db.refresh(user)
-    return {"user_id": str(user.id), "org_id": str(invite.org_id), "email": user.email, "role": invite.role}
+    return {"user_id": str(user.id), "org_id": str(invite.org_id), "email": user.email, "role": invite.role, "identity_linked": linked}
 
 
 async def _count_active_owners(db: AsyncSessionDep, org_id: UUID) -> int:

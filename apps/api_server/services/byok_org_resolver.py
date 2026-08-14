@@ -218,6 +218,33 @@ async def resolve_org_for_github_user(
 # ── Provider-agnostic resolution (github / google / apple / microsoft) ──────────────
 
 
+async def orgs_for_member_email(db: AsyncSession, email: str | None) -> list[dict[str, str]]:
+    """Every org where this VERIFIED email holds an active membership row, as picker rows.
+
+    Membership rows come from CLI ``<product> login`` onboarding and accepted team invites.
+    Email is safe here because the OAuth provider verified mailbox ownership — this backs
+    ENUMERATION (the org picker) and explicit selection, never silent primary resolution
+    (which stays keyed on the stable Supabase uid)."""
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        return []
+    from sqlalchemy import func as _func
+
+    from apps.api_server.models.user import User, UserStatus
+
+    rows = (
+        await db.execute(
+            select(Organization)
+            .join(User, User.org_id == Organization.id)
+            .where(
+                _func.lower(User.email) == normalized,
+                User.status == UserStatus.ACTIVE,
+            )
+        )
+    ).scalars()
+    return [{"id": str(o.id), "name": o.name} for o in rows]
+
+
 async def _org_for_identity_link(db: AsyncSession, supabase_uid: str) -> Organization | None:
     """The org pointed at by this Supabase identity's link row, or None."""
     from apps.api_server.models.identity_org_link import IdentityOrgLink
@@ -333,6 +360,18 @@ async def resolve_org_for_supabase_user(
         linked = await _org_for_identity_link(db, supabase_uid)
         if linked is not None:
             return linked
+
+    # An explicit pick of an org where this VERIFIED email holds an active membership
+    # (CLI onboarding / accepted invite) is honored for EVERY provider — this is how the
+    # org picker reaches the org holding the caller's devices when the identity link
+    # points elsewhere. Selection repoints the link, same as the GitHub-admin switch.
+    if selected_org_id is not None:
+        member_orgs = {row["id"] for row in await orgs_for_member_email(db, email)}
+        if str(selected_org_id) in member_orgs:
+            org = await _org_by_id(db, selected_org_id)
+            if org is not None:
+                await repoint_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+                return org
 
     # No link yet (or an explicit pick). A GitHub identity resolves via its App install
     # (personal / admin-of-org), then the resolved org is adopted/re-pointed under the uid so later
