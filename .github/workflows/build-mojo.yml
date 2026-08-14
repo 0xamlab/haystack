@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build & push Mojo image
-    runs-on: ubuntu-latest   # core-filtered dispatch (catalog excluded) compiles well within 16 GB
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}   # core-filtered dispatch (catalog excluded) compiles well within 16 GB
     steps:
       - name: Free up disk (the toolchain + libs are large)
         run: |

@@ -22,7 +22,7 @@ permissions:
 jobs:
   publish-mcp:
     name: publish to the Official MCP Registry
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
