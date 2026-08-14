@@ -397,3 +397,57 @@ async def test_github_non_no_org_errors_are_not_swallowed(patch_helpers):
             _DB([]), supabase_uid="uid-1", github_user_id=7, auto_provision=True
         )
     assert exc.value.code == "multiple_orgs"
+
+
+# ── Stale identity link: a removed member must stop resolving the org ────────────
+
+
+async def test_stale_link_removed_member_falls_through(patch_helpers):
+    """A non-GitHub identity whose email has NO active seat in the linked org is a
+    removed member — the link is stale, so resolution falls through to provisioning
+    a fresh personal org instead of honoring the dead link."""
+    monkeypatch = patch_helpers
+    dead_org = _Org(uuid.uuid4(), name="ex-team-org")
+    fresh = _Org(uuid.uuid4(), name="sb-user-fresh")
+
+    async def _linked(db, supabase_uid):
+        return dead_org
+
+    async def _no_seat(db, org, *, email, github_user_id):
+        return False  # no active User row → stale
+
+    async def _provision(db, *, supabase_uid, email=None):
+        return fresh
+
+    async def _link(db, *, supabase_uid, org_id):
+        return org_id
+
+    monkeypatch.setattr(r, "_org_for_identity_link", _linked)
+    monkeypatch.setattr(r, "_link_still_valid", _no_seat)
+    monkeypatch.setattr(r, "provision_org_for_supabase_uid", _provision)
+    monkeypatch.setattr(r, "ensure_identity_link", _link)
+
+    org = await r.resolve_org_for_supabase_user(
+        _DB([]), supabase_uid="uid-removed", email="ex@member.com", auto_provision=True
+    )
+    assert org.id == fresh.id  # NOT dead_org — the stale link was skipped
+
+
+async def test_valid_link_active_member_is_honored(patch_helpers):
+    """A still-active member's link resolves the org normally (no regression)."""
+    monkeypatch = patch_helpers
+    org_row = _Org(uuid.uuid4(), name="team-org")
+
+    async def _linked(db, supabase_uid):
+        return org_row
+
+    async def _has_seat(db, org, *, email, github_user_id):
+        return True
+
+    monkeypatch.setattr(r, "_org_for_identity_link", _linked)
+    monkeypatch.setattr(r, "_link_still_valid", _has_seat)
+
+    org = await r.resolve_org_for_supabase_user(
+        _DB([]), supabase_uid="uid-active", email="active@member.com"
+    )
+    assert org.id == org_row.id

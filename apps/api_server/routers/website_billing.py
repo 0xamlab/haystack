@@ -108,6 +108,31 @@ def _validated_return_url(url: str | None) -> str | None:
     return url if parsed.hostname.lower() in trusted else None
 
 
+
+async def _require_billing_owner(db, org, identity: dict) -> None:
+    """Checkout / Customer-Portal require an OWNER. verify_and_resolve_org proves
+    org MEMBERSHIP, not role — and identity links + email memberships now let any
+    member (viewer included) resolve the org — so without this gate a viewer could
+    open the Stripe portal and cancel the subscription, swap the card, or read
+    invoices. A row-less caller is a GitHub-install admin (owner-equivalent) → passes."""
+    from sqlalchemy import func as _func
+
+    from apps.api_server.models.user import User, UserRole
+
+    email = (identity.get("email") or "").strip().lower()
+    if not email:
+        return
+    member = await db.scalar(
+        select(User).where(User.org_id == org.id, _func.lower(User.email) == email)
+    )
+    if member is not None and member.role != UserRole.OWNER:
+        raise HTTPException(
+            status_code=403,
+            detail=website_identity.error_body(
+                "owner_only", "Only the organization owner can manage billing."
+            ),
+        )
+
 @router.get(
     "/account/billing",
     summary="Current plan + managed-LLM usage for the signed-in user (website / Supabase auth)",
@@ -185,6 +210,7 @@ async def account_billing_checkout(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
     _require_billing()
+    await _require_billing_owner(db, org, identity)
 
     plan = payload.plan.strip().lower()
     if plan not in _CHECKOUT_PLANS:
@@ -255,10 +281,11 @@ async def account_billing_portal(
     redis: Any = Depends(get_redis),
 ) -> dict[str, Any]:
     response.headers["Cache-Control"] = "no-store"
-    org, _identity = await website_identity.verify_and_resolve_org(
+    org, identity = await website_identity.verify_and_resolve_org(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
     _require_billing()
+    await _require_billing_owner(db, org, identity)
 
     if not org.stripe_customer_id:
         raise HTTPException(

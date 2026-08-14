@@ -245,6 +245,44 @@ async def orgs_for_member_email(db: AsyncSession, email: str | None) -> list[dic
     return [{"id": str(o.id), "name": o.name} for o in rows]
 
 
+async def _link_still_valid(
+    db: AsyncSession,
+    org: Organization,
+    *,
+    email: str | None,
+    github_user_id: int | None,
+) -> bool:
+    """Is this identity's link to ``org`` still backed by a real seat?
+
+    An identity_org_links row outlives membership: removing a member (suspend or
+    hard-delete of their User row) never clears the link, so without this check a
+    removed member keeps resolving the org and retains every /account/* capability.
+
+    Valid when EITHER: the caller's verified email still holds an ACTIVE User row in
+    the org (CLI onboarding / accepted invite), OR the caller is a GitHub identity
+    (their install is re-validated by the GitHub branch on fall-through — so a
+    GitHub personal-org owner whose User row carries the noreply sentinel is never
+    locked out; they simply re-resolve). A non-GitHub identity with no active seat
+    is a removed member → invalid, and provisions a fresh personal org instead."""
+    if github_user_id is not None:
+        return True
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        return True  # can't disprove membership without an email — fail open (unchanged behavior)
+    from sqlalchemy import func as _func
+
+    from apps.api_server.models.user import User, UserStatus
+
+    seat = await db.scalar(
+        select(User).where(
+            User.org_id == org.id,
+            _func.lower(User.email) == normalized,
+            User.status == UserStatus.ACTIVE,
+        )
+    )
+    return seat is not None
+
+
 async def _org_for_identity_link(db: AsyncSession, supabase_uid: str) -> Organization | None:
     """The org pointed at by this Supabase identity's link row, or None."""
     from apps.api_server.models.identity_org_link import IdentityOrgLink
@@ -358,8 +396,13 @@ async def resolve_org_for_supabase_user(
     # still switch orgs; the switch then re-points the link below.
     if selected_org_id is None:
         linked = await _org_for_identity_link(db, supabase_uid)
-        if linked is not None:
+        if linked is not None and await _link_still_valid(
+            db, linked, email=email, github_user_id=github_user_id
+        ):
             return linked
+        # A stale link (the caller was REMOVED from the org, or the org was deleted) is
+        # NOT honored — it falls through to GitHub-install / provisioning below, so a
+        # removed member stops resolving the org and loses all /account access.
 
     # An explicit pick of an org where this VERIFIED email holds an active membership
     # (CLI onboarding / accepted invite) is honored for EVERY provider — this is how the

@@ -29,6 +29,41 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["account"])
 
 
+async def _require_device_revoker(
+    db: AsyncSession, org, identity: dict, registration_id: uuid.UUID
+) -> None:
+    """Owners/admins may revoke any device in the org; a plain member only their own
+    (a device under an API key they own). A row-less caller is a GitHub-install admin
+    (passes). Without this a viewer could revoke another member's active device."""
+    from sqlalchemy import func as _func, select
+
+    from apps.api_server.models.api_key import APIKey
+    from apps.api_server.models.device import DeviceRegistration
+    from apps.api_server.models.user import User, UserRole
+
+    email = (identity.get("email") or "").strip().lower()
+    if not email:
+        return
+    member = await db.scalar(
+        select(User).where(User.org_id == org.id, _func.lower(User.email) == email)
+    )
+    if member is None or member.role in (UserRole.OWNER, UserRole.ADMIN):
+        return
+    # Plain member: only their own device (registration → api_key.user_id == member.id).
+    owner_id = await db.scalar(
+        select(APIKey.user_id)
+        .join(DeviceRegistration, DeviceRegistration.api_key_id == APIKey.id)
+        .where(DeviceRegistration.id == registration_id, DeviceRegistration.org_id == org.id)
+    )
+    if owner_id != member.id:
+        raise HTTPException(
+            status_code=403,
+            detail=website_identity.error_body(
+                "not_your_device", "You can only revoke devices you registered."
+            ),
+        )
+
+
 @router.get(
     "/account/devices",
     summary="List the signed-in user's devices + seat usage (website / Supabase auth)",
