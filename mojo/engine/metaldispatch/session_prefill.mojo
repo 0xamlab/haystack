@@ -769,6 +769,32 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     precedent -- a binary that never links this new blob must keep constructing successfully;
     `step_native_kv` itself refuses with `MB_ERR_PIPELINE_NOT_FOUND` if this is `< 0`."""
 
+    var af_grouped_fa_d64_pipeline_idx: Int
+    """feat/llama-prefill (2026-08-13): the d_head=64 steel grouped-FA PREFILL kernel
+    (`attention_forge/grouped_fa_steel_d64._attn_grouped_fa_d64_kernel`, blob
+    `attention_forge/generated/grouped_fa_steel_d64_blob.c`) -- the llama-family twin of the
+    structural-128 `_AFROLE_GROUPED_FA_ATTN` steel kernel (copy-and-extend, ONLY `_D` 128 -> 64:
+    BQ=32 = 4 simdgroups x 8 rows, register-resident S/O, base-2 softmax, K/V device-direct,
+    8 output accumulators instead of 16, Q staging 4KB instead of 8KB). Standalone-verified vs
+    the Float64 `attnk.sdpa` oracle (worst-ratio <=2.8e-5 across ragged/offset/TinyLlama-dims
+    shapes, continuation contract bit-exact, 200-dispatch soak clean). Discovered via the file-
+    private substring `"grouped_fa_steel_d64"` -- the 20-char module name fits whole inside the
+    ~32-char AIR truncation budget, and the substring collides with NO existing classifier's
+    patterns (`_classify_attention_forge_pipeline` matches `native_kv_producer`/`grouped_fa_q8_
+    k32_h2_sg8`, neither a substring of this name nor vice versa). Non-fatal-miss (`-1`) exactly
+    like every other optional pipeline field: a binary that never links the blob keeps
+    constructing successfully, and a d_head=64 session degrades onto the parametric
+    `PF_ATTN_PARAMETRIC_NATIVE_DECODE`/`PF_ATTN_OFF` paths exactly as before this kernel existed."""
+    var af_grouped_fa_attn_eff_idx: Int
+    """feat/llama-prefill (2026-08-13): the steel grouped-FA prefill attention pipeline THIS
+    session's own d_head can actually run, resolved ONCE at construction from the discovery slots
+    -- d_head == _AF_STRUCTURAL_D_HEAD -> the d128 steel pipeline (`af_pipeline_idx[_AFROLE_
+    GROUPED_FA_ATTN]`); d_head == _AF_STRUCTURAL_D_HEAD_F2 (= 64) -> the d64 steel pipeline;
+    anything else -> -1 (no AF prefill attention; the availability gate degrades the request).
+    The AF prefill tables build/patch their attention descriptor from this SAME value, so the
+    build-time and per-chunk wiring can never drift. Never a model lookup: both branches derive
+    from dims + discovered pipelines -- SAME pattern as `native_splitk_partial_eff_idx` below."""
+
     var native_decode_splitk_partial_pipeline_idx: Int
     """Beat-llama.cpp campaign (2026-08-08 night): the split-K/flash-decoding PARTIAL twin of the
     naive kernel above (`attention_forge/native_kv_decode_attn_splitk._native_kv_decode_splitk_
@@ -1444,6 +1470,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # kernel -- see this field's own docstring for the full non-fatal-miss precedent this follows.
         self.native_decode_attn_pipeline_idx = -1
         self.native_decode_splitk_partial_pipeline_idx = -1
+        # ── feat/llama-prefill (2026-08-13): d_head=64 steel prefill attention discovery slot +
+        # the effective-steel-attn value resolved from it post-discovery (see their field
+        # docstrings above).
+        self.af_grouped_fa_d64_pipeline_idx = -1
+        self.af_grouped_fa_attn_eff_idx = -1
         # ── feat/llama-native-deep (2026-08-13): d_head=64 split-K partial discovery slot + the
         # two effective-partial values resolved from it post-discovery (see their field docstrings).
         self.native_decode_splitk_partial_f2_pipeline_idx = -1
@@ -1561,6 +1592,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # unique substring, independent check.
             if name.find("kv_i8_quant") >= 0:
                 self.kv_i8_quant_pipeline_idx = i
+            # ── feat/llama-prefill (2026-08-13): the d_head=64 steel grouped-FA prefill kernel,
+            # unique substring, independent check -- the module name `grouped_fa_steel_d64` is NOT
+            # a substring of `_classify_attention_forge_pipeline`'s `grouped_fa_q8_k32_h2_sg8`
+            # pattern (nor vice versa), so the shared classifier never sees this pipeline and this
+            # field is its ONLY holder. AIR name verified from the real blob:
+            # `grouped_fa_steel_d64__attn_grou6A6A_<hash>` -- the 20-char module fits whole inside
+            # the truncation budget.
+            if name.find("grouped_fa_steel_d64") >= 0:
+                self.af_grouped_fa_d64_pipeline_idx = i
             # ── Beat-llama.cpp campaign Phase C (2026-08-08 night): the V2 producer's two
             # kernels, unique substrings -- see their field docstrings above.
             if name.find("kvprod_blk") >= 0:
@@ -1653,6 +1693,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.kvprod_v2_built = (
             self.kvprod_blk_pipeline_idx >= 0 and self.kvprod_qvec_pipeline_idx >= 0
         )
+        # ── feat/llama-prefill (2026-08-13): resolve the steel grouped-FA prefill attention THIS
+        # d_head can run -- d128 steel for _AF_STRUCTURAL_D_HEAD, the d64 steel twin for
+        # _AF_STRUCTURAL_D_HEAD_F2 (= 64), -1 otherwise (the availability gate below degrades any
+        # AF request onto the parametric paths). SAME derive-from-dims-plus-discovery pattern as
+        # `native_splitk_partial_eff_idx` immediately below.
+        if self.d_head == _AF_STRUCTURAL_D_HEAD:
+            self.af_grouped_fa_attn_eff_idx = self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN]
+        elif self.d_head == _AF_STRUCTURAL_D_HEAD_F2:
+            self.af_grouped_fa_attn_eff_idx = self.af_grouped_fa_d64_pipeline_idx
         # ── feat/llama-native-deep (2026-08-13): resolve the split-K partial THIS d_head can run.
         # d_head == _AF_STRUCTURAL_D_HEAD keeps the f4u2 kernel at its own `d_head // 4` threads
         # (byte-for-byte the pre-existing wiring); d_head == _AF_STRUCTURAL_D_HEAD_F2 (64) routes
@@ -1734,18 +1783,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # "explicit request beats default, unconditionally, by construction" account.
         self.plan = requested_plan.resolve(PrefillPipelineAvailability(
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
-            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
-            # ── parametric d_head (2026-08-13): the AF kernels are structural
-            # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
-            and self.d_head == _AF_STRUCTURAL_D_HEAD
-            # ── llama-family QK-norm (2026-08-13): the steel grouped-FA PREFILL kernel is
-            # structural d_head=128 + QK-norm, so a no-QK-norm model (qk_norm=0) degrades off the
-            # steel path. feat/llama-native-decode (2026-08-13): the kvprod BLOB itself now takes
-            # the qk_norm flag (the engine passes the model's own value), so the NATIVE DECODE
-            # half below is available to qk_norm=0 models -- the degrade target is the
-            # parametric-prefill + native-decode plan, not the bare OFF path. Same pattern as the
-            # d_head gate above -- a Qwen3 session (qk_norm=1) adds a literal `and True`.
-            and self.qk_norm == 1,
+            # ── feat/llama-prefill (2026-08-13): AF steel prefill attention availability is now
+            # the d_head-resolved EFFECTIVE steel pipeline (d128 steel for Qwen3-family, the d64
+            # steel twin for llama-family) -- the eff slot is -1 unless THIS d_head's steel kernel
+            # is linked, so a blobs-absent binary degrades exactly as before. Replaces the old
+            # `af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0 and d_head == _AF_STRUCTURAL_D_HEAD`
+            # pair; for a Qwen3 session (d_head=128) the eff slot IS `af_pipeline_idx[_AFROLE_
+            # GROUPED_FA_ATTN]` itself, byte-for-byte the pre-existing gate.
+            and self.af_grouped_fa_attn_eff_idx >= 0
+            # ── structural-family pairing: the d128 steel kernel is validated for the Qwen3
+            # family (d_head=128 + QK-norm); the d64 steel twin (feat/llama-prefill) for the
+            # llama family (d_head=64, no QK-norm -- the kernel itself is norm-agnostic, the norm
+            # lives in the naive producer's qk_norm flag, but each pairing is gated to the family
+            # its END-TO-END validation covers; a different pairing degrades to the parametric
+            # paths, never wrong math). feat/llama-native-deep (2026-08-13): the kvprod BLOB
+            # itself takes the qk_norm flag (the engine passes the model's own value), so the
+            # NATIVE DECODE half below is available to qk_norm=0 models regardless.
+            and ((self.d_head == _AF_STRUCTURAL_D_HEAD and self.qk_norm == 1)
+                 or (self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.qk_norm == 0)),
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
             self.gemm_accum_vecload4_pipeline_idx >= 0,
@@ -2274,10 +2329,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # unchanged from the value set above (still `1 + n_layers*9 + 2`, but never actually
         # allocated or populated); `prefill_batch` checks `self.af_pipeline_idx` again before ever
         # submitting this table, so a stale, never-built `n_descriptors_prefill_af` count alone
-        # cannot cause a bad dispatch -- see that method's own guard.
+        # cannot cause a bad dispatch -- see that method's own guard. feat/llama-prefill
+        # (2026-08-13): the grouped-FA half is now the d_head-resolved EFFECTIVE steel pipeline
+        # (d128 for Qwen3, the d64 twin for llama), so a llama binary builds the AF tables too.
         if (
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
-            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
+            and self.af_grouped_fa_attn_eff_idx >= 0
         ):
             self.descriptors_prefill_af = _mb_alloc_descriptors(self.n_descriptors_prefill_af)
             self._build_descriptors_prefill_af(n_qkv)
@@ -2366,14 +2423,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         it in any way this method would need to invalidate."""
         self.plan = requested.resolve(PrefillPipelineAvailability(
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
-            and self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN] >= 0
-            # ── parametric d_head (2026-08-13): the AF kernels are structural
-            # _AF_STRUCTURAL_D_HEAD; any other valid d_head degrades to the parametric path.
-            and self.d_head == _AF_STRUCTURAL_D_HEAD
-            # ── llama-family QK-norm (2026-08-13): SAME gate as `__init__`'s own, byte-for-byte
-            # -- both resolution sites must agree, so a no-QK-norm model degrades off the steel
-            # path no matter when the plan is (re-)resolved.
-            and self.qk_norm == 1,
+            # ── feat/llama-prefill (2026-08-13): SAME gate as `__init__`'s own, byte-for-byte --
+            # both resolution sites must agree. The d_head-resolved effective steel pipeline +
+            # the structural-family pairing.
+            and self.af_grouped_fa_attn_eff_idx >= 0
+            and ((self.d_head == _AF_STRUCTURAL_D_HEAD and self.qk_norm == 1)
+                 or (self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.qk_norm == 0)),
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
             self.gemm_accum_vecload4_pipeline_idx >= 0,
@@ -3231,7 +3286,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # ── native-KV-producer, replaces `ropewrt` -- V2 CONDITIONAL (beat-llama.cpp
             # campaign Phase C): the block-cooperative pair (`kvprod_v2`) when its blob was
             # linked, the original naive 16-arg dispatch otherwise (byte-unmodified).
-            if self.kvprod_v2_built:
+            # feat/llama-prefill (2026-08-13): the V2 pair is validated ONLY for the Qwen3
+            # production configuration (QK-norm ON + structural d_head=128) -- it applies the
+            # RMSNorm unconditionally (no qk_norm flag) and was never tested at d_head=64, so a
+            # llama-family session (qk_norm=0 and/or d_head=64) ALWAYS takes the naive producer
+            # below, whose trailing qk_norm flag covers both families.
+            if self.kvprod_v2_built and self.qk_norm == 1 and self.d_head == _AF_STRUCTURAL_D_HEAD:
                 _mb_set_header(
                     self.descriptors_prefill_af, d, self.kvprod_blk_pipeline_idx,
                     n_kv_tiles_max * self.h_kv, 256, 14,
@@ -3340,12 +3400,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # ── NEW role: Candidate A's grouped-head fused-FlashAttention, replaces `attn`. 12
-            # args -- see `grouped_fa_q8_k32_h2_sg8.mojo`'s own `_attn_grouped_fa_kernel` signature.
+            # args -- see `grouped_fa_q8_k32_h2_sg8.mojo`'s own `_attn_grouped_fa_kernel` signature
+            # (the d_head=64 twin `grouped_fa_steel_d64._attn_grouped_fa_d64_kernel` has the
+            # IDENTICAL signature/grid/block_dim, so this descriptor binds whichever steel kernel
+            # `self.af_grouped_fa_attn_eff_idx` resolved for THIS d_head -- feat/llama-prefill).
             # Output writes DIRECTLY into `self.attn_out_addr` -- the SAME buffer the OFF path's
             # `attn` role writes (byte-identical `[m_rows, h_q*d_head]` row-major F32 layout), so
             # the `gemv_o` dispatch right after this one needs no changes at all, AF table or not.
             _mb_set_header(
-                self.descriptors_prefill_af, d, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
+                self.descriptors_prefill_af, d, self.af_grouped_fa_attn_eff_idx,
                 n_units_attn_af_max, 128, 12,
             )
             _mb_set_arg_ptr(self.descriptors_prefill_af, d, 0, self.attn_out_addr)
@@ -3515,9 +3578,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             d += 1
 
             # ── native-KV-producer, replaces `ropewrt` -- V2 CONDITIONAL, IDENTICAL to
-            # `_build_descriptors_prefill_af`'s own equivalent dispatch above. NO mirror dispatch
-            # follows this one -- that remains the ONE and ONLY structural difference.
-            if self.kvprod_v2_built:
+            # `_build_descriptors_prefill_af`'s own equivalent dispatch above (including its
+            # feat/llama-prefill Qwen3-only V2 gate). NO mirror dispatch follows this one -- that
+            # remains the ONE and ONLY structural difference.
+            if self.kvprod_v2_built and self.qk_norm == 1 and self.d_head == _AF_STRUCTURAL_D_HEAD:
                 _mb_set_header(
                     self.descriptors_prefill_af_nomirror, d, self.kvprod_blk_pipeline_idx,
                     n_kv_tiles_max * self.h_kv, 256, 14,
@@ -3583,9 +3647,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 d += 1
 
             # ── Candidate A's grouped-head fused-FlashAttention, replaces `attn` -- IDENTICAL to
-            # `_build_descriptors_prefill_af`'s own equivalent dispatch.
+            # `_build_descriptors_prefill_af`'s own equivalent dispatch (including the
+            # d_head-resolved effective steel pipeline binding -- feat/llama-prefill).
             _mb_set_header(
-                self.descriptors_prefill_af_nomirror, d, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
+                self.descriptors_prefill_af_nomirror, d, self.af_grouped_fa_attn_eff_idx,
                 n_units_attn_af_max, 128, 12,
             )
             _mb_set_arg_ptr(self.descriptors_prefill_af_nomirror, d, 0, self.attn_out_addr)
@@ -3838,7 +3903,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_prefill_af, d_gemm, 4, m_rows)
 
             var d_kv = self.kvprod_af_d[layer]
-            if self.kvprod_v2_built:
+            # feat/llama-prefill (2026-08-13): SAME Qwen3-only V2 gate as the builder's own --
+            # a llama-family session always takes the naive producer arm below.
+            if self.kvprod_v2_built and self.qk_norm == 1 and self.d_head == _AF_STRUCTURAL_D_HEAD:
                 # V2 pair: blk (KV) + qvec (Q) -- same per-call narrowing discipline, grids
                 # recomputed for THIS call's m_rows (tiles = ceil(m_rows/kbs)).
                 var n_tiles_call = _ceil_div(m_rows, _AF_KEY_BLOCK_SIZE)
@@ -3879,7 +3946,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             var d_attn = self.attn_af_d[layer]
             _mb_set_header(
-                self.descriptors_prefill_af, d_attn, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
+                self.descriptors_prefill_af, d_attn, self.af_grouped_fa_attn_eff_idx,
                 n_units_attn_af, 128, 12,
             )
             _mb_set_arg_int(self.descriptors_prefill_af, d_attn, 5, m_rows)
@@ -4104,7 +4171,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_gemm, 4, m_rows)
 
             var d_kv = self.kvprod_af2_d[layer]
-            if self.kvprod_v2_built:
+            # feat/llama-prefill (2026-08-13): SAME Qwen3-only V2 gate as the builder's own --
+            # a llama-family session always takes the naive producer arm below.
+            if self.kvprod_v2_built and self.qk_norm == 1 and self.d_head == _AF_STRUCTURAL_D_HEAD:
                 # V2 pair: blk (KV) + qvec (Q) -- same per-call narrowing discipline, grids
                 # recomputed for THIS call's m_rows (tiles = ceil(m_rows/kbs)).
                 var n_tiles_call = _ceil_div(m_rows, _AF_KEY_BLOCK_SIZE)
@@ -4134,7 +4203,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
             var d_attn = self.attn_af2_d[layer]
             _mb_set_header(
-                self.descriptors_prefill_af_nomirror, d_attn, self.af_pipeline_idx[_AFROLE_GROUPED_FA_ATTN],
+                self.descriptors_prefill_af_nomirror, d_attn, self.af_grouped_fa_attn_eff_idx,
                 n_units_attn_af, 128, 12,
             )
             _mb_set_arg_int(self.descriptors_prefill_af_nomirror, d_attn, 5, m_rows)

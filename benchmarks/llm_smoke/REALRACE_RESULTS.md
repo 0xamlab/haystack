@@ -12550,3 +12550,85 @@ REFUTED ledger (measured, do not retry): n_splits > 16 at these depths; register
 staging f2r8/f2r16 (spill-bound); width-8 staging f2s8 (1.01x); key-SIMD vector-shuffle
 reduction (stdlib warp shuffle rejects SIMD widths on this nightly); kvprod_f1 scratch/barrier
 removal (1.005x -- launch-floor dominated).
+## LLAMA PREFILL GAP CLOSED -- steel d64 AF prefill for llama (feat/llama-prefill, 2026-08-13)
+
+THE GAP: TinyLlama-1.1B prefill rode the parametric PF_ATTN_OFF path (~1280-1550 tok/s) vs
+llama.cpp Q8_0 ~6085-6260 pp512 -- the ~5x llama gap, last and largest remaining llama deficit
+(decode was won to within ~4-10% of Q8_0 by the GEMV-streaming + native-deep work).
+
+PROFILE FIRST (tinyllama_probe_counters_prefill.mojo = the Qwen3 prefill counter probe retargeted
+to TinyLlama: STAGE_6144, qk_norm=0, untied lm_head, mm8-only link, per-descriptor GPU tick
+sampling, 8 reps; wall matches the e2e bench within ~3-8%): the legacy path is broken in BOTH
+halves -- the GEMMs even more than the attention.
+
+| role (m_rows=512) | ms | % | TF/s |
+|---|---|---|---|
+| qkv GEMM (mm8 int8) | 30.9 | 9.3% | 0.17 |
+| o GEMM | 27.1 | 8.1% | 0.16 |
+| swiglu GEMM | 99.8 | 30.0% | 0.24 |
+| down GEMM | 85.5 | 25.7% | 0.14 |
+| GEMM subtotal | 243.3 | 73.1% | ~0.19 (1.4% of the 13.3 MMA wall) |
+| pf_attn_tiled (PF_ATTN_OFF) | 85.1 | 25.6% | |
+| ropewrt (double-write incl) | 3.4 | 1.0% | |
+| norms/embed/lmhead | 0.9 | 0.3% | |
+| GPU-sum / wall | 332.8 / 337.0 ms | | 1519 tok/s |
+
+@m_rows=1024: GEMM subtotal 544.1ms (58.0%), pf_attn_tiled 384.3ms (41.0%), ropewrt 8.0ms,
+GPU-sum 938.3 / wall 943.0ms = 1086 tok/s. ATTRIBUTION of the 5x gap vs llama.cpp pp512
+(~84ms): GEMM ~243ms of the 337ms baseline (the legacy mm8 int8 kernels run at ~1.4% of the MMA
+wall -- the single biggest bucket), attention ~85ms (PF_ATTN_OFF's per-tile F32 gather). BOTH are
+fixed by routing llama onto the production AF-nomirror table: MSL-parity GEMMs (at the wall) +
+steel grouped-FA attention + a single naive kvprod write (no ropewrt double-write).
+
+WHAT LANDED:
+1. `attention_forge/grouped_fa_steel_d64.mojo` -- the d_head=64 twin of the steel prefill kernel
+   (copy-and-extend of grouped_fa_q8_k32_h2_sg8._attn_grouped_fa_kernel, ONLY _D 128 -> 64: BQ=32
+   = 4 simdgroups x 8 rows, register-resident S/O, base-2 softmax, Q staged once (4KB shared, half
+   the d128 kernel), K/V device-direct, zero in-loop barriers; 8 output accumulators instead of
+   16). Standalone oracle (grouped_fa_steel_d64_driver.mojo): worst-ratio <=2.8e-5 vs Float64
+   attnk.sdpa across tiny-aligned/ragged/offset/TinyLlama-dims 512+1024 shapes; continuation
+   contract (64+40 @pos_base=64 vs single-shot) BIT-EXACT; 200-dispatch soak 0 mismatches. Blob
+   `generated/grouped_fa_steel_d64_blob.c`, AIR name grouped_fa_steel_d64__attn_grou6A6A_<hash>.
+2. Engine wiring (session_prefill.mojo): discovery slot + `af_grouped_fa_attn_eff_idx` (d128 steel
+   for Qwen3, d64 twin for llama, -1 otherwise -- same derive-don't-hardcode pattern as
+   native_splitk_partial_eff_idx); AF availability gate + resolve_plan twin + AF-table build guard
+   read the eff pipeline + structural-family pairing ((128&qk_norm=1)|(64&qk_norm=0)); all four AF
+   attention descriptor sites bind the eff idx (identical signature/grid/block_dim); kvprod_v2
+   branch gated to its validated Qwen3 config (qk_norm=1 + d128) so llama always takes the naive
+   producer (qk_norm flag covers both families). No policy/ABI change; a Qwen3 session's gate is
+   byte-for-byte the pre-existing one (eff slot IS the d128 pipeline).
+
+RESULT (tinyllama_prefill_bench.py: SDK path, warmup + median-of-3, workers llamabase [no d64
+blob] vs llamapf [with], interleaved same-session):
+
+| depth | baseline (PF_ATTN_OFF) | steel d64 AF | gain |
+|---|---|---|---|
+| 512 | 1552.6 tok/s (1552.7/1552.6/1541.7) | 6329.0 tok/s (6331.9/6329.0/6321.1) | 4.08x |
+| 1024 | 1191.1 tok/s (1234.3/1191.1/1049.8) | 6336.9 tok/s (6365.3/6304.8/6336.9) | 5.32x |
+
+vs llama.cpp (same session, interleaved 3 rounds medians, llama-bench build 10210):
+| depth | algenta steel-d64 | llama.cpp Q8_0 | ratio |
+|---|---|---|---|
+| 512 | 6253.9 | 6171.1 | 1.013x LEAD |
+| 1024 | 6273.7 | 5758.5 | 1.089x LEAD |
+
+PHYSICS CHECK (why this is the ceiling, honestly): TinyLlama ~2.07 GFLOP/token -> 512-token
+prefill = 1060 GFLOP; at the 13.3 TF/s sustained MMA wall that is 79.7ms = 6424 tok/s. Algenta
+measures 80.9ms (6254-6329) = AT the wall; llama.cpp pp512 81.8ms is likewise wall-bound. The
+5x gap was 100% closable because BOTH baseline buckets (mm8 GEMM at 1.4%-of-wall + PF_ATTN_OFF
+attention) were far from it; there is no remaining headroom at these depths beyond DVFS.
+
+CORRECTNESS: greedy output BYTE-IDENTICAL baseline-vs-AF for the same model -- France prompt
+first-64 ([3900, 29889, 13, 29902, 626, 263, 3303, ...] -- oracle intact) AND the 1024-deep
+repetitive prompt first-64, full-sequence diff (the AF path narrows K/V to F16 where the baseline
+reads F32 natural; no argmax flip anywhere). QWEN3 REGRESSION: test_inference_gpu_e2e.py
+6 passed / 1 skipped (oracle 374 intact) on a worker built from this tree WITH the d64 blob linked
+(the eff gate keeps Qwen3 on the d128 steel kernel); AF suite 16/16 (GPU, blobs linked); policy
+suite 53/53; session_prefill suite 1/1; inventory-check green, zero dispatch-catalog drift.
+
+DEFERRED / NOT DONE: llama d_head=128 models (llama-3.x 8B) -- their fast AF prefill needs this
+same pattern at d128 + qk_norm=0 pairing (kernel exists; only the pairing gate is conservative);
+rope_scaling (llama-3.1+); multi-chunk (>2048-token) AF continuation for llama untested (the
+d64 kernel's continuation contract is oracle-proven standalone; PREFILL_MAX_TILE=2048 bounds the
+single-chunk path). Batched serving for llama stays off by construction (batched blobs structural-
+128 + QK-norm).
