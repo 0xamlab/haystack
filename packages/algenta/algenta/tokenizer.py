@@ -42,12 +42,36 @@ llama-family SentencePiece-style BPE (the Prepend/Replace marker normalizer, no 
 * **Post-processor**: the file's TemplateProcessing BOS is read to know which id
   add_special_tokens=True prepends; a post_processor of any other type is refused.
 
+GGUF-embedded llama SentencePiece BPE (tokenizer.ggml.model == "llama")
+-----------------------------------------------------------------------
+A GGUF model file EMBEDS its tokenizer in its metadata (tokenizer.ggml.tokens /
+tokenizer.ggml.scores / tokenizer.ggml.token_type plus the bos/eos/unknown ids);
+`Tokenizer.from_gguf_metadata` builds this same llama family directly from those tables -- a GGUF
+carries no tokenizer.json. Two conventions differ from the tokenizer.json path above, both because
+the GGUF's reference consumer is llama.cpp and this module reproduces llama.cpp's tokenizer
+exactly (verified against llama.cpp's llm_tokenizer_spm_session):
+* **Merge order comes from the scores, not a merge list.** The GGUF carries no merge table; BPE
+  runs llama.cpp's score-greedy loop: seed every adjacent character pair whose concatenation is a
+  vocab piece, repeatedly merge the pair whose MERGED piece has the highest
+  tokenizer.ggml.scores entry (ties -> the leftmost pair), until nothing merges. A final symbol
+  with no vocab entry falls back to byte-fallback pieces per UTF-8 byte (per-character unk when
+  the file carries no byte pieces).
+* **The space prepend is llama.cpp's, not Metaspace.** Every fragment at the start of the text or
+  right after a special token gets a literal space prepended (tokenizer.ggml.add_space_prefix,
+  default true) and THEN spaces are escaped to the marker -- NO leading-space absorption, so
+  encode(' x') == [marker] + encode('x'), and a fragment after a special always gains a marker.
+  Decode strips the leading space only when add_space_prefix is on. The specials are the file's
+  unknown/control/user-defined token types; BOS is prepended by encode(add_special_tokens=True)
+  only when the file's tokenizer.ggml.add_bos says so (llama.cpp's SPM default: true).
+
 Scope, stated precisely so nothing here overclaims
 ---------------------------------------------------
-* **Two tokenizer families.** The two shapes above, detected from the file's own normalizer /
-  pre-tokenizer declarations. A tokenizer.json of another shape (Unigram, WordPiece, a different
-  normalizer or pre-tokenizer stack) raises TokenizerFormatError naming the unsupported piece
-  rather than half-tokenizing.
+* **Three tokenizer sources.** The two tokenizer.json shapes above, detected from the file's own
+  normalizer / pre-tokenizer declarations, plus the GGUF-embedded llama SentencePiece BPE. A
+  tokenizer.json of another shape (Unigram, WordPiece, a different normalizer or pre-tokenizer
+  stack) raises TokenizerFormatError naming the unsupported piece rather than half-tokenizing; a
+  GGUF whose tokenizer.ggml.model is not "llama" (e.g. "gpt2" byte-level BPE) is refused the same
+  way.
 * **No chat template here.** Chat-template rendering (messages -> prompt text) is the separate
   algenta.chat_template module; this module is BPE encode/decode only.
 * **Cross-validated, not assumed.** tests/test_tokenizer_qwen3.py checks the Qwen3 encode AND
@@ -71,11 +95,13 @@ Usage
 
 from __future__ import annotations
 
+import heapq
 import json
 import re
 import unicodedata
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 __all__ = [
     "TokenizerFormatError",
@@ -202,10 +228,12 @@ _EXPECTED_PRETOKENIZE_PATTERN = (
 class Tokenizer:
     """One checkpoint's tokenizer, loaded from its own tokenizer.json. Immutable after load.
 
-    One class carries both supported families: the Qwen3 byte-level BPE (the default
-    construction -- `sentencepiece=False`) and the llama-family SentencePiece-style BPE
-    (`sentencepiece=True`, which switches encode/decode to the marker pipeline and leaves the
-    byte-level fields unused)."""
+    One class carries all three supported sources: the Qwen3 byte-level BPE (the default
+    construction -- `sentencepiece=False`), the llama-family SentencePiece-style BPE from a
+    tokenizer.json (`sentencepiece=True`, which switches encode/decode to the marker pipeline and
+    leaves the byte-level fields unused), and the llama SentencePiece BPE EMBEDDED in a GGUF file
+    (`sentencepiece=True` + `sp_gguf=True` -- the llama.cpp conventions: score-greedy merging from
+    `sp_scores` and the llama.cpp space-prepend scheme, see the module docstring)."""
 
     def __init__(
         self,
@@ -220,6 +248,11 @@ class Tokenizer:
         fuse_unk: bool = False,
         unk_token: str | None = None,
         bos_id: int | None = None,
+        sp_gguf: bool = False,
+        sp_scores: dict[str, float] | None = None,
+        add_bos: bool = True,
+        add_space_prefix: bool = True,
+        eos_id: int | None = None,
     ) -> None:
         self._vocab = vocab
         self._id_to_token = {token_id: token for token, token_id in vocab.items()}
@@ -236,6 +269,16 @@ class Tokenizer:
         self._fuse_unk = fuse_unk
         self._unk_token = unk_token
         self._bos_id = bos_id
+        # The GGUF-embedded fields (unused by the tokenizer.json paths). `sp_gguf` switches
+        # encode/decode to the llama.cpp conventions; `sp_scores` carries the merge scores;
+        # `add_bos` / `add_space_prefix` are the file's tokenizer.ggml flags; `eos_id` is the
+        # file's declared end-of-sequence id (the GGUF says it outright; a tokenizer.json's is
+        # looked up from the specials instead).
+        self._sp_gguf = sp_gguf
+        self._sp_scores = sp_scores or {}
+        self._add_bos = add_bos
+        self._add_space_prefix = add_space_prefix
+        self._eos_id = eos_id
 
     @classmethod
     def from_tokenizer_json(cls, path: str | Path, *, legacy: bool = True) -> "Tokenizer":
@@ -421,6 +464,138 @@ class Tokenizer:
             bos_id=bos_id,
         )
 
+    @classmethod
+    def from_gguf_metadata(cls, metadata: dict) -> "Tokenizer":
+        """The tokenizer EMBEDDED in a GGUF file's metadata (the `tokenizer.ggml.*` keys), built
+        with llama.cpp's exact SentencePiece-BPE conventions (see the module docstring section).
+        `metadata` is the parsed GGUF metadata kv dict (`algenta.inference._read_gguf_header`).
+        Only `tokenizer.ggml.model == "llama"` is implemented; anything else raises
+        TokenizerFormatError naming what the file carries -- never a half-tokenizer."""
+        model = metadata.get("tokenizer.ggml.model")
+        if model != "llama":
+            raise TokenizerFormatError(
+                f"unsupported GGUF tokenizer model {model!r}: this module implements the 'llama' "
+                "SentencePiece BPE embedded tokenizers only."
+            )
+
+        def _require_list(key: str, item_check: Any) -> list:
+            value = metadata.get(key)
+            if (
+                not isinstance(value, list)
+                or not value
+                or not all(item_check(item) for item in value)
+            ):
+                raise TokenizerFormatError(
+                    f"the GGUF file carries no usable {key} array; cannot build a tokenizer "
+                    "from it."
+                )
+            return value
+
+        tokens = _require_list("tokenizer.ggml.tokens", lambda item: isinstance(item, str))
+        scores = _require_list(
+            "tokenizer.ggml.scores",
+            lambda item: isinstance(item, int | float) and not isinstance(item, bool),
+        )
+        if len(scores) != len(tokens):
+            raise TokenizerFormatError(
+                f"the GGUF tokenizer arrays disagree: {len(tokens)} tokens vs {len(scores)} "
+                "scores; cannot build a tokenizer from them."
+            )
+        token_types = metadata.get("tokenizer.ggml.token_type")
+        if token_types is not None:
+            if (
+                not isinstance(token_types, list)
+                or len(token_types) != len(tokens)
+                or not all(
+                    isinstance(item, int) and not isinstance(item, bool) for item in token_types
+                )
+            ):
+                raise TokenizerFormatError(
+                    f"the GGUF file's tokenizer.ggml.token_type array is malformed ({len(tokens)} "
+                    "tokens declared); cannot build a tokenizer from it."
+                )
+
+        def _special_id(key: str) -> int | None:
+            """One declared special id. GGUF version 3 allows an ARRAY of ids (multi-EOS models);
+            the first element stands in -- encode prepends one BOS, and decode/stop care about
+            identity, not multiplicity, here."""
+            value = metadata.get(key)
+            if isinstance(value, list):
+                value = value[0] if value else None
+            if value is None:
+                return None
+            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < len(tokens):
+                raise TokenizerFormatError(
+                    f"the GGUF file's {key} is {metadata.get(key)!r}; expected an in-vocab token "
+                    "id (or a non-empty array of them)."
+                )
+            return value
+
+        unk_id = _special_id("tokenizer.ggml.unknown_token_id")
+        bos_id = _special_id("tokenizer.ggml.bos_token_id")
+        eos_id = _special_id("tokenizer.ggml.eos_token_id")
+        pad_id = _special_id("tokenizer.ggml.padding_token_id")
+
+        def _flag(key: str, default: bool) -> bool:
+            value = metadata.get(key)
+            return value if isinstance(value, bool) else default
+
+        # llama.cpp's SPM defaults: BOS added, space prefix prepended (the flags' documented
+        # defaults in llama_vocab.cpp's LLAMA_VOCAB_TYPE_SPM branch).
+        add_bos = _flag("tokenizer.ggml.add_bos", True)
+        add_space_prefix = _flag("tokenizer.ggml.add_space_prefix", True)
+
+        # The vocab and the score table: FIRST occurrence wins on a duplicated piece string, the
+        # same convention llama.cpp's token_to_id map uses.
+        vocab: dict[str, int] = {}
+        sp_scores: dict[str, float] = {}
+        for token_id, token in enumerate(tokens):
+            vocab.setdefault(token, token_id)
+            sp_scores.setdefault(token, float(scores[token_id]))
+
+        # The specials: the file's own unknown/control/user-defined pieces (ggml token types 2,
+        # 3, 4) -- matched verbatim, never BPE-split, rendered literally by decode. Without a
+        # token_type array the declared special ids stand in.
+        special_tokens: dict[str, int] = {}
+        if token_types is not None:
+            for token_id, token_type in enumerate(token_types):
+                if token_type in (2, 3, 4):
+                    special_tokens.setdefault(tokens[token_id], token_id)
+        else:
+            for token_id in (unk_id, bos_id, eos_id, pad_id):
+                if token_id is not None:
+                    special_tokens.setdefault(tokens[token_id], token_id)
+        for token_id in (unk_id, bos_id, eos_id, pad_id):
+            if token_id is not None:
+                special_tokens.setdefault(tokens[token_id], token_id)
+
+        unk_token = tokens[unk_id] if unk_id is not None else None
+        if unk_token is not None and unk_token not in vocab:
+            raise TokenizerFormatError(
+                f"the GGUF file's declared unk piece {unk_token!r} has no vocab entry; cannot "
+                "load."
+            )
+        # Byte fallback is a FACT of the vocab (all 256 uppercase-hex byte pieces present), the
+        # same truth llama.cpp's byte_to_token consults at encode time.
+        byte_fallback = all(f"<0x{byte:02X}>" in vocab for byte in range(256))
+
+        return cls(
+            vocab=vocab,
+            merges={},
+            special_tokens=special_tokens,
+            pretokenize_regex=None,
+            sentencepiece=True,
+            sp_gguf=True,
+            sp_scores=sp_scores,
+            byte_fallback=byte_fallback,
+            fuse_unk=False,
+            unk_token=unk_token,
+            bos_id=bos_id,
+            add_bos=add_bos,
+            add_space_prefix=add_space_prefix,
+            eos_id=eos_id,
+        )
+
     # ── encode ────────────────────────────────────────────────────────────────────────────────
 
     def encode(self, text: str, *, add_special_tokens: bool = False) -> list[int]:
@@ -433,8 +608,11 @@ class Tokenizer:
         so True and False behave identically there unless the text itself contains a special
         string (which is mapped either way). The llama-family path prepends the BOS id declared
         by the file's post_processor when True -- the same convention
-        `transformers.AutoTokenizer.encode` defaults to."""
+        `transformers.AutoTokenizer.encode` defaults to. The GGUF-embedded path additionally
+        honors the file's tokenizer.ggml.add_bos flag (llama.cpp's SPM default: true)."""
         if self._sentencepiece:
+            if self._sp_gguf:
+                return self._encode_gguf_sentencepiece(text, add_special_tokens=add_special_tokens)
             return self._encode_sentencepiece(text, add_special_tokens=add_special_tokens)
         del add_special_tokens
         ids: list[int] = []
@@ -558,6 +736,108 @@ class Tokenizer:
             symbols = merged
         return [self._piece_id(symbol) for symbol in symbols]
 
+    # ── encode, GGUF-embedded llama family (llama.cpp conventions) ──────────────────────────
+
+    def _encode_gguf_sentencepiece(self, text: str, *, add_special_tokens: bool) -> list[int]:
+        """The GGUF-embedded encode, llama.cpp's exact SPM pipeline (llama_vocab.cpp's
+        LLAMA_VOCAB_TYPE_SPM branch + llm_tokenizer_spm_session): specials split verbatim; each
+        remaining fragment gets a literal space prepended when it starts the text or follows a
+        special (add_space_prefix, the file's tokenizer.ggml.add_space_prefix -- default true),
+        then ALL spaces escape to the marker -- no Metaspace absorption, so a leading space
+        doubles the marker instead of taking the prepend's place. BOS is prepended for
+        add_special_tokens=True only when the file's add_bos says so."""
+        ids: list[int] = []
+        if add_special_tokens and self._add_bos and self._bos_id is not None:
+            ids.append(self._bos_id)
+        is_prev_special = True  # llama.cpp: "prefix with space if first token"
+        for piece, is_special in self._split_specials(text):
+            if is_special:
+                ids.append(self._special_tokens[piece])
+                is_prev_special = True
+                continue
+            if not piece:
+                continue
+            if self._add_space_prefix and is_prev_special:
+                piece = " " + piece
+            ids.extend(self._bpe_gguf_spm(piece.replace(" ", _SP_MARKER)))
+            is_prev_special = False
+        return ids
+
+    def _bpe_gguf_spm(self, chunk: str) -> list[int]:
+        """llama.cpp's score-greedy SentencePiece BPE over the chunk's own characters: every
+        adjacent pair whose concatenation is a vocab piece is a merge candidate keyed by the
+        merged piece's tokenizer.ggml.scores entry; repeatedly merge the HIGHEST-score candidate
+        (ties -> leftmost), exactly the llm_tokenizer_spm_session work queue. A final symbol the
+        vocab does not carry resolves to byte-fallback pieces per UTF-8 byte (per character the
+        unk piece when the file has no byte pieces) -- llama.cpp's resegment byte fallback."""
+        if not chunk:
+            return []
+        symbols: list[str | None] = list(chunk)
+        count = len(symbols)
+        prev = [index - 1 for index in range(count)]
+        nxt = [index + 1 if index < count - 1 else -1 for index in range(count)]
+        # (negative score, left index, insertion order, right index, merged text): heapq pops
+        # highest score first, leftmost first on a score tie -- the llm_bigram_spm comparator.
+        queue: list[tuple[float, int, int, int, str]] = []
+        insertion = 0
+
+        def try_add(left: int, right: int) -> None:
+            nonlocal insertion
+            if left == -1 or right == -1:
+                return
+            left_sym = symbols[left]
+            right_sym = symbols[right]
+            if left_sym is None or right_sym is None:
+                return
+            text = left_sym + right_sym
+            score = self._sp_scores.get(text)
+            if score is None:
+                return
+            heapq.heappush(queue, (-score, left, insertion, right, text))
+            insertion += 1
+
+        for index in range(1, count):
+            try_add(index - 1, index)
+        while queue:
+            _, left, _, right, text = heapq.heappop(queue)
+            left_sym = symbols[left]
+            right_sym = symbols[right]
+            # A stale candidate: either symbol already merged away, or the merge text changed.
+            if left_sym is None or right_sym is None or left_sym + right_sym != text:
+                continue
+            symbols[left] = text
+            symbols[right] = None
+            nxt[left] = nxt[right]
+            if nxt[left] != -1:
+                prev[nxt[left]] = left
+            try_add(prev[left], left)
+            try_add(left, nxt[left])
+
+        ids: list[int] = []
+        index = 0
+        while index != -1:
+            symbol = symbols[index]
+            assert symbol is not None
+            token_id = self._vocab.get(symbol)
+            if token_id is not None:
+                ids.append(token_id)
+            else:
+                byte_ids = [
+                    self._vocab.get(f"<0x{byte:02X}>") for byte in symbol.encode("utf-8")
+                ]
+                if all(byte_id is not None for byte_id in byte_ids):
+                    ids.extend(byte_ids)  # type: ignore[arg-type]
+                elif self._unk_token is not None:
+                    unk_id = self._vocab[self._unk_token]
+                    ids.extend(unk_id for _ in symbol)
+                else:
+                    raise TokenizerFormatError(
+                        f"piece {symbol!r} has no vocab entry and the GGUF file carries neither "
+                        "byte-fallback pieces nor an unk piece; cannot encode."
+                    )
+            index = nxt[index]
+        return ids
+
     # ── encode, Qwen3 family ──────────────────────────────────────────────────────────────────
 
     def _bpe_chunk(self, chunk: str) -> list[int]:
@@ -637,7 +917,11 @@ class Tokenizer:
         back to raw bytes (UTF-8 with replacement characters for invalid runs), fuse (join),
         strip EXACTLY ONE leading space -- the marker at the start of the text decodes to a
         boundary, not a literal space. Special ids pass through as their literal strings (BOS ->
-        '<s>', EOS -> '</s>'), exactly as the reference renders them."""
+        '<s>', EOS -> '</s>'), exactly as the reference renders them.
+
+        The leading-space strip is gated on add_space_prefix for the GGUF-embedded path
+        (llama.cpp's `remove_space = add_space_prefix`); a tokenizer.json path always strips
+        (its normalizer always prepends)."""
         parts: list[str] = []
         byte_buffer = bytearray()
 
@@ -660,7 +944,9 @@ class Tokenizer:
             parts.append(piece.replace(_SP_MARKER, " "))
         flush_bytes()
         text = "".join(parts)
-        return text[1:] if text.startswith(" ") else text
+        if self._add_space_prefix and text.startswith(" "):
+            return text[1:]
+        return text
 
     # ── introspection ─────────────────────────────────────────────────────────────────────────
 
@@ -674,12 +960,16 @@ class Tokenizer:
 
     def eos_id(self) -> int | None:
         """The end-of-sequence special id: '<|endoftext|>' on Qwen3, '</s>' on the llama
-        family; None when the checkpoint declares neither."""
+        family; None when the checkpoint declares neither. A GGUF file states its EOS id outright
+        (tokenizer.ggml.eos_token_id) and that declaration wins."""
+        if self._eos_id is not None:
+            return self._eos_id
         return self._special_tokens.get("<|endoftext|>", self._special_tokens.get("</s>"))
 
     def bos_id(self) -> int | None:
         """The llama-family BOS id declared by the file's post_processor (None on Qwen3 -- its
-        prompts wrap no specials). `encode(text, add_special_tokens=True)` prepends it."""
+        prompts wrap no specials). `encode(text, add_special_tokens=True)` prepends it (on the
+        GGUF path, only when the file's tokenizer.ggml.add_bos is on)."""
         return self._bos_id
 
     def merge_added_tokens(self, extra: dict[str, int]) -> int:

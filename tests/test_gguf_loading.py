@@ -39,12 +39,19 @@ if str(_ALGENTA) not in sys.path:
 from algenta.inference import (  # noqa: E402
     InferenceError,
     _gguf_architecture_config,
+    _gguf_dequant_q4_0,
+    _gguf_dequant_q4_k,
+    _gguf_dequant_q5_0,
+    _gguf_dequant_q5_k,
+    _gguf_dequant_q6_k,
     _gguf_map_tensor_name,
     _gguf_read_tensor_values,
+    _load_gguf_tokenizer,
     _read_gguf_header,
     decode,
     prepare_model_checkpoint_from_gguf,
 )
+from algenta.tokenizer import Tokenizer, TokenizerFormatError  # noqa: E402
 
 numpy = pytest.importorskip("numpy", reason="GGUF conversion needs numpy")
 
@@ -52,6 +59,11 @@ _QWEN3_GGUF = Path(os.environ.get("ALGENTA_QWEN3_GGUF", "/private/tmp/qwen3-0.6b
 _TINYLLAMA_GGUF = Path(os.environ.get("ALGENTA_TINYLLAMA_GGUF", "/private/tmp/tinyllama-f16.gguf"))
 _TINYLLAMA_Q8_GGUF = Path(
     os.environ.get("ALGENTA_TINYLLAMA_Q8_GGUF", "/private/tmp/tinyllama-q8_0.gguf")
+)
+# Q4_0 re-quantization of the F16 GGUF (scripts/build_gguf_q4_0.py builds it locally from the F16
+# file -- a local transformation, never fetched). Opt-in like the other campaign artifacts.
+_TINYLLAMA_Q4_0_GGUF = Path(
+    os.environ.get("ALGENTA_TINYLLAMA_Q4_0_GGUF", "/private/tmp/tinyllama-q4_0.gguf")
 )
 _QWEN3_CHECKPOINT = Path(
     os.environ.get("ALGENTA_QWEN3_TEST_CHECKPOINT", "/private/tmp/qwen3-0.6b-base")
@@ -74,12 +86,30 @@ def _gguf_string(text: str) -> bytes:
 
 
 def _gguf_kv(key: str, value) -> bytes:
+    if isinstance(value, bool):
+        return _gguf_string(key) + struct.pack("<I", 7) + struct.pack("<B", 1 if value else 0)
     if isinstance(value, str):
         return _gguf_string(key) + struct.pack("<I", 8) + _gguf_string(value)
     if isinstance(value, float):
         return _gguf_string(key) + struct.pack("<I", 6) + struct.pack("<f", value)
     if isinstance(value, int):
         return _gguf_string(key) + struct.pack("<I", 4) + struct.pack("<I", value)
+    if isinstance(value, list):
+        if all(isinstance(v, str) for v in value):
+            elem_type, payload = 8, b"".join(_gguf_string(v) for v in value)
+        elif all(isinstance(v, float) for v in value):
+            elem_type, payload = 6, b"".join(struct.pack("<f", v) for v in value)
+        elif all(isinstance(v, int) for v in value):
+            elem_type, payload = 4, b"".join(struct.pack("<I", v) for v in value)
+        else:
+            raise AssertionError(f"test writer does not handle mixed list {value!r}")
+        return (
+            _gguf_string(key)
+            + struct.pack("<I", 9)
+            + struct.pack("<I", elem_type)
+            + struct.pack("<Q", len(value))
+            + payload
+        )
     raise AssertionError(f"test writer does not handle {type(value)}")
 
 
@@ -212,6 +242,216 @@ def test_gguf_q8_0_dequantization_exact(tmp_path: Path) -> None:
     assert list(values) == [scale * q for q in qs]
 
 
+def test_gguf_q4_0_dequantization_exact(tmp_path: Path) -> None:
+    # Q4_0 (ggml's dequantize_row_q4_0): per 32-element block an f16 scale d and 16 nibble bytes;
+    # element j = (low-nibble(byte j) - 8) * d, element j+16 = (high-nibble(byte j) - 8) * d.
+    d = 2.0
+    qs = bytes(range(16))  # byte j = j -> low nibble j, high nibble 0
+    raw = struct.pack("<e", d) + qs
+    gguf = tmp_path / "q40.gguf"
+    _write_test_gguf(gguf, _llama_metadata(), [("blk.0.ffn_gate.weight", 2, [32, 1], raw)])
+    _, infos, data_start = _read_gguf_header(gguf)
+    values, shape = _gguf_read_tensor_values(gguf, infos[0], data_start)
+    assert shape == [1, 32]
+    expected = [(j - 8) * d for j in range(16)] + [(0 - 8) * d] * 16
+    assert list(values) == pytest.approx(expected)
+    # spot-check the nibble split: byte 0x53 -> low 3, high 5
+    raw2 = struct.pack("<e", d) + bytes([0x53]) + bytes(15)
+    gguf2 = tmp_path / "q40b.gguf"
+    _write_test_gguf(gguf2, _llama_metadata(), [("blk.0.ffn_gate.weight", 2, [32, 1], raw2)])
+    _, infos2, ds2 = _read_gguf_header(gguf2)
+    values2, _ = _gguf_read_tensor_values(gguf2, infos2[0], ds2)
+    assert values2[0] == pytest.approx((3 - 8) * d)   # low nibble of byte 0
+    assert values2[16] == pytest.approx((5 - 8) * d)  # high nibble of byte 0
+
+
+def test_gguf_q5_0_dequantization_exact(tmp_path: Path) -> None:
+    # Q5_0 (ggml's dequantize_row_q5_0): per 32-element block f16 d, u32 qh (5th bits), 16 nibble
+    # bytes; element j = ((low-nibble | bit_j(qh)<<4) - 16) * d, element j+16 the high nibble with
+    # bit j+16.
+    d = 1.0
+    qh = (1 << 3) | (1 << 19)  # element 3 (low) and element 19 (high, j=3) get their 5th bit
+    qs = bytes(range(16))
+    raw = struct.pack("<e", d) + struct.pack("<I", qh) + qs
+    gguf = tmp_path / "q50.gguf"
+    _write_test_gguf(gguf, _llama_metadata(), [("blk.0.ffn_gate.weight", 6, [32, 1], raw)])
+    _, infos, data_start = _read_gguf_header(gguf)
+    values, shape = _gguf_read_tensor_values(gguf, infos[0], data_start)
+    assert shape == [1, 32]
+    expected = []
+    for j in range(16):
+        lo = (qs[j] & 0x0F) | (16 if (qh >> j) & 1 else 0)
+        hi = (qs[j] >> 4) | (16 if (qh >> (j + 16)) & 1 else 0)
+        expected.append((lo - 16) * d)
+    for j in range(16):
+        hi = (qs[j] >> 4) | (16 if (qh >> (j + 16)) & 1 else 0)
+        expected.append((hi - 16) * d)
+    assert list(values) == pytest.approx(expected)
+    assert values[3] == pytest.approx(((3 | 16) - 16) * d)   # qh bit 3 set
+    assert values[19] == pytest.approx(((0 | 16) - 16) * d)  # qh bit 19 set (high, j=3)
+
+
+# --- pure-Python ggml reference transcriptions (independent of the numpy dequantizers) ---------
+# Literal ports of ggml-quants.c's dequantize_row_* loops, used as the cross-check oracle for the
+# K-quants (and the 4/5-bit types) on random blocks.
+
+def _get_scale_min_k4(j, q):
+    if j < 4:
+        return q[j] & 63, q[j + 4] & 63
+    return (q[j + 4] & 0xF) | ((q[j - 4] >> 6) << 4), (q[j + 4] >> 4) | ((q[j] >> 6) << 4)
+
+
+def _ref_q4_k(raw, n_blocks):
+    out = []
+    off = 0
+    for _ in range(n_blocks):
+        d = struct.unpack_from("<e", raw, off)[0]
+        dmin = struct.unpack_from("<e", raw, off + 2)[0]
+        off += 4
+        scales = raw[off:off + 12]; off += 12
+        q = raw[off:off + 128]; off += 128
+        qi = 0
+        is_ = 0
+        for _ in range(4):
+            sc0, m0 = _get_scale_min_k4(is_, scales)
+            sc1, m1 = _get_scale_min_k4(is_ + 1, scales)
+            d1, mm1 = d * sc0, dmin * m0
+            d2, mm2 = d * sc1, dmin * m1
+            out.extend(d1 * (q[qi + l] & 0xF) - mm1 for l in range(32))
+            out.extend(d2 * (q[qi + l] >> 4) - mm2 for l in range(32))
+            qi += 32
+            is_ += 2
+    return out
+
+
+def _ref_q5_k(raw, n_blocks):
+    out = []
+    off = 0
+    for _ in range(n_blocks):
+        d = struct.unpack_from("<e", raw, off)[0]
+        dmin = struct.unpack_from("<e", raw, off + 2)[0]
+        off += 4
+        scales = raw[off:off + 12]; off += 12
+        qh = raw[off:off + 32]; off += 32
+        ql = raw[off:off + 128]; off += 128
+        qi = 0
+        is_ = 0
+        u1 = 1
+        u2 = 2
+        for _ in range(4):
+            sc0, m0 = _get_scale_min_k4(is_, scales)
+            sc1, m1 = _get_scale_min_k4(is_ + 1, scales)
+            d1, mm1 = d * sc0, dmin * m0
+            d2, mm2 = d * sc1, dmin * m1
+            out.extend(d1 * ((ql[qi + l] & 0xF) + (16 if qh[l] & u1 else 0)) - mm1 for l in range(32))
+            out.extend(d2 * ((ql[qi + l] >> 4) + (16 if qh[l] & u2 else 0)) - mm2 for l in range(32))
+            qi += 32
+            is_ += 2
+            u1 <<= 2
+            u2 <<= 2
+    return out
+
+
+def _ref_q6_k(raw, n_blocks):
+    out = []
+    off = 0
+    for _ in range(n_blocks):
+        ql = raw[off:off + 128]; off += 128
+        qh = raw[off:off + 64]; off += 64
+        sc = [b - 256 if b > 127 else b for b in raw[off:off + 16]]; off += 16
+        d = struct.unpack_from("<e", raw, off)[0]; off += 2
+        for half in range(2):
+            base = half * 8
+            block_out = [0.0] * 128
+            for l in range(32):
+                is_ = l // 16
+                o = half * 64
+                h = half * 32
+                q1 = ((ql[o + l] & 0xF) | (((qh[h + l] >> 0) & 3) << 4)) - 32
+                q2 = ((ql[o + l + 32] & 0xF) | (((qh[h + l] >> 2) & 3) << 4)) - 32
+                q3 = ((ql[o + l] >> 4) | (((qh[h + l] >> 4) & 3) << 4)) - 32
+                q4 = ((ql[o + l + 32] >> 4) | (((qh[h + l] >> 6) & 3) << 4)) - 32
+                block_out[l] = d * sc[base + is_] * q1
+                block_out[l + 32] = d * sc[base + is_ + 2] * q2
+                block_out[l + 64] = d * sc[base + is_ + 4] * q3
+                block_out[l + 96] = d * sc[base + is_ + 6] * q4
+            out.extend(block_out)
+    return out
+
+
+def test_gguf_kquant_dequantization_matches_ggml_reference() -> None:
+    """The K-quant (and 4/5-bit) dequantizers, cross-checked against a literal Python port of
+    ggml's dequantize_row_* loops on random blocks -- an independent implementation of the same
+    formulas. Q4_K/Q5_K/Q6_K are exercised through the raw dequantizer functions."""
+    rng = numpy.random.default_rng(42)
+    # Q4_K: 144-byte blocks
+    raw = b""
+    for _ in range(3):
+        raw += struct.pack("<e", float(rng.uniform(0.1, 2)))
+        raw += struct.pack("<e", float(rng.uniform(0.1, 2)))
+        raw += bytes(rng.integers(0, 256, 12).tolist())
+        raw += bytes(rng.integers(0, 256, 128).tolist())
+    assert list(_gguf_dequant_q4_k(numpy, raw)) == pytest.approx(_ref_q4_k(raw, 3))
+    # Q5_K: 176-byte blocks
+    raw = b""
+    for _ in range(3):
+        raw += struct.pack("<e", float(rng.uniform(0.1, 2)))
+        raw += struct.pack("<e", float(rng.uniform(0.1, 2)))
+        raw += bytes(rng.integers(0, 256, 12).tolist())
+        raw += bytes(rng.integers(0, 256, 32).tolist())
+        raw += bytes(rng.integers(0, 256, 128).tolist())
+    assert list(_gguf_dequant_q5_k(numpy, raw)) == pytest.approx(_ref_q5_k(raw, 3))
+    # Q6_K: 210-byte blocks
+    raw = b""
+    for _ in range(3):
+        raw += bytes(rng.integers(0, 256, 128).tolist())
+        raw += bytes(rng.integers(0, 256, 64).tolist())
+        raw += bytes(rng.integers(0, 256, 16).tolist())
+        raw += struct.pack("<e", float(rng.uniform(0.1, 2)))
+    assert list(_gguf_dequant_q6_k(numpy, raw)) == pytest.approx(_ref_q6_k(raw, 3))
+
+
+def test_gguf_q4_0_q5_0_dequantization_matches_ggml_reference() -> None:
+    """Q4_0/Q5_0 dequantizers cross-checked against the literal ggml transcription on random
+    blocks (complementing the hand-built exact-value tests above)."""
+    rng = numpy.random.default_rng(7)
+
+    def ref_q4_0(raw, n_blocks):
+        out = []
+        off = 0
+        for _ in range(n_blocks):
+            d = struct.unpack_from("<e", raw, off)[0]; off += 2
+            qs = raw[off:off + 16]; off += 16
+            out.extend(((qs[j] & 0x0F) - 8) * d for j in range(16))
+            out.extend(((qs[j] >> 4) - 8) * d for j in range(16))
+        return out
+
+    def ref_q5_0(raw, n_blocks):
+        out = []
+        off = 0
+        for _ in range(n_blocks):
+            d = struct.unpack_from("<e", raw, off)[0]; off += 2
+            qh = struct.unpack_from("<I", raw, off)[0]; off += 4
+            qs = raw[off:off + 16]; off += 16
+            for j in range(16):
+                out.append((((qs[j] & 0x0F) | (((qh >> j) & 1) << 4)) - 16) * d)
+            for j in range(16):
+                out.append((((qs[j] >> 4) | (((qh >> (j + 16)) & 1) << 4)) - 16) * d)
+        return out
+
+    raw = b""
+    for _ in range(5):
+        raw += struct.pack("<e", float(rng.uniform(-2, 2))) + bytes(rng.integers(0, 256, 16).tolist())
+    assert list(_gguf_dequant_q4_0(numpy, raw)) == pytest.approx(ref_q4_0(raw, 5))
+
+    raw = b""
+    for _ in range(5):
+        raw += struct.pack("<e", float(rng.uniform(-2, 2)))
+        raw += struct.pack("<I", int(rng.integers(0, 2**32)))
+        raw += bytes(rng.integers(0, 256, 16).tolist())
+    assert list(_gguf_dequant_q5_0(numpy, raw)) == pytest.approx(ref_q5_0(raw, 5))
+
+
 def test_gguf_bad_magic_refused(tmp_path: Path) -> None:
     gguf = tmp_path / "not.gguf"
     gguf.write_bytes(b"XXXX" + b"\x00" * 64)
@@ -230,14 +470,15 @@ def test_gguf_unsupported_version_refused(tmp_path: Path) -> None:
 
 
 def test_gguf_unsupported_tensor_dtype_refused(tmp_path: Path) -> None:
-    # Q4_0 (ggml type 2) is not one of the dtypes this increment reads.
-    gguf = tmp_path / "q4.gguf"
-    _write_test_gguf(gguf, _llama_metadata(), [("blk.0.attn_q.weight", 2, [32, 1], b"\x00" * 18)])
+    # Q4_1 (ggml type 3) is not one of the dtypes this converter reads (Q4_0/Q5_0/Q8_0 and the
+    # Q4_K/Q5_K/Q6_K K-quants are).
+    gguf = tmp_path / "q41.gguf"
+    _write_test_gguf(gguf, _llama_metadata(), [("blk.0.attn_q.weight", 3, [32, 1], b"\x00" * 20)])
     _, infos, data_start = _read_gguf_header(gguf)
     with pytest.raises(InferenceError) as excinfo:
         _gguf_read_tensor_values(gguf, infos[0], data_start)
     assert excinfo.value.code == "unsupported_gguf"
-    assert "ggml type 2" in str(excinfo.value)
+    assert "ggml type 3" in str(excinfo.value)
 
 
 def test_gguf_unsupported_architecture_refused(tmp_path: Path) -> None:
@@ -351,15 +592,72 @@ def test_gguf_missing_file_refused() -> None:
     assert excinfo.value.code == "checkpoint_not_found"
 
 
-def test_gguf_text_prompt_refused_without_any_runtime(tmp_path: Path) -> None:
-    # An existing file as the checkpoint is the GGUF door, and a GGUF carries no tokenizer.json --
-    # text prompts are refused BEFORE any file parsing or wire call.
-    gguf = tmp_path / "model.gguf"
-    gguf.write_bytes(b"GGUF")
-    with pytest.raises(InferenceError) as excinfo:
-        decode(object(), checkpoint_dir=gguf, prompt_text="The capital of France is")
-    assert excinfo.value.code == "invalid_arguments"
-    assert "prompt_token_ids" in str(excinfo.value)
+def _synthetic_gguf_tokenizer_metadata(**overrides) -> dict:
+    """A tiny EMBEDDED llama SentencePiece tokenizer (the tokenizer.ggml.* kv a GGUF carries).
+    Pieces: 0 <unk>, 1 <s>, 2 </s>, 3 '▁', 4 'a', 5 'b', 6 '▁a', 7 '▁ab', 8 'ab'. Scores make
+    '▁ab' merge first, then '▁a', then 'ab' -- enough to exercise the score-greedy loop."""
+    marker = "\u2581"
+    meta = {
+        "tokenizer.ggml.model": "llama",
+        "tokenizer.ggml.tokens": [
+            "<unk>", "<s>", "</s>", marker, "a", "b", marker + "a", marker + "ab", "ab",
+        ],
+        "tokenizer.ggml.scores": [-1000.0, -1000.0, -1000.0, -100.0, -100.0, -100.0, -2.0, -1.0, -3.0],
+        "tokenizer.ggml.token_type": [2, 3, 3, 1, 1, 1, 1, 1, 1],
+        "tokenizer.ggml.bos_token_id": 1,
+        "tokenizer.ggml.eos_token_id": 2,
+        "tokenizer.ggml.unknown_token_id": 0,
+    }
+    meta.update(overrides)
+    return meta
+
+
+def test_gguf_embedded_tokenizer_builds_and_encodes(tmp_path: Path) -> None:
+    # A GGUF with an embedded llama tokenizer loads through from_gguf_metadata and encodes with
+    # llama.cpp's exact conventions: BOS prepend, space-prefix marker, score-greedy merging.
+    gguf = tmp_path / "tok.gguf"
+    _write_test_gguf(gguf, _synthetic_gguf_tokenizer_metadata(), [])
+    metadata, _, _ = _read_gguf_header(gguf)
+    tok = Tokenizer.from_gguf_metadata(metadata)
+    assert tok.vocab_size == 9
+    assert tok.bos_id() == 1 and tok.eos_id() == 2
+    # 'ab' -> prepend marker, merge (▁,a) then (▁a,b) -> single piece '▁ab' (id 7).
+    assert tok.encode("ab", add_special_tokens=False) == [7]
+    assert tok.encode("ab", add_special_tokens=True) == [1, 7]
+    # Leading space is NOT absorbed (llama.cpp convention): it doubles the marker piece.
+    assert tok.encode(" ab", add_special_tokens=False) == [3, 7]
+    # decode inverts: strip exactly one leading space, render specials literally.
+    assert tok.decode([7]) == "ab"
+    assert tok.decode([1, 7]) == "<s> ab"
+    assert tok.decode([3, 7]) == " ab"
+
+
+def test_gguf_embedded_tokenizer_add_bos_flag_respected(tmp_path: Path) -> None:
+    gguf = tmp_path / "tok_nobos.gguf"
+    _write_test_gguf(gguf, _synthetic_gguf_tokenizer_metadata(**{"tokenizer.ggml.add_bos": False}), [])
+    metadata, _, _ = _read_gguf_header(gguf)
+    tok = Tokenizer.from_gguf_metadata(metadata)
+    # add_bos=false: add_special_tokens=True adds nothing (the file said no BOS).
+    assert tok.encode("ab", add_special_tokens=True) == [7]
+
+
+def test_gguf_embedded_tokenizer_refuses_non_llama_model(tmp_path: Path) -> None:
+    gguf = tmp_path / "tok_gpt2.gguf"
+    _write_test_gguf(gguf, _synthetic_gguf_tokenizer_metadata(**{"tokenizer.ggml.model": "gpt2"}), [])
+    metadata, _, _ = _read_gguf_header(gguf)
+    with pytest.raises(TokenizerFormatError) as excinfo:
+        Tokenizer.from_gguf_metadata(metadata)
+    assert "gpt2" in str(excinfo.value)
+
+
+def test_gguf_text_prompt_uses_embedded_tokenizer(tmp_path: Path) -> None:
+    # decode() on a GGUF no longer refuses text prompts: it builds the embedded tokenizer and
+    # encodes. With a file that embeds a tokenizer but is not a full model, the refusal (if any)
+    # comes from conversion/architecture -- NOT the old 'prompt_token_ids only' gate.
+    gguf = tmp_path / "tok.gguf"
+    _write_test_gguf(gguf, _synthetic_gguf_tokenizer_metadata(), [])
+    tok = _load_gguf_tokenizer(gguf)
+    assert tok.encode("ab", add_special_tokens=True) == [1, 7]
 
 
 # --- real-file conversion checks (opt-in: the GGUF files are a manual download) -----------------
@@ -428,6 +726,115 @@ def test_tinyllama_q8_0_gguf_converts(tmp_path: Path) -> None:
     assert manifest["config"]["hidden_size"] == 2048
     assert len(manifest["tensors"]) == 22 * 9 + 3
     assert (out / "weights.blob").stat().st_size > 0
+
+
+@pytest.mark.skipif(
+    not _TINYLLAMA_Q4_0_GGUF.is_file() or not _TINYLLAMA_GGUF.is_file(),
+    reason=(
+        f"no Q4_0 GGUF at {_TINYLLAMA_Q4_0_GGUF} (build it from the F16 GGUF with "
+        "scripts/build_gguf_q4_0.py) -- local transformation, never fetched"
+    ),
+)
+def test_tinyllama_q4_0_gguf_converts_within_quant_tolerance(tmp_path: Path) -> None:
+    """The Q4_0 front door: a Q4_0 GGUF converts to the llama manifest contract, and its
+    dequantized GEMM weights stay within the Q4_0 quantization tolerance of the F16 source they
+    were quantized from (the honest dequant-correctness gate on a real file: a nibble-layout bug
+    would blow this tolerance open, not just graze it)."""
+    out = prepare_model_checkpoint_from_gguf(_TINYLLAMA_Q4_0_GGUF, _TINYLLAMA_PROMPT, out_dir=tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["config"]["hidden_size"] == 2048
+    assert len(manifest["tensors"]) == 22 * 9 + 3
+    assert (out / "weights.blob").stat().st_size > 0
+
+    # Compare a spread of layers' ffn_down GEMM weights against the F16 source.
+    _, f16_infos, f16_start = _read_gguf_header(_TINYLLAMA_GGUF)
+    _, q4_infos, q4_start = _read_gguf_header(_TINYLLAMA_Q4_0_GGUF)
+    f16_by_name = {i["name"]: i for i in f16_infos}
+    q4_by_name = {i["name"]: i for i in q4_infos}
+    for layer in (0, 10, 21):
+        name = f"blk.{layer}.ffn_down.weight"
+        assert q4_by_name[name]["ggml_type"] == 2  # Q4_0
+        v_f16, _ = _gguf_read_tensor_values(_TINYLLAMA_GGUF, f16_by_name[name], f16_start)
+        v_q4, shape_q4 = _gguf_read_tensor_values(_TINYLLAMA_Q4_0_GGUF, q4_by_name[name], q4_start)
+        assert shape_q4 == [2048, 5632]
+        diff = float(numpy.abs(v_f16 - v_q4).max())
+        scale = float(numpy.abs(v_f16).max())
+        # Q4_0 step is block-max/8, so the worst-case error is ~block-max/16 (~6% of the tensor
+        # max in practice); allow generous headroom but far below the "layout wrong" regime.
+        assert diff < 0.15 * scale, f"{name}: Q4_0 dequant error {diff} vs scale {scale}"
+
+
+# The GGUF-embedded-tokenizer acceptance corpus: texts where the GGUF (llama.cpp) conventions and
+# the tokenizer.json (transformers Metaspace) conventions AGREE. The two documented corner classes
+# -- leading spaces and text immediately after a special -- are asserted separately below.
+_GGUF_TOKENIZER_CORPUS = [
+    "The capital of France is",
+    "The capital of France is Paris.",
+    "Hello, world! It's a TEST of contractions: I'm, you're, we've, they'll.",
+    "Digits: 0 1 2 3 45 678 90 12345678901234567890",
+    "Punctuation ... !!! ??? --- ; : , . ( ) [ ] { } @ # $ % ^ & * _ ~ `",
+    "MixedCase Word CAPS ALLCAPS and 42numbers glued99",
+    "trailing space ",
+    "",
+    "\n",
+    "Whitespace:\ttabs\n\nnewlines\r\nwindows",
+    "Unicode: \u4e2d\u6587\u6d4b\u8bd5\uff0c\u65e5\u672c\u8a9e\u306e\u30c6\u30ad\u30b9\u30c8\u3001\ud55c\uad6d\uc5b4, \u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac, \u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+    "Emoji: \U0001f600 \U0001f389 \U0001f680 \u2764\ufe0f",
+    "Mixed \u4e2d\u6587 and English 123 with \u6570\u5b57 and \u00e9mojis \U0001f3a8 together.",
+    "a",
+    "\u5f88" * 60,
+    "a" * 300,
+    "\x00\x01\x7f control-ish bytes in a string",
+    "caf\u00e9 na\u00efve r\u00e9sum\u00e9",
+]
+
+
+@pytest.mark.skipif(
+    not _TINYLLAMA_Q8_GGUF.is_file() or not (_TINYLLAMA_CHECKPOINT / "tokenizer.json").is_file(),
+    reason=(
+        "needs the TinyLlama Q8_0 GGUF and the TinyLlama HF snapshot with tokenizer.json "
+        "(the transformers-validated oracle path)"
+    ),
+)
+def test_tinyllama_gguf_tokenizer_matches_tokenizer_json_oracle() -> None:
+    """The embedded GGUF tokenizer must reproduce the tokenizer.json path (itself oracle-validated
+    byte-for-byte against transformers in test_tokenizer_llama.py) on every corpus text where the
+    llama.cpp and Metaspace conventions agree -- encode (bare and BOS) and decode."""
+    from algenta.tokenizer import load_tokenizer
+
+    metadata, _, _ = _read_gguf_header(_TINYLLAMA_Q8_GGUF)
+    gguf_tok = Tokenizer.from_gguf_metadata(metadata)
+    oracle = load_tokenizer(_TINYLLAMA_CHECKPOINT)
+    assert gguf_tok.vocab_size == oracle.vocab_size
+    assert gguf_tok.bos_id() == oracle.bos_id() and gguf_tok.eos_id() == oracle.eos_id()
+    for text in _GGUF_TOKENIZER_CORPUS:
+        assert gguf_tok.encode(text) == oracle.encode(text), f"encode mismatch on {text[:40]!r}"
+        bos = gguf_tok.encode(text, add_special_tokens=True)
+        assert bos == oracle.encode(text, add_special_tokens=True), f"BOS mismatch on {text[:40]!r}"
+        assert gguf_tok.decode(bos) == oracle.decode(bos), f"decode mismatch on {text[:40]!r}"
+
+
+@pytest.mark.skipif(not _TINYLLAMA_Q8_GGUF.is_file(), reason="no TinyLlama Q8_0 GGUF")
+def test_tinyllama_gguf_tokenizer_france_prompt_and_corners() -> None:
+    """The acceptance prompt 'The capital of France is' encodes to the known llama ids with BOS,
+    round-trips through decode, and the two documented llama.cpp corner conventions hold: a
+    leading space doubles the marker (no absorption), and a space-prefix lands after a special."""
+    metadata, _, _ = _read_gguf_header(_TINYLLAMA_Q8_GGUF)
+    tok = Tokenizer.from_gguf_metadata(metadata)
+    ids = tok.encode("The capital of France is", add_special_tokens=True)
+    # BOS + the SentencePiece pieces for '▁The ▁capital ▁of ▁France ▁is' -- stable across the
+    # embedded GGUF vocab and the HF tokenizer.json (checked byte-for-byte above).
+    assert ids[0] == tok.bos_id() == 1
+    assert len(ids) == 6
+    # decode renders BOS literally; the generation half (ids after the BOS) round-trips exactly.
+    assert tok.decode(ids[1:]) == "The capital of France is"
+    assert tok.encode(tok.decode(ids[1:]), add_special_tokens=True) == ids  # decode->encode fixed point
+    # llama.cpp no-absorption corner: a leading space is NOT folded into the prepend -- it shows
+    # up as one EXTRA leading piece (the lone '▁' marker), so ' x' is [marker] + encode('x').
+    bare = tok.encode("x", add_special_tokens=False)
+    spaced = tok.encode(" x", add_special_tokens=False)
+    assert spaced[1:] == bare and len(spaced) == len(bare) + 1
+    assert tok.decode([spaced[0]]) == ""  # the extra piece is a lone marker (decodes to a space, stripped)
 
 
 # --- GPU end-to-end (opt-in: worker binary + checkpoints + converted safetensors oracle) -------
@@ -646,6 +1053,83 @@ def test_tinyllama_gguf_decode_matches_cpu_reference(tmp_path: Path) -> None:
     # The model answers the France prompt coherently (" Paris" is token 3900 -- the campaign's
     # TinyLlama oracle first token).
     assert engine_tokens[0] == 3900
+
+
+@pytest.mark.skipif(
+    _gpu_worker_stage6144() is None or not _TINYLLAMA_GGUF.is_file(),
+    reason="needs a STAGE_6144-tier GPU worker and the TinyLlama F16 GGUF",
+)
+def test_tinyllama_gguf_text_prompt_matches_token_id_path(tmp_path: Path) -> None:
+    """The GGUF text-prompt acceptance: decode() with prompt_text on a .gguf file builds the
+    EMBEDDED tokenizer, encodes, and produces the SAME token ids as handing those ids in directly
+    (prompt and generation), with the generation matching the independent fp64 CPU reference from
+    the same GGUF weights and a detokenized generated_text."""
+    worker = _gpu_worker_stage6144()
+    metadata, _, _ = _read_gguf_header(_TINYLLAMA_GGUF)
+    tok = Tokenizer.from_gguf_metadata(metadata)
+    prompt_text = "The capital of France is"
+    prompt_ids = tok.encode(prompt_text, add_special_tokens=True)
+    converted = prepare_model_checkpoint_from_gguf(_TINYLLAMA_GGUF, prompt_ids, out_dir=tmp_path)
+    runtime = _runtime(worker)
+    text_result = decode(
+        runtime,
+        checkpoint_dir=_TINYLLAMA_GGUF,
+        prompt_text=prompt_text,
+        max_new_tokens=8,
+        converted_checkpoint_dir=converted,
+    )
+    ids_result = decode(
+        runtime,
+        checkpoint_dir=_TINYLLAMA_GGUF,
+        prompt_token_ids=list(prompt_ids),
+        max_new_tokens=8,
+        converted_checkpoint_dir=converted,
+    )
+    # Same prompt in, same greedy tokens out -- the text path is exactly the id path plus encode.
+    assert text_result.token_ids == ids_result.token_ids
+    assert text_result.n_prompt == len(prompt_ids)
+    # The text path detokenizes the generation; the id path does not.
+    assert text_result.generated_text is not None
+    assert ids_result.generated_text is None
+    # The engine's greedy tokens match an independent fp64 CPU reference from the SAME weights.
+    reference = _tinyllama_cpu_reference_tokens(_TINYLLAMA_GGUF, prompt_ids, 8)
+    assert text_result.token_ids[len(prompt_ids) :] == reference
+
+
+@pytest.mark.skipif(
+    _gpu_worker_stage6144() is None
+    or not _TINYLLAMA_Q4_0_GGUF.is_file()
+    or not _TINYLLAMA_GGUF.is_file(),
+    reason=(
+        "needs a STAGE_6144-tier GPU worker, the Q4_0 TinyLlama GGUF (scripts/build_gguf_q4_0.py "
+        "builds it from the F16 GGUF), and the F16 GGUF"
+    ),
+)
+def test_tinyllama_q4_0_gguf_decode_matches_cpu_reference_and_is_coherent(tmp_path: Path) -> None:
+    """The Q4_0 inference gate: the engine's greedy tokens from the Q4_0 GGUF weights match an
+    independent fp64 CPU reference computed from those SAME Q4_0 weights (proves the dequant +
+    engine math, independent of the F16 file). The decoded text is coherent -- it legitimately
+    DIFFERS from the F16 output by the quantization tolerance (measured: F16 answers 'Paris...',
+    Q4_0 answers a different-but-sensible France fact), so the gate is the same-source CPU
+    reference, not byte-identity with F16."""
+    worker = _gpu_worker_stage6144()
+    metadata, _, _ = _read_gguf_header(_TINYLLAMA_Q4_0_GGUF)
+    tok = Tokenizer.from_gguf_metadata(metadata)
+    prompt_ids = tok.encode("The capital of France is", add_special_tokens=True)
+    converted = prepare_model_checkpoint_from_gguf(_TINYLLAMA_Q4_0_GGUF, prompt_ids, out_dir=tmp_path)
+    result = decode(
+        _runtime(worker),
+        checkpoint_dir=_TINYLLAMA_Q4_0_GGUF,
+        prompt_token_ids=list(prompt_ids),
+        max_new_tokens=8,
+        converted_checkpoint_dir=converted,
+    )
+    engine_tokens = result.token_ids[len(prompt_ids) :]
+    reference = _tinyllama_cpu_reference_tokens(_TINYLLAMA_Q4_0_GGUF, prompt_ids, 8)
+    assert engine_tokens == reference
+    # The generation decodes to clean, coherent text (no replacement chars / empty output).
+    text = tok.decode(engine_tokens)
+    assert text.strip() and "\ufffd" not in text
 
 
 @pytest.mark.skipif(_gpu_worker() is None, reason="no GPU worker binary built")

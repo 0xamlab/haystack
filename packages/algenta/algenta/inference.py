@@ -63,12 +63,16 @@ GGUF model files, the llama.cpp interchange format
 --------------------------------------------------
 `prepare_model_checkpoint_from_gguf()` is the SAME converter with a GGUF front door: a dependency-
 free, byte-level GGUF container reader (struct parsing, the same style as the safetensors reader)
-that reads the metadata hyperparameters and the tensor table, widens F16/F32/Q8_0 tensors to the
-same Float64 weight stream, maps the llama.cpp tensor names (`blk.N.attn_q.weight`, `token_embd.
-weight`, ...) onto the HF names the manifest contract uses, and writes the IDENTICAL
+that reads the metadata hyperparameters and the tensor table, widens F16/F32 tensors and
+dequantizes Q8_0 / Q4_0 / Q5_0 and the Q4_K / Q5_K / Q6_K K-quants (ggml's exact block formulas)
+to the same Float64 weight stream, maps the llama.cpp tensor names (`blk.N.attn_q.weight`,
+`token_embd.weight`, ...) onto the HF names the manifest contract uses, and writes the IDENTICAL
 `manifest.json` + `weights.blob` pair -- so everything past conversion is the untouched production
-path. `decode()` accepts a `.gguf` file directly as `checkpoint_dir` (token-id prompts; a GGUF
-carries no `tokenizer.json`, so text prompts stay a HuggingFace-directory feature).
+path. `decode()` accepts a `.gguf` file directly as `checkpoint_dir`, with `prompt_token_ids` OR
+`prompt_text` -- a GGUF EMBEDS its tokenizer in its metadata, and `algenta.tokenizer` builds it
+from those tables (the llama SentencePiece BPE, llama.cpp's exact conventions). `messages` works
+the same way when the GGUF embeds one of the chat-template revisions `algenta.chat_template`
+implements.
 """
 
 from __future__ import annotations
@@ -77,6 +81,7 @@ import json
 import struct
 import tempfile
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -546,10 +551,32 @@ _GGUF_DEFAULT_ALIGNMENT = 32
 
 # ggml tensor data types this converter reads. F16 + F32 cover the common `--outtype f16` export
 # (weight matrices F16, norm vectors F32); Q8_0 (per-32-element-block f16 scale + 32 int8) covers
-# the most common quantized export. Anything else is refused by name with its type id.
+# the most common quantized export. Q4_0/Q5_0 (32-element blocks) and the Q4_K/Q5_K/Q6_K
+# "K-quant" super-blocks (256 elements) cover llama.cpp's common quantized formats; each
+# dequantizes verbatim from ggml's own block layouts (see the _gguf_dequant_* helpers). Anything
+# else is refused by name with its type id.
 _GGML_TYPE_F32 = 0
 _GGML_TYPE_F16 = 1
+_GGML_TYPE_Q4_0 = 2
+_GGML_TYPE_Q5_0 = 6
 _GGML_TYPE_Q8_0 = 8
+_GGML_TYPE_Q4_K = 12
+_GGML_TYPE_Q5_K = 13
+_GGML_TYPE_Q6_K = 14
+
+# Per-block byte sizes and element counts for the quantized types (ggml's exact block structs,
+# little-endian, no padding: Q4_0 {f16 d, u8 qs[16]}, Q5_0 {f16 d, u32 qh, u8 qs[16]},
+# Q8_0 {f16 d, i8 qs[32]}, Q4_K {f16 d, f16 dmin, u8 scales[12], u8 qs[128]},
+# Q5_K {f16 d, f16 dmin, u8 scales[12], u8 qh[32], u8 qs[128]},
+# Q6_K {u8 ql[128], u8 qh[64], i8 scales[16], f16 d}).
+_GGUF_QUANT_BLOCK_SPECS = {
+    _GGML_TYPE_Q4_0: (32, 18),
+    _GGML_TYPE_Q5_0: (32, 22),
+    _GGML_TYPE_Q8_0: (32, 34),
+    _GGML_TYPE_Q4_K: (256, 144),
+    _GGML_TYPE_Q5_K: (256, 176),
+    _GGML_TYPE_Q6_K: (256, 210),
+}
 
 # GGUF tensor names (llama.cpp convention) -> the HF names the manifest contract uses.
 _GGUF_GLOBAL_TENSOR_NAMES = {
@@ -684,13 +711,165 @@ def _gguf_map_tensor_name(name: str) -> str | None:
     return None
 
 
+def _gguf_dequant_q8_0(np: Any, raw: bytes) -> Any:
+    """Q8_0: per 32-element block `scale * int8` (f16 scale)."""
+    blocks = np.frombuffer(raw, dtype=np.dtype([("d", "<f2"), ("qs", "i1", (32,))]))
+    return (
+        blocks["qs"].astype(np.float64) * blocks["d"].astype(np.float64)[:, None]
+    ).reshape(-1)
+
+
+def _gguf_dequant_q4_0(np: Any, raw: bytes) -> Any:
+    """Q4_0 (ggml's dequantize_row_q4_0 verbatim): per 32-element block an f16 scale `d` and 16
+    nibble bytes; element j is the LOW nibble of byte j, element j+16 the HIGH nibble, each
+    `(nibble - 8) * d`."""
+    blocks = np.frombuffer(raw, dtype=np.dtype([("d", "<f2"), ("qs", "u1", (16,))]))
+    d = blocks["d"].astype(np.float64)[:, None]
+    qs = blocks["qs"]
+    out = np.empty((qs.shape[0], 32), dtype=np.float64)
+    out[:, :16] = ((qs & np.uint8(0x0F)).astype(np.float64) - 8.0) * d
+    out[:, 16:] = ((qs >> np.uint8(4)).astype(np.float64) - 8.0) * d
+    return out.reshape(-1)
+
+
+def _gguf_dequant_q5_0(np: Any, raw: bytes) -> Any:
+    """Q5_0 (ggml's dequantize_row_q5_0 verbatim): per 32-element block an f16 scale `d`, a u32
+    `qh` holding each element's 5th bit, and 16 nibble bytes; element j is the LOW nibble of byte
+    j ORed with bit j of qh, element j+16 the HIGH nibble ORed with bit j+16, each
+    `(value - 16) * d`."""
+    blocks = np.frombuffer(raw, dtype=np.dtype([("d", "<f2"), ("qh", "<u4"), ("qs", "u1", (16,))]))
+    d = blocks["d"].astype(np.float64)[:, None]
+    qs = blocks["qs"]
+    qh = blocks["qh"][:, None]
+    j = np.arange(16, dtype=np.uint32)[None, :]
+    high_lo = ((qh >> j) & np.uint32(1)) << np.uint32(4)  # bit j -> element j's 5th bit
+    high_hi = ((qh >> (j + 16)) & np.uint32(1)) << np.uint32(4)  # bit j+16 -> element j+16
+    out = np.empty((qs.shape[0], 32), dtype=np.float64)
+    out[:, :16] = (((qs & np.uint8(0x0F)) | high_lo.astype(np.uint8)).astype(np.float64) - 16.0) * d
+    out[:, 16:] = (((qs >> np.uint8(4)) | high_hi.astype(np.uint8)).astype(np.float64) - 16.0) * d
+    return out.reshape(-1)
+
+
+def _gguf_k4_scales_mins(np: Any, scales: Any) -> tuple[Any, Any]:
+    """The Q4_K/Q5_K shared 6-bit scale/min unpacking (ggml's get_scale_min_k4 verbatim), for all
+    8 sub-blocks of every super-block: sub-blocks 0..3 read scales[j] & 63 / scales[j+4] & 63;
+    4..7 split scales[j+4]'s nibbles with scales[j-4]/scales[j]'s top two bits as the high bits.
+    Returns (sc, m), each (n_blocks, 8) float64."""
+    sc = np.empty((scales.shape[0], 8), dtype=np.float64)
+    m = np.empty((scales.shape[0], 8), dtype=np.float64)
+    sc[:, :4] = scales[:, :4] & np.uint8(63)
+    m[:, :4] = scales[:, 4:8] & np.uint8(63)
+    sc[:, 4:] = (scales[:, 8:12] & np.uint8(0x0F)) | ((scales[:, 0:4] >> np.uint8(6)) << np.uint8(4))
+    m[:, 4:] = (scales[:, 8:12] >> np.uint8(4)) | ((scales[:, 4:8] >> np.uint8(6)) << np.uint8(4))
+    return sc, m
+
+
+def _gguf_dequant_q4_k(np: Any, raw: bytes) -> Any:
+    """Q4_K (ggml's dequantize_row_q4_K verbatim): per 256-element super-block f16 `d`/`dmin`, 12
+    scale/min bytes (6-bit packed, `_gguf_k4_scales_mins`), and 128 nibble bytes. The bytes are
+    read in four 64-element groups; in group g, byte l's LOW nibble is element 64g+l (sub-block
+    2g) and its HIGH nibble element 64g+32+l (sub-block 2g+1), each `d*sc*q - dmin*m`."""
+    blocks = np.frombuffer(
+        raw, dtype=np.dtype([("d", "<f2"), ("dmin", "<f2"), ("scales", "u1", (12,)), ("qs", "u1", (128,))])
+    )
+    d = blocks["d"].astype(np.float64)[:, None]  # (n_blocks, 1)
+    dmin = blocks["dmin"].astype(np.float64)[:, None]
+    sc, m = _gguf_k4_scales_mins(np, blocks["scales"])
+    qs = blocks["qs"].reshape(-1, 4, 32)
+    d1 = (d * sc[:, 0::2])[:, :, None]  # (n_blocks, 4, 1) -- sub-blocks 0,2,4,6
+    m1 = (dmin * m[:, 0::2])[:, :, None]
+    d2 = (d * sc[:, 1::2])[:, :, None]  # sub-blocks 1,3,5,7
+    m2 = (dmin * m[:, 1::2])[:, :, None]
+    out = np.empty((qs.shape[0], 4, 64), dtype=np.float64)
+    out[:, :, :32] = (qs & np.uint8(0x0F)).astype(np.float64) * d1 - m1
+    out[:, :, 32:] = (qs >> np.uint8(4)).astype(np.float64) * d2 - m2
+    return out.reshape(-1)
+
+
+def _gguf_dequant_q5_k(np: Any, raw: bytes) -> Any:
+    """Q5_K (ggml's dequantize_row_q5_K verbatim): Q4_K's layout plus 32 `qh` bytes carrying each
+    element's 5th bit -- element 64g+l takes bit 2g of qh[l], element 64g+32+l bit 2g+1 -- and the
+    5-bit value is `low4 + 16*bit` (NO minus-16; the per-sub-block min carries the offset)."""
+    blocks = np.frombuffer(
+        raw,
+        dtype=np.dtype(
+            [("d", "<f2"), ("dmin", "<f2"), ("scales", "u1", (12,)), ("qh", "u1", (32,)), ("qs", "u1", (128,))]
+        ),
+    )
+    d = blocks["d"].astype(np.float64)[:, None]  # (n_blocks, 1)
+    dmin = blocks["dmin"].astype(np.float64)[:, None]
+    sc, m = _gguf_k4_scales_mins(np, blocks["scales"])
+    ql = blocks["qs"].reshape(-1, 4, 32)
+    qh = blocks["qh"]  # (n_blocks, 32) -- indexed qh[l] for every group g
+    d1 = (d * sc[:, 0::2])[:, :, None]
+    m1 = (dmin * m[:, 0::2])[:, :, None]
+    d2 = (d * sc[:, 1::2])[:, :, None]
+    m2 = (dmin * m[:, 1::2])[:, :, None]
+    groups = np.arange(4, dtype=np.uint8)
+    u1 = np.uint8(1) << (2 * groups)  # per group g: bit 2g
+    u2 = np.uint8(2) << (2 * groups)  # bit 2g+1
+    high_lo = ((qh[:, None, :] & u1[None, :, None]) != np.uint8(0)).astype(np.float64) * 16.0
+    high_hi = ((qh[:, None, :] & u2[None, :, None]) != np.uint8(0)).astype(np.float64) * 16.0
+    out = np.empty((ql.shape[0], 4, 64), dtype=np.float64)
+    out[:, :, :32] = ((ql & np.uint8(0x0F)).astype(np.float64) + high_lo) * d1 - m1
+    out[:, :, 32:] = ((ql >> np.uint8(4)).astype(np.float64) + high_hi) * d2 - m2
+    return out.reshape(-1)
+
+
+def _gguf_dequant_q6_k(np: Any, raw: bytes) -> Any:
+    """Q6_K (ggml's dequantize_row_q6_K verbatim): per 256-element super-block 128 `ql` bytes
+    (low nibbles), 64 `qh` bytes (2 high bits each), 16 int8 sub-block scales (one per 16
+    elements), and an f16 `d`. In each 128-element half, for l in 0..31 (is = l//16):
+    element l     = d*sc[is]  * (ql[l]&0xF    | (qh[l]&0x3)<<4    - 32)
+    element l+32  = d*sc[is+2]* (ql[l+32]&0xF | (qh[l]>>2&0x3)<<4 - 32)
+    element l+64  = d*sc[is+4]* (ql[l]>>4     | (qh[l]>>4&0x3)<<4 - 32)
+    element l+96  = d*sc[is+6]* (ql[l+32]>>4  | (qh[l]>>6&0x3)<<4 - 32)"""
+    blocks = np.frombuffer(
+        raw, dtype=np.dtype([("ql", "u1", (128,)), ("qh", "u1", (64,)), ("scales", "i1", (16,)), ("d", "<f2")])
+    )
+    d = blocks["d"].astype(np.float64)[:, None, None]  # (n_blocks, 1, 1)
+    n_blocks = blocks.shape[0]
+    ql = blocks["ql"].reshape(n_blocks, 2, 2, 32)  # (block, half, low/high row, l)
+    qh = blocks["qh"].reshape(n_blocks, 2, 32)
+    scales = blocks["scales"].astype(np.float64).reshape(n_blocks, 2, 8)
+    ql_lo = ql[:, :, 0, :]  # ql[l]
+    ql_hi = ql[:, :, 1, :]  # ql[l+32]
+    q1 = (ql_lo & np.uint8(0x0F)) | ((qh & np.uint8(0x03)) << np.uint8(4))
+    q2 = (ql_hi & np.uint8(0x0F)) | (((qh >> np.uint8(2)) & np.uint8(0x03)) << np.uint8(4))
+    q3 = (ql_lo >> np.uint8(4)) | (((qh >> np.uint8(4)) & np.uint8(0x03)) << np.uint8(4))
+    q4 = (ql_hi >> np.uint8(4)) | (((qh >> np.uint8(6)) & np.uint8(0x03)) << np.uint8(4))
+    l_idx = np.arange(32)
+    is_idx = l_idx // 16  # 0 for l<16, 1 otherwise
+    sc1 = scales[:, :, is_idx]          # sc[is]
+    sc2 = scales[:, :, is_idx + 2]      # sc[is+2]
+    sc3 = scales[:, :, is_idx + 4]      # sc[is+4]
+    sc4 = scales[:, :, is_idx + 6]      # sc[is+6]
+    out = np.empty((n_blocks, 2, 4, 32), dtype=np.float64)
+    out[:, :, 0, :] = d * sc1 * (q1.astype(np.float64) - 32.0)
+    out[:, :, 1, :] = d * sc2 * (q2.astype(np.float64) - 32.0)
+    out[:, :, 2, :] = d * sc3 * (q3.astype(np.float64) - 32.0)
+    out[:, :, 3, :] = d * sc4 * (q4.astype(np.float64) - 32.0)
+    return out.reshape(-1)
+
+
+_GGUF_DEQUANTIZERS = {
+    _GGML_TYPE_Q8_0: _gguf_dequant_q8_0,
+    _GGML_TYPE_Q4_0: _gguf_dequant_q4_0,
+    _GGML_TYPE_Q5_0: _gguf_dequant_q5_0,
+    _GGML_TYPE_Q4_K: _gguf_dequant_q4_k,
+    _GGML_TYPE_Q5_K: _gguf_dequant_q5_k,
+    _GGML_TYPE_Q6_K: _gguf_dequant_q6_k,
+}
+
+
 def _gguf_read_tensor_values(
     path: Path, info: dict[str, Any], data_start: int
 ) -> tuple[Any, list[int]]:
     """One GGUF tensor's raw bytes widened to a flat Float64 numpy array. Returns
     `(values, shape)` with `shape` in HuggingFace row-major order (the GGUF dims reversed).
-    F16/F32 widen exactly; Q8_0 dequantizes as `scale * int8` per 32-element block (the f16 scale
-    widens exactly too, so the only rounding is the int8 quantization the file already carries)."""
+    F16/F32 widen exactly; the quantized types dequantize block-by-block (ggml's exact formulas,
+    the f16 scales widening exactly -- the only rounding is the quantization the file already
+    carries)."""
     import numpy as np
 
     dims = info["dims"]
@@ -702,20 +881,21 @@ def _gguf_read_tensor_values(
         n_bytes = 2 * n_elements
     elif ggml_type == _GGML_TYPE_F32:
         n_bytes = 4 * n_elements
-    elif ggml_type == _GGML_TYPE_Q8_0:
-        if n_elements % 32 != 0:
+    elif ggml_type in _GGUF_QUANT_BLOCK_SPECS:
+        block_elements, block_bytes = _GGUF_QUANT_BLOCK_SPECS[ggml_type]
+        if n_elements % block_elements != 0:
             raise InferenceError(
                 "unsupported_gguf",
-                f"tensor {info['name']!r} is Q8_0 with {n_elements} elements; Q8_0 blocks cover "
-                "exactly 32 elements each.",
+                f"tensor {info['name']!r} is ggml type {ggml_type} with {n_elements} elements; "
+                f"its blocks cover exactly {block_elements} elements each.",
             )
-        n_bytes = (n_elements // 32) * 34  # f16 scale + 32 int8 per block
+        n_bytes = (n_elements // block_elements) * block_bytes
     else:
         raise InferenceError(
             "unsupported_gguf",
-            f"tensor {info['name']!r} is ggml type {ggml_type}; this converter reads F32, F16 and "
-            "Q8_0 tensors. Re-export the GGUF with one of those (llama.cpp's "
-            "convert_hf_to_gguf.py --outtype f16 is the common choice).",
+            f"tensor {info['name']!r} is ggml type {ggml_type}; this converter reads F32, F16, "
+            "Q8_0, Q4_0, Q5_0 and the Q4_K/Q5_K/Q6_K K-quants. Re-export the GGUF with one of "
+            "those (llama.cpp's convert_hf_to_gguf.py --outtype f16 is the common choice).",
         )
     with path.open("rb") as handle:
         handle.seek(data_start + info["offset"])
@@ -728,12 +908,8 @@ def _gguf_read_tensor_values(
         values = np.frombuffer(raw, dtype="<f2").astype(np.float64)
     elif ggml_type == _GGML_TYPE_F32:
         values = np.frombuffer(raw, dtype="<f4").astype(np.float64)
-    else:  # Q8_0
-        block_dtype = np.dtype([("scale", "<f2"), ("qs", "i1", (32,))])
-        blocks = np.frombuffer(raw, dtype=block_dtype)
-        values = (
-            blocks["qs"].astype(np.float64) * blocks["scale"].astype(np.float64)[:, None]
-        ).reshape(-1)
+    else:
+        values = _GGUF_DEQUANTIZERS[ggml_type](np, raw)
     return values, list(reversed(dims))
 
 
@@ -984,6 +1160,33 @@ def _gguf_checkpoint_file(checkpoint_dir: str | Path) -> Path | None:
     return path if path.is_file() else None
 
 
+@lru_cache(maxsize=8)
+def _gguf_tokenizer(gguf_path_str: str, mtime_ns: int, size: int) -> Any:
+    """The tokenizer EMBEDDED in a GGUF file's metadata (tokenizer.ggml.*), cached per file
+    identity (path + mtime + size -- the same staleness contract as the conversion cache: an
+    in-place re-export of the file is picked up, a byte-identical overwrite is not). Raises
+    `InferenceError("unsupported_gguf")` when the file embeds no tokenizer this module
+    implements. The mtime/size arguments are cache keys only; the path is re-read on a miss."""
+    from algenta.tokenizer import Tokenizer, TokenizerFormatError
+
+    del mtime_ns, size  # cache-key only
+    gguf_path = Path(gguf_path_str)
+    metadata, _, _ = _read_gguf_header(gguf_path)
+    try:
+        return Tokenizer.from_gguf_metadata(metadata)
+    except TokenizerFormatError as exc:
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{gguf_path} embeds no usable tokenizer for text prompts: {exc}",
+        ) from exc
+
+
+def _load_gguf_tokenizer(gguf_file: Path) -> Any:
+    """`_gguf_tokenizer` keyed by the file's current identity."""
+    stat = gguf_file.stat()
+    return _gguf_tokenizer(str(gguf_file), stat.st_mtime_ns, stat.st_size)
+
+
 def prepare_model_checkpoint(
     checkpoint_dir: str | Path,
     prompt_token_ids: list[int],
@@ -1106,8 +1309,9 @@ def decode(
 
     `checkpoint_dir` is a HuggingFace checkpoint snapshot directory -- OR a single GGUF model
     file (the llama.cpp interchange format, converted by `prepare_model_checkpoint_from_gguf`).
-    A GGUF checkpoint accepts `prompt_token_ids` only (it carries no tokenizer.json for text or
-    chat prompts).
+    A GGUF checkpoint accepts `prompt_token_ids` and `prompt_text` (its tokenizer is EMBEDDED in
+    the file's metadata and built by `algenta.tokenizer.from_gguf_metadata`), and `messages`
+    when it embeds one of the chat-template revisions `algenta.chat_template` implements.
 
     Pass EXACTLY ONE of:
     * `messages` -- a list of OpenAI-style chat dicts, formatted with the checkpoint's OWN chat
@@ -1150,15 +1354,10 @@ def decode(
         )
     # The GGUF front door (beat-llama.cpp campaign, model coverage): an EXISTING FILE as the
     # checkpoint is a GGUF model file, decoded through the same conversion+engine path. A GGUF
-    # carries no tokenizer.json, so text/chat prompts stay a HuggingFace-directory feature.
+    # EMBEDS its tokenizer in its metadata, so text prompts work directly (llama.cpp's exact
+    # SentencePiece conventions, algenta.tokenizer.from_gguf_metadata); chat prompts work when
+    # the file embeds one of the template revisions algenta.chat_template implements.
     gguf_file = _gguf_checkpoint_file(checkpoint_dir)
-    if gguf_file is not None and (prompt_text is not None or messages is not None):
-        raise InferenceError(
-            "invalid_arguments",
-            f"{gguf_file} is a GGUF model file; GGUF checkpoints decode from prompt_token_ids "
-            "only (a GGUF carries no tokenizer.json for text prompts -- point prompt_text/"
-            "messages at the matching HuggingFace checkpoint directory instead).",
-        )
     tokenizer = None
     if messages is not None:
         if not isinstance(messages, list) or not messages:
@@ -1166,16 +1365,35 @@ def decode(
                 "invalid_arguments",
                 f"messages must be a non-empty list of message dicts, got {messages!r}",
             )
-        from algenta.chat_template import ChatTemplateError, apply_chat_template
+        from algenta.chat_template import (
+            ChatTemplateError,
+            apply_chat_template,
+            is_qwen3_chat_template,
+            render_qwen3_chat_template,
+        )
         from algenta.tokenizer import load_tokenizer
 
-        try:
-            prompt_text = apply_chat_template(checkpoint_dir, messages)
-        except ChatTemplateError as exc:
-            raise InferenceError("unsupported_chat_template", str(exc)) from exc
-        tokenizer = load_tokenizer(checkpoint_dir)
+        if gguf_file is not None:
+            metadata, _, _ = _read_gguf_header(gguf_file)
+            template = metadata.get("tokenizer.chat_template")
+            if not isinstance(template, str) or not is_qwen3_chat_template(template):
+                raise InferenceError(
+                    "unsupported_chat_template",
+                    f"{gguf_file} embeds no chat_template this module implements (only the "
+                    "Qwen3 template revisions are implemented); pass prompt_text or "
+                    "prompt_token_ids instead.",
+                )
+            prompt_text = render_qwen3_chat_template(messages, add_generation_prompt=True)
+            tokenizer = _load_gguf_tokenizer(gguf_file)
+        else:
+            try:
+                prompt_text = apply_chat_template(checkpoint_dir, messages)
+            except ChatTemplateError as exc:
+                raise InferenceError("unsupported_chat_template", str(exc)) from exc
+            tokenizer = load_tokenizer(checkpoint_dir)
         # add_special_tokens=True is the transformers default-encode convention: a no-op on
-        # Qwen3 prompts, and the BOS prepend a llama-family prompt expects.
+        # Qwen3 prompts, and the BOS prepend a llama-family prompt expects (a GGUF honors its
+        # own tokenizer.ggml.add_bos flag).
         prompt_token_ids = tokenizer.encode(prompt_text, add_special_tokens=True)
     elif prompt_text is not None:
         if not isinstance(prompt_text, str) or not prompt_text:
@@ -1184,9 +1402,13 @@ def decode(
             )
         from algenta.tokenizer import load_tokenizer
 
-        tokenizer = load_tokenizer(checkpoint_dir)
+        if gguf_file is not None:
+            tokenizer = _load_gguf_tokenizer(gguf_file)
+        else:
+            tokenizer = load_tokenizer(checkpoint_dir)
         # add_special_tokens=True is the transformers default-encode convention: a no-op on
-        # Qwen3 prompts, and the BOS prepend a llama-family prompt expects.
+        # Qwen3 prompts, and the BOS prepend a llama-family prompt expects (a GGUF honors its
+        # own tokenizer.ggml.add_bos flag).
         prompt_token_ids = tokenizer.encode(prompt_text, add_special_tokens=True)
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
         raise InferenceError(
