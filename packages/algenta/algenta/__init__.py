@@ -643,6 +643,10 @@ _LAZY_EXPORTS = {
     "InferenceResult": ("algenta.inference", "InferenceResult"),
     "UnsupportedArchitectureError": ("algenta.inference", "UnsupportedArchitectureError"),
     "prepare_model_checkpoint": ("algenta.inference", "prepare_model_checkpoint"),
+    "prepare_model_checkpoint_from_gguf": (
+        "algenta.inference",
+        "prepare_model_checkpoint_from_gguf",
+    ),
     "decode": ("algenta.inference", "decode"),
     # ── Qwen3-family tokenizer: the checkpoint's own tokenizer.json, implemented here (parity
     # gap 1). Lazy like the rest: no file read until load_tokenizer() is actually called.

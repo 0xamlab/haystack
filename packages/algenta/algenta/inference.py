@@ -55,6 +55,17 @@ checkpoint's own `config.json` for the shape, handles single- or multi-shard saf
 transposes the GEMM weights the kernels expect, and writes the same flat format the production
 session reads). `decode()` calls it for you; call it directly to convert once and reuse the result
 across many decode calls.
+
+GGUF model files, the llama.cpp interchange format
+--------------------------------------------------
+`prepare_model_checkpoint_from_gguf()` is the SAME converter with a GGUF front door: a dependency-
+free, byte-level GGUF container reader (struct parsing, the same style as the safetensors reader)
+that reads the metadata hyperparameters and the tensor table, widens F16/F32/Q8_0 tensors to the
+same Float64 weight stream, maps the llama.cpp tensor names (`blk.N.attn_q.weight`, `token_embd.
+weight`, ...) onto the HF names the manifest contract uses, and writes the IDENTICAL
+`manifest.json` + `weights.blob` pair -- so everything past conversion is the untouched production
+path. `decode()` accepts a `.gguf` file directly as `checkpoint_dir` (token-id prompts; a GGUF
+carries no `tokenizer.json`, so text prompts stay a HuggingFace-directory feature).
 """
 
 from __future__ import annotations
@@ -72,6 +83,7 @@ __all__ = [
     "BatchedInferenceResult",
     "UnsupportedArchitectureError",
     "prepare_model_checkpoint",
+    "prepare_model_checkpoint_from_gguf",
     "decode",
     "decode_batched",
 ]
@@ -163,12 +175,16 @@ def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def _validate_architecture(checkpoint_dir: Path, config: dict[str, Any]) -> None:
-    """Validate the structural invariants the kernels rely on, from config.json alone."""
+def _validate_architecture(
+    checkpoint_dir: Path, config: dict[str, Any], *, config_source: str = "config.json"
+) -> None:
+    """Validate the structural invariants the kernels rely on, from the checkpoint's own shape
+    declaration alone (`config_source` names where that declaration came from -- config.json for a
+    HuggingFace snapshot, GGUF metadata for a .gguf file -- so refusals point at the right file)."""
     missing = [key for key in _STRUCTURAL_FIELDS if key not in config]
     if missing:
         raise UnsupportedArchitectureError(
-            f"unsupported model architecture: {checkpoint_dir} config.json is missing required "
+            f"unsupported model architecture: {checkpoint_dir} {config_source} is missing required "
             f"fields: {', '.join(missing)}. This module runs models with a Qwen3-style decoder "
             "config (hidden_size, num_hidden_layers, num_attention_heads, num_key_value_heads, "
             "head_dim, intermediate_size, vocab_size, rope_theta, rms_norm_eps)."
@@ -285,41 +301,8 @@ def _detect_has_qk_norm(checkpoint_dir: Path, index: dict[str, Any] | None) -> b
     return _QK_NORM_PROBE_TENSOR in header
 
 
-def prepare_model_checkpoint(
-    checkpoint_dir: str | Path,
-    prompt_token_ids: list[int],
-    *,
-    out_dir: str | Path | None = None,
-) -> Path:
-    """Validate `checkpoint_dir`'s architecture, then convert it into the `manifest.json` +
-    `weights.blob` pair the model-agnostic kernel entry point reads. Handles any supported-family
-    model, single- or multi-shard.
-
-    `checkpoint_dir` is a local HuggingFace snapshot directory (`config.json` + one or more
-    `model*.safetensors`). Raises `UnsupportedArchitectureError` for an unsupported architecture and
-    `InferenceError("checkpoint_not_found", ...)` for missing files. Returns the directory the
-    manifest + blob were written to.
-    """
-    try:
-        import numpy as np  # noqa: F401
-    except ImportError as exc:
-        raise InferenceError(
-            "numpy_required",
-            "prepare_model_checkpoint() needs numpy to convert checkpoint weights; install it with "
-            "`pip install numpy`.",
-        ) from exc
-
-    checkpoint_dir = Path(checkpoint_dir)
-    config_path = checkpoint_dir / "config.json"
-    if not config_path.is_file():
-        raise InferenceError(
-            "checkpoint_not_found",
-            f"{checkpoint_dir} does not look like a HuggingFace checkpoint snapshot: "
-            f"{config_path.name} is missing.",
-        )
-    config = _normalize_config(json.loads(config_path.read_text(encoding="utf-8")))
-    _validate_architecture(checkpoint_dir, config)
-
+def _validate_prompt_token_ids(prompt_token_ids: Any) -> None:
+    """The prompt-id contract every converter shares: a non-empty list of non-negative ints."""
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
         raise InferenceError(
             "invalid_arguments", "prompt_token_ids must be a non-empty list of token ids"
@@ -330,13 +313,12 @@ def prepare_model_checkpoint(
                 "invalid_arguments", f"prompt_token_ids must be non-negative ints, got {token_id!r}"
             )
 
-    # Load the shard index if present (multi-shard checkpoints).
-    index_path = checkpoint_dir / "model.safetensors.index.json"
-    index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.is_file() else None
 
-    n_layers = config["num_hidden_layers"]
-    tied_embeddings = config.get("tie_word_embeddings", True) is True
-    has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
+def _required_hf_tensor_names(
+    n_layers: int, tied_embeddings: bool, has_qk_norm: bool
+) -> list[str]:
+    """The HF tensor names a supported-family checkpoint must deliver to the manifest, in the same
+    convention both converters (safetensors and GGUF) agree on."""
     required = ["model.embed_tokens.weight", "model.norm.weight"]
     if not tied_embeddings:
         # Untied llama-family checkpoints carry their OWN output projection; the engine binds it
@@ -363,43 +345,32 @@ def prepare_model_checkpoint(
             "mlp.down_proj.weight",
         ]
         required += [prefix + suffix for suffix in suffixes]
+    return required
 
-    resolved_out_dir = (
-        Path(out_dir) if out_dir is not None else Path(tempfile.mkdtemp(prefix="algenta-model-ckpt-"))
-    )
-    resolved_out_dir.mkdir(parents=True, exist_ok=True)
+
+def _write_converted_checkpoint(
+    resolved_out_dir: Path,
+    *,
+    entries: list[tuple[str, Any, list[int], bool]],
+    config: dict[str, Any],
+    prompt_token_ids: list[int],
+    has_qk_norm: bool,
+    tied_embeddings: bool,
+) -> Path:
+    """The shared converter tail: concatenate the per-tensor Float64 values (already widened and,
+    where the kernels want it, pre-transposed) into `weights.blob`, and write the `manifest.json`
+    the production session reads. Both `prepare_model_checkpoint()` (safetensors) and
+    `prepare_model_checkpoint_from_gguf()` (GGUF) end here, so the pair they produce is the SAME
+    format, written by the SAME code. `entries` is (hf_name, flat f64 values, shape, transposed)."""
+    import numpy as np
 
     blob_chunks = []
     manifest_tensors: dict[str, Any] = {}
     cursor = 0
-    for name in sorted(required):
-        shard_path = _resolve_shard_for_tensor(checkpoint_dir, name, index)
-        header, data_start = _read_safetensors_header(shard_path)
-        info = header.get(name)
-        if info is None:
-            raise InferenceError(
-                "checkpoint_not_found", f"tensor {name!r} not found in {shard_path}."
-            )
-        if info.get("dtype") != "BF16":
-            raise InferenceError(
-                "checkpoint_not_found",
-                f"{name} in {shard_path} is {info.get('dtype')}, expected BF16 -- this converter "
-                "handles BF16 checkpoints.",
-            )
-        shape = list(info["shape"])
-        start, end = info["data_offsets"]
-        with shard_path.open("rb") as handle:
-            handle.seek(data_start + start)
-            raw = handle.read(end - start)
-        values = _bf16_bytes_to_f64(raw)
+    for name, values, shape, transposed in entries:
         n_elements = 1
         for dim in shape:
             n_elements *= dim
-        transposed = False
-        if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
-            values = values.reshape(shape).T.copy().reshape(-1)
-            shape = [shape[1], shape[0]]
-            transposed = True
         blob_chunks.append(values)
         manifest_tensors[name] = {
             "offset": cursor,
@@ -408,8 +379,6 @@ def prepare_model_checkpoint(
             "transposed": transposed,
         }
         cursor += n_elements
-
-    import numpy as np
 
     blob = np.concatenate(blob_chunks)
     (resolved_out_dir / "weights.blob").write_bytes(blob.astype("<f8").tobytes())
@@ -448,6 +417,500 @@ def prepare_model_checkpoint(
     return resolved_out_dir
 
 
+# --- GGUF loading (beat-llama.cpp campaign, model-coverage front: llama.cpp users have .gguf
+# model files; this is the door that runs them on the same engine) ------------------------------
+#
+# A dependency-free, byte-level GGUF container reader, the same style as the safetensors reader
+# above: struct parsing only, no external dependency. GGUF layout (versions 2 and 3): 4-byte magic
+# `GGUF`, u32 version, u64 tensor count, u64 metadata-kv count, then that many metadata kv pairs
+# (string key, u32 type tag, typed value), then the tensor-info table (string name, u32 n_dims,
+# u64 dims[n_dims], u32 ggml dtype, u64 offset), then padding up to the alignment (default 32,
+# `general.alignment` metadata overrides), then the raw tensor bytes -- each tensor's data at
+# `data_start + offset`. GGUF records a matrix's dims in REVERSE of HuggingFace row-major order
+# (ggml's contiguous dim first: [in, out]), so the HF shape is the dims list reversed.
+
+_GGUF_MAGIC = b"GGUF"
+_GGUF_DEFAULT_ALIGNMENT = 32
+
+# ggml tensor data types this converter reads. F16 + F32 cover the common `--outtype f16` export
+# (weight matrices F16, norm vectors F32); Q8_0 (per-32-element-block f16 scale + 32 int8) covers
+# the most common quantized export. Anything else is refused by name with its type id.
+_GGML_TYPE_F32 = 0
+_GGML_TYPE_F16 = 1
+_GGML_TYPE_Q8_0 = 8
+
+# GGUF tensor names (llama.cpp convention) -> the HF names the manifest contract uses.
+_GGUF_GLOBAL_TENSOR_NAMES = {
+    "token_embd.weight": "model.embed_tokens.weight",
+    "output_norm.weight": "model.norm.weight",
+    "output.weight": "lm_head.weight",
+}
+_GGUF_LAYER_TENSOR_NAMES = {
+    "attn_norm.weight": "input_layernorm.weight",
+    "ffn_norm.weight": "post_attention_layernorm.weight",
+    "attn_q_norm.weight": "self_attn.q_norm.weight",
+    "attn_k_norm.weight": "self_attn.k_norm.weight",
+    "attn_q.weight": "self_attn.q_proj.weight",
+    "attn_k.weight": "self_attn.k_proj.weight",
+    "attn_v.weight": "self_attn.v_proj.weight",
+    "attn_output.weight": "self_attn.o_proj.weight",
+    "ffn_gate.weight": "mlp.gate_proj.weight",
+    "ffn_up.weight": "mlp.up_proj.weight",
+    "ffn_down.weight": "mlp.down_proj.weight",
+}
+
+# GGUF `general.architecture` values whose layout matches the supported decoder family (both use
+# the identical tensor-name convention above). More archs land as their metadata conventions are
+# verified against real files.
+_GGUF_SUPPORTED_ARCHITECTURES = ("llama", "qwen3")
+
+
+def _gguf_read_string(handle: Any) -> str:
+    (length,) = struct.unpack("<Q", handle.read(8))
+    raw = handle.read(length)
+    if len(raw) != length:
+        raise InferenceError(
+            "unsupported_gguf", "the GGUF file is truncated inside a string field"
+        )
+    return raw.decode("utf-8")
+
+
+def _gguf_read_metadata_value(handle: Any, value_type: int) -> Any:
+    """One GGUF metadata value of a known type tag (recursing into arrays)."""
+    if value_type == 0:
+        return struct.unpack("<B", handle.read(1))[0]
+    if value_type == 1:
+        return struct.unpack("<b", handle.read(1))[0]
+    if value_type == 2:
+        return struct.unpack("<H", handle.read(2))[0]
+    if value_type == 3:
+        return struct.unpack("<h", handle.read(2))[0]
+    if value_type == 4:
+        return struct.unpack("<I", handle.read(4))[0]
+    if value_type == 5:
+        return struct.unpack("<i", handle.read(4))[0]
+    if value_type == 6:
+        return struct.unpack("<f", handle.read(4))[0]
+    if value_type == 7:
+        return struct.unpack("<B", handle.read(1))[0] != 0
+    if value_type == 8:
+        return _gguf_read_string(handle)
+    if value_type == 9:
+        (element_type,) = struct.unpack("<I", handle.read(4))
+        (count,) = struct.unpack("<Q", handle.read(8))
+        return [_gguf_read_metadata_value(handle, element_type) for _ in range(count)]
+    if value_type == 10:
+        return struct.unpack("<Q", handle.read(8))[0]
+    if value_type == 11:
+        return struct.unpack("<q", handle.read(8))[0]
+    if value_type == 12:
+        return struct.unpack("<d", handle.read(8))[0]
+    raise InferenceError(
+        "unsupported_gguf", f"unknown GGUF metadata value type {value_type}"
+    )
+
+
+def _read_gguf_header(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
+    """Byte-level GGUF parse: magic, version, counts, the metadata kv pairs, and the tensor-info
+    table. Returns `(metadata, tensor_infos, data_start)`; each tensor's raw bytes live at
+    `data_start + tensor.offset`."""
+    with path.open("rb") as handle:
+        magic = handle.read(4)
+        if magic != _GGUF_MAGIC:
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{path} is not a GGUF file (magic {magic!r}, expected {_GGUF_MAGIC!r}).",
+            )
+        (version,) = struct.unpack("<I", handle.read(4))
+        if version not in (2, 3):
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{path} is GGUF version {version}; only versions 2 and 3 are read.",
+            )
+        tensor_count, metadata_count = struct.unpack("<QQ", handle.read(16))
+        metadata: dict[str, Any] = {}
+        for _ in range(metadata_count):
+            key = _gguf_read_string(handle)
+            (value_type,) = struct.unpack("<I", handle.read(4))
+            metadata[key] = _gguf_read_metadata_value(handle, value_type)
+        tensor_infos: list[dict[str, Any]] = []
+        for _ in range(tensor_count):
+            name = _gguf_read_string(handle)
+            (n_dims,) = struct.unpack("<I", handle.read(4))
+            dims = list(struct.unpack(f"<{n_dims}Q", handle.read(8 * n_dims)))
+            (ggml_type,) = struct.unpack("<I", handle.read(4))
+            (offset,) = struct.unpack("<Q", handle.read(8))
+            tensor_infos.append(
+                {"name": name, "dims": dims, "ggml_type": ggml_type, "offset": offset}
+            )
+        alignment = metadata.get("general.alignment", _GGUF_DEFAULT_ALIGNMENT)
+        if (
+            isinstance(alignment, bool)
+            or not isinstance(alignment, int)
+            or alignment < 1
+            or (alignment & (alignment - 1)) != 0
+        ):
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{path} declares general.alignment={alignment!r}; only powers of two are read.",
+            )
+        data_start = (handle.tell() + alignment - 1) // alignment * alignment
+    return metadata, tensor_infos, data_start
+
+
+def _gguf_map_tensor_name(name: str) -> str | None:
+    """A llama.cpp-convention GGUF tensor name -> the HF name the manifest contract uses; None for
+    tensors the engine does not consume (rope factors, tokenizer tables, ...)."""
+    if name in _GGUF_GLOBAL_TENSOR_NAMES:
+        return _GGUF_GLOBAL_TENSOR_NAMES[name]
+    if name.startswith("blk."):
+        layer_text, _, suffix = name[len("blk.") :].partition(".")
+        if layer_text.isdigit():
+            hf_suffix = _GGUF_LAYER_TENSOR_NAMES.get(suffix)
+            if hf_suffix is not None:
+                return f"model.layers.{int(layer_text)}.{hf_suffix}"
+    return None
+
+
+def _gguf_read_tensor_values(
+    path: Path, info: dict[str, Any], data_start: int
+) -> tuple[Any, list[int]]:
+    """One GGUF tensor's raw bytes widened to a flat Float64 numpy array. Returns
+    `(values, shape)` with `shape` in HuggingFace row-major order (the GGUF dims reversed).
+    F16/F32 widen exactly; Q8_0 dequantizes as `scale * int8` per 32-element block (the f16 scale
+    widens exactly too, so the only rounding is the int8 quantization the file already carries)."""
+    import numpy as np
+
+    dims = info["dims"]
+    ggml_type = info["ggml_type"]
+    n_elements = 1
+    for dim in dims:
+        n_elements *= int(dim)
+    if ggml_type == _GGML_TYPE_F16:
+        n_bytes = 2 * n_elements
+    elif ggml_type == _GGML_TYPE_F32:
+        n_bytes = 4 * n_elements
+    elif ggml_type == _GGML_TYPE_Q8_0:
+        if n_elements % 32 != 0:
+            raise InferenceError(
+                "unsupported_gguf",
+                f"tensor {info['name']!r} is Q8_0 with {n_elements} elements; Q8_0 blocks cover "
+                "exactly 32 elements each.",
+            )
+        n_bytes = (n_elements // 32) * 34  # f16 scale + 32 int8 per block
+    else:
+        raise InferenceError(
+            "unsupported_gguf",
+            f"tensor {info['name']!r} is ggml type {ggml_type}; this converter reads F32, F16 and "
+            "Q8_0 tensors. Re-export the GGUF with one of those (llama.cpp's "
+            "convert_hf_to_gguf.py --outtype f16 is the common choice).",
+        )
+    with path.open("rb") as handle:
+        handle.seek(data_start + info["offset"])
+        raw = handle.read(n_bytes)
+    if len(raw) != n_bytes:
+        raise InferenceError(
+            "unsupported_gguf", f"{path} is truncated inside tensor {info['name']!r}."
+        )
+    if ggml_type == _GGML_TYPE_F16:
+        values = np.frombuffer(raw, dtype="<f2").astype(np.float64)
+    elif ggml_type == _GGML_TYPE_F32:
+        values = np.frombuffer(raw, dtype="<f4").astype(np.float64)
+    else:  # Q8_0
+        block_dtype = np.dtype([("scale", "<f2"), ("qs", "i1", (32,))])
+        blocks = np.frombuffer(raw, dtype=block_dtype)
+        values = (
+            blocks["qs"].astype(np.float64) * blocks["scale"].astype(np.float64)[:, None]
+        ).reshape(-1)
+    return values, list(reversed(dims))
+
+
+def _gguf_architecture_config(
+    path: Path, metadata: dict[str, Any], tensor_infos: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """The HF-style config the manifest carries, derived from the GGUF's `<arch>.*` metadata the way
+    llama.cpp's own convention defines it (embedding_length=hidden_size, block_count=layers,
+    attention.head_count/[_kv]=heads, feed_forward_length=intermediate_size,
+    attention.layer_norm_rms_epsilon=rms_norm_eps, rope.freq_base=rope_theta). head_dim comes from
+    `<arch>.attention.key_length` when present, else it is derived (hidden_size // heads) by the
+    shared `_normalize_config`. The tie/qk-norm/eos conventions are FACTS of the file (tensor
+    presence and tokenizer metadata), never assumptions."""
+    arch = metadata.get("general.architecture")
+    if not isinstance(arch, str) or arch not in _GGUF_SUPPORTED_ARCHITECTURES:
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{path} is a {arch!r} GGUF; this converter reads "
+            f"{'/'.join(_GGUF_SUPPORTED_ARCHITECTURES)} GGUF files.",
+        )
+
+    def meta(key: str) -> Any:
+        return metadata.get(f"{arch}.{key}")
+
+    def require_int(gguf_key: str) -> int:
+        value = meta(gguf_key)
+        if value is None:
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{path} carries no {arch}.{gguf_key} GGUF metadata; the architecture "
+                "hyperparameters are required.",
+            )
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{path} GGUF metadata {arch}.{gguf_key} is {value!r}; expected a positive int.",
+            )
+        return value
+
+    hidden_size = require_int("embedding_length")
+    n_layers = require_int("block_count")
+    num_attention_heads = require_int("attention.head_count")
+    intermediate_size = require_int("feed_forward_length")
+    num_kv_heads = meta("attention.head_count_kv")
+    if num_kv_heads is None:
+        num_kv_heads = num_attention_heads
+    if isinstance(num_kv_heads, bool) or not isinstance(num_kv_heads, int) or num_kv_heads < 1:
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{path} GGUF metadata {arch}.attention.head_count_kv is {num_kv_heads!r}; expected "
+            "a positive int.",
+        )
+    rms_norm_eps = meta("attention.layer_norm_rms_epsilon")
+    if rms_norm_eps is None:
+        rms_norm_eps = meta("attention.layer_norm_epsilon")
+    if (
+        rms_norm_eps is None
+        or isinstance(rms_norm_eps, bool)
+        or not isinstance(rms_norm_eps, int | float)
+        or rms_norm_eps < 0
+    ):
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{path} carries no usable {arch}.attention.layer_norm_rms_epsilon GGUF metadata.",
+        )
+    rope_theta = meta("rope.freq_base")
+    if rope_theta is None:
+        rope_theta = 10000.0
+    if isinstance(rope_theta, bool) or not isinstance(rope_theta, int | float):
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{path} GGUF metadata {arch}.rope.freq_base is {rope_theta!r}; expected a number.",
+        )
+
+    vocab_size = None
+    tied_embeddings = True
+    for info in tensor_infos:
+        if info["name"] == "token_embd.weight" and len(info["dims"]) == 2:
+            vocab_size = int(info["dims"][1])
+        if info["name"] == "output.weight":
+            tied_embeddings = False
+    if vocab_size is None:
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{path} has no token_embd.weight tensor to read the vocab size from.",
+        )
+
+    config: dict[str, Any] = {
+        "hidden_size": hidden_size,
+        "num_hidden_layers": n_layers,
+        "num_attention_heads": num_attention_heads,
+        "num_key_value_heads": num_kv_heads,
+        "intermediate_size": intermediate_size,
+        "vocab_size": vocab_size,
+        "rope_theta": float(rope_theta),
+        "rms_norm_eps": float(rms_norm_eps),
+        "tie_word_embeddings": tied_embeddings,
+    }
+    head_dim = meta("attention.key_length")
+    if head_dim is not None:
+        if isinstance(head_dim, bool) or not isinstance(head_dim, int) or head_dim < 1:
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{path} GGUF metadata {arch}.attention.key_length is {head_dim!r}; expected a "
+                "positive int.",
+            )
+        config["head_dim"] = head_dim
+    config = _normalize_config(config)
+
+    eos_token_id = metadata.get("tokenizer.ggml.eos_token_id")
+    if isinstance(eos_token_id, int) and not isinstance(eos_token_id, bool):
+        config["eos_token_id"] = eos_token_id
+    return config
+
+
+def prepare_model_checkpoint_from_gguf(
+    gguf_path: str | Path,
+    prompt_token_ids: list[int],
+    *,
+    out_dir: str | Path | None = None,
+) -> Path:
+    """Validate a GGUF model file's architecture, then convert it into the SAME `manifest.json` +
+    `weights.blob` pair `prepare_model_checkpoint()` produces from a HuggingFace snapshot -- the
+    rest of the engine is untouched. Reads the GGUF container (versions 2/3) with struct parsing
+    only, widens F16/F32 tensors (and dequantizes Q8_0) to the converter's Float64 weight stream,
+    and maps the llama.cpp tensor names onto the HF names the manifest contract uses.
+
+    `gguf_path` is a single `.gguf` file (e.g. one produced by llama.cpp's convert_hf_to_gguf.py).
+    Raises `UnsupportedArchitectureError` for a shape the kernels refuse, `InferenceError(
+    "unsupported_gguf")` for a container/dtype this reader does not parse, and `InferenceError(
+    "checkpoint_not_found")` for a missing file or tensor. Returns the directory the manifest +
+    blob were written to.
+    """
+    try:
+        import numpy as np  # noqa: F401
+    except ImportError as exc:
+        raise InferenceError(
+            "numpy_required",
+            "prepare_model_checkpoint_from_gguf() needs numpy to convert GGUF weights; install it "
+            "with `pip install numpy`.",
+        ) from exc
+
+    gguf_path = Path(gguf_path)
+    if not gguf_path.is_file():
+        raise InferenceError("checkpoint_not_found", f"{gguf_path} is not a file.")
+    metadata, tensor_infos, data_start = _read_gguf_header(gguf_path)
+    config = _gguf_architecture_config(gguf_path, metadata, tensor_infos)
+    _validate_architecture(gguf_path, config, config_source="GGUF metadata")
+    _validate_prompt_token_ids(prompt_token_ids)
+
+    hf_tensors: dict[str, dict[str, Any]] = {}
+    for info in tensor_infos:
+        hf_name = _gguf_map_tensor_name(info["name"])
+        if hf_name is not None:
+            hf_tensors[hf_name] = info
+    # Same truth as the safetensors path: the TENSORS decide qk-norm presence (config metadata can
+    # lie or omit), layer 0's probe tensor standing in for all layers.
+    has_qk_norm = "model.layers.0.self_attn.q_norm.weight" in hf_tensors
+    tied_embeddings = config["tie_word_embeddings"]
+    required = _required_hf_tensor_names(config["num_hidden_layers"], tied_embeddings, has_qk_norm)
+
+    resolved_out_dir = (
+        Path(out_dir)
+        if out_dir is not None
+        else Path(tempfile.mkdtemp(prefix="algenta-gguf-ckpt-"))
+    )
+    resolved_out_dir.mkdir(parents=True, exist_ok=True)
+
+    entries: list[tuple[str, Any, list[int], bool]] = []
+    for name in sorted(required):
+        info = hf_tensors.get(name)
+        if info is None:
+            raise InferenceError(
+                "checkpoint_not_found",
+                f"the GGUF file {gguf_path} is missing the tensor the manifest needs as "
+                f"{name!r}.",
+            )
+        values, shape = _gguf_read_tensor_values(gguf_path, info, data_start)
+        transposed = False
+        if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
+            values = values.reshape(shape).T.copy().reshape(-1)
+            shape = [shape[1], shape[0]]
+            transposed = True
+        entries.append((name, values, shape, transposed))
+
+    return _write_converted_checkpoint(
+        resolved_out_dir,
+        entries=entries,
+        config=config,
+        prompt_token_ids=prompt_token_ids,
+        has_qk_norm=has_qk_norm,
+        tied_embeddings=tied_embeddings,
+    )
+
+
+def _gguf_checkpoint_file(checkpoint_dir: str | Path) -> Path | None:
+    """The GGUF front door for `decode()`: an EXISTING file as the checkpoint is a GGUF model file
+    (the magic check inside the reader is the validator); a directory stays the HuggingFace path."""
+    path = Path(checkpoint_dir)
+    return path if path.is_file() else None
+
+
+def prepare_model_checkpoint(
+    checkpoint_dir: str | Path,
+    prompt_token_ids: list[int],
+    *,
+    out_dir: str | Path | None = None,
+) -> Path:
+    """Validate `checkpoint_dir`'s architecture, then convert it into the `manifest.json` +
+    `weights.blob` pair the model-agnostic kernel entry point reads. Handles any supported-family
+    model, single- or multi-shard.
+
+    `checkpoint_dir` is a local HuggingFace snapshot directory (`config.json` + one or more
+    `model*.safetensors`). Raises `UnsupportedArchitectureError` for an unsupported architecture and
+    `InferenceError("checkpoint_not_found", ...)` for missing files. Returns the directory the
+    manifest + blob were written to.
+    """
+    try:
+        import numpy as np  # noqa: F401
+    except ImportError as exc:
+        raise InferenceError(
+            "numpy_required",
+            "prepare_model_checkpoint() needs numpy to convert checkpoint weights; install it with "
+            "`pip install numpy`.",
+        ) from exc
+
+    checkpoint_dir = Path(checkpoint_dir)
+    config_path = checkpoint_dir / "config.json"
+    if not config_path.is_file():
+        raise InferenceError(
+            "checkpoint_not_found",
+            f"{checkpoint_dir} does not look like a HuggingFace checkpoint snapshot: "
+            f"{config_path.name} is missing.",
+        )
+    config = _normalize_config(json.loads(config_path.read_text(encoding="utf-8")))
+    _validate_architecture(checkpoint_dir, config)
+    _validate_prompt_token_ids(prompt_token_ids)
+
+    # Load the shard index if present (multi-shard checkpoints).
+    index_path = checkpoint_dir / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.is_file() else None
+
+    tied_embeddings = config.get("tie_word_embeddings", True) is True
+    has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
+    required = _required_hf_tensor_names(config["num_hidden_layers"], tied_embeddings, has_qk_norm)
+
+    resolved_out_dir = (
+        Path(out_dir) if out_dir is not None else Path(tempfile.mkdtemp(prefix="algenta-model-ckpt-"))
+    )
+    resolved_out_dir.mkdir(parents=True, exist_ok=True)
+
+    entries: list[tuple[str, Any, list[int], bool]] = []
+    for name in sorted(required):
+        shard_path = _resolve_shard_for_tensor(checkpoint_dir, name, index)
+        header, data_start = _read_safetensors_header(shard_path)
+        info = header.get(name)
+        if info is None:
+            raise InferenceError(
+                "checkpoint_not_found", f"tensor {name!r} not found in {shard_path}."
+            )
+        if info.get("dtype") != "BF16":
+            raise InferenceError(
+                "checkpoint_not_found",
+                f"{name} in {shard_path} is {info.get('dtype')}, expected BF16 -- this converter "
+                "handles BF16 checkpoints.",
+            )
+        shape = list(info["shape"])
+        start, end = info["data_offsets"]
+        with shard_path.open("rb") as handle:
+            handle.seek(data_start + start)
+            raw = handle.read(end - start)
+        values = _bf16_bytes_to_f64(raw)
+        transposed = False
+        if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
+            values = values.reshape(shape).T.copy().reshape(-1)
+            shape = [shape[1], shape[0]]
+            transposed = True
+        entries.append((name, values, shape, transposed))
+
+    return _write_converted_checkpoint(
+        resolved_out_dir,
+        entries=entries,
+        config=config,
+        prompt_token_ids=prompt_token_ids,
+        has_qk_norm=has_qk_norm,
+        tied_embeddings=tied_embeddings,
+    )
+
+
 def _envelope_error(envelope: Any) -> str | None:
     if not isinstance(envelope, dict):
         return "the local runtime returned a malformed response"
@@ -479,6 +942,11 @@ def decode(
     seed: int = 0,
 ) -> InferenceResult:
     """Decode a prompt with a supported model's Metal GPU kernel path.
+
+    `checkpoint_dir` is a HuggingFace checkpoint snapshot directory -- OR a single GGUF model
+    file (the llama.cpp interchange format, converted by `prepare_model_checkpoint_from_gguf`).
+    A GGUF checkpoint accepts `prompt_token_ids` only (it carries no tokenizer.json for text or
+    chat prompts).
 
     Pass EXACTLY ONE of:
     * `messages` -- a list of OpenAI-style chat dicts, formatted with the checkpoint's OWN chat
@@ -518,6 +986,17 @@ def decode(
         raise InferenceError(
             "invalid_arguments",
             "pass exactly one of prompt_token_ids, prompt_text, or messages",
+        )
+    # The GGUF front door (beat-llama.cpp campaign, model coverage): an EXISTING FILE as the
+    # checkpoint is a GGUF model file, decoded through the same conversion+engine path. A GGUF
+    # carries no tokenizer.json, so text/chat prompts stay a HuggingFace-directory feature.
+    gguf_file = _gguf_checkpoint_file(checkpoint_dir)
+    if gguf_file is not None and (prompt_text is not None or messages is not None):
+        raise InferenceError(
+            "invalid_arguments",
+            f"{gguf_file} is a GGUF model file; GGUF checkpoints decode from prompt_token_ids "
+            "only (a GGUF carries no tokenizer.json for text prompts -- point prompt_text/"
+            "messages at the matching HuggingFace checkpoint directory instead).",
         )
     tokenizer = None
     if messages is not None:
@@ -581,16 +1060,32 @@ def decode(
     else:
         # Conversion cache (serving increment, parity gap 2, 2026-08-10): the prompt travels over
         # the wire separately from the converted weights, so ONE conversion per checkpoint serves
-        # every prompt. The pair lives in `<checkpoint_dir>/.algenta-cache`; its validity gate is
-        # the same documented residual class as `weights_i8.cache` (keyed by the manifest, which is
-        # stable per checkpoint -- an in-place edit of the source safetensors would not be caught).
-        cache_dir = Path(checkpoint_dir) / _CONVERSION_CACHE_DIRNAME
-        if (cache_dir / "manifest.json").is_file() and (cache_dir / "weights.blob").is_file():
-            resolved_dir = cache_dir
+        # every prompt. For a directory checkpoint the pair lives in
+        # `<checkpoint_dir>/.algenta-cache`; for a GGUF FILE it sits BESIDE the file
+        # (`<file>.algenta-cache` -- a cache directory inside a file is nonsense). The validity
+        # gate is the same documented residual class as `weights_i8.cache` (keyed by the manifest,
+        # which is stable per checkpoint -- an in-place edit of the source weights would not be
+        # caught).
+        if gguf_file is not None:
+            cache_dir = Path(str(gguf_file) + _CONVERSION_CACHE_DIRNAME)
+            if (cache_dir / "manifest.json").is_file() and (
+                cache_dir / "weights.blob"
+            ).is_file():
+                resolved_dir = cache_dir
+            else:
+                resolved_dir = prepare_model_checkpoint_from_gguf(
+                    gguf_file, prompt_token_ids, out_dir=cache_dir
+                )
         else:
-            resolved_dir = prepare_model_checkpoint(
-                checkpoint_dir, prompt_token_ids, out_dir=cache_dir
-            )
+            cache_dir = Path(checkpoint_dir) / _CONVERSION_CACHE_DIRNAME
+            if (cache_dir / "manifest.json").is_file() and (
+                cache_dir / "weights.blob"
+            ).is_file():
+                resolved_dir = cache_dir
+            else:
+                resolved_dir = prepare_model_checkpoint(
+                    checkpoint_dir, prompt_token_ids, out_dir=cache_dir
+                )
 
     if not isinstance(max_new_tokens, int) or isinstance(max_new_tokens, bool) or max_new_tokens < 1:
         raise InferenceError(
