@@ -53,6 +53,21 @@ def _enforce_peer_node_cap() -> bool:
     return _env_truthy("ALGENTA_ENFORCE_PEER_NODE_CAP")
 
 
+# Headroom over the licensed per-node vCPU ceiling before a machine reads as server-class. A desktop
+# plan licensed for N effective vCPUs is refused only above N × this — so an N-core workstation that
+# measures a hair over N (hyperthread/burst jitter) is never wrongly bricked, while a 2×+ server box is.
+_DEVICE_VCPU_GRACE = 1.25
+
+
+def device_vcpu_enforcing() -> bool:
+    """DARK opt-in gate for desktop-on-server refusal (``assert_device_capacity``).
+
+    Default OFF even when other license enforcement is on: wrongly refusing a paying desktop user on
+    a big workstation is a brick, so this stays observe-only (logs, never raises) until an operator
+    flips ``ALGENTA_ENFORCE_DEVICE_VCPU`` per-fleet after the observe-mode logs come back clean."""
+    return _env_truthy("ALGENTA_ENFORCE_DEVICE_VCPU")
+
+
 def _is_community_floor(lic: object) -> bool:
     """The always-free Community fallback (a lapsed paid license that settled to the floor). It is
     NEVER capacity-gated — the never-hard-cut invariant wins over any node cap. Without this an
@@ -164,6 +179,48 @@ def assert_deployment_capacity(lic: object, *, enforcing: bool) -> None:
             f"this node measures {this_node:.2f} Compute Units (needs {needed}) but the deployment "
             f"pool ceiling is {max_units} — provision more Compute Units or split the workload"
         )
+
+
+def assert_device_capacity(lic: object, *, enforcing: bool) -> None:
+    """Refuse a DESKTOP (device-scope) license running on server-class hardware — DARK-first.
+
+    A desktop plan may carry a per-node effective-vCPU ceiling (``max_effective_vcpu``, set from the
+    Stripe SKU's ``max_effective_vcpu`` metadata). The runtime measures the machine's effective vCPU
+    the same cgroup-aware way the Compute-Unit metering does and, if it clearly exceeds the licensed
+    desktop ceiling, treats the box as server-class and points the operator at a Server/Enterprise
+    deployment license. Telemetry-free: this is a purely LOCAL measurement, no phone-home.
+
+    Safety / dark-by-default:
+      • no-op for deployment scope (servers license per Compute Unit, not per node);
+      • no-op when the license carries no ceiling (``max_effective_vcpu <= 0``) — so every existing
+        token and every plan whose SKU sets no ceiling is completely unaffected;
+      • ALWAYS measures + logs when over the ceiling (observe mode) so a fleet can be watched before
+        enforcement is turned on, but RAISES only when ``enforcing`` (``ALGENTA_ENFORCE_DEVICE_VCPU``)."""
+    if bool(getattr(lic, "is_deployment_scope", lambda: False)()):
+        return
+    ceiling = int(getattr(lic, "max_effective_vcpu", 0) or 0)
+    if ceiling <= 0:
+        return
+    from apps.runtime.capacity import measure_effective_vcpu
+
+    measured = measure_effective_vcpu().effective_vcpu
+    if measured <= ceiling * _DEVICE_VCPU_GRACE:
+        return
+    logger.warning(
+        "device_vcpu_ceiling_exceeded",
+        measured_vcpu=round(measured, 2),
+        ceiling_vcpu=ceiling,
+        grace=_DEVICE_VCPU_GRACE,
+        enforcing=enforcing,
+        deployment_class=str(getattr(lic, "deployment_class", "") or ""),
+    )
+    if not enforcing:
+        return
+    raise NodeAdmissionError(
+        f"this machine has ~{measured:.1f} effective vCPUs but your desktop license covers up to "
+        f"{ceiling} — this looks like server-class hardware. Move to a Server or Enterprise "
+        f"deployment license to run here."
+    )
 
 
 # ── L2: peer census (async, shared-Redis clusters, opt-in) ────────────────────────────────────────

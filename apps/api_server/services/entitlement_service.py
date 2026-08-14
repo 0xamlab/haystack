@@ -468,4 +468,10 @@ def to_license_claims(record: EntitlementRecord) -> dict[str, object]:
             claims["measurement_policy_version"] = record.measurement_policy_version
         if record.grace_policy_id:
             claims["grace_policy_id"] = record.grace_policy_id
+    elif record.max_effective_vcpu:
+        # DEVICE (desktop) scope: a per-node effective-vCPU ceiling lets the runtime refuse a desktop
+        # license running on server-class hardware. Emitted ONLY when a positive ceiling is set (from
+        # the Stripe SKU's max_effective_vcpu metadata), so every device token for a plan without the
+        # key is byte-identical to before — the enforcement stays dark by absence of the claim.
+        claims["max_effective_vcpu"] = record.max_effective_vcpu
     return claims

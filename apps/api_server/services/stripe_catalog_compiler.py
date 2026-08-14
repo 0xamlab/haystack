@@ -58,6 +58,9 @@ class CompiledSku:
     qty_metric: str  # device | compute_unit
     deploy_class: str
     vcpu_per_unit: int
+    # DEVICE-scope only: the per-node effective-vCPU ceiling a desktop plan is licensed up to. 0 =
+    # unspecified → no ceiling → the runtime's desktop-on-server refusal stays dark for this SKU.
+    max_effective_vcpu: int
     workers_per_unit: int
     measurement_policy_version: str
     grace_policy_id: str
@@ -155,6 +158,16 @@ def _compile_sku(price: dict, violations: list[str]) -> CompiledSku | None:
         violations.append(f"{where}: workers_per_unit out of range: {pmeta.get('workers_per_unit')!r}")
         workers_per_unit = 0
 
+    # DEVICE-scope per-node vCPU ceiling (desktop-on-server refusal). Optional: absent/0 = no ceiling.
+    # Bounded by the same 0..256 safety range as vcpu_per_unit; out-of-range is a config error, not a
+    # silent clamp. Only meaningful on device scope (a server SKU meters per Compute Unit instead).
+    max_effective_vcpu = _as_int(pmeta.get("max_effective_vcpu"), 0)
+    if max_effective_vcpu is None or not (0 <= max_effective_vcpu <= _MAX_VCPU_PER_UNIT):
+        violations.append(
+            f"{where}: max_effective_vcpu out of range 0..{_MAX_VCPU_PER_UNIT}: {pmeta.get('max_effective_vcpu')!r}"
+        )
+        max_effective_vcpu = 0
+
     qty_min = _as_int(_price_meta(price).get("qty_min"), 1)
     qty_max = _as_int(_price_meta(price).get("qty_max"), _MAX_UNITS)
     if qty_min is None or qty_max is None or qty_min < 0 or qty_max < 1 or qty_min > qty_max:
@@ -180,6 +193,7 @@ def _compile_sku(price: dict, violations: list[str]) -> CompiledSku | None:
         qty_metric=qty_metric,
         deploy_class=deploy_class,
         vcpu_per_unit=vcpu_per_unit,
+        max_effective_vcpu=max_effective_vcpu,
         workers_per_unit=workers_per_unit,
         measurement_policy_version=_as_str(pmeta.get("measure_policy"), "cgroup-v1"),
         grace_policy_id=_as_str(pmeta.get("grace_policy"), "community-floor-v1"),

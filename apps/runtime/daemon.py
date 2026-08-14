@@ -185,6 +185,13 @@ def _validate_daemon_startup_prerequisites() -> None:
     # deployment — a node bigger than the whole purchased pool can never boot. No-op for
     # personal-device licenses. The distributed pool sum (floating pool) is the L3/Relay path.
     node_broker.assert_deployment_capacity(license_record, enforcing=True)
+    # Device (desktop) scope: refuse a desktop license running on server-class hardware and point
+    # to a Server/Enterprise license. No-op for deployment scope or a license with no vCPU ceiling.
+    # DARK-first — observe-only (logs) until ALGENTA_ENFORCE_DEVICE_VCPU is set, since wrongly
+    # refusing a paying desktop user on a big workstation would brick them.
+    node_broker.assert_device_capacity(
+        license_record, enforcing=node_broker.device_vcpu_enforcing()
+    )
 
 
 # ── Mojo process manager ──────────────────────────────────────────────────────

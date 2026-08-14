@@ -159,6 +159,10 @@ def resolve_snapshot(
         # device scope: purchased quantity is the device/node ceiling (mirrors the existing
         # per-device org_node_ceiling behavior in device_service).
         tier_overrides["active_node_limit"] = quantity
+        # Carry the per-node effective-vCPU ceiling (desktop-on-server refusal) when the SKU sets one.
+        # Only when > 0 so a SKU without the metadata leaves the tier default (0 = no ceiling) intact.
+        if sku.max_effective_vcpu > 0:
+            tier_overrides["max_effective_vcpu"] = sku.max_effective_vcpu
     if overrides:  # negotiated enterprise pools win last
         tier_overrides.update(overrides)
 
