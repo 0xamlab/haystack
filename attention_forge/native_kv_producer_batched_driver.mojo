@@ -46,10 +46,10 @@ def _worst_ratio(got: List[Float64], want: List[Float64], tol: Float64) -> Float
     return worst
 
 
-def test_batched_kvprod(ctx: DeviceContext, poss: List[Int], seed: Int) raises -> Bool:
-    var h_q = _H_Q
-    var h_kv = _H_KV
-    var d_head = _D_HEAD
+def test_batched_kvprod(
+    ctx: DeviceContext, poss: List[Int], seed: Int,
+    h_q: Int = _H_Q, h_kv: Int = _H_KV, d_head: Int = _D_HEAD, qk_norm: Int = 1,
+) raises -> Bool:
     var kbs = _KBS
     var eps = Float32(_EPS)
     var B = len(poss)
@@ -106,6 +106,7 @@ def test_batched_kvprod(ctx: DeviceContext, poss: List[Int], seed: Int) raises -
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         poss_buf.unsafe_ptr(), Int64(kv_stride),
         Int64(h_q), Int64(h_kv), Int64(d_head), Int64(kbs), Int64(n_blocks), eps,
+        Int64(qk_norm),
         grid_dim=(h_q + h_kv) * B, block_dim=d_head,
     )
     ctx.synchronize()
@@ -142,6 +143,7 @@ def test_batched_kvprod(ctx: DeviceContext, poss: List[Int], seed: Int) raises -
             cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
             Int64(poss[b]), Int64(h_q), Int64(h_kv), Int64(d_head),
             Int64(kbs), Int64(n_blocks), eps, Int64(1),
+            Int64(qk_norm),
             grid_dim=(h_q + h_kv) * 1, block_dim=d_head,
         )
         ctx.synchronize()
@@ -180,6 +182,7 @@ def test_batched_kvprod(ctx: DeviceContext, poss: List[Int], seed: Int) raises -
 
     var ok = worst_q <= 1.0 and worst_k <= 1.0 and worst_v <= 1.0
     print("  [batched kvprod vs single-stream] B=", B, " poss=", poss,
+          " h_q=", h_q, " h_kv=", h_kv, " d_head=", d_head, " qk_norm=", qk_norm,
           " worst_q=", worst_q, " worst_k=", worst_k, " worst_v=", worst_v,
           " ", "OK" if ok else "FAIL")
     return ok
@@ -203,6 +206,20 @@ def main() raises:
     all_ok &= test_batched_kvprod(ctx, p4, 14)  # block-boundary positions (31, 32, 63)
     all_ok &= test_batched_kvprod(ctx, p5, 15)
     all_ok &= test_batched_kvprod(ctx, p6, 16)
+    # ── feat/batched-llama (2026-08-14): llama-family arm -- d_head=64, h_q=32/h_kv=4
+    # (TinyLlama's own GQA shape), qk_norm=0 (rotate-raw; qn_w/kn_w must never be read). The
+    # single-stream twin's flag is the proven one (feat/llama-native-deep); agreement here proves
+    # the batched twin's qk_norm=0 arm computes the same function, B sequences at ragged poss.
+    var q1 = List[Int](); q1.append(0); q1.append(6)
+    var q2 = List[Int](); q2.append(85); q2.append(86); q2.append(31); q2.append(32)
+    var q3 = List[Int]()
+    for _ in range(8):
+        q3.append(109)
+    all_ok &= test_batched_kvprod(ctx, q1, 21, 32, 4, 64, 0)
+    all_ok &= test_batched_kvprod(ctx, q2, 22, 32, 4, 64, 0)
+    all_ok &= test_batched_kvprod(ctx, q3, 23, 32, 4, 64, 0)
+    # d128 qk_norm=0 control (llama-3-8B-class pairing, same flag arm at the structural shape).
+    all_ok &= test_batched_kvprod(ctx, q2, 24, _H_Q, _H_KV, _D_HEAD, 0)
     if not all_ok:
         print("[batched kvprod driver] FAILED")
         return

@@ -904,6 +904,16 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     `"native_kv_decode_attn_splitk"` check) because the batched name contains the single-stream
     substring. A hex hash can never spell `_bat`, so this substring cannot false-match the
     single-stream split-K pipeline. Non-fatal-miss (`-1`) like every optional pipeline field."""
+    var native_decode_splitk_partial_batched_f2_pipeline_idx: Int
+    """feat/batched-llama (2026-08-14): the d_head=64 (llama-family) BATCHED split-K partial blob
+    (`attention_forge/generated/native_kv_decode_attn_splitk_bf2_blob.c`, module
+    `native_kv_decode_attn_splitk_bf2`, one-simdgroup two-elements-per-lane batched twin of the
+    single-stream f2u2 -- the d128 `_bat` f4u2 blob's `d_head // 4` threads would be 16 lanes at
+    d_head=64, half a SIMD group, so a d64 model needs its own batched partial exactly the way the
+    single-stream path needs f2/f2s4). Discovered via the file-private substring
+    `"native_kv_decode_attn_splitk_bf2"`, checked LONGEST-FIRST below alongside the `_bat` arm
+    (both contain the generic `"native_kv_decode_attn_splitk"` substring; neither contains the
+    other -- `"_bf2"` diverges from `"_bat"` at the second char). Non-fatal-miss (`-1`)."""
     var kvprod_batched_pipeline_idx: Int
     """The batched KV-producer blob (`attention_forge/generated/native_kv_producer_batched_blob.c`,
     module `kvprod_batched`). Deliberately NOT named `native_kv_producer_*` so the shared
@@ -933,11 +943,28 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     (returns -1) so it can never land in `_ROLE_LMHEAD_ARGMAX`'s slot. Non-fatal-miss (`-1`): a
     session that never samples simply never dispatches it."""
     var decode_batched_built: Bool
-    """True iff ALL FIVE batched-decode pipelines were discovered (`native_decode_splitk_partial_
-    batched_pipeline_idx >= 0` AND `kvprod_batched_pipeline_idx >= 0` AND `batched_splitk_merge_
-    pipeline_idx >= 0` AND `batched_lmhead_pipeline_idx >= 0` AND `batched_argmax_reduce_pipeline_idx
-    >= 0`) -- the gate `_step_batched` reads before running the batched decode table (and refuses with
-    `MB_ERR_PIPELINE_NOT_FOUND` otherwise). Set once, in `__init__`, right after pipeline discovery."""
+    """True iff ALL FIVE batched-decode pipeline roles are available for THIS model AND a batched
+    split-K partial suited to THIS d_head is linked (`native_splitk_partial_batched_eff_idx >= 0`)
+    -- the gate `_step_batched` reads before running the batched decode table (and refuses with
+    `MB_ERR_PIPELINE_NOT_FOUND` otherwise). Set once, in `__init__`, right after pipeline discovery.
+    feat/batched-llama (2026-08-14): no longer blanket d_head==128+qk_norm==1 -- the batched kvprod
+    blob now carries the trailing qk_norm flag (1=Qwen3 RMSNorm-then-RoPE byte-identical to the
+    pre-flag math, 0=llama rotate-raw), the batched partial is d_head-resolved (d128 -> the f4u2
+    `_bat` blob at d_head//4 threads; d64 -> the bf2u2 blob at 32 threads), and the merge/lm_head/
+    argmax tail is d_head-parametric and norm-agnostic. Family pairing mirrors the AF availability
+    gate: d_head==128 serves both families (steel/kernels norm-agnostic), d_head==64 requires
+    qk_norm==0 (the llama pairing the d64 kernels were validated on); anything else degrades to
+    blobs-absent behavior (no batched buffers, never a wrong-math dispatch)."""
+    var native_splitk_partial_batched_eff_idx: Int
+    """feat/batched-llama (2026-08-14): the batched split-K partial THIS d_head can run, resolved
+    once after discovery exactly like the single-stream `native_splitk_partial_eff_idx`:
+    d_head == _AF_STRUCTURAL_D_HEAD -> the d128 f4u2 `_bat` blob; d_head == _AF_STRUCTURAL_D_HEAD_F2
+    -> the bf2u2 blob; any other d_head (or the matching blob unlinked) -> -1, which by itself
+    forces `decode_batched_built` False. NEVER a wrong-math dispatch: the batched table binds this
+    slot and its thread count, never the raw d128-only blob index."""
+    var native_splitk_partial_batched_eff_threads: Int
+    """The threadgroup size paired with `native_splitk_partial_batched_eff_idx` (d128 f4u2:
+    d_head // 4; d64 bf2u2: 32 = one SIMD group x 2 elements/lane). 0 when the eff slot is -1."""
 
 
     # ── Project Redline reopening (2026-08-08), resolved-execution-plan refactor: the old `use_
@@ -1491,12 +1518,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # ── Project Slipstream Phase 3 (2026-08-09): batched-decode discovery slots, same non-fatal-
         # miss pattern -- see each field's own docstring.
         self.native_decode_splitk_partial_batched_pipeline_idx = -1
+        self.native_decode_splitk_partial_batched_f2_pipeline_idx = -1
         self.kvprod_batched_pipeline_idx = -1
         self.batched_splitk_merge_pipeline_idx = -1
         self.batched_lmhead_pipeline_idx = -1
         self.batched_argmax_reduce_pipeline_idx = -1
         self.lmhead_logits_pipeline_idx = -1
         self.decode_batched_built = False
+        # ── feat/batched-llama (2026-08-14): the d_head-resolved batched partial pair, same init
+        # site/pattern as the single-stream `native_splitk_partial_eff_idx` pair above.
+        self.native_splitk_partial_batched_eff_idx = -1
+        self.native_splitk_partial_batched_eff_threads = 0
         # ── Project Redline reopening (2026-08-08), step 4: same non-fatal-miss discovery slot,
         # for the OPTIONAL combined-build BM64 qkv_proj kernel -- see `self.qkv_proj_bm64_pipeline_
         # idx`'s own field docstring for the full account.
@@ -1564,6 +1596,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # first, scan order irrelevant.
             if name.find("native_kv_decode_attn_splitk_bat") >= 0:
                 self.native_decode_splitk_partial_batched_pipeline_idx = i
+            # ── feat/batched-llama (2026-08-14): the d_head=64 BATCHED partial's module name
+            # (`native_kv_decode_attn_splitk_bf2`) also contains the generic split-K substring, so
+            # its longer check sits in the same longest-first chain (after the `_bat` arm -- the
+            # two substrings are mutually disjoint, "_bf2" diverges from "_bat" at the second char,
+            # and neither contains the other). Six-way longest-first, scan order irrelevant.
+            elif name.find("native_kv_decode_attn_splitk_bf2") >= 0:
+                self.native_decode_splitk_partial_batched_f2_pipeline_idx = i
             # ── feat/llama-native-deep (2026-08-13): the d_head=64 f2 partial's module name
             # (`native_kv_decode_attn_splitk_f2`) CONTAINS the generic split-K substring, so the
             # longer `_f2` check sits BEFORE the generic arm -- four-way longest-first, scan order
@@ -1735,19 +1774,38 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         )
         # ── Project Slipstream Phase 3: batched-decode availability, all-five (both blobs + the
         # engine-side B-aware merge + the fused B-row lm_head + B-row argmax reduce) discovered or
-        # the batched table cannot run. feat/llama-native-deep (2026-08-13): PLUS structural
-        # d_head == _AF_STRUCTURAL_D_HEAD AND qk_norm == 1 -- the batched partial blob is the
-        # f4u2 family (d_head=128 one-simdgroup) and the batched kvprod blob applies the Qwen3
-        # QK-norm unconditionally; a non-128 or no-QK-norm model must never build the batched
-        # table (also skips its per-layer oversized B-sequence KV provisioning).
+        # the batched table cannot run. feat/batched-llama (2026-08-14): the old blanket
+        # `d_head == _AF_STRUCTURAL_D_HEAD and qk_norm == 1` conjunction is replaced by the
+        # d_head-resolved EFFECTIVE batched partial (this block) -- the two structural blockers it
+        # protected are both generalized: (1) the batched kvprod blob carries the trailing qk_norm
+        # flag (same family convention as the single-stream `_native_kv_producer_kernel`'s own,
+        # feat/llama-native-deep), so a qk_norm=0 model dispatches it with 0 and never reads
+        # qn_w/kn_w; (2) the batched partial is resolved per d_head below (d128 keeps the f4u2
+        # `_bat` blob at d_head//4 threads byte-for-byte as before; d64 routes to the bf2u2 blob
+        # at a fixed 32 threads -- the d128 blob's d_head//4 would be 16 lanes at d64, half a SIMD
+        # group). The merge/lm_head/argmax tail is d_head-parametric and norm-agnostic. Family
+        # pairing mirrors the AF availability gate exactly: d_head==128 serves BOTH families
+        # (qk_norm either way -- the norm lives entirely in the flagged kvprod), d_head==64
+        # requires qk_norm==0 (the llama pairing the d64 kernels were validated on); any other
+        # d_head gets NO batched table (also skips the per-layer oversized B-sequence KV
+        # provisioning) -- never a wrong-math dispatch, derived purely from dims + discovered
+        # pipelines.
+        if self.d_head == _AF_STRUCTURAL_D_HEAD and self.native_decode_splitk_partial_batched_pipeline_idx >= 0:
+            self.native_splitk_partial_batched_eff_idx = self.native_decode_splitk_partial_batched_pipeline_idx
+            self.native_splitk_partial_batched_eff_threads = self.d_head // 4
+        elif (
+            self.d_head == _AF_STRUCTURAL_D_HEAD_F2
+            and self.qk_norm == 0
+            and self.native_decode_splitk_partial_batched_f2_pipeline_idx >= 0
+        ):
+            self.native_splitk_partial_batched_eff_idx = self.native_decode_splitk_partial_batched_f2_pipeline_idx
+            self.native_splitk_partial_batched_eff_threads = 32
         self.decode_batched_built = (
-            self.native_decode_splitk_partial_batched_pipeline_idx >= 0
+            self.native_splitk_partial_batched_eff_idx >= 0
             and self.kvprod_batched_pipeline_idx >= 0
             and self.batched_splitk_merge_pipeline_idx >= 0
             and self.batched_lmhead_pipeline_idx >= 0
             and self.batched_argmax_reduce_pipeline_idx >= 0
-            and self.d_head == _AF_STRUCTURAL_D_HEAD
-            and self.qk_norm == 1
         )
 
         for role in range(_N_ROLES):
@@ -5684,9 +5742,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 d += 1
 
             # batched KV producer: QK-norm + RoPE + pack Q -> q_native, K/V -> seq-b caches at poss[b]
+            # feat/batched-llama (2026-08-14): 17 args -- the trailing qk_norm flag, SAME family
+            # convention and binding as the single-stream naive producer dispatches (1=Qwen3
+            # RMSNorm-then-RoPE, 0=llama rotate-raw, qn_w/kn_w never read).
             _mb_set_header(
                 self.descriptors_decode_batched, d, self.kvprod_batched_pipeline_idx,
-                (self.h_q + self.h_kv) * B, self.d_head, 16,
+                (self.h_q + self.h_kv) * B, self.d_head, 17,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.q_native_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, ck_addr)
@@ -5704,6 +5765,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_decode_batched, d, 13, _AF_KEY_BLOCK_SIZE)
             _mb_set_arg_int(self.descriptors_decode_batched, d, 14, self.af_n_blocks)
             _mb_set_arg_f32(self.descriptors_decode_batched, d, 15, self.eps)
+            _mb_set_arg_int(self.descriptors_decode_batched, d, 16, self.qk_norm)
             d += 1
 
             # batched attention PARTIAL (blob): per-seq flash-decoding over [0, nkeys[b])
@@ -5711,9 +5773,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # 2-key-unrolled float4 kernel (`_native_kv_decode_splitk_partial_batched_kernel_f4u2`,
             # one simdgroup per (seq, head, split)) -- same partial (m,l,o) contract, threadgroup
             # is d_head // 4 threads instead of d_head.
+            # feat/batched-llama (2026-08-14): the dispatch binds the d_head-resolved EFFECTIVE
+            # batched partial + its paired thread count (d128 -> f4u2 `_bat` blob at d_head//4;
+            # d64 -> bf2u2 blob at a fixed 32) -- never the raw d128-only blob index, so a
+            # non-128 model can never dispatch a structurally-wrong kernel.
             _mb_set_header(
-                self.descriptors_decode_batched, d, self.native_decode_splitk_partial_batched_pipeline_idx,
-                B * self.h_q * _NATIVE_DECODE_N_SPLITS, self.d_head // 4, 15,
+                self.descriptors_decode_batched, d, self.native_splitk_partial_batched_eff_idx,
+                B * self.h_q * _NATIVE_DECODE_N_SPLITS, self.native_splitk_partial_batched_eff_threads, 15,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.batch_splitk_m_addr)
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.batch_splitk_l_addr)
@@ -5762,7 +5828,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 # Mojo kernel's tile constant would double the grid and let the MSL kernel's
                 # unguarded tiles run past N), times S=8 splits; threads 128 = the MSL kernels'
                 # max_total_threads_per_threadgroup, exactly `_apply_m_rows_af_nomirror`'s pattern.
-                n_rows_tile * _ceil_div(self.d_model, 64) * (8 if db_use_splitk_o else 1),
+                # feat/batched-llama (2026-08-14): the tile width is KERNEL-FAMILY-CONDITIONAL --
+                # the fallback branch dispatches the Mojo `_pf_gemm_accum_kernel_i8`, whose tiles
+                # are `_GEMM_BN`=32 cols, so ITS grid must count 32-col tiles: sizing it by 64
+                # (the MSL width) launches only half the column tiles and the second half of the
+                # output is never accumulated (the d_head=64 llama models are the first to take
+                # this fallback -- d_ff % 384 != 0 kills the splitk12 arm -- and their batched
+                # tokens diverged from exactly this descriptor).
+                (n_rows_tile * _ceil_div(self.d_model, 64) * 8) if db_use_splitk_o
+                else (n_rows_tile * _ceil_div(self.d_model, _GEMM_BN)),
                 128 if db_use_splitk_o else _GEMM_NTHREADS, 7,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
@@ -5844,11 +5918,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # down_proj GEMM accum: hidden += act [B,d_ff] @ w_down
             # Round-3 split-K substitution, same account as the o_proj block above (S=12 -> 16x12
             # = 192 threadgroups at m_rows<=32 instead of 16; the nomirror path's exact gate).
+            # feat/batched-llama (2026-08-14): kernel-family-conditional grid, same account as the
+            # o_proj block's own -- the Mojo `_pf_gemm_accum_kernel_i8` fallback tiles by
+            # `_GEMM_BN`=32 cols, so its grid counts 32-col tiles (a 64-col-tile grid leaves the
+            # second half of d_model un-accumulated; the d_ff % 384 != 0 llama models take this
+            # fallback and were the first to expose it).
             _mb_set_header(
                 self.descriptors_decode_batched, d,
                 self.msl_splitk12_pipeline_idx if db_use_splitk_down
                 else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
-                n_rows_tile * _ceil_div(self.d_model, 64) * (12 if db_use_splitk_down else 1),
+                (n_rows_tile * _ceil_div(self.d_model, 64) * 12) if db_use_splitk_down
+                else (n_rows_tile * _ceil_div(self.d_model, _GEMM_BN)),
                 128 if db_use_splitk_down else _GEMM_NTHREADS, 7,
             )
             _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
@@ -6000,16 +6080,22 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     # per step (its kvprod_batched writes at poss[b]); a batched session therefore needs each
     # sequence's prompt prefilled INTO its own slot of the per-layer batched KV caches
     # (`b * batch_kv_stride_elems`) before the shared loop starts. This method does exactly that by
-    # REUSING the production AF-nomirror prefill table: the kvprod-blk and attention descriptors'
-    # cache POINTER args (kvprod arg0/arg1, attn arg3/arg4) are build-time bindings that
-    # `_apply_m_rows_af_nomirror` never re-patches (it patches grids + int args + the GEMM weight
-    # pointers only), so pointing them at the seq-th batched slot for the duration of one
-    # `prefill_batch()` call ingests the whole prompt there -- GEMMs/norms/tail all run exactly as
-    # production, and the returned `_StepOut` is this sequence's first generated token, the exact
-    # state `_step_batched` continues from at poss=[prompt_len]. The pointers are RESTORED to the
-    # single-stream `af_ck/cv_native_addr` bindings byte-exactly afterwards, so a subsequent
-    # ordinary `prefill_batch()` on this same session sees the build-time table again. Zero new
-    # kernels; gated to the NO_MIRROR plan (the only plan paired with the batched decode caches).
+    # REUSING the production AF-nomirror prefill table: the kvprod and attention descriptors'
+    # cache POINTER args are build-time bindings that `_apply_m_rows_af_nomirror` never re-patches
+    # (it patches grids + int args + the GEMM weight pointers only), so pointing them at the seq-th
+    # batched slot for the duration of one `prefill_batch()` call ingests the whole prompt there --
+    # GEMMs/norms/tail all run exactly as production, and the returned `_StepOut` is this sequence's
+    # first generated token, the exact state `_step_batched` continues from at poss=[prompt_len].
+    # The pointers are RESTORED to the single-stream `af_ck/cv_native_addr` bindings byte-exactly
+    # afterwards, so a subsequent ordinary `prefill_batch()` on this same session sees the
+    # build-time table again. Zero new kernels; gated to the NO_MIRROR plan (the only plan paired
+    # with the batched decode caches).
+    # feat/batched-llama (2026-08-14): the AF table's kvprod descriptor is the V2 pair's
+    # kvprod_blk (cache pointers at arg0/arg1) ONLY under the table builder's exact V2 branch
+    # condition; otherwise it is the flagged NAIVE producer (cache pointers at arg1/arg2 -- arg0
+    # is q_native). The retarget/restore below branches on that SAME condition, so a llama-family
+    # session (naive producer) retargets the right args -- patching 0/1 there would point q_native
+    # at the batched K cache and leave the real K cache unretargeted.
     def prefill_batch_batched_ingest(mut self, prompt_ids: List[Int], seq: Int) raises -> _StepOut:
         """Ingest `prompt_ids` into sequence slot `seq` of the batched KV caches via full
         AF-nomirror prefills whose KV writes/reads are temporarily retargeted to that slot.
@@ -6024,7 +6110,12 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self._require_resolved_plan()
             if self.plan.attention != PF_ATTN_GROUPED_FA_NO_MIRROR:
                 return _StepOut(-1, 0.0, 0, MB_ERR_PIPELINE_NOT_FOUND)
-            if not self.decode_batched_built or not self.kvprod_v2_built:
+            # feat/batched-llama (2026-08-14): the AF table's kvprod descriptor exists whenever
+            # the NO_MIRROR table was built -- either the V2 pair (Qwen3-only branch) or the
+            # flagged naive producer (llama). Refuse only if NEITHER is present.
+            if not self.decode_batched_built or not (
+                self.kvprod_v2_built or self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
+            ):
                 return _StepOut(-1, 0.0, 0, MB_ERR_PIPELINE_NOT_FOUND)
             if seq < 0 or seq >= _BATCH_DECODE_MAX_SEQS:
                 return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
@@ -6034,15 +6125,24 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             if n > self.max_ctx:
                 return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
 
+            # The table builder's EXACT V2 branch condition decides which kvprod descriptor the
+            # AF nomirror table carries (and therefore which args hold the K/V cache pointers) --
+            # see this method's own doc block above.
+            var ingest_kvprod_is_v2 = (
+                self.kvprod_v2_built and self.qk_norm == 1 and self.d_head == _AF_STRUCTURAL_D_HEAD
+            )
+            var kv_arg_ck = 0 if ingest_kvprod_is_v2 else 1
+            var kv_arg_cv = 1 if ingest_kvprod_is_v2 else 2
+
             var kv_off_bytes = UInt64(seq) * UInt64(self.batch_kv_stride_elems) * 2
             for layer in range(self.n_layers):
                 var d_kv = self.kvprod_af2_d[layer]
                 _mb_set_arg_ptr(
-                    self.descriptors_prefill_af_nomirror, d_kv, 0,
+                    self.descriptors_prefill_af_nomirror, d_kv, kv_arg_ck,
                     self.batch_ck_native_addr[layer] + kv_off_bytes,
                 )
                 _mb_set_arg_ptr(
-                    self.descriptors_prefill_af_nomirror, d_kv, 1,
+                    self.descriptors_prefill_af_nomirror, d_kv, kv_arg_cv,
                     self.batch_cv_native_addr[layer] + kv_off_bytes,
                 )
                 var d_attn = self.attn_af2_d[layer]
@@ -6070,10 +6170,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             for layer in range(self.n_layers):
                 var d_kv = self.kvprod_af2_d[layer]
                 _mb_set_arg_ptr(
-                    self.descriptors_prefill_af_nomirror, d_kv, 0, self.af_ck_native_addr[layer],
+                    self.descriptors_prefill_af_nomirror, d_kv, kv_arg_ck, self.af_ck_native_addr[layer],
                 )
                 _mb_set_arg_ptr(
-                    self.descriptors_prefill_af_nomirror, d_kv, 1, self.af_cv_native_addr[layer],
+                    self.descriptors_prefill_af_nomirror, d_kv, kv_arg_cv, self.af_cv_native_addr[layer],
                 )
                 var d_attn = self.attn_af2_d[layer]
                 _mb_set_arg_ptr(

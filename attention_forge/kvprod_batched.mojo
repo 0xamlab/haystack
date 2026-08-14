@@ -58,11 +58,19 @@ def _native_kv_producer_batched_kernel(
     poss: _IP, kv_stride: Int64,
     h_q: Int64, h_kv: Int64, d_head: Int64,
     key_block_size: Int64, n_blocks: Int64, eps: Float32,
+    qk_norm: Int64,
 ):
     """BATCHED producer -- one threadgroup per (sequence, head-unit) (`grid_dim = (h_q+h_kv)*B`,
     `block_dim = d_head`). Per-sequence state (position `poss[seq]`, cache offset `seq*kv_stride`)
     via the minimal-indirection mechanism; norm + RoPE + packing byte-identical to the single-stream
-    `_native_kv_producer_kernel`. See the module docstring for the layout contract."""
+    `_native_kv_producer_kernel`. See the module docstring for the layout contract.
+
+    Llama-family no-QK-norm support (feat/batched-llama, 2026-08-14): the TRAILING `qk_norm` flag
+    is the SAME family-convention flag the single-stream `_native_kv_producer_kernel` carries
+    (feat/llama-native-deep): 1 = Qwen3 per-head RMSNorm-then-gain before rotating (byte-for-byte
+    the pre-flag formula sequence -- a Qwen3 dispatch passing 1 is unchanged); 0 = llama-family
+    rotate-the-RAW-projection, no QK-norm exists in the checkpoint, `qn_w`/`kn_w` are NEVER READ.
+    Same barrier discipline in both arms as the single-stream kernel's own flag implementation."""
     var xs = stack_allocation[Int(_MAX_HEAD_DIM), DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[Int(_MAX_HEAD_DIM), DType.float32, address_space = AddressSpace.SHARED]()
 
@@ -82,21 +90,29 @@ def _native_kv_producer_batched_kernel(
 
     var src_off = row_qkv + (head * d_head + e if is_q else (h_q + head) * d_head + e)
     var v = qkv[Int(src_off)]
-    var g = qn_w[Int(e)] if is_q else kn_w[Int(e)]
 
-    # Full-head RMSNorm reduction -- shared-memory tree reduction over v*v across all d_head lanes,
-    # byte-identical formula to the single-stream producer.
-    red[Int(e)] = v * v
-    barrier()
-    var stride = d_head // 2
-    while stride > 0:
-        if e < stride:
-            red[Int(e)] = red[Int(e)] + red[Int(e + stride)]
+    if qk_norm == 1:
+        var g = qn_w[Int(e)] if is_q else kn_w[Int(e)]
+
+        # Full-head RMSNorm reduction -- shared-memory tree reduction over v*v across all d_head
+        # lanes, byte-identical formula to the single-stream producer.
+        red[Int(e)] = v * v
         barrier()
-        stride //= 2
-    var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
-    xs[Int(e)] = v * inv * g
-    barrier()
+        var stride = d_head // 2
+        while stride > 0:
+            if e < stride:
+                red[Int(e)] = red[Int(e)] + red[Int(e + stride)]
+            barrier()
+            stride //= 2
+        var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+        xs[Int(e)] = v * inv * g
+        barrier()
+    else:
+        # Llama-family (qk_norm=0): rotate the RAW projection -- no RMSNorm, `qn_w`/`kn_w` never
+        # read. Same barrier discipline as the norm arm: every lane publishes its `xs` slot before
+        # the NeoX split-half exchange below reads its partner's slot.
+        xs[Int(e)] = v
+        barrier()
 
     # NeoX split-half RoPE: pairs (e, e+n_pairs), never the interleaved (2e,2e+1) convention.
     var n_pairs = d_head // 2

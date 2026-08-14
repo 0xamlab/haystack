@@ -50,6 +50,8 @@ def main() raises:
         cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
         poss_buf.unsafe_ptr(), kv_stride,
         h_q, h_kv, d_head, key_block_size, n_blocks, eps,
+        Int64(1),  # qk_norm: the flag's VALUE is a runtime dispatch arg, never a codegen constant --
+        # the blob carries both arms (1=Qwen3 RMSNorm-then-RoPE, 0=llama rotate-raw).
         grid_dim=Int((h_q + h_kv) * B), block_dim=Int(d_head),
     )
     print("NATIVE KV PRODUCER BATCHED BLOB DRIVER: codegen forced")

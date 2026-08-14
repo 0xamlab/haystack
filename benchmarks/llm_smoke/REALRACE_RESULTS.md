@@ -12632,3 +12632,62 @@ rope_scaling (llama-3.1+); multi-chunk (>2048-token) AF continuation for llama u
 d64 kernel's continuation contract is oracle-proven standalone; PREFILL_MAX_TILE=2048 bounds the
 single-chunk path). Batched serving for llama stays off by construction (batched blobs structural-
 128 + QK-norm).
+
+---
+
+## BATCHED (CONCURRENT) SERVING FOR LLAMA -- feat/batched-llama (2026-08-14, branch feat/batched-llama)
+
+The batched decode tier was gated qk_norm==1 / structural d_head=128 (the batched kvprod blob
+applied the Qwen3 QK-norm unconditionally; the batched split-K partial blob is the f4u2 family,
+block_dim = d_head//4 = 16 lanes at d64 = half a SIMD group). GENERALIZED to llama d_head=64 /
+qk_norm=0 (TinyLlama), mirroring the single-stream llama pattern (#669/#672):
+
+- kvprod_batched grows the trailing qk_norm flag (1 = Qwen3 RMSNorm-then-RoPE, byte-for-byte the
+  pre-flag math; 0 = llama rotate-raw, qn_w/kn_w never read). Standalone driver: bit-exact (0.0
+  worst ratio) vs the single-stream twin on d64 h32/h4 ragged poss + d128 qk0 control.
+- NEW attention_forge/native_kv_decode_attn_splitk_bf2.mojo: the d64 BATCHED partial (bf2u2 =
+  batched twin of single-stream f2u2: one simdgroup, 2 elems/lane, same batched indirection as the
+  d128 f4u2 blob). Standalone driver: oracle worst-ratio <= 0.018 (f16 bound) incl ragged/empty-
+  split, cross-check vs B single-stream f2u2 dispatches <= 1.4e-3 (merge f32-vs-f64 noise). AIR
+  name native_kv_decode_attn_splitk_bf2_<hex> verified on the forged blob; engine discovery is a
+  new elif in the six-way longest-first splitk chain + a d_head-resolved batched-partial eff slot
+  (d128 -> _bat f4u2 at d_head//4 threads byte-for-byte as before; d64+qk0 -> bf2u2 at 32).
+- decode_batched_built no longer blanket d128+qk1 -- it is eff-slot + four-roles discovered; the
+  family pairing (d128 both families; d64 requires qk0) is enforced by the same gate.
+- prefill_batch_batched_ingest accepts the naive-producer AF table (llama) and retargets the RIGHT
+  kvprod cache-pointer args per table variant (v2 pair: arg0/1; naive producer: arg1/2 -- arg0 is
+  q_native there; patching 0/1 would have pointed q_native at the batched K cache).
+- Merge/batched-lm_head/argmax tail already d_head-parametric + norm-agnostic; the batched lm_head
+  reads self.lm_head_addr, so untied llama lm_heads work with zero extra wiring.
+
+TWO LATENT BATCHED-TABLE BUGS FOUND+FIXED (both invisible while every batched model stayed on the
+MSL split-K arms; both exposed by the first llama batched session):
+1. msl_splitk4__swiglu_partial_f16_f32's atomic epilogue wrote ALL 32 staged rows into the
+   B-sized scratch with no m_abs < M guard = OOB GPU write at every B < 32. Qwen3 survived by
+   LUCK (the logits buffer allocated right after mapped the whole OOB reach; zero-valued atomic
+   adds are value-neutral where mapped). TinyLlama's ~1.4MB reach past an 88KB scratch hit
+   unmapped pages -> GPU hang, then page fault (proven by descriptor prefix-bisection: [0,11) ok,
+   [0,12) hangs; the apply kernel alone is clean, partial+apply faults). Guard added, blob regen.
+2. Batched o_proj/down_proj grids sized by _ceil_div(N, 64) -- the MSL tile width -- in BOTH
+   branches, while the fallback branch dispatches the Mojo _pf_gemm_accum_kernel_i8 whose tiles
+   are _GEMM_BN=32: only half the column tiles launched -> the second half of d_model never
+   accumulated (per-layer hidden trace: down_proj contribution EXACTLY zero for columns 1024..2047
+   of 2048). TinyLlama (d_ff=5632 % 384 != 0) is the first model on the down fallback. Grids are
+   now kernel-family-conditional. (Any future model with n_q % 256 != 0 would have hit the same
+   bug on o_proj.)
+
+VERIFICATION (workers rebuilt from this tree: STAGE_6144 llama tier + 3072 Qwen3 tier, all blobs
+fresh-compiled minus the i8kv pair): TinyLlama decode_batched BYTE-IDENTICAL to per-prompt
+single-stream decode for every sequence: B=2 shallow+deep, B=2 twins, B=4 and B=8 mixed depths
+(6/169-token prompts crossing the single-stream split-K threshold mid-generation: single-stream
+f2s4 vs batched bf2u2 -- still byte-identical). System decode throughput (measured, same worker,
+short prompts, 32-token gens): 96 tok/s @B=2, 190 @B=4, 366 @B=8 (near-2x per doubling at these
+serving-shallow depths). QWEN3 REGRESSION GREEN on both workers: batched_decode_smoke B=4
+byte-identical (system 693 tok/s); test_inference_gpu_e2e.py 6 passed / 1 skipped (oracle 374,
+sampling determinism, quantized-cache identity); policy suite 53/53; inventory-check green.
+
+DEFERRED: llama d_head=128 batched serving (gate now allows it -- d128 pairing serves both
+families and the flagged kvprod/f4u2 partial cover it -- but UNVERIFIED: needs real llama-3
+weights, HF-gated); B=1 stays delegated to serial (the #660 SDK guard); GGUF decode_batched
+routing (same deferral as #677); batched throughput vs llama.cpp concurrent slots NOT raced here
+(correctness gate first -- the race harness wants this arm once the concurrent axis re-races).

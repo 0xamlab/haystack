@@ -153,7 +153,13 @@ kernel void msl_splitk4__swiglu_partial_f16_f32(
 
     /* Atomic-accumulate epilogue (same form as msl_splitk_accum.metal's): stage the 32x64 float
      * tile in threadgroup memory, then every thread atomic-adds 16 elements into the scratch.
-     * Padded M-rows stage 0.0 -> no-op adds. */
+     * feat/batched-llama (2026-08-14): the `m_abs < M` guard is LOAD-BEARING -- the batched
+     * scratch is sized EXACTLY B rows (`B * 2 * n_ff` floats), so the padded rows of the 32-row
+     * tile must NOT be written: an atomic-add of the staged 0.0 is value-neutral where it lands,
+     * but past the buffer end it is an out-of-bounds GPU access (page fault whenever the adjacent
+     * pages happen to be unmapped -- d_ff=5632 x 32 padded rows reaches ~1.4 MB past an 88 KB
+     * scratch; the old Qwen3 runs survived only because THEIR adjacent allocations -- the much
+     * larger logits buffer allocated right after -- happened to map the whole OOB reach). */
     threadgroup_barrier(mem_flags::mem_threadgroup);
     threadgroup float * stg = (threadgroup float *)(shmem);
     const int sm_st = (sgitg & 1) * 16;
@@ -170,9 +176,11 @@ kernel void msl_splitk4__swiglu_partial_f16_f32(
         const int row = i / SKS_NR0;
         const int col = i % SKS_NR0;
         const int m_abs = m_base + row;
-        atomic_fetch_add_explicit(
-            (device atomic_float *)(dst + (uint64_t)m_abs * (uint64_t)N + n_base + col),
-            stg[i], memory_order_relaxed);
+        if (m_abs < M) {
+            atomic_fetch_add_explicit(
+                (device atomic_float *)(dst + (uint64_t)m_abs * (uint64_t)N + n_base + col),
+                stg[i], memory_order_relaxed);
+        }
     }
 }
 
