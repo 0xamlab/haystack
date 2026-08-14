@@ -328,10 +328,51 @@ async def create_checkout_session(
     return {"url": data["url"]}
 
 
+# Per-brand Customer Portal configurations, matched by configuration.metadata.brand.
+# Without a brand-scoped configuration the DEFAULT portal config applies, whose
+# subscription-update product list is account-wide — an Algenta subscriber would be
+# offered Codna plans. Cached in-process; None (default config) when no match exists.
+_PORTAL_CONFIG_CACHE: dict[str, tuple[float, str | None]] = {}
+_PORTAL_CONFIG_TTL_S = 300.0
+
+
+async def portal_configuration_for_app(
+    app: str | None,
+    audit_context: EgressAuditContext | None = None,
+) -> str | None:
+    if not app:
+        return None
+    import time as _time
+
+    now = _time.monotonic()
+    cached = _PORTAL_CONFIG_CACHE.get(app)
+    if cached and now - cached[0] < _PORTAL_CONFIG_TTL_S:
+        return cached[1]
+    config_id: str | None = None
+    try:
+        resp = await stripe_api_request(
+            method="GET",
+            path="/v1/billing_portal/configurations?active=true&limit=100",
+            surface="billing_portal",
+            audit_context=audit_context,
+            headers=_stripe_headers(),
+        )
+        if resp.status_code == 200:
+            for cfg in resp.json().get("data", []):
+                if (cfg.get("metadata") or {}).get("brand") == app:
+                    config_id = cfg.get("id")
+                    break
+    except Exception:  # noqa: BLE001 — fall back to the default portal configuration
+        logger.warning("portal_configuration_lookup_failed", app=app)
+    _PORTAL_CONFIG_CACHE[app] = (now, config_id)
+    return config_id
+
+
 async def create_billing_portal_session(
     customer_id: str,
     return_url: str | None = None,
     audit_context: EgressAuditContext | None = None,
+    configuration: str | None = None,
 ) -> dict[str, str]:
     """
     Create a Stripe Customer Portal session for managing billing.
@@ -340,6 +381,12 @@ async def create_billing_portal_session(
     resolved_return_url = return_url or resolve_billing_redirect_urls(
         settings_obj=settings
     ).return_url
+    payload: dict[str, str] = {
+        "customer": customer_id,
+        "return_url": resolved_return_url,
+    }
+    if configuration:
+        payload["configuration"] = configuration
     try:
         resp = await stripe_api_request(
             method="POST",
@@ -347,10 +394,7 @@ async def create_billing_portal_session(
             surface="billing_portal",
             audit_context=audit_context,
             headers=_stripe_headers(),
-            data={
-                "customer": customer_id,
-                "return_url": resolved_return_url,
-            },
+            data=payload,
         )
     except EgressPolicyDeniedError as exc:
         raise HTTPException(

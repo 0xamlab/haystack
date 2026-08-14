@@ -36,6 +36,7 @@ from apps.api_server.services.stripe_service import (
     billing_configured,
     create_billing_portal_session,
     create_checkout_session,
+    portal_configuration_for_app,
 )
 
 logger = structlog.get_logger(__name__)
@@ -137,11 +138,12 @@ async def account_billing_info(
     # defensively: a missing/empty subscriptions table must not break the plan read.
     status = "active"
     renews_at: str | None = None
+    cancel_at_period_end = False
     try:
         row = (
             await db.execute(
                 text(
-                    "SELECT status, current_period_end FROM subscriptions "
+                    "SELECT status, current_period_end, cancel_at_period_end FROM subscriptions "
                     "WHERE org_id = :org_id ORDER BY updated_at DESC LIMIT 1"
                 ),
                 {"org_id": str(org.id)},
@@ -150,6 +152,7 @@ async def account_billing_info(
         if row is not None:
             status = row[0] or status
             renews_at = row[1].isoformat() if row[1] else None
+            cancel_at_period_end = bool(row[2])
     except Exception as exc:  # noqa: BLE001 — billing info must degrade, not 500
         logger.debug("account_billing_subscription_read_failed", error=str(exc))
 
@@ -157,6 +160,8 @@ async def account_billing_info(
         "plan": plan,
         "status": status,
         "renews_at": renews_at,
+        # True while a cancellation is pending — the portal shows "Cancels on <renews_at>".
+        "cancel_at_period_end": cancel_at_period_end,
         "usage_usd": round(spend_micros / USD_MICROS, 2),
         "cap_usd": cap_usd if cap_usd and cap_usd > 0 else None,
     }
@@ -228,6 +233,14 @@ async def account_billing_checkout(
     )
 
 
+class PortalRequest(BaseModel):
+    # Brand context — selects the per-brand Customer Portal configuration so the
+    # "Update subscription" picker only offers this brand's plans (metadata.brand match).
+    app: str | None = Field(default=None, max_length=32)
+    # Where "Return to …" goes — validated against the trusted accounts host, like checkout.
+    return_url: str | None = Field(default=None, max_length=2048)
+
+
 @router.post(
     "/account/billing/portal",
     summary="Open the Stripe Customer Portal (website / Supabase auth)",
@@ -235,6 +248,7 @@ async def account_billing_checkout(
 async def account_billing_portal(
     request: Request,
     response: Response,
+    payload: PortalRequest | None = None,
     authorization: Annotated[str | None, Header()] = None,
     x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
@@ -253,7 +267,15 @@ async def account_billing_portal(
                 "no_billing_account", "No billing account yet — upgrade first."
             ),
         )
-    redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin_base_url(request))
+    body = payload or PortalRequest()
+    return_url = _validated_return_url(body.return_url)
+    if return_url is None:
+        redirect_urls = resolve_billing_redirect_urls(
+            request_origin=request_origin_base_url(request)
+        )
+        return_url = redirect_urls.return_url
     return await create_billing_portal_session(
-        org.stripe_customer_id, return_url=redirect_urls.return_url
+        org.stripe_customer_id,
+        return_url=return_url,
+        configuration=await portal_configuration_for_app(body.app),
     )

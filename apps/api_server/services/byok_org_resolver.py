@@ -338,18 +338,27 @@ async def resolve_org_for_supabase_user(
     # (personal / admin-of-org), then the resolved org is adopted/re-pointed under the uid so later
     # logins on any provider converge on it.
     if github_user_id is not None:
-        org = await resolve_org_for_github_user(
-            db,
-            github_user_id=github_user_id,
-            github_login=github_login or "",
-            redis=redis,
-            selected_org_id=selected_org_id,
-        )
-        if selected_org_id is not None:
-            await repoint_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+        try:
+            org = await resolve_org_for_github_user(
+                db,
+                github_user_id=github_user_id,
+                github_login=github_login or "",
+                redis=redis,
+                selected_org_id=selected_org_id,
+            )
+        except OrgResolutionError as exc:
+            # A GitHub sign-in with NO App installation is still a customer — without this,
+            # "Continue with GitHub" users could never check out (403 at /account/billing/*).
+            # Fall through to the same lazy personal org every other provider gets; if they
+            # later install the App, the identity link keeps them on this org (no hijack).
+            if not (auto_provision and exc.code == "no_org" and selected_org_id is None):
+                raise
         else:
-            await ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
-        return org
+            if selected_org_id is not None:
+                await repoint_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+            else:
+                await ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+            return org
 
     if auto_provision:
         org = await provision_org_for_supabase_uid(db, supabase_uid=supabase_uid, email=email)

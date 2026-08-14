@@ -22,6 +22,11 @@ _CACHE: dict[str, tuple[float, list[dict[str, Any]]]] = {}
 _TTL_S = 300.0
 
 
+# Plan-limit metadata that renders as the billing card's entitlement chips
+# ("1 device · 5 workers · 1 seat") — set on the Stripe product, never hardcoded.
+_ENTITLEMENT_KEYS = ("devices", "workers", "seats", "per", "max_concurrent", "allowance_usd")
+
+
 def _shape(price: dict[str, Any]) -> dict[str, Any] | None:
     prod = price.get("product")
     if not isinstance(prod, dict) or not prod.get("active"):
@@ -48,6 +53,7 @@ def _shape(price: dict[str, Any]) -> dict[str, Any] | None:
         # The user-facing fix allowance ("150" | "unlimited" | absent) — the
         # unit customers are billed/limited by (simulations etc. are internal).
         "cloud_fix_prs": pmeta.get("cloud_fix_prs"),
+        "entitlements": {k: pmeta[k] for k in _ENTITLEMENT_KEYS if pmeta.get(k)},
     }
 
 

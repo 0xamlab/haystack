@@ -326,3 +326,74 @@ async def test_personal_match_is_cached(patch_helpers):
 
     await r.resolve_org_for_github_user(_DB([]), github_user_id=7, github_login="x", redis=redis)
     assert redis.store.get(f"{r._CACHE_PREFIX}7") == str(pid)
+
+
+# ── GitHub identity with NO App installation: lazy personal org (checkout unblock) ──────────
+
+
+async def test_github_no_install_auto_provisions_personal_org(patch_helpers):
+    """A "Continue with GitHub" user with no App install must still resolve to an org when
+    auto-provision is on — otherwise they can never check out (403 at /account/billing/*)."""
+    monkeypatch = patch_helpers
+    provisioned = _Org(uuid.uuid4(), name="sb-user-uid-1")
+
+    async def _no_link(db, supabase_uid):
+        return None
+
+    async def _gh_no_org(db, **kwargs):
+        raise OrgResolutionError("no_org", "no install", http_status=403)
+
+    async def _provision(db, *, supabase_uid, email=None):
+        return provisioned
+
+    async def _link(db, *, supabase_uid, org_id):
+        return org_id
+
+    monkeypatch.setattr(r, "_org_for_identity_link", _no_link)
+    monkeypatch.setattr(r, "resolve_org_for_github_user", _gh_no_org)
+    monkeypatch.setattr(r, "provision_org_for_supabase_uid", _provision)
+    monkeypatch.setattr(r, "ensure_identity_link", _link)
+
+    org = await r.resolve_org_for_supabase_user(
+        _DB([]), supabase_uid="uid-1", github_user_id=7, auto_provision=True
+    )
+    assert org.id == provisioned.id
+
+
+async def test_github_no_install_without_auto_provision_still_403s(patch_helpers):
+    monkeypatch = patch_helpers
+
+    async def _no_link(db, supabase_uid):
+        return None
+
+    async def _gh_no_org(db, **kwargs):
+        raise OrgResolutionError("no_org", "no install", http_status=403)
+
+    monkeypatch.setattr(r, "_org_for_identity_link", _no_link)
+    monkeypatch.setattr(r, "resolve_org_for_github_user", _gh_no_org)
+
+    with pytest.raises(OrgResolutionError) as exc:
+        await r.resolve_org_for_supabase_user(
+            _DB([]), supabase_uid="uid-1", github_user_id=7, auto_provision=False
+        )
+    assert exc.value.code == "no_org"
+
+
+async def test_github_non_no_org_errors_are_not_swallowed(patch_helpers):
+    """Only a fresh 'no_org' falls through to provisioning — ambiguity (409) must surface."""
+    monkeypatch = patch_helpers
+
+    async def _no_link(db, supabase_uid):
+        return None
+
+    async def _gh_ambiguous(db, **kwargs):
+        raise OrgResolutionError("multiple_orgs", "pick one", http_status=409)
+
+    monkeypatch.setattr(r, "_org_for_identity_link", _no_link)
+    monkeypatch.setattr(r, "resolve_org_for_github_user", _gh_ambiguous)
+
+    with pytest.raises(OrgResolutionError) as exc:
+        await r.resolve_org_for_supabase_user(
+            _DB([]), supabase_uid="uid-1", github_user_id=7, auto_provision=True
+        )
+    assert exc.value.code == "multiple_orgs"

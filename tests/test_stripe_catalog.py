@@ -79,3 +79,38 @@ async def test_list_plans_scopes_to_telys(monkeypatch):
     monkeypatch.setattr(stripe_catalog, "stripe_api_request", _req)
     plans = await stripe_catalog.list_plans("telys", use_cache=False)
     assert [p["name"] for p in plans] == ["Telys Pro"]
+
+
+async def test_plan_rows_carry_entitlements_from_product_metadata(monkeypatch):
+    """The billing card's entitlement chips render straight from product metadata."""
+    async def _req(**kwargs):
+        class _R:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {
+                    "data": [
+                        {
+                            "id": "price_1", "unit_amount": 9900, "currency": "usd",
+                            "lookup_key": "algenta_pro_monthly", "metadata": {},
+                            "recurring": {"interval": "month"},
+                            "product": {
+                                "active": True, "name": "Algenta Pro", "description": "d",
+                                "metadata": {
+                                    "plan": "algenta_pro", "source": "algenta",
+                                    "seats": "1", "workers": "5", "per": "device",
+                                    "support": "email",  # non-entitlement key: must NOT pass through
+                                },
+                            },
+                        }
+                    ]
+                }
+
+        return _R()
+
+    from apps.api_server.services import stripe_catalog as c
+
+    monkeypatch.setattr(c, "stripe_api_request", _req)
+    plans = await c.list_plans("algenta", use_cache=False)
+    assert plans and plans[0]["entitlements"] == {"seats": "1", "workers": "5", "per": "device"}
