@@ -12440,3 +12440,113 @@ no-QK-norm AF prefill attention blobs; llama prefill today stays PF_ATTN_OFF, ~1
 (pos_base > 2048) pnat continuation is untested end-to-end (single-chunk depths exercised); the
 deep residual vs Q8_0 above. Batched serving for llama stays off by construction (batched blobs
 are structural-128 + QK-norm).
+
+---
+
+## feat/llama-q80gap -- native-path profile + f2s4 staged-SIMD-K partial: TinyLlama @1024 268->272-274 tok/s, deep attention -22% (2026-08-13)
+
+PROFILE FIRST. New native-path GPU-counter probe (`metal_batch_dispatch/
+tinyllama_probe_counters_decode_native.mojo`, the legacy probe adapted to the #669 fast path:
+`PF_ATTN_PARAMETRIC_NATIVE_DECODE` session, `descriptors_decode_native_splitk` table, per-step
+patching replicated byte-for-byte from `_step_native_kv_impl`, production-shape single-encoder
+wall + one-encoder-per-dispatch stage-boundary counters). Per-role medians on worker-shaped
+session (n_splits=16, TinyLlama int8):
+
+  | n_keys | GEMV(+norms) | attention | kvprod/rope | norm/embed/lmhead | wall  | implied  |
+  |--------|--------------|-----------|-------------|-------------------|-------|----------|
+  | 288    | 2.65 ms      | 0.46 ms   | 0.21 ms     | 0.19 ms           | 3.51  | 285 tok/s|
+  | 1056   | 2.65-2.68 ms | 0.72 ms   | 0.21 ms     | 0.19 ms           | 3.71  | 269 tok/s|
+
+Probe wall matches the e2e harness within ~1% at both depths (290.2/268.1 in the #669 entry),
+so the probe is production-faithful. TWO profile verdicts set the lever search:
+  * DISPATCH GAP IS ZERO: wall <= GPU-sum at both depths -- host encoding is fully overlapped
+    behind GPU execution. The "dispatch/host overhead" hypothesis from the #669 residual
+    estimate is REFUTED by measurement; llama.cpp's MTLDispatchTypeConcurrent is NOT a lever
+    here (we run 157 dispatches/token vs their ~515-540, already fully pipelined).
+  * ATTENTION GROWS WITH DEPTH: partial 0.34 ms @288 -> 0.60 ms @1056 (+ merge 0.12 flat),
+    while GEMV/kvprod/tail stay flat. The deep residual is attention.
+
+LEVER SEARCH (all at production shape h_q=32/h_kv=4/d_head=64/kbs=32, interleaved medians):
+  * n_splits sweep @1056: 16 = optimal. 32: partial 0.60 (tied) but merge 0.12->0.18; 64:
+    partial 0.72, merge 0.28. REFUTED (matches the Qwen3-era sweep's "above the TG-count
+    optimum loses" finding at d_head=64 too).
+  * MUTANT DISSECTION of the f2u2 partial (25.9 us/dispatch @1056): no-shuffle mutant -1.6%,
+    no-exp mutant -2.1%, NO-LOADS mutant -41% (10.7 us) -> K/V MEMORY ACCESS is 59% of the
+    kernel; a key-major-K-addressing mutant recovers 1.25x. Root cause: the packed K layout is
+    ELEMENT-major inside a block (`K[hk][block][e][kk]`), so f2u2's per-key strided scalar K
+    loads (2 useful bytes per 64-byte line, ~3% utilization, amplified by GQA 8 q-heads
+    re-reading each kv head) are the cost. Shuffle/exp compute is NOT the bottleneck.
+  * KEY-SIMD (vectorize scores across keys + SIMD warp-shuffle reduction): IMPOSSIBLE on this
+    nightly -- `std.gpu.primitives.warp.shuffle_xor` rejects every SIMD width but 1
+    ("Unsupported simd_width" for 2/4/8), so multi-key reductions cannot share a shuffle chain.
+  * REGISTER-BLOCKED staging (f2r8/f2r16: width-8/16 SIMD K loads staged, then consumed):
+    BIT-EXACT but 0.79-0.85x -- SIMD-register extraction spills eat the load gain. REFUTED.
+  * WIDTH-8 staging (f2s8, constant-index unroll): 1.01-1.06x. REFUTED (the width-4 unroll is
+    the sweet spot; wider staging loses on register pressure/scheduling).
+  * THE WINNER, f2s4 (`attention_forge/native_kv_decode_attn_splitk_f2s4.mojo`): stage the next
+    4 keys' K as two WIDTH-4 SIMD loads per lane (contiguous ACROSS keys = full-line streaming
+    within the 32-key block), consume them with EXACTLY f2's per-key scalar arithmetic in key
+    order (constant SIMD-index extracts; lead-in aligns kk to 4, odd tail runs the f2 body).
+    Standalone race (median-of-9 interleaved, per dispatch): 1.00x f2u2 @288 keys (13.6 vs
+    13.7 us), 1.30x @1056 (19.9 vs 26.0 us), 1.48x @2048 (27.1 vs 40.2 us) -- the gain grows
+    with depth exactly where the Q8_0 gap grows.
+  * kvprod lever (0.21 ms/token = 9.6 us/layer, ~2x the 4.5-5 us dispatch floor): lane-fused
+    no-QK-norm twin `kvprod_f1` (each lane owns its whole RoPE pair -> no shared scratch, no
+    barrier, d_head/2 threads). BIT-EXACT at every pos_base (mid-block, block-boundary, deep)
+    but standalone 1.005x -> REFUTED as a perf lever (the cost is launch-floor dominated, not
+    scratch/barrier); NOT wired into the engine. Module + drivers committed as evidence.
+
+WHAT LANDED
+  * `native_kv_decode_attn_splitk_f2s4.mojo` + blob driver + regenerated blob
+    (`generated/native_kv_decode_attn_splitk_f2s4_blob.c`); A/B family + bit-exact gate in
+    `native_kv_decode_attn_splitk_f2r{,_driver}.mojo` (worst-abs-diff vs f2u2 = 0.0 on m/l/o
+    across aligned/ragged/empty-split (n_keys, n_splits) pairs; oracle worst_ratio <= 0.016).
+  * `session_prefill.mojo` wiring: discovery field
+    `native_decode_splitk_partial_f2s4_pipeline_idx`; d_head==64 effective-partial resolution
+    now PREFERS f2s4 when linked (f2u2 fallback). TRUNCATION CAUTION, measured: the AIR label
+    truncates the 33-char module name to 32 chars, so the discoverable substring is
+    `native_kv_decode_attn_splitk_f2s` (no trailing `4`), checked five-way longest-first before
+    `_f2`/generic/`_bat`/naive arms. No plan/ABI change (MB_MAX_ARGS untouched; same grid/
+    threads/args as f2u2, so the table builder + per-step n_splits patching are byte-unmodified);
+    d_head=128 (Qwen3) keeps f4u2 -- zero change there.
+  * Probe `tinyllama_probe_counters_decode_native.mojo` (tracked).
+
+MEASURED (workers: baseline `algenta-gpu-worker-llamanat2` (f2u2), variant
+`algenta-gpu-worker-f2s4` (this tree + f2s4 blob); harness `tinyllama_deep_bench.py`, warmup +
+median-of-3, interleaved rounds, same session; llama.cpp reference run in the same sitting):
+
+  | depth      | f2u2 baseline           | f2s4                    | llama.cpp Q8_0 (session) |
+  |------------|-------------------------|-------------------------|--------------------------|
+  | 256 prompt | 284-290 tok/s           | 284-290 tok/s (TIE)     | 298.2 +/- 1.6            |
+  | 1024 prompt| 265.6/266.7/267.4/268.1 | 271.9/272.2/273.6/274.0 | 298.8 +/- 0.5            |
+
+@1024: +5-7 tok/s (+1.8-2.5%, every interleaved round positive; one contaminated baseline round
+excluded). The e2e gain is the diluted image of the kernel's 1.30x: partial is ~16% of the
+1056-key token (0.60 of 3.71 ms), so 1.30x -> at most +3.9% e2e; measured +1.8-2.5% under
+DVFS noise. Gap vs Q8_0 narrows ~10% -> ~8-9%.
+@256: TIE (kernel is 1.00x at 288 keys -- the shallow partial is latency-bound, not
+load-bound; staging's lead-in cancels its gain). Gap vs Q8_0 stays ~4%.
+
+CORRECTNESS: greedy output BYTE-IDENTICAL between baseline and f2s4 workers: France prompt
+(first tokens [3900, 29889, 13, 29902, 626, 263, ...], full 128-token sequence) and both deep
+runs (full 64-token sequences at 256 and 1024, every run). Kernel-level: partials bit-exact vs
+f2u2 (worst-abs-diff 0.0). Qwen3 regression: `tests/test_inference_gpu_e2e.py` 6 passed /
+1 skipped (worker `algenta-gpu-worker-q80gap` from this tree; oracle 374 + long-gen +
+quantized-cache + sampling green -- Qwen3 never touches f2s4, d_head=128 gate). Policy suite
+53/53. `test_metaldispatch_session_prefill_native_decode.mojo` libs suite 37 passed / 0 failed
+(Gates D-I; J/K skipped for unlinked bm64/vecload4 blobs -- unrelated GEMM tiers).
+`make inventory-check` green (no dispatch-surface change).
+
+HONEST CEILING for the remaining gap: after f2s4 the @1024 token is GEMV 2.65 (already
+390-410 GB/s, above llama.cpp's ~314 -- not a lever), partial ~0.46, merge 0.12, kvprod 0.21,
+lm_head 0.18 (at its 65MB-weight bandwidth floor), embed/argmax ~0.01. Everything left except
+partial is at or near its per-dispatch launch/bandwidth floor, and partial is now
+load-efficient (its remainder is compute/latency). Closing the @256 ~4% / residual @1024 ~8%
+requires STRUCTURAL dispatch-count reduction (fusing kvprod and/or the merge into neighboring
+dispatches), not kernel micro-tuning -- deferred; the f2s4 kernel itself still has headroom at
+deeper context (1.48x @2048 grows with depth).
+
+REFUTED ledger (measured, do not retry): n_splits > 16 at these depths; register-blocked K/V
+staging f2r8/f2r16 (spill-bound); width-8 staging f2s8 (1.01x); key-SIMD vector-shuffle
+reduction (stdlib warp shuffle rejects SIMD widths on this nightly); kvprod_f1 scratch/barrier
+removal (1.005x -- launch-floor dominated).

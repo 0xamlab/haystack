@@ -796,6 +796,23 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     irrelevant -- same discipline the batched `_bat` arm uses). Non-fatal-miss (`-1`) exactly like
     every other optional pipeline field: without it a d_head=64 session simply never builds the
     split-K table and keeps the naive native single-dispatch decode at every depth."""
+
+    var native_decode_splitk_partial_f2s4_pipeline_idx: Int
+    """feat/llama-q80gap (2026-08-13): the d_head=64 4-KEY-STAGED SIMD-K split-K PARTIAL (module
+    `attention_forge/native_kv_decode_attn_splitk_f2s4`; the blob's codegen target is
+    `_native_kv_decode_splitk_partial_kernel_f2s4` -- the GPU-counter profile of the TinyLlama
+    native fast path measured f2u2's strided element-major K reads as ~59% of its cost, and this
+    kernel's width-4 key-contiguous K staging measured 1.28-1.48x f2u2 per dispatch at 1056-2048
+    keys with BIT-IDENTICAL (worst-abs-diff 0.0) (m, l, o) partials, so it replaces f2u2 as the
+    d_head=64 effective partial when linked; same signature/grid/block_dim=32/(m,l,o) contract,
+    engine merge untouched). Discovered via the LONGEST substring
+    `"native_kv_decode_attn_splitk_f2s"` -- the AIR label truncates the 33-char module name
+    `native_kv_decode_attn_splitk_f2s4` to 32 chars (measured on the forged blob), dropping the
+    trailing `4` -- checked in the elif chain BEFORE the shorter `"native_kv_decode_attn_splitk_
+    f2"` arm (the f2s4 label CONTAINS the f2 substring, so longest-first keeps the scan order
+    irrelevant -- same discipline the `_bat`/`_f2` arms use).
+    Non-fatal-miss (`-1`) exactly like every other optional pipeline field: without it a d_head=64
+    session keeps the f2u2 partial (or the naive native decode when f2 is absent too)."""
     var native_splitk_partial_eff_idx: Int
     var native_splitk_partial_eff_threads: Int
     """feat/llama-native-deep (2026-08-13): the split-K partial THIS session's own d_head can
@@ -1430,6 +1447,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # ── feat/llama-native-deep (2026-08-13): d_head=64 split-K partial discovery slot + the
         # two effective-partial values resolved from it post-discovery (see their field docstrings).
         self.native_decode_splitk_partial_f2_pipeline_idx = -1
+        self.native_decode_splitk_partial_f2s4_pipeline_idx = -1
         self.native_splitk_partial_eff_idx = -1
         self.native_splitk_partial_eff_threads = 0
         # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): discovery slots, same pattern.
@@ -1519,6 +1537,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # (`native_kv_decode_attn_splitk_f2`) CONTAINS the generic split-K substring, so the
             # longer `_f2` check sits BEFORE the generic arm -- four-way longest-first, scan order
             # irrelevant (same discipline the `_bat` arm above uses).
+            # ── feat/llama-q80gap (2026-08-13): the d_head=64 f2s4 staged-SIMD-K partial's module
+            # name (`native_kv_decode_attn_splitk_f2s4`) CONTAINS the `_f2` substring, so the
+            # longer check sits BEFORE the `_f2` arm -- five-way longest-first, scan order still
+            # irrelevant. TRUNCATION CAUTION (measured on the forged blob): the AIR label truncates
+            # the 33-char module name to 32 chars, so the discoverable substring is
+            # `"native_kv_decode_attn_splitk_f2s"` (no trailing `4` -- the f2u2 blob's own label is
+            # `..._f2` + hex, never `..._f2s`, so this cannot cross-wire).
+            elif name.find("native_kv_decode_attn_splitk_f2s") >= 0:
+                self.native_decode_splitk_partial_f2s4_pipeline_idx = i
             elif name.find("native_kv_decode_attn_splitk_f2") >= 0:
                 self.native_decode_splitk_partial_f2_pipeline_idx = i
             elif name.find("native_kv_decode_attn_splitk") >= 0:
@@ -1635,6 +1662,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         if self.d_head == _AF_STRUCTURAL_D_HEAD and self.native_decode_splitk_partial_pipeline_idx >= 0:
             self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_pipeline_idx
             self.native_splitk_partial_eff_threads = self.d_head // 4
+        elif self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.native_decode_splitk_partial_f2s4_pipeline_idx >= 0:
+            # ── feat/llama-q80gap (2026-08-13): f2s4 (4-key staged SIMD-K reads) PREFERRED over
+            # f2u2 at d_head=64 when linked -- 1.28-1.48x per dispatch at depth, bit-identical
+            # partials (driver cross-check), same grid/block/contract, so the table + merge + all
+            # per-step patching stay byte-unmodified. f2u2 remains the fallback below.
+            self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_f2s4_pipeline_idx
+            self.native_splitk_partial_eff_threads = 32
         elif self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.native_decode_splitk_partial_f2_pipeline_idx >= 0:
             self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_f2_pipeline_idx
             self.native_splitk_partial_eff_threads = 32
