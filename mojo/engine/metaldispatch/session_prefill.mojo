@@ -1791,15 +1791,21 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # pair; for a Qwen3 session (d_head=128) the eff slot IS `af_pipeline_idx[_AFROLE_
             # GROUPED_FA_ATTN]` itself, byte-for-byte the pre-existing gate.
             and self.af_grouped_fa_attn_eff_idx >= 0
-            # ── structural-family pairing: the d128 steel kernel is validated for the Qwen3
-            # family (d_head=128 + QK-norm); the d64 steel twin (feat/llama-prefill) for the
-            # llama family (d_head=64, no QK-norm -- the kernel itself is norm-agnostic, the norm
-            # lives in the naive producer's qk_norm flag, but each pairing is gated to the family
-            # its END-TO-END validation covers; a different pairing degrades to the parametric
-            # paths, never wrong math). feat/llama-native-deep (2026-08-13): the kvprod BLOB
-            # itself takes the qk_norm flag (the engine passes the model's own value), so the
-            # NATIVE DECODE half below is available to qk_norm=0 models regardless.
-            and ((self.d_head == _AF_STRUCTURAL_D_HEAD and self.qk_norm == 1)
+            # ── structural-family pairing: the d128 steel kernel serves BOTH families at
+            # d_head=128 -- the Qwen3 family (QK-norm ON, end-to-end validated since the AF path
+            # landed) and the llama family (qk_norm=0 -- feat/llama-d128-ropescale 2026-08-14):
+            # the steel attention kernel itself is NORM-AGNOSTIC (it reads the already-produced
+            # F16 Q/K/V and never touches qn_w/kn_w -- see grouped_fa_q8_k32_h2_sg8.mojo), and
+            # the QK-norm lives entirely in the kvprod, whose naive producer blob carries the
+            # trailing qk_norm flag (feat/llama-native-deep) this table already binds from
+            # `self.qk_norm` -- the kvprod_v2 pair stays gated to qk_norm=1+d128 below, so a
+            # qk_norm=0 d128 session takes the flagged naive producer. The d64 steel twin
+            # (feat/llama-prefill) stays gated to the llama family (d_head=64, no QK-norm -- its
+            # END-TO-END validation family; a different pairing degrades to the parametric paths,
+            # never wrong math). feat/llama-native-deep (2026-08-13): the kvprod BLOB itself
+            # takes the qk_norm flag (the engine passes the model's own value), so the NATIVE
+            # DECODE half below is available to qk_norm=0 models regardless.
+            and (self.d_head == _AF_STRUCTURAL_D_HEAD
                  or (self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.qk_norm == 0)),
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
@@ -2220,8 +2226,20 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # table (`1 + n_layers*9 + 2`, not `...*8...`) regardless of whether it ends up actually
         # built below -- the extra dispatch is the natural-cache double-write (`self.kvprod_mirror_
         # af_d`) that closes the decode-after-AF-prefill gap; see that field's own docstring.
-        self.n_descriptors_prefill_af = 1 + self.n_layers * 9 + 2 + (
-            self.n_layers if self.kvprod_v2_built else 0)
+        # feat/llama-d128-ropescale (2026-08-14): the +1-per-layer kvprod_v2 term must gate on the
+        # EXACT condition the builder's own branch below gates on -- v2-blob-linked is necessary
+        # but NOT sufficient (the branch also requires qk_norm==1 + d_head==128; a llama-family
+        # session on a v2-linked binary takes the single-dispatch flagged naive producer). A
+        # budget that counted the V2 pair for a session the branch never takes miscounts the
+        # table by one descriptor per layer and the builder's own count check raises (caught by
+        # the synthetic llama d_head=128 gate: v2-linked binary + qk_norm=0). Qwen3 (qk_norm=1 +
+        # d128) evaluates the gate exactly as before, byte-for-byte.
+        var kvprod_v2_af_extra = (
+            self.n_layers
+            if (self.kvprod_v2_built and self.qk_norm == 1 and self.d_head == _AF_STRUCTURAL_D_HEAD)
+            else 0
+        )
+        self.n_descriptors_prefill_af = 1 + self.n_layers * 9 + 2 + kvprod_v2_af_extra
         self.descriptors_prefill_af = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.embed_af_d = -1
         self.rmsnorm_af_d = List[Int]()
@@ -2239,8 +2257,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # ── Project Redline reopening (2026-08-08): placeholder init for the two NEW tables, same
         # "set the real budget now, allocate/build only if the guard below passes" discipline as
         # `self.descriptors_prefill_af` immediately above.
-        self.n_descriptors_prefill_af_nomirror = 1 + self.n_layers * 8 + 2 + (
-            self.n_layers if self.kvprod_v2_built else 0)
+        # feat/llama-d128-ropescale: SAME kvprod_v2 budget gate as the with-mirror table above --
+        # both budgets must agree with the builder branch's own (v2-linked AND qk_norm==1 AND
+        # d_head==128) condition, never the blob-linked bit alone.
+        self.n_descriptors_prefill_af_nomirror = 1 + self.n_layers * 8 + 2 + kvprod_v2_af_extra
         self.descriptors_prefill_af_nomirror = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
         self.embed_af2_d = -1
         self.rmsnorm_af2_d = List[Int]()
@@ -2425,9 +2445,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER] >= 0
             # ── feat/llama-prefill (2026-08-13): SAME gate as `__init__`'s own, byte-for-byte --
             # both resolution sites must agree. The d_head-resolved effective steel pipeline +
-            # the structural-family pairing.
+            # the structural-family pairing (d128 both families -- the steel kernel is
+            # norm-agnostic and the naive kvprod carries the qk_norm flag; d64 llama-family
+            # only -- feat/llama-d128-ropescale widened the d128 side).
             and self.af_grouped_fa_attn_eff_idx >= 0
-            and ((self.d_head == _AF_STRUCTURAL_D_HEAD and self.qk_norm == 1)
+            and (self.d_head == _AF_STRUCTURAL_D_HEAD
                  or (self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.qk_norm == 0)),
             self.qkv_proj_bm64_pipeline_idx >= 0,
             self.qkv_proj_vecload4_pipeline_idx >= 0,
@@ -3331,9 +3353,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 d += 1
             else:
                 # feat/llama-native-deep: the naive producer's signature grew the trailing
-                # llama-family qk_norm flag (17 args total). Only a qk_norm==1 + d_head==128
-                # session ever runs this AF table (see the `af_grouped_fa_available` gate), so
-                # this binds 1 for it -- bound from `self.qk_norm` regardless, never a literal.
+                # llama-family qk_norm flag (17 args total). Since feat/llama-d128-ropescale a
+                # qk_norm=0 d_head=128 (llama-3-8B class) session ALSO runs this AF table (the
+                # pairing gate covers both families at d128; the V2 pair above stays Qwen3-only),
+                # so this binds the MODEL'S OWN flag -- bound from `self.qk_norm`, never a literal.
                 _mb_set_header(
                     self.descriptors_prefill_af, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
                     n_units_kvprod_max, self.d_head, 17,
@@ -3393,8 +3416,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             _mb_set_arg_int(self.descriptors_prefill_af, d, 13, 0)  # m_rows, patched per call
             # Llama-family qk_norm (2026-08-13): SAME trailing arg the OFF path's own `ropewrt`
             # binds -- this mirror re-dispatches the SAME 15-param `_pf_ropewrt_kernel`, so it must
-            # bind all 15 or the dispatch reads garbage for `qk_norm`. Only a qk_norm==1 model ever
-            # runs this AF table (see the `af_grouped_fa_available` gate), so this stays 1 here.
+            # bind all 15 or the dispatch reads garbage for `qk_norm`. Both AF-table families bind
+            # the MODEL'S OWN flag (feat/llama-d128-ropescale widened the pairing gate to
+            # qk_norm=0 d_head=128 models; `_pf_ropewrt_kernel`'s own flag skips its norm block
+            # for them), never a literal.
             _mb_set_arg_int(self.descriptors_prefill_af, d, 14, self.qk_norm)
             self.kvprod_mirror_af_d.append(d)
             d += 1

@@ -1,6 +1,6 @@
 """test_metaldispatch_qwen3_prefill_decode.mojo — auto-generated tests for metaldispatch.qwen3_prefill_decode."""
 from std.math import isnan, isinf
-from metaldispatch.qwen3_prefill_decode import qwen3_i8_allsimd7_prefill_decode_flat
+from metaldispatch.qwen3_prefill_decode import qwen3_i8_allsimd7_prefill_decode_flat, qwen3_i8_allsimd7_prefill_decode_flat_af, qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4, qwen3_i8_allsimd7_prefill_decode_flat_af_msl, qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl, qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4, qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror, qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3, qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled, qwen3_batched_prefill_decode_anyqwen3
 
 def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -44,5 +44,23 @@ def main() raises:
 
     _ = qwen3_i8_allsimd7_prefill_decode_flat("test", 5)
     passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat")
+    _ = qwen3_i8_allsimd7_prefill_decode_flat_af("test", 5, True)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat_af")
+    _ = qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4("test", 5, True, True, 5)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4")
+    _ = qwen3_i8_allsimd7_prefill_decode_flat_af_msl("test", 5, True, True)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat_af_msl")
+    _ = qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl("test", 5, True, True, 5)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl")
+    _ = qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4("test", 5, True, True, True)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4")
+    _ = qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror("test", 5, True, True)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror")
+    _ = qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3("test", 5, True, True, _li5, 5)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3")
+    _ = qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled("test", 5, 0.5, 5, 0.5, 0.5, 0.5, 0.5, 0.5, 5, _li5)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled")
+    _ = qwen3_batched_prefill_decode_anyqwen3("test", 5, True, _li5, _li5)
+    passed += 1; print("  ✅ metaldispatch.qwen3_prefill_decode::qwen3_batched_prefill_decode_anyqwen3")
 
     print("  [metaldispatch.qwen3_prefill_decode] Passed:", passed, "Failed:", failed)

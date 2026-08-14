@@ -345,6 +345,9 @@ from attnk.rope import (
     rope_theta_for as _attnk_rope__rope_theta_for,
     rope_inv_freq as _attnk_rope__rope_inv_freq,
     rope_table as _attnk_rope__rope_table,
+    rope_inv_freq_llama3 as _attnk_rope__rope_inv_freq_llama3,
+    rope_table_llama3 as _attnk_rope__rope_table_llama3,
+    rope_table_freq_factors as _attnk_rope__rope_table_freq_factors,
     rope_apply_flat as _attnk_rope__rope_apply_flat,
     rope_apply_inverse_flat as _attnk_rope__rope_apply_inverse_flat,
 )
@@ -27093,6 +27096,68 @@ def _dispatch_attnk__rope(function_name: String, args_array: String) raises -> S
         return _error_json(
             "invalid_arguments",
             "Function attnk.rope.rope_table expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_inv_freq_llama3":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _attnk_rope__rope_inv_freq_llama3(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_inv_freq_llama3."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_inv_freq_llama3 expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_table_llama3":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _attnk_rope__rope_table_llama3(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_ropetable(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_table_llama3."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_table_llama3 expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_table_freq_factors":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var result = _attnk_rope__rope_table_freq_factors(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_ropetable(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_table_freq_factors."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_table_freq_factors expected 4 arguments, received " + String(arg_count) + "."
         )
     if function_name == "rope_apply_flat":
         if arg_count == 8:

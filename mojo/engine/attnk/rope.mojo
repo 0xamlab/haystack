@@ -59,11 +59,17 @@ Public API:
   rope_theta_agreement(base, orig_ctx, target_ctx) — both frozen answers and their ratio
   rope_inv_freq(head_dim, theta)                   — one inverse frequency per dimension pair
   rope_table(head_dim, max_pos, theta)             — cos/sin for every (position, pair)
+  rope_inv_freq_llama3(head_dim, theta, factor,    — llama-3.1 "llama3" scheme: per-pair
+    low_freq_factor, high_freq_factor, orig_ctx)     inverse frequencies, adjusted
+  rope_table_llama3(head_dim, max_pos, theta,      — cos/sin table from the llama3-adjusted
+    factor, low, high, orig_ctx)                     inverse frequencies
+  rope_table_freq_factors(head_dim, max_pos,       — cos/sin table from EXPLICIT per-pair
+    theta, freq_factors)                             frequency factors (GGUF rope_freqs.weight)
   rope_apply_flat(x, cos, sin, n_tok, n_heads, head_dim, pos, interleaved)
   rope_apply_inverse_flat(...)                     — the exact inverse, for round-trip proof
 """
 
-from std.math import cos as mcos, sin as msin, pow as mpow
+from std.math import cos as mcos, sin as msin, pow as mpow, pi as mpi
 from attnk.contract import (
     ATTN_ERR_DIM_TOO_LARGE,
     ATTN_ERR_EMPTY_DIM,
@@ -222,6 +228,19 @@ def rope_table(head_dim: Int, max_pos: Int, theta: Float64) -> RopeTable:
     if len(inv) != n_pairs:
         return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_DIM_TOO_LARGE)
 
+    return _rope_table_from_inv(head_dim, max_pos, theta, inv^)
+
+
+def _rope_table_from_inv(
+    head_dim: Int, max_pos: Int, theta: Float64, inv: List[Float64]
+) -> RopeTable:
+    """Shared cos/sin materialization for every table builder in this module: the caller has
+    ALREADY validated `head_dim`/`max_pos`/cell budget and produced EXACTLY `head_dim // 2`
+    inverse frequencies (plain or scaled); this body only evaluates `pos * inv[pair]` into the
+    row-major table, Float64 throughout, exactly as `rope_table` always did."""
+    var c = List[Float64]()
+    var s = List[Float64]()
+    var n_pairs = head_dim // 2
     for pos in range(max_pos):
         var p = Float64(pos)
         for pair in range(n_pairs):
@@ -229,6 +248,156 @@ def rope_table(head_dim: Int, max_pos: Int, theta: Float64) -> RopeTable:
             c.append(mcos(angle))
             s.append(msin(angle))
     return RopeTable(c^, s^, max_pos, n_pairs, theta, ATTN_OK)
+
+
+def rope_inv_freq_llama3(
+    head_dim: Int, theta: Float64, factor: Float64, low_freq_factor: Float64,
+    high_freq_factor: Float64, original_max_position_embeddings: Float64,
+) -> List[Float64]:
+    """The llama-3.1 "llama3" rope scaling: the base inverse frequency of each dimension pair,
+    adjusted by the standard low/high-frequency-factor interpolation.
+
+    For each base inverse frequency `f` with wavelength `2*pi / f`:
+      * wavelength < original_max_pos / high_freq_factor (the HIGH frequencies) -- unchanged;
+      * wavelength > original_max_pos / low_freq_factor (the LOW frequencies) -- divided by
+        `factor`;
+      * in between -- smoothly interpolated: with
+        `smooth = (original_max_pos / wavelength - low_freq_factor) /
+                  (high_freq_factor - low_freq_factor)`,
+        the adjusted frequency is `(1 - smooth) * f / factor + smooth * f`.
+
+    This is the formula Hugging Face transformers applies for `rope_scaling.rope_type == "llama3"`
+    and the one llama.cpp's GGUF conversion bakes into its `rope_freqs.weight` tensor (whose
+    stored value is the per-pair DIVISOR this function divides by -- 1, factor, or
+    `1 / ((1 - smooth) / factor + smooth)` respectively).
+
+    Empty list on any invalid input (odd/out-of-range `head_dim`, non-finite/non-positive theta,
+    factor, freq factors, or original context; `high_freq_factor` must EXCEED `low_freq_factor`
+    or the interpolation's denominator is zero) -- the same typed-failure convention as
+    `rope_inv_freq`, never a silent unscaled fallback."""
+    var out = List[Float64]()
+    var base = rope_inv_freq(head_dim, theta)
+    if len(base) == 0:
+        return out^
+    if (
+        not tx_finite(factor) or factor <= 0.0
+        or not tx_finite(low_freq_factor) or low_freq_factor <= 0.0
+        or not tx_finite(high_freq_factor) or high_freq_factor <= low_freq_factor
+        or not tx_finite(original_max_position_embeddings)
+        or original_max_position_embeddings <= 0.0
+    ):
+        return out^
+    var low_freq_wavelen = original_max_position_embeddings / low_freq_factor
+    var high_freq_wavelen = original_max_position_embeddings / high_freq_factor
+    for i in range(len(base)):
+        var freq = base[i]
+        var wavelen = 2.0 * mpi / freq
+        if wavelen < high_freq_wavelen:
+            out.append(freq)
+        elif wavelen > low_freq_wavelen:
+            out.append(freq / factor)
+        else:
+            var smooth = (
+                (original_max_position_embeddings / wavelen - low_freq_factor)
+                / (high_freq_factor - low_freq_factor)
+            )
+            out.append((1.0 - smooth) * freq / factor + smooth * freq)
+    return out^
+
+
+def rope_table_llama3(
+    head_dim: Int, max_pos: Int, theta: Float64, factor: Float64, low_freq_factor: Float64,
+    high_freq_factor: Float64, original_max_position_embeddings: Float64,
+) -> RopeTable:
+    """`rope_table` with the llama-3.1 "llama3" frequency adjustment applied to every pair --
+    same Float64, row-major `pos * n_pairs + pair` contract; see `rope_inv_freq_llama3` for the
+    formula and the typed-failure convention. Invalid scaling parameters return
+    `ATTN_ERR_UNKNOWN_SCALING` (a wrong rope silently unscaled is exactly the failure the module
+    docstring calls the most dangerous in the package).
+
+    @capability rope_table_llama3
+    complexity: O(max_pos * head_dim)
+    counts:
+    - dim head_dim <= ATTN_MAX_HEAD_DIM [kernel_validated]
+    - dim max_pos <= ATTN_MAX_SEQ [kernel_validated]
+    @endcapability
+    """
+    var c = List[Float64]()
+    var s = List[Float64]()
+    if head_dim <= 0 or max_pos <= 0:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_EMPTY_DIM)
+    if head_dim > ATTN_MAX_HEAD_DIM or max_pos > ATTN_MAX_SEQ or head_dim % 2 != 0:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_DIM_TOO_LARGE)
+    if (
+        not tx_finite(theta) or theta <= 0.0
+        or not tx_finite(factor) or factor <= 0.0
+        or not tx_finite(low_freq_factor) or low_freq_factor <= 0.0
+        or not tx_finite(high_freq_factor) or high_freq_factor <= low_freq_factor
+        or not tx_finite(original_max_position_embeddings)
+        or original_max_position_embeddings <= 0.0
+    ):
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_UNKNOWN_SCALING)
+
+    var n_pairs = head_dim // 2
+    if n_pairs > ROPE_MAX_TABLE_CELLS // max_pos:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_DIM_TOO_LARGE)
+
+    var inv = rope_inv_freq_llama3(
+        head_dim, theta, factor, low_freq_factor, high_freq_factor,
+        original_max_position_embeddings,
+    )
+    if len(inv) != n_pairs:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_UNKNOWN_SCALING)
+
+    return _rope_table_from_inv(head_dim, max_pos, theta, inv^)
+
+
+def rope_table_freq_factors(
+    head_dim: Int, max_pos: Int, theta: Float64, freq_factors: List[Float64]
+) -> RopeTable:
+    """`rope_table` with an EXPLICIT per-pair frequency factor applied to each base inverse
+    frequency: `inv[i] = base_inv[i] / freq_factors[i]`. This is exactly how ggml consumes a
+    GGUF `rope_freqs.weight` tensor (`theta / freq_factor` per pair, see ggml-metal's rope
+    kernels), so a llama.cpp-exported file carrying llama3-scaled factors reproduces those
+    frequencies WITHOUT re-deriving the llama3 parameters from metadata the format does not
+    store. `freq_factors` must hold exactly `head_dim // 2` finite, strictly-positive values;
+    a length mismatch or a non-positive/non-finite factor returns `ATTN_ERR_UNKNOWN_SCALING`.
+    An empty `freq_factors` list is the caller's "no explicit factors" signal and returns
+    `ATTN_ERR_LENGTH_MISMATCH` (the plain `rope_table` is the no-scaling path).
+
+    @capability rope_table_freq_factors
+    complexity: O(max_pos * head_dim)
+    counts:
+    - dim head_dim <= ATTN_MAX_HEAD_DIM [kernel_validated]
+    - dim max_pos <= ATTN_MAX_SEQ [kernel_validated]
+    @endcapability
+    """
+    var c = List[Float64]()
+    var s = List[Float64]()
+    if head_dim <= 0 or max_pos <= 0:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_EMPTY_DIM)
+    if head_dim > ATTN_MAX_HEAD_DIM or max_pos > ATTN_MAX_SEQ or head_dim % 2 != 0:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_DIM_TOO_LARGE)
+    if not tx_finite(theta) or theta <= 0.0:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_NON_FINITE_SCALAR)
+
+    var n_pairs = head_dim // 2
+    if len(freq_factors) != n_pairs:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_LENGTH_MISMATCH)
+    if n_pairs > ROPE_MAX_TABLE_CELLS // max_pos:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_DIM_TOO_LARGE)
+
+    var base = rope_inv_freq(head_dim, theta)
+    if len(base) != n_pairs:
+        return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_DIM_TOO_LARGE)
+    var inv = List[Float64]()
+    for i in range(n_pairs):
+        var f = freq_factors[i]
+        if not tx_finite(f) or f <= 0.0:
+            return RopeTable(c^, s^, 0, 0, theta, ATTN_ERR_UNKNOWN_SCALING)
+        inv.append(base[i] / f)
+
+    return _rope_table_from_inv(head_dim, max_pos, theta, inv^)
 
 
 def _rope_apply(

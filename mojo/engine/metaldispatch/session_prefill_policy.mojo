@@ -223,12 +223,13 @@ packed F16 native buffers (which every subsequent decode step reads). Derives to
 `DECODE_PATH_NATIVE_PACKED_KV` (decode = kvprod-at-m_rows=1 append + split-K flash-decoding
 partial + the engine merge -- the SAME `_step_native_kv_impl` `PF_ATTN_GROUPED_FA_NO_MIRROR` uses).
 
-This is the path a no-QK-norm model (qk_norm=0) and/or a non-`_AF_STRUCTURAL_D_HEAD` power-of-two
-d_head model routes onto when the native decode kernels are linked: the steel grouped-FA prefill
-attention is structurally d_head=128 + QK-norm, but NOTHING about the native DECODE half is -- the
-kvprod carries the qk_norm flag and the split-K partial has a d_head=64 one-simdgroup twin
-(`native_kv_decode_attn_splitk_f2`), so a llama-family model gets the packed-F16-KV + flash-
-decoding decode economics without the structural-128 prefill kernel. Requires the native-KV-
+This is the path a power-of-two d_head model the steel prefill pairing does not cover (any d_head
+other than 128, or d_head=64 WITH QK-norm -- see `session_prefill.mojo`'s pairing gate: d128 both
+families since feat/llama-d128-ropescale, d64 llama-family only since feat/llama-prefill) routes
+onto when the native decode kernels are linked: NOTHING about the native DECODE half is structural
+-- the kvprod carries the qk_norm flag and the split-K partial has a d_head=64 one-simdgroup twin
+(`native_kv_decode_attn_splitk_f2`), so such a model gets the packed-F16-KV + flash-decoding decode
+economics without a steel prefill kernel. Requires the native-KV-
 producer blob + the naive native decode-attn blob + a split-K partial suited to this d_head (the
 f4u2 blob at d_head=128, the f2 blob at d_head=64); degrades to `PF_ATTN_OFF` otherwise. A
 request for `PF_ATTN_GROUPED_FA_NO_MIRROR` that cannot resolve (structural gate fails) degrades to
@@ -670,11 +671,12 @@ def resolve_prefill_execution_plan(
     var resolved_attn: Int
     if requested.attention_requested == PF_ATTN_GROUPED_FA_NO_MIRROR:
         # feat/llama-native-deep (2026-08-13): CLOSEST-CAPABILITY-FIRST degrade. The no-mirror
-        # request's own intent is "fastest native-KV decode path"; when the structural-128 +
-        # QK-norm steel path cannot resolve (a llama-family d_head=64 / qk_norm=0 model), the
-        # parametric-prefill + native-decode plan carries that same decode half, so it outranks
-        # the plain OFF fallback. A binary linking none of the native blobs still degrades all
-        # the way to PF_ATTN_OFF, byte-for-byte as before this plan existed.
+        # request's own intent is "fastest native-KV decode path"; when the steel prefill pairing
+        # cannot resolve (a d_head the steel kernels do not cover -- any power-of-two other than
+        # 128/64, or d_head=64 with QK-norm), the parametric-prefill + native-decode plan carries
+        # that same decode half, so it outranks the plain OFF fallback. A binary linking none of
+        # the native blobs still degrades all the way to PF_ATTN_OFF, byte-for-byte as before this
+        # plan existed.
         if af_grouped_fa_available:
             resolved_attn = PF_ATTN_GROUPED_FA_NO_MIRROR
         elif parametric_native_decode_available:

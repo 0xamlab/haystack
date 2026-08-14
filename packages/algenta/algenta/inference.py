@@ -13,7 +13,10 @@ Scope, stated precisely so nothing here overclaims
   matching those structural invariants and the kernel alignment gates (d_model / d_ff / n_q divisible
   by 32, GQA ratio integral) runs; anything else raises `UnsupportedArchitectureError` naming the exact
   mismatch. This is "any model within the supported family," not "any architecture ever" -- no other
-  architecture family has kernels yet.
+  architecture family has kernels yet. Rope scaling: the llama-3.1+ `rope_scaling` ("llama3" scheme)
+  is applied to the rope frequency table; GGUF files carrying llama.cpp's baked `rope_freqs.weight`
+  tensor reproduce those frequencies verbatim; any other scaling scheme is refused (never silently
+  unscaled).
 * **One hardware family**: Apple Silicon with Metal. A binary built without `-D ALGENTA_GPU`, or a
   host with no Metal accelerator, raises `InferenceError` with a status naming exactly that -- never a
   silent CPU fallback.
@@ -270,6 +273,103 @@ def _resolve_shard_for_tensor(
     return shard_path
 
 
+# The manifest's `rope_scaling_type` code for the llama-3.1 "llama3" scheme -- an int because the
+# Mojo side reads it with json_get_int (same family-convention pattern as has_qk_norm). 0/absent
+# means no scaling. The Mojo half (metaldispatch.qwen3_prefill_decode._rope_table_from_manifest +
+# attnk.rope.rope_table_llama3) adjusts the rope inverse frequencies on these keys.
+_ROPE_SCALING_TYPE_LLAMA3_CODE = 3
+
+# HF transformers defaults for the llama3 scheme when a config omits the factors (every shipped
+# llama-3.1 checkpoint uses exactly these values).
+_ROPE_SCALING_DEFAULT_LOW_FREQ_FACTOR = 1.0
+_ROPE_SCALING_DEFAULT_HIGH_FREQ_FACTOR = 4.0
+
+
+def _validate_rope_scaling(config: dict[str, Any], *, config_source: str) -> None:
+    """Llama-3.1+ rope_scaling (llama-3.1+ configs carry `rope_scaling: {rope_type: llama3, ...}`):
+    the ONLY scheme the engine implements is "llama3" -- absent/none/`None` needs nothing, and any
+    other scheme (linear, yarn, longrope, ...) is REFUSED here rather than silently running with an
+    unscaled rope (a wrong rope does not crash; it produces fluent text that degrades with context
+    -- the exact silent-wrong-math hazard the architecture gate exists to prevent)."""
+    rope_scaling = config.get("rope_scaling")
+    if rope_scaling is None:
+        return
+    if not isinstance(rope_scaling, dict):
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: {config_source} declares rope_scaling="
+            f"{rope_scaling!r}; expected a rope-scaling dict or null."
+        )
+    rope_type = rope_scaling.get("rope_type", rope_scaling.get("type"))
+    if rope_type is None or str(rope_type).lower() == "none":
+        return
+    if str(rope_type).lower() != "llama3":
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: {config_source} declares rope_scaling type "
+            f"{rope_type!r}; only the llama3 scheme is implemented (absent/none or "
+            "rope_type='llama3'). Running with an unimplemented scaling silently would leave the "
+            "rope unscaled -- fluent output that degrades with context."
+        )
+
+    def _positive_number(name: str, value: Any) -> float:
+        if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
+            raise UnsupportedArchitectureError(
+                f"unsupported model architecture: rope_scaling.{name} is {value!r}; expected a "
+                "positive number."
+            )
+        return float(value)
+
+    factor = _positive_number("factor", rope_scaling.get("factor"))
+    orig = _positive_number(
+        "original_max_position_embeddings",
+        rope_scaling.get("original_max_position_embeddings"),
+    )
+    low = _positive_number(
+        "low_freq_factor",
+        rope_scaling.get("low_freq_factor", _ROPE_SCALING_DEFAULT_LOW_FREQ_FACTOR),
+    )
+    high = _positive_number(
+        "high_freq_factor",
+        rope_scaling.get("high_freq_factor", _ROPE_SCALING_DEFAULT_HIGH_FREQ_FACTOR),
+    )
+    if high <= low:
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: rope_scaling.high_freq_factor ({high}) must exceed "
+            f"low_freq_factor ({low}) or the llama3 interpolation is degenerate."
+        )
+    if orig < 1:
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: rope_scaling.original_max_position_embeddings is "
+            f"{orig!r}; expected at least 1."
+        )
+    del factor  # validated here, re-read by _rope_scaling_manifest_entries
+
+
+def _rope_scaling_manifest_entries(config: dict[str, Any]) -> dict[str, Any]:
+    """The flat numeric manifest keys the Mojo entry points read (json_get_int/json_get_float)
+    when the checkpoint carries a llama3 rope_scaling -- validated by `_validate_rope_scaling`
+    before this runs. Absent/none scaling contributes nothing (a pre-scaling manifest consumer
+    then sees no new keys at all)."""
+    rope_scaling = config.get("rope_scaling")
+    if not isinstance(rope_scaling, dict):
+        return {}
+    rope_type = rope_scaling.get("rope_type", rope_scaling.get("type"))
+    if rope_type is None or str(rope_type).lower() == "none":
+        return {}
+    return {
+        "rope_scaling_type": _ROPE_SCALING_TYPE_LLAMA3_CODE,
+        "rope_scaling_factor": float(rope_scaling["factor"]),
+        "rope_scaling_low_freq_factor": float(
+            rope_scaling.get("low_freq_factor", _ROPE_SCALING_DEFAULT_LOW_FREQ_FACTOR)
+        ),
+        "rope_scaling_high_freq_factor": float(
+            rope_scaling.get("high_freq_factor", _ROPE_SCALING_DEFAULT_HIGH_FREQ_FACTOR)
+        ),
+        "rope_scaling_original_max_position_embeddings": int(
+            rope_scaling["original_max_position_embeddings"]
+        ),
+    }
+
+
 _QK_NORM_PROBE_TENSOR = "model.layers.0.self_attn.q_norm.weight"
 
 
@@ -356,6 +456,7 @@ def _write_converted_checkpoint(
     prompt_token_ids: list[int],
     has_qk_norm: bool,
     tied_embeddings: bool,
+    rope_freq_factors: list[float] | None = None,
 ) -> Path:
     """The shared converter tail: concatenate the per-tensor Float64 values (already widened and,
     where the kernels want it, pre-transposed) into `weights.blob`, and write the `manifest.json`
@@ -407,6 +508,17 @@ def _write_converted_checkpoint(
     # older manifest consumer sees no new key unless the checkpoint declares one.
     if "eos_token_id" in config and config["eos_token_id"] is not None:
         manifest_config["eos_token_id"] = config["eos_token_id"]
+
+    # Rope scaling (llama-3.1+, 2026-08-14). EXPLICIT per-pair frequency factors (a GGUF
+    # `rope_freqs.weight` tensor, the exact divisors ggml applies) take precedence -- they carry
+    # the source's own baked values verbatim; otherwise the parametric llama3 scheme from the
+    # checkpoint config (validated by `_validate_rope_scaling` before either converter reaches
+    # here). A checkpoint with NO scaling writes neither key, and a pre-scaling engine reading
+    # this manifest behaves byte-for-byte as it always did.
+    if rope_freq_factors:
+        manifest_config["rope_freq_factors"] = [float(value) for value in rope_freq_factors]
+    else:
+        manifest_config.update(_rope_scaling_manifest_entries(config))
 
     manifest = {
         "config": manifest_config,
@@ -695,6 +807,18 @@ def _gguf_architecture_config(
             "unsupported_gguf",
             f"{path} GGUF metadata {arch}.rope.freq_base is {rope_theta!r}; expected a number.",
         )
+    # Rope scaling metadata (llama.cpp convention: `<arch>.rope.scaling.type`). For the llama3
+    # scheme llama.cpp does NOT write scaling metadata at all -- it bakes the adjusted frequencies
+    # into a `rope_freqs.weight` tensor (handled in prepare_model_checkpoint_from_gguf). A
+    # NON-none type WITHOUT that tensor would otherwise run silently unscaled, so it is carried
+    # here for that cross-check.
+    rope_scaling_type = meta("rope.scaling.type")
+    if rope_scaling_type is not None and not isinstance(rope_scaling_type, str):
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{path} GGUF metadata {arch}.rope.scaling.type is {rope_scaling_type!r}; expected "
+            "a string.",
+        )
 
     vocab_size = None
     tied_embeddings = True
@@ -720,6 +844,10 @@ def _gguf_architecture_config(
         "rms_norm_eps": float(rms_norm_eps),
         "tie_word_embeddings": tied_embeddings,
     }
+    if rope_scaling_type is not None:
+        # Underscore-prefixed: a private carrier for the rope_freqs.weight cross-check in
+        # prepare_model_checkpoint_from_gguf, popped before the manifest is written.
+        config["_gguf_rope_scaling_type"] = rope_scaling_type.lower()
     head_dim = meta("attention.key_length")
     if head_dim is not None:
         if isinstance(head_dim, bool) or not isinstance(head_dim, int) or head_dim < 1:
@@ -772,6 +900,37 @@ def prepare_model_checkpoint_from_gguf(
     _validate_architecture(gguf_path, config, config_source="GGUF metadata")
     _validate_prompt_token_ids(prompt_token_ids)
 
+    # Rope scaling, GGUF shape: llama.cpp's conversion for a llama3-scaled checkpoint bakes the
+    # adjusted frequencies into a `rope_freqs.weight` tensor (one F32 DIVISOR per head-dim pair;
+    # ggml applies `theta / factor` per pair), and writes no scaling metadata -- so that tensor is
+    # the authoritative representation here, carried into the manifest verbatim.
+    rope_freq_factors: list[float] | None = None
+    rope_freqs_info = next(
+        (info for info in tensor_infos if info["name"] == "rope_freqs.weight"), None
+    )
+    if rope_freqs_info is not None:
+        values, _ = _gguf_read_tensor_values(gguf_path, rope_freqs_info, data_start)
+        rope_freq_factors = [float(value) for value in values]
+        expected_pairs = config["head_dim"] // 2
+        if len(rope_freq_factors) != expected_pairs:
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{gguf_path} rope_freqs.weight carries {len(rope_freq_factors)} factors but "
+                f"head_dim={config['head_dim']} needs exactly {expected_pairs} (one per "
+                "dimension pair).",
+            )
+    else:
+        scaling_type = config.pop("_gguf_rope_scaling_type", None)
+        if scaling_type is not None and scaling_type != "none":
+            raise InferenceError(
+                "unsupported_gguf",
+                f"{gguf_path} declares rope.scaling.type={scaling_type!r} but carries no "
+                "rope_freqs.weight tensor to apply it; only conversions that bake the scaled "
+                "frequencies into that tensor (llama.cpp's llama3 handling) are supported. "
+                "Running with the scaling silently dropped would leave the rope unscaled.",
+            )
+    config.pop("_gguf_rope_scaling_type", None)
+
     hf_tensors: dict[str, dict[str, Any]] = {}
     for info in tensor_infos:
         hf_name = _gguf_map_tensor_name(info["name"])
@@ -814,6 +973,7 @@ def prepare_model_checkpoint_from_gguf(
         prompt_token_ids=prompt_token_ids,
         has_qk_norm=has_qk_norm,
         tied_embeddings=tied_embeddings,
+        rope_freq_factors=rope_freq_factors,
     )
 
 
@@ -858,6 +1018,7 @@ def prepare_model_checkpoint(
         )
     config = _normalize_config(json.loads(config_path.read_text(encoding="utf-8")))
     _validate_architecture(checkpoint_dir, config)
+    _validate_rope_scaling(config, config_source=str(config_path))
     _validate_prompt_token_ids(prompt_token_ids)
 
     # Load the shard index if present (multi-shard checkpoints).

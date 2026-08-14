@@ -273,6 +273,78 @@ def test_gguf_metadata_derives_llama_config(tmp_path: Path) -> None:
     assert config["eos_token_id"] == 2
 
 
+def _full_synthetic_llama_tensors() -> list[tuple]:
+    """A COMPLETE one-layer tied llama tensor set (all-zero weights) so a conversion runs to the
+    manifest: hidden=64, heads=2 (head_dim=32 -> 16 rope pairs), kv heads=1, ffn=128, vocab=16.
+    GGUF dims are the HF shape REVERSED (ggml's contiguous dim first): q/o are HF [64, 64], the
+    single-kv-head k/v are HF [32, 64] (the engine's upload checks these lengths)."""
+    f16_zeros_64_64 = b"\x00" * (64 * 64 * 2)
+    f16_zeros_32_64 = b"\x00" * (32 * 64 * 2)
+    return [
+        ("token_embd.weight", 1, [64, 16], b"\x00" * (64 * 16 * 2)),
+        ("output_norm.weight", 0, [64], b"\x00" * (64 * 4)),
+        ("blk.0.attn_norm.weight", 0, [64], b"\x00" * (64 * 4)),
+        ("blk.0.ffn_norm.weight", 0, [64], b"\x00" * (64 * 4)),
+        ("blk.0.attn_q.weight", 1, [64, 64], f16_zeros_64_64),
+        ("blk.0.attn_k.weight", 1, [64, 32], f16_zeros_32_64),
+        ("blk.0.attn_v.weight", 1, [64, 32], f16_zeros_32_64),
+        ("blk.0.attn_output.weight", 1, [64, 64], f16_zeros_64_64),
+        ("blk.0.ffn_gate.weight", 1, [64, 128], b"\x00" * (64 * 128 * 2)),
+        ("blk.0.ffn_up.weight", 1, [64, 128], b"\x00" * (64 * 128 * 2)),
+        ("blk.0.ffn_down.weight", 1, [128, 64], b"\x00" * (64 * 128 * 2)),
+    ]
+
+
+def test_gguf_rope_freqs_tensor_carried_into_manifest(tmp_path: Path) -> None:
+    # llama.cpp's conversion for a llama3-scaled checkpoint bakes the adjusted frequencies into
+    # rope_freqs.weight (one F32 DIVISOR per head-dim pair) and writes no scaling metadata -- the
+    # converter must carry those factors into the manifest verbatim (head_dim=32 -> 16 pairs).
+    factors = [1.0, 2.5, 8.0, 0.5] + [1.0 + 0.25 * i for i in range(12)]
+    rope_raw = b"".join(struct.pack("<f", v) for v in factors)
+    gguf = tmp_path / "rope.gguf"
+    _write_test_gguf(
+        gguf,
+        _llama_metadata(),
+        _full_synthetic_llama_tensors() + [("rope_freqs.weight", 0, [16], rope_raw)],
+    )
+    out = prepare_model_checkpoint_from_gguf(gguf, _PROMPT_TOKEN_IDS, out_dir=tmp_path / "out")
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["config"]["rope_freq_factors"] == pytest.approx(factors)
+    # the parametric keys stay absent -- the explicit factors take precedence
+    assert "rope_scaling_type" not in manifest["config"]
+    # rope_freqs.weight never lands in the engine's weight tensors
+    assert "rope_freqs.weight" not in manifest["tensors"]
+
+
+def test_gguf_rope_freqs_wrong_pair_count_refused(tmp_path: Path) -> None:
+    rope_raw = b"".join(struct.pack("<f", v) for v in [1.0, 2.0, 3.0])  # 3 factors, 16 needed
+    gguf = tmp_path / "ropebad.gguf"
+    _write_test_gguf(
+        gguf,
+        _llama_metadata(),
+        _full_synthetic_llama_tensors() + [("rope_freqs.weight", 0, [3], rope_raw)],
+    )
+    with pytest.raises(InferenceError) as excinfo:
+        prepare_model_checkpoint_from_gguf(gguf, _PROMPT_TOKEN_IDS, out_dir=tmp_path / "out")
+    assert excinfo.value.code == "unsupported_gguf"
+    assert "exactly 16" in str(excinfo.value)
+
+
+def test_gguf_rope_scaling_type_without_freqs_tensor_refused(tmp_path: Path) -> None:
+    # A non-none rope.scaling.type with NO rope_freqs.weight tensor would otherwise run
+    # silently unscaled -- refused instead.
+    gguf = tmp_path / "yarn.gguf"
+    _write_test_gguf(
+        gguf,
+        _llama_metadata(**{"llama.rope.scaling.type": "yarn"}),
+        _full_synthetic_llama_tensors(),
+    )
+    with pytest.raises(InferenceError) as excinfo:
+        prepare_model_checkpoint_from_gguf(gguf, _PROMPT_TOKEN_IDS, out_dir=tmp_path / "out")
+    assert excinfo.value.code == "unsupported_gguf"
+    assert "yarn" in str(excinfo.value)
+
+
 def test_gguf_missing_file_refused() -> None:
     with pytest.raises(InferenceError) as excinfo:
         prepare_model_checkpoint_from_gguf("/tmp/definitely-not-a-model.gguf", _PROMPT_TOKEN_IDS)
@@ -574,3 +646,41 @@ def test_tinyllama_gguf_decode_matches_cpu_reference(tmp_path: Path) -> None:
     # The model answers the France prompt coherently (" Paris" is token 3900 -- the campaign's
     # TinyLlama oracle first token).
     assert engine_tokens[0] == 3900
+
+
+@pytest.mark.skipif(_gpu_worker() is None, reason="no GPU worker binary built")
+def test_gguf_rope_freqs_decode_runs_end_to_end(tmp_path: Path) -> None:
+    """The rope_freqs.weight GGUF tensor reaches the ENGINE's rope table (the manifest's
+    rope_freq_factors -> _rope_table_from_manifest's explicit-factors branch ->
+    attnk.rope.rope_table_freq_factors): a synthetic llama GGUF carrying baked frequency
+    divisors converts, decodes on the real Metal path, and stays deterministic. All-zero
+    weights: this is a wiring/no-crash proof, not an output-quality claim."""
+    factors = [1.0, 2.0, 4.0, 8.0] + [1.5] * 12  # 16 divisors = head_dim 32 / 2 pairs
+    rope_raw = b"".join(struct.pack("<f", v) for v in factors)
+    gguf = tmp_path / "rope_run.gguf"
+    metadata = _llama_metadata(**{"tokenizer.ggml.eos_token_id": 2})
+    _write_test_gguf(
+        gguf,
+        metadata,
+        _full_synthetic_llama_tensors() + [("rope_freqs.weight", 0, [16], rope_raw)],
+    )
+    converted = prepare_model_checkpoint_from_gguf(gguf, [1, 2, 3], out_dir=tmp_path / "out")
+    manifest = json.loads((converted / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["config"]["rope_freq_factors"] == pytest.approx(factors)
+    result = decode(
+        _runtime(_gpu_worker()),
+        checkpoint_dir=gguf,
+        prompt_token_ids=[1, 2, 3],
+        max_new_tokens=4,
+        converted_checkpoint_dir=converted,
+    )
+    assert len(result.token_ids) == 7
+    assert all(0 <= token < 16 for token in result.token_ids)
+    again = decode(
+        _runtime(_gpu_worker()),
+        checkpoint_dir=gguf,
+        prompt_token_ids=[1, 2, 3],
+        max_new_tokens=4,
+        converted_checkpoint_dir=converted,
+    )
+    assert again.token_ids == result.token_ids

@@ -46,8 +46,9 @@ from std.sys import has_accelerator
 from std.time import perf_counter_ns
 from std.math import exp
 from json.parser import json_get_array, json_get_float, json_get_int, json_get_object, json_array_tokens
-from conv import parse_int
-from attnk.rope import rope_table
+from conv import parse_float64, parse_int
+from attnk.contract import ATTN_ERR_UNKNOWN_SCALING, ATTN_OK, attn_status_name
+from attnk.rope import RopeTable, rope_table, rope_table_freq_factors, rope_table_llama3
 from crypto.pbkdf2 import sha256_bytes
 from llm_sampling import (
     min_p_threshold,
@@ -129,6 +130,58 @@ def _read_text_file(path: String) raises -> String:
     var raw = f.read_bytes()
     f.close()
     return String(from_utf8=raw)
+
+
+comptime _ROPE_SCALING_TYPE_LLAMA3: Int = 3
+"""The manifest's `rope_scaling_type` code for the llama-3.1 "llama3" scheme. An Int (not the
+config's own string) because the Mojo side reads it with json_get_int, same family-convention
+pattern as `has_qk_norm`/`tie_word_embeddings`. 0 (the default when the key is absent) = no
+scaling -- the plain theta table, byte-for-byte the pre-existing behavior. The SDK converter is
+the ONLY writer and refuses any scheme it cannot represent, so a nonzero value other than this
+one is a hand-edited-manifest hazard, refused loudly below."""
+
+
+def _rope_table_from_manifest(
+    manifest: String, d_head: Int, max_ctx: Int, theta: Float64
+) raises -> RopeTable:
+    """Build this run's rope table honoring the checkpoint's OWN rope_scaling, carried in the
+    manifest config the SDK converter (or the GGUF front door) wrote.
+
+    Three representations, closest-to-the-source first:
+    * `rope_freq_factors` array present -- EXPLICIT per-pair frequency divisors, the exact
+      values a llama.cpp GGUF export bakes into its `rope_freqs.weight` tensor (ggml applies
+      `theta / freq_factor` per pair); reproduced without re-deriving parameters the GGUF
+      format does not store.
+    * `rope_scaling_type` == _ROPE_SCALING_TYPE_LLAMA3 -- the parametric llama-3.1 scheme
+      (factor + low/high freq factors + original max position embeddings), adjusted by
+      `rope_table_llama3`.
+    * Neither (every manifest written before this change) -- `rope_table(d_head, max_ctx,
+      theta)`, byte-for-byte the pre-existing table.
+
+    Any malformed/unknown scaling is a typed ATTN_ERR_* status in the returned table -- the
+    caller checks `.status` and refuses; never a silently-unscaled rope."""
+    var config = json_get_object(manifest, "config")
+
+    var factors_arr = json_get_array(config, "rope_freq_factors")
+    if len(factors_arr) > 0:
+        var factor_tokens = json_array_tokens(factors_arr)
+        var factors = List[Float64]()
+        for i in range(len(factor_tokens)):
+            factors.append(parse_float64(factor_tokens[i]))
+        return rope_table_freq_factors(d_head, max_ctx, theta, factors^)
+
+    var scaling_type = json_get_int(config, "rope_scaling_type", 0)
+    if scaling_type == 0:
+        return rope_table(d_head, max_ctx, theta)
+    if scaling_type == _ROPE_SCALING_TYPE_LLAMA3:
+        var factor = json_get_float(config, "rope_scaling_factor", -1.0)
+        var low = json_get_float(config, "rope_scaling_low_freq_factor", -1.0)
+        var high = json_get_float(config, "rope_scaling_high_freq_factor", -1.0)
+        var orig = json_get_float(config, "rope_scaling_original_max_position_embeddings", -1.0)
+        return rope_table_llama3(d_head, max_ctx, theta, factor, low, high, orig)
+    return RopeTable(
+        List[Float64](), List[Float64](), 0, 0, theta, ATTN_ERR_UNKNOWN_SCALING
+    )
 
 
 @fieldwise_init
@@ -657,7 +710,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
             # so this call is safe even on a binary built without `attention_forge`/vecload4 blobs.
             s.resolve_plan(UnresolvedPrefillConfig(PF_ATTN_GROUPED_FA_WITH_MIRROR, PF_GEMM_VECLOAD4_ALL_ROLES))
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -957,7 +1015,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
                 PF_GEMM_ORIGINAL,
             ))
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -1255,7 +1318,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4(
                 PF_GEMM_VECLOAD4_ALL_ROLES if use_vecload4_all_roles else PF_GEMM_ORIGINAL,
             ))
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -1567,7 +1635,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_msl(
             print("  resolved plan: attention =", s.plan.attention,
                   ", gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -1857,7 +1930,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl(
             print("  resolved plan: attention =", s.plan.attention,
                   "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -2177,7 +2255,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4(
                 else PF_GEMM_ORIGINAL,
             ))
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -2471,7 +2554,12 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(
                 PF_GEMM_BM64 if use_qkv_proj_bm64 else PF_GEMM_ORIGINAL,
             ))
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
             var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
             var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
 
@@ -2867,7 +2955,12 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
             print("  resolved plan: attention =", s.plan.attention,
                   "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
 
             # ── Parity cheap wins (2026-08-10): quantized-state cache. A VALID
             # `weights_i8.cache` next to the manifest restores the EXACT post-quantization device
@@ -3383,7 +3476,12 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                 PF_ATTN_GROUPED_FA_NO_MIRROR, PF_GEMM_MSL_PARITY_ALL_ROLES,
             ))
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
 
             # ── SAME quantized-state cache gate + best-effort write as the greedy anyqwen3 arm.
             var cache_path = checkpoint_dir + "/weights_i8.cache"
@@ -3939,7 +4037,12 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
             print("  resolved plan: attention =", s.plan.attention,
                   "(2 = PF_ATTN_GROUPED_FA_NO_MIRROR), gemm =", s.plan.gemm, "(3 = PF_GEMM_MSL_PARITY_ALL_ROLES)")
 
-            var rt = rope_table(d_head, max_ctx, theta)
+            var rt = _rope_table_from_manifest(manifest, d_head, max_ctx, theta)
+            if rt.status != ATTN_OK:
+                return _decode_err(
+                    MB_ERR_CHECKPOINT_UNREADABLE,
+                    "the manifest's rope_scaling is unusable: " + attn_status_name(rt.status),
+                )
 
             # ── Parity cheap wins (2026-08-10): quantized-state cache. A VALID
             # `weights_i8.cache` next to the manifest restores the EXACT post-quantization device
