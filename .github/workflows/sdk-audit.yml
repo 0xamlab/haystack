@@ -32,7 +32,7 @@ concurrency:
 jobs:
   gap-checks:
     name: SDK gap checks (static)
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,7 +53,7 @@ jobs:
   execution-sweep:
     name: Full execution sweep (compiled workers)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
 
     # tests/conftest.py's autouse ensure_test_database_schema fixture runs the Alembic
     # migrations for EVERY pytest session under tests/ — including the ratchet suite —
@@ -139,7 +139,7 @@ jobs:
   published-artifact-proof:
     name: Published artifact install + execute proof
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

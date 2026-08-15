@@ -27,7 +27,7 @@ jobs:
   # ── Test ──────────────────────────────────────────────────────────────────
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     strategy:
       matrix:
         python-version: ["3.14"]
@@ -93,12 +93,23 @@ jobs:
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
         with:
           version: 10.15.0
+          # Default dest (~/setup-pnpm) is a fixed path shared by every runner process on this
+          # user account. With multiple self-hosted runners on one Mac, concurrent jobs race on
+          # it (ENOTEMPTY: directory not empty, rmdir '.../setup-pnpm/...'). runner.temp is
+          # unique per runner's own _work dir, so this isolates each runner's install.
+          dest: ${{ runner.temp }}/setup-pnpm
 
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
+          # setup-node's cache:pnpm assumes a GitHub-hosted Linux cache path; pnpm's store lives
+          # elsewhere on macOS, so the post-job cache-save step errors ("Path Validation Error:
+          # Path(s) specified in the action for caching do(es) not exist") on this self-hosted
+          # runner. Persistent self-hosted disk stays warm between runs anyway, so there is
+          # nothing this would buy here -- same reasoning ts-sdk-artifact-install's
+          # package-manager-cache:false already applies below.
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -184,7 +195,7 @@ jobs:
   # from source) — the "a user can actually `pip install` it" gate. Lean: no DB/Redis/pixi needed.
   sdk-artifact-install:
     name: SDK artifact install (Python ${{ matrix.python-version }})
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     strategy:
       matrix:
         python-version: ["3.14"]
@@ -206,7 +217,7 @@ jobs:
   # differences. Lean: npm-only, no DB/Redis/pixi.
   ts-sdk-artifact-install:
     name: TS SDK artifact install (Node ${{ matrix.node-version }})
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     strategy:
       matrix:
         node-version: ["18", "20", "22"]
@@ -220,6 +231,9 @@ jobs:
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6.0.10
         with:
           version: 10.15.0
+          # See the Test job's identical comment: isolates this runner's pnpm install from the
+          # other self-hosted runners racing on the same shared ~/setup-pnpm path.
+          dest: ${{ runner.temp }}/setup-pnpm
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -236,7 +250,7 @@ jobs:
   # The push-to-main deploy repeats the same smoke against the pushed GHCR image before Fly rollout.
   api-image-mojo-smoke:
     name: API image Mojo runtime smoke
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     needs: test
     if: github.event_name == 'pull_request'
     permissions:
@@ -269,7 +283,7 @@ jobs:
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -384,7 +398,7 @@ jobs:
   # ENGINE (codna-engine) and tag-pinned/one-off deploys still go through the manual deploy.yml.
   deploy:
     name: Deploy to Fly (codna-api)
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -451,7 +465,7 @@ jobs:
   # expand/contract pattern, not by leaving this app un-deployed.
   deploy-control-plane:
     name: Deploy to Fly (algenta-control-plane)
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:

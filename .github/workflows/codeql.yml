@@ -19,7 +19,7 @@ concurrency:
 jobs:
   analyze:
     name: CodeQL (${{ matrix.language }})
-    runs-on: ${{ fromJSON('["self-hosted", vars.RUNNER_LABEL]') }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     permissions:
       actions: read
       contents: read

@@ -45,7 +45,7 @@ jobs:
       matrix:
         include:
           - target: macos-arm64
-            runs-on: macos-14
+            runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
             platform: darwin
             mcpu: ""
             shard_timeout: 300
@@ -74,9 +74,21 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      # setup-python's macOS .pkg installer needs passwordless sudo (only pre-configured
+      # on GitHub-hosted runners, not this self-hosted one) -- skip it there and shim
+      # the Homebrew python3.14 binary onto PATH as `python3`/`python` instead, so every
+      # later step's bare `python3 ...` call keeps working unchanged on both legs.
+      - if: runner.os != 'macOS'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.14"
+      - if: runner.os == 'macOS'
+        name: Shim python3.14 as python3/python (macOS)
+        run: |
+          mkdir -p "$RUNNER_TEMP/py314-shim"
+          ln -sf "$(command -v python3.14)" "$RUNNER_TEMP/py314-shim/python3"
+          ln -sf "$(command -v python3.14)" "$RUNNER_TEMP/py314-shim/python"
+          echo "$RUNNER_TEMP/py314-shim" >> "$GITHUB_PATH"
 
       - name: Verify generated public runtime contract
         run: python3 scripts/generate_algenta_runtime_contract.py --check
@@ -162,24 +174,37 @@ jobs:
       - name: Select an Xcode with the Metal toolchain Mojo requires (macOS only)
         if: runner.os == 'macOS'
         run: |
-          # macos-14 runners default xcode-select to Xcode 15.4, but Mojo's Metal
-          # backend refuses anything below Xcode 16.0 ("Please make sure Xcode
-          # version is at least 16.0..."). The runner image ships several Xcode
-          # versions side by side under /Applications -- 16.2 is present as of this
-          # writing (confirmed via a diagnostic run on this exact runner image) --
-          # just not the one xcode-select points at by default. Select explicitly
-          # rather than trust the default, and fail loudly if it is ever removed
-          # from the image rather than silently falling back to the too-old default.
-          newest_xcode=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
-          if [[ -z "${newest_xcode}" ]]; then
-            echo "::error::no Xcode >= 16.0 found under /Applications on this runner image;" \
+          # Mojo's Metal backend refuses anything below Xcode 16.0 ("Please make
+          # sure Xcode version is at least 16.0..."), and this runner's default
+          # xcode-select may point at bare Command Line Tools instead of a full
+          # Xcode install. GitHub-hosted runner images name their bundled Xcodes
+          # "Xcode_16.2.app" etc.; a real machine's own Xcode.app installs don't
+          # follow that convention (e.g. "Xcode-26.6.0.app" here), so glob broadly
+          # and pick by actual reported version, not by filename pattern or sort.
+          # DEVELOPER_DIR (scoped to this job, exported below) selects the
+          # toolchain for every later step without touching the system-wide
+          # xcode-select symlink or needing sudo.
+          best_path=""
+          best_version="0"
+          for app in /Applications/Xcode*.app; do
+            [[ -d "$app" ]] || continue
+            version=$(DEVELOPER_DIR="$app/Contents/Developer" /usr/bin/xcodebuild -version 2>/dev/null | \
+              awk '/^Xcode/{print $2; exit}')
+            [[ -z "$version" ]] && continue
+            if [[ "$(printf '%s\n%s\n' "$version" "$best_version" | sort -V | tail -1)" == "$version" ]]; then
+              best_version="$version"
+              best_path="$app"
+            fi
+          done
+          if [[ -z "$best_path" ]] || [[ "$(printf '%s\n16.0\n' "$best_version" | sort -V | head -1)" != "16.0" ]]; then
+            echo "::error::no Xcode >= 16.0 found under /Applications on this runner;" \
                  "Mojo's Metal backend requires one. Installed versions:" >&2
             ls -d /Applications/Xcode*.app >&2 || true
             exit 1
           fi
-          echo "selecting ${newest_xcode}" >&2
-          sudo xcode-select -s "${newest_xcode}/Contents/Developer"
-          xcodebuild -version
+          echo "selecting ${best_path} (Xcode ${best_version})" >&2
+          echo "DEVELOPER_DIR=${best_path}/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="${best_path}/Contents/Developer" xcodebuild -version
 
       - name: Compile bounded runtime worker shards
         env:

@@ -235,7 +235,11 @@ def test_ci_workflow_runs_root_formal_runtime_check_graph() -> None:
     assert 'NODE_VERSION: "22"' in text
     assert "Set up Node.js" in text
     assert "actions/setup-node@" in text  # SHA-pinned; tag preserved in trailing comment
-    assert "cache: pnpm" in text
+    # Self-hosted fleet contract: NO setup-node pnpm cache (its post-job cache-save step errors
+    # on the macOS store path) and a per-runner pnpm action dest (a fixed ~/setup-pnpm path
+    # races across the concurrent runners sharing this Mac -- ENOTEMPTY).
+    assert "package-manager-cache: false" in text
+    assert "dest: ${{ runner.temp }}/setup-pnpm" in text
     assert "Enable Corepack" in text
     assert "corepack enable" in text
     assert "Install Pixi" in text
