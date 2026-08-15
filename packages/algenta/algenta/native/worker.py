@@ -62,7 +62,24 @@ def _worker_environment(resolution: NativeWorkerResolution) -> dict[str, str]:
     env = os.environ.copy()
     if resolution.source == "bundled runtime":
         env["PYTHONHOME"] = sys.base_prefix
+        # The Mojo runtime resolves libpython itself and fails closed on machines with no
+        # system-wide Python in a layout it recognizes (bare containers, minimal servers):
+        # "found no suitable Python library to link to". The runtime package bundles its own
+        # libpython beside the worker, so point Mojo at it explicitly and keep the bundled
+        # runtime self-contained. A MOJO_PYTHON_LIBRARY already in the environment wins.
+        if "MOJO_PYTHON_LIBRARY" not in env:
+            bundled = _bundled_libpython(resolution.path.parent)
+            if bundled is not None:
+                env["MOJO_PYTHON_LIBRARY"] = str(bundled)
     return env
+
+
+def _bundled_libpython(artifact_dir: Path) -> Path | None:
+    for pattern in ("libpython3*.so*", "libpython3*.dylib"):
+        for candidate in sorted(artifact_dir.glob(pattern)):
+            if candidate.is_file():
+                return candidate
+    return None
 
 
 @dataclass(frozen=True)

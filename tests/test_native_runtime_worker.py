@@ -463,3 +463,73 @@ def test_package_worker_rejects_tampered_shard_map(
 
     with pytest.raises(package_worker.NativeWorkerUnavailable, match="integrity verification"):
         package_worker.require_worker(require_verified=True)
+
+
+def test_worker_environment_points_mojo_at_bundled_libpython(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    # Bare machines (minimal containers, stripped servers) have no system-wide Python in a
+    # layout the Mojo runtime auto-discovers; the bundled libpython beside the worker is the
+    # self-contained answer, so the launcher must point MOJO_PYTHON_LIBRARY at it.
+    monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    artifact_dir = tmp_path / "runtime"
+    artifact_dir.mkdir()
+    libpython = artifact_dir / "libpython3.14.so.1.0"
+    libpython.write_bytes(b"")
+    worker_path = artifact_dir / package_worker.WORKER_BASENAME
+    worker_path.write_bytes(b"")
+    resolution = package_worker.NativeWorkerResolution("bundled runtime", worker_path, True)
+
+    env = package_worker._worker_environment(resolution)
+
+    assert env["MOJO_PYTHON_LIBRARY"] == str(libpython)
+
+
+def test_worker_environment_keeps_caller_mojo_python_library(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("MOJO_PYTHON_LIBRARY", "/custom/libpython3.14.so")
+    artifact_dir = tmp_path / "runtime"
+    artifact_dir.mkdir()
+    (artifact_dir / "libpython3.14.so.1.0").write_bytes(b"")
+    worker_path = artifact_dir / package_worker.WORKER_BASENAME
+    worker_path.write_bytes(b"")
+    resolution = package_worker.NativeWorkerResolution("bundled runtime", worker_path, True)
+
+    env = package_worker._worker_environment(resolution)
+
+    assert env["MOJO_PYTHON_LIBRARY"] == "/custom/libpython3.14.so"
+
+
+def test_worker_environment_omits_hint_without_bundled_libpython(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    artifact_dir = tmp_path / "runtime"
+    artifact_dir.mkdir()
+    worker_path = artifact_dir / package_worker.WORKER_BASENAME
+    worker_path.write_bytes(b"")
+    resolution = package_worker.NativeWorkerResolution("bundled runtime", worker_path, True)
+
+    env = package_worker._worker_environment(resolution)
+
+    assert "MOJO_PYTHON_LIBRARY" not in env
+
+
+def test_worker_environment_non_bundled_source_gets_no_python_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("PYTHONHOME", raising=False)
+    monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    worker_path = tmp_path / "system-worker"
+    worker_path.write_bytes(b"")
+    resolution = package_worker.NativeWorkerResolution("system worker", worker_path, True)
+
+    env = package_worker._worker_environment(resolution)
+
+    assert "PYTHONHOME" not in env
+    assert "MOJO_PYTHON_LIBRARY" not in env
