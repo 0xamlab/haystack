@@ -48,6 +48,13 @@ _RUNNING_RECLAIM_AFTER_S = 3600
 _VALID_FULL_NAME = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
 
 
+def _valid_repository_full_name(full_name: str) -> bool:
+    """The regex alone accepts dot-segment values like ``owner/..`` or ``../repo`` — every call
+    site that builds a GitHub API path from a webhook-supplied full_name must use this, not the
+    bare regex, so the path-traversal guard can't silently drift out of sync between them."""
+    return bool(full_name) and bool(_VALID_FULL_NAME.match(full_name)) and ".." not in full_name
+
+
 def _running_is_stale(job: Any) -> bool:
     """True if a RUNNING job has exceeded the reclaim window (a crashed prior run)."""
     started = getattr(job, "started_at", None)
@@ -164,6 +171,56 @@ async def _notify(
         )
 
 
+async def _notify_error(
+    *, event: str, payload: dict[str, Any], token: str, org_id: uuid.UUID, error: BaseException
+) -> None:
+    """Best-effort: tell GitHub codna hit an error, instead of the job silently failing from
+    GitHub's perspective. Closes the CLI/GitHub-App parity gap: the CLI now always emits a
+    structured error (see cli/codna/cli.py's _structured_error); previously this path's only
+    reported outcomes were "PR opened" and "no actionable plan found" — an exception from
+    apply_repository_decision (safety-gate rejection, dirty worktree, missing write
+    credentials, egress denial, a push/PR-create failure) reported nothing back at all."""
+    full_name = str((payload.get("repository") or {}).get("full_name") or "").strip()
+    if not _valid_repository_full_name(full_name):
+        return
+    # Only show the exception's own message for STRUCTURED errors (RepositoryIntelligenceError,
+    # LLMAPIError, etc.) — their .message is already curated, safe, user-facing text (the same
+    # class of string the CLI already prints). An unstructured/uncaught builtin or library
+    # exception (ValueError, httpx errors, pydantic ValidationError...) has no .code/.error_code,
+    # and str(exc) on those CAN embed raw payload/URL/argv content that was never meant to be
+    # public — so those fall back to just the safe class name, never their message.
+    code = getattr(error, "code", None) or getattr(error, "error_code", None)
+    if code:
+        detail = f"{error} (code: {code})"
+    else:
+        detail = type(error).__name__
+    message = f"🧬 codna hit an error and couldn't finish: {detail}. No changes were made."
+    if event in ("issues", "pull_request_review"):
+        number = ((payload.get("issue") if event == "issues" else payload.get("pull_request")) or {}).get(
+            "number"
+        )
+        if number is not None:
+            await _post_github(
+                method="POST",
+                path=f"/repos/{full_name}/issues/{number}/comments",
+                token=token,
+                org_id=org_id,
+                body={"body": message},
+            )
+        return
+    # check_suite — comment on the head commit
+    node = payload.get("check_suite") or {}
+    sha = node.get("head_sha")
+    if sha:
+        await _post_github(
+            method="POST",
+            path=f"/repos/{full_name}/commits/{sha}/comments",
+            token=token,
+            org_id=org_id,
+            body={"body": message},
+        )
+
+
 async def _handle_pr_review(payload: dict[str, Any], token: str, org_id: uuid.UUID) -> dict[str, Any]:
     """PR review is comment-only — nudge toward the label-driven fix flow."""
     pr = payload.get("pull_request") or {}
@@ -201,7 +258,7 @@ async def _drive_fix(
     repo = payload.get("repository") or {}
     full_name = str(repo.get("full_name") or "").strip()
     default_branch = repo.get("default_branch")
-    if not _VALID_FULL_NAME.match(full_name) or ".." in full_name:
+    if not _valid_repository_full_name(full_name):
         raise ValueError(f"github event has invalid repository.full_name: {full_name!r}")
     # Derive the clone URL from the VALIDATED owner/repo, pinned to github.com — never trust the
     # free-form clone_url field. The egress guard only checks the host is a permitted public
@@ -307,6 +364,7 @@ async def execute_github_event_job(*, job_id: uuid.UUID, db: AsyncSession) -> di
     )
 
     redis = None  # worker context: token caches on the encrypted row instead
+    token: str | None = None
     _tenant_keys_token = set_org_keys_override(await resolve_org_keys(job.org_id))
     try:
         token = await github_app_auth.get_installation_token(
@@ -329,6 +387,15 @@ async def execute_github_event_job(*, job_id: uuid.UUID, db: AsyncSession) -> di
             job.error_message = str(exc)
             job.completed_at = datetime.now(UTC)
             await db.commit()
+            # Best-effort — a token means we got far enough to owe GitHub a reply; a failure to
+            # notify must never mask the original error (that's what raise below is for).
+            if token is not None:
+                try:
+                    await _notify_error(
+                        event=event, payload=gh_payload, token=token, org_id=job.org_id, error=exc
+                    )
+                except Exception:  # noqa: BLE001
+                    logger.warning("github_event_error_notify_failed", job_id=str(job.id))
         raise
     finally:
         reset_org_keys_override(_tenant_keys_token)

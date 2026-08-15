@@ -764,7 +764,7 @@ def _event_job(kind=JobKind.GITHUB_EVENT_CHECK, **overrides):
         workspace_id=None,
         job_kind=kind.value,
         status=JobStatus.QUEUED,
-        request_payload={"installation_id": 12345, "event": "check_run", "payload": _check_payload()},
+        request_payload={"installation_id": 12345, "event": "check_suite", "payload": _check_payload()},
         result_payload=None,
         started_at=None,
         completed_at=None,
@@ -853,12 +853,188 @@ async def test_execute_github_event_job_failure_marks_failed(monkeypatch):
     async def _boom(**k):
         raise RuntimeError("pipeline blew up")
 
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
     monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
     monkeypatch.setattr(github_event_service, "_drive_fix", _boom)
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
     with pytest.raises(RuntimeError):
         await github_event_service.execute_github_event_job(job_id=job.id, db=db)
     assert job.status == JobStatus.FAILED
     assert "blew up" in (job.error_message or "")
+
+
+@pytest.mark.anyio
+async def test_execute_github_event_job_failure_notifies_github(monkeypatch):
+    """Parity gap: apply_repository_decision raising (gate failure, missing write creds, push
+    failure, etc.) used to fail the job with zero comment posted to GitHub — a silent failure
+    from the user's perspective, unlike the CLI's now-always-structured error contract. This is
+    the regression test for that gap being closed: an error notification IS posted."""
+    job = _event_job()
+    db = _FakeSession([job, _install_row()])
+
+    async def _fake_token(*a, **k):
+        return "tok"
+
+    class _GateFailed(RuntimeError):
+        code = "repository_apply_gate_failed"
+
+    async def _boom(**k):
+        raise _GateFailed("simulation did not clear the safety gate")
+
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
+    monkeypatch.setattr(github_event_service, "_drive_fix", _boom)
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    with pytest.raises(_GateFailed):
+        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
+    assert job.status == JobStatus.FAILED
+    assert posted, "an exception from _drive_fix must still notify GitHub, not fail silently"
+    assert posted[0]["path"] == "/repos/octo/repo/commits/abc123/comments"
+    assert "repository_apply_gate_failed" in posted[0]["body"]["body"]
+    assert "simulation did not clear the safety gate" in posted[0]["body"]["body"]
+
+
+@pytest.mark.anyio
+async def test_execute_github_event_job_failure_without_token_does_not_notify(monkeypatch):
+    """If token minting itself fails, there is no way to authenticate a GitHub comment — this
+    must stay a server-side-only failure (can't report what we can't authenticate to say)."""
+    job = _event_job()
+    db = _FakeSession([job, _install_row()])
+
+    async def _fake_token(*a, **k):
+        raise RuntimeError("installation token mint failed")
+
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    with pytest.raises(RuntimeError):
+        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
+    assert job.status == JobStatus.FAILED
+    assert not posted
+
+
+@pytest.mark.anyio
+async def test_execute_github_event_job_cancelled_does_not_notify(monkeypatch):
+    """A CANCELLED job (user/system-cancelled, not a real failure) gets neither a FAILED
+    status flip nor a spurious error comment."""
+    job = _event_job()
+    db = _FakeSession([job, _install_row()])
+
+    async def _fake_token(*a, **k):
+        return "tok"
+
+    async def _boom(**k):
+        job.status = JobStatus.CANCELLED  # simulates a concurrent cancellation
+        raise RuntimeError("pipeline blew up")
+
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
+    monkeypatch.setattr(github_event_service, "_drive_fix", _boom)
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    with pytest.raises(RuntimeError):
+        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
+    assert job.status == JobStatus.CANCELLED
+    assert not posted
+
+
+@pytest.mark.anyio
+async def test_notify_error_posts_issue_comment_for_issues_event(monkeypatch):
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    await github_event_service._notify_error(
+        event="issues",
+        payload={"issue": {"number": 42}, "repository": {"full_name": "octo/repo"}},
+        token="tok",
+        org_id=uuid.uuid4(),
+        error=RuntimeError("boom"),
+    )
+    assert posted and posted[0]["path"] == "/repos/octo/repo/issues/42/comments"
+    assert "RuntimeError" in posted[0]["body"]["body"]
+    # unstructured exceptions (no .code/.error_code) never show their raw str(exc) — only ever
+    # the safe class name, since str(exc) on an arbitrary builtin/library exception could embed
+    # payload/URL/argv content never meant to be public.
+    assert "boom" not in posted[0]["body"]["body"]
+
+
+@pytest.mark.anyio
+async def test_notify_error_posts_review_comment_for_pr_review_event(monkeypatch):
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    await github_event_service._notify_error(
+        event="pull_request_review",
+        payload={"pull_request": {"number": 7}, "repository": {"full_name": "octo/repo"}},
+        token="tok",
+        org_id=uuid.uuid4(),
+        error=RuntimeError("boom"),
+    )
+    assert posted and posted[0]["path"] == "/repos/octo/repo/issues/7/comments"
+
+
+@pytest.mark.anyio
+async def test_notify_error_prefers_structured_code_over_class_name(monkeypatch):
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    class _Structured(RuntimeError):
+        error_code = "repository_apply_gate_failed"
+
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    await github_event_service._notify_error(
+        event="check_suite",
+        payload=_check_payload(),
+        token="tok",
+        org_id=uuid.uuid4(),
+        error=_Structured("gate rejected"),
+    )
+    assert "repository_apply_gate_failed" in posted[0]["body"]["body"]
+    assert "_Structured" not in posted[0]["body"]["body"]
+    # a STRUCTURED error's own message IS shown — it's already curated, safe, actionable text
+    # (this is the actual parity fix: the CLI shows this same message, so should the GitHub App).
+    assert "gate rejected" in posted[0]["body"]["body"]
+
+
+@pytest.mark.anyio
+async def test_notify_error_silently_no_ops_on_missing_full_name(monkeypatch):
+    posted = []
+
+    async def _fake_post(**k):
+        posted.append(k)
+
+    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
+    await github_event_service._notify_error(
+        event="check_suite",
+        payload={"check_suite": {"head_sha": "abc"}, "repository": {}},
+        token="tok",
+        org_id=uuid.uuid4(),
+        error=RuntimeError("boom"),
+    )
+    assert not posted
 
 
 @pytest.mark.anyio
