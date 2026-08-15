@@ -33,6 +33,11 @@ on:
       - "scripts/stage_runtime_worker_package.py"
       - "mojo_env/pixi.toml"
       - ".github/workflows/build-runtime.yml"
+      # The linux leg + clean-machine contract run from these container scripts on the
+      # self-hosted fleet -- a change to them IS a change to the runtime pipeline.
+      - ".github/scripts/_linux_container_bootstrap.sh"
+      - ".github/scripts/build_runtime_linux_amd64.sh"
+      - ".github/scripts/clean_machine_contract_linux_amd64.sh"
 
 permissions:
   contents: read
