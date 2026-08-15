@@ -10,12 +10,18 @@ permissions:
   contents: read
 
 # The self-hosted runner fleet shares one Docker daemon on one host. The `test` job's fixed
-# container names (postgres-ci, dragonfly-ci, minio) and fixed host ports would otherwise let two
-# concurrent runs on the same ref clobber each other's containers mid-test (one run's `docker rm -f`
-# deleting a still-in-use container from another run — this is exactly what happened in practice).
+# container names (postgres-ci, dragonfly-ci, minio) and fixed host ports let ANY two concurrent
+# runs clobber each other's containers mid-test (one run's `docker rm -f` deleting a still-in-use
+# container from another run — this bit us in practice: a PR's CI/CD and main's CI/CD overlapped
+# and main's Test failed with `psycopg2 ... connection ... refused` because the PR run had
+# `docker rm -f postgres-ci`'d main's live Postgres). The group is therefore WORKFLOW-WIDE, not
+# per-ref: only one CI/CD run may touch these shared containers at a time. cancel-in-progress is
+# false so runs QUEUE rather than cancel each other (a cancelled run leaves half-started containers
+# behind, and we don't want a PR push cancelling main's deploy run) — the cost is serialized CI,
+# which is the price of correctness on one shared Docker daemon.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: "3.14"
