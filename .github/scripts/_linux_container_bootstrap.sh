@@ -27,6 +27,10 @@ PY="$(uv python find 3.14)"
 ln -sf "$PY" /usr/local/bin/python3
 ln -sf "$PY" /usr/local/bin/python
 ln -sf "$PY" /usr/local/bin/python3.14
+# uv installs console scripts (auditwheel, pip, ...) into the managed interpreter's own bin dir,
+# NOT /usr/local/bin -- expose it so bare command invocations resolve. Without this, `auditwheel`
+# is 'command not found' even though it is installed.
+export PATH="$(dirname "$PY"):$PATH"
 python3 --version
 
 # uv doubles as the package installer for this interpreter (standalone builds ship no pip).
