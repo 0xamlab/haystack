@@ -1,0 +1,17 @@
+# See https://docs.github.com/articles/about-codeowners for syntax.
+#
+# This file is intentionally scoped to only the files that need it today —
+# it does not (and must not, without a separate deliberate decision) impose
+# a review requirement across the rest of this repository.
+#
+# NOTE: the thyn-ai org has exactly one member today (@angelatgithub) and no
+# teams (verified via `gh api orgs/thyn-ai/members` / `orgs/thyn-ai/teams`).
+# Do not enable branch protection's "Require review from Code Owners" while
+# that's true — GitHub blocks a PR author from approving their own PR, so a
+# solo-owner CODEOWNERS with that setting on would make every PR unmergeable.
+
+# The two workflows that publish the public client SDKs and mirror their
+# source into the public thyn-ai/algenta-sdk repo are as security-sensitive
+# as the code they run — see the approved SDK-repo extraction plan.
+/.github/workflows/release-sdks.yml    @angelatgithub
+/.github/workflows/sync-public-sdk.yml @angelatgithub

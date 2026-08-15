@@ -191,14 +191,11 @@ import {
 
 
 import {
-  CREDIT_TTL_SECONDS,
   ImportBundlePreviewOptions,
   ImportBundlePreviewResult,
   ImportFailureResult,
   ImportPreviewOptions,
   ImportPreviewResult,
-  LicenseExchangeResponse,
-  LocalCreditState,
   LocalRecord,
   LocalRuntimeLicense,
   LocalSource,
@@ -210,19 +207,14 @@ import {
 } from "./_runtime_constants.js";
 import { RuntimeConfigurationError, RuntimeError, RuntimeValidationError } from "./_runtime_errors.js";
 import {
-  decrementCredit,
   deviceInfo,
-  hasOfflineExecutionEntitlement,
   loadLocalLicense,
   normalizeText,
   observeTrustedTime,
-  readCreditState,
   runtimeEnv,
   sha256Hex,
   stableHash,
-  stateNeedsRefresh,
   trustedNowEpoch,
-  writeCreditState,
 } from "./_runtime_helpers_a.js";
 import {
   applyLocalFilterConditions,
@@ -288,7 +280,6 @@ export class Runtime {
   lazyClient?: DecisionEngineClient;
   localLicense?: LocalRuntimeLicense;
   licensePromise?: Promise<LocalRuntimeLicense>;
-  creditRefreshPromise?: Promise<void>;
 
   constructor(config: RuntimeConfig = {}) {
     this.mode = config.mode ?? "local";

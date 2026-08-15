@@ -84,6 +84,11 @@ def _seed_key_bound_offline_license(
     monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(runtime_dir))
     monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
+    # plan="developer" is a Codna-style unprefixed plan, and Codna's runtime is the ONE product
+    # that still verifies the legacy HS256 control-plane license by deliberate, already-reviewed
+    # design (apps.runtime.license._HS256_LEGACY_PERMITTED_PRODUCTS / product_registry.py's
+    # rs256_license=False) — every other product hard-rejects HS256 by default now.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     get_settings.cache_clear()
     sys.modules.pop("apps.runtime.license", None)
     license_mod = importlib.import_module("apps.runtime.license")

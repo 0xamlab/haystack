@@ -290,15 +290,6 @@ export interface LocalRuntimeLicense {
   source: string;
 }
 
-export interface LocalCreditState {
-  credits_remaining: number;
-  credits_total: number;
-  issued_at: number;
-  expires_at: number;
-  billing_period: string;
-  refresh_after: number;
-}
-
 export interface LicenseExchangeResponse {
   license_token?: string;
   plan?: string;
@@ -417,10 +408,7 @@ export const HEADER_ALIAS_MAX_COLUMNS = 8;
 export const HEADER_ALIAS_MIN_MATCH_RATIO = 0.6;
 export const HEADER_ALIAS_MATCH_SCORE = 0.34;
 export const HEADER_ALIAS_AVG_SCORE = 0.45;
-export const DEV_LICENSE_SECRET = "algenta-dev-local-v1-not-for-production";
 export const LICENSE_VERSION = 1;
 export const DEFAULT_GRACE_DAYS = 14;
-export const CREDIT_TTL_SECONDS = 86_400;
-export const CREDIT_REFRESH_THRESHOLD = 0.1;
 export const TRUSTED_TIME_VERSION = 1;
 export const TRUSTED_TIME_PERSIST_INTERVAL_SECONDS = 60;

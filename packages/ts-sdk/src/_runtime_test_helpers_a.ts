@@ -1,6 +1,6 @@
 // Shared helpers (part a) for runtime.test.ts sub-modules.
 // Extracted from runtime.test.ts during modularization.
-import { createHash, createHmac, createSign, generateKeyPairSync } from "node:crypto";
+import { createSign, generateKeyPairSync } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
@@ -718,8 +718,28 @@ export function base64UrlJson(value: Record<string, unknown>): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-export function issueControlPlaneLicense(apiKey: string, expiresAt = 0): string {
-  const header = base64UrlJson({ alg: "HS256", typ: "JWT" });
+/**
+ * Simulate a real control-plane `/v1/device/register` response: an RS256-signed license, using
+ * a fresh ephemeral RSA keypair per call (mirrors {@link issueOfflineLocalLicense}'s approach).
+ *
+ * This used to mint HS256 tokens (reimplementing the exact `sha256(jwtSeed + ":license-signing")`
+ * derivation the control plane's `dev_hmac` signer used) to simulate the old default behavior.
+ * That symmetric scheme has been retired everywhere — `parseStoredLicenseToken` now hard-rejects
+ * any `alg !== "RS256"` unconditionally — so this helper mints RS256 like the real hardened
+ * control plane (`pem`/`cf_worker` backends) does. Callers must register the returned public key
+ * (e.g. via `process.env.ALGENTA_LOCAL_LICENSE_PUBLIC_KEY`) before the SDK will accept the token;
+ * {@link seedStoredLicense} does this for the common "write license.jwt to disk" case.
+ */
+export function issueControlPlaneLicense(
+  apiKey: string,
+  expiresAt = 0,
+): { token: string; publicKey: string } {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    privateKeyEncoding: { format: "pem", type: "pkcs8" },
+    publicKeyEncoding: { format: "pem", type: "spki" },
+  });
+  const header = base64UrlJson({ alg: "RS256", typ: "JWT" });
   const issuedAt = Math.floor(Date.now() / 1000);
   const payload = base64UrlJson({
     api_key_prefix: apiKey.slice(0, 12),
@@ -734,12 +754,11 @@ export function issueControlPlaneLicense(apiKey: string, expiresAt = 0): string 
     iss: "algenta-control-plane",
     sub: "device-license",
   });
-  const jwtSeed = process.env.ALGENTA_JWT_SECRET ?? "change-me-in-production-use-256-bit-random-value";
-  const secret = createHash("sha256")
-    .update(`${jwtSeed}:license-signing`)
-    .digest("hex");
-  const signature = createHmac("sha256", secret).update(`${header}.${payload}`).digest("base64url");
-  return `${header}.${payload}.${signature}`;
+  const signer = createSign("RSA-SHA256");
+  signer.update(`${header}.${payload}`);
+  signer.end();
+  const signature = signer.sign(privateKey).toString("base64url");
+  return { token: `${header}.${payload}.${signature}`, publicKey };
 }
 
 export function issueOfflineLocalLicense(expiresAt = 0): { token: string; publicKey: string } {
@@ -770,10 +789,18 @@ export function issueOfflineLocalLicense(expiresAt = 0): { token: string; public
   return { token: `${header}.${payload}.${signature}`, publicKey };
 }
 
-export function seedStoredLicense(runtimeDir: string, apiKey: string, expiresAt = 0): void {
-  writeFileSync(join(runtimeDir, "license.jwt"), issueControlPlaneLicense(apiKey, expiresAt), {
+/**
+ * Write an RS256 control-plane license to `<runtimeDir>/license.jwt` AND register its public key
+ * (via `ALGENTA_LOCAL_LICENSE_PUBLIC_KEY`) so `parseStoredLicenseToken`/`loadLocalLicense` can
+ * verify it. Returns the public key PEM in case a caller wants to assert on it directly.
+ */
+export function seedStoredLicense(runtimeDir: string, apiKey: string, expiresAt = 0): string {
+  const { token, publicKey } = issueControlPlaneLicense(apiKey, expiresAt);
+  writeFileSync(join(runtimeDir, "license.jwt"), token, {
     mode: 0o600,
   });
+  process.env.ALGENTA_LOCAL_LICENSE_PUBLIC_KEY = publicKey;
+  return publicKey;
 }
 
 export function seedTrustedTime(runtimeDir: string, trustedEpoch: number, source = "control-plane-register"): void {
@@ -784,25 +811,6 @@ export function seedTrustedTime(runtimeDir: string, trustedEpoch: number, source
         version: 1,
         trusted_epoch: trustedEpoch,
         source,
-      },
-      null,
-      2,
-    )}\n`,
-  );
-}
-
-export function seedCredits(runtimeDir: string, remaining: number, total = remaining): void {
-  const now = Date.now() / 1000;
-  writeFileSync(
-    join(runtimeDir, "credits.json"),
-    `${JSON.stringify(
-      {
-        credits_remaining: remaining,
-        credits_total: total,
-        issued_at: now,
-        expires_at: now + 3600,
-        billing_period: "2026-04",
-        refresh_after: now + 1800,
       },
       null,
       2,

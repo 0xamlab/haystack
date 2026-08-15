@@ -38,6 +38,10 @@ def _rsa_keypair() -> tuple[str, str]:
 
 
 def test_parse_control_plane_license_with_explicit_signing_secret(monkeypatch):
+    # plan="developer" is a Codna-style unprefixed plan, and Codna's runtime is the ONE product
+    # that still verifies HS256 by deliberate, already-reviewed design (rs256_license=False) — so
+    # this test's runtime identifies itself as codna, matching a real Codna deployment.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.setenv("LICENSE_SIGNING_SECRET", "local-license-secret")
     monkeypatch.delenv("JWT_SECRET", raising=False)
     get_settings.cache_clear()
@@ -97,6 +101,9 @@ def test_parse_offline_local_license_with_public_key(monkeypatch):
 
 
 def test_parse_control_plane_license_with_derived_jwt_secret(monkeypatch):
+    # See the comment on test_parse_control_plane_license_with_explicit_signing_secret above:
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
     get_settings.cache_clear()
@@ -118,6 +125,8 @@ def test_parse_control_plane_license_with_derived_jwt_secret(monkeypatch):
 
 
 def test_issue_control_plane_license_uses_api_key_expiry_when_present(monkeypatch):
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
     get_settings.cache_clear()
@@ -150,6 +159,8 @@ def test_issue_control_plane_license_caps_far_future_expiry(monkeypatch):
     "pay once and leave" defense: the license must be renewed within the window regardless."""
     from apps.api_server.services.device_service import _LICENSE_RENEWAL_TTL_DAYS
 
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
     get_settings.cache_clear()
@@ -177,6 +188,8 @@ def test_issue_control_plane_license_caps_far_future_expiry(monkeypatch):
 
 
 def test_load_license_prefers_stored_control_plane_token_when_offline(monkeypatch, tmp_path):
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
@@ -490,6 +503,8 @@ def test_stored_offline_entitlement_tracks_active_runtime_dir_without_reload(
     monkeypatch,
     tmp_path,
 ):
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
     get_settings.cache_clear()

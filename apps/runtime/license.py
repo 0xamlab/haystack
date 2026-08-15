@@ -124,6 +124,30 @@ def _runtime_product() -> str:
     return (os.environ.get("ALGENTA_RUNTIME_PRODUCT", "") or "algenta").strip() or "algenta"
 
 
+# Products whose SHIPPED runtime still verifies the legacy HS256 control-plane / dev-stub license
+# by explicit, already-reviewed design (mirrors apps/api_server/services/product_registry.py's
+# ``rs256_license=False`` set — codna today; see also device_service._RS256_LICENSE_PRODUCTS,
+# the mirror-image allowlist on the SIGNER side). Inlined here (rather than importing
+# product_registry, which lives in the api_server app) so apps/runtime stays a leaf module with no
+# dependency on the api_server layer — this small frozenset is the one place the two must be kept
+# in sync. Every product NOT in this set is RS256-only, unconditionally, regardless of
+# ALGENTA_LICENSE_RS256_ONLY / require_local_license — those remain available as additional,
+# stricter opt-ins, not as what makes RS256-only the default.
+_HS256_LEGACY_PERMITTED_PRODUCTS: frozenset[str] = frozenset({"codna"})
+
+
+def _hs256_legacy_permitted_for_current_product() -> bool:
+    """Whether the CURRENT runtime's product is still allowed to verify legacy HS256 tokens.
+
+    This is the structural fix for the historical footgun: HS256 acceptance used to be an
+    opt-in "strict mode" (``ALGENTA_LICENSE_RS256_ONLY`` / ``require_local_license``) that was
+    OFF by default, so every product silently accepted a forgeable HS256 token unless an
+    operator explicitly hardened it. Now HS256 is hard-rejected by default for every product
+    except the one still shipping it by deliberate design (``_HS256_LEGACY_PERMITTED_PRODUCTS``)
+    — hardening is no longer something an operator has to remember to turn on."""
+    return _runtime_product() in _HS256_LEGACY_PERMITTED_PRODUCTS
+
+
 def _runtime_deployment_id() -> str:
     """Explicit organization-deployment activation signal. Its PRESENCE (with a deployment-scope
     license) is one of the ways a runtime opts into deployment scope — detection never does."""
@@ -900,8 +924,12 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
                 continue
         return None
 
-    if rs256_only:
-        # Production RS256-only: no HS256 token (dev-stub or control-plane secret) is accepted.
+    if rs256_only or not _hs256_legacy_permitted_for_current_product():
+        # Hard reject: no HS256 token (dev-stub or control-plane secret) is accepted. This is now
+        # the UNCONDITIONAL default for every product except the one still shipping HS256 by
+        # deliberate design (see _HS256_LEGACY_PERMITTED_PRODUCTS) — ALGENTA_LICENSE_RS256_ONLY /
+        # require_local_license remain available as an operator's additional, stricter opt-in on
+        # top of that, not as what makes RS256-only the default.
         return None
 
     # The dev-stub secret is only in the loop when the dev stub is present (dev/test builds); a
@@ -959,8 +987,8 @@ def _verify_control_plane_jwt(token: str) -> dict[str, object] | None:
             except jwt.InvalidTokenError:
                 continue
         return None
-    if _local_license_required():
-        return None  # strict deployments accept RS256 only
+    if _local_license_required() or not _hs256_legacy_permitted_for_current_product():
+        return None  # strict deployments / every non-legacy product accept RS256 only
     # NOTE: the CRL is NEVER signed with the public dev stub secret — only with the control-plane
     # secret (or RS256 above). Excluding _DEV_SECRET here prevents an attacker from forging a CRL
     # with the hardcoded, source-visible dev secret to revoke a victim's activation.

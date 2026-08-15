@@ -98,7 +98,6 @@ import {
   issueOfflineLocalLicense,
   seedStoredLicense,
   seedTrustedTime,
-  seedCredits,
   readLedgerEvents,
   hasNodeSqlite,
   writeSqliteFixture,

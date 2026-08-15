@@ -1,4 +1,4 @@
-/** Auto-split sub-module of runtime.ts — local-mode license, credit,
+/** Auto-split sub-module of runtime.ts — local-mode license,
  * source-selection, planning, and execution helpers for the Runtime class.
  *
  * This module augments the {@link Runtime} class via TypeScript declaration
@@ -16,9 +16,6 @@ import type {
 } from "./types.js";
 import { Runtime } from "./_runtime_class.js";
 import {
-  CREDIT_TTL_SECONDS,
-  LicenseExchangeResponse,
-  LocalCreditState,
   LocalSource,
   RankedField,
   RUNTIME_DATASET_SCOPE_KEY,
@@ -29,16 +26,8 @@ import {
   RuntimeValidationError,
 } from "./_runtime_errors.js";
 import {
-  decrementCredit,
-  deviceInfo,
-  hasOfflineExecutionEntitlement,
   loadLocalLicense,
   normalizeText,
-  observeTrustedTime,
-  readCreditState,
-  stateNeedsRefresh,
-  trustedNowEpoch,
-  writeCreditState,
 } from "./_runtime_helpers_a.js";
 import {
   applyLocalFilterConditions,
@@ -62,15 +51,12 @@ import {
 import {
   privateProfile,
   requireLocalLicense,
-  validatedControlPlaneBaseUrl,
 } from "./runtime_privacy.js";
 
 declare module "./_runtime_class.js" {
   interface Runtime {
     usesHostedLocalLimits(): boolean;
     ensureLocalExecutionEntitlement(): Promise<void>;
-    consumeLocalCredit(): void;
-    refreshLocalCredits(state: LocalCreditState): Promise<void>;
     selectLocalSource(request: Record<string, unknown>): LocalSource;
     rankFields(source: LocalSource, hint: string, numericOnly: boolean): RankedField[];
     buildCandidates(
@@ -146,85 +132,6 @@ Runtime.prototype.ensureLocalExecutionEntitlement = async function (
         source: this.localLicense.source,
       },
     );
-  }
-};
-
-Runtime.prototype.consumeLocalCredit = function (this: Runtime): void {
-  if (!this.usesHostedLocalLimits()) {
-    return;
-  }
-  if (hasOfflineExecutionEntitlement(this.localLicense)) {
-    return;
-  }
-  const outcome = decrementCredit();
-  if (!outcome.permitted) {
-    throw new RuntimeConfigurationError(
-      "quota_exhausted",
-      "Local execution credits are exhausted. Refresh credits or renew the device license before continuing.",
-    );
-  }
-  if (outcome.state && stateNeedsRefresh(outcome.state) && !this.creditRefreshPromise) {
-    this.creditRefreshPromise = this.refreshLocalCredits(outcome.state).finally(() => {
-      this.creditRefreshPromise = undefined;
-    });
-  }
-};
-
-Runtime.prototype.refreshLocalCredits = async function (
-  this: Runtime,
-  state: LocalCreditState,
-): Promise<void> {
-  if (!this.apiKey) {
-    return;
-  }
-  let controlPlaneUrl = "";
-  try {
-    controlPlaneUrl = validatedControlPlaneBaseUrl(this.baseUrl, {
-      surface: "credits_refresh",
-    });
-  } catch {
-    return;
-  }
-  try {
-    const response = await fetch(`${controlPlaneUrl}/v1/credits/refresh`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        device_id: deviceInfo().device_id,
-        billing_period: state.billing_period,
-        credits_used: state.credits_total - state.credits_remaining,
-      }),
-    });
-    if (!response.ok) {
-      return;
-    }
-    const data = (await response.json()) as LicenseExchangeResponse;
-    observeTrustedTime(
-      data.server_time ?? Math.floor(Date.now() / 1000),
-      "control-plane-credit-refresh",
-    );
-    const granted = data.credits_granted ?? 0;
-    if (granted <= 0) {
-      return;
-    }
-    const now = trustedNowEpoch();
-    const expiresAt = data.credits_expires_at ?? now + CREDIT_TTL_SECONDS;
-    const ttlSeconds = Math.max(1, expiresAt - now);
-    const existing = readCreditState();
-    const carry = existing?.credits_remaining ?? 0;
-    writeCreditState({
-      credits_remaining: carry + granted,
-      credits_total: granted,
-      issued_at: now,
-      expires_at: now + ttlSeconds,
-      billing_period: data.credits_billing_period ?? state.billing_period,
-      refresh_after: now + ttlSeconds * 0.9,
-    });
-  } catch {
-    return;
   }
 };
 
@@ -586,7 +493,6 @@ Runtime.prototype.queryLocal = async function (
   }
 
   await this.ensureLocalExecutionEntitlement();
-  this.consumeLocalCredit();
 
   let executionRecords = source.records;
   const localPlanSteps: string[] = [];

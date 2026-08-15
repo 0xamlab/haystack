@@ -97,11 +97,29 @@ def test_dev_jwt_issuance_unavailable_when_stub_stripped(monkeypatch) -> None:
         L._issue_dev_jwt("device-x")
 
 
-def test_control_plane_hs256_still_works_when_stub_stripped(monkeypatch) -> None:
-    # Stripping the DEV stub must not disturb the control-plane HS256 path (dev/internal), which is
-    # a separate secret; only the dev-stub secret is removed.
+def test_control_plane_hs256_rejected_by_default_when_stub_stripped(monkeypatch) -> None:
+    # Stripping the dev stub is orthogonal to the control-plane HS256 secret (a separate secret) —
+    # but for the default (non-legacy) product, that secret is now rejected regardless, same as
+    # test_runtime_rejects_dev_hs256_when_stub_stripped above.
     monkeypatch.delenv("ALGENTA_LICENSE_RS256_ONLY", raising=False)
     monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    monkeypatch.delenv("ALGENTA_RUNTIME_PRODUCT", raising=False)
+    monkeypatch.setattr(L, "_DEV_SECRET", None)
+    monkeypatch.setenv("JWT_SECRET", "seed-abc")
+    import hashlib
+
+    secret = hashlib.sha256(("seed-abc" + ":license-signing").encode()).hexdigest()
+    tok = jwt.encode({"ver": 2, "plan": "pro", "device_id": "d", "sub": "device-license"},
+                     secret, algorithm="HS256")
+    assert L._parse_token(tok) is None
+
+
+def test_control_plane_hs256_still_works_for_codna_when_stub_stripped(monkeypatch) -> None:
+    # Stripping the DEV stub must not disturb Codna's (still-legacy-by-design) control-plane HS256
+    # path, which is a separate secret; only the dev-stub secret is removed.
+    monkeypatch.delenv("ALGENTA_LICENSE_RS256_ONLY", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     monkeypatch.setattr(L, "_DEV_SECRET", None)
     monkeypatch.setenv("JWT_SECRET", "seed-abc")
     import hashlib

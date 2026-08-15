@@ -10,8 +10,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import jwt
+import pytest
 
 from apps.api_server.services import device_service as ds
+from apps.api_server.services.license_signer import LicenseSignerError
 
 
 def _settings(**kw) -> SimpleNamespace:
@@ -158,3 +160,45 @@ def test_codna_payload_keeps_legacy_issuer_and_no_exp():
     assert c["iss"] == ds._JWT_ISSUER
     assert "exp" not in c
     assert "expires_at" in c
+
+
+# ── production safety net: RS256-required products must never silently fall back to HS256 ──────
+
+
+def test_algenta_plan_refuses_dev_hmac_fallback_in_production_without_cf_worker():
+    # algenta_pro is RS256-required by the registry. If cf_worker isn't configured (so
+    # _use_cf_worker_signer returns False) AND this deployment is production-classified, issuance
+    # must refuse outright rather than silently mint a forgeable/incompatible HS256 license.
+    s = _settings(api_env="production")  # no cf_worker configured
+    with patch("apps.api_server.config.get_settings", return_value=s):
+        with pytest.raises(LicenseSignerError):
+            ds._issue_license_jwt("dev-1", "ak_abc", "algenta_pro", 1, "org-1")
+
+
+def test_telys_plan_refuses_dev_hmac_fallback_in_production_without_cf_worker():
+    s = _settings(api_env="production")
+    with patch("apps.api_server.config.get_settings", return_value=s):
+        with pytest.raises(LicenseSignerError):
+            ds._issue_license_jwt("dev-1", "ak_abc", "telys_developer", 1, "org-1")
+
+
+def test_algenta_plan_issues_via_cf_worker_in_production_when_configured():
+    # The safety net never fires when cf_worker IS configured — _use_cf_worker_signer routes there
+    # first, same as in dev/test.
+    s = _settings(api_env="production", **_CF)
+    fake = _CapturingSigner()
+    with patch("apps.api_server.config.get_settings", return_value=s), patch(
+        "apps.api_server.services.license_signer.get_license_signer", return_value=fake
+    ):
+        token = ds._issue_license_jwt("dev-1", "ak_abc", "algenta_pro", 1, "org-1")
+    assert token == "captured.rs256.token"
+
+
+def test_codna_plan_unaffected_by_production_guard_without_cf_worker():
+    # The load-bearing safety property: Codna's plans never intersect the RS256 product set, so
+    # the new production guard NEVER fires for it — Codna keeps issuing HS256 in production
+    # exactly as it always has, cf_worker configured or not.
+    s = _settings(api_env="production")  # no cf_worker configured
+    with patch("apps.api_server.config.get_settings", return_value=s):
+        token = ds._issue_license_jwt("dev-1", "ak_abc", "pro", 1, "org-1")
+    assert jwt.get_unverified_header(token)["alg"] == "HS256"

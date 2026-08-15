@@ -968,7 +968,11 @@ def _issue_license_jwt(
     # external next) are signed by the shared cf_worker (license.algenta.ai); everyone else is signed with an
     # EXPLICIT dev_hmac (HS256) — never the ambient global backend — so setting LICENSE_SIGNER_BACKEND=cf_worker
     # can't silently flip Codna/Algenta to RS256 (which their HS256 runtimes would reject). See _use_cf_worker_signer.
-    from apps.api_server.services.license_signer import get_license_signer
+    from apps.api_server.services.license_signer import (
+        LicenseSignerError,
+        _is_production_environment,
+        get_license_signer,
+    )
 
     if _use_cf_worker_signer(plan, settings):
         # The cf_worker signs verbatim + enforces policy, and telys.verify enforces the same: platform iss, an
@@ -980,6 +984,24 @@ def _issue_license_jwt(
         payload["exp"] = capped_exp
         payload["expires_at"] = capped_exp  # keep the token internally consistent (verify prefers exp)
         return get_license_signer(backend="cf_worker").sign(payload)
+
+    # Safety net for the ambient "cf_worker not configured yet" dev/test fallback above: a plan
+    # granting a product the registry marks RS256-required (algenta/telys/cohenta/sqai) must NEVER
+    # silently downgrade to a symmetric dev_hmac (HS256) license once this deployment identifies as
+    # production — that HS256 token would either be forgeable (if some caller still accepted it) or
+    # simply rejected outright by the now-unconditional RS256-only runtime verifier, either of which
+    # is a broken production deployment, not a safe default. This does NOT affect Codna: its plans
+    # never intersect the RS256 product set, so `plan_requires_rs256` is always empty for it and this
+    # branch never fires — Codna's dev_hmac issuance above is untouched.
+    plan_requires_rs256 = _plan_rs256_products(plan, settings)
+    if plan_requires_rs256 and _is_production_environment(settings):
+        raise LicenseSignerError(
+            f"Refusing to issue a symmetric dev_hmac (HS256) license for RS256-required "
+            f"product(s) {sorted(plan_requires_rs256)} while api_env=production. Configure "
+            "license_signer_url (+ license_signer_auth_token) so _use_cf_worker_signer routes "
+            "this plan to the cf_worker signer — or provision a pem key — before enabling it in "
+            "production."
+        )
     return get_license_signer(backend="dev_hmac").sign(payload)
 
 

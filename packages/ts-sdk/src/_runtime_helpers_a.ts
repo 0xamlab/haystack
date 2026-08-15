@@ -175,7 +175,7 @@ import {
   renameSync,
   writeFileSync,
 } from "node:fs";
-import { createHash, createHmac, createVerify, timingSafeEqual } from "node:crypto";
+import { createHash, createVerify } from "node:crypto";
 import { homedir, hostname, platform, release } from "node:os";
 import { extname, join, resolve as resolvePath } from "node:path";
 import {
@@ -192,12 +192,8 @@ import {
 
 import {
   ACCENT,
-  CREDIT_REFRESH_THRESHOLD,
-  CREDIT_TTL_SECONDS,
   DEFAULT_GRACE_DAYS,
-  DEV_LICENSE_SECRET,
   LicenseExchangeResponse,
-  LocalCreditState,
   LocalRuntimeLicense,
   MUTED,
   RESET,
@@ -277,10 +273,6 @@ export function runtimeLicensePath(): string {
   return join(runtimeDirectory(), "license.jwt");
 }
 
-export function runtimeCreditsPath(): string {
-  return join(runtimeDirectory(), "credits.json");
-}
-
 export function runtimeTrustedTimePath(): string {
   return join(runtimeDirectory(), "trusted_time.json");
 }
@@ -313,38 +305,6 @@ export function base64UrlEncode(input: Buffer): string {
 
 export function base64UrlDecode(input: string): Buffer {
   return Buffer.from(input, "base64url");
-}
-
-export function timingSafeEquals(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  if (leftBuffer.length !== rightBuffer.length) {
-    return false;
-  }
-  return timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-export function licenseVerificationSecrets(): Array<{ secret: string; source: string }> {
-  const env = runtimeEnv();
-  const candidates: Array<{ secret: string; source: string }> = [];
-  const explicitSecret = env.ALGENTA_LICENSE_SIGNING_SECRET ?? env.LICENSE_SIGNING_SECRET;
-  if (explicitSecret) {
-    candidates.push({ secret: explicitSecret, source: "control-plane" });
-  }
-  const jwtSeed = env.ALGENTA_JWT_SECRET ?? env.JWT_SECRET ?? "change-me-in-production-use-256-bit-random-value";
-  candidates.push({
-    secret: sha256Hex(`${jwtSeed}:license-signing`),
-    source: "control-plane",
-  });
-
-  const seen = new Set<string>();
-  return candidates.filter(candidate => {
-    if (!candidate.secret || candidate.secret === DEV_LICENSE_SECRET || seen.has(candidate.secret)) {
-      return false;
-    }
-    seen.add(candidate.secret);
-    return true;
-  });
 }
 
 export function offlineLicensePublicKeys(): Array<{ key: string; source: string }> {
@@ -493,31 +453,6 @@ export function trustedNowEpoch(): number {
   return trustedEpoch;
 }
 
-export function writeCreditState(state: LocalCreditState): void {
-  const path = runtimeCreditsPath();
-  mkdirSync(runtimeDirectory(), { recursive: true });
-  const tmpPath = `${path}.tmp`;
-  writeFileSync(tmpPath, `${JSON.stringify(state, null, 2)}\n`);
-  renameSync(tmpPath, path);
-}
-
-export function readCreditState(): LocalCreditState | null {
-  try {
-    const path = runtimeCreditsPath();
-    if (!existsSync(path)) {
-      return null;
-    }
-    return JSON.parse(readFileSync(path, "utf8")) as LocalCreditState;
-  } catch {
-    return null;
-  }
-}
-
-export function isRuntimeDevModeEnabled(): boolean {
-  const value = (runtimeEnv().ALGENTA_RUNTIME_DEV_MODE ?? "").trim().toLowerCase();
-  return value === "1" || value === "true" || value === "yes" || value === "on";
-}
-
 export function deviceInfo(): {
   device_id: string;
   platform: string;
@@ -552,88 +487,39 @@ export function makeInvalidLicense(message: string, apiKey = ""): LocalRuntimeLi
   };
 }
 
-export function makeDevLicense(apiKey = ""): LocalRuntimeLicense {
-  return {
-    valid: true,
-    plan: "dev",
-    deviceId: deviceInfo().device_id,
-    deviceLimit: 0,
-    permittedModules: ["*"],
-    expiresAt: 0,
-    keyExpiresAt: 0,
-    graceDays: DEFAULT_GRACE_DAYS,
-    apiKeyPrefix: apiKey ? apiKey.slice(0, 12) : "dev-local",
-    issuedAt: Math.floor(Date.now() / 1000),
-    message: "Dev mode - self-signed local license",
-    source: "dev-stub",
-  };
-}
-
 export function parseStoredLicenseToken(token: string, apiKey = ""): LocalRuntimeLicense | null {
   const parts = token.split(".");
   if (parts.length !== 3) {
     return null;
   }
   const [headerSegment, payloadSegment, signatureSegment] = parts;
+  let header: { alg?: string };
   try {
-    const header = JSON.parse(base64UrlDecode(headerSegment).toString("utf8")) as { alg?: string };
-    if (header.alg === "RS256") {
-      for (const candidate of offlineLicensePublicKeys()) {
-        try {
-          const verifier = createVerify("RSA-SHA256");
-          verifier.update(`${headerSegment}.${payloadSegment}`);
-          verifier.end();
-          if (!verifier.verify(candidate.key, base64UrlDecode(signatureSegment))) {
-            continue;
-          }
-          const payload = JSON.parse(base64UrlDecode(payloadSegment).toString("utf8")) as Record<string, unknown>;
-          return {
-            valid: true,
-            plan: String(payload.plan ?? "enterprise"),
-            deviceId: String(payload.device_id ?? ""),
-            deviceLimit: Number(payload.device_limit ?? 0),
-            permittedModules: Array.isArray(payload.permitted_modules)
-              ? payload.permitted_modules.map(item => String(item))
-              : ["*"],
-            expiresAt: Number(payload.expires_at ?? 0),
-            keyExpiresAt: Number(payload.key_expires_at ?? 0),
-            graceDays: Number(payload.grace_days ?? DEFAULT_GRACE_DAYS),
-            apiKeyPrefix: String(payload.api_key_prefix ?? apiKey.slice(0, 12)),
-            issuedAt: Number(payload.issued_at ?? 0),
-            message: String(payload.message ?? ""),
-            source: candidate.source,
-          };
-        } catch {
-          continue;
-        }
-      }
-      return null;
-    }
-    if (requireLocalLicense()) {
-      return null;
-    }
+    header = JSON.parse(base64UrlDecode(headerSegment).toString("utf8")) as { alg?: string };
   } catch {
     return null;
   }
-  for (const candidate of [
-    { secret: DEV_LICENSE_SECRET, source: "dev-stub" },
-    ...licenseVerificationSecrets(),
-  ]) {
+  // Hard reject: RS256 (an asymmetric, publicly-verifiable signature) is the ONLY accepted
+  // algorithm. There is no HS256/shared-secret fallback — a symmetric secret capable of
+  // verifying a license is also capable of MINTING one, so accepting it here would make this
+  // client-side check (which is optional UX preflight, never the entitlement authority) into a
+  // forgeable rubber stamp. This is unconditional: it does not depend on requireLocalLicense()
+  // or any other deployment profile.
+  if (header.alg !== "RS256") {
+    return null;
+  }
+  for (const candidate of offlineLicensePublicKeys()) {
     try {
-      const header = JSON.parse(base64UrlDecode(headerSegment).toString("utf8")) as { alg?: string };
-      if (header.alg !== "HS256") {
-        continue;
-      }
-      const expected = base64UrlEncode(
-        createHmac("sha256", candidate.secret).update(`${headerSegment}.${payloadSegment}`).digest(),
-      );
-      if (!timingSafeEquals(expected, signatureSegment)) {
+      const verifier = createVerify("RSA-SHA256");
+      verifier.update(`${headerSegment}.${payloadSegment}`);
+      verifier.end();
+      if (!verifier.verify(candidate.key, base64UrlDecode(signatureSegment))) {
         continue;
       }
       const payload = JSON.parse(base64UrlDecode(payloadSegment).toString("utf8")) as Record<string, unknown>;
       return {
         valid: true,
-        plan: String(payload.plan ?? "dev"),
+        plan: String(payload.plan ?? "enterprise"),
         deviceId: String(payload.device_id ?? ""),
         deviceLimit: Number(payload.device_limit ?? 0),
         permittedModules: Array.isArray(payload.permitted_modules)
@@ -667,54 +553,6 @@ export function licenseInGrace(license: LocalRuntimeLicense): boolean {
   }
   const now = Math.floor(trustedNowEpoch());
   return now > license.expiresAt && !licenseHardExpired(license);
-}
-
-export function initializeCredits(granted: number, billingPeriod: string, ttlSeconds = CREDIT_TTL_SECONDS): void {
-  const now = trustedNowEpoch();
-  writeCreditState({
-    credits_remaining: granted,
-    credits_total: granted,
-    issued_at: now,
-    expires_at: now + ttlSeconds,
-    billing_period: billingPeriod,
-    refresh_after: now + ttlSeconds * 0.9,
-  });
-}
-
-export function stateNeedsRefresh(state: LocalCreditState | null): boolean {
-  if (!state) {
-    return true;
-  }
-  if (state.credits_total <= 0) {
-    return true;
-  }
-  if (trustedNowEpoch() > state.expires_at) {
-    return true;
-  }
-  return state.credits_remaining / state.credits_total <= CREDIT_REFRESH_THRESHOLD;
-}
-
-export function decrementCredit(): { permitted: boolean; state: LocalCreditState | null } {
-  const state = readCreditState();
-  if (!state) {
-    return { permitted: isRuntimeDevModeEnabled(), state };
-  }
-  if (state.credits_remaining <= 0) {
-    return { permitted: false, state };
-  }
-  const nextState: LocalCreditState = {
-    ...state,
-    credits_remaining: state.credits_remaining - 1,
-  };
-  writeCreditState(nextState);
-  return { permitted: true, state: nextState };
-}
-
-export function hasOfflineExecutionEntitlement(license: LocalRuntimeLicense | undefined): boolean {
-  if (!license?.valid || license.keyExpiresAt <= 0) {
-    return false;
-  }
-  return !licenseHardExpired(license);
 }
 
 export async function exchangeApiKeyForLicense(
@@ -767,16 +605,6 @@ export async function exchangeApiKeyForLicense(
       data.server_time ?? Math.floor(Date.now() / 1000),
       "control-plane-register",
     );
-    if ((data.credits_granted ?? 0) > 0) {
-      const now = trustedNowEpoch();
-      const expiresAt = data.credits_expires_at ?? now + CREDIT_TTL_SECONDS;
-      const ttlSeconds = Math.max(1, expiresAt - now);
-      initializeCredits(
-        data.credits_granted ?? 0,
-        data.credits_billing_period ?? "",
-        ttlSeconds,
-      );
-    }
     return { token: data.license_token, invalidMessage: null };
   } catch {
     return {
@@ -828,9 +656,6 @@ export async function loadLocalLicense(apiKey: string, baseUrl?: string): Promis
         "Control plane registration failed. First-time local login requires a reachable control plane.",
       apiKey,
     );
-  }
-  if (isRuntimeDevModeEnabled()) {
-    return makeDevLicense(apiKey);
   }
   return makeInvalidLicense(
     "No stored license found. Run `algenta login` against the control plane before offline execution.",

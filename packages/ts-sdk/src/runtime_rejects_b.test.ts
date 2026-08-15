@@ -94,11 +94,9 @@ import {
   makeRuntimeReleaseValidationPayload,
   runtimeTempDir,
   base64UrlJson,
-  issueControlPlaneLicense,
   issueOfflineLocalLicense,
   seedStoredLicense,
   seedTrustedTime,
-  seedCredits,
   readLedgerEvents,
   hasNodeSqlite,
   writeSqliteFixture,
@@ -482,7 +480,6 @@ describe("Runtime — rejects_b", () => {
       const expiresAt = 1_900_000_000;
       seedStoredLicense(runtimeDir, "de_live_ts_runtime_key", expiresAt);
       seedTrustedTime(runtimeDir, expiresAt + 14 * 86_400 + 5);
-      seedCredits(runtimeDir, 2, 2);
       vi.spyOn(Date, "now").mockReturnValue((expiresAt - 86_400) * 1000);
       vi.spyOn(performance, "now").mockReturnValue(0);
       const fetchSpy = vi.fn(async () => {

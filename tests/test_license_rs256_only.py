@@ -1,8 +1,12 @@
 """RS256-only production mode (apps/runtime/license.py) + the hardening preflight guard.
 
 The runtime half of the artifact split: with ALGENTA_LICENSE_RS256_ONLY=1, NO HS256 token — the
-forgeable source-secret dev stub OR the control-plane HS256 secret — is accepted; only asymmetric
-RS256 verifies. Default OFF preserves the shipped HS256-verifying internal consumers.
+forgeable source-secret dev stub OR the control-plane HS256 secret — is accepted for ANY product;
+only asymmetric RS256 verifies. This is now additive hardening on top of a default that is ALREADY
+RS256-only for every product except the one still shipping HS256 by deliberate, already-reviewed
+design (Codna — see apps/runtime/license.py's `_HS256_LEGACY_PERMITTED_PRODUCTS`, mirroring
+apps/api_server/services/product_registry.py's `rs256_license=False`). ALGENTA_LICENSE_RS256_ONLY
+closes that one remaining legacy product too, and is what an operator flips to harden Codna itself.
 """
 from __future__ import annotations
 
@@ -64,13 +68,34 @@ def test_rs256_only_accepts_rs256(monkeypatch) -> None:
     assert lic is not None and lic.valid and lic.plan == "enterprise"
 
 
-def test_hs256_still_works_when_flag_off(monkeypatch) -> None:
-    # Back-compat: without the flag (and no require_local_license), the dev-stub HS256 path still
-    # verifies — the shipped internal consumers are unaffected until they opt into RS256-only.
+def test_hs256_rejected_by_default_for_non_legacy_product(monkeypatch) -> None:
+    # This is the actual fix: even with the flag OFF and require_local_license unset, HS256 is now
+    # hard-rejected by DEFAULT for the default runtime product (algenta) — the old opt-in
+    # "strict mode" footgun (accept-unless-hardened) is gone. Regression test for the HS256 fix.
     monkeypatch.delenv("ALGENTA_LICENSE_RS256_ONLY", raising=False)
     monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    monkeypatch.delenv("ALGENTA_RUNTIME_PRODUCT", raising=False)
+    lic = L._parse_token(_dev_hs256_token())
+    assert lic is None
+
+
+def test_hs256_still_works_for_codna_legacy_product(monkeypatch) -> None:
+    # Codna's shipped runtime still verifies HS256 by explicit, already-reviewed product-registry
+    # design (rs256_license=False) — this ONE product keeps the legacy HS256 path with the flag
+    # off, so its live install base is unaffected. Every other product does not (see above).
+    monkeypatch.delenv("ALGENTA_LICENSE_RS256_ONLY", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     lic = L._parse_token(_dev_hs256_token())
     assert lic is not None and lic.valid
+
+
+def test_hs256_rejected_for_codna_when_rs256_only_flag_set(monkeypatch) -> None:
+    # An operator can still harden Codna itself with the explicit flag — it's additive, not the
+    # only path to RS256-only for non-legacy products.
+    monkeypatch.setenv("ALGENTA_LICENSE_RS256_ONLY", "1")
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
+    assert L._parse_token(_dev_hs256_token()) is None
 
 
 def test_require_local_license_implies_rs256_only(monkeypatch) -> None:

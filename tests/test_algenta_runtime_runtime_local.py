@@ -282,6 +282,8 @@ def test_runtime_local_hosted_limits_work_offline_with_stored_license(
     monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     get_settings.cache_clear()
 
     license_mod = _reload_runtime_license_module()
@@ -332,6 +334,8 @@ def test_runtime_local_hosted_limits_allow_key_bound_offline_execution_without_c
     monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     get_settings.cache_clear()
 
     license_mod = _reload_runtime_license_module()
@@ -408,6 +412,8 @@ def test_runtime_local_hosted_limits_recheck_offline_license_with_monotonic_time
     monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
     monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
+    # plan="developer" is Codna-style, the one product still verifying HS256 by design.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     get_settings.cache_clear()
 
     license_mod = _reload_runtime_license_module()

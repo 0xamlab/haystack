@@ -98,7 +98,6 @@ import {
   issueOfflineLocalLicense,
   seedStoredLicense,
   seedTrustedTime,
-  seedCredits,
   readLedgerEvents,
   hasNodeSqlite,
 } from "./_runtime_test_helpers.js";

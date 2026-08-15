@@ -3,8 +3,10 @@
 The control plane issues device licenses. To keep the private signing key OUT of
 the application / Fly secrets, signing is pluggable via ``license_signer_backend``:
 
-- ``dev_hmac``  — HS256 with a shared secret. The legacy single-node behavior; the
-                  default so existing deployments are unchanged until configured.
+- ``dev_hmac``  — HS256 with a shared secret. Available for fully-local, single-machine
+                  dev loops where there's no real trust boundary — see
+                  ``_is_production_environment`` below for why it can no longer be the
+                  *ambient default* in a production-classified deployment.
 - ``pem``       — RS256 with a configured RSA private key. For operator / air-gapped
                   issuance (the key lives on an operator box, never on Fly).
 - ``cf_worker`` — delegate signing to a restricted Cloudflare Worker that holds the
@@ -13,9 +15,11 @@ the application / Fly secrets, signing is pluggable via ``license_signer_backend
                   the launch posture for the hosted control plane (the Worker itself +
                   its policy enforcement + JWKS/CRL publication are deployed in P4).
 
-The runtime verifier already enforces RS256-only when a local license is required
-(``apps/runtime/license.py`` skips the HS256 branch in strict mode), so switching the
-backend to ``pem``/``cf_worker`` is what makes production licenses asymmetrically signed.
+The runtime verifier hard-rejects HS256 by default now (``apps/runtime/license.py``'s legacy
+acceptance is scoped to the one product — Codna — whose shipped runtime still verifies HS256
+by explicit product-registry design; every other product is RS256-only unconditionally), so
+switching this signer's backend to ``pem``/``cf_worker`` is what makes a product's licenses
+asymmetrically signed in the first place.
 """
 from __future__ import annotations
 
@@ -146,24 +150,64 @@ def _read_private_key_pem(settings: Any) -> str:
     )
 
 
+def _is_production_environment(settings: Any) -> bool:
+    """True iff this deployment self-identifies as production.
+
+    Reuses the ONE existing environment-classification concept in this codebase
+    (``settings.api_env``, already the basis for ``services/env_separation.py``'s fail-closed
+    startup guards — e.g. refusing a live Stripe key outside ``api_env=="production"``) rather
+    than inventing a new one. Anything other than exactly ``"production"`` (missing, "development",
+    "staging", a test double with no ``api_env`` attribute at all, ...) is treated as non-production
+    so local dev, CI, and existing tests are unaffected.
+    """
+    return str(getattr(settings, "api_env", "") or "").strip().lower() == "production"
+
+
 def get_license_signer(backend: str | None = None) -> LicenseSigner:
-    """Resolve a signer. Defaults to the settings backend (dev_hmac/legacy HS256); pass ``backend`` to force a
-    specific one — used for per-product routing (Telys plans force ``cf_worker`` so telys.verify accepts the
-    RS256 token, while Codna/Algenta keep the global default untouched)."""
+    """Resolve a signer.
+
+    ``backend`` is an explicit per-call override — pass it to force a specific signer regardless
+    of the ambient default. This is how per-product routing works today (e.g.
+    ``device_service._issue_license_jwt`` always passes an explicit ``backend="dev_hmac"`` for
+    Codna, a deliberate, already-reviewed product decision: Codna's shipped runtime verifies
+    HS256 by design, per the product registry's ``rs256_license=False``). An explicit override is
+    respected as-is and is NOT subject to the production guard below — that guard targets the
+    *ambient default* footgun, not a caller's considered routing decision.
+
+    With no explicit ``backend``, this resolves ``settings.license_signer_backend`` (defaulting to
+    ``dev_hmac``). A symmetric HS256 secret that can verify a license can also MINT one, so a
+    production-classified deployment (``api_env=="production"``) silently defaulting to
+    ``dev_hmac`` would issue forgeable "production" licenses. That ambient default is refused
+    outright in production — ``license_signer_backend`` must be explicitly ``pem`` or
+    ``cf_worker`` there. Non-production environments (local dev, CI, ...) keep the ergonomic
+    zero-config ``dev_hmac`` default so pytest/vitest and local development need no manual key
+    provisioning.
+    """
     from apps.api_server.config import get_settings
 
     settings = get_settings()
-    backend = (backend or getattr(settings, "license_signer_backend", None) or "dev_hmac").strip().lower()
-    if backend == "cf_worker":
+    explicit_override = bool(backend)
+    resolved = (backend or getattr(settings, "license_signer_backend", None) or "").strip().lower()
+    if not explicit_override and resolved in ("", "dev_hmac") and _is_production_environment(settings):
+        raise LicenseSignerError(
+            "license_signer_backend resolves to the symmetric dev_hmac (HS256) signer while "
+            "api_env=production. A production-classified deployment must explicitly configure "
+            "license_signer_backend=pem (with license_signing_private_key/_file) or "
+            "license_signer_backend=cf_worker (with license_signer_url/license_signer_auth_token) "
+            "before it can issue a license through the ambient default — dev_hmac can never be "
+            "the silent production default."
+        )
+    resolved = resolved or "dev_hmac"
+    if resolved == "cf_worker":
         return CloudflareWorkerSigner(
             str(getattr(settings, "license_signer_url", "") or ""),
             str(getattr(settings, "license_signer_auth_token", "") or ""),
         )
-    if backend == "pem":
+    if resolved == "pem":
         return LocalPemSigner(
             _read_private_key_pem(settings),
             kid=str(getattr(settings, "license_signer_kid", "") or ""),
         )
-    if backend not in ("dev_hmac", ""):
-        raise LicenseSignerError(f"unknown license_signer_backend: {backend!r}")
+    if resolved not in ("dev_hmac", ""):
+        raise LicenseSignerError(f"unknown license_signer_backend: {resolved!r}")
     return DevHmacSigner(dev_hmac_secret(settings))

@@ -106,11 +106,83 @@ def _settings(**kw) -> SimpleNamespace:
 
 
 def test_factory_defaults_to_dev_hmac():
+    # _settings() carries no api_env (non-production) — the ergonomic zero-config default for
+    # local dev/CI. See test_factory_refuses_ambient_default_in_production below for the
+    # complementary production hard-fail.
     with patch("apps.api_server.config.get_settings", return_value=_settings()):
         signer = ls.get_license_signer()
     assert isinstance(signer, ls.DevHmacSigner)
     # parity: dev secret derivation matches device_service._get_license_secret
     assert ls.dev_hmac_secret(_settings()) == ls.dev_hmac_secret(_settings())
+
+
+def test_factory_refuses_ambient_default_in_production():
+    # The security-critical fix: a production-classified deployment (api_env=="production") that
+    # never explicitly configured license_signer_backend must NOT silently mint symmetric,
+    # forgeable HS256 "production" licenses — it must refuse to issue at all until pem/cf_worker
+    # is explicitly configured.
+    with patch(
+        "apps.api_server.config.get_settings",
+        return_value=_settings(api_env="production"),
+    ):
+        with pytest.raises(ls.LicenseSignerError):
+            ls.get_license_signer()
+
+
+def test_factory_refuses_explicit_dev_hmac_global_default_in_production():
+    # Also refused when an operator explicitly set the GLOBAL default to dev_hmac (not just when
+    # it's unset) — production must never resolve to dev_hmac via the ambient default, however it
+    # got there.
+    with patch(
+        "apps.api_server.config.get_settings",
+        return_value=_settings(api_env="production", license_signer_backend="dev_hmac"),
+    ):
+        with pytest.raises(ls.LicenseSignerError):
+            ls.get_license_signer()
+
+
+def test_factory_allows_pem_explicitly_configured_in_production():
+    priv, _ = _rsa_keypair()
+    with patch(
+        "apps.api_server.config.get_settings",
+        return_value=_settings(
+            api_env="production", license_signer_backend="pem", license_signing_private_key=priv
+        ),
+    ):
+        assert isinstance(ls.get_license_signer(), ls.LocalPemSigner)
+
+
+def test_factory_allows_cf_worker_explicitly_configured_in_production():
+    with patch(
+        "apps.api_server.config.get_settings",
+        return_value=_settings(
+            api_env="production",
+            license_signer_backend="cf_worker",
+            license_signer_url="https://signer.example/sign",
+            license_signer_auth_token="tok",
+        ),
+    ):
+        assert isinstance(ls.get_license_signer(), ls.CloudflareWorkerSigner)
+
+
+def test_factory_explicit_backend_override_bypasses_production_guard():
+    # An explicit backend= (per-call routing decision, e.g. Codna's dev_hmac in device_service.py)
+    # is respected even in production — the guard targets the ambient DEFAULT footgun, not a
+    # caller's already-considered routing choice.
+    with patch(
+        "apps.api_server.config.get_settings",
+        return_value=_settings(api_env="production"),
+    ):
+        assert isinstance(ls.get_license_signer(backend="dev_hmac"), ls.DevHmacSigner)
+
+
+def test_factory_non_production_api_env_values_keep_ergonomic_default():
+    for env in ("development", "staging", "test", ""):
+        with patch(
+            "apps.api_server.config.get_settings",
+            return_value=_settings(api_env=env),
+        ):
+            assert isinstance(ls.get_license_signer(), ls.DevHmacSigner)
 
 
 def test_factory_pem_backend():

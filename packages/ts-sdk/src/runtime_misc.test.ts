@@ -11,6 +11,7 @@ import {
   Runtime,
   RuntimeConfigurationError,
   RuntimeValidationError,
+  parseStoredLicenseToken,
   renderSourceBundlePreview,
   renderSourceImportPreview,
 } from "./runtime.js";
@@ -98,7 +99,6 @@ import {
   issueOfflineLocalLicense,
   seedStoredLicense,
   seedTrustedTime,
-  seedCredits,
   readLedgerEvents,
   hasNodeSqlite,
   writeSqliteFixture,
@@ -478,12 +478,16 @@ describe("Runtime — misc", () => {
       expect(registration.row_count).toBe(2026);
     });
 
-    it("enforces hosted local limits offline with a stored license on real csv files", async () => {
+    it("allows unlimited repeated offline queries under a valid stored license (no local credit ledger)", async () => {
+      // The local credit-ledger subsystem (writeCreditState/readCreditState/decrementCredit/
+      // consumeLocalCredit) has been retired entirely: a client-side credit ledger could never be
+      // the real entitlement source of truth (see ensureLocalExecutionEntitlement — the license
+      // check itself is what remains). This is the regression test for its removal: repeated
+      // queries under a validly-stored license never hit a quota_exhausted error, and no
+      // credits.json ledger file is ever written.
       const runtimeDir = runtimeTempDir();
       process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
-      process.env.ALGENTA_JWT_SECRET = "ts-runtime-test-secret";
       seedStoredLicense(runtimeDir, "de_live_ts_runtime_key");
-      seedCredits(runtimeDir, 2, 2);
       vi.stubGlobal("fetch", vi.fn(async () => {
         throw new Error("offline");
       }));
@@ -498,17 +502,17 @@ describe("Runtime — misc", () => {
 
       const first = await runtime.query(plan);
       const second = await runtime.query(plan);
+      const third = await runtime.query(plan);
 
       expect(first.row_count).toBeGreaterThan(0);
       expect(second.row_count).toBeGreaterThan(0);
-      await expect(runtime.query(plan)).rejects.toMatchObject({ code: "quota_exhausted" });
-      expect(JSON.parse(readFileSync(join(runtimeDir, "credits.json"), "utf8")).credits_remaining).toBe(0);
+      expect(third.row_count).toBeGreaterThan(0);
+      expect(existsSync(join(runtimeDir, "credits.json"))).toBe(false);
     });
 
-    it("allows key-bound offline execution without a local credit batch", async () => {
+    it("allows key-bound offline execution under a valid stored license", async () => {
       const runtimeDir = runtimeTempDir();
       process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
-      process.env.ALGENTA_JWT_SECRET = "ts-runtime-test-secret";
       const now = Math.floor(Date.now() / 1000);
       seedStoredLicense(runtimeDir, "de_live_ts_runtime_key", now + 86_400);
       const fetchSpy = vi.fn(async () => {
@@ -555,26 +559,28 @@ describe("Runtime — misc", () => {
       });
     });
 
-    it("seeds stored license and local credits from control-plane registration", async () => {
+    it("seeds a stored RS256 license from control-plane registration", async () => {
       const runtimeDir = runtimeTempDir();
       process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
-      process.env.ALGENTA_JWT_SECRET = "ts-runtime-test-secret";
       const serverTime = 2_200_000_000;
+      const issued = issueControlPlaneLicense("de_live_ts_runtime_key", serverTime + 86_400);
+      // The client-side check is optional UX preflight (the engine independently re-verifies
+      // every entitlement claim); simulating that the deployment has the control plane's public
+      // key configured is what lets parseStoredLicenseToken accept the RS256 response at all —
+      // an unconfigured deployment would correctly treat this as an unverifiable/invalid license.
+      process.env.ALGENTA_LOCAL_LICENSE_PUBLIC_KEY = issued.publicKey;
       const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.endsWith("/v1/device/register")) {
           return new Response(
             JSON.stringify({
-              license_token: issueControlPlaneLicense("de_live_ts_runtime_key", serverTime + 86_400),
-              credits_granted: 2,
-              credits_billing_period: "2026-04",
-              credits_expires_at: serverTime + 3600,
+              license_token: issued.token,
               server_time: serverTime,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
-        return new Response(JSON.stringify({ credits_granted: 0 }), {
+        return new Response(JSON.stringify({}), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -592,7 +598,7 @@ describe("Runtime — misc", () => {
 
       expect(result.row_count).toBeGreaterThan(0);
       expect(existsSync(join(runtimeDir, "license.jwt"))).toBe(true);
-      expect(JSON.parse(readFileSync(join(runtimeDir, "credits.json"), "utf8")).credits_remaining).toBe(2);
+      expect(existsSync(join(runtimeDir, "credits.json"))).toBe(false);
       expect(JSON.parse(readFileSync(join(runtimeDir, "trusted_time.json"), "utf8"))).toMatchObject({
         trusted_epoch: serverTime,
         source: "control-plane-register",
@@ -603,18 +609,16 @@ describe("Runtime — misc", () => {
     it("records sanitized control-plane egress when hosted local registration succeeds", async () => {
       const runtimeDir = runtimeTempDir();
       process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
-      process.env.ALGENTA_JWT_SECRET = "ts-runtime-test-secret";
       process.env.ALGENTA_ALLOW_OUTBOUND_NETWORK = "0";
       process.env.ALGENTA_CONTROL_PLANE_URL = "https://control.customer.internal";
       process.env.ALGENTA_EGRESS_ALLOWLIST = "control.customer.internal";
       const serverTime = 2_200_000_000;
+      const issued = issueControlPlaneLicense("de_live_ts_runtime_key", serverTime + 86_400);
+      process.env.ALGENTA_LOCAL_LICENSE_PUBLIC_KEY = issued.publicKey;
       const fetchSpy = vi.fn(async () =>
         new Response(
           JSON.stringify({
-            license_token: issueControlPlaneLicense("de_live_ts_runtime_key", serverTime + 86_400),
-            credits_granted: 1,
-            credits_billing_period: "2026-04",
-            credits_expires_at: serverTime + 3600,
+            license_token: issued.token,
             server_time: serverTime,
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
@@ -652,12 +656,10 @@ describe("Runtime — misc", () => {
     it("advances the trusted offline clock with monotonic time when the wall clock stalls", async () => {
       const runtimeDir = runtimeTempDir();
       process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
-      process.env.ALGENTA_JWT_SECRET = "ts-runtime-test-secret";
       const issuedAt = 1_950_000_000;
       const expiresAt = issuedAt + 1;
       seedStoredLicense(runtimeDir, "de_live_ts_runtime_key", expiresAt);
       seedTrustedTime(runtimeDir, issuedAt);
-      seedCredits(runtimeDir, 2, 2);
       vi.spyOn(Date, "now").mockReturnValue(issuedAt * 1000);
       let monotonicMillis = 0;
       vi.spyOn(performance, "now").mockImplementation(() => monotonicMillis);
@@ -682,5 +684,83 @@ describe("Runtime — misc", () => {
         code: "license_required",
         message: expect.stringContaining("renew"),
       });
+    });
+
+    it("hard-rejects a token signed with the retired HS256 control-plane derivation (regression for the HS256 fix)", () => {
+      // Recreates EXACTLY the old, now-deleted licenseVerificationSecrets() derivation
+      // (sha256Hex(jwtSeed + ":license-signing")) that the TS SDK and the control plane's
+      // dev_hmac signer both used. Proves it is rejected outright even with the "correct"
+      // original secret: alg !== "RS256" is now an unconditional hard reject in
+      // parseStoredLicenseToken, never a fallback-eligible condition gated on
+      // requireLocalLicense() or any other deployment profile.
+      const jwtSeed = "some-real-looking-control-plane-jwt-secret";
+      const secret = createHash("sha256").update(`${jwtSeed}:license-signing`).digest("hex");
+      const header = base64UrlJson({ alg: "HS256", typ: "JWT" });
+      const payload = base64UrlJson({
+        api_key_prefix: "de_live_ts_r",
+        device_id: "ts-device-1",
+        plan: "enterprise",
+        device_limit: 0,
+        permitted_modules: ["*"],
+        issued_at: Math.floor(Date.now() / 1000),
+        expires_at: 0,
+        key_expires_at: 0,
+        grace_days: 14,
+        iss: "algenta-control-plane",
+        sub: "device-license",
+      });
+      const signature = createHmac("sha256", secret).update(`${header}.${payload}`).digest("base64url");
+      const forgedToken = `${header}.${payload}.${signature}`;
+
+      expect(parseStoredLicenseToken(forgedToken, "de_live_ts_runtime_key")).toBeNull();
+    });
+
+    it("denies local execution entitlement to a hand-forged HS256 license (malicious/modified-SDK simulation)", async () => {
+      // Simulates a hostile actor (or a maliciously modified SDK fork) that knows the historical
+      // hardcoded dev-stub secret ("algenta-dev-local-v1-not-for-production", still recoverable
+      // from git history or a stale fork) and hand-forges a self-signed "enterprise" license,
+      // planting it straight on the on-disk license path a real SDK reads from -- bypassing
+      // exchangeApiKeyForLicense (the network/control-plane path) entirely, exactly as a hostile
+      // fork calling internals directly could.
+      const runtimeDir = runtimeTempDir();
+      process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
+      const forgedSecret = "algenta-dev-local-v1-not-for-production";
+      const header = base64UrlJson({ alg: "HS256", typ: "JWT" });
+      const payload = base64UrlJson({
+        api_key_prefix: "forged",
+        device_id: "attacker-device",
+        plan: "enterprise",
+        device_limit: 0,
+        permitted_modules: ["*"],
+        issued_at: Math.floor(Date.now() / 1000),
+        expires_at: 0,
+        key_expires_at: 0,
+        grace_days: 14,
+        iss: "algenta-dev-local",
+        sub: "device-license",
+      });
+      const signature = createHmac("sha256", forgedSecret).update(`${header}.${payload}`).digest("base64url");
+      const forgedToken = `${header}.${payload}.${signature}`;
+
+      // Direct proof: the internal parser alone never accepts it, regardless of any surrounding flow.
+      expect(parseStoredLicenseToken(forgedToken, "de_live_ts_runtime_key")).toBeNull();
+
+      // End-to-end proof: even planted directly on disk (bypassing the network entirely), a real
+      // Runtime never treats this as a valid license -- it falls through exactly like "no usable
+      // license on disk" and correctly refuses local execution rather than granting entitlement.
+      writeFileSync(join(runtimeDir, "license.jwt"), forgedToken, { mode: 0o600 });
+      vi.stubGlobal("fetch", vi.fn(async () => {
+        throw new Error("offline");
+      }));
+
+      const runtime = new Runtime({ apiKey: "de_live_ts_runtime_key" });
+      await runtime.connect(REAL_MARCH_ORDERS, { name: "orders_detail" });
+      const plan = await runtime.resolve({
+        source_name: "orders_detail",
+        metric: "Sales (incl. tax)",
+        group_by: "Order Channel",
+      });
+
+      await expect(runtime.query(plan)).rejects.toMatchObject({ code: "license_required" });
     });
 });

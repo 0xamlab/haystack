@@ -130,11 +130,25 @@ def _wire(monkeypatch, crl_jwt: str | None, *, raise_exc: Exception | None = Non
 
 
 def test_fetch_verifies_signed_crl(monkeypatch) -> None:
+    # The legacy HS256 CRL path is now scoped to the one product still shipping HS256 by
+    # deliberate design (Codna) — same gate as _parse_token's license verification.
+    monkeypatch.setenv("ALGENTA_RUNTIME_PRODUCT", "codna")
     crl = _mk_crl_jwt(_CP_SECRET, valid_until=1_900_000_000, revoked=[{"activation_id": "act-X"}])
     _wire(monkeypatch, crl)
     payload = rt._fetch_revocation_list()
     assert payload is not None
     assert payload["revoked"][0]["activation_id"] == "act-X"
+
+
+def test_fetch_rejects_signed_crl_for_non_legacy_product(monkeypatch) -> None:
+    # Regression for the HS256 fix: even a CORRECTLY HS256-signed CRL is rejected by default for
+    # the default runtime product (algenta) — fail-open on uncertainty still keeps the underlying
+    # license valid (this only means the CRL can't revoke it), it just can no longer be trusted via
+    # a symmetric secret for any product except the one still shipping HS256 by design.
+    monkeypatch.delenv("ALGENTA_RUNTIME_PRODUCT", raising=False)
+    crl = _mk_crl_jwt(_CP_SECRET, valid_until=1_900_000_000, revoked=[{"activation_id": "act-X"}])
+    _wire(monkeypatch, crl)
+    assert rt._fetch_revocation_list() is None
 
 
 def test_fetch_rejects_wrong_signature(monkeypatch) -> None:

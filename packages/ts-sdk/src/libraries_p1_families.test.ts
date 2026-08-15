@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -68,6 +68,15 @@ const CONTRACT_PATH = resolve(
   "../../algenta/algenta/runtime_library_contract.json",
 );
 
+// CONTRACT_PATH points at the proprietary Algenta Engine's full function catalog
+// (packages/algenta, the closed-source runtime/CLI). This file is mirrored into the public
+// thyn-ai/algenta-sdk repo, which deliberately never contains packages/algenta — so there,
+// CONTRACT_PATH never resolves. Skip rather than fail: this checks SDK-to-proprietary-engine
+// reachability, which is only meaningful where both sides exist together (this repo). Nothing
+// about the TypeScript SDK itself is untested by skipping this — see the rest of this file's
+// suite for that.
+const hasContract = existsSync(CONTRACT_PATH);
+
 function loadContract(): RuntimeContract {
   return JSON.parse(readFileSync(CONTRACT_PATH, "utf8")) as RuntimeContract;
 }
@@ -91,7 +100,7 @@ function descriptorsForFamilies(contract: RuntimeContract, families: ReadonlySet
     }));
 }
 
-describe("the twelve P1 families are reachable from the TypeScript MojoRuntime", () => {
+describe.skipIf(!hasContract)("the twelve P1 families are reachable from the TypeScript MojoRuntime", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
