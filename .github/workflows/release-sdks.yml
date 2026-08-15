@@ -50,35 +50,42 @@ env:
   PYTHON_VERSION: "3.14"
   NODE_VERSION: "20"
 
+# All jobs run on the self-hosted macOS fleet: GitHub-hosted runners are billing-blocked for
+# this org, and the pypa publish action is a Docker container action that GitHub executes only
+# on Linux hosts -- so Python publishing goes through native twine (same as build-runtime.yml).
+
 jobs:
   guard:
     name: license + version guard (D2)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       # Fails if any public SDK is not Apache-2.0, versions diverge, or a LICENSE is missing.
       # The test is pure-stdlib (tomllib + json), so pytest is the only dependency to install.
       # -c /dev/null ignores the app's pytest config (asyncio plugin etc.) and --noconftest skips
       # tests/conftest.py (which imports httpx + the app stack) so the guard needs no app deps.
+      # (setup-python's macOS pkg installer needs passwordless sudo the fleet doesn't have --
+      # venv the runner's Homebrew python3.14 instead.)
       - run: |
-          python -m pip install --upgrade pytest
-          python -m pytest -q -c /dev/null -p no:cacheprovider --noconftest tests/test_sdk_package_metadata.py
+          set -euo pipefail
+          PY="python${PYTHON_VERSION}"
+          "$PY" -m venv "$RUNNER_TEMP/guard-venv"
+          "$RUNNER_TEMP/guard-venv/bin/pip" install --quiet --disable-pip-version-check --upgrade pytest
+          "$RUNNER_TEMP/guard-venv/bin/python" -m pytest -q -c /dev/null -p no:cacheprovider --noconftest tests/test_sdk_package_metadata.py
 
   build:
     name: build + dry-run checks (no publish)
     needs: guard
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       - name: Build + check the Python SDKs (wheel + sdist + metadata)
         run: |
-          python -m pip install --upgrade build twine
+          set -euo pipefail
+          PY="python${PYTHON_VERSION}"
+          "$PY" -m venv "$RUNNER_TEMP/build-venv"
+          . "$RUNNER_TEMP/build-venv/bin/activate"
+          python -m pip install --quiet --disable-pip-version-check --upgrade build twine
           # `algenta` owns the `algenta` import/command; `mcp` builds `algenta-mcp`. The proprietary
           # runtime dependency and `algenta` are released together by build-runtime.yml.
           for pkg in python-sdk algenta mcp; do
@@ -88,8 +95,10 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: packages/ts-sdk/package-lock.json
+          # Fleet convention (ci.yml): package-manager caches stay off on self-hosted runners --
+          # their bookkeeping assumes GitHub-hosted cache paths. A cold `npm ci` against the
+          # lockfile costs seconds here; not worth a cache-portability risk.
+          package-manager-cache: false
       - name: Build + pack the TS SDK (dry-run)
         working-directory: packages/ts-sdk
         run: |
@@ -104,29 +113,27 @@ jobs:
     environment: release # no protection rules since 2026-08-05 — proceeds without approval
     permissions:
       contents: read # token auth via TEST_PYPI_TOKEN — no id-token / Trusted Publishing
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - run: |
-          python -m pip install --upgrade build
-          for pkg in python-sdk algenta mcp; do python -P -m build "packages/$pkg"; done
-      - name: Publish algenta-sdk to TestPyPI
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/python-sdk/dist
-          repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_TOKEN }}
-          skip-existing: true # re-runs of the same version no-op instead of erroring
-      - name: Publish algenta-mcp to TestPyPI
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/mcp/dist
-          repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_TOKEN }}
-          skip-existing: true
+      - name: Publish algenta-sdk + algenta-mcp to TestPyPI
+        # Native twine: the pypa action is a Linux-only container action (see file header).
+        # twine >= 7 accepts core packaging metadata 2.5 (hatchling >= 1.32 emits it).
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+        run: |
+          set -euo pipefail
+          PY="python${PYTHON_VERSION}"
+          "$PY" -m venv "$RUNNER_TEMP/publish-venv"
+          . "$RUNNER_TEMP/publish-venv/bin/activate"
+          python -m pip install --quiet --disable-pip-version-check --upgrade build "twine>=7"
+          for pkg in python-sdk mcp; do
+            python -P -m build "packages/$pkg"
+          done
+          twine upload --non-interactive --skip-existing \
+            --repository-url https://test.pypi.org/legacy/ \
+            packages/python-sdk/dist/* packages/mcp/dist/*
 
   publish-pypi:
     name: publish to PyPI (token)
@@ -135,27 +142,37 @@ jobs:
     environment: release # no protection rules since 2026-08-05 — proceeds without approval
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - run: |
-          python -m pip install --upgrade build
-          for pkg in python-sdk algenta mcp; do python -P -m build "packages/$pkg"; done
+      - name: Build the publishable Python SDKs
+        # Native toolchain: the pypa action is a Linux-only container action (see file header).
+        # twine >= 7 accepts core packaging metadata 2.5 (hatchling >= 1.32 emits it).
+        run: |
+          set -euo pipefail
+          PY="python${PYTHON_VERSION}"
+          "$PY" -m venv "$RUNNER_TEMP/publish-venv"
+          . "$RUNNER_TEMP/publish-venv/bin/activate"
+          python -m pip install --quiet --disable-pip-version-check --upgrade build "twine>=7"
+          for pkg in python-sdk mcp; do
+            python -P -m build "packages/$pkg"
+          done
       - name: Publish algenta-sdk
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/python-sdk/dist
-          password: ${{ secrets.PYPI_TOKEN }}
-          skip-existing: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          set -euo pipefail
+          . "$RUNNER_TEMP/publish-venv/bin/activate"
+          twine upload --non-interactive --skip-existing packages/python-sdk/dist/*
       - name: Publish algenta-mcp
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/mcp/dist
-          password: ${{ secrets.PYPI_TOKEN }}
-          skip-existing: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          set -euo pipefail
+          . "$RUNNER_TEMP/publish-venv/bin/activate"
+          twine upload --non-interactive --skip-existing packages/mcp/dist/*
 
   publish-npm:
     name: publish to npm (provenance)
@@ -165,15 +182,15 @@ jobs:
     permissions:
       id-token: write # npm provenance
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: "https://registry.npmjs.org"
-          cache: npm
-          cache-dependency-path: packages/ts-sdk/package-lock.json
+          # Fleet convention (ci.yml): no package-manager caches on self-hosted runners.
+          package-manager-cache: false
       - name: Build + publish
         working-directory: packages/ts-sdk
         run: |

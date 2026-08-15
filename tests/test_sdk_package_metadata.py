@@ -189,7 +189,10 @@ def test_sdk_release_workflow_is_idempotent() -> None:
         "utf-8"
     )
 
-    assert release.count("skip-existing: true") == 4
+    # The SDK publish moved from the Linux-only pypa container action (`skip-existing: true`
+    # inputs, four: testpypi x2 + pypi x2) to native twine calls on the macOS fleet
+    # (`--skip-existing`, one per publish job); the idempotence markers moved with it.
+    assert release.count("--skip-existing") == 3
     assert 'npm view "algenta-sdk@$VERSION" version' in release
     assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
     # The runtime publish moved from the Linux-only pypa container action (`skip-existing: true`
@@ -219,7 +222,10 @@ def test_sdk_release_workflow_only_targets_existing_pypi_projects() -> None:
     assert "algenta-core" not in release
     assert not (_PACKAGES / "algenta-core" / "pyproject.toml").exists()
     assert "id-token: write" not in production
-    assert production.count("password: ${{ secrets.PYPI_TOKEN }}") == 2
+    # Native-twine migration: the pypa action's `password:` inputs became TWINE_PASSWORD env
+    # blocks (one per package step); the production publish still consumes PYPI_TOKEN exactly
+    # twice -- once per existing project.
+    assert production.count("TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}") == 2
 
 
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:
