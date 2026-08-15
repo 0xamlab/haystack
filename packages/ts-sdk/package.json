@@ -40,11 +40,11 @@
   "homepage": "https://docs.algenta.ai/sdks/typescript",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thyn-ai/algenta.git",
+    "url": "git+https://github.com/thyn-ai/algenta-sdk.git",
     "directory": "packages/ts-sdk"
   },
   "bugs": {
-    "url": "https://github.com/thyn-ai/algenta/issues"
+    "url": "https://github.com/thyn-ai/algenta-sdk/issues"
   },
   "license": "Apache-2.0",
   "dependencies": {

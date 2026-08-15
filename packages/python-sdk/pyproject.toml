@@ -35,8 +35,8 @@ dev = ["pytest", "pytest-asyncio", "respx", "black", "ruff"]
 [project.urls]
 Homepage = "https://algenta.ai"
 Documentation = "https://docs.algenta.ai"
-Repository = "https://github.com/thyn-ai/algenta"
-"Bug Tracker" = "https://github.com/thyn-ai/algenta/issues"
+Repository = "https://github.com/thyn-ai/algenta-sdk"
+"Bug Tracker" = "https://github.com/thyn-ai/algenta-sdk/issues"
 Changelog = "https://docs.algenta.ai/changelog"
 
 [tool.setuptools.packages.find]
