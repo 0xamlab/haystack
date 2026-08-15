@@ -46,7 +46,9 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert len(readme_text.splitlines()) <= 180
     assert len(readme_text.encode("utf-8")) <= 12000
     assert package_json["repository"]["directory"] == "packages/ts-sdk"
-    assert package_json["bugs"]["url"] == "https://github.com/thyn-ai/algenta/issues"
+    # #717 repointed the published package's repository/bug-tracker metadata at the public
+    # algenta-sdk repo (the SDK is mirrored/published there), not the algenta monorepo.
+    assert package_json["bugs"]["url"] == "https://github.com/thyn-ai/algenta-sdk/issues"
     assert "src/**/*.test.ts" in tsconfig["exclude"]
     assert_manifest_backed_integration_texts_equal(contract_text, source_contract_text)
     for required in (
