@@ -43,6 +43,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # macOS leg only: the linux-x86_64 leg moved to the `build-linux` job below (an amd64
+        # container on the self-hosted fleet) because GitHub-hosted runners are billing-blocked
+        # for this org -- every hosted `ubuntu-*` job failed instantly without running a step.
         include:
           - target: macos-arm64
             runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
@@ -58,32 +61,13 @@ jobs:
             # metaldispatch.qwen3_decode) would ship compiled out and always report
             # shader_toolchain_absent, even to a user on real Metal hardware.
             metal_gpu: "1"
-          - target: linux-x86_64
-            runs-on: ubuntu-22.04
-            platform: linux
-            mcpu: "x86-64-v3"
-            shard_timeout: 900
-            # Fallback only: the swap step below overrides this with 80% of the
-            # RAM+swap it actually provisions, so a shard that outgrows the
-            # machine fails with a named diagnostic instead of taking the runner
-            # VM down with a bare exit 143.
-            shard_max_rss_mb: 8000
-            # There is no Metal on Linux; build_mojo_binary.sh itself refuses
-            # MOJO_BUILD_METAL_GPU=1 on non-Darwin, so this leg stays default-off.
-            metal_gpu: "0"
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      # setup-python's macOS .pkg installer needs passwordless sudo (only pre-configured
-      # on GitHub-hosted runners, not this self-hosted one) -- skip it there and shim
-      # the Homebrew python3.14 binary onto PATH as `python3`/`python` instead, so every
-      # later step's bare `python3 ...` call keeps working unchanged on both legs.
-      - if: runner.os != 'macOS'
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: "3.14"
-      - if: runner.os == 'macOS'
-        name: Shim python3.14 as python3/python (macOS)
+      # setup-python's macOS .pkg installer needs passwordless sudo (not available on this
+      # self-hosted runner), so shim the Homebrew python3.14 binary onto PATH as
+      # `python3`/`python` instead -- every later step's bare `python3 ...` call keeps working.
+      - name: Shim python3.14 as python3/python (macOS)
         run: |
           mkdir -p "$RUNNER_TEMP/py314-shim"
           ln -sf "$(command -v python3.14)" "$RUNNER_TEMP/py314-shim/python3"
@@ -100,76 +84,6 @@ jobs:
 
       - name: Install Mojo/Pixi environment
         run: PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
-
-      - name: Install Linux relink tool
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y patchelf
-
-      # `mojo build` needs more memory than a standard hosted Linux runner has.
-      # Measured on this exact runner: 7.8 GiB RAM + a 3.0 GiB stock swapfile =
-      # a 10.8 GiB ceiling. The heaviest 24-module shard peaks at 11.3 GiB. Shards
-      # under the ceiling survive by swapping (which is why this job is ~4x slower
-      # per shard than macOS); the first shard to cross it takes the whole VM out,
-      # and the step then reports only `exit code 143` plus "The runner has
-      # received a shutdown signal", because nothing inside the VM is left to
-      # report anything else.
-      #
-      # There is no scratch disk to put a bigger swapfile on -- /mnt is not a
-      # separate mount on this image and / has only ~12 GiB free of 73 GiB. So
-      # reclaim the preinstalled toolchains this build never touches (Android,
-      # Haskell, .NET, Swift, prebaked Docker images) and spend the space on swap.
-      # /opt/hostedtoolcache is deliberately NOT removed: setup-python's
-      # interpreter lives there and every later step needs it.
-      - name: Provision Linux compiler memory headroom
-        if: runner.os == 'Linux'
-        run: |
-          set -euo pipefail
-          echo "== before =="; free -h; swapon --show || true; df -h /
-          sudo swapoff -a
-          sudo rm -f /swapfile /mnt/swapfile
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/local/.ghcup \
-            /opt/ghc \
-            /usr/share/dotnet \
-            /usr/share/swift \
-            /usr/local/share/boost \
-            /usr/share/miniconda || true
-          sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "== reclaimed =="; df -h /
-          # Keep 12 GiB of the freed space for the build's own artifacts and temp
-          # objects; spend the rest, up to 24 GiB, on swap.
-          avail_gib=$(( $(df --output=avail -k / | tail -1) / 1024 / 1024 ))
-          swap_gib=24
-          if (( avail_gib - 12 < swap_gib )); then swap_gib=$(( avail_gib - 12 )); fi
-          if (( swap_gib < 8 )); then
-            echo "::error::only ${avail_gib} GiB free on / after reclaiming toolchains;" \
-                 "the Mojo compiler peaks at ~11.3 GiB against ~7.8 GiB of runner RAM and" \
-                 "needs at least 8 GiB of swap, or a larger runner"
-            exit 1
-          fi
-          sudo fallocate -l "${swap_gib}G" /algenta-build-swap
-          sudo chmod 600 /algenta-build-swap
-          sudo mkswap /algenta-build-swap >/dev/null
-          sudo swapon /algenta-build-swap
-          # The compiler's working set is anonymous memory that cannot be dropped;
-          # the page cache holding the pixi environment can be re-read from disk.
-          # Evict the cache first.
-          sudo sysctl -w vm.swappiness=10
-          echo "== after =="; free -h; swapon --show; df -h /
-          # Derive the per-shard ceiling from the headroom we actually got rather
-          # than from a constant that can silently exceed it. 80% of RAM+swap
-          # leaves room for the runner agent and page cache.
-          total_mib=$(free -m | awk '/^Mem:/{m=$2} /^Swap:/{s=$2} END{print m+s}')
-          # An unreadable total would arithmetic-evaluate to 0 and silently
-          # DISABLE the ceiling, which is the failure mode this whole step exists
-          # to remove. Refuse instead.
-          if [ -z "${total_mib}" ] || (( total_mib < 8000 )); then
-            echo "::error::could not read usable memory from free(1) (got '${total_mib}' MiB);" \
-                 "refusing to run without a per-shard footprint ceiling"
-            exit 1
-          fi
-          echo "RUNTIME_SHARD_MAX_RSS_MB=$(( total_mib * 80 / 100 ))" >> "$GITHUB_ENV"
 
       - name: Select an Xcode with the Metal toolchain Mojo requires (macOS only)
         if: runner.os == 'macOS'
@@ -238,24 +152,17 @@ jobs:
         run: |
           set -euo pipefail
           cd mojo_build/runtime-wheel
-          if [ "${{ matrix.platform }}" = "darwin" ]; then
-            for artifact in *; do
-              [ -f "$artifact" ] || continue
-              strip -x "$artifact" 2>/dev/null || true
-            done
-            for artifact in *; do
-              [ -f "$artifact" ] || continue
-              if file -b "$artifact" | grep -q 'Mach-O'; then
-                codesign --force --sign - "$artifact"
-                codesign --verify --strict "$artifact"
-              fi
-            done
-          else
-            for artifact in *; do
-              [ -f "$artifact" ] || continue
-              strip --strip-unneeded "$artifact" 2>/dev/null || true
-            done
-          fi
+          for artifact in *; do
+            [ -f "$artifact" ] || continue
+            strip -x "$artifact" 2>/dev/null || true
+          done
+          for artifact in *; do
+            [ -f "$artifact" ] || continue
+            if file -b "$artifact" | grep -q 'Mach-O'; then
+              codesign --force --sign - "$artifact"
+              codesign --verify --strict "$artifact"
+            fi
+          done
 
       - name: Build + sign runtime manifest
         env:
@@ -338,21 +245,6 @@ jobs:
           python -m pip install --upgrade build
           python -P -m build --wheel packages/algenta-runtime-native --outdir dist-runtime
 
-      - name: Verify manylinux compatibility + retag the Linux wheel
-        if: runner.os == 'Linux'
-        run: |
-          python -m pip install auditwheel wheel
-          auditwheel show dist-runtime/*.whl | grep -q 'manylinux_2_35_x86_64'
-          # PyPI rejects the raw linux_x86_64 tag (400 on upload). auditwheel show just
-          # proved the wheel is manylinux_2_35-clean — staging already bundles the full
-          # library closure — so RETAG without touching the binaries: auditwheel repair
-          # rewrites rpaths, changing bytes the signed manifest hashes, and the runtime
-          # verifier fails closed on any mismatch (run 31027593726 caught exactly that).
-          original=$(ls dist-runtime/*.whl)
-          python -m wheel tags --platform-tag manylinux_2_35_x86_64 "$original"
-          rm "$original"
-          ls dist-runtime/
-
       - name: Validate macOS wheel execution
         if: runner.os == 'macOS'
         run: |
@@ -390,186 +282,64 @@ jobs:
           name: algenta-runtime-native-${{ matrix.target }}
           path: dist-runtime/*.whl
 
-  clean-machine-contract:
-    name: clean-machine contract (no external toolchain)
-    needs: build
-    runs-on: ubuntu-latest
+  build-linux:
+    name: build bundled runtime wheel (linux-x86_64)
+    # The linux leg runs on the self-hosted macOS fleet inside an amd64 ubuntu:22.04 container:
+    # GitHub-hosted runners are billing-blocked for this org, and job-level `container:` requires
+    # a Linux runner, so the container is driven explicitly (the same pattern ci.yml already uses
+    # for its service containers). Everything inside the container mirrors the hosted pipeline
+    # 1:1 -- see .github/scripts/build_runtime_linux_amd64.sh.
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - name: Build linux runtime in an amd64 container
+        env:
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
+          RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
+        run: |
+          docker pull --platform linux/amd64 ubuntu:22.04
+          # Emulation is slower than the hosted native x86_64 runner, so the per-shard timeout
+          # is enlarged (hosted: 900s). The RSS ceiling is generous: fleet machines carry far more
+          # RAM than the hosted VM's 7.8 GiB, so no swap-provisioning step is needed.
+          docker run --rm --platform linux/amd64 \
+            --user root \
+            -v "$GITHUB_WORKSPACE:/work" -w /work \
+            -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
+            -e SHARD_TIMEOUT=2700 -e SHARD_MAX_RSS_MB=32768 \
+            ubuntu:22.04 bash .github/scripts/build_runtime_linux_amd64.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          python-version: "3.14"
+          name: algenta-runtime-native-linux-x86_64
+          path: dist-runtime/*.whl
+
+  clean-machine-contract:
+    name: clean-machine contract (no external toolchain)
+    needs: [build, build-linux]
+    # Was `ubuntu-latest` (GitHub-hosted, billing-blocked). The contract must execute the LINUX
+    # wheel's binaries, so it runs inside the same amd64 container on the self-hosted fleet; the
+    # workspace (with the downloaded runtime wheel) is mounted, and the algenta wheel the job
+    # builds inside the container stays in the workspace for the artifact upload.
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: algenta-runtime-native-linux-x86_64
           path: dist-runtime
-      - name: Pair runtime and Algenta trust anchor
+      - name: Clean-machine install + runtime doctor (amd64 container)
+        env:
+          # Native-linux budget is 15 ms; this job now executes under amd64 emulation on the
+          # self-hosted macOS fleet, so the tripwire gets an explicit enlarged budget rather
+          # than silently weakening the contract script's default.
+          ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET: "60"
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from zipfile import ZipFile
-
-          wheels = sorted(Path("dist-runtime").glob("*.whl"))
-          if len(wheels) != 1:
-              raise SystemExit(f"expected one Linux runtime wheel, found {len(wheels)}")
-          with ZipFile(wheels[0]) as archive:
-              public_key = archive.read(
-                  "algenta_runtime_native/algenta_release_pub.pem"
-              )
-          if not public_key.startswith(b"-----BEGIN PUBLIC KEY-----"):
-              raise SystemExit("runtime wheel contains an invalid release public key")
-          Path(
-              "packages/algenta/algenta/_keys/algenta_release_pub.pem"
-          ).write_bytes(public_key)
-          PY
-      - name: Clean-machine install + runtime doctor
-        run: |
-          set -euo pipefail
-          python -m pip install --upgrade build
-          python -P -m build --wheel packages/algenta --outdir dist-algenta
-          python -m venv /tmp/clean && . /tmp/clean/bin/activate
-          pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
-          ! command -v mojo && ! command -v modular || (echo "toolchain unexpectedly present" && exit 1)
-          out=$(algenta runtime doctor || true)
-          echo "$out"
-          echo "$out" | grep -q "runtime source:  bundled runtime"
-          echo "$out" | grep -q "mode:            bundled worker"
-          echo "$out" | grep -q "fallback:        denied"
-          echo "$out" | grep -q "tcp listeners:   none"
-          echo "$out" | grep -q "status:          READY"
-          forbidden=("mojo command not found" "install Mo""jo" "install Mod""ular" "start daemon" "docker run")
-          for bad in "${forbidden[@]}"; do
-            if echo "$out" | grep -qi "$bad"; then echo "::error::doctor leaked forbidden runtime setup text"; exit 1; fi
-          done
-          python - <<'PY'
-          import time
-
-          import algenta
-          from algenta.native import loader
-
-          result = loader.execute({'engine_type': 'runtime_smoke', 'runs': 1})
-          if not isinstance(result, dict):
-              raise SystemExit('runtime returned non-object payload')
-
-          runtime = algenta.MojoRuntime(mode='local')
-          health = runtime.health()
-          if health.get('status') != 'ok' or health.get('tcp_listeners') != []:
-              raise SystemExit(f'encapsulated runtime health failed: {health}')
-          modules = runtime.list_modules()
-          from algenta.runtime_library_contract import runtime_modules
-          contract_modules = runtime_modules()
-          if len(modules) != len(contract_modules):
-              raise SystemExit(
-                  f'live runtime reports {len(modules)} modules; the packaged '
-                  f'contract this same wheel ships declares {len(contract_modules)}'
-              )
-          live_functions = sum(len(item['functions']) for item in modules)
-          contract_functions = sum(len(m.functions) for m in contract_modules)
-          if live_functions != contract_functions:
-              raise SystemExit(
-                  f'live runtime reports {live_functions} functions; the packaged '
-                  f'contract this same wheel ships declares {contract_functions}'
-              )
-
-          from algenta.native import worker
-          from algenta.runtime_library_contract import runtime_modules
-
-          shard_routes = {}
-          for module_name in worker.runtime_module_filter() or ():
-              resolution = worker.require_worker(
-                  module_name=module_name, require_verified=True
-              )
-              shard_routes.setdefault(resolution.path.name, module_name)
-          if len(shard_routes) < 2:
-              raise SystemExit(f'expected multiple internal runtime workers: {shard_routes}')
-          for worker_name, module_name in sorted(shard_routes.items()):
-              resolution = worker.require_worker(
-                  module_name=module_name, require_verified=True
-              )
-              response = worker._session_for(resolution).execute({'type': 'ping'}, 15.0)
-              if response != {'status': 'ok'}:
-                  raise SystemExit(f'runtime worker {worker_name} failed ping: {response}')
-
-          def representative_value(type_name):
-              scalars = {
-                  'Bool': True,
-                  'String': 'alpha',
-                  'Int': 5,
-                  'UInt8': 3,
-                  'UInt16': 3,
-                  'UInt32': 3,
-                  'UInt64': 3,
-                  'Float32': 5.0,
-                  'Float64': 5.0,
-                  'None': None,
-              }
-              if type_name in scalars:
-                  return scalars[type_name]
-              if type_name.startswith('List[') and type_name.endswith(']'):
-                  inner = type_name[5:-1]
-                  return [representative_value(inner)] * 3
-              raise ValueError(type_name)
-
-          executed_workers = set()
-          for module_spec in runtime_modules():
-              resolution = worker.require_worker(
-                  module_name=module_spec.import_path, require_verified=True
-              )
-              if resolution.path.name in executed_workers:
-                  continue
-              for function_spec in module_spec.functions:
-                  try:
-                      args = [
-                          representative_value(param.typ)
-                          for param in function_spec.params
-                      ]
-                  except ValueError:
-                      continue
-                  try:
-                      result = runtime.execute(
-                          module_spec.import_path, function_spec.name, args
-                      )
-                  except Exception:
-                      continue
-                  if result.get('success') and result.get('engine_used') == 'mojo':
-                      executed_workers.add(resolution.path.name)
-                      break
-          if executed_workers != set(shard_routes):
-              missing = sorted(set(shard_routes) - executed_workers)
-              raise SystemExit(f'workers without real function execution: {missing}')
-
-          # dot64_f32 requires exactly 64 elements (short lists return the 0.0 sentinel),
-          # so the latency probe uses full-length vectors.
-          request = {
-              'a': [1.0, 2.0, 3.0] + [0.0] * 61,
-              'b': [3.0, 2.0, 2.0] + [0.0] * 61,
-          }
-          latencies = []
-          for index in range(11):
-              started = time.perf_counter()
-              execution = runtime.execute('vector_kernels.dot', 'dot64_f32', request)
-              elapsed_ms = (time.perf_counter() - started) * 1000
-              if not execution.get('success') or execution.get('result') != 13.0:
-                  raise SystemExit(f'library execution failed: {execution}')
-              if index:
-                  latencies.append(elapsed_ms)
-          if max(latencies) > 15.0:
-              raise SystemExit(f'warm runtime exceeded 15 ms: {latencies}')
-          print('clean-machine contract OK')
-          PY
-          algenta runtime execute vector_kernels.dot dot64_f32 \
-            --args-json '{"a":[1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"b":[3,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}' \
-            > /tmp/algenta-runtime-execute.json
-          echo "--- execute payload:"; cat /tmp/algenta-runtime-execute.json; echo
-          python - <<'PY'
-          import json
-          p = json.load(open("/tmp/algenta-runtime-execute.json"))
-          assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0, p
-          PY
-          algenta simulate > /tmp/algenta-simulate.txt
-          grep -q "Engine:             bundled native runtime" /tmp/algenta-simulate.txt
-          grep -q "Python fallback:    disabled" /tmp/algenta-simulate.txt
-
+          docker run --rm --platform linux/amd64 \
+            --user root \
+            -v "$GITHUB_WORKSPACE:/work" -w /work \
+            -e ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET \
+            ubuntu:22.04 bash .github/scripts/clean_machine_contract_linux_amd64.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: algenta-package
@@ -579,7 +349,8 @@ jobs:
     name: publish Algenta Python packages to PyPI
     needs: clean-machine-contract
     if: github.event_name == 'push' || inputs.publish == 'true'
-    runs-on: ubuntu-latest
+    # Was `ubuntu-latest` (GitHub-hosted, billing-blocked); publishing is platform-independent.
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     environment: release
     permissions:
       contents: read
