@@ -30,15 +30,19 @@ permissions:
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
+    # Fleet runner: hosted runners are billing-blocked. Everything below is
+    # platform-independent once python + gitleaks are provisioned runner-agnostically.
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: "3.14"
+      - name: Set up Python 3.14 (venv)
+        run: |
+          set -euo pipefail
+          python3.14 -m venv "$RUNNER_TEMP/sync-venv"
+          echo "$RUNNER_TEMP/sync-venv/bin" >> "$GITHUB_PATH"
 
       - name: Regenerate contract snapshots (internal generator never leaves this job)
         run: |
@@ -92,11 +96,23 @@ jobs:
           rsync -a --exclude '__pycache__' --exclude '*.pyc' examples/ algenta-sdk-public/examples/
 
       - name: Install gitleaks
+        # Runner-agnostic: pick this runner's OS/arch asset (fleet is macOS arm64; hosted was
+        # linux x64) and install under RUNNER_TEMP -- no sudo.
         run: |
           set -euo pipefail
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
-            | tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64|amd64) ARCH=x64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+            *) echo "::error::unsupported arch $ARCH"; exit 1 ;;
+          esac
+          BIN_DIR="$RUNNER_TEMP/gitleaks-bin"
+          mkdir -p "$BIN_DIR"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_${OS}_${ARCH}.tar.gz" \
+            | tar -xz -C "$BIN_DIR" gitleaks
+          echo "$BIN_DIR" >> "$GITHUB_PATH"
+          "$BIN_DIR/gitleaks" version
 
       - name: Outbound secret + forbidden-path scan (blocks the PR, not just warns)
         run: |
