@@ -98,6 +98,10 @@ openssl dgst -sha256 -sign "$KEYFILE" -out manifest.sig manifest.json
 cd /work
 
 # ── Build platform runtime wheel ─────────────────────────────────────────────────────────────
+# The wheel's hatch build hook refuses an empty wheel unless these point at the staged+signed
+# artifacts (the hosted workflow set them as step `env:`; here they are exported inline).
+export ALGENTA_BUNDLE_RUNTIME=1
+export ALGENTA_RUNTIME_SRC=/work/mojo_build/runtime-wheel
 uv pip install --python /usr/local/bin/python3 --quiet build
 python3 -P -m build --wheel packages/algenta-runtime-native --outdir /work/dist-runtime
 
