@@ -11,18 +11,21 @@ class DecisionEngineError(Exception):
         message: str,
         status_code: int = 0,
         response_body: dict[str, Any] | None = None,
+        request_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.response_body = response_body or {}
         self.error_code = self.response_body.get("error", {}).get("code", "unknown_error")
+        self.request_id = request_id or self.response_body.get("request_id")
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
             f"message={str(self)!r}, "
             f"status_code={self.status_code}, "
-            f"error_code={self.error_code!r})"
+            f"error_code={self.error_code!r}, "
+            f"request_id={self.request_id!r})"
         )
 
     @property
