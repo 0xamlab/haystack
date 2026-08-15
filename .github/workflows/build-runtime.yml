@@ -372,12 +372,18 @@ jobs:
           name: algenta-package
           path: dist-pypi
       - name: Publish Python packages
-        # v1.14.2 bundles Twine v7, which accepts core packaging metadata 2.5. hatchling >=1.32
-        # emits Metadata-Version 2.5 for algenta-runtime-native, and v1.14.0's older Twine rejected
-        # it ("Invalid distribution metadata: '2.5' is not a valid metadata version"), failing every
-        # release since 2026-08-12.
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-        with:
-          packages-dir: dist-pypi
-          password: ${{ secrets.PYPI_TOKEN }}
-          skip-existing: true
+        # The pypa action is a Docker container action -- GitHub runs container actions only on
+        # Linux hosts, and this fleet is macOS-only ("This action is only able to run under
+        # GNU/Linux environments"). A twine upload is plain HTTPS and platform-independent, so
+        # call twine directly. Twine 7 (what the old action's v1.14.2 bundled) accepts core
+        # packaging metadata 2.5, which hatchling >=1.32 emits for algenta-runtime-native; older
+        # Twine rejected it ("Invalid distribution metadata: '2.5' is not a valid metadata
+        # version"), failing every release since 2026-08-12.
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3.14 -m venv "$RUNNER_TEMP/publish-venv"
+          "$RUNNER_TEMP/publish-venv/bin/pip" install --quiet --disable-pip-version-check "twine>=7"
+          "$RUNNER_TEMP/publish-venv/bin/twine" upload --non-interactive --skip-existing dist-pypi/*
