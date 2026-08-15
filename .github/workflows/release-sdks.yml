@@ -1,32 +1,41 @@
-# Publish the public client SDKs (Apache-2.0, per D2): algenta-sdk (PyPI + npm) and algenta-mcp (PyPI).
+# Releases two different things, on two different mechanisms:
+#   - algenta-mcp (PyPI only): published directly from here, by token, same as always.
+#   - algenta-sdk (PyPI + npm, the extracted public SDK): this repo no longer publishes it at
+#     all. This job signs a release authorization (version + exact thyn-ai/algenta-sdk commit +
+#     contract-file digest + Ed25519 signature) and hands it to that repo via a reviewable PR;
+#     a human then tags the authorized commit `sdk-vX.Y.Z` in thyn-ai/algenta-sdk, which triggers
+#     that repo's own release.yml to actually build and `npm publish`/`twine upload`. This split
+#     exists because PyPI/npm Trusted Publishing only issues genuine source-to-package provenance
+#     for a workflow that runs from a PUBLIC repository — this repo is private, algenta-sdk isn't.
+#     See the approved SDK-repo extraction plan's Step 4 amendment for the full rationale.
 #
-# Flow: guard (license/version drift) -> build + dry-run checks (always) -> publish. Only a tag
-# push (sdk-v*) triggers a real publish; workflow_dispatch remains available for dry-run/testpypi
-# rehearsals (`gh workflow run release-sdks.yml -f target=dry-run`) and for a manual `pypi` publish
-# if a tag push isn't the trigger source for some reason. PyPI publishing uses a token for the
-# existing projects; npm uses provenance.
+# Flow: guard (license/version drift) -> build + dry-run checks (always) -> publish-pypi (mcp) +
+# sign-release-authorization (algenta-sdk), in parallel. Only a tag push (sdk-v*) triggers a real
+# release; workflow_dispatch remains available for dry-run/testpypi rehearsals
+# (`gh workflow run release-sdks.yml -f target=dry-run`) and for a manual `pypi` run if a tag push
+# isn't the trigger source for some reason.
 #
 # SECURITY NOTE (post SDK-repo-goes-public hardening): this workflow used to also trigger on every
 # push to `main`, auto-publishing on merge. That's removed — the source for these SDKs is now also
 # mirrored into the public, forkable thyn-ai/algenta-sdk repo (source-only, no publish credentials
-# there), so publishing here must only ever happen from a deliberate, signed `sdk-v*` tag, never
+# there), so a release here must only ever happen from a deliberate, signed `sdk-v*` tag, never
 # implicitly from an ordinary merge. See the approved SDK-repo plan for the full rationale.
 #
 # PREREQUISITES:
-#   - Repo secret `PYPI_TOKEN` = a PyPI API token with upload rights for algenta-sdk and
-#     algenta-mcp. The `algenta` + native pair is published only by build-runtime.yml. The
-#     real-publish job reads this token via `secrets.PYPI_TOKEN`. For the optional TestPyPI
-#     rehearsal, add a separate `TEST_PYPI_TOKEN` (a test.pypi.org token).
-#     TODO(owner): migrate to PyPI Trusted Publishing (OIDC) for this exact repo + workflow +
-#     environment, then remove PYPI_TOKEN entirely. Requires PyPI-side registration by an account
-#     owner — cannot be done from within this workflow file.
+#   - Repo secret `PYPI_TOKEN` = a PyPI API token with upload rights for algenta-mcp (the `algenta`
+#     + native pair is published only by build-runtime.yml). The real-publish job reads this via
+#     `secrets.PYPI_TOKEN`. For the optional TestPyPI rehearsal, add a separate `TEST_PYPI_TOKEN`.
 #   - The GitHub `release` environment must have required-reviewers protection configured (repo
 #     Settings -> Environments -> release). This was removed 2026-08-05; re-enabling it is a repo
 #     settings change, not something this YAML file can declare on its own — track as a follow-up.
-#   - For npm: either configure npm OIDC trusted publishing, or set the `NPM_TOKEN` secret (an
-#     automation token with publish rights on `algenta-sdk`). npm has no test registry — its rehearsal
-#     is the build job's `npm pack --dry-run` plus the ts-sdk-artifact-install CI gate.
-#     TODO(owner): migrate to npm Trusted Publishing once registered, then remove NPM_TOKEN.
+#   - Repo secret `SDK_RELEASE_SIGNING_PRIVATE_KEY` = the PEM-encoded Ed25519 private key whose
+#     public half is embedded in thyn-ai/algenta-sdk's release.yml
+#     (scripts/verify_release_authorization.py's TRUSTED_PUBLIC_KEYS["sdk-release-2026-08"]).
+#     TODO(owner): this secret is not yet set — sign-release-authorization cannot succeed until it
+#     is. Never let this key touch algenta-sdk; only its public half does.
+#   - Same GitHub App as sync-public-sdk.yml (ALGENTA_SDK_SYNC_APP_ID /
+#     ALGENTA_SDK_SYNC_APP_PRIVATE_KEY) is reused here to open the authorization PR — no new App
+#     needed, its existing `contents` + `pull_requests` scope on thyn-ai/algenta-sdk is sufficient.
 
 name: release-sdks
 
@@ -42,8 +51,8 @@ on:
         type: choice
         options:
           - dry-run # guard + build/pack checks only — no upload
-          - testpypi # rehearse: publish the Python SDKs to test.pypi.org
-          - pypi # real publish to PyPI + npm (same as a tag push)
+          - testpypi # rehearse: publish algenta-mcp to test.pypi.org
+          - pypi # real release: publish algenta-mcp + sign the algenta-sdk release authorization
         default: dry-run
 
 permissions:
@@ -130,7 +139,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Publish algenta-sdk + algenta-mcp to TestPyPI
+      - name: Publish algenta-mcp to TestPyPI
         # Native twine: the pypa action is a Linux-only container action (see file header).
         # twine >= 7 accepts core packaging metadata 2.5 (hatchling >= 1.32 emits it).
         env:
@@ -142,15 +151,13 @@ jobs:
           "$PY" -m venv "$RUNNER_TEMP/publish-venv"
           . "$RUNNER_TEMP/publish-venv/bin/activate"
           python -m pip install --quiet --disable-pip-version-check --upgrade build "twine>=7"
-          for pkg in python-sdk mcp; do
-            python -P -m build "packages/$pkg"
-          done
+          python -P -m build packages/mcp
           twine upload --non-interactive --skip-existing \
             --repository-url https://test.pypi.org/legacy/ \
-            packages/python-sdk/dist/* packages/mcp/dist/*
+            packages/mcp/dist/*
 
   publish-pypi:
-    name: publish to PyPI (token)
+    name: publish algenta-mcp to PyPI (token)
     needs: build
     if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
     environment: release # TODO(owner): re-enable required-reviewers protection on this environment
@@ -159,20 +166,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Record source-to-package provenance (build-info)
-        # Generates a small, non-committed file resolving exactly which commit produced this
-        # artifact. TODO: once thyn-ai/algenta-sdk + the sync App exist (see the approved SDK-repo
-        # plan), extend this to resolve and record the corresponding public sdk-v* tag's commit SHA
-        # in that repo too, and ideally build directly from that signed public tag instead of this
-        # repo's own tree.
-        run: |
-          {
-            echo '"""Generated at release build time. Not committed to git — see release-sdks.yml."""'
-            echo "SOURCE_REPO = \"https://github.com/thyn-ai/algenta\""
-            echo "SOURCE_COMMIT = \"${{ github.sha }}\""
-            echo "SOURCE_REF = \"${{ github.ref_name }}\""
-          } > packages/python-sdk/decision_engine/_build_info.py
-      - name: Build the publishable Python SDKs
+      - name: Build the publishable Python package
         # Native toolchain: the pypa action is a Linux-only container action (see file header).
         # twine >= 7 accepts core packaging metadata 2.5 (hatchling >= 1.32 emits it).
         run: |
@@ -181,17 +175,7 @@ jobs:
           "$PY" -m venv "$RUNNER_TEMP/publish-venv"
           . "$RUNNER_TEMP/publish-venv/bin/activate"
           python -m pip install --quiet --disable-pip-version-check --upgrade build "twine>=7"
-          for pkg in python-sdk mcp; do
-            python -P -m build "packages/$pkg"
-          done
-      - name: Publish algenta-sdk
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          set -euo pipefail
-          . "$RUNNER_TEMP/publish-venv/bin/activate"
-          twine upload --non-interactive --skip-existing packages/python-sdk/dist/*
+          python -P -m build packages/mcp
       - name: Publish algenta-mcp
         env:
           TWINE_USERNAME: __token__
@@ -201,49 +185,115 @@ jobs:
           . "$RUNNER_TEMP/publish-venv/bin/activate"
           twine upload --non-interactive --skip-existing packages/mcp/dist/*
 
-  publish-npm:
-    name: publish to npm (provenance)
-    needs: build
+  sign-release-authorization:
+    name: sign algenta-sdk release authorization (no publish happens here)
+    needs: [guard, build]
     if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
-    environment: release
+    environment: release # TODO(owner): re-enable required-reviewers protection on this environment
     permissions:
-      id-token: write # npm provenance
       contents: read
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+
+      - name: Regenerate contract snapshots (must match what's about to be verified)
+        run: python3 scripts/generate_platform_contract_artifacts.py
+
+      - name: Resolve the version being released
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 -c "import tomllib; print(tomllib.load(open('packages/python-sdk/pyproject.toml','rb'))['project']['version'])")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Mint a short-lived installation token for the sync App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: "https://registry.npmjs.org"
-          # Fleet convention (ci.yml): no package-manager caches on self-hosted runners.
-          package-manager-cache: false
-      - name: Record source-to-package provenance (build-info)
-        # See the equivalent step in publish-pypi for context — generated at build time, never
-        # committed to git, ships inside the published tarball via the existing "files" allowlist
-        # (dist/ picks up whatever tsc emits from src/, including this).
-        working-directory: packages/ts-sdk
+          app-id: ${{ secrets.ALGENTA_SDK_SYNC_APP_ID }}
+          private-key: ${{ secrets.ALGENTA_SDK_SYNC_APP_PRIVATE_KEY }}
+          owner: thyn-ai
+          repositories: algenta-sdk
+
+      - name: Check out the public SDK repo alongside this one
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: thyn-ai/algenta-sdk
+          path: algenta-sdk-checkout
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true
+
+      - name: Refuse to sign unless algenta-sdk's source actually matches this tested tree
+        # sync-public-sdk.yml is what's supposed to keep these in sync via a human-reviewed PR.
+        # This is the safety net: never sign an authorization for public source this test run
+        # didn't actually validate, e.g. because a sync PR is still open/unmerged.
         run: |
-          {
-            echo "// Generated at release build time. Not committed to git — see release-sdks.yml."
-            echo "export const SOURCE_REPO = \"https://github.com/thyn-ai/algenta\";"
-            echo "export const SOURCE_COMMIT = \"${{ github.sha }}\";"
-            echo "export const SOURCE_REF = \"${{ github.ref_name }}\";"
-          } > src/_build_info.ts
-      - name: Build + publish
-        working-directory: packages/ts-sdk
-        run: |
-          # --ignore-scripts: don't run third-party dependency install scripts (e.g. protobufjs
-          # postinstall) in the job that holds the npm publish token. prepack=tsc (first-party)
-          # still runs on publish and builds dist/.
-          npm ci --ignore-scripts
-          npm run build
-          VERSION="$(node -p "require('./package.json').version")"
-          PUBLISHED_VERSION="$(npm view "algenta-sdk@$VERSION" version 2>/dev/null || true)"
-          if [ "$PUBLISHED_VERSION" = "$VERSION" ]; then
-            echo "algenta-sdk@$VERSION is already published; skipping."
-          else
-            npm publish --provenance --access public
-          fi
+          set -euo pipefail
+          EXCLUDES=(--exclude=build --exclude='*.egg-info' --exclude=node_modules --exclude=dist \
+            --exclude=.git --exclude=tests --exclude=__pycache__ --exclude='*.pyc' \
+            --exclude=_build_info.py --exclude=_build_info.ts)
+          for pkg in python-sdk ts-sdk; do
+            if ! diff -rq "${EXCLUDES[@]}" "packages/$pkg" "algenta-sdk-checkout/packages/$pkg"; then
+              echo "::error::thyn-ai/algenta-sdk's packages/$pkg doesn't match this repo's tree -- refusing to sign. Run sync-public-sdk.yml and merge its PR first." >&2
+              exit 1
+            fi
+          done
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+
+      - run: python -m pip install --quiet --disable-pip-version-check cryptography
+
+      - name: Sign the release authorization
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          SDK_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.SDK_RELEASE_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          KEY_FILE="$RUNNER_TEMP/sdk_release_signing_private.pem"
+          printf '%s' "$SDK_RELEASE_SIGNING_PRIVATE_KEY" > "$KEY_FILE"
+          python scripts/sign_sdk_release_authorization.py \
+            --version "${{ steps.version.outputs.version }}" \
+            --sdk-checkout algenta-sdk-checkout \
+            --private-key-file "$KEY_FILE" \
+            --out "$RUNNER_TEMP/release-authorization.json"
+          rm -f "$KEY_FILE"
+
+      - name: Open a PR delivering the authorization into algenta-sdk
+        working-directory: algenta-sdk-checkout
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The commit this authorization covers is main's CURRENT tip -- i.e. whatever
+          # sync-public-sdk.yml's last merged PR left behind, matched against this tested tree
+          # two steps ago. It is NOT the commit this step is about to create (that one only adds
+          # the authorization file itself, and may not even survive as-is through a squash-merge).
+          # The human must tag THIS sha, read back out of the signed file itself so there is only
+          # one source of truth for it, not re-derived here and risk drifting from what was signed.
+          AUTHORIZED_COMMIT="$(python3 -c "import json; print(json.load(open('$RUNNER_TEMP/release-authorization.json'))['sdk_commit'])")"
+          git config user.name "algenta-sdk-sync[bot]"
+          git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
+          BRANCH="authorize/sdk-v${VERSION}"
+          git checkout -b "$BRANCH"
+          mkdir -p releases/authorization
+          cp "$RUNNER_TEMP/release-authorization.json" "releases/authorization/sdk-v${VERSION}.json"
+          git add "releases/authorization/sdk-v${VERSION}.json"
+          if git diff --cached --quiet; then
+            echo "Authorization for sdk-v${VERSION} already delivered — clean no-op."
+            exit 0
+          fi
+          git commit -m "release: authorize sdk-v${VERSION} @ ${AUTHORIZED_COMMIT}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --repo thyn-ai/algenta-sdk \
+            --base main \
+            --head "$BRANCH" \
+            --title "release: authorize sdk-v${VERSION}" \
+            --body "Signed by thyn-ai/algenta's private test suite (run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+
+          After merging this PR, tag commit \`${AUTHORIZED_COMMIT}\` (main's tip **before** this PR — not this PR's own commit, and not necessarily main's tip after merging) as \`sdk-v${VERSION}\` to trigger release.yml:
+
+              git tag sdk-v${VERSION} ${AUTHORIZED_COMMIT}
+              git push origin sdk-v${VERSION}"

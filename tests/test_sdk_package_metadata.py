@@ -189,12 +189,13 @@ def test_sdk_release_workflow_is_idempotent() -> None:
         "utf-8"
     )
 
-    # The SDK publish moved from the Linux-only pypa container action (`skip-existing: true`
-    # inputs, four: testpypi x2 + pypi x2) to native twine calls on the macOS fleet
-    # (`--skip-existing`, one per publish job); the idempotence markers moved with it.
-    assert release.count("--skip-existing") == 3
-    assert 'npm view "algenta-sdk@$VERSION" version' in release
-    assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
+    # algenta-sdk's real publish (PyPI + npm) moved out of this workflow entirely -- it's signed
+    # here as a release authorization and actually published by thyn-ai/algenta-sdk's own
+    # release.yml (which carries its own idempotence markers: --skip-existing / npm-view-and-skip).
+    # Only algenta-mcp still publishes directly from here, by token: one --skip-existing for the
+    # testpypi rehearsal, one for the real publish-pypi job.
+    assert release.count("--skip-existing") == 2
+    assert "npm publish --provenance" not in release
     # The runtime publish moved from the Linux-only pypa container action (`skip-existing: true`
     # input) to a native twine call on the macOS fleet; the idempotence marker is the twine flag.
     assert runtime_release.count("--skip-existing") == 1
@@ -218,14 +219,15 @@ def test_sdk_release_workflow_only_targets_existing_pypi_projects() -> None:
     release = (_REPO_ROOT / ".github" / "workflows" / "release-sdks.yml").read_text(
         "utf-8"
     )
-    production = release.split("\n  publish-pypi:\n", 1)[1].split("\n  publish-npm:\n", 1)[0]
+    production = release.split("\n  publish-pypi:\n", 1)[1].split(
+        "\n  sign-release-authorization:\n", 1
+    )[0]
     assert "algenta-core" not in release
     assert not (_PACKAGES / "algenta-core" / "pyproject.toml").exists()
     assert "id-token: write" not in production
-    # Native-twine migration: the pypa action's `password:` inputs became TWINE_PASSWORD env
-    # blocks (one per package step); the production publish still consumes PYPI_TOKEN exactly
-    # twice -- once per existing project.
-    assert production.count("TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}") == 2
+    # publish-pypi only publishes algenta-mcp now -- algenta-sdk's real publish moved to
+    # thyn-ai/algenta-sdk's own release.yml (see sign-release-authorization below it).
+    assert production.count("TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}") == 1
 
 
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:
