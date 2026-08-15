@@ -11,10 +11,13 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 # patchelf: the staging script relinks the worker binaries' rpaths into the bundled lib closure.
+# clang: `mojo build` emits objects but LINKS the worker executables through the system clang --
+# GitHub-hosted ubuntu images ship it, the bare ubuntu:22.04 image does not (shard 1 died with
+# "clang not found; cannot link Mojo object into an executable" until this landed).
 # file/binutils: artifact type checks + strip. openssl: runtime manifest signing.
 apt-get install -y -qq --no-install-recommends \
   ca-certificates curl git xz-utils bzip2 \
-  build-essential patchelf file binutils openssl >/dev/null
+  build-essential clang patchelf file binutils openssl >/dev/null
 
 # CPython 3.14 via uv (downloads python-build-standalone; no deadsnakes PPA, no source build).
 curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/uv sh >/dev/null

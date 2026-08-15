@@ -234,7 +234,9 @@ jobs:
           fi
           # build_se_helper.py signs the SE manifest with `cryptography`; this step is macOS-only
           # AND publish-gated, so it had never executed and the dependency was never installed.
-          python3 -m pip install --quiet cryptography
+          # The shimmed Homebrew python3.14 is PEP 668 externally-managed; this runner's tool
+          # interpreter IS the intended environment, so opt out explicitly.
+          python3 -m pip install --quiet --break-system-packages cryptography
           python3 scripts/build_se_helper.py --out mojo_build/runtime-wheel/se --platform "${{ matrix.target }}"
 
       - name: Build platform runtime wheel
@@ -242,7 +244,7 @@ jobs:
           ALGENTA_BUNDLE_RUNTIME: "1"
           ALGENTA_RUNTIME_SRC: ${{ github.workspace }}/mojo_build/runtime-wheel
         run: |
-          python -m pip install --upgrade build
+          python -m pip install --upgrade --break-system-packages build
           python -P -m build --wheel packages/algenta-runtime-native --outdir dist-runtime
 
       - name: Validate macOS wheel execution

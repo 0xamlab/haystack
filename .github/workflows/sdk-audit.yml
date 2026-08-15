@@ -86,9 +86,9 @@ jobs:
           ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py postgres
 
       # The previous swap/toolchain-reclaim dance existed only to survive GitHub-hosted
-      # runners' ~7.8 GiB RAM ceiling. The self-hosted macOS runner has ample RAM, so
-      # "Build audit shard workers" below just falls back to its built-in 8000 MiB
-      # per-shard default (no AUDIT_SHARD_MAX_RSS_MB override needed).
+      # runners' ~7.8 GiB RAM ceiling. The self-hosted macOS runner has ample RAM; the
+      # ceiling below just needs headroom over the heaviest shard (measured 8890 MiB at
+      # 643 modules -- the runtime library keeps growing, so the default carries slack).
 
       - name: Install Pixi
         run: |
@@ -104,7 +104,7 @@ jobs:
           RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
         run: |
           set -euo pipefail
-          max_rss="${AUDIT_SHARD_MAX_RSS_MB:-8000}"
+          max_rss="${AUDIT_SHARD_MAX_RSS_MB:-16000}"
           echo "per-shard footprint ceiling: ${max_rss} MiB"
           ./scripts/run_repo_python.sh scripts/build_runtime_shards.py \
             --out mojo_build/audit-worker \
