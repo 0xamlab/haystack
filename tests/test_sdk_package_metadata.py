@@ -192,7 +192,9 @@ def test_sdk_release_workflow_is_idempotent() -> None:
     assert release.count("skip-existing: true") == 4
     assert 'npm view "algenta-sdk@$VERSION" version' in release
     assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
-    assert runtime_release.count("skip-existing: true") == 1
+    # The runtime publish moved from the Linux-only pypa container action (`skip-existing: true`
+    # input) to a native twine call on the macOS fleet; the idempotence marker is the twine flag.
+    assert runtime_release.count("--skip-existing") == 1
 
 
 def test_python_release_builds_use_safe_import_path() -> None:
