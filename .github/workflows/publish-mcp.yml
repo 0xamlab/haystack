@@ -22,17 +22,29 @@ permissions:
 jobs:
   publish-mcp:
     name: publish to the Official MCP Registry
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install mcp-publisher
+        # Runner-agnostic: pick the release asset for THIS runner's OS/arch (the fleet is
+        # macOS arm64; hosted was linux amd64) and install under RUNNER_TEMP -- no sudo.
         run: |
           set -euo pipefail
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64|amd64) ARCH=amd64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+            *) echo "::error::unsupported arch $ARCH"; exit 1 ;;
+          esac
+          BIN_DIR="$RUNNER_TEMP/mcp-publisher-bin"
+          mkdir -p "$BIN_DIR"
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_${OS}_${ARCH}.tar.gz" \
             | tar xz mcp-publisher
-          sudo mv mcp-publisher /usr/local/bin/mcp-publisher
-          mcp-publisher --help >/dev/null
+          install -m 755 mcp-publisher "$BIN_DIR/mcp-publisher"
+          echo "$BIN_DIR" >> "$GITHUB_PATH"
+          "$BIN_DIR/mcp-publisher" --help >/dev/null
 
       - name: Authenticate (GitHub Actions OIDC → registry JWT)
         run: mcp-publisher login github-oidc

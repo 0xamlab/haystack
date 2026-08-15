@@ -30,7 +30,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Fly
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       SRC: ghcr.io/${{ github.repository }}
@@ -40,9 +40,13 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Install flyctl
+        # $HOME/.fly is one path shared by every self-hosted runner process on this user
+        # account -- concurrent deploys racing the installer is the same shared-path race the
+        # fleet convention isolates elsewhere (ci.yml's pnpm dest, flyctl FLYCTL_INSTALL).
         run: |
+          export FLYCTL_INSTALL="$RUNNER_TEMP/fly"
           curl -fsSL https://fly.io/install.sh | sh
-          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+          echo "$FLYCTL_INSTALL/bin" >> "$GITHUB_PATH"
 
       # The engine image is pushed by CI under the codna PAT (it pulls the private codna sidecar
       # base), so it is NOT readable by GITHUB_TOKEN. CODNA_GHCR_READ_TOKEN (broad read:packages)
@@ -61,7 +65,9 @@ jobs:
         if: ${{ inputs.target == 'both' || inputs.target == 'engine' || inputs.target == 'all' }}
         run: |
           set -euo pipefail
-          docker pull  "$SRC/engine:$TAG"
+          # Architecture-agnostic deploy: images are built linux/amd64 (the Fly target) --
+          # pin the pull to the image platform, never inherit the runner's arch.
+          docker pull --platform linux/amd64  "$SRC/engine:$TAG"
           docker tag   "$SRC/engine:$TAG" "registry.fly.io/codna-engine:$TAG"
           docker push  "registry.fly.io/codna-engine:$TAG"
           flyctl deploy -c fly.engine.toml -a codna-engine -i "registry.fly.io/codna-engine:$TAG"
@@ -71,7 +77,7 @@ jobs:
         if: ${{ inputs.target == 'both' || inputs.target == 'api' || inputs.target == 'all' }}
         run: |
           set -euo pipefail
-          docker pull  "$SRC/api:$TAG"
+          docker pull --platform linux/amd64  "$SRC/api:$TAG"
           bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push  "registry.fly.io/codna-api:$TAG"
@@ -84,7 +90,7 @@ jobs:
         if: ${{ inputs.target == 'control-plane' || inputs.target == 'all' }}
         run: |
           set -euo pipefail
-          docker pull  "$SRC/api:$TAG"
+          docker pull --platform linux/amd64  "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
           docker push  "registry.fly.io/algenta-control-plane:$TAG"
           flyctl deploy -c fly.control-plane.toml -a algenta-control-plane -i "registry.fly.io/algenta-control-plane:$TAG"

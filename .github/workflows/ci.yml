@@ -442,7 +442,11 @@ jobs:
       - name: Deploy codna-api
         run: |
           set -euo pipefail
-          docker pull "$SRC/api:$TAG"
+          # Architecture-agnostic deploy: the build publishes linux/amd64 (the Fly target
+          # platform) regardless of runner arch, so pin the PULL to the image's platform
+          # instead of inheriting the runner's (an arm64 runner asking for its own arch gets
+          # "no matching manifest" against the amd64-only manifest list).
+          docker pull --platform linux/amd64 "$SRC/api:$TAG"
           bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag  "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push "registry.fly.io/codna-api:$TAG"
@@ -526,7 +530,7 @@ jobs:
           set -euo pipefail
           TAG="git-$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
           echo "Deploying algenta-control-plane at pinned tag: $TAG"
-          docker pull "$SRC/api:$TAG"
+          docker pull --platform linux/amd64 "$SRC/api:$TAG"
           docker tag  "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
           docker push "registry.fly.io/algenta-control-plane:$TAG"
           flyctl deploy -c fly.control-plane.toml -a algenta-control-plane \
