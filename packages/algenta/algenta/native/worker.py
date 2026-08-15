@@ -62,16 +62,39 @@ def _worker_environment(resolution: NativeWorkerResolution) -> dict[str, str]:
     env = os.environ.copy()
     if resolution.source == "bundled runtime":
         env["PYTHONHOME"] = sys.base_prefix
-        # The Mojo runtime resolves libpython itself and fails closed on machines with no
-        # system-wide Python in a layout it recognizes (bare containers, minimal servers):
-        # "found no suitable Python library to link to". The runtime package bundles its own
-        # libpython beside the worker, so point Mojo at it explicitly and keep the bundled
-        # runtime self-contained. A MOJO_PYTHON_LIBRARY already in the environment wins.
         if "MOJO_PYTHON_LIBRARY" not in env:
-            bundled = _bundled_libpython(resolution.path.parent)
-            if bundled is not None:
-                env["MOJO_PYTHON_LIBRARY"] = str(bundled)
+            libpython = _prefix_libpython(Path(sys.base_prefix))
+            if libpython is not None:
+                # The embedded interpreter must be the SAME distribution as the stdlib and C
+                # extension modules it loads from PYTHONHOME: the wheel's bundled libpython is
+                # built from the toolchain env and mismatches the caller's extensions, breaking
+                # the interpreter at the first extension import (observed: `import socket` ->
+                # "failed to create socket" on bare amd64 containers). Point Mojo at the
+                # caller's libpython and force the dynamic loader to it too -- the worker's
+                # DT_RUNPATH ($ORIGIN, the wheel's bundled copy) otherwise gets loaded instead.
+                env["MOJO_PYTHON_LIBRARY"] = str(libpython)
+                if ".so" in libpython.name:
+                    lib_dir = str(libpython.parent)
+                    existing = env.get("LD_LIBRARY_PATH", "")
+                    env["LD_LIBRARY_PATH"] = (
+                        lib_dir + ((os.pathsep + existing) if existing else "")
+                    )
+            else:
+                # Caller interpreter ships no shared libpython (static builds): fall back to the
+                # copy bundled beside the worker so the runtime still links.
+                bundled = _bundled_libpython(resolution.path.parent)
+                if bundled is not None:
+                    env["MOJO_PYTHON_LIBRARY"] = str(bundled)
     return env
+
+
+def _prefix_libpython(prefix: Path) -> Path | None:
+    lib_dir = prefix / "lib"
+    for pattern in ("libpython3*.so*", "libpython3*.dylib"):
+        for candidate in sorted(lib_dir.glob(pattern)):
+            if candidate.is_file():
+                return candidate
+    return None
 
 
 def _bundled_libpython(artifact_dir: Path) -> Path | None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import sys
 import types
 from collections.abc import Iterable
@@ -465,25 +466,59 @@ def test_package_worker_rejects_tampered_shard_map(
         package_worker.require_worker(require_verified=True)
 
 
-def test_worker_environment_points_mojo_at_bundled_libpython(
+def test_worker_environment_prefers_caller_prefix_libpython(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    # Bare machines (minimal containers, stripped servers) have no system-wide Python in a
-    # layout the Mojo runtime auto-discovers; the bundled libpython beside the worker is the
-    # self-contained answer, so the launcher must point MOJO_PYTHON_LIBRARY at it.
+    # The embedded interpreter must be the SAME distribution as the stdlib + C extension modules
+    # it loads from PYTHONHOME. The wheel's bundled libpython comes from the build toolchain and
+    # mismatches the caller's extensions (observed: `import socket` -> "failed to create socket"
+    # on bare amd64 containers), so the launcher prefers the caller's own libpython and forces
+    # the dynamic loader to it (the worker's $ORIGIN rpath otherwise loads the bundled copy).
     monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    monkeypatch.delenv("LD_LIBRARY_PATH", raising=False)
+    base_prefix = tmp_path / "base_prefix"
+    (base_prefix / "lib").mkdir(parents=True)
+    caller_libpython = base_prefix / "lib" / "libpython3.14.so.1.0"
+    caller_libpython.write_bytes(b"")
+    monkeypatch.setattr(sys, "base_prefix", str(base_prefix))
+
     artifact_dir = tmp_path / "runtime"
     artifact_dir.mkdir()
-    libpython = artifact_dir / "libpython3.14.so.1.0"
-    libpython.write_bytes(b"")
+    bundled = artifact_dir / "libpython3.14.so.1.0"
+    bundled.write_bytes(b"")
     worker_path = artifact_dir / package_worker.WORKER_BASENAME
     worker_path.write_bytes(b"")
     resolution = package_worker.NativeWorkerResolution("bundled runtime", worker_path, True)
 
     env = package_worker._worker_environment(resolution)
 
-    assert env["MOJO_PYTHON_LIBRARY"] == str(libpython)
+    assert env["MOJO_PYTHON_LIBRARY"] == str(caller_libpython)
+    assert env["LD_LIBRARY_PATH"].split(os.pathsep)[0] == str(base_prefix / "lib")
+
+
+def test_worker_environment_falls_back_to_bundled_libpython(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    # Caller interpreters that ship no shared libpython (static builds) fall back to the copy
+    # bundled beside the worker, keeping the runtime self-contained.
+    monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    base_prefix = tmp_path / "base_prefix"
+    base_prefix.mkdir()
+    monkeypatch.setattr(sys, "base_prefix", str(base_prefix))
+
+    artifact_dir = tmp_path / "runtime"
+    artifact_dir.mkdir()
+    bundled = artifact_dir / "libpython3.14.so.1.0"
+    bundled.write_bytes(b"")
+    worker_path = artifact_dir / package_worker.WORKER_BASENAME
+    worker_path.write_bytes(b"")
+    resolution = package_worker.NativeWorkerResolution("bundled runtime", worker_path, True)
+
+    env = package_worker._worker_environment(resolution)
+
+    assert env["MOJO_PYTHON_LIBRARY"] == str(bundled)
 
 
 def test_worker_environment_keeps_caller_mojo_python_library(
@@ -503,11 +538,15 @@ def test_worker_environment_keeps_caller_mojo_python_library(
     assert env["MOJO_PYTHON_LIBRARY"] == "/custom/libpython3.14.so"
 
 
-def test_worker_environment_omits_hint_without_bundled_libpython(
+def test_worker_environment_omits_hint_without_any_libpython(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    base_prefix = tmp_path / "base_prefix"
+    base_prefix.mkdir()
+    monkeypatch.setattr(sys, "base_prefix", str(base_prefix))
+
     artifact_dir = tmp_path / "runtime"
     artifact_dir.mkdir()
     worker_path = artifact_dir / package_worker.WORKER_BASENAME
