@@ -196,6 +196,14 @@ jobs:
           PYTEST_TIMEOUT: 60
         run: ./scripts/run_repo_python.sh -m pytest -q tests/test_object_store_minio_smoke.py tests/test_multi_replica_chaos.py
 
+      # End-of-run teardown — `if: always()` so FAILED/cancelled runs release disk too. Postgres
+      # and MinIO declare Dockerfile VOLUMEs, and a container left behind keeps its volumes
+      # referenced (undeletable by any prune). Without this step every run leaks them until the
+      # NEXT run's startup pre-clean — that is what refilled the runner disk after #733.
+      - name: Stop integration services (release volumes)
+        if: always()
+        run: docker rm -fv postgres-ci dragonfly-ci minio >/dev/null 2>&1 || true
+
   # ── SDK artifact install ──────────────────────────────────────────────────
   # Proves the public Python SDKs install + import from the BUILT wheel in a fresh venv (not just
   # from source) — the "a user can actually `pip install` it" gate. Lean: no DB/Redis/pixi needed.

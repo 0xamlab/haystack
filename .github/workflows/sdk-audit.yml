@@ -136,6 +136,12 @@ jobs:
             build/audit/library_sweep_results.md
           if-no-files-found: error
 
+      # End-of-run teardown — `if: always()` so FAILED runs (like the 2026-08-16 postgres ENOSPC)
+      # release their volumes immediately instead of pinning them until the next run's pre-clean.
+      - name: Stop Postgres (release volumes)
+        if: always()
+        run: docker rm -fv postgres-ci-sdkaudit >/dev/null 2>&1 || true
+
   published-artifact-proof:
     name: Published artifact install + execute proof
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
