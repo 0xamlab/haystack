@@ -138,16 +138,11 @@ async def _deliver_completion_webhook(job: Job, result: dict[str, Any], db: Asyn
 async def execute_job_by_kind(job_id: uuid.UUID, db: AsyncSession) -> dict[str, Any]:
     """Route a queued job to its executor by kind.
 
-    Repository decision-plan/pipeline jobs → ``execute_repository_job``; GitHub App
-    events → ``github_event_service.execute_github_event_job``. Both the Celery worker
-    and the in-process fallback enter here so dispatch lives in one place."""
-    kind = (
-        await db.execute(select(Job.job_kind).where(Job.id == job_id))
-    ).scalar_one_or_none()
-    if kind is not None and str(kind).startswith("github_event"):
-        from apps.api_server.services.github_event_service import execute_github_event_job
-
-        return await execute_github_event_job(job_id=job_id, db=db)
+    Both the Celery worker and the in-process fallback enter here so dispatch lives in one
+    place. GitHub-App-event job kinds (``github_event_*``) are retired — the codna-ai App's
+    real webhook traffic is handled by codna's own separate service, never by this backend —
+    so any such kind now falls through to ``execute_repository_job``, which raises a clear
+    "unsupported job_kind" error rather than importing the deleted handler."""
     return await execute_repository_job(job_id=job_id, db=db)
 
 

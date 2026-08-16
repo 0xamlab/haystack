@@ -1,9 +1,14 @@
 """GitHub App (codna) — unit tests for the inbound webhook, installation-token minter,
-event handler, worker dispatch, and install callback.
+worker dispatch, and install callback.
 
 Fake-session style (mirrors test_repository_job_service.py): no real DB, GitHub mocked.
 These run in CI under `test:hardening`. End-to-end (real install + real GitHub) is gated
 on owner infra and is out of scope here.
+
+Note: the webhook no longer turns GitHub events into fix-PR jobs (see
+apps/api_server/routers/github_webhooks.py's module docstring) — the real codna-ai App's
+event handling lives entirely in the separate `codna` repo's own webhook service. This
+backend only tracks installation lifecycle + the install/OAuth callback.
 """
 from __future__ import annotations
 
@@ -17,9 +22,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from apps.api_server.models.job import JobKind, JobStatus
+from apps.api_server.models.job import JobKind
 from apps.api_server.routers import github_webhooks as ghwh
-from apps.api_server.services import github_app_auth, github_event_service
+from apps.api_server.services import github_app_auth
 from apps.api_server.services import repository_job_service as rjs
 from apps.api_server.services import tenant_key_store
 
@@ -159,126 +164,20 @@ def _check_payload():
     }
 
 
-# ── classify ──────────────────────────────────────────────────────────────────
-def test_classify_check_suite_failure():
-    assert ghwh._classify("check_suite", _check_payload()) is JobKind.GITHUB_EVENT_CHECK
-
-
-def test_classify_check_suite_success_ignored():
-    p = _check_payload()
-    p["check_suite"]["conclusion"] = "success"
-    assert ghwh._classify("check_suite", p) is None
-
-
-def test_classify_check_run_ignored():
-    # check_run is deliberately ignored — only the aggregate check_suite is acted on,
-    # so one CI run can't fan out into N duplicate fix PRs.
-    p = {"action": "completed", "check_run": {"conclusion": "failure", "head_sha": "x"}}
-    assert ghwh._classify("check_run", p) is None
-
-
-def test_classify_issue_label():
-    p = {"action": "labeled", "label": {"name": "codna-fix"}}
-    assert ghwh._classify("issues", p) is JobKind.GITHUB_EVENT_ISSUE
-
-
-def test_classify_issue_other_label_ignored():
-    p = {"action": "labeled", "label": {"name": "bug"}}
-    assert ghwh._classify("issues", p) is None
-
-
-def test_classify_pr_review():
-    assert ghwh._classify("pull_request_review", {"action": "submitted"}) is JobKind.GITHUB_EVENT_PR_REVIEW
-
-
-def test_classify_unknown_event_ignored():
-    assert ghwh._classify("push", {}) is None
-
-
 # ── webhook route ──────────────────────────────────────────────────────────────
 @pytest.mark.anyio
-async def test_webhook_valid_signature_enqueues(monkeypatch):
+async def test_webhook_actionable_looking_event_is_ignored(monkeypatch):
+    """Events that used to spawn a fix-PR job (check_suite, issues+label, pull_request_review)
+    are now simply acked + ignored — this backend no longer processes them at all."""
     _configure(monkeypatch)
-    enqueued: list[uuid.UUID] = []
-
-    async def _fake_enqueue(job_id):
-        enqueued.append(job_id)
-
-    async def _claim_true(db, did, iid):
-        return True, None
-
-    monkeypatch.setattr(ghwh, "_enqueue", _fake_enqueue)
-    monkeypatch.setattr(ghwh, "_claim_delivery", _claim_true)
-    org = uuid.uuid4()
     body = json.dumps(_check_payload()).encode()
-    db = _FakeSession([_install_row(org)])
-    req = _FakeRequest(body, redis=None)
-
+    db = _FakeSession([_install_row()])
     resp = await ghwh.github_webhook(
-        req, db, x_github_event="check_suite",
+        _FakeRequest(body), db, x_github_event="check_suite",
         x_hub_signature_256=_sign(body), x_github_delivery="d-1",
     )
     assert resp.status_code == 202
-    payload = json.loads(resp.body)
-    assert payload["status"] == "queued"
-    assert payload["job_kind"] == JobKind.GITHUB_EVENT_CHECK.value
-    # a job was created with the right kind + org + carried payload
-    assert len(db.added) == 1
-    job = db.added[0]
-    assert job.job_kind == JobKind.GITHUB_EVENT_CHECK.value
-    assert job.org_id == org
-    assert job.request_payload["installation_id"] == 12345
-    assert job.request_payload["event"] == "check_suite"
-    assert len(enqueued) == 1
-
-
-@pytest.mark.anyio
-async def test_webhook_durable_dedup_duplicate(monkeypatch):
-    """Redis-down path still dedupes via the durable claim (layer 2)."""
-    _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("dup must not enqueue"))
-
-    async def _claim_false(db, did, iid):
-        return False, None  # already claimed, no recoverable job
-
-    monkeypatch.setattr(ghwh, "_claim_delivery", _claim_false)
-    body = json.dumps(_check_payload()).encode()
-    db = _FakeSession([_install_row()])
-    resp = await ghwh.github_webhook(
-        _FakeRequest(body, redis=None), db, x_github_event="check_suite",
-        x_hub_signature_256=_sign(body), x_github_delivery="dup-durable",
-    )
-    assert resp.status_code == 202
-    assert json.loads(resp.body)["status"] == "duplicate"
-    assert not db.added
-
-
-@pytest.mark.anyio
-async def test_webhook_redelivery_requeues_unrun_job(monkeypatch):
-    """A re-delivery of a job that was committed but never enqueued re-enqueues it (recovery)."""
-    _configure(monkeypatch)
-    stuck = uuid.uuid4()
-    enqueued: list[uuid.UUID] = []
-
-    async def _fake_enqueue(job_id):
-        enqueued.append(job_id)
-
-    async def _claim_existing(db, did, iid):
-        return False, stuck  # already claimed; here is the job it produced
-
-    monkeypatch.setattr(ghwh, "_enqueue", _fake_enqueue)
-    monkeypatch.setattr(ghwh, "_claim_delivery", _claim_existing)
-    body = json.dumps(_check_payload()).encode()
-    db = _FakeSession([_install_row()])
-    resp = await ghwh.github_webhook(
-        _FakeRequest(body, redis=None), db, x_github_event="check_suite",
-        x_hub_signature_256=_sign(body), x_github_delivery="redeliver-1",
-    )
-    assert resp.status_code == 202
-    payload = json.loads(resp.body)
-    assert payload["status"] == "requeued"
-    assert payload["job_id"] == str(stuck)
-    assert enqueued == [stuck]
+    assert json.loads(resp.body) == {"status": "ignored", "event": "check_suite"}
     assert not db.added
 
 
@@ -313,7 +212,6 @@ async def test_webhook_not_configured_404(monkeypatch):
 @pytest.mark.anyio
 async def test_webhook_unknown_installation_acked(monkeypatch):
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
     body = json.dumps(_check_payload()).encode()
     db = _FakeSession([None])  # no installation row
     resp = await ghwh.github_webhook(
@@ -328,7 +226,6 @@ async def test_webhook_unknown_installation_acked(monkeypatch):
 @pytest.mark.anyio
 async def test_webhook_suspended_installation_acked(monkeypatch):
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
     body = json.dumps(_check_payload()).encode()
     db = _FakeSession([_install_row(suspended=True)])
     resp = await ghwh.github_webhook(
@@ -340,26 +237,10 @@ async def test_webhook_suspended_installation_acked(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_webhook_dedup_duplicate(monkeypatch):
-    _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("dup must not enqueue"))
-    body = json.dumps(_check_payload()).encode()
-    redis = _FakeRedis(get_value="1")  # read-through hit => already processed
-    db = _FakeSession([_install_row()])
-    resp = await ghwh.github_webhook(
-        _FakeRequest(body, redis=redis), db, x_github_event="check_suite",
-        x_hub_signature_256=_sign(body), x_github_delivery="dup-1",
-    )
-    assert resp.status_code == 202
-    assert json.loads(resp.body)["status"] == "duplicate"
-
-
-@pytest.mark.anyio
 async def test_webhook_installation_created_provisions_org(monkeypatch):
     """INSTALL-FIRST via webhook: installation.created with no codna org mints one and binds it,
     BEFORE the unknown-installation drop."""
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
 
     async def _resolve(iid, *, org_id=None):
         return {"id": 9999, "login": "acme", "type": "organization"}
@@ -402,7 +283,6 @@ async def test_webhook_installation_created_account_unresolved_ignored(monkeypat
 @pytest.mark.anyio
 async def test_webhook_installation_deleted_removes_binding(monkeypatch):
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
     row = _install_row()
     body = json.dumps({"action": "deleted", "installation": {"id": 12345}}).encode()
     db = _FakeSession([row])
@@ -418,7 +298,6 @@ async def test_webhook_installation_deleted_removes_binding(monkeypatch):
 @pytest.mark.anyio
 async def test_webhook_installation_suspend_sets_flag(monkeypatch):
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
     row = _install_row()
     body = json.dumps({"action": "suspend", "installation": {"id": 12345}}).encode()
     db = _FakeSession([row])
@@ -434,7 +313,6 @@ async def test_webhook_installation_suspend_sets_flag(monkeypatch):
 @pytest.mark.anyio
 async def test_webhook_installation_unsuspend_clears(monkeypatch):
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
     row = _install_row(suspended=True)
     body = json.dumps({"action": "unsuspend", "installation": {"id": 12345}}).encode()
     db = _FakeSession([row])
@@ -449,7 +327,6 @@ async def test_webhook_installation_unsuspend_clears(monkeypatch):
 @pytest.mark.anyio
 async def test_webhook_non_actionable_event_acked(monkeypatch):
     _configure(monkeypatch)
-    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
     body = json.dumps({"action": "opened", "installation": {"id": 12345},
                        "repository": {"full_name": "o/r"}}).encode()
     db = _FakeSession([_install_row()])
@@ -756,427 +633,7 @@ async def test_verify_user_administers_installation_no_code(monkeypatch):
     assert await github_app_auth.verify_user_administers_installation(1, "", org_id=uuid.uuid4()) is None
 
 
-# ── event handler (2D) ──────────────────────────────────────────────────────────
-def _event_job(kind=JobKind.GITHUB_EVENT_CHECK, **overrides):
-    base = dict(
-        id=uuid.uuid4(),
-        org_id=uuid.uuid4(),
-        workspace_id=None,
-        job_kind=kind.value,
-        status=JobStatus.QUEUED,
-        request_payload={"installation_id": 12345, "event": "check_suite", "payload": _check_payload()},
-        result_payload=None,
-        started_at=None,
-        completed_at=None,
-        error_message=None,
-    )
-    base.update(overrides)
-    return SimpleNamespace(**base)
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_completes(monkeypatch):
-    job = _event_job()
-    db = _FakeSession([job, _install_row()])
-
-    async def _fake_token(*a, **k):
-        return "tok"
-
-    async def _fake_drive(**k):
-        return {"status": "pr_opened", "pull_request_url": "https://github.com/o/r/pull/7"}
-
-    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
-    monkeypatch.setattr(github_event_service, "_drive_fix", _fake_drive)
-    result = await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert result["status"] == "pr_opened"
-    assert job.status == JobStatus.COMPLETED
-    assert job.result_payload == result
-    assert job.error_message is None
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_idempotent_terminal(monkeypatch):
-    job = _event_job(status=JobStatus.COMPLETED, result_payload={"status": "pr_opened"})
-    db = _FakeSession([job])
-
-    async def _must_not(**k):
-        raise AssertionError("terminal job must not re-run")
-
-    monkeypatch.setattr(github_event_service, "_drive_fix", _must_not)
-    result = await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert result == {"status": "pr_opened"}
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_inflight_not_rerun(monkeypatch):
-    """A freshly-RUNNING job (concurrent worker / immediate redelivery) must NOT re-run."""
-    job = _event_job(status=JobStatus.RUNNING, result_payload=None,
-                     started_at=datetime.now(UTC))  # just started => in-flight
-    db = _FakeSession([job])
-
-    async def _must_not(**k):
-        raise AssertionError("an in-flight job must not re-run _drive_fix")
-
-    monkeypatch.setattr(github_event_service, "_drive_fix", _must_not)
-    result = await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert result["status"] == JobStatus.RUNNING.value
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_stale_running_reclaimed(monkeypatch):
-    """A job stuck RUNNING past the reclaim window (crashed worker) IS re-executed."""
-    job = _event_job(status=JobStatus.RUNNING, result_payload=None,
-                     started_at=datetime.now(UTC) - timedelta(hours=2))  # stale
-    db = _FakeSession([job, _install_row()])
-
-    async def _fake_token(*a, **k):
-        return "tok"
-
-    async def _fake_drive(**k):
-        return {"status": "pr_opened"}
-
-    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
-    monkeypatch.setattr(github_event_service, "_drive_fix", _fake_drive)
-    result = await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert result["status"] == "pr_opened"
-    assert job.status == JobStatus.COMPLETED
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_failure_marks_failed(monkeypatch):
-    job = _event_job()
-    db = _FakeSession([job, _install_row()])
-
-    async def _fake_token(*a, **k):
-        return "tok"
-
-    async def _boom(**k):
-        raise RuntimeError("pipeline blew up")
-
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
-    monkeypatch.setattr(github_event_service, "_drive_fix", _boom)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    with pytest.raises(RuntimeError):
-        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert job.status == JobStatus.FAILED
-    assert "blew up" in (job.error_message or "")
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_failure_notifies_github(monkeypatch):
-    """Parity gap: apply_repository_decision raising (gate failure, missing write creds, push
-    failure, etc.) used to fail the job with zero comment posted to GitHub — a silent failure
-    from the user's perspective, unlike the CLI's now-always-structured error contract. This is
-    the regression test for that gap being closed: an error notification IS posted."""
-    job = _event_job()
-    db = _FakeSession([job, _install_row()])
-
-    async def _fake_token(*a, **k):
-        return "tok"
-
-    class _GateFailed(RuntimeError):
-        code = "repository_apply_gate_failed"
-
-    async def _boom(**k):
-        raise _GateFailed("simulation did not clear the safety gate")
-
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
-    monkeypatch.setattr(github_event_service, "_drive_fix", _boom)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    with pytest.raises(_GateFailed):
-        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert job.status == JobStatus.FAILED
-    assert posted, "an exception from _drive_fix must still notify GitHub, not fail silently"
-    assert posted[0]["path"] == "/repos/octo/repo/commits/abc123/comments"
-    assert "repository_apply_gate_failed" in posted[0]["body"]["body"]
-    assert "simulation did not clear the safety gate" in posted[0]["body"]["body"]
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_failure_without_token_does_not_notify(monkeypatch):
-    """If token minting itself fails, there is no way to authenticate a GitHub comment — this
-    must stay a server-side-only failure (can't report what we can't authenticate to say)."""
-    job = _event_job()
-    db = _FakeSession([job, _install_row()])
-
-    async def _fake_token(*a, **k):
-        raise RuntimeError("installation token mint failed")
-
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    with pytest.raises(RuntimeError):
-        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert job.status == JobStatus.FAILED
-    assert not posted
-
-
-@pytest.mark.anyio
-async def test_execute_github_event_job_cancelled_does_not_notify(monkeypatch):
-    """A CANCELLED job (user/system-cancelled, not a real failure) gets neither a FAILED
-    status flip nor a spurious error comment."""
-    job = _event_job()
-    db = _FakeSession([job, _install_row()])
-
-    async def _fake_token(*a, **k):
-        return "tok"
-
-    async def _boom(**k):
-        job.status = JobStatus.CANCELLED  # simulates a concurrent cancellation
-        raise RuntimeError("pipeline blew up")
-
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service.github_app_auth, "get_installation_token", _fake_token)
-    monkeypatch.setattr(github_event_service, "_drive_fix", _boom)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    with pytest.raises(RuntimeError):
-        await github_event_service.execute_github_event_job(job_id=job.id, db=db)
-    assert job.status == JobStatus.CANCELLED
-    assert not posted
-
-
-@pytest.mark.anyio
-async def test_notify_error_posts_issue_comment_for_issues_event(monkeypatch):
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    await github_event_service._notify_error(
-        event="issues",
-        payload={"issue": {"number": 42}, "repository": {"full_name": "octo/repo"}},
-        token="tok",
-        org_id=uuid.uuid4(),
-        error=RuntimeError("boom"),
-    )
-    assert posted and posted[0]["path"] == "/repos/octo/repo/issues/42/comments"
-    assert "RuntimeError" in posted[0]["body"]["body"]
-    # unstructured exceptions (no .code/.error_code) never show their raw str(exc) — only ever
-    # the safe class name, since str(exc) on an arbitrary builtin/library exception could embed
-    # payload/URL/argv content never meant to be public.
-    assert "boom" not in posted[0]["body"]["body"]
-
-
-@pytest.mark.anyio
-async def test_notify_error_posts_review_comment_for_pr_review_event(monkeypatch):
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    await github_event_service._notify_error(
-        event="pull_request_review",
-        payload={"pull_request": {"number": 7}, "repository": {"full_name": "octo/repo"}},
-        token="tok",
-        org_id=uuid.uuid4(),
-        error=RuntimeError("boom"),
-    )
-    assert posted and posted[0]["path"] == "/repos/octo/repo/issues/7/comments"
-
-
-@pytest.mark.anyio
-async def test_notify_error_prefers_structured_code_over_class_name(monkeypatch):
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    class _Structured(RuntimeError):
-        error_code = "repository_apply_gate_failed"
-
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    await github_event_service._notify_error(
-        event="check_suite",
-        payload=_check_payload(),
-        token="tok",
-        org_id=uuid.uuid4(),
-        error=_Structured("gate rejected"),
-    )
-    assert "repository_apply_gate_failed" in posted[0]["body"]["body"]
-    assert "_Structured" not in posted[0]["body"]["body"]
-    # a STRUCTURED error's own message IS shown — it's already curated, safe, actionable text
-    # (this is the actual parity fix: the CLI shows this same message, so should the GitHub App).
-    assert "gate rejected" in posted[0]["body"]["body"]
-
-
-@pytest.mark.anyio
-async def test_notify_error_silently_no_ops_on_missing_full_name(monkeypatch):
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    await github_event_service._notify_error(
-        event="check_suite",
-        payload={"check_suite": {"head_sha": "abc"}, "repository": {}},
-        token="tok",
-        org_id=uuid.uuid4(),
-        error=RuntimeError("boom"),
-    )
-    assert not posted
-
-
-@pytest.mark.anyio
-async def test_drive_fix_opens_pr(monkeypatch):
-    from apps.api_server.services import repository_intelligence_core as ric
-    from apps.api_server.services import repository_intelligence_pipeline as rip
-
-    captured = {}
-
-    async def _fake_pipeline(*, connector, request):
-        captured["stop_after"] = request.stop_after
-        captured["issue_text"] = request.signals.issue_text
-        return SimpleNamespace(
-            snapshot_id="snap-1",
-            decision_plan=SimpleNamespace(decision_plan_id="dp-1"),
-            simulation=SimpleNamespace(validated_inputs={"simulation_id": "sim-1"}),
-        )
-
-    async def _fake_apply(*, connector, request):
-        captured["mode"] = request.mode
-        captured["decision_plan_id"] = request.decision_plan_id
-        captured["simulation_id"] = request.simulation_id
-        captured["write_permission"] = request.write_permission
-        return SimpleNamespace(pull_request_url="https://github.com/octo/repo/pull/9")
-
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(rip, "run_repository_pipeline", _fake_pipeline)
-    monkeypatch.setattr(ric, "apply_repository_decision", _fake_apply)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-
-    out = await github_event_service._drive_fix(
-        event="check_run", payload=_check_payload(), token="tok",
-        org_id=uuid.uuid4(), installation_id=12345,
-    )
-    assert out["status"] == "pr_opened"
-    assert out["pull_request_url"].endswith("/pull/9")
-    assert captured["stop_after"] == "simulate"
-    assert captured["mode"] == "remote_pr"
-    assert captured["write_permission"] is True
-    assert captured["decision_plan_id"] == "dp-1"
-    assert captured["simulation_id"] == "sim-1"
-    # the PR link is posted back as a commit comment
-    assert posted and "/pull/9" in posted[0]["body"]["body"]
-
-
-@pytest.mark.anyio
-async def test_drive_fix_pins_clone_url_to_github(monkeypatch):
-    """The clone URL is derived from the validated owner/repo + pinned to github.com,
-    never taken from the attacker-controllable payload clone_url (token-exfil guard)."""
-    from apps.api_server.services import repository_intelligence_pipeline as rip
-
-    seen = {}
-
-    async def _fake_pipeline(*, connector, request):
-        import json as _json
-        from apps.api_server.services.config_crypto import decrypt_config_json
-
-        cfg = _json.loads(decrypt_config_json(connector.config_json, org_id=connector.org_id))
-        seen["repository_url"] = cfg["repository_url"]
-        return SimpleNamespace(snapshot_id="s", decision_plan=None, simulation=None)
-
-    async def _fake_post(**k):
-        pass
-
-    monkeypatch.setattr(rip, "run_repository_pipeline", _fake_pipeline)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    payload = _check_payload()
-    payload["repository"]["clone_url"] = "https://evil.example.com/octo/repo.git"  # ignored
-    await github_event_service._drive_fix(
-        event="check_suite", payload=payload, token="tok", org_id=uuid.uuid4(), installation_id=1,
-    )
-    assert seen["repository_url"] == "https://github.com/octo/repo.git"
-
-
-@pytest.mark.anyio
-async def test_drive_fix_rejects_bad_full_name(monkeypatch):
-    for bad in ("evil.com/a/../b", "../../etc", "noslash", "a/b@c", "https://x/y"):
-        payload = _check_payload()
-        payload["repository"]["full_name"] = bad
-        with pytest.raises(ValueError):
-            await github_event_service._drive_fix(
-                event="check_suite", payload=payload, token="t", org_id=uuid.uuid4(), installation_id=1,
-            )
-
-
-@pytest.mark.anyio
-async def test_drive_fix_no_plan_comments(monkeypatch):
-    from apps.api_server.services import repository_intelligence_pipeline as rip
-
-    async def _fake_pipeline(*, connector, request):
-        return SimpleNamespace(snapshot_id="s", decision_plan=None, simulation=None)
-
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(rip, "run_repository_pipeline", _fake_pipeline)
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    out = await github_event_service._drive_fix(
-        event="check_run", payload=_check_payload(), token="tok",
-        org_id=uuid.uuid4(), installation_id=12345,
-    )
-    assert out["status"] == "no_plan"
-    assert posted  # still comments to close the loop
-
-
-@pytest.mark.anyio
-async def test_pr_review_comments_only(monkeypatch):
-    posted = []
-
-    async def _fake_post(**k):
-        posted.append(k)
-
-    monkeypatch.setattr(github_event_service, "_post_github", _fake_post)
-    payload = {"pull_request": {"number": 4}, "repository": {"full_name": "octo/repo"}}
-    out = await github_event_service._handle_pr_review(payload, "tok", uuid.uuid4())
-    assert out["status"] == "commented"
-    assert posted and posted[0]["path"].endswith("/issues/4/comments")
-
-
 # ── worker dispatch ───────────────────────────────────────────────────────────
-@pytest.mark.anyio
-async def test_execute_job_by_kind_routes_github(monkeypatch):
-    job_id = uuid.uuid4()
-    db = _FakeSession([JobKind.GITHUB_EVENT_ISSUE.value])
-    called = {}
-
-    async def _fake_event(*, job_id, db):
-        called["github"] = True
-        return {"ok": True}
-
-    monkeypatch.setattr(github_event_service, "execute_github_event_job", _fake_event)
-    out = await rjs.execute_job_by_kind(job_id, db)
-    assert out == {"ok": True}
-    assert called.get("github")
-
-
 @pytest.mark.anyio
 async def test_execute_job_by_kind_routes_repository(monkeypatch):
     job_id = uuid.uuid4()
@@ -1191,6 +648,22 @@ async def test_execute_job_by_kind_routes_repository(monkeypatch):
     out = await rjs.execute_job_by_kind(job_id, db)
     assert out == {"ok": "repo"}
     assert called.get("repo")
+
+
+@pytest.mark.anyio
+async def test_execute_job_by_kind_stale_github_event_kind_raises_clear_error(monkeypatch):
+    """A historical github_event_* job (from before the retirement) hits a clear, explicit
+    "unsupported job_kind" error if it's ever re-dispatched, instead of importing the deleted
+    github_event_service module."""
+    job_id = uuid.uuid4()
+    db = _FakeSession([JobKind.GITHUB_EVENT_ISSUE.value])
+
+    async def _fake_repo(job_id, db):
+        raise ValueError(f"unsupported repository job_kind: {JobKind.GITHUB_EVENT_ISSUE.value}")
+
+    monkeypatch.setattr(rjs, "execute_repository_job", _fake_repo)
+    with pytest.raises(ValueError, match="unsupported repository job_kind"):
+        await rjs.execute_job_by_kind(job_id, db)
 
 
 # ── migration linkage (2A) ──────────────────────────────────────────────────────

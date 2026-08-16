@@ -1,9 +1,13 @@
 """GitHub App — inbound webhook receiver + install/OAuth callback.
 
-`POST /webhooks/github` is the one public, unauthenticated route: it verifies the
-GitHub HMAC signature, maps the installation to a codna org, dedupes by delivery id,
-then *enqueues* a job and returns 202 immediately (GitHub times out at ~10s). The
-multi-minute fix→PR pipeline runs in the worker (see the GITHUB_EVENT_* handlers).
+`POST /webhooks/github` is the one public, unauthenticated route: it verifies the GitHub
+HMAC signature and handles installation lifecycle (bind/unbind/suspend a codna org to a
+GitHub App installation). It does NOT turn events into fix-PR jobs — that pipeline
+(``github_event_service.py``) was retired: the actual, live codna-ai App webhook traffic
+is handled by codna's own separate, self-hosted-style service (see the `codna` repo's
+``cli/codna/webhook.py`` / ``webhook_worker.py``), which never calls into this backend.
+This router still owns the install/OAuth callback (2E) and installation-token minting
+used elsewhere, and remains the source of truth for ``GithubAppInstallation`` rows.
 
 The whole surface is inert until ``GITHUB_APP_*`` is configured.
 """
@@ -15,24 +19,19 @@ from typing import Annotated, Any
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from apps.api_server.config import get_settings
-from apps.api_server.db.session import AsyncSessionDep, AsyncSessionLocal
+from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org
-from apps.api_server.models.github_app_installation import (
-    GithubAppInstallation,
-    GithubWebhookDelivery,
-)
-from apps.api_server.models.job import JobKind
+from apps.api_server.models.github_app_installation import GithubAppInstallation
 from apps.api_server.services import github_app_auth
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.github_app_auth import app_configured
 from apps.api_server.services.github_app_provisioning import (
     provision_or_lookup_org_for_installation,
 )
-from apps.api_server.services.job_service import create_job
 from apps.api_server.services.webhook_service import verify_webhook_signature
 
 # Roles allowed to bind an external code-modifying integration to the org.
@@ -41,97 +40,15 @@ _INSTALL_ADMIN_ROLES = frozenset({"owner", "admin"})
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["GitHub App"])
 
-# Label that opts an issue into an automated fix.
-_FIX_LABEL = "codna-fix"
-# check_suite conclusions that represent an actionable CI failure (not success/neutral/
-# cancelled/skipped/stale, which we do not act on).
-_FAILING_CONCLUSIONS = frozenset({"failure", "timed_out", "startup_failure", "action_required"})
-
 
 def _redis(request: Request) -> Any | None:
     return getattr(request.app.state, "redis", None)
-
-
-async def _claim_delivery(
-    db: Any, delivery_id: str, installation_id: int | None
-) -> tuple[bool, uuid.UUID | None]:
-    """Durably claim a webhook delivery (first writer wins).
-
-    Returns ``(claimed, existing_job_id)``: ``(True, None)`` on a fresh claim, or
-    ``(False, job_id|None)`` if the delivery was already claimed (job_id of the job it
-    produced, for re-delivery recovery). Postgres INSERT ... ON CONFLICT DO NOTHING on the
-    unique delivery_id survives a Redis outage + the multi-replica race, so one delivery can
-    never spawn two billed fix-PR jobs. Flushed (not committed) so it shares the route's
-    transaction — a failed job creation rolls the claim back and GitHub re-delivery re-claims."""
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-    stmt = (
-        pg_insert(GithubWebhookDelivery)
-        .values(id=uuid.uuid4(), delivery_id=delivery_id, installation_id=installation_id)
-        .on_conflict_do_nothing(index_elements=["delivery_id"])
-    )
-    result = await db.execute(stmt)
-    await db.flush()
-    if (result.rowcount or 0) == 1:
-        return True, None
-    existing = (
-        await db.execute(
-            select(GithubWebhookDelivery).where(
-                GithubWebhookDelivery.delivery_id == delivery_id
-            )
-        )
-    ).scalar_one_or_none()
-    return False, (existing.job_id if existing is not None else None)
-
-
-def _classify(event: str, payload: dict[str, Any]) -> JobKind | None:
-    """Map a GitHub event to an actionable job kind (or None to ack + ignore).
-
-    Acts on ``check_suite`` (one per CI app per commit) and deliberately IGNORES per-check
-    ``check_run`` failures: a single failing CI run emits one check_suite plus N check_run
-    events, each with its own delivery id, so acting on check_run would fan one logical
-    failure out into N duplicate fix PRs + N billed plans. (Multiple CI apps on one commit
-    still produce one check_suite each — acceptable over-firing, not the N-per-suite fan-out.)"""
-    action = payload.get("action")
-    if event == "check_suite":
-        node = payload.get("check_suite") or {}
-        if action == "completed" and node.get("conclusion") in _FAILING_CONCLUSIONS:
-            return JobKind.GITHUB_EVENT_CHECK
-    elif event == "issues" and action == "labeled":
-        if (payload.get("label") or {}).get("name") == _FIX_LABEL:
-            return JobKind.GITHUB_EVENT_ISSUE
-    elif event == "pull_request_review" and action == "submitted":
-        return JobKind.GITHUB_EVENT_PR_REVIEW
-    return None
 
 
 def _installation_id(payload: dict[str, Any]) -> int | None:
     inst = payload.get("installation") or {}
     iid = inst.get("id")
     return int(iid) if iid is not None else None
-
-
-async def _enqueue(job_id: uuid.UUID) -> None:
-    enqueued = False
-    try:
-        from apps.worker.tasks.repository_task import enqueue_repository_job
-
-        enqueued = enqueue_repository_job(str(job_id))
-    except Exception as exc:  # noqa: BLE001 — degrade to in-process on broker issues
-        logger.warning("github_job_enqueue_failed", job_id=str(job_id), error=str(exc))
-    if not enqueued:
-        import asyncio
-
-        async def _run() -> None:
-            from apps.api_server.services.repository_job_service import execute_job_by_kind
-
-            async with AsyncSessionLocal() as db:
-                try:
-                    await execute_job_by_kind(job_id=job_id, db=db)
-                except Exception as exc:  # noqa: BLE001 — status persisted on the job
-                    logger.error("github_job_in_process_failed", job_id=str(job_id), error=str(exc))
-
-        asyncio.create_task(_run())
 
 
 @router.post("/webhooks/github", summary="GitHub App webhook receiver")
@@ -157,18 +74,6 @@ async def github_webhook(
     except ValueError:
         raise HTTPException(status_code=400, detail="invalid json") from None
     event = x_github_event or ""
-
-    # idempotency, layer 1: Redis read-through fast-path. A hit is a delivery we already
-    # *durably processed* (the key is SET only after commit+enqueue below), so it can short-
-    # circuit cheaply. A miss falls through to the authoritative DB claim — Redis never gates
-    # a delivery it hasn't confirmed, so it can't poison recovery on a rolled-back transaction.
-    redis = _redis(request)
-    if redis and x_github_delivery:
-        try:
-            if await redis.get(f"gh_delivery:{x_github_delivery}"):
-                return JSONResponse(status_code=202, content={"status": "duplicate"})
-        except Exception:  # noqa: BLE001 — Redis is a cache; the DB claim below is authoritative
-            pass
 
     iid = _installation_id(payload)
     if iid is None:
@@ -232,61 +137,9 @@ async def github_webhook(
     if row is None or row.suspended:
         return JSONResponse(status_code=202, content={"status": "ignored", "reason": "unknown installation"})
 
-    kind = _classify(event, payload)
-    if kind is None:
-        return JSONResponse(status_code=202, content={"status": "ignored", "event": event})
-
-    # idempotency, layer 2: durable first-writer-wins claim (authoritative). Survives a Redis
-    # outage + the multi-replica race; claimed in the SAME transaction as the job.
-    org_id = row.org_id
-    if x_github_delivery:
-        claimed, existing_job_id = await _claim_delivery(db, x_github_delivery, iid)
-        if not claimed:
-            # A prior delivery already created the job. Re-enqueue it (idempotent — the worker's
-            # re-entry guard makes a still-running/terminal job a no-op) so a job that was
-            # committed but never enqueued (a crash in the commit->enqueue gap) still recovers.
-            if existing_job_id is not None:
-                await _enqueue(existing_job_id)
-                return JSONResponse(
-                    status_code=202,
-                    content={"status": "requeued", "job_id": str(existing_job_id)},
-                )
-            return JSONResponse(status_code=202, content={"status": "duplicate"})
-
-    job = await create_job(
-        None,
-        org_id,
-        db,
-        queue_name="repository",
-        job_kind=kind,
-        request_payload={
-            "installation_id": iid,
-            "org_id": str(org_id),
-            "event": event,
-            "delivery_id": x_github_delivery,
-            "payload": payload,
-        },
-    )
-    # Link the delivery to its job so a re-delivery can recover an un-enqueued job (above).
-    if x_github_delivery:
-        await db.execute(
-            update(GithubWebhookDelivery)
-            .where(GithubWebhookDelivery.delivery_id == x_github_delivery)
-            .values(job_id=job.id)
-        )
-    await db.commit()
-    await _enqueue(job.id)
-    # Populate the Redis fast-path ONLY after the job is durably committed AND enqueued, so the
-    # key marks a fully-processed delivery and never blocks recovery of a half-done one.
-    if redis and x_github_delivery:
-        try:
-            await redis.set(f"gh_delivery:{x_github_delivery}", "1", ex=86400)
-        except Exception:  # noqa: BLE001 — best-effort cache priming
-            pass
-    return JSONResponse(
-        status_code=202,
-        content={"status": "queued", "job_id": str(job.id), "job_kind": kind.value},
-    )
+    # Every other event (check_suite, issues, pull_request_review, ...) is acked and ignored —
+    # this backend no longer turns events into fix-PR jobs (see the module docstring).
+    return JSONResponse(status_code=202, content={"status": "ignored", "event": event})
 
 
 # ── Install / OAuth ──────────────────────────────────────────────────────────
