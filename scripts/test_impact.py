@@ -1,0 +1,389 @@
+#!/usr/bin/env python3
+"""Repo-aware test selection (test-impact analysis) — MVP.
+
+Given a set of changed files (default: the diff `base...head`, default base
+``origin/main``), compute which tests in ``tests/`` are (transitively) affected and
+print a pytest-friendly selection. This is the local-intelligence capability Codna/Telys
+expose, applied to CI: only run the tests a change can actually influence.
+
+How it works
+------------
+1. Walk the repo's Python sources (``apps/``, ``packages/``, ``tests/``, ``scripts/``,
+   ``integrations/``) and parse each with stdlib ``ast``. Build a module key for every file and
+   record, per file, the set of module keys it imports (absolute + relative).
+2. Reverse the graph: ``importers[M]`` = files that import module ``M``.
+3. For each changed file, walk the reverse graph to its transitive importers. Any ``tests/``
+   file in that closure is "affected". A changed file that IS itself a test is affected directly.
+4. Conservative fallbacks (return the FULL suite, exit 0): a changed file we could not place in the
+   graph, a changed file imported by a very large share of the graph (a shared core module — running
+   "its tests" == running everything), or any non-Python change outside a safe allowlist (config,
+   CI, infra can affect anything).
+5. Multi-language awareness (Codna-backed, optional): with ``--codna-cli <path>`` (or ``CODNA_CLI``)
+   pointing at a codna checkout/install, changed files are classified through Codna's extractor
+   registry. When EVERY changed file is source in a known non-Python language and none of them is a
+   test in that language, this (Python) suite has nothing that can execute them -> select nothing
+   instead of the full suite. Without codna the behavior is exactly the conservative fallback above.
+
+Deliberate bias: when in doubt, run MORE tests, never fewer. A false "affected" costs minutes; a
+false "unaffected" ships a regression.
+
+Usage
+-----
+    python scripts/test_impact.py                      # origin/main...HEAD
+    python scripts/test_impact.py --base origin/main --head HEAD
+    python scripts/test_impact.py --changed a.py b.py  # explicit changed files
+    python scripts/test_impact.py --json               # machine-readable
+    python scripts/test_impact.py --codna-cli ~/dev/codna/cli   # multi-language awareness
+
+Output (default): one test path per line (pytest args). If the whole suite is required, prints the
+sentinel ``ALL`` and exits 0. ``--json`` emits ``{"mode": "subset"|"all", "tests": [...],
+"reason": "..."}``.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import fnmatch
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Python-importable source roots, searched in order when resolving an absolute import. Each entry
+# maps a top-level importable package/dir to its on-disk dir. Repo root itself is a root too, so
+# ``apps.api_server.x`` resolves against ``REPO_ROOT/apps/api_server/x.py``.
+_SOURCE_DIRS = ["apps", "packages", "integrations", "scripts", "tests"]
+_SOURCE_DIRS_SET = set(_SOURCE_DIRS)
+
+_TEST_DIR = "tests"
+
+# Changed paths matching any of these are treated as "affects everything" (config/CI/infra/shared).
+_BROAD_GLOBS = (
+    "pyproject.toml", "setup.py", "setup.cfg", "conftest.py", "**/conftest.py",
+    ".github/**", "requirements*.txt", "**/requirements*.txt", "pixi.toml", "**/pixi.toml",
+    "pytest.ini", "tox.ini", "scripts/**", "infra/**", ".env*",
+)
+
+# If a single changed module is imported (transitively) by more than this fraction of all test files,
+# treat it as shared-core and just run everything.
+_SHARED_CORE_FRACTION = 0.34
+
+# Ignore these when walking sources (mirrors codna.codeunits._DEFAULT_IGNORE).
+_IGNORE_DIRS = {
+    ".git", ".hg", ".svn", ".venv", "venv", "env", "node_modules", "__pycache__",
+    ".mypy_cache", ".pytest_cache", ".ruff_cache", "dist", "build", ".codna-memory",
+    "mojo_env", "mma_forge", "mojo_build", "build", "vendor", "node_modules",
+}
+
+
+def _iter_py_files() -> list[Path]:
+    out: list[Path] = []
+    for d in _SOURCE_DIRS:
+        base = REPO_ROOT / d
+        if not base.is_dir():
+            continue
+        for p in base.rglob("*.py"):
+            if any(part in _IGNORE_DIRS for part in p.relative_to(REPO_ROOT).parts):
+                continue
+            out.append(p)
+    return out
+
+
+def _rel(p: Path) -> str:
+    return str(p.relative_to(REPO_ROOT))
+
+
+def _module_key(rel_path: str) -> str | None:
+    """Map a repo-relative .py path to a dotted module key, or None if unmappable."""
+    if not rel_path.endswith(".py"):
+        return None
+    parts = Path(rel_path).with_suffix("").parts
+    if parts and parts[-1] == "__init__":
+        parts = parts[:-1]
+    if not parts:
+        return None
+    return ".".join(parts)
+
+
+def _candidate_keys(rel_path: str) -> list[str]:
+    """Every dotted name this file may be imported as. The path-based key (repo-root relative) is
+    always one. Additionally, a file under ``packages/<pkg>/<name>/...`` where ``<name>`` is a real
+    package (has ``__init__.py``) is ALSO importable as ``<name>.<rest>`` — the form tests actually
+    use (``from algenta.inference import ...``, not ``from packages.algenta.algenta...``). This is
+    the package-name mapping Codna's repo intelligence resolves structurally; the MVP hard-codes the
+    ``packages/`` two-level convention."""
+    keys: list[str] = []
+    primary = _module_key(rel_path)
+    if primary:
+        keys.append(primary)
+    parts = Path(rel_path).with_suffix("").parts
+    if len(parts) >= 3 and parts[0] == "packages":
+        pkg_root = Path("packages") / parts[1] / parts[2]
+        if (REPO_ROOT / pkg_root / "__init__.py").is_file():
+            inner = parts[2:]
+            if inner and inner[-1] == "__init__":
+                inner = inner[:-1]
+            if inner:
+                keys.append(".".join(inner))
+    return keys
+
+
+def _import_targets(tree: ast.AST, file_rel: str) -> set[str]:
+    """Collect the dotted module keys this file imports (absolute + relative). Best-effort: an
+    unresolvable/relative import yields a best-guess key so the graph stays connected."""
+    targets: set[str] = set()
+    file_mod = _module_key(file_rel) or ""
+    file_pkg_parts = file_mod.split(".")[:-1] if file_mod else []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                targets.add(a.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level and node.level > 0:
+                # Relative import: resolve against the importing file's package.
+                base_parts = file_pkg_parts[: len(file_pkg_parts) - (node.level - 1)]
+                base = ".".join(base_parts + ([node.module] if node.module else []))
+                if base:
+                    targets.add(base)
+            elif node.module:
+                targets.add(node.module)
+    return targets
+
+
+def _build_graph(py_files: list[Path]):
+    """Return (file_by_module, importers, file_imports). file_by_module maps a module key to the
+    file that defines it (first match wins). importers[M] = set of files importing module M."""
+    file_by_module: dict[str, Path] = {}
+    file_imports: dict[str, set[str]] = {}
+    trees: dict[str, ast.AST] = {}
+    for p in py_files:
+        rel = _rel(p)
+        for key in _candidate_keys(rel):
+            if key not in file_by_module:
+                file_by_module[key] = p
+        try:
+            trees[rel] = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            trees[rel] = None  # unparseable -> treat as opaque; callers fall back conservatively
+    for rel, tree in trees.items():
+        if tree is None:
+            file_imports[rel] = set()  # opaque: handled as broad by the caller
+            continue
+        file_imports[rel] = _import_targets(tree, rel)
+    importers: dict[str, set[str]] = defaultdict(set)
+    for rel, targets in file_imports.items():
+        for t in targets:
+            # A target may name a module or a submodule; register it and every prefix so a change to
+            # a package's __init__ or a submodule reaches importers of the parent too.
+            importers[t].add(rel)
+            parts = t.split(".")
+            for i in range(1, len(parts)):
+                importers[".".join(parts[:i])].add(rel)
+    return file_by_module, importers, file_imports, trees
+
+
+def _changed_from_git(base: str, head: str) -> list[str]:
+    out = subprocess.run(
+        ["git", "diff", "--name-only", f"{base}...{head}"],
+        cwd=REPO_ROOT, capture_output=True, text=True,
+    )
+    if out.returncode != 0:
+        raise SystemExit(f"git diff failed: {out.stderr.strip()}")
+    return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+
+
+def _is_test(rel: str) -> bool:
+    parts = Path(rel).parts
+    if not parts:
+        return False
+    if parts[0] != _TEST_DIR:
+        return False
+    name = parts[-1]
+    return name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py"
+
+
+def _is_broad(rel: str) -> bool:
+    return any(fnmatch.fnmatch(rel, g) for g in _BROAD_GLOBS)
+
+
+_CODNA_CACHE: dict[str, object | None] = {}
+
+
+def _load_codna(cli_path: str | None):
+    """Load codna.codeunits from an explicit checkout, without disturbing this process's imports.
+
+    Loads under a private module alias so that (a) an installed ``codna`` release — which may
+    predate the per-file seam — can never shadow the requested checkout, and (b) the checkout's
+    vendored siblings (e.g. its ``memengine/``) never leak onto sys.path for other importers.
+    Never fatal: selection must run anywhere codna is absent."""
+    path = cli_path or os.environ.get("CODNA_CLI")
+    if not path:
+        return None
+    pkg_dir = Path(path).expanduser().resolve() / "codna"
+    key = str(pkg_dir)
+    if key in _CODNA_CACHE:
+        return _CODNA_CACHE[key]
+    if not (pkg_dir / "codeunits.py").is_file() or not (pkg_dir / "__init__.py").is_file():
+        _CODNA_CACHE[key] = None
+        return None
+    alias = f"_test_impact_codna_{len(_CODNA_CACHE)}"
+    try:
+        spec = importlib.util.spec_from_file_location(
+            alias, str(pkg_dir / "__init__.py"),
+            submodule_search_locations=[str(pkg_dir)])
+        pkg = importlib.util.module_from_spec(spec)
+        sys.modules[alias] = pkg
+        spec.loader.exec_module(pkg)
+        codeunits = importlib.import_module(f"{alias}.codeunits")
+    except Exception:  # noqa: BLE001 — any import failure just disables the codna path
+        sys.modules.pop(alias, None)
+        _CODNA_CACHE[key] = None
+        return None
+    if not (hasattr(codeunits, "language_for") and hasattr(codeunits, "extract_file")):
+        codeunits = None  # codna predates the per-file seam (thyn-ai/codna#445) — stay conservative
+    _CODNA_CACHE[key] = codeunits
+    return codeunits
+
+
+def _language_disjoint_selection(changed: list[str], codeunits):
+    """Codna-backed fast path: when every changed file is source in a known NON-Python language and
+    none of them is a test in that language, no test in this (Python) suite can execute them.
+    Returns (True, tests, reason) to short-circuit, or None to fall through to the Python graph.
+    Any uncertainty (unknown extension, unreadable file, test unit present) falls through — the
+    bias is run MORE, never fewer."""
+    langs: dict[str, str | None] = {c: codeunits.language_for(c) for c in changed}
+    if not all(langs.values()):
+        return None  # at least one file codna cannot classify -> no disjoint claim
+    if any(lang == "python" for lang in langs.values()):
+        return None  # the Python import graph below decides
+    for c in changed:
+        try:
+            source = (REPO_ROOT / c).read_text(encoding="utf-8", errors="replace")
+            units = codeunits.extract_file("test-impact", c, source)
+        except (OSError, SyntaxError, ValueError):
+            return None  # unreadable/unparseable -> let the conservative path take over
+        if any(u.symbol_type == "test" for u in units):
+            return None  # a test changed in another language; this tool cannot select for it
+    known = sorted(set(langs.values()))
+    return (True, [],
+            f"changes confined to non-Python languages ({', '.join(known)}); "
+            "no test in this suite can execute them")
+
+
+def compute_affected(changed: list[str], py_files: list[Path], codeunits=None):
+    """Return (mode, tests, reason). mode in {"subset","all"}."""
+    if not changed:
+        return "all", [], "no changed files reported; running full suite to be safe"
+    # Anything broad/config/CI-ish -> run everything.
+    broad = [c for c in changed if _is_broad(c)]
+    if broad:
+        return "all", [], f"broad/config change touches: {', '.join(sorted(broad)[:5])}"
+
+    # Codna-backed multi-language fast path (skips the Python graph entirely when it applies).
+    if codeunits is not None:
+        disjoint = _language_disjoint_selection(changed, codeunits)
+        if disjoint is not None:
+            _, tests, reason = disjoint
+            return "subset", tests, reason
+
+    file_by_module, importers, file_imports, trees = _build_graph(py_files)
+    test_files = sorted(_rel(p) for p in py_files if _is_test(_rel(p)))
+    n_tests = len(test_files)
+    if n_tests == 0:
+        return "all", [], "no test files discovered; running full suite"
+
+    # Validate changed files; any file we can't place in the graph -> full suite.
+    for c in changed:
+        if not c.endswith(".py"):
+            # A non-Python, non-broad change (docs, data) -> be safe, run all.
+            return "all", [], f"non-Python change: {c}"
+        if _module_key(c) is None:
+            return "all", [], f"unmappable changed file: {c}"
+
+    # Seed the importer-closure ONLY with non-test source modules. A changed TEST file only affects
+    # itself (nothing meaningfully imports a test); propagating a test's module through the importer
+    # graph blows up to a huge fraction of the suite (tests import each other / conftest heavily).
+    affected: set[str] = set()
+    changed_source_modules: set[str] = set()
+    for c in changed:
+        if _is_test(c):
+            affected.add(c)
+            continue
+        for key in _candidate_keys(c):
+            changed_source_modules.add(key)
+            file_by_module.setdefault(key, REPO_ROOT / c)
+    # Reverse-transitive closure over importers.
+    visited: set[str] = set()
+    frontier = set(changed_source_modules)
+    while frontier:
+        m = frontier.pop()
+        if m in visited:
+            continue
+        visited.add(m)
+        for importer_rel in importers.get(m, ()):
+            if _is_test(importer_rel):
+                affected.add(importer_rel)
+                continue
+            im_key = _module_key(importer_rel)
+            if im_key and im_key not in visited:
+                frontier.add(im_key)
+        # Propagate to parent package modules so files importing an enclosing package of a changed
+        # submodule are included too (a test doing `from decision_engine import _contract` IS affected
+        # when _contract.py changes). BUT stop at the source-root dirs (apps/, packages/, ...): their
+        # importer set is nearly the whole suite and would force "all" for any change under them.
+        parts = m.split(".")
+        for i in range(1, len(parts)):
+            parent = ".".join(parts[:i])
+            if parent.split(".")[0] in _SOURCE_DIRS_SET:
+                continue
+            frontier.add(parent)
+
+    # Shared-core guard: if the affected set covers a large share of all tests, just run all.
+    if n_tests and len(affected) / n_tests >= _SHARED_CORE_FRACTION:
+        return "all", [], (
+            f"change reaches {len(affected)}/{n_tests} tests (>= {_SHARED_CORE_FRACTION:.0%}); "
+            "treating as shared-core and running full suite"
+        )
+    # A changed file outside the indexed source roots was never walked, so its importers are
+    # untracked -> under-count -> run the full suite to be safe.
+    for c in changed:
+        if c.endswith(".py") and c not in trees:
+            return "all", [], f"changed file outside indexed source roots: {c}"
+    return "subset", sorted(affected), f"{len(affected)}/{n_tests} tests affected"
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Repo-aware test selection (test-impact analysis)")
+    ap.add_argument("--base", default="origin/main", help="diff base (default origin/main)")
+    ap.add_argument("--head", default="HEAD", help="diff head (default HEAD)")
+    ap.add_argument("--changed", nargs="*", default=None, help="explicit changed files (skips git)")
+    ap.add_argument("--json", action="store_true", help="machine-readable output")
+    ap.add_argument("--codna-cli", default=None,
+                    help="codna checkout's cli/ dir (or CODNA_CLI env) for multi-language awareness")
+    args = ap.parse_args()
+
+    changed = args.changed if args.changed is not None else _changed_from_git(args.base, args.head)
+    codeunits = _load_codna(args.codna_cli)
+    py_files = _iter_py_files()
+    mode, tests, reason = compute_affected(changed, py_files, codeunits)
+
+    if args.json:
+        print(json.dumps({"mode": mode, "tests": tests, "reason": reason}))
+    elif mode == "all":
+        print("ALL")
+        print(f"# reason: {reason}", file=sys.stderr)
+    else:
+        for t in tests:
+            print(t)
+        print(f"# {reason}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
