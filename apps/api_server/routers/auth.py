@@ -39,6 +39,7 @@ from apps.api_server.services.auth_tokens import (
     verify_password_reset_token,
 )
 from apps.api_server.services.user_service import (
+    canonicalize_email,
     create_user_and_org,
     get_user_by_email,
     hash_password,
@@ -50,23 +51,15 @@ router = APIRouter(tags=["Auth"], prefix="/auth")
 settings = SettingsProxy()
 
 
-@router.post(
-    "/signup",
-    response_model=SignUpResponse,
-    status_code=201,
-    summary="Create a new account",
-    description=(
-        "Self-serve signup. Creates an organization, user account, and first API key in one step. "
-        "The raw API key is shown **once** in the response — store it securely."
-    ),
-)
 async def _enforce_daily_email_signup_cap(email: str, redis: object, settings: object) -> None:
     """Cap org-creations per email per day (multi-account abuse). Best-effort — a Redis hiccup
     falls back to allowing (the per-IP limit + captcha remain the backstop)."""
     limit = int(getattr(settings, "signup_max_per_day_per_email", 0))
     if limit <= 0:
         return
-    email_hash = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:32]
+    # Canonicalized so a Gmail dot/plus-tag variant shares the same daily allowance as the
+    # address it aliases, instead of getting a fresh one per variant.
+    email_hash = hashlib.sha256(canonicalize_email(email).encode()).hexdigest()[:32]
     day = datetime.now(UTC).strftime("%Y-%m-%d")
     key = f"signup_email_day:{email_hash}:{day}"
     try:
@@ -91,6 +84,16 @@ async def _enforce_daily_email_signup_cap(email: str, redis: object, settings: o
         )
 
 
+@router.post(
+    "/signup",
+    response_model=SignUpResponse,
+    status_code=201,
+    summary="Create a new account",
+    description=(
+        "Self-serve signup. Creates an organization, user account, and first API key in one step. "
+        "The raw API key is shown **once** in the response — store it securely."
+    ),
+)
 async def signup(
     request: Request,
     payload: SignUpRequest,

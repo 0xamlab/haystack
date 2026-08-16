@@ -95,6 +95,17 @@ def test_auth_router_importable():
     check("/auth/reset-password route registered", "/auth/reset-password" in routes)
     check("/auth/signup route registered", "/auth/signup" in routes)
     check("/auth/login route registered", "/auth/login" in routes)
+    # A path string existing on the router is NOT proof it's bound to the right function —
+    # a misplaced decorator once silently rebound "/auth/signup" to a helper function
+    # (_enforce_daily_email_signup_cap) with a different signature, making every abuse
+    # control (rate limit, daily cap, Turnstile) dead code while this exact check still
+    # passed. Assert the actual bound endpoint name, not just path membership.
+    signup_route = next(r for r in auth_router.router.routes if r.path == "/auth/signup")
+    check(
+        "/auth/signup bound to the real signup() handler",
+        signup_route.endpoint.__name__ == "signup",
+        signup_route.endpoint.__name__,
+    )
 
 
 def test_auth_schemas_importable():

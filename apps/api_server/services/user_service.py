@@ -36,6 +36,29 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
+_GMAIL_DOMAINS = {"gmail.com", "googlemail.com"}
+
+
+def canonicalize_email(email: str) -> str:
+    """Best-effort canonical form of an email, for DEDUP/RATE-LIMIT KEYS only — never the
+    stored/displayed address. Strips a `+tag` sub-address suffix (RFC 5233, honored by
+    every major provider) from the local part, and additionally folds dots in the local
+    part for Gmail/Googlemail specifically — the one major provider that treats dots as
+    no-ops on delivery, so `n.a.me+x@gmail.com` and `name@gmail.com` are the same real
+    inbox. Without this, each dotted/tagged variant a person types mints its own free-tier
+    org (see activate_product_free_tier) since Supabase issues each variant its own uid
+    and nothing else collapses them. Anything that doesn't parse as local@domain is
+    returned unchanged (just lowercased/trimmed)."""
+    addr = (email or "").strip().lower()
+    if "@" not in addr:
+        return addr
+    local, _, domain = addr.rpartition("@")
+    local = local.split("+", 1)[0]
+    if domain in _GMAIL_DOMAINS:
+        local = local.replace(".", "")
+    return f"{local}@{domain}"
+
+
 def _slug_from_email(email: str) -> str:
     """Derive a URL-safe org slug from an email address."""
     local = email.split("@")[0]
@@ -162,6 +185,27 @@ async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
     return result.scalars().first()
 
 
+async def get_user_by_canonical_email(email: str, db: AsyncSession) -> User | None:
+    """Like get_user_by_email, but collapses Gmail dot/plus-tag aliasing so a new variant
+    of an address that already owns a free-tier org (e.g. `name+work@gmail.com` after
+    `name@gmail.com` signed up) reuses that org instead of minting a fresh one — closing
+    the free-tier abuse path described on canonicalize_email. Matches by domain first
+    (cheap, index-friendly on the existing email lookups), then folds candidates in
+    Python; this only runs on the free-tier auto-provision path (not a request hot path),
+    so a bounded per-domain scan is fine."""
+    canonical = canonicalize_email(email)
+    if "@" not in canonical:
+        return await get_user_by_email(email, db)
+    _, _, domain = canonical.rpartition("@")
+    result = await db.execute(
+        select(User).where(User.email.ilike(f"%@{domain}")).order_by(User.created_at)
+    )
+    for row in result.scalars():
+        if canonicalize_email(row.email) == canonical:
+            return row
+    return None
+
+
 async def activate_product_free_tier(
     db: AsyncSession, *, product: str, email: str, name: str | None = None,
     supabase_uid: str | None = None,
@@ -233,7 +277,7 @@ async def activate_product_free_tier(
             status_code=400, detail=f"a verified email is required to activate {cfg.display_name}"
         )
 
-    existing = await get_user_by_email(email, db)
+    existing = await get_user_by_canonical_email(email, db)
     if existing is not None:
         org = (
             await db.execute(select(Organization).where(Organization.id == existing.org_id))
