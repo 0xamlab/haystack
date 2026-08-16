@@ -124,6 +124,19 @@ struct Qwen3PrefillDecodeResult(Copyable, Movable):
 def _decode_err(status: Int, message: String) -> Qwen3PrefillDecodeResult:
     return Qwen3PrefillDecodeResult(status, message, List[Int](), 0, False, 0, 0.0, 0.0, 0)
 
+def _resident_ctx_bucket(needed_ctx: Int) -> Int:
+    """Round needed_ctx UP to the next power of two (floor RESIDENT_DEFAULT_CONTEXT=512) before it
+    enters the resident key. Requests that differ only in max_new_tokens but land in the same
+    [2^k, 2^(k+1)) band then hash to the SAME resident key and adopt the existing resident
+    buffers (weights stay resident, zero rebuild) instead of tearing down + rebuilding on every
+    shape switch -- the delivered-path session-rebuild tax (race/persistent-session, 2026-08-16:
+    warm same-shape calls already adopted fine; alternating max_new paid ~70-550ms per switch).
+    Cost = KV/rope over-allocation by <2x within a band, still bounded by RESIDENT_MAX_CONTEXT."""
+    var ctx = RESIDENT_DEFAULT_CONTEXT
+    while ctx < needed_ctx:
+        ctx = ctx * 2
+    return ctx
+
 
 def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
@@ -667,9 +680,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -971,9 +982,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -1279,9 +1288,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -1587,9 +1594,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_msl(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -1882,9 +1887,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -2208,9 +2211,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -2513,9 +2514,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -2890,9 +2889,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -3421,9 +3418,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
 
     var scale = 1.0 / sqrt(Float64(d_head))
     var needed_ctx = n_prompt + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
@@ -3972,9 +3967,7 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
     for b in range(B):
         if prompt_lens[b] + max_new_tokens > needed_ctx:
             needed_ctx = prompt_lens[b] + max_new_tokens
-    var max_ctx = RESIDENT_DEFAULT_CONTEXT
-    if needed_ctx > max_ctx:
-        max_ctx = needed_ctx
+    var max_ctx = _resident_ctx_bucket(needed_ctx)
     if max_ctx > RESIDENT_MAX_CONTEXT:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
