@@ -208,6 +208,9 @@ jobs:
 
       - name: Mint a short-lived installation token for the sync App
         id: app-token
+        # Same fleet-proxy fix as sync-public-sdk.yml's identical step.
+        env:
+          NODE_USE_ENV_PROXY: "1"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.ALGENTA_SDK_SYNC_APP_ID }}
