@@ -60,26 +60,57 @@ done
 
 # 3. Colima VM liveness: a hung VM (sshd dead, dockerd unresponsive) kills every container job
 # silently -- seen in production: 'error waiting for container: unexpected EOF', exit 125, docker
-# CLI hangs while `colima list` still claims Running. Probe via ssh with a hard timeout (the probe
-# itself hangs on a wedged VM); if unresponsive, restart the VM. Also starts colima if it's down.
-probe=/tmp/.fleet_watchdog_vm_$$
-( su angel -c 'colima ssh -- true 2>/dev/null && echo ok' > "$probe" 2>/dev/null ) &
-bg=$!
-for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    [ -s "$probe" ] && break
-    sleep 1
-done
-if [ ! -s "$probe" ]; then
-    kill -9 "$bg" 2>/dev/null
-    pkill -9 -f 'colima ssh' 2>/dev/null
-    log "COLIMA VM UNRESPONSIVE (ssh probe hung 15s) -- restarting VM"
-    if su angel -c 'colima restart' >> "$LOG" 2>&1; then
-        log "COLIMA VM RESTARTED by watchdog"
+# CLI hangs while `colima list` still claims Running.
+#
+# Probes, best first:
+#   a) docker daemon /_ping over its socket -- what CI actually needs; it answers even when the
+#      guest sshd is slow, so a busy-but-healthy VM never gets killed;
+#   b) `colima ssh` with a 30s budget (catches sshd-dead/dockerd-dead wedges the socket can't).
+# Restart guardrails (added 2026-08-15 after this watchdog ITSELF became the instability: under
+# heavy docker builds the guest sshd took longer than the old 15s budget, and the watchdog
+# restarted healthy-but-busy VMs mid-CI -- five restarts in one evening, each killing live jobs):
+#   - a VM answering on the docker socket is healthy, period;
+#   - otherwise restart only after THREE consecutive failed probe cycles (~3 min of continuous
+#     unresponsiveness). A transient slow probe can never kill the VM again.
+SOCK=/Users/angel/.colima/default/docker.sock
+VM_STATE=/tmp/.fleet_watchdog_vm_fails
+vm_ok=0
+if printf 'GET /_ping HTTP/1.0\r\nHost: docker\r\n\r\n' | nc -U -w 5 "$SOCK" 2>/dev/null | grep -q '200 OK'; then
+    vm_ok=1
+else
+    probe=/tmp/.fleet_watchdog_vm_$$
+    ( su angel -c 'colima ssh -- true 2>/dev/null && echo ok' > "$probe" 2>/dev/null ) &
+    bg=$!
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+        [ -s "$probe" ] && break
+        sleep 1
+    done
+    if [ -s "$probe" ]; then
+        vm_ok=1
     else
-        log "COLIMA RESTART FAILED -- needs manual attention"
+        kill -9 "$bg" 2>/dev/null
+        pkill -9 -f 'colima ssh' 2>/dev/null
+    fi
+    rm -f "$probe"
+fi
+if [ "$vm_ok" = "1" ]; then
+    rm -f "$VM_STATE" 2>/dev/null
+else
+    count=$(cat "$VM_STATE" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    echo "$count" > "$VM_STATE"
+    if [ "$count" -ge 3 ]; then
+        log "COLIMA VM UNRESPONSIVE (docker socket silent + ssh probe failed, $count consecutive checks) -- restarting VM"
+        if su angel -c 'colima restart' >> "$LOG" 2>&1; then
+            log "COLIMA VM RESTARTED by watchdog"
+        else
+            log "COLIMA RESTART FAILED -- needs manual attention"
+        fi
+        rm -f "$VM_STATE" 2>/dev/null
+    else
+        log "COLIMA VM probe failed (check $count/3: docker socket silent, ssh unresponsive) -- restarting only if it persists"
     fi
 fi
-rm -f "$probe"
 
 # 4. Colima VM disk: warn at 85%, loud at 95% (full disk already broke container builds once).
 vm_pct=$(su angel -c 'colima ssh -- df / 2>/dev/null' 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')
@@ -89,6 +120,19 @@ if [ -n "$vm_pct" ]; then
     elif [ "$vm_pct" -ge 85 ]; then
         log "COLIMA VM DISK WARNING: ${vm_pct}% used -- schedule a prune"
     fi
+fi
+
+# 4b. Runner restart request: the runners are root LaunchDaemons and re-read their .env only at
+# daemon start, so applying a runner-env change needs a root restart. Touching this marker asks
+# the watchdog (which IS root) to restart all five on the next cycle -- the sudo-free escape hatch.
+REQ=/tmp/.fleet_request_runner_restart
+if [ -e "$REQ" ]; then
+    rm -f "$REQ"
+    log "RUNNER RESTART REQUESTED (marker found) -- restarting all runner daemons"
+    for n in "" "-2" "-3" "-4" "-5"; do
+        launchctl kickstart -k "system/actions.runner.thyn-ai.thyn-mac-arm64$n" >> "$LOG" 2>&1
+    done
+    log "RUNNER RESTART COMPLETE"
 fi
 
 # 5. Wedged runner detection. launchd KeepAlive restarts a DEAD runner, but NOT a hung one: a
