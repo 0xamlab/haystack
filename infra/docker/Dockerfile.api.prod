@@ -45,35 +45,37 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --c
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy application code
-COPY --from=builder /build/context/apps/ /app/apps/
-COPY --from=builder /build/context/engines/ /app/engines/
-COPY --from=builder /build/context/training/ /app/training/
-COPY --from=builder /build/context/scripts/ /app/scripts/
-COPY --from=builder /build/context/mojo/ /app/mojo/
-COPY --from=builder /build/context/packages/mcp/ /app/packages/mcp/
+# Copy application code. --chown at COPY time makes the later recursive `chown -R /app`
+# unnecessary — that layer re-wrote every file under /app into the image AGAIN (+1.05 GB,
+# ~27% of the image). Ownership set once, at copy time, costs nothing.
+COPY --from=builder --chown=app:app /build/context/apps/ /app/apps/
+COPY --from=builder --chown=app:app /build/context/engines/ /app/engines/
+COPY --from=builder --chown=app:app /build/context/training/ /app/training/
+COPY --from=builder --chown=app:app /build/context/scripts/ /app/scripts/
+COPY --from=builder --chown=app:app /build/context/mojo/ /app/mojo/
+COPY --from=builder --chown=app:app /build/context/packages/mcp/ /app/packages/mcp/
 # Counts-only public route /v1/runtime/library-stats reads this (docs source of truth).
-COPY --from=builder /build/context/packages/algenta/algenta/runtime_library_contract.json /app/packages/algenta/algenta/runtime_library_contract.json
+COPY --from=builder --chown=app:app /build/context/packages/algenta/algenta/runtime_library_contract.json /app/packages/algenta/algenta/runtime_library_contract.json
 
 # Runtime-manifest source artifacts (committed under build/, ~150KB) so the public
 # /v1/runtime/manifest endpoint doesn't 500 on missing files (no tracked .dockerignore excludes build/).
-COPY --from=builder /build/context/build/llm_rollout_proof_bundle.json \
+COPY --from=builder --chown=app:app /build/context/build/llm_rollout_proof_bundle.json \
                     /build/context/build/llm_rollout_parity_benchmark.json \
                     /build/context/build/llm_compiled_runtime_benchmark.json \
                     /app/build/
 
 # Real Mojo kernel: the native binary + the runtime libs its $ORIGIN/../mojo_env rpath resolves.
 # RUNTIME_FALLBACK_MODE=deny relies on this being a working binary (no Python fallback).
-COPY --from=mojo /app/mojo_build/simulate /app/mojo_build/simulate
-COPY --from=mojo /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
+COPY --from=mojo --chown=app:app /app/mojo_build/simulate /app/mojo_build/simulate
+COPY --from=mojo --chown=app:app /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
 
 # Mojo embeds its build-time Python prefix for stdlib bootstrap. Preserve that
 # path as a read-only symlink instead of setting PYTHONHOME globally, which
 # would corrupt the API's Python 3.14 runtime.
 RUN mkdir -p /build && ln -s /app/mojo_env /build/mojo_env && chmod +x /app/mojo_build/simulate
 
-# Set ownership
-RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
+# /home/app is created app-owned by useradd --create-home; only the state dir needs making.
+RUN mkdir -p /home/app/.algenta && chown app:app /home/app/.algenta
 
 ENV HOME=/home/app \
     MOJO_BINARY_PATH=/app/mojo_build/simulate \

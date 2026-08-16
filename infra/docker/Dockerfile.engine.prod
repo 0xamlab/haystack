@@ -48,24 +48,26 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --c
 
 # Worker (Python) runtime + app + Mojo engine
 COPY --from=builder /install /usr/local
-COPY --from=builder /build/context/apps/ /app/apps/
-COPY --from=builder /build/context/engines/ /app/engines/
-COPY --from=builder /build/context/training/ /app/training/
-COPY --from=builder /build/context/scripts/ /app/scripts/
-COPY --from=builder /build/context/mojo/ /app/mojo/
-COPY --from=builder /build/context/packages/mcp/ /app/packages/mcp/
+# --chown at COPY time replaces the later recursive `chown -R /app`, which re-wrote every file
+# under /app into the image a second time (+~1 GB per image). Ownership at copy time costs nothing.
+COPY --from=builder --chown=app:app /build/context/apps/ /app/apps/
+COPY --from=builder --chown=app:app /build/context/engines/ /app/engines/
+COPY --from=builder --chown=app:app /build/context/training/ /app/training/
+COPY --from=builder --chown=app:app /build/context/scripts/ /app/scripts/
+COPY --from=builder --chown=app:app /build/context/mojo/ /app/mojo/
+COPY --from=builder --chown=app:app /build/context/packages/mcp/ /app/packages/mcp/
 
 # Runtime-manifest source artifacts (committed under build/, ~150KB) so /v1/runtime/manifest
 # doesn't 500 on missing files (no tracked .dockerignore excludes build/).
-COPY --from=builder /build/context/build/llm_rollout_proof_bundle.json \
+COPY --from=builder --chown=app:app /build/context/build/llm_rollout_proof_bundle.json \
                     /build/context/build/llm_rollout_parity_benchmark.json \
                     /build/context/build/llm_compiled_runtime_benchmark.json \
                     /app/build/
 
 # Real Mojo kernel: the native binary + the runtime libs its $ORIGIN/../mojo_env rpath resolves.
 # RUNTIME_FALLBACK_MODE=deny relies on this being a working binary (no Python fallback).
-COPY --from=mojo /app/mojo_build/simulate /app/mojo_build/simulate
-COPY --from=mojo /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
+COPY --from=mojo --chown=app:app /app/mojo_build/simulate /app/mojo_build/simulate
+COPY --from=mojo --chown=app:app /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
 # Mojo embeds its build-time Python prefix for stdlib bootstrap. Preserve that
 # path as a read-only symlink instead of setting PYTHONHOME globally, which
 # would corrupt the worker's Python 3.14 runtime.
@@ -78,7 +80,8 @@ COPY --from=sidecar --chown=app:app /app/agent-core /app/agent-core
 COPY infra/docker/engine-entrypoint.sh /usr/local/bin/engine-entrypoint.sh
 RUN chmod +x /usr/local/bin/engine-entrypoint.sh
 
-RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
+# /home/app is created app-owned by useradd --create-home; only the state dir needs making.
+RUN mkdir -p /home/app/.algenta && chown app:app /home/app/.algenta
 ENV HOME=/home/app \
     MOJO_BINARY_PATH=/app/mojo_build/simulate \
     RUNTIME_FALLBACK_MODE=deny \
