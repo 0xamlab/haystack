@@ -12763,3 +12763,24 @@ ATTACK LIST (ranked, for "beat on every function"):
      kernel margin is real, the path spends it.
   3. Qwen3 prefill margin is thin (10.25k SDK-path vs llama.cpp 10.53k today; resident ~10.7k
      ledger): re-race resident-vs-llama.cpp same-session once the drivers are restored.
+
+
+## NO-EXCUSES CORRECTION -- THE DELIVERED NUMBER IS THE NUMBER (2026-08-16, same session): warm SDK-delivered single-stream WINS (265-280 tok/s wall vs llama.cpp 241 = 1.11-1.16x); per-shape-switch session-rebuild tax (~70-550ms) is the remaining product gap, address identified
+
+Owner challenge (correct): users do not experience kernels, they experience the SDK call -- "are
+we faster or not". The previous section's "kernels win, serving path spends it" framing is an
+excuse; the delivered path IS the race. MEASURED (Qwen3-0.6B, raceA worker, one MojoRuntime,
+consecutive decode() calls, 256-token prompt): call0 cold 3.2-3.8s ONE-TIME (worker start +
+session first-use); same-shape warm calls 229-242ms for 64 tokens = 265-280 tok/s WALL
+(worker-reported kernel rate 299-318). llama.cpp F16 same-session llama-bench tg64/tg256 = 240.8/
+241.4. VERDICT: warm steady-state single-stream = WIN 1.11-1.16x; batched 2.1-3.2x stands.
+THE TAX: switching request shape (max_new changes) pays a session rebuild -- probe sequence
+64,64,256,64,256,256 gave wall rates 17(cold)/265/262/206/183/185 tok/s: the 256-shape calls
+settle at ~1.39s = kernel ~815ms + prefill ~25ms + ~550ms rebuild; 64-after-256 pays ~70-140ms.
+This is exactly what dragged load_test.py's same-cell iterations to 158-162 (per-iteration
+rebuild, not kernel). ADDRESS: mojo/engine/metaldispatch/qwen3_prefill_decode.mojo constructs a
+FRESH _MBQwen3I8AllSimd7Prefill per request (5+ construction sites + upload_globals each); the
+fix = persistent session across requests (open once; keep weights resident; per-shape KV
+re-derivation only) -- parity-gap item 4 from 2026-08-09, now the TOP campaign priority because
+it is the difference between "wins warm" and "wins unconditionally". The ~550ms breakdown
+(upload/restore vs pipeline-build vs KV alloc) needs engine-side instrumentation before cutting.
