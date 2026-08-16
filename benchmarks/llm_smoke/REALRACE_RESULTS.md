@@ -12691,3 +12691,75 @@ families and the flagged kvprod/f4u2 partial cover it -- but UNVERIFIED: needs r
 weights, HF-gated); B=1 stays delegated to serial (the #660 SDK guard); GGUF decode_batched
 routing (same deferral as #677); batched throughput vs llama.cpp concurrent slots NOT raced here
 (correctness gate first -- the race harness wants this arm once the concurrent axis re-races).
+
+
+## FRESH POST-FLEET SCOREBOARD (2026-08-16): TinyLlama decode now TIES Q8_0 @256 (was -4..-9%), trails ~6% @1024 (was ~-10%); prefill leads/ties; Qwen3 kernel wins STAND but the canonical resident drivers are gone from the tree -- SDK-path overhead is now the visible bottleneck
+
+CONTEXT: first race session since the fleet migration + the disk-full incident + the worker
+rebuild. All raceB/raceA workers REBUILT from current main (6f64c6f9 era) with the current
+generated blob set (23 blobs; i8kv pair EXCLUDED per the #682 sampling-nondeterminism hazard),
+STAGE_6144 for TinyLlama. Build gotchas re-paid and recorded: xcode-select points at
+CommandLineTools -> metallib compile fails -> DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/
+Contents/Developer required; MOJO_SRC/DISPATCH_OUTPUT_PATH must be ABSOLUTE (script cd's into
+mojo_env); the SDK's worker resolution silently FALLS BACK to repo-dev `mojo_build/simulate`
+(a STALE July-30 monolith whose dyld dies on a missing AsyncRT symbol in the current
+libKGENCompilerRTShared) whenever ALGENTA_NATIVE_WORKER does not resolve -- a raceB binary
+vanished mid-session (suspected concurrent-actor cleanup) and five "crashes" were that stale
+fallback, NOT a kernel bug.
+
+CORRECTNESS (both race workers, current tree): Qwen3 raceA test_inference_gpu_e2e 6 passed /
+1 skipped (oracle 374 intact); TinyLlama raceB greedy byte-identical to prior campaign outputs
+(France [3900,29889,13,...] short; repeated-prompt cycle at depth) across EVERY blob
+combination tested.
+
+METHOD: interleaved same-session. llama.cpp = Homebrew build 000547513 (10210), BLAS,MTL
+backend, 12 threads, llama-bench -r 5 baselines + -r 1 interleaved rounds. Algenta =
+tinyllama_deep_bench.py (SDK decode() path, warmup + median-of-N) alternating rounds with
+llama-bench. Medians reported; per-round samples in parentheses. NO trimming applied.
+
+TINYLLAMA-1.1B decode @256 prompt / 64 gen (3 interleaved rounds):
+  algenta int8      274.8 tok/s   (268.2, 274.8, 275.3)
+  llama.cpp Q8_0    277.4 tok/s   (273.9, 277.4, 277.7)   -> algenta 0.99x = TIE (within-round bands overlap)
+  llama.cpp F16     177.0 tok/s   (173.6, 179.8, 177.0)   -> algenta 1.55x WIN
+  (Aug-13 ledger state for reference: trailed Q8_0 ~4% @256.)
+
+TINYLLAMA-1.1B decode @1024 prompt / 64 gen (3 interleaved rounds):
+  algenta int8      254.9 tok/s   (254.4, 254.9, 255.9)
+  llama.cpp Q8_0    270.8 tok/s   (270.7, 270.8, 275.9)   -> algenta 0.94x, TRAILS ~6% (tight, stable bands; was ~-10%)
+
+TINYLLAMA-1.1B prefill @256: algenta 5,889-5,958 tok/s (steel d64 AF path, raceB, 3 samples)
+  vs llama.cpp pp256 Q8_0 5,811.9 +/- 12.6 (baseline) -> 1.01-1.03x WIN; F16 pp256 6,094.5 -> 0.97x near-tie.
+  @1024: llama.cpp pp1024 Q8_0 5,983.3 / F16 6,293.1; algenta steel path ledger value 6,337
+  (unchanged since #675, not re-raced today) -> leads Q8_0 ~1.06x, ties F16.
+
+QWEN3-0.6B (llama-bench F16 baselines today): pp256 10,532.2 +/- 9.8 | tg64 240.8 +/- 1.0 |
+  tg256 241.4 +/- 3.5.
+  Algenta SDK-path stress harness (load_test.py, raceA, in=256, iterations=3): decode 86.6 @out16 /
+  162.0 @out64 / 158.0 @out256; prefill 10,251 -> 9,033 -> 7,232 across cells (drifting -- DVFS/
+  per-cell overhead in this harness, NOT a kernel signal).
+  HONEST READ: the ledger's Qwen3 single-stream WINS (resident driver: 263-272 @256-era decode,
+  346 post-GEMV; prefill 10,676-10,734 resident) were measured by resident race drivers
+  (qwen3_resident_decode_race.mojo / qwen3_resident_warm_prefill_nomirror_msl.mojo) that are NOT
+  in the tree (untracked campaign artifacts, since cleaned). Through the SDK path, per-decode()
+  overhead (worker protocol/session handling) swallows the kernel margin: 158-162 vs llama.cpp's
+  241 = 0.66x. The kernels still win; the SERVING PATH is now where Qwen3 single-stream loses.
+  Batched/concurrent axis unaffected by this finding: 2.1-3.2x llama.cpp @B=8/16/32 stands (#659).
+
+RACEB BLOB-SET FINDING (session-build discipline for the record): with ALL 23 current blobs the
+worker is CORRECT and its decode is the 258.8-274.8 band above; the steel d64 prefill blob buys
+prefill 1,680 -> ~5,950 tok/s (3.5x) and costs decode ~5% vs a no-steel set (272.6 pooled vs
+258.8) -- kept, because the prefill win is the larger margin and decode stays within the Q8_0
+tie band @256. msl_zero/abism/candidate_c blobs are discovery-neutral (dedicated slot / never
+matched) -- harmless.
+
+ATTACK LIST (ranked, for "beat on every function"):
+  1. TinyLlama @1024 decode, ~0.6 ms/token short of Q8_0: probe @1056 keys shows attention 0.72 ms
+     (f2s4 partial 0.60 + merge 0.12) while every other role is at its per-dispatch floor. Levers
+     left: structural fusion (merge into a neighbor epilogue; fewer dispatches), or a deeper
+     partial re-design. Width-8 staging, register-blocked staging, key-SIMD shuffle and n_splits>16
+     were REFUTED in the f2s4 session -- do not retry.
+  2. Qwen3 single-stream serving overhead: restore the resident drivers to the tree (or profile
+     decode()'s per-call cost: session re-open? quantized-cache restore? protocol framing?) -- the
+     kernel margin is real, the path spends it.
+  3. Qwen3 prefill margin is thin (10.25k SDK-path vs llama.cpp 10.53k today; resident ~10.7k
+     ledger): re-race resident-vs-llama.cpp same-session once the drivers are restored.

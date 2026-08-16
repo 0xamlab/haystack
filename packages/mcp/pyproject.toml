@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta-mcp"
-version = "1.0.5"
+version = "1.0.7"
 description = "Algenta MCP server for Cursor, Codex, and other Model Context Protocol clients."
 readme = "README.md"
 requires-python = ">=3.10"
