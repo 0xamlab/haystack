@@ -122,6 +122,21 @@ if [ -n "$vm_pct" ]; then
     fi
 fi
 
+# 4a. Docker hygiene: CI images declare Dockerfile VOLUMEs (postgres data dir, minio /data) and
+# the CI teardowns used `docker rm -f` WITHOUT `-v`, so every run leaked anonymous volumes
+# (~4-7 GB/cycle -- postgres initdb died with ENOSPC at 85% disk once). Dangling volumes are
+# attached to NO container, so pruning them is always safe; do it every cycle. When the disk
+# climbs, also drop the build cache (biggest single reclaimable, ~13 GB seen).
+if prune_out=$(su angel -c 'docker volume prune -f 2>&1'); then
+    case "$prune_out" in *"Total reclaimed space: 0B"*) : ;; *) log "DOCKER VOLUMES PRUNED: $(printf '%s' "$prune_out" | tail -1)";; esac
+else
+    log "DOCKER VOLUME PRUNE FAILED (non-fatal): $prune_out"
+fi
+if [ -n "${vm_pct:-}" ] && [ "$vm_pct" -ge 80 ]; then
+    builder_out=$(su angel -c 'docker builder prune -f 2>&1' | tail -1)
+    log "COLIMA DISK ${vm_pct}% -- builder cache pruned: ${builder_out}"
+fi
+
 # 4b. Runner restart request: the runners are root LaunchDaemons and re-read their .env only at
 # daemon start, so applying a runner-env change needs a root restart. Touching this marker asks
 # the watchdog (which IS root) to restart all five on the next cycle -- the sudo-free escape hatch.

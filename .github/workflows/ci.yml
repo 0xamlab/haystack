@@ -79,7 +79,7 @@ jobs:
           # Persistent self-hosted runner, not an ephemeral cloud VM — a crashed/cancelled
           # prior run can leave these containers behind, and a fixed --name collides on
           # `docker run` otherwise.
-          docker rm -f postgres-ci dragonfly-ci minio >/dev/null 2>&1 || true
+          docker rm -fv postgres-ci dragonfly-ci minio >/dev/null 2>&1 || true
           docker run -d --name postgres-ci -p 15432:5432 \
             -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
             postgres:16-alpine
