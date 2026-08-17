@@ -29,7 +29,7 @@ from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.models.api_key import APIKey
 from apps.api_server.models.github_app_installation import GithubAppInstallation
-from apps.api_server.services import github_app_auth
+from apps.api_server.services import github_app_auth, tenant_key_store
 from apps.api_server.services.auth_service import AuthContext, generate_api_key
 from apps.api_server.services.github_app_auth import app_configured
 from apps.api_server.services.github_app_provisioning import (
@@ -250,14 +250,46 @@ async def codna_webhook_engine_key(
         )
     )
     await db.commit()
+
+    provider, provider_key = None, None
+    try:
+        org_keys = await tenant_key_store.resolve_org_keys(row.org_id)
+        provider, provider_key = _first_configured_provider(org_keys.provider_keys)
+    except Exception:  # noqa: BLE001 — a BYOK-lookup hiccup must never break the engine-key mint
+        # above (the fix can still run house-metered); the caller falls back to its own defaults.
+        logger.warning("codna_webhook_engine_key_byok_lookup_failed", org_id=str(row.org_id))
+
     return JSONResponse(
         status_code=200,
         content={
             "engine_key": raw_key,
             "org_id": str(row.org_id),
             "expires_at": expires_at.isoformat(),
+            "provider": provider,
+            "provider_key": provider_key,
         },
     )
+
+
+# Priority order when an org has configured more than one BYOK backend — first match wins.
+# Maps decision-engine's internal backend id (apps/api_server/services/llm_provider_service)
+# to codna's own provider name (cli/codna/keystore.py's PROVIDER_TO_ENV) — the two repos name
+# Google's backend differently ("google_genai" vs "google").
+_BACKEND_TO_CODNA_PROVIDER = {
+    "anthropic": "anthropic",
+    "openai": "openai",
+    "google_genai": "google",
+}
+
+
+def _first_configured_provider(provider_keys: dict[str, str]) -> tuple[str | None, str | None]:
+    """Return (codna_provider_name, raw_key) for the first BYOK backend an org has configured,
+    in a fixed, deterministic priority order — or (None, None) if none are set."""
+    for backend, codna_provider in _BACKEND_TO_CODNA_PROVIDER.items():
+        key = provider_keys.get(backend)
+        if key:
+            return codna_provider, key
+    return None, None
 
 
 # ── Install / OAuth ──────────────────────────────────────────────────────────

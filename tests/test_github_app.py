@@ -331,9 +331,14 @@ async def test_engine_key_suspended_installation_404(monkeypatch):
     assert exc.value.status_code == 404
 
 
+async def _fake_org_keys_empty(_org_id):
+    return SimpleNamespace(provider_keys={})
+
+
 @pytest.mark.anyio
 async def test_engine_key_mints_fresh_short_lived_service_key(monkeypatch):
     _configure_engine_key(monkeypatch)
+    monkeypatch.setattr(tenant_key_store, "resolve_org_keys", _fake_org_keys_empty)
     org = uuid.uuid4()
     db = _FakeSession([_install_row(org)])
     resp = await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
@@ -341,6 +346,8 @@ async def test_engine_key_mints_fresh_short_lived_service_key(monkeypatch):
     payload = json.loads(resp.body)
     assert payload["org_id"] == str(org)
     assert payload["engine_key"]  # a raw, usable key was returned
+    assert payload["provider"] is None  # no BYOK configured for this org
+    assert payload["provider_key"] is None
     assert len(db.added) == 1
     key = db.added[0]
     assert key.org_id == org
@@ -348,6 +355,65 @@ async def test_engine_key_mints_fresh_short_lived_service_key(monkeypatch):
     assert key.user_id is None
     assert key.hashed_key != payload["engine_key"]  # never the raw value, only its hash
     assert key.expires_at is not None  # short-lived, not a standing credential
+
+
+@pytest.mark.anyio
+async def test_engine_key_surfaces_configured_byok_provider(monkeypatch):
+    """codna's local agent-core sidecar always looks for a specific provider's raw key
+    (ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY) -- whichever of the three the org
+    actually configured via BYOK must come back here, not just a billing/metering credential,
+    or every fix silently falls back to a provider the org never gave a key for."""
+    _configure_engine_key(monkeypatch)
+
+    async def _fake_org_keys(_org_id):
+        return SimpleNamespace(provider_keys={"openai": "sk-org-openai-key"})
+
+    monkeypatch.setattr(tenant_key_store, "resolve_org_keys", _fake_org_keys)
+    org = uuid.uuid4()
+    db = _FakeSession([_install_row(org)])
+    resp = await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
+    payload = json.loads(resp.body)
+    assert payload["provider"] == "openai"
+    assert payload["provider_key"] == "sk-org-openai-key"
+
+
+@pytest.mark.anyio
+async def test_engine_key_maps_google_genai_backend_to_codna_provider_name(monkeypatch):
+    """decision-engine's internal backend id (google_genai) differs from codna's own provider
+    name (google, per cli/codna/keystore.py) -- the bridge must translate, not pass the internal
+    id through verbatim."""
+    _configure_engine_key(monkeypatch)
+
+    async def _fake_org_keys(_org_id):
+        return SimpleNamespace(provider_keys={"google_genai": "gk-org-google-key"})
+
+    monkeypatch.setattr(tenant_key_store, "resolve_org_keys", _fake_org_keys)
+    org = uuid.uuid4()
+    db = _FakeSession([_install_row(org)])
+    resp = await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
+    payload = json.loads(resp.body)
+    assert payload["provider"] == "google"
+    assert payload["provider_key"] == "gk-org-google-key"
+
+
+@pytest.mark.anyio
+async def test_engine_key_byok_lookup_failure_does_not_break_the_mint(monkeypatch):
+    """A BYOK-store hiccup must never break the engine-key mint itself -- the fix can still run
+    house-metered; the caller falls back to its own defaults."""
+    _configure_engine_key(monkeypatch)
+
+    async def _boom(_org_id):
+        raise RuntimeError("db hiccup")
+
+    monkeypatch.setattr(tenant_key_store, "resolve_org_keys", _boom)
+    org = uuid.uuid4()
+    db = _FakeSession([_install_row(org)])
+    resp = await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
+    assert resp.status_code == 200
+    payload = json.loads(resp.body)
+    assert payload["engine_key"]
+    assert payload["provider"] is None
+    assert payload["provider_key"] is None
 
 
 @pytest.mark.anyio
