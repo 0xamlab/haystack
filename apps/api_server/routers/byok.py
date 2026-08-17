@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_redis
+from apps.api_server.schemas.tenant_keys import ProviderKeyInfo, ProviderKeyListResponse
 from apps.api_server.services import tenant_key_management as tk_mgmt
 from apps.api_server.services import website_identity
 
@@ -80,6 +81,35 @@ async def _verify_and_resolve(
 
 def _actor_email(identity: dict[str, Any]) -> str:
     return identity.get("email") or f"github:{identity['github_login']}"
+
+
+@router.get(
+    "/byok",
+    response_model=ProviderKeyListResponse,
+    summary=(
+        "List the caller's configured per-org BYOK backends "
+        "(website / Supabase-authenticated; no key material)"
+    ),
+)
+async def list_byok(
+    response: Response,
+    authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+    redis: Any = Depends(get_redis),
+) -> ProviderKeyListResponse:
+    # So the account page can show "you already have a key configured" (and when it was set) after
+    # a reload, instead of an always-blank input with no way to tell a saved key from an unset one.
+    response.headers["Cache-Control"] = "no-store"  # this reflects live DB state, never cache it
+    org, _identity = await _verify_and_resolve(
+        authorization, db, redis, website_identity.parse_org_id(x_org_id)
+    )
+    rows = await tk_mgmt.list_org_key_backends(db, org_id=org.id)
+    # The reserved engine key isn't manageable from this website surface (see _check_provider) --
+    # hide it from the listing too, so the BYOK card never has to know that concept exists.
+    return ProviderKeyListResponse(
+        keys=[ProviderKeyInfo(backend=b, updated_at=u) for b, u in rows if b not in _ENGINE_LABELS]
+    )
 
 
 @router.post(

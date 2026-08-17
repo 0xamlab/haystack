@@ -7,6 +7,7 @@ TenantKeyError 409|400). External calls are stubbed so the test is hermetic."""
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from apps.api_server.db.session import get_db
 from apps.api_server.main import app
@@ -235,6 +236,68 @@ def test_post_byok_rejects_engine_backend(monkeypatch):
         app.dependency_overrides.clear()
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "unsupported_backend"
+
+
+def test_get_byok_lists_configured_backends_no_key_material(monkeypatch):
+    org_id = uuid.uuid4()
+    _stub_auth(monkeypatch)
+    updated = datetime(2026, 1, 1, tzinfo=UTC)
+
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
+        return _Org(org_id)
+
+    async def _list(db, *, org_id):
+        return [("anthropic", updated)]
+
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
+    monkeypatch.setattr(tk_mgmt, "list_org_key_backends", _list)
+    _overrides()
+    try:
+        with SyncASGIClient(app) as client:
+            resp = client.get("/byok", headers={"authorization": "Bearer JWT"})
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {"keys": [{"backend": "anthropic", "updated_at": "2026-01-01T00:00:00Z"}]}
+    # Write-only guarantee holds for reads too: no actual key material in the response
+    # ("keys" the field name is fine; an API secret value like "sk-..." would not be).
+    assert "sk-" not in resp.text
+
+
+def test_get_byok_hides_the_reserved_engine_backend(monkeypatch):
+    org_id = uuid.uuid4()
+    _stub_auth(monkeypatch)
+    updated = datetime(2026, 1, 1, tzinfo=UTC)
+
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
+        return _Org(org_id)
+
+    async def _list(db, *, org_id):
+        # list_org_key_backends already maps the reserved store backend to the "engine" API label.
+        return [("anthropic", updated), ("engine", updated)]
+
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
+    monkeypatch.setattr(tk_mgmt, "list_org_key_backends", _list)
+    _overrides()
+    try:
+        with SyncASGIClient(app) as client:
+            resp = client.get("/byok", headers={"authorization": "Bearer JWT"})
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    assert [k["backend"] for k in resp.json()["keys"]] == ["anthropic"]
+
+
+def test_get_byok_missing_bearer_is_401(monkeypatch):
+    _stub_auth(monkeypatch)
+    _overrides()
+    try:
+        with SyncASGIClient(app) as client:
+            resp = client.get("/byok")
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 401
 
 
 def test_delete_byok_is_idempotent_204(monkeypatch):
