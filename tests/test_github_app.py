@@ -236,6 +236,78 @@ async def test_webhook_suspended_installation_acked(monkeypatch):
     assert not db.added
 
 
+# ── internal engine-key endpoint (the account-linking bridge to codna-webhook) ────────────────
+def _configure_engine_key(monkeypatch, *, secret: str | None = "shh"):
+    monkeypatch.setattr(
+        ghwh, "get_settings",
+        lambda: SimpleNamespace(codna_webhook_internal_secret=secret),
+    )
+
+
+@pytest.mark.anyio
+async def test_engine_key_not_configured_404(monkeypatch):
+    _configure_engine_key(monkeypatch, secret=None)
+    with pytest.raises(HTTPException) as exc:
+        await ghwh.codna_webhook_engine_key(_FakeSession([]), installation_id=12345, authorization="Bearer shh")
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_engine_key_missing_auth_401(monkeypatch):
+    _configure_engine_key(monkeypatch)
+    with pytest.raises(HTTPException) as exc:
+        await ghwh.codna_webhook_engine_key(_FakeSession([]), installation_id=12345, authorization=None)
+    assert exc.value.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_engine_key_wrong_auth_401(monkeypatch):
+    _configure_engine_key(monkeypatch)
+    with pytest.raises(HTTPException) as exc:
+        await ghwh.codna_webhook_engine_key(
+            _FakeSession([]), installation_id=12345, authorization="Bearer wrong-secret",
+        )
+    assert exc.value.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_engine_key_unknown_installation_404(monkeypatch):
+    _configure_engine_key(monkeypatch)
+    with pytest.raises(HTTPException) as exc:
+        await ghwh.codna_webhook_engine_key(
+            _FakeSession([None]), installation_id=12345, authorization="Bearer shh",
+        )
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_engine_key_suspended_installation_404(monkeypatch):
+    _configure_engine_key(monkeypatch)
+    db = _FakeSession([_install_row(suspended=True)])
+    with pytest.raises(HTTPException) as exc:
+        await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_engine_key_mints_fresh_short_lived_service_key(monkeypatch):
+    _configure_engine_key(monkeypatch)
+    org = uuid.uuid4()
+    db = _FakeSession([_install_row(org)])
+    resp = await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
+    assert resp.status_code == 200
+    payload = json.loads(resp.body)
+    assert payload["org_id"] == str(org)
+    assert payload["engine_key"]  # a raw, usable key was returned
+    assert len(db.added) == 1
+    key = db.added[0]
+    assert key.org_id == org
+    assert key.is_service is True
+    assert key.user_id is None
+    assert key.hashed_key != payload["engine_key"]  # never the raw value, only its hash
+    assert key.expires_at is not None  # short-lived, not a standing credential
+
+
 @pytest.mark.anyio
 async def test_webhook_installation_created_provisions_org(monkeypatch):
     """INSTALL-FIRST via webhook: installation.created with no codna org mints one and binds it,

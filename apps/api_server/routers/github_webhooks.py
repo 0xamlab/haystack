@@ -13,7 +13,9 @@ The whole surface is inert until ``GITHUB_APP_*`` is configured.
 """
 from __future__ import annotations
 
+import hmac
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 import structlog
@@ -25,14 +27,20 @@ from sqlalchemy.exc import IntegrityError
 from apps.api_server.config import get_settings
 from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.models.api_key import APIKey
 from apps.api_server.models.github_app_installation import GithubAppInstallation
 from apps.api_server.services import github_app_auth
-from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.auth_service import AuthContext, generate_api_key
 from apps.api_server.services.github_app_auth import app_configured
 from apps.api_server.services.github_app_provisioning import (
     provision_or_lookup_org_for_installation,
 )
 from apps.api_server.services.webhook_service import verify_webhook_signature
+
+# How long a minted engine-key credential is valid for. One codna-webhook job attempt (default
+# CODNA_WEBHOOK_JOB_TIMEOUT_S=3600) needs to fit inside this with margin — resolve_engine_key is
+# called fresh per attempt, so this does not need to cover all retries cumulatively.
+_ENGINE_KEY_TTL = timedelta(hours=2)
 
 # Roles allowed to bind an external code-modifying integration to the org.
 _INSTALL_ADMIN_ROLES = frozenset({"owner", "admin"})
@@ -140,6 +148,66 @@ async def github_webhook(
     # Every other event (check_suite, issues, pull_request_review, ...) is acked and ignored —
     # this backend no longer turns events into fix-PR jobs (see the module docstring).
     return JSONResponse(status_code=202, content={"status": "ignored", "event": event})
+
+
+@router.get("/internal/codna-webhook/engine-key", include_in_schema=False)
+async def codna_webhook_engine_key(
+    db: AsyncSessionDep,
+    installation_id: int,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    """Service-to-service only: codna-webhook calls this, live, every time it needs to run a
+    fix on behalf of a linked installation. There is deliberately no static installation_id ->
+    credential store anywhere (no Fly volume, no synced file) — decision-engine is the one
+    place that actually knows an installation's org/entitlement, so it answers live instead of
+    something else trying to keep a copy in sync. Never exposed to a customer-facing auth
+    context: gated on a shared secret, not an org API key or session.
+
+    Mints a FRESH short-lived service credential per call rather than returning a stored raw
+    key — APIKey only ever persists a hash (see models/api_key.py), so a previously-minted raw
+    value (e.g. the "GitHub App" key created at provisioning time) can never be recovered
+    later anyway. A fresh short-lived key per call is also strictly safer to hand across a
+    network boundary than a long-lived one.
+    """
+    settings = get_settings()
+    secret = settings.codna_webhook_internal_secret
+    if not secret:
+        raise HTTPException(status_code=404, detail="not configured")
+    if not authorization or not hmac.compare_digest(authorization, f"Bearer {secret}"):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    row = (
+        await db.execute(
+            select(GithubAppInstallation).where(
+                GithubAppInstallation.installation_id == installation_id
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None or row.suspended:
+        raise HTTPException(status_code=404, detail="installation not linked")
+
+    raw_key, key_prefix, hashed_key = generate_api_key()
+    expires_at = datetime.now(UTC) + _ENGINE_KEY_TTL
+    db.add(
+        APIKey(
+            org_id=row.org_id,
+            user_id=None,
+            label="codna-webhook (short-lived)",
+            key_prefix=key_prefix,
+            hashed_key=hashed_key,
+            is_service=True,
+            expires_at=expires_at,
+        )
+    )
+    await db.commit()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "engine_key": raw_key,
+            "org_id": str(row.org_id),
+            "expires_at": expires_at.isoformat(),
+        },
+    )
 
 
 # ── Install / OAuth ──────────────────────────────────────────────────────────

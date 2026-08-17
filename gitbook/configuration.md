@@ -58,6 +58,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `AZURE_RESOURCE_GROUP_PREFIX` | `algenta` | — | Prefix for Azure resource groups |
 | `AZURE_SUBSCRIPTION_ID` | — | — | Azure subscription ID |
 | `AZURE_TENANT_ID` | — | — | Azure tenant ID |
+| `CODNA_WEBHOOK_INTERNAL_SECRET` | — | — | — |
 | `CORS_ORIGINS` | `http://localhost:3000,http://localhos...` | — | — |
 | `DATABASE_URL` | `postgresql+asyncpg://postgres:postgre...` | — | Async PostgreSQL connection string. |
 | `DATABASE_URL_SYNC` | `postgresql://postgres:postgres@localh...` | — | Sync PostgreSQL connection string (migrations). |

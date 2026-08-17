@@ -387,6 +387,11 @@ class Settings(BaseSettings):
     github_app_slug: str | None = Field(
         default=None, validation_alias=AliasChoices("GITHUB_APP_SLUG")
     )
+    # Shared secret gating the internal codna-webhook engine-key endpoint (service-to-service
+    # only, never a customer-facing auth context). Unset = the endpoint 404s.
+    codna_webhook_internal_secret: str | None = Field(
+        default=None, validation_alias=AliasChoices("CODNA_WEBHOOK_INTERNAL_SECRET")
+    )
 
     # ── Supabase identity (codna website BYOK bridge) ─────────────────────────
     # The codna marketing site signs users in with Supabase (GitHub OAuth) and forwards the
