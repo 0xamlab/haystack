@@ -6,6 +6,10 @@ __pycache__/
 *.egg
 *.egg-info/
 dist/
+
+# Race memory state (scripts/race_memory.py builds it on demand)
+.race-memory/
+
 build/
 !build/
 build/*
