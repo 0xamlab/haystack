@@ -18,11 +18,14 @@ How it works
    graph, a changed file imported by a very large share of the graph (a shared core module — running
    "its tests" == running everything), or any non-Python change outside a safe allowlist (config,
    CI, infra can affect anything).
-5. Multi-language awareness (Codna-backed, optional): with ``--codna-cli <path>`` (or ``CODNA_CLI``)
-   pointing at a codna checkout/install, changed files are classified through Codna's extractor
-   registry. When EVERY changed file is source in a known non-Python language and none of them is a
-   test in that language, this (Python) suite has nothing that can execute them -> select nothing
-   instead of the full suite. Without codna the behavior is exactly the conservative fallback above.
+5. Codna-backed intelligence (preferred, degrades gracefully). Resolution order: an explicit
+   ``--codna-cli <path>`` (or ``CODNA_CLI``) pins a specific codna checkout; otherwise the
+   INSTALLED ``codna`` wheel is used. With codna 0.1.48+ the whole selection decision is delegated
+   to the productized ``codna.impact`` engine (same conservative bias, tighter closure); with
+   seam-only codna (0.1.47) changed files are classified through Codna's extractor registry: when
+   EVERY changed file is source in a known non-Python language and none of them is a test in that
+   language, this (Python) suite has nothing that can execute them -> select nothing instead of the
+   full suite. Without codna the behavior is exactly the conservative local fallback above.
 
 Deliberate bias: when in doubt, run MORE tests, never fewer. A false "affected" costs minutes; a
 false "unaffected" ships a regression.
@@ -213,6 +216,26 @@ def _is_broad(rel: str) -> bool:
 
 
 _CODNA_CACHE: dict[str, object | None] = {}
+_CODNA_ALIAS: dict[str, str] = {}
+
+
+def _installed_codna():
+    """The installed ``codna`` wheel, if it carries the per-file seam (thyn-ai/codna#445).
+
+    Returns ``(codeunits, impact_fn)`` — ``impact_fn`` is ``codna.impact.compute_impact`` when the
+    wheel also carries the productized engine (thyn-ai/codna#446, 0.1.48+), else None. Never fatal:
+    selection must run anywhere codna is absent or stale."""
+    try:
+        from codna import codeunits
+    except Exception:  # noqa: BLE001 — any import failure just disables the codna path
+        return None, None
+    if not (hasattr(codeunits, "language_for") and hasattr(codeunits, "extract_file")):
+        return None, None  # predates the per-file seam — stay conservative
+    try:
+        from codna.impact import compute_impact
+    except Exception:  # noqa: BLE001 — engine-less wheels still get the multi-language fast path
+        return codeunits, None
+    return codeunits, compute_impact
 
 
 def _load_codna(cli_path: str | None):
@@ -247,8 +270,28 @@ def _load_codna(cli_path: str | None):
         return None
     if not (hasattr(codeunits, "language_for") and hasattr(codeunits, "extract_file")):
         codeunits = None  # codna predates the per-file seam (thyn-ai/codna#445) — stay conservative
+    else:
+        _CODNA_ALIAS[key] = alias
     _CODNA_CACHE[key] = codeunits
     return codeunits
+
+
+def _load_codna_impact(cli_path: str | None):
+    """The productized impact engine (thyn-ai/codna#446) from the SAME explicit checkout loaded by
+    ``_load_codna``, or None when the checkout predates it. Kept per-checkout so an explicit path
+    never silently mixes with the installed wheel."""
+    path = cli_path or os.environ.get("CODNA_CLI")
+    if not path or _load_codna(cli_path) is None:
+        return None
+    alias = _CODNA_ALIAS.get(str(Path(path).expanduser().resolve() / "codna"))
+    if not alias:
+        return None
+    try:
+        impact = importlib.import_module(f"{alias}.impact")
+    except Exception:  # noqa: BLE001 — pre-#446 checkout: the local graph below decides
+        return None
+    fn = getattr(impact, "compute_impact", None)
+    return fn if callable(fn) else None
 
 
 def _language_disjoint_selection(changed: list[str], codeunits):
@@ -276,8 +319,21 @@ def _language_disjoint_selection(changed: list[str], codeunits):
             "no test in this suite can execute them")
 
 
-def compute_affected(changed: list[str], py_files: list[Path], codeunits=None):
-    """Return (mode, tests, reason). mode in {"subset","all"}."""
+def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *, impact_fn=None):
+    """Return (mode, tests, reason). mode in {"subset","all"}.
+
+    When ``impact_fn`` (codna.impact.compute_impact) is available, the decision is delegated to the
+    productized engine: same conservative bias, but its name-resolved closure keys avoid the
+    importer-blowup this local graph over-selects on shared-ish modules (measured on this repo:
+    inference.py change 173 -> 12 tests, package __init__ 173 -> 45 — the campaign-validated
+    numbers from thyn-ai/codna#446). The local graph below remains the fallback for environments
+    without a codna wheel."""
+    if impact_fn is not None:
+        res = impact_fn(REPO_ROOT, changed, codeunits=codeunits,
+                        broad_globs=_BROAD_GLOBS,
+                        shared_core_fraction=_SHARED_CORE_FRACTION,
+                        ignore=tuple(_IGNORE_DIRS))
+        return res.mode, res.tests, res.reason
     if not changed:
         return "all", [], "no changed files reported; running full suite to be safe"
     # Anything broad/config/CI-ish -> run everything.
@@ -369,9 +425,16 @@ def main() -> int:
     args = ap.parse_args()
 
     changed = args.changed if args.changed is not None else _changed_from_git(args.base, args.head)
-    codeunits = _load_codna(args.codna_cli)
+    # Resolution order: an EXPLICIT checkout (--codna-cli / CODNA_CLI) always wins (that is the
+    # pin-to-a-checkout escape hatch); otherwise PREFER the installed codna wheel, which since
+    # 0.1.48 carries both the per-file seam (#445) and the productized impact engine (#446).
+    if args.codna_cli or os.environ.get("CODNA_CLI"):
+        codeunits = _load_codna(args.codna_cli)
+        impact_fn = _load_codna_impact(args.codna_cli)
+    else:
+        codeunits, impact_fn = _installed_codna()
     py_files = _iter_py_files()
-    mode, tests, reason = compute_affected(changed, py_files, codeunits)
+    mode, tests, reason = compute_affected(changed, py_files, codeunits, impact_fn=impact_fn)
 
     if args.json:
         print(json.dumps({"mode": mode, "tests": tests, "reason": reason}))

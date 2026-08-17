@@ -196,6 +196,31 @@ jobs:
           PYTEST_TIMEOUT: 60
         run: ./scripts/run_repo_python.sh -m pytest -q tests/test_object_store_minio_smoke.py tests/test_multi_replica_chaos.py
 
+      # OBSERVED, not gating: repo-aware test selection (scripts/test_impact.py) reports the
+      # subset of the suite this diff can actually influence — the signal that will trim PR test
+      # runs once it has a production track record. Never fails the job: without codna installed
+      # the tool degrades to its conservative local import graph (more tests, never fewer), and
+      # any error surfaces as a notice instead of a red check.
+      - name: Test-impact selection report (observed)
+        if: always()
+        run: |
+          set +e
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            BASE="origin/main"
+          fi
+          CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null)
+          if [ -z "$CHANGED" ]; then
+            echo "::notice::test-impact: no diff against $BASE — nothing to report"
+            exit 0
+          fi
+          ARGS=()
+          while IFS= read -r f; do [ -n "$f" ] && ARGS+=("$f"); done <<< "$CHANGED"
+          ./scripts/run_repo_python.sh scripts/test_impact.py --json --changed "${ARGS[@]}"
+          rc=$?
+          [ "$rc" -ne 0 ] && echo "::notice::test-impact exited $rc (observed-only, not gating)"
+          exit 0
+
       # End-of-run teardown — `if: always()` so FAILED/cancelled runs release disk too. Postgres
       # and MinIO declare Dockerfile VOLUMEs, and a container left behind keeps its volumes
       # referenced (undeletable by any prune). Without this step every run leaks them until the

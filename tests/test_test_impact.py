@@ -162,3 +162,64 @@ def test_load_codna_rejects_missing_or_old_codna(tmp_path, monkeypatch):
     (pkg / "codeunits.py").write_text("def registered_languages():\n    return ()\n")
     (tmp_path / "oldcodna" / "codna" / "__init__.py").write_text("")
     assert ti._load_codna(str(tmp_path / "oldcodna")) is None
+
+
+# ── installed-codna preference (0.1.48+: per-file seam + productized impact engine) ─────────────
+# The installed wheel is faked through sys.modules so these tests pin the resolution contract on
+# machines with any codna version (or none).
+
+
+def _install_fake_codna(monkeypatch, *, seam=True, engine=True):
+    import types as _types
+    pkg = _types.ModuleType("codna")
+    cu_mod = _types.ModuleType("codna.codeunits")
+    if seam:
+        fake = _FakeCodna({".py": "python"})
+        cu_mod.language_for = fake.language_for
+        cu_mod.extract_file = fake.extract_file
+    pkg.codeunits = cu_mod
+    monkeypatch.setitem(sys.modules, "codna", pkg)
+    monkeypatch.setitem(sys.modules, "codna.codeunits", cu_mod)
+    if engine:
+        imp_mod = _types.ModuleType("codna.impact")
+
+        def compute_impact(repo_root, changed, **kw):
+            return _types.SimpleNamespace(
+                mode="subset", tests=["tests/selected_by_engine.py"],
+                reason=f"engine saw {len(changed)} change(s) at {repo_root}")
+
+        imp_mod.compute_impact = compute_impact
+        monkeypatch.setitem(sys.modules, "codna.impact", imp_mod)
+    else:
+        monkeypatch.setitem(sys.modules, "codna.impact", None)   # `from codna.impact import` raises
+
+
+def test_installed_codna_with_engine_is_preferred_and_delegates(monkeypatch):
+    ti = _load_tool()
+    monkeypatch.delenv("CODNA_CLI", raising=False)
+    _install_fake_codna(monkeypatch, seam=True, engine=True)
+    codeunits, impact_fn = ti._installed_codna()
+    assert codeunits is not None and impact_fn is not None
+    mode, tests, reason = ti.compute_affected(
+        ["packages/algenta/algenta/inference.py"], [], codeunits, impact_fn=impact_fn)
+    assert mode == "subset" and tests == ["tests/selected_by_engine.py"]
+    assert "engine saw 1 change(s)" in reason
+
+
+def test_installed_codna_without_engine_keeps_local_path(monkeypatch):
+    ti = _load_tool()
+    _install_fake_codna(monkeypatch, seam=True, engine=False)
+    codeunits, impact_fn = ti._installed_codna()
+    assert codeunits is not None and impact_fn is None
+
+
+def test_installed_codna_without_seam_rejected(monkeypatch):
+    ti = _load_tool()
+    _install_fake_codna(monkeypatch, seam=False, engine=True)
+    assert ti._installed_codna() == (None, None)
+
+
+def test_installed_codna_absent(monkeypatch):
+    ti = _load_tool()
+    monkeypatch.setitem(sys.modules, "codna", None)   # makes `import codna` raise ImportError
+    assert ti._installed_codna() == (None, None)
