@@ -168,6 +168,18 @@ async def codna_webhook_engine_key(
     value (e.g. the "GitHub App" key created at provisioning time) can never be recovered
     later anyway. A fresh short-lived key per call is also strictly safer to hand across a
     network boundary than a long-lived one.
+
+    SELF-PROVISIONS on first call for an unknown installation. The webhook's own install-first
+    path (``installation: created``, above) can never reach this org's binding for any real
+    installer: a GitHub App has exactly one configured webhook URL, and codna-ai's points at
+    codna-webhook, not here — so that path has never fired for anyone, including thyn-ai's own
+    install. Rather than leave every fresh external install permanently unlinked (the same
+    "please link your account" wall forever, for zero-config installs that were never supposed
+    to need one), mirror that install-first logic here: resolve the installing account via the
+    App JWT (not the caller-supplied installation_id's trust — GitHub's own API is the source of
+    truth for which account a given installation_id belongs to) and provision/lookup its org.
+    Explicit suspension (``row.suspended``) still 404s — that is a real "not allowed" state,
+    not "not yet known".
     """
     settings = get_settings()
     secret = settings.codna_webhook_internal_secret
@@ -183,8 +195,46 @@ async def codna_webhook_engine_key(
             )
         )
     ).scalar_one_or_none()
-    if row is None or row.suspended:
+    if row is not None and row.suspended:
         raise HTTPException(status_code=404, detail="installation not linked")
+
+    if row is None:
+        account = await github_app_auth.resolve_installation_account(installation_id)
+        if account is None:
+            raise HTTPException(status_code=404, detail="installation not linked")
+        org = await provision_or_lookup_org_for_installation(
+            db,
+            account_id=account["id"],
+            account_login=account["login"],
+            account_type=account["type"],
+        )
+        row = GithubAppInstallation(
+            org_id=org.id,
+            installation_id=installation_id,
+            account_login=account["login"],
+            account_type=account["type"],
+        )
+        db.add(row)
+        try:
+            await db.commit()
+        except IntegrityError:
+            # A concurrent call (or a webhook delivery landing at the same moment) already
+            # bound this installation; resolve to whichever row won.
+            await db.rollback()
+            row = (
+                await db.execute(
+                    select(GithubAppInstallation).where(
+                        GithubAppInstallation.installation_id == installation_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                raise HTTPException(status_code=404, detail="installation not linked") from None
+        logger.info(
+            "codna_webhook_engine_key_self_provisioned",
+            installation_id=installation_id,
+            org_id=str(row.org_id),
+        )
 
     raw_key, key_prefix, hashed_key = generate_api_key()
     expires_at = datetime.now(UTC) + _ENGINE_KEY_TTL

@@ -31,6 +31,10 @@ from apps.api_server.services import tenant_key_store
 _SECRET = "whsec_test_secret"
 
 
+async def _async_none(*_args, **_kwargs):
+    return None
+
+
 # ── tenant-key store: default empty so the worker key-bind never touches a real DB ──
 class _StoreResult:
     def __init__(self, rows):
@@ -271,13 +275,51 @@ async def test_engine_key_wrong_auth_401(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_engine_key_unknown_installation_404(monkeypatch):
+async def test_engine_key_unresolvable_installation_404(monkeypatch):
+    """Unknown installation now attempts self-provisioning first (see below) -- this covers the
+    case where even the App-JWT lookup can't resolve it (e.g. GitHub-side hiccup, or the
+    installation was genuinely removed), which still 404s."""
     _configure_engine_key(monkeypatch)
+    monkeypatch.setattr(github_app_auth, "resolve_installation_account", _async_none)
     with pytest.raises(HTTPException) as exc:
         await ghwh.codna_webhook_engine_key(
             _FakeSession([None]), installation_id=12345, authorization="Bearer shh",
         )
     assert exc.value.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_engine_key_self_provisions_unknown_installation(monkeypatch):
+    """The webhook install-first path (installation: created) can never fire for any real
+    installer -- codna-ai's one configured webhook URL points at codna-webhook, not here. So an
+    unknown installation must self-provision right here, from the same App-JWT-resolved account
+    the webhook path would have used, instead of permanently 404ing every fresh external install."""
+    _configure_engine_key(monkeypatch)
+    org = SimpleNamespace(id=uuid.uuid4())
+
+    async def _fake_resolve(_installation_id):
+        return {"id": 999, "login": "acme-corp", "type": "organization"}
+
+    async def _fake_provision(_db, **_kw):
+        return org
+
+    monkeypatch.setattr(github_app_auth, "resolve_installation_account", _fake_resolve)
+    monkeypatch.setattr(ghwh, "provision_or_lookup_org_for_installation", _fake_provision)
+
+    db = _FakeSession([None])  # initial lookup: no existing row
+    resp = await ghwh.codna_webhook_engine_key(db, installation_id=12345, authorization="Bearer shh")
+    assert resp.status_code == 200
+    payload = json.loads(resp.body)
+    assert payload["org_id"] == str(org.id)
+    assert payload["engine_key"]
+    # both the new GithubAppInstallation binding and the fresh service APIKey were added
+    assert len(db.added) == 2
+    installation_row = next(o for o in db.added if isinstance(o, ghwh.GithubAppInstallation))
+    assert installation_row.installation_id == 12345
+    assert installation_row.org_id == org.id
+    key = next(o for o in db.added if isinstance(o, ghwh.APIKey))
+    assert key.org_id == org.id
+    assert key.is_service is True
 
 
 @pytest.mark.anyio
