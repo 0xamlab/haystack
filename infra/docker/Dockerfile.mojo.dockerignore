@@ -1,0 +1,49 @@
+# BuildKit per-Dockerfile override for infra/docker/Dockerfile.mojo: identical to the root
+# .dockerignore EXCEPT it does NOT exclude mojo_env/ or .pixi -- Dockerfile.mojo's own first
+# build stage (COPY mojo_env/ /build/mojo_env/) needs that tree to install the pinned pixi
+# toolchain. The root .dockerignore's mojo_env/.pixi exclusion was added for Dockerfile.api.prod
+# (which never touches either), not realizing BuildKit applies .dockerignore repo-wide across
+# every Dockerfile sharing this context -- that broke every build-mojo run since.
+.git
+.gitignore
+.venv
+venv
+env
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.cache
+.coverage
+htmlcov
+node_modules
+
+# Secrets must never enter the image context.
+.env
+.env.*
+*.pem
+*.key
+
+# Heavy / not-copied-into-the-image trees.
+benchmarks
+test_files
+tests
+gitbook
+apps/docs
+!apps/docs/
+!apps/docs/integration_manifest.v1.json
+mojo/tests
+mojo_build
+dist
+*.log
+
+# build/ is not copied wholesale — keep only the runtime-manifest artifacts the
+# /v1/runtime/manifest endpoint needs (Dockerfile.api.prod copies these by name).
+build/*
+!build/llm_rollout_proof_bundle.json
+!build/llm_rollout_parity_benchmark.json
+!build/llm_compiled_runtime_benchmark.json
+build/artifacts
