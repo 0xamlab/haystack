@@ -21,7 +21,7 @@ from typing import Annotated, Any
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from apps.api_server.config import get_settings
@@ -30,6 +30,7 @@ from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.models.api_key import APIKey
 from apps.api_server.models.github_app_installation import GithubAppInstallation
 from apps.api_server.models.organization import Organization
+from apps.api_server.models.user import User
 from apps.api_server.services import github_app_auth, tenant_key_store
 from apps.api_server.services.auth_service import AuthContext, generate_api_key
 from apps.api_server.services.github_app_auth import app_configured
@@ -405,16 +406,34 @@ async def github_install_callback(
         ).scalar_one_or_none()
 
     row = await _existing()
-    # Never silently re-home an installation already linked to a different org. (To move it,
+    # Never silently re-home an installation a human has actually claimed. (To move THAT one,
     # uninstall the app from the first org — `installation.deleted` clears the binding.)
+    #
+    # EXCEPTION: the install-first self-provisioning path (above, and the engine-key bridge's own
+    # copy of it) mints an org with zero Users the instant codna-webhook first sees an unknown
+    # installation — often before anyone has ever visited the dashboard. That org is provably
+    # unclaimed (nothing but an api_key row points at it), so a verified admin completing THIS
+    # OAuth flow may claim it outright instead of being told to uninstall/reinstall the App just
+    # to correct a binding nobody chose.
     if row is not None and row.org_id != org_uuid:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "this GitHub installation is already linked to another codna org; "
-                "uninstall the app there first"
-            ),
+        user_count = (
+            await db.execute(select(func.count()).select_from(User).where(User.org_id == row.org_id))
+        ).scalar_one_or_none()
+        if user_count:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "this GitHub installation is already linked to another codna org; "
+                    "uninstall the app there first"
+                ),
+            )
+        logger.info(
+            "codna_github_install_reclaimed_unclaimed_org",
+            installation_id=installation_id,
+            previous_org_id=str(row.org_id),
+            claimed_org_id=str(org_uuid),
         )
+        row.org_id = org_uuid
     if row is None:
         db.add(
             GithubAppInstallation(

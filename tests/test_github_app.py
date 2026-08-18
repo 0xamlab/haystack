@@ -582,17 +582,36 @@ async def test_install_callback_unverified_403(monkeypatch):
 
 @pytest.mark.anyio
 async def test_install_callback_no_cross_org_rebind_409(monkeypatch):
-    """An installation already linked to another org cannot be silently re-homed."""
+    """An installation already linked to a CLAIMED (has ≥1 User) org cannot be silently re-homed."""
     _verify_ok(monkeypatch)
-    existing = _install_row(uuid.uuid4())  # bound to some OTHER org
+    existing = _install_row(uuid.uuid4())  # bound to some OTHER, claimed org
     redis = _FakeRedis(get_value=str(uuid.uuid4()))  # a different org starts the bind
-    db = _FakeSession([existing])
+    db = _FakeSession([existing, 1])  # installation lookup, then a user-count of 1 (claimed)
     with pytest.raises(HTTPException) as exc:
         await ghwh.github_install_callback(
             _FakeRequest(b"", redis=redis), db, installation_id=12345, code="c", state="s",
         )
     assert exc.value.status_code == 409
     assert not db.added
+
+
+@pytest.mark.anyio
+async def test_install_callback_reclaims_unclaimed_self_provisioned_org(monkeypatch):
+    """An installation self-provisioned to a phantom org (zero Users -- nobody's ever signed
+    into it) CAN be reclaimed by a verified admin completing this OAuth flow, instead of hard
+    409ing and forcing an uninstall/reinstall just to correct a binding nobody chose."""
+    _verify_ok(monkeypatch)
+    phantom_org_id = uuid.uuid4()
+    existing = _install_row(phantom_org_id)
+    claiming_org_id = uuid.uuid4()
+    redis = _FakeRedis(get_value=str(claiming_org_id))
+    db = _FakeSession([existing, 0])  # installation lookup, then a user-count of 0 (unclaimed)
+    resp = await ghwh.github_install_callback(
+        _FakeRequest(b"", redis=redis), db, installation_id=12345, code="c", state="s",
+    )
+    assert resp.status_code in (302, 307)
+    assert existing.org_id == claiming_org_id
+    assert db.commits >= 1
 
 
 @pytest.mark.anyio
