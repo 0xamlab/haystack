@@ -929,3 +929,45 @@ def test_installation_model_tablename():
     from apps.api_server.models.github_app_installation import GithubAppInstallation
 
     assert GithubAppInstallation.__tablename__ == "github_app_installations"
+
+
+# ── website/engine/codna provider-name contract ────────────────────────────────
+def test_byok_backends_the_website_offers_are_all_accepted_by_the_engine():
+    """The account page's provider picker sends its provider id VERBATIM as the BYOK backend, and
+    also compares it against the engine's stored `backend` to decide "key already configured". So
+    every id the website offers must be a backend the engine accepts AND one the codna bridge can
+    map -- otherwise that provider is advertised in the UI but impossible to save.
+
+    This shipped broken: the website offered Google as `gemini` while the engine only accepts
+    `google_genai`, so choosing Google 400'd with invalid_backend. The CLI was unaffected (codna's
+    own keystore accepts both names), which is exactly why it went unnoticed -- three providers
+    worked from the CLI and only two could ever be saved from the website."""
+    from apps.api_server.services.llm_provider_service._config import _SUPPORTED_PROVIDER_BACKENDS
+
+    # Mirrors accounts-site src/lib/apps.ts MODEL_PROVIDERS[].id (the wire value).
+    website_provider_ids = {"anthropic", "openai", "google_genai"}
+
+    unsupported = website_provider_ids - set(_SUPPORTED_PROVIDER_BACKENDS)
+    assert not unsupported, (
+        f"the website offers BYOK provider id(s) the engine rejects: {sorted(unsupported)} "
+        f"-- saving a key for these 400s with invalid_backend"
+    )
+    unbridgeable = website_provider_ids - set(ghwh._BACKEND_TO_CODNA_PROVIDER)
+    assert not unbridgeable, (
+        f"the website offers BYOK provider id(s) codna's bridge cannot map: {sorted(unbridgeable)} "
+        f"-- the key would store fine but never be handed to a fix job"
+    )
+
+
+def test_setup_page_links_back_and_does_not_promise_ci_fixing(monkeypatch):
+    """The post-install page is the ONLY thing an install-first user sees, so its claims have to
+    match the product: codna deliberately does not react to a failing check_suite on its own, three
+    providers are supported (not just Anthropic), and the user needs a way back to the portal."""
+    import asyncio
+
+    resp = asyncio.run(ghwh.github_app_setup(154781111))
+    body = resp.body.decode()
+    assert "failing CI checks" not in body  # codna does NOT self-trigger on check_suite
+    for provider in ("Anthropic", "OpenAI", "Google Gemini"):
+        assert provider in body, f"setup page omits supported provider {provider}"
+    assert "/account?app=codna" in body, "setup page dead-ends with no route back to the portal"

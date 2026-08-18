@@ -492,12 +492,20 @@ async def github_install_callback(
 async def github_app_setup(installation_id: int) -> HTMLResponse:
     """Dependency-free post-install landing page.
 
-    Confirms codna is installed and a free trial is active. ``installation_id`` is int-cast by
-    FastAPI's path/query coercion AND re-int-cast into the markup below, so nothing user-supplied
-    is interpolated as raw HTML (no XSS surface). Deliberately NO BYOK key form: a freshly
-    install-first-provisioned org has no human admin credential yet, so collecting a provider key
-    here is a separate follow-up — for now we just say they'll be asked when the trial runs out."""
+    ``installation_id`` is int-cast by FastAPI's path/query coercion AND re-int-cast into the markup
+    below, so nothing user-supplied is interpolated as raw HTML (no XSS surface). Deliberately NO
+    BYOK key form: a freshly install-first-provisioned org has no human admin credential yet, so
+    the key is collected on the account page (linked below) rather than here.
+
+    The copy is deliberately specific, because a vaguer earlier version was wrong three ways:
+    it promised codna fixes "failing CI checks" (it deliberately does NOT react to a failing
+    check_suite on its own -- see codna's webhook.py), it named Anthropic as though it were the only
+    provider (three are supported), and it dead-ended the user with no link back to the portal that
+    owns every remaining setting."""
     iid = int(installation_id)
+    accounts = get_settings().accounts_base_url.rstrip("/")
+    # Brand-scoped so the portal opens on the codna lens (?app=) rather than the default brand.
+    account_url = f"{accounts}/account?app=codna"
     html = (
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -507,10 +515,17 @@ async def github_app_setup(installation_id: int) -> HTMLResponse:
         "<h1>codna is installed</h1>"
         "<p>Your GitHub App installation "
         f"(<code>#{iid}</code>) is connected and a <strong>free trial is active</strong>.</p>"
-        "<p>codna will start fixing failing CI checks and labeled issues automatically — "
-        "there is nothing else to set up right now.</p>"
-        "<p>When your free trial is used up, we&rsquo;ll ask you to add your own Anthropic API "
-        "key so codna can keep running on your account.</p>"
+        "<p>codna gets to work on its own from here. It reviews new pull requests, fixes issues you "
+        "label <code>codna-fix</code>, and responds when you comment "
+        "<code>@codna fix</code> or <code>@codna review</code>.</p>"
+        "<p>When your free trial is used up, add your own model key to keep codna running &mdash; "
+        "your choice of <strong>Anthropic (Claude)</strong>, <strong>OpenAI</strong> or "
+        "<strong>Google Gemini</strong>.</p>"
+        f"<p style=\"margin-top:2rem\"><a href=\"{account_url}\" "
+        "style=\"display:inline-block;background:#111;color:#fff;text-decoration:none;"
+        "padding:10px 18px;border-radius:8px;font-weight:600\">Back to your account</a></p>"
+        "<p style=\"color:#555;font-size:14px\">Manage your model key, choose which repositories "
+        "codna can see, and turn automatic fixes on or off there at any time.</p>"
         "</body></html>"
     )
     return HTMLResponse(content=html)
