@@ -384,6 +384,28 @@ fi
 if [[ "${#EXTRA_DEFINE_ARGS[@]}" -gt 0 ]]; then
     MOJO_TARGET_ARGS+=("${EXTRA_DEFINE_ARGS[@]}")
 fi
+
+# The link step binds four MAX-private runtime libraries by bare name. Which libraries a toolchain
+# release ships CHANGES between releases: the 1.1.0.dev2026080606 nightly recorded a load command
+# for libAsyncRTMojoBindings.dylib while no longer shipping the file, so every built kernel dlopen'd
+# fine at link time and failed at RUNTIME. Fail HERE, before spending minutes compiling, with an
+# actionable message naming the missing libraries and the pin to check — a bare linker
+# "library not found" at the end of the build helps nobody.
+MOJO_RUNTIME_LINK_LIBS=(KGENCompilerRTShared AsyncRTRuntimeGlobals AsyncRTMojoBindings MSupportGlobals)
+missing_runtime_libs=()
+for _rt_lib in "${MOJO_RUNTIME_LINK_LIBS[@]}"; do
+    if ! ls "${LIB_DIR}/lib${_rt_lib}".* >/dev/null 2>&1; then
+        missing_runtime_libs+=("${_rt_lib}")
+    fi
+done
+if [[ "${#missing_runtime_libs[@]}" -gt 0 ]]; then
+    echo "[build_mojo_binary] ERROR: Mojo runtime libraries missing from ${LIB_DIR}:" >&2
+    printf '  - %s\n' "${missing_runtime_libs[@]}" >&2
+    echo "[build_mojo_binary] The pinned toolchain does not ship every runtime library this link expects." >&2
+    echo "[build_mojo_binary] Check the mojo pin in mojo_env/pixi.toml — a different release may rename or drop these." >&2
+    exit 1
+fi
+
 (
     cd "${PIXI_ENV_DIR}"
     "${PIXI_BIN_RESOLVED}" run mojo build \
