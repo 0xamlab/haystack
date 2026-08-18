@@ -183,9 +183,12 @@ def _tiled_gemm_kernel(
     c_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     a_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     b_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
-    m: Int,
-    n: Int,
-    k: Int,
+    # Mojo 1.0.0: kernel parameters must be DevicePassable, which the adaptive
+    # Int/UInt aliases no longer are — fixed-width only. Widened back to Int
+    # once at the top of the body, where all the arithmetic lives.
+    m_i32: Int32,
+    n_i32: Int32,
+    k_i32: Int32,
 ):
     """A `BM x BN` block of `C = A @ B`, with each thread owning a `TM x TN` register tile.
 
@@ -203,6 +206,9 @@ def _tiled_gemm_kernel(
     THE REGISTER TILE. `acc` lives in per-thread storage, not shared memory. That is what turns two
     shared loads per multiply-add into two loads per TM x TN multiply-adds.
     """
+    var m = Int(m_i32)
+    var n = Int(n_i32)
+    var k = Int(k_i32)
     var a_tile = stack_allocation[
         BM * BK, DType.float32, address_space = AddressSpace.SHARED
     ]()
@@ -349,9 +355,9 @@ def _run_metal_gemm(
         c_buf.unsafe_ptr(),
         a_buf.unsafe_ptr(),
         b_buf.unsafe_ptr(),
-        m,
-        n,
-        k,
+        Int32(m),
+        Int32(n),
+        Int32(k),
         grid_dim=(grid_x, grid_y),
         block_dim=(BN // TN, BM // TM),
     )

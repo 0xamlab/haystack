@@ -83,7 +83,10 @@ def _saxpy_kernel(
     out_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     x_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     alpha: Float32,
-    n: Int,
+    # Mojo 1.0.0: kernel parameters must be DevicePassable, which the adaptive
+    # Int/UInt aliases no longer are — fixed-width only. Widened back to Int
+    # once at the top of the body, where all the arithmetic lives.
+    n_i32: Int32,
 ):
     """`out[i] += alpha * x[i]`, one element per thread.
 
@@ -91,7 +94,8 @@ def _saxpy_kernel(
     is nearly always partly out of range — without the guard those threads write past the buffer, and
     on a GPU that is silent corruption rather than the clean abort a CPU bounds check would give.
     """
-    var i = block_idx.x * block_dim.x + thread_idx.x
+    var n = Int(n_i32)
+    var i = Int(block_idx.x) * Int(block_dim.x) + Int(thread_idx.x)
     if i < n:
         out_ptr[i] = out_ptr[i] + alpha * x_ptr[i]
 
@@ -131,7 +135,7 @@ def _accel_saxpy(mut out_host: List[Float32], x_host: List[Float32], alpha: Floa
         out_buf.unsafe_ptr(),
         x_buf.unsafe_ptr(),
         alpha,
-        n,
+        Int32(n),
         grid_dim=groups,
         block_dim=_THREADS_PER_GROUP,
     )
