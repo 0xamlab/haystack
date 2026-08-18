@@ -104,6 +104,7 @@ class OrgInfo(BaseModel):
     slug: str
     plan: str
     status: str
+    codna_fix_enabled: bool
     created_at: datetime
 
 
@@ -180,3 +181,4 @@ class UpdateMeRequest(BaseModel):
     model_config = ConfigDict(strict=False)
     name: str | None = Field(default=None, min_length=1, max_length=255)
     org_name: str | None = Field(default=None, min_length=1, max_length=255)
+    codna_fix_enabled: bool | None = Field(default=None)

@@ -175,6 +175,7 @@ async def me(
             slug=org.slug,
             plan=org.plan.value,
             status=org.status.value,
+            codna_fix_enabled=org.codna_fix_enabled,
             created_at=org.created_at,
         ),
     )
@@ -225,6 +226,19 @@ async def update_me(
             )
         org.name = payload.org_name
 
+    if payload.codna_fix_enabled is not None:
+        # Toggling Codna's fix automation is an org-level mutation: require admin+ (admin or owner).
+        if str(auth.get("role", "")).lower() not in ("admin", "owner"):
+            raise HTTPException(
+                status_code=403,
+                detail=access_scope_denied_error(
+                    "Changing Codna's fix automation requires the 'admin' role or higher.",
+                    details=[{"field": "codna_fix_enabled", "issue": "insufficient_role"}],
+                    extra={"required_role": "admin", "your_role": str(auth.get("role", ""))},
+                ),
+            )
+        org.codna_fix_enabled = payload.codna_fix_enabled
+
     await db.flush()
     logger.info(
         "me_updated",
@@ -248,6 +262,7 @@ async def update_me(
             slug=org.slug,
             plan=org.plan.value,
             status=org.status.value,
+            codna_fix_enabled=org.codna_fix_enabled,
             created_at=org.created_at,
         ),
     )

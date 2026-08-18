@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Enum, Integer, String, false
+from sqlalchemy import Boolean, Enum, Integer, String, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
@@ -83,6 +83,11 @@ class Organization(UUIDMixin, TimestampMixin, Base):
     )
     managed_llm_quota_usd_month: Mapped[int] = mapped_column(
         Integer(), nullable=False, default=0, server_default="0"
+    )
+    # Per-org kill switch for Codna's automatic fix pipeline — defaults ON so existing installs
+    # are unaffected until an org admin explicitly turns it off.
+    codna_fix_enabled: Mapped[bool] = mapped_column(
+        Boolean(), nullable=False, default=True, server_default=true()
     )
 
     users: Mapped[list["User"]] = relationship(  # type: ignore[name-defined]  # noqa: F821

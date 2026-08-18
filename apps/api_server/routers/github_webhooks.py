@@ -29,6 +29,7 @@ from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.models.api_key import APIKey
 from apps.api_server.models.github_app_installation import GithubAppInstallation
+from apps.api_server.models.organization import Organization
 from apps.api_server.services import github_app_auth, tenant_key_store
 from apps.api_server.services.auth_service import AuthContext, generate_api_key
 from apps.api_server.services.github_app_auth import app_configured
@@ -259,6 +260,17 @@ async def codna_webhook_engine_key(
         # above (the fix can still run house-metered); the caller falls back to its own defaults.
         logger.warning("codna_webhook_engine_key_byok_lookup_failed", org_id=str(row.org_id))
 
+    # Fail-open on lookup issues — this is a convenience kill switch, not a security boundary.
+    fix_enabled = True
+    try:
+        org_row = (
+            await db.execute(select(Organization).where(Organization.id == row.org_id))
+        ).scalar_one_or_none()
+        if org_row is not None:
+            fix_enabled = bool(org_row.codna_fix_enabled)
+    except Exception:  # noqa: BLE001 — same fail-open contract as the BYOK lookup above
+        logger.warning("codna_webhook_engine_key_fix_enabled_lookup_failed", org_id=str(row.org_id))
+
     return JSONResponse(
         status_code=200,
         content={
@@ -267,6 +279,7 @@ async def codna_webhook_engine_key(
             "expires_at": expires_at.isoformat(),
             "provider": provider,
             "provider_key": provider_key,
+            "fix_enabled": fix_enabled,
         },
     )
 
