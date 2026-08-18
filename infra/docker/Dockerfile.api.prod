@@ -1,6 +1,6 @@
 # The real Mojo engine binary, built by build-mojo.yml on linux/amd64 (core-filtered dispatch,
 # linked against the bundled GNU libstdc++). Pinned by tag; bump when the kernel is rebuilt.
-ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-53359d3
+ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-ea78d66
 FROM ${MOJO_IMAGE} AS mojo
 
 # ── Stage 1: Builder ─────────────────────────────────────────────────────────
