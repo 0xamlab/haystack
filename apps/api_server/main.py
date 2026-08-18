@@ -406,6 +406,13 @@ from apps.api_server.routers import website_team as _website_team_router  # noqa
 
 app.include_router(_website_team_router.router)
 
+# Website account settings — Supabase-authenticated GET/PATCH /account/settings (org name,
+# codna_fix_enabled). The Supabase-auth twin of /v1/me's org-settings slice — /v1/me itself stays
+# API-key-only (the CLI + MCP tool depend on that). Inert (503) until SUPABASE_URL is set.
+from apps.api_server.routers import website_account as _website_account_router  # noqa: E402
+
+app.include_router(_website_account_router.router)
+
 if settings.runtime_library_http_api_enabled:
     app.include_router(runtime_libraries.router)
 

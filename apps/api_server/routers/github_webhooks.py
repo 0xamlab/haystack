@@ -19,20 +19,19 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from apps.api_server.config import get_settings
 from apps.api_server.db.session import AsyncSessionDep
-from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.models.api_key import APIKey
 from apps.api_server.models.github_app_installation import GithubAppInstallation
 from apps.api_server.models.organization import Organization
-from apps.api_server.models.user import User
-from apps.api_server.services import github_app_auth, tenant_key_store
-from apps.api_server.services.auth_service import AuthContext, generate_api_key
+from apps.api_server.models.user import User, UserRole
+from apps.api_server.services import github_app_auth, tenant_key_store, website_identity
+from apps.api_server.services.auth_service import generate_api_key
 from apps.api_server.services.github_app_auth import app_configured
 from apps.api_server.services.github_app_provisioning import (
     provision_or_lookup_org_for_installation,
@@ -43,9 +42,6 @@ from apps.api_server.services.webhook_service import verify_webhook_signature
 # CODNA_WEBHOOK_JOB_TIMEOUT_S=3600) needs to fit inside this with margin — resolve_engine_key is
 # called fresh per attempt, so this does not need to cover all retries cumulatively.
 _ENGINE_KEY_TTL = timedelta(hours=2)
-
-# Roles allowed to bind an external code-modifying integration to the org.
-_INSTALL_ADMIN_ROLES = frozenset({"owner", "admin"})
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["GitHub App"])
@@ -310,23 +306,46 @@ def _first_configured_provider(provider_keys: dict[str, str]) -> tuple[str | Non
 @router.get("/github/app/install/start", summary="Begin a GitHub App install for this org")
 async def github_install_start(
     request: Request,
-    auth: Annotated[AuthContext, Depends(get_current_org)],
+    db: AsyncSessionDep,
+    authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
 ) -> RedirectResponse:
+    """Dashboard-first install kickoff — Supabase-authenticated (companion to /account/team,
+    /account/devices), NOT an API key. The site calls this with the caller's Supabase
+    access_token (a browser session, never a codna API key), so it must resolve org the same
+    way every other website surface does (``website_identity``) rather than via
+    ``get_current_org`` — that call always 401'd here before this fix, silently dropping every
+    "Connect GitHub" click to the stateless install-first fallback (state never set), which then
+    binds the installation to an org keyed off the GitHub org account itself instead of the
+    clicking user's own org. That is how an installation could end up bound to a DIFFERENT org
+    than the one the user's BYOK key lives in, with no error surfaced anywhere."""
     settings = get_settings()
     if not app_configured() or not settings.github_app_slug:
         raise HTTPException(status_code=404, detail="github app not configured")
+    redis = _redis(request)
+    org, identity = await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
+    )
     # Binding an external code-modifying integration is an admin action — org membership
-    # (any valid key) is not enough.
-    if auth.get("role") not in _INSTALL_ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="only an org owner or admin can connect GitHub"
-        )
+    # (any valid key) is not enough. A caller with no Users row in this org got here via a
+    # GitHub-install admin resolution (the only row-less path), which already proves admin.
+    email = (identity.get("email") or "").strip().lower()
+    if email:
+        member = (
+            await db.execute(
+                select(User).where(User.org_id == org.id, func.lower(User.email) == email)
+            )
+        ).scalar_one_or_none()
+        if member is not None and member.role not in (UserRole.OWNER, UserRole.ADMIN):
+            raise HTTPException(
+                status_code=403, detail="only an org owner or admin can connect GitHub"
+            )
+
     import secrets
 
     state = secrets.token_urlsafe(24)
-    redis = _redis(request)
     if redis:
-        await redis.set(f"github_app:install_state:{state}", str(auth["org_id"]), ex=900)
+        await redis.set(f"github_app:install_state:{state}", str(org.id), ex=900)
     return RedirectResponse(
         url=f"https://github.com/apps/{settings.github_app_slug}/installations/new?state={state}"
     )

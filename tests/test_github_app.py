@@ -520,23 +520,66 @@ async def test_webhook_non_actionable_event_acked(monkeypatch):
 
 
 # ── install start (2E) ──────────────────────────────────────────────────────────
+# Supabase-authenticated (website session, not a codna API key) — see this route's own
+# docstring for why: get_current_org (API-key-only) always 401'd the site's real Supabase
+# bearer, silently dropping every "Connect GitHub" click to the install-first fallback,
+# which then bound the installation to the WRONG org (keyed off the GitHub org account
+# itself, never the clicking user's own org).
+def _stub_resolve(monkeypatch, org_id, *, email="user@example.com"):
+    async def _resolve(authorization, db, redis, *, selected_org_id=None):
+        assert authorization == "Bearer JWT"
+        return SimpleNamespace(id=org_id), {"email": email}
+
+    monkeypatch.setattr(ghwh.website_identity, "verify_and_resolve_org", _resolve)
+
+
 @pytest.mark.anyio
 async def test_install_start_requires_admin(monkeypatch):
     _configure(monkeypatch)
-    auth = {"org_id": uuid.uuid4(), "role": "member"}
+    org_id = uuid.uuid4()
+    _stub_resolve(monkeypatch, org_id)
+    member_row = SimpleNamespace(role=ghwh.UserRole.MEMBER)
+    db = _FakeSession([member_row])
     with pytest.raises(HTTPException) as exc:
-        await ghwh.github_install_start(_FakeRequest(b"", redis=_FakeRedis()), auth)
+        await ghwh.github_install_start(
+            _FakeRequest(b"", redis=_FakeRedis()), db, authorization="Bearer JWT"
+        )
     assert exc.value.status_code == 403
 
 
 @pytest.mark.anyio
 async def test_install_start_admin_redirects(monkeypatch):
     _configure(monkeypatch)
+    org_id = uuid.uuid4()
+    _stub_resolve(monkeypatch, org_id)
+    owner_row = SimpleNamespace(role=ghwh.UserRole.OWNER)
+    db = _FakeSession([owner_row])
     redis = _FakeRedis()
-    auth = {"org_id": uuid.uuid4(), "role": "owner"}
-    resp = await ghwh.github_install_start(_FakeRequest(b"", redis=redis), auth)
+    resp = await ghwh.github_install_start(
+        _FakeRequest(b"", redis=redis), db, authorization="Bearer JWT"
+    )
     assert resp.status_code in (302, 307)
     assert redis.sets  # a single-use state nonce was stored
+    # The state nonce is tied to the CALLER'S OWN resolved org, not some other org — this is
+    # exactly the property that was broken (state was never set at all, since the old
+    # get_current_org dependency 401'd on a Supabase bearer before reaching this code).
+    assert redis.sets[0][1] == str(org_id)
+
+
+@pytest.mark.anyio
+async def test_install_start_row_less_admin_passes(monkeypatch):
+    """A caller with no Users row in the resolved org got there via GitHub-install admin
+    resolution (the only row-less path) -- that already proves admin, same as
+    website_team.py's _require_team_manager."""
+    _configure(monkeypatch)
+    org_id = uuid.uuid4()
+    _stub_resolve(monkeypatch, org_id)
+    db = _FakeSession([None])  # no Users row for this email in this org
+    redis = _FakeRedis()
+    resp = await ghwh.github_install_start(
+        _FakeRequest(b"", redis=redis), db, authorization="Bearer JWT"
+    )
+    assert resp.status_code in (302, 307)
 
 
 # ── install callback (2E) ───────────────────────────────────────────────────────
