@@ -13,10 +13,11 @@ using the exact same final-rmsnorm + dot-product + int8-dequant formula
 one int4 actually chose can be reported precisely, per this task's own requirement.
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
-from std.gpu import barrier, thread_idx, block_idx
-from std.gpu.memory import AddressSpace
-from std.gpu.host import DeviceContext
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
+from std.gpu import thread_idx, block_idx
+from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
+from max.gpu.memory import AddressSpace
+from max.gpu.host import DeviceContext
 from std.math import sqrt
 from std.memory import stack_allocation
 from std.sys import has_accelerator

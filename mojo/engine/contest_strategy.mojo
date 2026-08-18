@@ -28,7 +28,7 @@ therefore a decision-support contrast against a fixed opponent plan, not a game 
 """
 
 from std.math import exp, log, sqrt
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 from std.memory import UnsafePointer
 

@@ -100,7 +100,7 @@ def evaluate(
     raises before any row is touched.
     """
     var problem = validation_error(nodes, root, batch.width())
-    if len(problem) > 0:
+    if problem.byte_length() > 0:
         raise Error("query.eval: " + problem)
 
     var n = batch.n_rows

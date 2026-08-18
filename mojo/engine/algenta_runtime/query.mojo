@@ -73,7 +73,7 @@ def _rows_from_resident(value: String) -> String:
     the shape `query_execute` itself returns. The second form matters because it lets a
     query's OUTPUT be reopened as a dataset and queried again without reshaping it.
     """
-    if len(value) == 0:
+    if value.byte_length() == 0:
         return ""
     var bytes = value.as_bytes()
     var index = 0
@@ -100,7 +100,7 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
     var table_headers = List[String]()
     for i in range(len(handles)):
         var table_name = names[i] if i < len(names) else String("")
-        if len(handles[i]) == 0:
+        if handles[i].byte_length() == 0:
             # An inline table. Nothing to resolve; the empty slot keeps the positions
             # aligned with the `tables` array, which is what parse_named_tables indexes.
             table_rows.append("")
@@ -108,7 +108,7 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
             continue
         var handle = handles[i]
         var value = datasets.lookup(handle)
-        if len(value) == 0:
+        if value.byte_length() == 0:
             # Same code and message shape as the main dataset's miss, extended with the
             # table it belongs to.
             return _query_error(
@@ -120,7 +120,7 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
                 + "'; open one with dataset_open first (handles are connection-scoped)",
             )
         var table_row_json = _rows_from_resident(value)
-        if len(table_row_json) == 0:
+        if table_row_json.byte_length() == 0:
             return _query_error(
                 "dataset_has_no_rows",
                 "resident dataset '"
@@ -138,7 +138,7 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
         table_headers.append(json_raw_array(value, "columns"))
 
     var reference = json_get_string(raw, "dataset")
-    if len(reference) == 0:
+    if reference.byte_length() == 0:
         return run_query_execute_with_tables(
             raw, json_get_array(raw, "rows"), table_rows, table_headers
         )
@@ -146,11 +146,11 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
     # A leading '@' is the same convention batch/pipeline arguments use, but it is
     # optional here because `dataset` is unambiguously a handle field.
     var handle = reference
-    if len(handle) > 1 and handle.as_bytes()[0] == 64:  # '@'
-        handle = substring(handle, 1, len(handle))
+    if handle.byte_length() > 1 and handle.as_bytes()[0] == 64:  # '@'
+        handle = substring(handle, 1, handle.byte_length())
 
     var value = datasets.lookup(handle)
-    if len(value) == 0:
+    if value.byte_length() == 0:
         return _query_error(
             "unknown_dataset",
             "no resident dataset '"
@@ -159,7 +159,7 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
         )
 
     var rows = _rows_from_resident(value)
-    if len(rows) == 0:
+    if rows.byte_length() == 0:
         return _query_error(
             "dataset_has_no_rows",
             "resident dataset '"
@@ -173,7 +173,7 @@ def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
     # `run_query_execute_with_tables` has always returned (the ops one) rather than
     # whichever branch happened to run first. See `ops_validation_error`.
     var ops_error = ops_validation_error(raw)
-    if len(ops_error) > 0:
+    if ops_error.byte_length() > 0:
         return ops_error
 
     # The resident dataset's PARSED form is cached by handle + exact `columns` text

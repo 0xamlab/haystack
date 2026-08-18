@@ -25,7 +25,7 @@ kernel" pattern the rest of this plane's packages already named for attention/no
 one real driver instead.
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys.info import num_physical_cores
 from llmk.contract import LLMK_OK, llmk_residual_dims_check
 

@@ -81,7 +81,7 @@ unmodified — see `_ResidentQwen3F16`'s own field list) so both binaries embed 
 versions of those three, harmlessly.
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.gpu import WARP_SIZE
 from std.math import abs
 from std.sys import has_accelerator
@@ -585,33 +585,33 @@ struct _MBLayerBufI8(Copyable, Movable):
     itself mirrors `residentk.session._LayerGpu`."""
 
     var ln1_addr: UInt64
-    var ln1_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ln1_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var ln2_addr: UInt64
-    var ln2_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ln2_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qn_addr: UInt64
-    var qn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qn_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var kn_addr: UInt64
-    var kn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var kn_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_qkv_addr: UInt64
-    var w_qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_qkv_scale_addr: UInt64
-    var w_qkv_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_qkv_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_o_addr: UInt64
-    var w_o_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_o_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_o_scale_addr: UInt64
-    var w_o_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_o_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_gu_addr: UInt64
-    var w_gu_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_gu_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_gu_scale_addr: UInt64
-    var w_gu_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_gu_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_down_addr: UInt64
-    var w_down_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_down_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_down_scale_addr: UInt64
-    var w_down_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_down_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var ck_addr: UInt64
-    var ck_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ck_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cv_addr: UInt64
-    var cv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
 
 @fieldwise_init
@@ -620,29 +620,29 @@ struct _MBLayerBuf(Copyable, Movable):
     upload), one pair per tensor. Same four-matrix packing `residentk.session._LayerGpu` uses."""
 
     var ln1_addr: UInt64
-    var ln1_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ln1_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var ln2_addr: UInt64
-    var ln2_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ln2_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qn_addr: UInt64
-    var qn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qn_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var kn_addr: UInt64
-    var kn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var kn_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_qkv_addr: UInt64
-    var w_qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_o_addr: UInt64
-    var w_o_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_o_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_gu_addr: UInt64
-    var w_gu_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_gu_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var w_down_addr: UInt64
-    var w_down_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_down_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var ck_addr: UInt64
-    var ck_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ck_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cv_addr: UInt64
-    var cv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
 
 def _narrow_into(
-    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], n: Int, dst_off: Int
+    dst: UnsafePointer[UInt8, origin=MutUntrackedOrigin], src: List[Float64], n: Int, dst_off: Int
 ) raises -> Int:
     """Narrow `n` Float64 elements into a raw Float32 device pointer at `dst_off`. Same one-time
     conversion `residentk.session._narrow_into` performs, ported from `DeviceBuffer.map_to_host()`
@@ -657,7 +657,7 @@ def _narrow_into(
 
 
 def _narrow_transposed_into(
-    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
+    dst: UnsafePointer[UInt8, origin=MutUntrackedOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
 ) raises -> Int:
     """Narrow and transpose `[k_in, n_out]` Float64 into `[n_out, k_in]` Float32 at row `row_off`.
     Same blocked-tile arithmetic as `residentk.session._narrow_transposed_into` — see that
@@ -686,7 +686,7 @@ def _narrow_transposed_into(
 
 
 def _narrow_into_f16(
-    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], n: Int, dst_off: Int
+    dst: UnsafePointer[UInt8, origin=MutUntrackedOrigin], src: List[Float64], n: Int, dst_off: Int
 ) raises -> Int:
     """The fp16 twin of `_narrow_into`: Float64 -> Float16, no transpose. Same arithmetic as
     `residentk.session._narrow_into_f16`, ported from `DeviceBuffer.map_to_host()` to a plain
@@ -701,7 +701,7 @@ def _narrow_into_f16(
 
 
 def _narrow_transposed_into_f16(
-    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
+    dst: UnsafePointer[UInt8, origin=MutUntrackedOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
 ) raises -> Int:
     """The fp16 twin of `_narrow_transposed_into`: Float64 -> Float16, WITH the same blocked
     `[k_in, n_out]` -> `[n_out, k_in]` transpose. Same arithmetic as
@@ -749,8 +749,8 @@ def _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
 
 
 def _quantize_into_i8(
-    dst_w: UnsafePointer[UInt8, origin=MutAnyOrigin],
-    dst_scale: UnsafePointer[UInt8, origin=MutAnyOrigin],
+    dst_w: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
+    dst_scale: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
     src: List[Float64], n_rows: Int, width: Int, row_off: Int, scale_off: Int,
 ) raises -> Int:
     """Per-output-row symmetric int8 quantization, NO transpose — the shim-pointer twin of
@@ -778,8 +778,8 @@ def _quantize_into_i8(
 
 
 def _quantize_transposed_into_i8(
-    dst_w: UnsafePointer[UInt8, origin=MutAnyOrigin],
-    dst_scale: UnsafePointer[UInt8, origin=MutAnyOrigin],
+    dst_w: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
+    dst_scale: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
     src: List[Float64], k_in: Int, n_out: Int, row_off: Int, scale_off: Int,
 ) raises -> Int:
     """Narrow, TRANSPOSE, and per-output-row symmetric-int8-quantize — the shim-pointer twin of
@@ -860,34 +860,34 @@ struct _MBQwen3(Movable):
 
     var layers: List[_MBLayerBuf]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int      # arg slot, desc 0 (embed)
     var pos_offsets: List[Int]    # one per layer, the qk_rope descriptor's `pos` arg
@@ -916,7 +916,7 @@ struct _MBQwen3(Movable):
         # `compile_function` forces codegen; the DeviceContext it needs exists only for
         # that side effect and is dropped immediately after — this package does not dispatch
         # through it, the shim does.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel]()
         _ = cctx.compile_function[_norm_gemv_kernel]()
@@ -955,16 +955,16 @@ struct _MBQwen3(Movable):
 
         self.layers = List[_MBLayerBuf]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -990,10 +990,10 @@ struct _MBQwen3(Movable):
                 woa, wop, wgua, wgup, wdowna, wdownp, cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 4, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed)")
         if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
@@ -1003,15 +1003,15 @@ struct _MBQwen3(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -1316,34 +1316,34 @@ struct _MBQwen3F16(Movable):
 
     var layers: List[_MBLayerBuf]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -1367,7 +1367,7 @@ struct _MBQwen3F16(Movable):
         # ── force every kernel THIS ARM needs to be compiled + embedded in THIS binary's
         # __TEXT,__const — the fp16 GEMV-shaped twins plus the three kernels with no fp16 variant.
         # Deliberately NEVER the Float32 GEMV-shaped kernels — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_f16]()
         _ = cctx.compile_function[_norm_gemv_kernel_f16]()
@@ -1407,16 +1407,16 @@ struct _MBQwen3F16(Movable):
 
         self.layers = List[_MBLayerBuf]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -1442,10 +1442,10 @@ struct _MBQwen3F16(Movable):
                 woa, wop, wgua, wgup, wdowna, wdownp, cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 2, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed f16)")
         if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
@@ -1455,15 +1455,15 @@ struct _MBQwen3F16(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -1772,36 +1772,36 @@ struct _MBQwen3I8(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -1826,7 +1826,7 @@ struct _MBQwen3I8(Movable):
         # __TEXT,__const — the int8 GEMV-shaped twins plus the three kernels with no per-dtype
         # variant. Deliberately NEVER the Float32 or Float16 GEMV-shaped kernels — see the struct
         # docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_i8]()
@@ -1867,20 +1867,20 @@ struct _MBQwen3I8(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -1918,11 +1918,11 @@ struct _MBQwen3I8(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -1934,15 +1934,15 @@ struct _MBQwen3I8(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -2264,36 +2264,36 @@ struct _MBQwen3I8SDPASimd(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -2331,7 +2331,7 @@ struct _MBQwen3I8SDPASimd(Movable):
         # __TEXT,__const — the int8 GEMV-shaped twins plus the three kernels with no per-dtype
         # variant. Deliberately NEVER the Float32 or Float16 GEMV-shaped kernels — see the struct
         # docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_i8]()
@@ -2372,20 +2372,20 @@ struct _MBQwen3I8SDPASimd(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -2423,11 +2423,11 @@ struct _MBQwen3I8SDPASimd(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -2439,15 +2439,15 @@ struct _MBQwen3I8SDPASimd(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -2778,36 +2778,36 @@ struct _MBQwen3I8AllSimd(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -2845,7 +2845,7 @@ struct _MBQwen3I8AllSimd(Movable):
         # __TEXT,__const — the int8 GEMV-shaped twins plus the three kernels with no per-dtype
         # variant. Deliberately NEVER the Float32 or Float16 GEMV-shaped kernels — see the struct
         # docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -2886,20 +2886,20 @@ struct _MBQwen3I8AllSimd(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -2937,11 +2937,11 @@ struct _MBQwen3I8AllSimd(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -2953,15 +2953,15 @@ struct _MBQwen3I8AllSimd(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -3294,36 +3294,36 @@ struct _MBQwen3I8AllSimd2(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -3360,7 +3360,7 @@ struct _MBQwen3I8AllSimd2(Movable):
         # __TEXT,__const — the int8 GEMV-shaped twins, the lm_head-simd twin, plus the two kernels
         # with no per-dtype variant. Deliberately NEVER the Float32/Float16 GEMV-shaped kernels NOR
         # the barrier-tree `_lmhead_argmax_kernel_i8` — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -3399,20 +3399,20 @@ struct _MBQwen3I8AllSimd2(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -3450,11 +3450,11 @@ struct _MBQwen3I8AllSimd2(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -3466,15 +3466,15 @@ struct _MBQwen3I8AllSimd2(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -3839,36 +3839,36 @@ struct _MBQwen3I8AllSimd3(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -3877,12 +3877,12 @@ struct _MBQwen3I8AllSimd3(Movable):
     var pipeline_idx_split: Int
     var pipeline_idx_merge: Int
     var m_partial_addr: UInt64
-    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var l_partial_addr: UInt64
-    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var o_partial_addr: UInt64
-    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_deep: Int
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
@@ -3937,7 +3937,7 @@ struct _MBQwen3I8AllSimd3(Movable):
         # twin, plus the two kernels with no per-dtype variant. Deliberately NEVER the
         # Float32/Float16 GEMV-shaped kernels, NOR the barrier-tree `_lmhead_argmax_kernel_i8`, NOR
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -4003,20 +4003,20 @@ struct _MBQwen3I8AllSimd3(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -4054,11 +4054,11 @@ struct _MBQwen3I8AllSimd3(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -4070,15 +4070,15 @@ struct _MBQwen3I8AllSimd3(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -4107,9 +4107,9 @@ struct _MBQwen3I8AllSimd3(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -4128,7 +4128,7 @@ struct _MBQwen3I8AllSimd3(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -4163,7 +4163,7 @@ struct _MBQwen3I8AllSimd3(Movable):
         immediately."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_splitk_partial_kernel_simd]()
         _ = cctx.compile_function[_splitk_merge_kernel_simd]()
@@ -4763,36 +4763,36 @@ struct _MBQwen3I8AllSimd4(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -4801,12 +4801,12 @@ struct _MBQwen3I8AllSimd4(Movable):
     var pipeline_idx_split: Int
     var pipeline_idx_merge: Int
     var m_partial_addr: UInt64
-    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var l_partial_addr: UInt64
-    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var o_partial_addr: UInt64
-    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_deep: Int
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
@@ -4862,7 +4862,7 @@ struct _MBQwen3I8AllSimd4(Movable):
         # twin, plus the two kernels with no per-dtype variant. Deliberately NEVER the
         # Float32/Float16 GEMV-shaped kernels, NOR the barrier-tree `_lmhead_argmax_kernel_i8`, NOR
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -4928,20 +4928,20 @@ struct _MBQwen3I8AllSimd4(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -4979,11 +4979,11 @@ struct _MBQwen3I8AllSimd4(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -4995,15 +4995,15 @@ struct _MBQwen3I8AllSimd4(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -5032,9 +5032,9 @@ struct _MBQwen3I8AllSimd4(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -5053,7 +5053,7 @@ struct _MBQwen3I8AllSimd4(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -5088,7 +5088,7 @@ struct _MBQwen3I8AllSimd4(Movable):
         immediately."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_splitk_partial_kernel_simd_batched4]()
         _ = cctx.compile_function[_splitk_merge_kernel_simd]()
@@ -5707,36 +5707,36 @@ struct _MBQwen3I8AllSimd5(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -5745,12 +5745,12 @@ struct _MBQwen3I8AllSimd5(Movable):
     var pipeline_idx_split: Int
     var pipeline_idx_merge: Int
     var m_partial_addr: UInt64
-    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var l_partial_addr: UInt64
-    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var o_partial_addr: UInt64
-    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_deep: Int
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
@@ -5807,7 +5807,7 @@ struct _MBQwen3I8AllSimd5(Movable):
         # twin, plus the two kernels with no per-dtype variant. Deliberately NEVER the
         # Float32/Float16 GEMV-shaped kernels, NOR the barrier-tree `_lmhead_argmax_kernel_i8`, NOR
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -5873,20 +5873,20 @@ struct _MBQwen3I8AllSimd5(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -5924,11 +5924,11 @@ struct _MBQwen3I8AllSimd5(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -5940,15 +5940,15 @@ struct _MBQwen3I8AllSimd5(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -5977,9 +5977,9 @@ struct _MBQwen3I8AllSimd5(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -5998,7 +5998,7 @@ struct _MBQwen3I8AllSimd5(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -6033,7 +6033,7 @@ struct _MBQwen3I8AllSimd5(Movable):
         immediately."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
         _ = cctx.compile_function[_splitk_merge_kernel_simd]()
@@ -6624,36 +6624,36 @@ struct _MBQwen3I8AllSimd6(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -6662,12 +6662,12 @@ struct _MBQwen3I8AllSimd6(Movable):
     var pipeline_idx_split: Int
     var pipeline_idx_merge: Int
     var m_partial_addr: UInt64
-    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var l_partial_addr: UInt64
-    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var o_partial_addr: UInt64
-    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_deep: Int
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
@@ -6724,7 +6724,7 @@ struct _MBQwen3I8AllSimd6(Movable):
         # twin, plus the two kernels with no per-dtype variant. Deliberately NEVER the
         # Float32/Float16 GEMV-shaped kernels, NOR the barrier-tree `_lmhead_argmax_kernel_i8`, NOR
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -6790,20 +6790,20 @@ struct _MBQwen3I8AllSimd6(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -6841,11 +6841,11 @@ struct _MBQwen3I8AllSimd6(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -6857,15 +6857,15 @@ struct _MBQwen3I8AllSimd6(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -6894,9 +6894,9 @@ struct _MBQwen3I8AllSimd6(Movable):
         # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
         # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
         # separate `mut self` method, not a continuation of this constructor.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -6915,7 +6915,7 @@ struct _MBQwen3I8AllSimd6(Movable):
         # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
         # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -6950,7 +6950,7 @@ struct _MBQwen3I8AllSimd6(Movable):
         immediately."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
         _ = cctx.compile_function[_splitk_merge_kernel_simd]()
@@ -7545,36 +7545,36 @@ struct _MBQwen3I8AllSimd7(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -7597,12 +7597,12 @@ struct _MBQwen3I8AllSimd7(Movable):
     `n_splits` has not changed from the previous deep step's, per the struct docstring's account of
     why that is cheaper and still correct."""
     var m_partial_addr: UInt64
-    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var l_partial_addr: UInt64
-    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var o_partial_addr: UInt64
-    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_deep: Int
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
@@ -7638,7 +7638,7 @@ struct _MBQwen3I8AllSimd7(Movable):
         # ── same kernel set as `_MBQwen3I8AllSimd6.__init__` -- see that constructor's own docstring
         # for why the deep-context pair is deliberately NOT compiled here (deferred to
         # `_ensure_deep_initialized`).
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -7700,20 +7700,20 @@ struct _MBQwen3I8AllSimd7(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -7751,11 +7751,11 @@ struct _MBQwen3I8AllSimd7(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -7767,15 +7767,15 @@ struct _MBQwen3I8AllSimd7(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
@@ -7799,9 +7799,9 @@ struct _MBQwen3I8AllSimd7(Movable):
         # ceiling), not the old comptime `_ATTN_SPLITK_N_SPLITS_NATIVE` -- see the struct docstring's
         # "BUFFER SIZING" paragraph. Still a null placeholder until `_ensure_deep_initialized`
         # allocates lazily, same discipline as `_MBQwen3I8AllSimd6`.
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -7810,7 +7810,7 @@ struct _MBQwen3I8AllSimd7(Movable):
         self.nkeys_offsets = List[Int]()
 
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -7827,7 +7827,7 @@ struct _MBQwen3I8AllSimd7(Movable):
         not a comptime constant."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
         _ = cctx.compile_function[_splitk_merge_kernel_simd]()
@@ -8379,36 +8379,36 @@ struct _MBQwen3I8KVF16(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -8434,7 +8434,7 @@ struct _MBQwen3I8KVF16(Movable):
         # rope-write/sdpa twins (cache axis) plus the one role with no per-arm variant on either
         # axis. Deliberately NEVER the Float32-cache `_qk_rope_write_kernel`/`_sdpa_kernel`, and
         # NEVER the Float32/Float16 GEMV-shaped weight kernels — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_i8]()
@@ -8475,20 +8475,20 @@ struct _MBQwen3I8KVF16(Movable):
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -8526,11 +8526,11 @@ struct _MBQwen3I8KVF16(Movable):
                 cka, ckp, cva, cvp,
             ))
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -8542,15 +8542,15 @@ struct _MBQwen3I8KVF16(Movable):
         if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (sin)")
 
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
         if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:

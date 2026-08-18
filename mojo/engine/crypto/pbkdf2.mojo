@@ -145,7 +145,7 @@ def bytes_from_string(s: String) -> List[Int]:
         List of byte values (0-255).
     """
     var bspan = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var result = List[Int](capacity=n)
     for i in range(n):
         result.append(Int(bspan[i]))

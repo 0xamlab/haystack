@@ -465,7 +465,7 @@ def _apply_check(
     # only runs on the caller's path is one refactor away from not running at all.
     if first_unsupported_op(nodes) >= 0:
         return DQ_EXPECT_ERR_UNSUPPORTED_OP
-    if len(validation_error(nodes, root, batch.width())) > 0:
+    if validation_error(nodes, root, batch.width()).byte_length() > 0:
         return DQ_EXPECT_ERR_PLAN_INVALID
 
     var verdict = List[Float64]()
@@ -807,7 +807,7 @@ def expect_plan_flat(
     # Guard 2 before guard 3: `validation_error` says "" for the plan that aborts.
     if first_unsupported_op(nodes) >= 0:
         return ExpectationReport(DQ_EXPECT_ERR_UNSUPPORTED_OP, n_rows)
-    if len(validation_error(nodes, root, n_cols)) > 0:
+    if validation_error(nodes, root, n_cols).byte_length() > 0:
         return ExpectationReport(DQ_EXPECT_ERR_PLAN_INVALID, n_rows)
 
     # The plan may read any column, so the whole prefix of the table is materialised:

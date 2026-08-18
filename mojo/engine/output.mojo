@@ -229,7 +229,7 @@ def serialize_envelope(
         s += "]}"
 
     # Extra engine-specific JSON fields
-    if len(extra_json) > 0: s += ',' + extra_json
+    if extra_json.byte_length() > 0: s += ',' + extra_json
 
     # Result hash — computed last over stable envelope content
     var hash_input = (

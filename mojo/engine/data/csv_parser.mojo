@@ -64,22 +64,22 @@ def _try_parse_float(s: String) -> Float64:
 
 
 def _can_parse_float(s: String) -> Bool:
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return False
     var bs = s.as_bytes()
     var start = 0
-    while start < len(s) and (bs[start] == _SPACE or bs[start] == _TAB):
+    while start < s.byte_length() and (bs[start] == _SPACE or bs[start] == _TAB):
         start += 1
-    if start >= len(s):
+    if start >= s.byte_length():
         return False
     if bs[start] == UInt8(45) or bs[start] == UInt8(43):
         start += 1
-    if start >= len(s):
+    if start >= s.byte_length():
         return False
     var has_digit = False
     var has_dot = False
     var i = start
-    while i < len(s):
+    while i < s.byte_length():
         var c = bs[i]
         if c >= UInt8(48) and c <= UInt8(57):
             has_digit = True
@@ -87,23 +87,23 @@ def _can_parse_float(s: String) -> Bool:
             has_dot = True
         elif c == UInt8(101) or c == UInt8(69):
             i += 1
-            if i < len(s) and (bs[i] == UInt8(45) or bs[i] == UInt8(43)):
+            if i < s.byte_length() and (bs[i] == UInt8(45) or bs[i] == UInt8(43)):
                 i += 1
-            if i >= len(s) or not (bs[i] >= UInt8(48) and bs[i] <= UInt8(57)):
+            if i >= s.byte_length() or not (bs[i] >= UInt8(48) and bs[i] <= UInt8(57)):
                 return False
-            while i < len(s) and bs[i] >= UInt8(48) and bs[i] <= UInt8(57):
+            while i < s.byte_length() and bs[i] >= UInt8(48) and bs[i] <= UInt8(57):
                 i += 1
-            while i < len(s) and (bs[i] == _SPACE or bs[i] == _TAB):
+            while i < s.byte_length() and (bs[i] == _SPACE or bs[i] == _TAB):
                 i += 1
-            return i == len(s) and has_digit
+            return i == s.byte_length() and has_digit
         elif c == _SPACE or c == _TAB:
             break
         else:
             return False
         i += 1
-    while i < len(s) and (bs[i] == _SPACE or bs[i] == _TAB):
+    while i < s.byte_length() and (bs[i] == _SPACE or bs[i] == _TAB):
         i += 1
-    return has_digit and i == len(s)
+    return has_digit and i == s.byte_length()
 
 
 def _try_parse_int(s: String) -> Int:
@@ -114,21 +114,21 @@ def _try_parse_int(s: String) -> Int:
 
 
 def _can_parse_int(s: String) -> Bool:
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return False
     var bs = s.as_bytes()
     var start = 0
-    while start < len(s) and (bs[start] == _SPACE or bs[start] == _TAB):
+    while start < s.byte_length() and (bs[start] == _SPACE or bs[start] == _TAB):
         start += 1
-    if start >= len(s):
+    if start >= s.byte_length():
         return False
     if bs[start] == UInt8(45) or bs[start] == UInt8(43):
         start += 1
-    if start >= len(s):
+    if start >= s.byte_length():
         return False
     var has_digit = False
     var i = start
-    while i < len(s):
+    while i < s.byte_length():
         var c = bs[i]
         if c >= UInt8(48) and c <= UInt8(57):
             has_digit = True
@@ -137,9 +137,9 @@ def _can_parse_int(s: String) -> Bool:
         else:
             return False
         i += 1
-    while i < len(s) and (bs[i] == _SPACE or bs[i] == _TAB):
+    while i < s.byte_length() and (bs[i] == _SPACE or bs[i] == _TAB):
         i += 1
-    return has_digit and i == len(s)
+    return has_digit and i == s.byte_length()
 
 
 # ── Core CSV parsing (state machine) ─────────────────────────────────────────
@@ -310,7 +310,7 @@ def _escape_json_string(s: String) -> String:
     """Escape a string for JSON output."""
     var result = String("")
     var bs = s.as_bytes()
-    for i in range(len(s)):
+    for i in range(s.byte_length()):
         var c = bs[i]
         if c == UInt8(34):
             result += "\\\""

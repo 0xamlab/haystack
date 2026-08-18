@@ -93,7 +93,7 @@ Public API:
   attn_flop_count(batch, h_q, s_q, s_kv, d, causal) -> Float64
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.math import abs as fabs, exp, isinf, isnan, sqrt
 from std.sys import info
 from std.sys.info import simd_width_of
@@ -564,11 +564,11 @@ def attn_forward_tiled(
     var out = _zeros(batch * h_q * s_q * d)
     var maxlog = _zeros(n_workers)
 
-    var qp = q.unsafe_ptr()
-    var kp = k.unsafe_ptr()
-    var vp = v.unsafe_ptr()
-    var op = out.unsafe_ptr()
-    var mlp = maxlog.unsafe_ptr()
+    var qp = q.unsafe_ptr().as_unsafe_any_origin()
+    var kp = k.unsafe_ptr().as_unsafe_any_origin()
+    var vp = v.unsafe_ptr().as_unsafe_any_origin()
+    var op = out.unsafe_ptr().as_unsafe_any_origin()
+    var mlp = maxlog.unsafe_ptr().as_unsafe_any_origin()
 
     var group = h_q // h_kv
     var pd = d
@@ -589,10 +589,10 @@ def attn_forward_tiled(
         var acc = _zeros(pbr * pd)
         var m_run = _zeros(pbr)
         var l_run = _zeros(pbr)
-        var sp = s_tile.unsafe_ptr()
-        var ap = acc.unsafe_ptr()
-        var mp = m_run.unsafe_ptr()
-        var lp = l_run.unsafe_ptr()
+        var sp = s_tile.unsafe_ptr().as_unsafe_any_origin()
+        var ap = acc.unsafe_ptr().as_unsafe_any_origin()
+        var mp = m_run.unsafe_ptr().as_unsafe_any_origin()
+        var lp = l_run.unsafe_ptr().as_unsafe_any_origin()
         var local_max = 0.0
 
         var each = ptasks // pnw
@@ -841,12 +841,12 @@ def _forward_materialized(
     var maxlog = _zeros(n_workers)
     var bad = _zeros(n_workers)
 
-    var qp = q.unsafe_ptr()
-    var kp = k.unsafe_ptr()
-    var vp = v.unsafe_ptr()
-    var op = out.unsafe_ptr()
-    var mlp = maxlog.unsafe_ptr()
-    var badp = bad.unsafe_ptr()
+    var qp = q.unsafe_ptr().as_unsafe_any_origin()
+    var kp = k.unsafe_ptr().as_unsafe_any_origin()
+    var vp = v.unsafe_ptr().as_unsafe_any_origin()
+    var op = out.unsafe_ptr().as_unsafe_any_origin()
+    var mlp = maxlog.unsafe_ptr().as_unsafe_any_origin()
+    var badp = bad.unsafe_ptr().as_unsafe_any_origin()
 
     var group = h_q // h_kv
     var pd = d
@@ -863,7 +863,7 @@ def _forward_materialized(
     @parameter
     def band(tid: Int) capturing:
         var scores = _zeros(ps_q * ps_kv)
-        var sp = scores.unsafe_ptr()
+        var sp = scores.unsafe_ptr().as_unsafe_any_origin()
         var local_max = 0.0
         var local_bad = 0.0
 

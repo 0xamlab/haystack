@@ -23,10 +23,10 @@ Method (safe against crashing on garbage addresses):
 
 Throwaway recon probe, new namespace, touches nothing frozen.
 """
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.memory import alloc
 from std.ffi import external_call
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 comptime WORDS_PER_SCAN = 512  # 4096 bytes per read

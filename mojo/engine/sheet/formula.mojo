@@ -731,7 +731,7 @@ def parse_formula(
         p.fail(String("PARSE"))
     if p.failed or root < 0 or len(nodes) - base_nodes > MAX_NODES_PER_FORMULA:
         var reason = p.fail_reason
-        if len(reason) == 0:
+        if reason.byte_length() == 0:
             reason = String("PARSE")
         # roll back partial nodes so the arena carries no orphans
         while len(nodes) > base_nodes:

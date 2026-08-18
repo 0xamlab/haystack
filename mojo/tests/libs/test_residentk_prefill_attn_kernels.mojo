@@ -33,7 +33,7 @@ non-reproducible failure possible but unlikely — rerun before concluding a NEW
 this file is a math bug rather than another instance of the same known issue.
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import sqrt
 from std.sys import has_accelerator
 from residentk.session import RESIDENT_GPU_BUILD

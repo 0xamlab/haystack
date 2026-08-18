@@ -44,7 +44,7 @@ substituted):
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run /tmp/gemm_qkv_proj_dualstream
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.ffi import external_call
 from std.memory import alloc
 from std.time import perf_counter_ns

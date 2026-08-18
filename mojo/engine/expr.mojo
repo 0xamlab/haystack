@@ -188,7 +188,7 @@ def _find_arg_end(expr: String, start: Int) -> Int:
     var bs = expr.as_bytes()
     var open_paren  = UInt8(ord("("))
     var close_paren = UInt8(ord(")"))
-    while i < len(expr):
+    while i < expr.byte_length():
         if bs[i] == open_paren:
             depth += 1
         elif bs[i] == close_paren:
@@ -196,7 +196,7 @@ def _find_arg_end(expr: String, start: Int) -> Int:
             if depth == 0:
                 return i
         i += 1
-    return len(expr) - 1
+    return expr.byte_length() - 1
 
 
 def _split_args(expr: String) -> List[String]:
@@ -210,7 +210,7 @@ def _split_args(expr: String) -> List[String]:
     var open_brack  = UInt8(ord("["))
     var close_brack = UInt8(ord("]"))
     var comma       = UInt8(ord(","))
-    for i in range(len(expr)):
+    for i in range(expr.byte_length()):
         var c = bs[i]
         if c == open_paren or c == open_brack:
             depth += 1
@@ -222,7 +222,7 @@ def _split_args(expr: String) -> List[String]:
             start = i + 1
     var seg2 = span_to_str_end(expr, start)
     var last = seg2.strip()
-    if len(last) > 0:
+    if last.byte_length() > 0:
         args.append(String(last))
     return args^
 
@@ -238,7 +238,7 @@ def parse_expr(expr: String, var_names: List[String], mut nodes: List[ExprNode])
     Variable names and numeric literals are also supported.
     """
     var t = String(expr.strip())
-    if len(t) == 0:
+    if t.byte_length() == 0:
         nodes.append(ExprNode(0, 0.0, -1, -1, -1)); return len(nodes) - 1
 
     if _try_atof_ok(String(t)):
@@ -280,11 +280,11 @@ def parse_expr(expr: String, var_names: List[String], mut nodes: List[ExprNode])
 
     for fi in range(len(fn_names)):
         var fname = fn_names[fi]
-        var flen  = len(fname)
+        var flen  = fname.byte_length()
         var t_bytes  = t.as_bytes()
         var fn_bytes = fname.as_bytes()
         var t_prefix_match = True
-        if len(t) <= flen + 1:
+        if t.byte_length() <= flen + 1:
             t_prefix_match = False
         else:
             for k in range(flen):
@@ -330,7 +330,7 @@ def parse_expr(expr: String, var_names: List[String], mut nodes: List[ExprNode])
 
     # +/-
     var depth = 0; var sp = -1; var sop = 0
-    for i in range(len(t) - 1, -1, -1):
+    for i in range(t.byte_length() - 1, -1, -1):
         var c = tb[i]
         if c == ch_close:   depth += 1
         elif c == ch_open:  depth -= 1
@@ -344,7 +344,7 @@ def parse_expr(expr: String, var_names: List[String], mut nodes: List[ExprNode])
 
     # *, /, %
     depth = 0; sp = -1
-    for i in range(len(t) - 1, -1, -1):
+    for i in range(t.byte_length() - 1, -1, -1):
         var c = tb[i]
         if c == ch_close:   depth += 1
         elif c == ch_open:  depth -= 1
@@ -359,7 +359,7 @@ def parse_expr(expr: String, var_names: List[String], mut nodes: List[ExprNode])
 
     # ^ (power — highest precedence, only scanned after +/- and */ have been resolved)
     depth = 0; sp = -1
-    for i in range(len(t) - 1, -1, -1):
+    for i in range(t.byte_length() - 1, -1, -1):
         var c = tb[i]
         if c == ch_close:   depth += 1
         elif c == ch_open:  depth -= 1
@@ -371,11 +371,11 @@ def parse_expr(expr: String, var_names: List[String], mut nodes: List[ExprNode])
         nodes.append(ExprNode(7, 0.0, -1, li, ri)); return len(nodes) - 1
 
     # Strip outer parens
-    if len(t) > 2 and tb[0] == ch_open and tb[len(t)-1] == ch_close:
-        return parse_expr(span_to_str(t, 1, len(t)-1), var_names, nodes)
+    if t.byte_length() > 2 and tb[0] == ch_open and tb[t.byte_length()-1] == ch_close:
+        return parse_expr(span_to_str(t, 1, t.byte_length()-1), var_names, nodes)
 
     # Unary negation
-    if len(t) > 1 and tb[0] == ch_minus:
+    if t.byte_length() > 1 and tb[0] == ch_minus:
         var ci = parse_expr(String(span_to_str_end(t, 1).strip()), var_names, nodes)
         nodes.append(ExprNode(6, 0.0, -1, ci, -1)); return len(nodes) - 1
 

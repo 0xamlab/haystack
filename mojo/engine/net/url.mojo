@@ -73,7 +73,7 @@ def _int_to_string(val: Int) -> String:
 def _string_to_int(s: String) -> Int:
     """Parse non-negative integer from string. Returns 0 on failure."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var result = 0
     for i in range(n):
         var c = Int(bs[i])
@@ -87,7 +87,7 @@ def _string_to_int(s: String) -> Int:
 def _substr(s: String, start: Int, end: Int) -> String:
     """Extract substring from start (inclusive) to end (exclusive)."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var e = end
     if e > n:
         e = n
@@ -102,8 +102,8 @@ def _substr(s: String, start: Int, end: Int) -> String:
 
 def _find(s: String, needle: String, start: Int) -> Int:
     """Find first occurrence of needle in s starting from start. Returns -1 if not found."""
-    var s_len = len(s)
-    var n_len = len(needle)
+    var s_len = s.byte_length()
+    var n_len = needle.byte_length()
     if n_len == 0:
         return start
     if start + n_len > s_len:
@@ -124,7 +124,7 @@ def _find(s: String, needle: String, start: Int) -> Int:
 def _find_char(s: String, ch: UInt8, start: Int) -> Int:
     """Find first occurrence of a single byte in s. Returns -1 if not found."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     for i in range(start, n):
         if bs[i] == ch:
             return i
@@ -163,7 +163,7 @@ def url_parse(raw: String) -> URL:
     """
     var u = URL()
     var s = raw
-    var total = len(s)
+    var total = s.byte_length()
 
     # ── Extract scheme ──
     var pos = 0
@@ -195,7 +195,7 @@ def url_parse(raw: String) -> URL:
 
     # ── Extract host and port ──
     var authority = _substr(s, pos, working_end)
-    var auth_len = len(authority)
+    var auth_len = authority.byte_length()
 
     if auth_len > 0:
         # Check for port (last colon)
@@ -221,7 +221,7 @@ def url_to_string(u: URL) -> String:
     """Reconstruct URL from components."""
     var result = String("")
 
-    if len(u.scheme) > 0:
+    if u.scheme.byte_length() > 0:
         result += u.scheme
         result += "://"
 
@@ -233,11 +233,11 @@ def url_to_string(u: URL) -> String:
 
     result += u.path
 
-    if len(u.query) > 0:
+    if u.query.byte_length() > 0:
         result += "?"
         result += u.query
 
-    if len(u.fragment) > 0:
+    if u.fragment.byte_length() > 0:
         result += "#"
         result += u.fragment
 
@@ -252,7 +252,7 @@ def url_encode(s: String) -> String:
     Encodes non-unreserved chars as %XX (uppercase hex).
     """
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var result = String("")
     for i in range(n):
         var c = bs[i]
@@ -271,7 +271,7 @@ def url_encode(s: String) -> String:
 def url_decode(s: String) -> String:
     """Decode percent-encoded string. %XX → byte, + → space."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var result = String("")
     var i = 0
     while i < n:
@@ -296,7 +296,7 @@ def url_decode(s: String) -> String:
 def query_parse(query: String) -> List[List[String]]:
     """Parse query string "key1=val1&key2=val2" into list of [key, value] pairs."""
     var result = List[List[String]]()
-    var q_len = len(query)
+    var q_len = query.byte_length()
     if q_len == 0:
         return result^
 
@@ -315,7 +315,7 @@ def query_parse(query: String) -> List[List[String]]:
         var pair = List[String]()
         if eq_pos >= 0:
             pair.append(_substr(pair_str, 0, eq_pos))
-            pair.append(_substr(pair_str, eq_pos + 1, len(pair_str)))
+            pair.append(_substr(pair_str, eq_pos + 1, pair_str.byte_length()))
         else:
             pair.append(pair_str)
             pair.append(String(""))

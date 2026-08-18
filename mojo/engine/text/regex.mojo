@@ -40,7 +40,7 @@ def _is_space(c: UInt8) -> Bool:
 
 def _span(s: String, start: Int, end: Int) -> String:
     var bs = s.as_bytes()
-    var e = min(end, len(s))
+    var e = min(end, s.byte_length())
     var result = String("")
     for i in range(start, e):
         result += chr(Int(bs[i]))
@@ -139,7 +139,7 @@ def _atom_matches(atom: _Atom, c: UInt8) -> Bool:
 
 def _class_contains(class_chars: String, negated: Bool, c: UInt8) -> Bool:
     var bs = class_chars.as_bytes()
-    var n = len(class_chars)
+    var n = class_chars.byte_length()
     var found = False
     var i = 0
     while i < n:
@@ -272,7 +272,7 @@ def _match_atoms(atoms: List[_Atom], atom_idx: Int, text: String, text_pos: Int)
     var ai = atom_idx
     var tp = text_pos
     var n_atoms = len(atoms)
-    var n_text = len(text)
+    var n_text = text.byte_length()
     var tbs = text.as_bytes()
 
     while ai < n_atoms:
@@ -348,16 +348,16 @@ def _split_alternations(pattern: String, start: Int, end: Int) -> List[Int]:
 
 
 def _has_start_anchor(pattern: String) -> Bool:
-    if len(pattern) == 0:
+    if pattern.byte_length() == 0:
         return False
     return pattern.as_bytes()[0] == _CARET
 
 
 def _has_end_anchor(pattern: String) -> Bool:
-    if len(pattern) == 0:
+    if pattern.byte_length() == 0:
         return False
     var bs = pattern.as_bytes()
-    var n = len(pattern)
+    var n = pattern.byte_length()
     if bs[n - 1] != _DOLLAR:
         return False
     if n >= 2 and bs[n - 2] == _BACKSLASH:
@@ -367,7 +367,7 @@ def _has_end_anchor(pattern: String) -> Bool:
 
 def _pattern_bounds(pattern: String) -> _PBounds:
     var start = 0
-    var end = len(pattern)
+    var end = pattern.byte_length()
     var sa = _has_start_anchor(pattern)
     var ea = _has_end_anchor(pattern)
     if sa:
@@ -389,24 +389,24 @@ def regex_match(pattern: String, text: String) -> Bool:
     if len(alts) == 0:
         var atoms = _compile_branch(pattern, pb.start, pb.end)
         var result = _match_atoms(atoms, 0, text, 0)
-        return result == len(text)
+        return result == text.byte_length()
     else:
         var prev = pb.start
         for a in range(len(alts)):
             var atoms = _compile_branch(pattern, prev, alts[a])
             var result = _match_atoms(atoms, 0, text, 0)
-            if result == len(text):
+            if result == text.byte_length():
                 return True
             prev = alts[a] + 1
         var atoms = _compile_branch(pattern, prev, pb.end)
         var result = _match_atoms(atoms, 0, text, 0)
-        return result == len(text)
+        return result == text.byte_length()
 
 
 def regex_search(pattern: String, text: String) -> Int:
     """Find first occurrence of pattern in text. Returns start index or -1."""
     var pb = _pattern_bounds(pattern)
-    var n = len(text)
+    var n = text.byte_length()
 
     var alts = _split_alternations(pattern, pb.start, pb.end)
 
@@ -464,7 +464,7 @@ def regex_find_all(pattern: String, text: String) -> List[String]:
     """Find all non-overlapping matches of pattern in text."""
     var results = List[String]()
     var pb = _pattern_bounds(pattern)
-    var n = len(text)
+    var n = text.byte_length()
     var pos = 0
 
     while pos <= n:
@@ -484,7 +484,7 @@ def regex_find_all(pattern: String, text: String) -> List[String]:
 def regex_replace(pattern: String, text: String, replacement: String) -> String:
     """Replace all occurrences of pattern in text with replacement."""
     var pb = _pattern_bounds(pattern)
-    var n = len(text)
+    var n = text.byte_length()
     var result = String("")
     var pos = 0
     var tbs = text.as_bytes()
@@ -511,7 +511,7 @@ def regex_split(pattern: String, text: String) -> List[String]:
     """Split text by pattern matches."""
     var parts = List[String]()
     var pb = _pattern_bounds(pattern)
-    var n = len(text)
+    var n = text.byte_length()
     var last_end = 0
     var pos = 0
 
@@ -535,6 +535,6 @@ def is_match_literal(pattern: String, text: String) -> Bool:
 
 def is_match_simple(pattern: String, text: String) -> Bool:
     """Match with only . * + ? support (no character classes)."""
-    var atoms = _compile_branch(pattern, 0, len(pattern))
+    var atoms = _compile_branch(pattern, 0, pattern.byte_length())
     var result = _match_atoms(atoms, 0, text, 0)
-    return result == len(text)
+    return result == text.byte_length()

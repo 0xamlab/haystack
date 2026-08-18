@@ -178,7 +178,7 @@ deprecation_state: active
 """
 
 from std.math import sqrt, exp, log, cos, sin, atan2, abs as fabs, isnan, isinf
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from determinism.counter_rng import philox_word, rng_uniform, rng_normal

@@ -7,7 +7,7 @@ documented in kernels.mojo, or is a separate issue.
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \
       pixi run mojo run -D ALGENTA_GPU -I ../mojo/engine ../mma_forge/probes/debug_assign_m1.mojo
 """
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from residentk.kernels import _pf_gemm_assign_kernel_i8
 
 comptime M: Int = 1

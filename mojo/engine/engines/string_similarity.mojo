@@ -77,7 +77,7 @@ def _is_stop_word(w: String) -> Bool:
 
 def _unquote(s: String) -> String:
     """Strip surrounding JSON double-quotes; handle backslash escapes."""
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2:
         return s
     var bytes = s.as_bytes()
@@ -111,7 +111,7 @@ def _expand_column(col: String) -> String:
       - camelCase splitting: lowercase char → uppercase char inserts a space
       - Convert to lowercase
     """
-    var n = len(col)
+    var n = col.byte_length()
     var bytes = col.as_bytes()
     var result = String("")
     for i in range(n):
@@ -135,7 +135,7 @@ def _tokenize(s: String) -> List[String]:
     """Extract [a-z0-9]+ tokens from an already-lowercased/expanded string."""
     var result = List[String]()
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var i = 0
     while i < n:
         if _is_alnum_lower(bytes[i]):
@@ -145,7 +145,7 @@ def _tokenize(s: String) -> List[String]:
             var tok = String("")
             for k in range(start, i):
                 tok += chr(Int(bytes[k]))
-            if len(tok) > 0:
+            if tok.byte_length() > 0:
                 result.append(tok)
         else:
             i += 1
@@ -159,7 +159,7 @@ def _col_raw_parts(col: String) -> List[String]:
     """
     var result = List[String]()
     var bytes = col.as_bytes()
-    var n = len(col)
+    var n = col.byte_length()
     var i = 0
     while i < n:
         if _is_alnum_any(bytes[i]):
@@ -169,7 +169,7 @@ def _col_raw_parts(col: String) -> List[String]:
             var tok = String("")
             for k in range(start, i):
                 tok += chr(Int(bytes[k]))
-            if len(tok) > 0:
+            if tok.byte_length() > 0:
                 result.append(tok)
         else:
             i += 1
@@ -186,12 +186,12 @@ def _fuzzy_token_sim(a: String, b: String) -> Float64:
       3. Bigram Dice       → dice_coefficient(a, b)
     Returns the best score.
     """
-    if len(a) == 0 or len(b) == 0:
+    if a.byte_length() == 0 or b.byte_length() == 0:
         return 0.0
     if a == b:
         return 1.0
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     # Identify shorter and longer
     var short_s = a
     var long_s  = b
@@ -253,7 +253,7 @@ def _acronym_score(hint_toks: List[String], col_parts: List[String]) -> Float64:
     var initials = String("")
     for i in range(len(hint_toks)):
         var hw = hint_toks[i]
-        if _is_stop_word(hw) or len(hw) == 0:
+        if _is_stop_word(hw) or hw.byte_length() == 0:
             continue
         var wb = hw.as_bytes()
         var first = wb[0]
@@ -263,16 +263,16 @@ def _acronym_score(hint_toks: List[String], col_parts: List[String]) -> Float64:
         else:
             initials += chr(Int(first))
 
-    if len(initials) == 0:
+    if initials.byte_length() == 0:
         return 0.0
 
     var init_bytes = initials.as_bytes()
-    var init_len   = len(initials)
+    var init_len   = initials.byte_length()
     var best: Float64 = 0.0
 
     for pi in range(len(col_parts)):
         var part = col_parts[pi]
-        var plen = len(part)
+        var plen = part.byte_length()
         if plen < 2 or plen > 6:
             continue
         # Must be entirely uppercase alphabetic
@@ -322,7 +322,7 @@ def run_string_similarity(raw: String) raises -> String:
         var hw = to_lower(raw_hw)
         # Trim leading/trailing spaces
         var hb = hw.as_bytes()
-        var hn = len(hw)
+        var hn = hw.byte_length()
         var hs = 0
         var he = hn
         while hs < hn and hb[hs] == UInt8(32):
@@ -333,7 +333,7 @@ def run_string_similarity(raw: String) raises -> String:
             var htok = String("")
             for k in range(hs, he):
                 htok += chr(Int(hb[k]))
-            if len(htok) > 0:
+            if htok.byte_length() > 0:
                 hint_toks.append(htok)
 
     # Parse columns array
@@ -348,7 +348,7 @@ def run_string_similarity(raw: String) raises -> String:
 
     for ci in range(n_cols):
         var col = _unquote(json_array_get(cols_arr, ci))
-        if len(col) == 0:
+        if col.byte_length() == 0:
             continue
 
         # Expand + tokenize for fuzzy matching

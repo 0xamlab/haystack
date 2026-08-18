@@ -277,7 +277,7 @@ def parse_ref_text(text: String) -> RefParse:
     if bang >= 0:
         out.has_sheet = True
         out.sheet_name = _unquote_sheet(bs, bang)
-        if len(out.sheet_name) == 0 or len(out.sheet_name) > 64:
+        if out.sheet_name.byte_length() == 0 or out.sheet_name.byte_length() > 64:
             out.ok = False
             return out^
         body_start = bang + 1

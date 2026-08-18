@@ -105,7 +105,7 @@ def trie_insert(mut t: Trie, word: String):
     """Insert a word into the trie."""
     var current: Int = 0  # start at root
     var bytes_val = word.as_bytes()
-    for i in range(len(word)):
+    for i in range(word.byte_length()):
         var ch = Int(bytes_val[i])
         var child = _find_child(t, current, ch)
         if child == -1:
@@ -122,7 +122,7 @@ def trie_search(t: Trie, word: String) -> Bool:
         return False
     var current: Int = 0
     var bytes_val = word.as_bytes()
-    for i in range(len(word)):
+    for i in range(word.byte_length()):
         var ch = Int(bytes_val[i])
         var child = _find_child(t, current, ch)
         if child == -1:
@@ -135,7 +135,7 @@ def trie_starts_with(t: Trie, prefix: String) -> Bool:
     """Check if any word in the trie starts with given prefix."""
     var current: Int = 0
     var bytes_val = prefix.as_bytes()
-    for i in range(len(prefix)):
+    for i in range(prefix.byte_length()):
         var ch = Int(bytes_val[i])
         var child = _find_child(t, current, ch)
         if child == -1:
@@ -219,7 +219,7 @@ def trie_prefix_count(t: Trie, prefix: String) -> Int:
     """Count words starting with the given prefix."""
     var current: Int = 0
     var bytes_val = prefix.as_bytes()
-    for i in range(len(prefix)):
+    for i in range(prefix.byte_length()):
         var ch = Int(bytes_val[i])
         var child = _find_child(t, current, ch)
         if child == -1:

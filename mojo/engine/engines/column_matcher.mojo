@@ -40,7 +40,7 @@ from conv import parse_float64
 def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var i = start if start >= 0 else 0
     var e = end if end <= n else n
     while i < e:
@@ -76,7 +76,7 @@ def _normalize_name(s: String) -> String:
     var lower = to_lower(s)
     var result = String("")
     var bytes = lower.as_bytes()
-    for i in range(len(lower)):
+    for i in range(lower.byte_length()):
         var c = bytes[i]
         if c != UInt8(95) and c != UInt8(32) and c != UInt8(45):
             result += chr(Int(c))
@@ -149,7 +149,7 @@ def _distribution_score(dist_a: String, dist_b: String,
                         mean_a: Float64, mean_b: Float64,
                         std_a: Float64, std_b: Float64) -> Float64:
     var base: Float64 = 0.0
-    if dist_a == dist_b and len(dist_a) > 0:
+    if dist_a == dist_b and dist_a.byte_length() > 0:
         base = 0.5
     var cv_a: Float64 = 0.0
     var cv_b: Float64 = 0.0
@@ -172,7 +172,7 @@ def _distribution_score(dist_a: String, dist_b: String,
 def _parse_col_profiles(arr_str: String) -> List[ColProfile]:
     """Parse JSON array of column profile objects into List[ColProfile]."""
     var result = List[ColProfile]()
-    var n = len(arr_str)
+    var n = arr_str.byte_length()
     var bytes = arr_str.as_bytes()
     var i = 0
 
@@ -218,7 +218,7 @@ def _parse_col_profiles(arr_str: String) -> List[ColProfile]:
         var mean_val: Float64 = json_get_float(obj, "mean", 0.0)
         var std_val: Float64 = json_get_float(obj, "std", 0.0)
 
-        if len(name) > 0:
+        if name.byte_length() > 0:
             result.append(ColProfile(name, sem_type, polarity, dist, mean_val, std_val))
 
     return result^
@@ -231,9 +231,9 @@ def run_column_match(raw: String) raises -> String:
     var source_a = json_get_string(raw, "source_a")
     var source_b = json_get_string(raw, "source_b")
     var min_conf: Float64 = json_get_float(raw, "min_confidence", 0.5)
-    if len(source_a) == 0:
+    if source_a.byte_length() == 0:
         source_a = "source_a"
-    if len(source_b) == 0:
+    if source_b.byte_length() == 0:
         source_b = "source_b"
 
     # Extract columns_a and columns_b arrays
@@ -244,17 +244,17 @@ def run_column_match(raw: String) raises -> String:
     if cols_a_pos < 0 or cols_b_pos < 0:
         return '{"error":"column_match requires columns_a and columns_b arrays"}'
 
-    var after_a = _substr(raw, cols_a_pos + len(cols_a_key), len(raw))
+    var after_a = _substr(raw, cols_a_pos + cols_a_key.byte_length(), raw.byte_length())
     var bracket_a = after_a.find("[")
     if bracket_a < 0:
         return '{"error":"columns_a must be a JSON array"}'
-    var cols_a = _parse_col_profiles(_substr(after_a, bracket_a, len(after_a)))
+    var cols_a = _parse_col_profiles(_substr(after_a, bracket_a, after_a.byte_length()))
 
-    var after_b = _substr(raw, cols_b_pos + len(cols_b_key), len(raw))
+    var after_b = _substr(raw, cols_b_pos + cols_b_key.byte_length(), raw.byte_length())
     var bracket_b = after_b.find("[")
     if bracket_b < 0:
         return '{"error":"columns_b must be a JSON array"}'
-    var cols_b = _parse_col_profiles(_substr(after_b, bracket_b, len(after_b)))
+    var cols_b = _parse_col_profiles(_substr(after_b, bracket_b, after_b.byte_length()))
 
     var na = len(cols_a)
     var nb = len(cols_b)

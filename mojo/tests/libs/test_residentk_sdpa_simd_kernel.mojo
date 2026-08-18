@@ -44,7 +44,7 @@ a hand-wavy tight formula nobody re-checks) but is checked to REJECT a bound ten
 looser, so it is a real, discriminating check, not a rubber stamp.
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import exp, sqrt
 from std.sys import has_accelerator
 from residentk.session import RESIDENT_GPU_BUILD

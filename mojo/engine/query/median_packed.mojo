@@ -63,7 +63,7 @@ without paying for `anomaly.median`'s own O(n^2) insertion sort at the
 1e7 rows). Groups are independent, so this is an embarrassingly parallel
 decomposition, not a new merge to prove correct.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from columnar.array import Float64Array
@@ -329,7 +329,7 @@ def group_median_sd_packed_parallel(
 
         var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
         for c in range(width):
-            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+            kps.append((key_cols[c].values[].unsafe_ptr() + key_cols[c].offset).as_unsafe_any_origin())
         var kp = kps.unsafe_ptr()
         var nulls = 0
         var bad = False

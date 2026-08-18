@@ -98,7 +98,7 @@ struct _YamlPool(Copyable, Movable):
 def _count_indent(line: String) -> Int:
     """Count leading spaces in a line."""
     var bs = line.as_bytes()
-    var n = len(line)
+    var n = line.byte_length()
     var count = 0
     while count < n and Int(bs[count]) == 32:  # space
         count += 1
@@ -108,7 +108,7 @@ def _count_indent(line: String) -> Int:
 def _strip(s: String) -> String:
     """Strip leading and trailing whitespace."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var start = 0
     while start < n:
         var c = Int(bs[start])
@@ -131,9 +131,9 @@ def _starts_with(s: String, prefix: String) -> Bool:
     """Check if s starts with prefix."""
     var sbs = s.as_bytes()
     var pbs = prefix.as_bytes()
-    if len(prefix) > len(s):
+    if prefix.byte_length() > s.byte_length():
         return False
-    for i in range(len(prefix)):
+    for i in range(prefix.byte_length()):
         if sbs[i] != pbs[i]:
             return False
     return True
@@ -143,7 +143,7 @@ def _split_lines(content: String) -> List[String]:
     """Split string by newline into lines."""
     var lines = List[String]()
     var bs = content.as_bytes()
-    var n = len(content)
+    var n = content.byte_length()
     var start = 0
     for i in range(n):
         if Int(bs[i]) == 10:  # \n
@@ -166,7 +166,7 @@ def _find_colon(line: String) -> Int:
     Returns -1 if not found.
     """
     var bs = line.as_bytes()
-    var n = len(line)
+    var n = line.byte_length()
     for i in range(n):
         if Int(bs[i]) == 58:  # ':'
             if i + 1 >= n or Int(bs[i + 1]) == 32:
@@ -178,7 +178,7 @@ def _substring(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var result = String("")
-    var e = min(end, len(s))
+    var e = min(end, s.byte_length())
     for i in range(start, e):
         result += chr(Int(bs[i]))
     return result
@@ -186,7 +186,7 @@ def _substring(s: String, start: Int, end: Int) -> String:
 
 def _unquote(s: String) -> String:
     """Remove surrounding quotes if present."""
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2:
         return s
     var bs = s.as_bytes()
@@ -237,14 +237,14 @@ def _parse_block(mut state: _ParseState, base_indent: Int) -> Int:
             var line = state.lines[state.pos]
             var li = _count_indent(line)
             var ls = _strip(line)
-            if len(ls) == 0:
+            if ls.byte_length() == 0:
                 state.pos += 1
                 continue
             if li < base_indent:
                 break
             if li != base_indent or not _starts_with(ls, "- "):
                 break
-            var item_val = _strip(_substring(ls, 2, len(ls)))
+            var item_val = _strip(_substring(ls, 2, ls.byte_length()))
             var item_idx = state.pool.add_scalar(item_val)
             state.pool.nodes[list_idx].list_vals.append(item_idx)
             state.pos += 1
@@ -257,7 +257,7 @@ def _parse_block(mut state: _ParseState, base_indent: Int) -> Int:
         var li = _count_indent(line)
         var ls = _strip(line)
 
-        if len(ls) == 0:
+        if ls.byte_length() == 0:
             state.pos += 1
             continue
 
@@ -275,12 +275,12 @@ def _parse_block(mut state: _ParseState, base_indent: Int) -> Int:
 
         var key = _strip(_substring(ls, 0, colon_pos))
         var val_part = String("")
-        if colon_pos + 1 < len(ls):
-            val_part = _strip(_substring(ls, colon_pos + 1, len(ls)))
+        if colon_pos + 1 < ls.byte_length():
+            val_part = _strip(_substring(ls, colon_pos + 1, ls.byte_length()))
 
         state.pos += 1
 
-        if len(val_part) > 0:
+        if val_part.byte_length() > 0:
             var val_idx = state.pool.add_scalar(_unquote(val_part))
             state.pool.nodes[map_idx].map_keys.append(key)
             state.pool.nodes[map_idx].map_vals.append(val_idx)
@@ -288,7 +288,7 @@ def _parse_block(mut state: _ParseState, base_indent: Int) -> Int:
             if state.pos < n_lines:
                 var next_line = state.lines[state.pos]
                 var next_stripped = _strip(next_line)
-                if len(next_stripped) > 0:
+                if next_stripped.byte_length() > 0:
                     var next_indent = _count_indent(next_line)
                     if next_indent > base_indent:
                         var child_idx = _parse_block(state, next_indent)
@@ -349,7 +349,7 @@ def _split_path(path: String) -> List[String]:
     """Split a dot-notation path into segments."""
     var parts = List[String]()
     var bs = path.as_bytes()
-    var n = len(path)
+    var n = path.byte_length()
     var start = 0
     for i in range(n):
         if Int(bs[i]) == 46:  # '.'
@@ -410,7 +410,7 @@ def yaml_get_string(doc: YamlDoc, path: String) -> String:
 def yaml_get_int(doc: YamlDoc, path: String, default: Int) -> Int:
     """Get an integer value by dot-notation path. Returns default if not found."""
     var s = yaml_get_string(doc, path)
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return default
     try:
         return atol(s)
@@ -421,7 +421,7 @@ def yaml_get_int(doc: YamlDoc, path: String, default: Int) -> Int:
 def yaml_get_float(doc: YamlDoc, path: String, default: Float64) -> Float64:
     """Get a float value by dot-notation path. Returns default if not found."""
     var s = yaml_get_string(doc, path)
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return default
     try:
         return atof(s)
@@ -432,7 +432,7 @@ def yaml_get_float(doc: YamlDoc, path: String, default: Float64) -> Float64:
 def yaml_get_bool(doc: YamlDoc, path: String, default: Bool) -> Bool:
     """Get a boolean value by dot-notation path. Returns default if not found."""
     var s = yaml_get_string(doc, path)
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return default
     if s == "true" or s == "True" or s == "yes" or s == "Yes" or s == "on" or s == "On":
         return True

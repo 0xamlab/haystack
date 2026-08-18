@@ -57,12 +57,12 @@ def _is_hex_digit(b: UInt8) -> Bool:
 def _validated_hex_to_rgb(hex: String) raises -> RGB:
     var bytes = hex.as_bytes()
     var offset = 0
-    if len(hex) > 0 and Int(bytes[0]) == 35:
+    if hex.byte_length() > 0 and Int(bytes[0]) == 35:
         offset = 1
-    if len(hex) - offset != 6:
+    if hex.byte_length() - offset != 6:
         raise Error(
             "Expected a 6-digit RGB hex string, received length "
-            + String(len(hex) - offset)
+            + String(hex.byte_length() - offset)
             + "."
         )
     for i in range(offset, offset + 6):

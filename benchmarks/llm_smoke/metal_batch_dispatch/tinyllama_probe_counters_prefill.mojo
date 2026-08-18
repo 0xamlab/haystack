@@ -22,7 +22,7 @@ GQA 32:4, d_head=64, NO QK-norm, untied lm_head) at the 512/1024-token race dept
 
 from std.ffi import external_call
 from std.memory import alloc
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.sys import has_accelerator
 from std.time import perf_counter_ns
 from json.parser import json_get_object, json_get_int, json_get_float

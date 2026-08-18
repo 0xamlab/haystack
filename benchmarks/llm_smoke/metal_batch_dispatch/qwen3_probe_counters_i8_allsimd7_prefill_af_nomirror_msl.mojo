@@ -56,7 +56,7 @@ forge` blobs -- with the counter-sampling shim:
 
 from std.ffi import external_call
 from std.memory import alloc
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.sys import has_accelerator, argv
 from std.time import perf_counter_ns
 from json.parser import json_get_object, json_get_int, json_get_float

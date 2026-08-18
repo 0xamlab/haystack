@@ -30,11 +30,11 @@ def _byte_at(s: String, i: Int) -> Int:
 
 def match_literal(pattern: String, text: String) -> Bool:
     """Exact literal string match. Returns True if pattern == text."""
-    if len(pattern) != len(text):
+    if pattern.byte_length() != text.byte_length():
         return False
     var pb = pattern.as_bytes()
     var tb = text.as_bytes()
-    for i in range(len(pattern)):
+    for i in range(pattern.byte_length()):
         if pb[i] != tb[i]:
             return False
     return True
@@ -45,7 +45,7 @@ def match_literal(pattern: String, text: String) -> Bool:
 
 def match_dot_star(text: String, start: Int, end: Int) -> Bool:
     """Match .* — always true if start and end are within bounds."""
-    return start >= 0 and end >= start and end <= len(text)
+    return start >= 0 and end >= start and end <= text.byte_length()
 
 
 # ── match_char_class ──────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ def match_char_class(char_class: String, ch: Int) -> Bool:
     Supports literal characters and ranges like a-z.
     """
     var cb = char_class.as_bytes()
-    var n = len(char_class)
+    var n = char_class.byte_length()
     var i = 0
     while i < n:
         if i + 2 < n and Int(cb[i + 1]) == 45:  # '-' = 45
@@ -80,7 +80,7 @@ def match_char_class(char_class: String, ch: Int) -> Bool:
 def _parse_class(pattern: String, start: Int) -> Tuple[String, Int]:
     """Parse character class starting after '['. Returns (class_content, end_pos)."""
     var pb = pattern.as_bytes()
-    var n = len(pattern)
+    var n = pattern.byte_length()
     var content = String("")
     var i = start
     while i < n:
@@ -94,7 +94,7 @@ def _parse_class(pattern: String, start: Int) -> Tuple[String, Int]:
 def _match_one(pattern: String, pp: Int, text: String, tp: Int) -> Tuple[Bool, Int]:
     """Match one pattern element at pp against text at tp.
     Returns (matched, new_pattern_pos)."""
-    if tp >= len(text):
+    if tp >= text.byte_length():
         return (False, pp)
     var pb = pattern.as_bytes()
     var tb = text.as_bytes()
@@ -111,7 +111,7 @@ def _match_one(pattern: String, pp: Int, text: String, tp: Int) -> Tuple[Bool, I
             return (True, end_pos)
         return (False, end_pos)
     elif pch == 92:  # '\' escape
-        if pp + 1 < len(pattern):
+        if pp + 1 < pattern.byte_length():
             var next_ch = Int(pb[pp + 1])
             if next_ch == Int(pb[pp + 1]):  # any escaped char
                 if tch == next_ch:
@@ -126,7 +126,7 @@ def _match_one(pattern: String, pp: Int, text: String, tp: Int) -> Tuple[Bool, I
 
 def _skip_one(pattern: String, pp: Int) -> Int:
     """Skip one pattern element (char, class, or escape)."""
-    if pp >= len(pattern):
+    if pp >= pattern.byte_length():
         return pp
     var pb = pattern.as_bytes()
     var pch = Int(pb[pp])
@@ -217,8 +217,8 @@ def regex_match(pattern: String, text: String) -> Bool:
 
     Supports: literal, ., *, +, ?, ^, $, [abc], [a-z].
     """
-    var plen = len(pattern)
-    var tlen = len(text)
+    var plen = pattern.byte_length()
+    var tlen = text.byte_length()
     if plen == 0:
         return tlen == 0
 
@@ -233,7 +233,7 @@ def regex_match(pattern: String, text: String) -> Bool:
     if Int(pb[plen - 1]) != 36:  # not '$'
         pat = pattern + "$"
 
-    var full_plen = len(pat)
+    var full_plen = pat.byte_length()
     if _match_here(pat, pp, text, 0, full_plen, tlen):
         return True
     return False
@@ -244,8 +244,8 @@ def regex_match(pattern: String, text: String) -> Bool:
 
 def regex_search(pattern: String, text: String) -> Bool:
     """Partial match: does pattern appear anywhere in text?"""
-    var plen = len(pattern)
-    var tlen = len(text)
+    var plen = pattern.byte_length()
+    var tlen = text.byte_length()
     if plen == 0:
         return True
 
@@ -265,8 +265,8 @@ def regex_search(pattern: String, text: String) -> Bool:
 
 def regex_find_first(pattern: String, text: String) -> List[Int]:
     """Find first match of pattern in text, return [start, end] or empty list."""
-    var plen = len(pattern)
-    var tlen = len(text)
+    var plen = pattern.byte_length()
+    var tlen = text.byte_length()
     if plen == 0:
         var r = List[Int]()
         r.append(0)
@@ -293,8 +293,8 @@ def regex_find_first(pattern: String, text: String) -> List[Int]:
 
 def count_matches(pattern: String, text: String) -> Int:
     """Count non-overlapping matches of literal pattern in text."""
-    var plen = len(pattern)
-    var tlen = len(text)
+    var plen = pattern.byte_length()
+    var tlen = text.byte_length()
     if plen == 0 or plen > tlen:
         return 0
     var count = 0
@@ -321,8 +321,8 @@ def count_matches(pattern: String, text: String) -> Int:
 def split_by_literal(text: String, delimiter: String) -> List[String]:
     """Split text by literal delimiter pattern."""
     var result = List[String]()
-    var dlen = len(delimiter)
-    var tlen = len(text)
+    var dlen = delimiter.byte_length()
+    var tlen = text.byte_length()
     if dlen == 0 or tlen == 0:
         result.append(text)
         return result^
@@ -360,7 +360,7 @@ def split_by_literal(text: String, delimiter: String) -> List[String]:
 def is_valid_pattern(pattern: String) -> Bool:
     """Basic pattern validation: balanced brackets, valid quantifier placement."""
     var pb = pattern.as_bytes()
-    var n = len(pattern)
+    var n = pattern.byte_length()
     var bracket_depth = 0
     var prev_is_quantifiable = False
 

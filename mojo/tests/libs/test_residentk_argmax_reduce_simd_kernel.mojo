@@ -47,7 +47,7 @@ accident), and check that the LOWER id wins — `numpy.argmax`'s documented conv
 `llmk.generate.greedy_argmax_flat` follows.
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.sys import has_accelerator
 from residentk.session import RESIDENT_GPU_BUILD
 from residentk.kernels import (

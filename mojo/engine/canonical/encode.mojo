@@ -101,14 +101,14 @@ def write_float(mut out: List[UInt8], value: Float64):
     else:
         bits = bitcast[DType.uint64](value)
     for shift in range(7, -1, -1):
-        out.append(UInt8((bits >> (shift * 8)) & 0xFF))
+        out.append(UInt8((bits >> UInt64(shift * 8)) & 0xFF))
 
 
 def write_string(mut out: List[UInt8], value: String):
     out.append(TAG_STRING)
     var bytes = value.as_bytes()
-    write_varint(out, UInt64(len(value)))
-    for i in range(len(value)):
+    write_varint(out, UInt64(value.byte_length()))
+    for i in range(value.byte_length()):
         out.append(bytes[i])
 
 
@@ -132,11 +132,11 @@ def byte_order_less(a: String, b: String) -> Bool:
     """
     var ab = a.as_bytes()
     var bb = b.as_bytes()
-    var n = len(a) if len(a) < len(b) else len(b)
+    var n = a.byte_length() if a.byte_length() < b.byte_length() else b.byte_length()
     for i in range(n):
         if ab[i] != bb[i]:
             return ab[i] < bb[i]
-    return len(a) < len(b)
+    return a.byte_length() < b.byte_length()
 
 
 def sort_keys(keys: List[String]) -> List[String]:

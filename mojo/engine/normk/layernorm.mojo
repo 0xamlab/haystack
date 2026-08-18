@@ -45,7 +45,7 @@ Public API:
   layernorm_gradcheck_flat(x, gamma, beta, n_rows, n_cols, eps, step)   -> LayerNormAgreement
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.math import sqrt
 from std.sys.info import num_physical_cores
 from normalization_layers import layer_norm

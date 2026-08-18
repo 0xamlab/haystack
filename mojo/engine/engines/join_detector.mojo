@@ -42,7 +42,7 @@ from conv import parse_float64
 def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var i = start if start >= 0 else 0
     var e = end if end <= n else n
     while i < e:
@@ -56,7 +56,7 @@ def _substr(s: String, start: Int, end: Int) -> String:
 def _djb2(s: String) -> Int:
     var h: Int = 5381
     var bytes = s.as_bytes()
-    for i in range(len(s)):
+    for i in range(s.byte_length()):
         h = ((h << 5) + h) ^ Int(bytes[i])
     if h < 0:
         h = -h
@@ -71,12 +71,12 @@ def _extract_values(col_json: String) -> List[String]:
     var vpos = col_json.find('"values"')
     if vpos < 0:
         return result^
-    var after = _substr(col_json, vpos + 8, len(col_json))
+    var after = _substr(col_json, vpos + 8, col_json.byte_length())
     var bracket = after.find("[")
     if bracket < 0:
         return result^
-    var arr = _substr(after, bracket, len(after))
-    var n = len(arr)
+    var arr = _substr(after, bracket, after.byte_length())
+    var n = arr.byte_length()
     var bytes = arr.as_bytes()
     var i = 1  # skip [
 
@@ -188,7 +188,7 @@ def _split_dot(full: String) -> List[String]:
         result.append(full)
     else:
         result.append(_substr(full, 0, dot))
-        result.append(_substr(full, dot + 1, len(full)))
+        result.append(_substr(full, dot + 1, full.byte_length()))
     return result^
 
 
@@ -203,13 +203,13 @@ def _parse_columns(raw: String) -> List[ColEntry]:
     if cols_pos < 0:
         return result^
 
-    var after_cols = _substr(raw, cols_pos + len(cols_key), len(raw))
+    var after_cols = _substr(raw, cols_pos + cols_key.byte_length(), raw.byte_length())
     var outer_brace = after_cols.find("{")
     if outer_brace < 0:
         return result^
 
-    var cols_json = _substr(after_cols, outer_brace, len(after_cols))
-    var n = len(cols_json)
+    var cols_json = _substr(after_cols, outer_brace, after_cols.byte_length())
+    var n = cols_json.byte_length()
     var bytes = cols_json.as_bytes()
     var i = 1  # skip {
 
@@ -289,7 +289,7 @@ def run_join_detect(raw: String) raises -> String:
             var b = cols[j].copy()
 
             # Only cross-source pairs
-            if a.source == b.source and len(a.source) > 0:
+            if a.source == b.source and a.source.byte_length() > 0:
                 continue
 
             # Need values to compare

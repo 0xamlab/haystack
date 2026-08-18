@@ -40,7 +40,7 @@ and is checked to be capable of REJECTING a Float64-tight comparison, the same "
 able to fail" discipline every sibling suite in this package uses.
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import sqrt
 from std.sys import has_accelerator
 from attnk.rope import rope_table

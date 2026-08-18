@@ -49,10 +49,11 @@ this file is trusted — same protocol `sdpa_simd_reduce_probe.mojo`/`gemv_simd_
 established.
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
-from std.gpu.host import DeviceContext, DeviceBuffer
-from std.gpu import barrier, thread_idx, block_idx, grid_dim
-from std.gpu.memory import AddressSpace
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
+from max.gpu.host import DeviceContext, DeviceBuffer
+from std.gpu import thread_idx, block_idx, grid_dim
+from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
+from max.gpu.memory import AddressSpace
 from std.gpu.primitives.warp import sum as warp_sum
 from std.gpu.primitives.id import lane_id, warp_id
 from std.gpu.globals import WARP_SIZE

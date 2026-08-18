@@ -81,7 +81,7 @@ Every matrix and vector is a pure function of its position through splitmix64, s
 driver rebuilds the same bits in numpy with no file exchange and no RNG-seed agreement to
 get wrong. Verified equal to the last bit against this file's `_unit`.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 from std.time import perf_counter_ns
 

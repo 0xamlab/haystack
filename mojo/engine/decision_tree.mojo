@@ -127,7 +127,7 @@ def run_decision_tree(req: SimRequest) raises -> String:
         var expr_nodes  = List[ExprNode]()
         var expr_root   = -1
         var use_expr    = False
-        if len(path_obj_fn) > 0 and n_vars > 0:
+        if path_obj_fn.byte_length() > 0 and n_vars > 0:
             expr_root = parse_expr(path_obj_fn, vnames, expr_nodes)
             use_expr  = expr_root >= 0
 

@@ -36,8 +36,8 @@ def glob_match(pattern: String, text: String) -> Bool:
     """Simple glob matching: * matches any sequence, ? matches single char."""
     var pbs = pattern.as_bytes()
     var tbs = text.as_bytes()
-    var plen = len(pattern)
-    var tlen = len(text)
+    var plen = pattern.byte_length()
+    var tlen = text.byte_length()
     var STAR = UInt8(ord("*"))
     var QMARK = UInt8(ord("?"))
     # dp[i][j] = pattern[:i] matches text[:j]
@@ -66,8 +66,8 @@ def glob_match(pattern: String, text: String) -> Bool:
 
 def starts_with(text: String, prefix: String) -> Bool:
     """Check if text starts with prefix."""
-    var plen = len(prefix)
-    if plen > len(text):
+    var plen = prefix.byte_length()
+    if plen > text.byte_length():
         return False
     var tbs = text.as_bytes()
     var pbs = prefix.as_bytes()
@@ -82,8 +82,8 @@ def starts_with(text: String, prefix: String) -> Bool:
 
 def ends_with(text: String, suffix: String) -> Bool:
     """Check if text ends with suffix."""
-    var slen = len(suffix)
-    var tlen = len(text)
+    var slen = suffix.byte_length()
+    var tlen = text.byte_length()
     if slen > tlen:
         return False
     var tbs = text.as_bytes()
@@ -100,8 +100,8 @@ def ends_with(text: String, suffix: String) -> Bool:
 
 def contains(text: String, sub: String) -> Bool:
     """Check if text contains substring."""
-    var tlen = len(text)
-    var slen = len(sub)
+    var tlen = text.byte_length()
+    var slen = sub.byte_length()
     if slen == 0:
         return True
     if slen > tlen:
@@ -124,8 +124,8 @@ def contains(text: String, sub: String) -> Bool:
 
 def count_occurrences(text: String, sub: String) -> Int:
     """Count non-overlapping occurrences of sub in text."""
-    var tlen = len(text)
-    var slen = len(sub)
+    var tlen = text.byte_length()
+    var slen = sub.byte_length()
     if slen == 0:
         return 0
     var tbs = text.as_bytes()
@@ -151,8 +151,8 @@ def count_occurrences(text: String, sub: String) -> Int:
 
 def replace_all(text: String, old: String, new: String) -> String:
     """Replace all non-overlapping occurrences of old with new."""
-    var tlen = len(text)
-    var olen = len(old)
+    var tlen = text.byte_length()
+    var olen = old.byte_length()
     if olen == 0:
         return text
     var tbs = text.as_bytes()
@@ -200,8 +200,8 @@ def template_substitute(
 def split_string(text: String, delimiter: String) -> List[String]:
     """Split text by delimiter. Returns list of parts."""
     var parts = List[String]()
-    var tlen = len(text)
-    var dlen = len(delimiter)
+    var tlen = text.byte_length()
+    var dlen = delimiter.byte_length()
     if dlen == 0 or tlen == 0:
         parts.append(text)
         return parts^
@@ -251,7 +251,7 @@ def join_strings(parts: List[String], delimiter: String) -> String:
 
 def pad_left(text: String, width: Int, fill_char: Int = 32) -> String:
     """Left-pad text to width with fill character (default space=32)."""
-    var tlen = len(text)
+    var tlen = text.byte_length()
     if tlen >= width:
         return text
     var pad_count = width - tlen
@@ -268,7 +268,7 @@ def pad_left(text: String, width: Int, fill_char: Int = 32) -> String:
 
 def pad_right(text: String, width: Int, fill_char: Int = 32) -> String:
     """Right-pad text to width with fill character (default space=32)."""
-    var tlen = len(text)
+    var tlen = text.byte_length()
     if tlen >= width:
         return text
     var pad_count = width - tlen
@@ -284,7 +284,7 @@ def pad_right(text: String, width: Int, fill_char: Int = 32) -> String:
 
 def trim(text: String) -> String:
     """Remove leading and trailing whitespace (space, tab, newline, cr)."""
-    var tlen = len(text)
+    var tlen = text.byte_length()
     if tlen == 0:
         return text
     var bs = text.as_bytes()

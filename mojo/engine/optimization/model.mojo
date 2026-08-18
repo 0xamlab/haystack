@@ -1166,7 +1166,7 @@ def check_expr(nodes: List[ExprNode], root: Int, n_vars: Int) -> ExprCheck:
         return ExprCheck(MODEL_ERR_LENGTH_MISMATCH, -1, n, root, 0, "negative variable count")
 
     var structural = validation_error(nodes, root, 0)
-    if len(structural) > 0:
+    if structural.byte_length() > 0:
         return ExprCheck(MODEL_ERR_EXPR_STRUCTURE, -1, n, root, 0, structural)
 
     var var_refs = 0

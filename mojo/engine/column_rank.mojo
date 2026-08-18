@@ -79,12 +79,12 @@ def _normalize(text: String) -> String:
     var out = String("")
     var pending_space = False
     var bytes = lower.as_bytes()
-    for i in range(len(lower)):
+    for i in range(lower.byte_length()):
         var c = bytes[i]
         var is_alpha = (c >= UInt8(97) and c <= UInt8(122))
         var is_digit = c >= UInt8(48) and c <= UInt8(57)
         if is_alpha or is_digit:
-            if pending_space and len(out) > 0:
+            if pending_space and out.byte_length() > 0:
                 out += " "
             out += chr(Int(c))
             pending_space = False
@@ -95,15 +95,15 @@ def _normalize(text: String) -> String:
 
 def _token_overlap_boost(hint: String, candidate: String) -> Float64:
     var hint_norm = _normalize(hint)
-    if len(hint_norm) == 0:
+    if hint_norm.byte_length() == 0:
         return 0.0
     var bytes = hint_norm.as_bytes()
     var token = String("")
     var matched = 0
     var total = 0
-    for i in range(len(hint_norm) + 1):
-        if i == len(hint_norm) or bytes[i] == UInt8(32):
-            if len(token) > 0:
+    for i in range(hint_norm.byte_length() + 1):
+        if i == hint_norm.byte_length() or bytes[i] == UInt8(32):
+            if token.byte_length() > 0:
                 total += 1
                 if candidate.find(token) >= 0:
                     matched += 1
@@ -270,7 +270,7 @@ def run_column_rank(raw: String) raises -> String:
     except:
         return '{"ranked":[],"ambiguous":false,"gap":0.0}'
     var hint = py_str(payload.get("hint", ""))
-    if len(hint) == 0:
+    if hint.byte_length() == 0:
         var hint_words = payload.get("hint_words", Python.evaluate("[]"))
         for i in range(fast_int(builtins.len(hint_words))):
             if i > 0:

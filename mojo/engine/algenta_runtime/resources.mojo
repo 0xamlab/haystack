@@ -101,7 +101,7 @@ def parse_budget(raw: String) -> Budget:
     """Read a `budget` object from a coarse request. Absent means unlimited."""
     var budget = Budget()
     var spec = json_get_object(raw, "budget")
-    if len(spec) == 0:
+    if spec.byte_length() == 0:
         return budget^
 
     var deadline_ms = json_get_int(spec, "deadline_ms", 0)

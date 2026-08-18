@@ -88,14 +88,14 @@ alias _BRACE_CLOSE: UInt8 = 125  # }
 
 def _is_reference(token: String) -> Bool:
     """True for a `"$<digits>"` argument token (quoted, at least one digit)."""
-    if len(token) < 4:
+    if token.byte_length() < 4:
         return False
     var bytes = token.as_bytes()
-    if bytes[0] != _QUOTE or bytes[len(token) - 1] != _QUOTE:
+    if bytes[0] != _QUOTE or bytes[token.byte_length() - 1] != _QUOTE:
         return False
     if bytes[1] != _DOLLAR:
         return False
-    for i in range(2, len(token) - 1):
+    for i in range(2, token.byte_length() - 1):
         if bytes[i] < _ZERO or bytes[i] > _NINE:
             return False
     return True
@@ -105,7 +105,7 @@ def _reference_index(token: String) -> Int:
     """Index from a validated `"$<digits>"` token."""
     var bytes = token.as_bytes()
     var value = 0
-    for i in range(2, len(token) - 1):
+    for i in range(2, token.byte_length() - 1):
         value = value * 10 + Int(bytes[i] - _ZERO)
     return value
 
@@ -122,9 +122,9 @@ def extract_result_json(response: String) -> String:
     var start = response.find(marker)
     if start < 0:
         return "null"
-    var value_start = start + len(marker)
+    var value_start = start + marker.byte_length()
     var bytes = response.as_bytes()
-    var value_end = len(response)
+    var value_end = response.byte_length()
     # Trim back to (and then past) the envelope's closing brace.
     while value_end > value_start and bytes[value_end - 1] != _BRACE_CLOSE:
         value_end -= 1
@@ -160,7 +160,7 @@ def _bind_args(
             bound += results[_reference_index(token)]
         elif is_dataset_reference(token):
             var value = datasets.lookup(dataset_reference_handle(token))
-            if len(value) == 0:
+            if value.byte_length() == 0:
                 raise Error("unknown dataset handle " + dataset_reference_handle(token))
             bound += value
         else:
@@ -194,7 +194,7 @@ def run_pipeline_execute[DispatchT: def(String) raises -> String](
 ) raises -> String:
     """Execute every node in order, threading results through `$k` references."""
     var nodes_json = json_get_array(raw, "nodes")
-    if len(nodes_json) == 0:
+    if nodes_json.byte_length() == 0:
         return _pipeline_error(
             "invalid_arguments", "pipeline_execute requires a non-empty nodes array."
         )
@@ -215,7 +215,7 @@ def run_pipeline_execute[DispatchT: def(String) raises -> String](
     # rejected whole rather than half-executed.
     for i in range(len(nodes)):
         var args_json = json_get_array(nodes[i], "args")
-        if len(args_json) == 0:
+        if args_json.byte_length() == 0:
             continue
         var tokens: List[String]
         try:
@@ -255,7 +255,7 @@ def run_pipeline_execute[DispatchT: def(String) raises -> String](
         var module_name = json_get_string(nodes[i], "module")
         var function_name = json_get_string(nodes[i], "function")
         var args_json = json_get_array(nodes[i], "args")
-        if len(args_json) == 0:
+        if args_json.byte_length() == 0:
             args_json = "[]"
 
         var node_ok = True
@@ -283,7 +283,7 @@ def run_pipeline_execute[DispatchT: def(String) raises -> String](
                     "mojo_library_execution_failed",
                     "node " + String(i) + " raised during dispatch.",
                 )
-            if len(json_get_string(response, "error_code")) > 0:
+            if json_get_string(response, "error_code").byte_length() > 0:
                 node_ok = False
         else:
             response = _pipeline_error(

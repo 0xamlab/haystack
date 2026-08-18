@@ -47,7 +47,7 @@ def run_importance_sampling(req: SimRequest) raises -> String:
     var expr_nodes = List[ExprNode]()
     var expr_root  = -1
     var use_expr   = False
-    if len(obj_fn) > 0 and n_vars > 0:
+    if obj_fn.byte_length() > 0 and n_vars > 0:
         expr_root = parse_expr(obj_fn, req.vnames, expr_nodes)
         use_expr  = expr_root >= 0
 
@@ -71,7 +71,7 @@ def run_importance_sampling(req: SimRequest) raises -> String:
     var tilt_idx: Int = -1
     var tilt_var_global: Int = -1
     if len(normal_idxs) > 0:
-        if len(tilt_var_name) > 0:
+        if tilt_var_name.byte_length() > 0:
             for ni in range(len(normal_idxs)):
                 if req.vnames[normal_idxs[ni]] == tilt_var_name:
                     tilt_idx = ni; tilt_var_global = normal_idxs[ni]; break

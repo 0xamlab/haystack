@@ -82,7 +82,7 @@ than anywhere: an out-of-range packed index is an out-of-bounds write into
 `UnsafePointer` memory, which is an UNCATCHABLE abort that takes the worker
 process and every resident dataset with it.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.memory import UnsafePointer, alloc
 from std.sys import info
 from std.sys.info import size_of
@@ -633,10 +633,10 @@ def group_by_packed_parallel(
 
         var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
         for c in range(width):
-            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+            kps.append((key_cols[c].values[].unsafe_ptr() + key_cols[c].offset).as_unsafe_any_origin())
         var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
         for j in range(n_aggs):
-            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+            vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
         var kp = kps.unsafe_ptr()
         var vp = vps.unsafe_ptr()
         var ops = opcodes.unsafe_ptr()

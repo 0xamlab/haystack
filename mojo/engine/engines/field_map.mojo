@@ -44,7 +44,7 @@ def run_field_map(raw: String) raises -> String:
     """
     # Extract the "data" sub-object
     var data_json = json_get_object(raw, "data")
-    if len(data_json) == 0:
+    if data_json.byte_length() == 0:
         return '{"error":"field_map requires a data object","example":{"engine_type":"field_map","data":{"revenue":[100,200],"cost":[50,80]}}}'
 
     # Run field mapper

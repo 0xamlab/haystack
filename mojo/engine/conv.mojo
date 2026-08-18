@@ -50,7 +50,7 @@ def span_to_str(s: String, start: Int, end: Int) -> String:
     character content rather than a repr of the byte array.
     """
     var bytes = s.as_bytes()
-    var e = min(end, len(s))
+    var e = min(end, s.byte_length())
     var result = String("")
     for i in range(start, e):
         result += chr(Int(bytes[i]))
@@ -59,7 +59,7 @@ def span_to_str(s: String, start: Int, end: Int) -> String:
 
 def span_to_str_end(s: String, start: Int) -> String:
     """Extract substring [start, len(s)) from s, building char-by-char."""
-    return span_to_str(s, start, len(s))
+    return span_to_str(s, start, s.byte_length())
 
 
 # ── Whitespace stripping ────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ def span_to_str_end(s: String, start: Int) -> String:
 
 def strip_whitespace(s: String) -> String:
     """Remove leading and trailing ASCII whitespace from string."""
-    var n = len(s)
+    var n = s.byte_length()
     if n == 0:
         return s
 
@@ -136,7 +136,7 @@ def parse_float64(s: String) -> Float64:
     - Edge cases: "0", "-0", ".5" → 0.5, "-.5" → -0.5
     Returns 0.0 for unparseable strings.
     """
-    var n = len(s)
+    var n = s.byte_length()
     if n == 0:
         return 0.0
 
@@ -225,7 +225,7 @@ def parse_int(s: String) -> Int:
     - Float input: "42.7" → 42 (truncate at decimal point)
     Returns 0 for unparseable strings.
     """
-    var n = len(s)
+    var n = s.byte_length()
     if n == 0:
         return 0
 

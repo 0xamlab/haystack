@@ -54,10 +54,10 @@ verified in earlier phases) through `DeviceContext.enqueue_function`. Extraction
 correct. See the investigation write-up for the full reasoning chain and the go/no-go call this
 feeds into.
 """
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.ffi import external_call
 from std.gpu import block_dim, block_idx, thread_idx
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.memory import alloc
 from std.sys import has_accelerator
 from std.time import perf_counter_ns

@@ -227,7 +227,7 @@ version_introduced: unreleased
 deprecation_state: active
 @endcapability
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 
 from numerical_stability import kahan_sum
 

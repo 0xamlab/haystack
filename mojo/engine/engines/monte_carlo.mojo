@@ -11,7 +11,7 @@ Supports:
 from std.python import Python, PythonObject
 from std.random import random_float64, randn_float64
 from std.math import sqrt, exp, log, cos, pi, pow
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from types          import ExprNode, SimRequest
@@ -315,7 +315,7 @@ def run_monte_carlo(req: SimRequest) raises -> String:
     for oi in range(n_objectives):
         var obj_nodes = List[ExprNode]()
         var obj_root  = -1
-        if len(obj_fns[oi]) > 0 and n_vars > 0:
+        if obj_fns[oi].byte_length() > 0 and n_vars > 0:
             obj_root = parse_expr(obj_fns[oi], req.vnames, obj_nodes)
         obj_roots.append(obj_root)
         obj_node_sets.append(obj_nodes^)
@@ -499,7 +499,7 @@ def run_monte_carlo(req: SimRequest) raises -> String:
     var extra = '"simulation_model":"monte_carlo"'
     if use_cholesky: extra += ',"correlated":true'
     if stream_mode:  extra += ',"streamed":true,"checkpoint_every":' + String(checkpoint_every)
-    if n_objectives > 1 and len(multi_out_json) > 0: extra += "," + multi_out_json
+    if n_objectives > 1 and multi_out_json.byte_length() > 0: extra += "," + multi_out_json
 
     var final_json = build_output(outcomes, runs, ver, "monte_carlo", "monte_carlo", w_ev, w_dr, extra)
     if stream_mode:

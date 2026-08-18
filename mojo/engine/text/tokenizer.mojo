@@ -133,17 +133,17 @@ def word_tokenize(text: String) -> List[String]:
     for i in range(n):
         var c = Int(b[i])
         if _is_whitespace(c):
-            if len(current) > 0:
+            if current.byte_length() > 0:
                 tokens.append(current^)
                 current = String("")
         elif _is_punct(c):
-            if len(current) > 0:
+            if current.byte_length() > 0:
                 tokens.append(current^)
                 current = String("")
         else:
             current += chr(_to_lower(c))
 
-    if len(current) > 0:
+    if current.byte_length() > 0:
         tokens.append(current^)
 
     return tokens^
@@ -199,7 +199,7 @@ def sentence_tokenize(text: String) -> List[String]:
 
 def char_ngrams(text: String, n: Int) -> List[String]:
     """Generate character-level n-grams from text."""
-    var length = len(text)
+    var length = text.byte_length()
     if n <= 0 or length < n:
         return List[String]()
     var result = List[String](capacity=length - n + 1)

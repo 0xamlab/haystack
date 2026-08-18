@@ -83,7 +83,7 @@ def to_lower(s: String) -> String:
     """Convert string to lowercase ASCII."""
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     for i in range(n):
         var c = bytes[i]
         # A=65, Z=90 → add 32 to get lowercase
@@ -100,8 +100,8 @@ def contains_keyword(text: String, keyword: String) -> Bool:
     """
     var lower_text = to_lower(text)
     var lower_kw = to_lower(keyword)
-    var text_len = len(lower_text)
-    var kw_len = len(lower_kw)
+    var text_len = lower_text.byte_length()
+    var kw_len = lower_kw.byte_length()
     if kw_len == 0 or kw_len > text_len:
         return False
     var text_bytes = lower_text.as_bytes()
@@ -121,8 +121,8 @@ def _find_keyword_position(text: String, keyword: String) -> Int:
     """Find position of keyword in text (case-insensitive). Returns -1 if not found."""
     var lower_text = to_lower(text)
     var lower_kw = to_lower(keyword)
-    var text_len = len(lower_text)
-    var kw_len = len(lower_kw)
+    var text_len = lower_text.byte_length()
+    var kw_len = lower_kw.byte_length()
     if kw_len == 0 or kw_len > text_len:
         return -1
     var text_bytes = lower_text.as_bytes()
@@ -155,7 +155,7 @@ def detect_polarity(field_name: String) -> Int:
     Matching is case-insensitive and works on substrings.
     If both positive and negative keywords match, the one appearing first wins.
     """
-    var sentinel = len(field_name) + 1
+    var sentinel = field_name.byte_length() + 1
     var best_pos_positive = sentinel
     var best_pos_negative = sentinel
 
@@ -424,7 +424,7 @@ def _json_object_keys(data: String) -> List[String]:
     """
     var keys = List[String]()
     var bytes = data.as_bytes()
-    var n = len(data)
+    var n = data.byte_length()
 
     # Find opening brace
     var p = skip_whitespace(data, 0)
@@ -480,7 +480,7 @@ def _value_type_at(data: String, key: String) -> Int:
     if pos < 0:
         return 0
     var bytes = data.as_bytes()
-    var n = len(data)
+    var n = data.byte_length()
     if pos >= n:
         return 0
     var ch = bytes[pos]

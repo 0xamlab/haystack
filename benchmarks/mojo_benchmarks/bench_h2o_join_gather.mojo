@@ -25,7 +25,7 @@ actually runs at H2O join-track sizes. Kept as a measured, disclosed negative re
 and NOT wired into `_take_column_join`; do not re-attempt without a new idea, this
 one is closed.
 """
-from std.algorithm.functional import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 from std.time import perf_counter_ns
 

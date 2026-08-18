@@ -33,7 +33,7 @@ def json_escape_string(s: String) -> String:
     """
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     for i in range(n):
         var c = bytes[i]
         if c == UInt8(34):  # "
@@ -102,7 +102,7 @@ def json_object_end(s: String) -> String:
     Returns:
         Complete JSON object string.
     """
-    var n = len(s)
+    var n = s.byte_length()
     if n > 0:
         var bytes = s.as_bytes()
         # Check if last char is a comma

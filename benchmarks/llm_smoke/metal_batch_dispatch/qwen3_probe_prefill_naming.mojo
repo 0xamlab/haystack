@@ -40,7 +40,7 @@ from residentk.kernels import (
 
 
 def main() raises:
-    from std.gpu.host import DeviceContext
+    from max.gpu.host import DeviceContext
     var cctx = DeviceContext()
     _ = cctx.compile_function_unchecked[_pf_embed_rows_kernel_i8]()
     _ = cctx.compile_function_unchecked[_pf_qkv_proj_kernel_simd_i8]()

@@ -25,7 +25,7 @@ argv: <dir> <freq> <m> <h> <n> <mode> <nsample> <reps> <workers> [methods] [out_
 """
 from sys import argv
 from std.time import perf_counter_ns
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.memory import Span
 
 from forecasting.fitted import damped_fitted, ets_aaa_fitted, holt_fitted

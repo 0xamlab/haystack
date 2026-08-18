@@ -272,7 +272,7 @@ def _parse_int_at(s: String, start: Int, length: Int) -> Int:
     var result = 0
     for i in range(length):
         var idx = start + i
-        if idx < len(s):
+        if idx < s.byte_length():
             var c = Int(bs[idx])
             if c >= 48 and c <= 57:
                 result = result * 10 + (c - 48)
@@ -281,7 +281,7 @@ def _parse_int_at(s: String, start: Int, length: Int) -> Int:
 
 def iso_to_epoch(iso: String) -> Int:
     """Parse ISO 8601 string (YYYY-MM-DDTHH:MM:SSZ) to Unix epoch seconds."""
-    var n = len(iso)
+    var n = iso.byte_length()
     # Minimum: YYYY-MM-DDTHH:MM:SSZ = 20 chars
     if n < 20:
         return 0

@@ -94,12 +94,12 @@ def main() raises:
     # ── Objective function ──
     var obj = build_objective_function(mappings)
     # Should contain revenue (positive) and cost/churn_risk (negative)
-    assert_true(len(obj) > 0, "objective function should not be empty")
+    assert_true(obj.byte_length() > 0, "objective function should not be empty")
     print("✅ Objective function: " + obj)
 
     # ── Variables JSON ──
     var vars_json = build_variables_json(mappings)
-    assert_true(len(vars_json) > 2, "variables JSON should be more than '[]'")
+    assert_true(vars_json.byte_length() > 2, "variables JSON should be more than '[]'")
     print("✅ Variables JSON generated")
 
     # ── Scalar fields ──

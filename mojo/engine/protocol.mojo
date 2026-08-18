@@ -146,7 +146,7 @@ def encode_string_field(field_number: Int, text: String) -> List[Int]:
     var tag = (field_number << 3) | 2  # wire_type 2 = length-delimited
     var result = encode_varint(tag)
     var text_bytes = text.as_bytes()
-    var length = len(text)
+    var length = text.byte_length()
     var len_enc = encode_varint(length)
     for i in range(len(len_enc)):
         result.append(len_enc[i])

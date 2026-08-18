@@ -64,7 +64,7 @@ def tokenize(text: String) -> List[String]:
     """Split text on whitespace and common punctuation. Lowercase all tokens."""
     var tokens = List[String]()
     var bs = text.as_bytes()
-    var n = len(text)
+    var n = text.byte_length()
     var start = -1
     for i in range(n):
         var c = bs[i]
@@ -244,7 +244,7 @@ def word_count(text: String) -> Int:
     var count: Int = 0
     var in_word = False
     var bs = text.as_bytes()
-    var n = len(text)
+    var n = text.byte_length()
     for i in range(n):
         if _is_ws(bs[i]):
             if in_word:
@@ -264,7 +264,7 @@ def char_count(text: String) -> Int:
     """Count non-whitespace characters."""
     var count: Int = 0
     var bs = text.as_bytes()
-    var n = len(text)
+    var n = text.byte_length()
     for i in range(n):
         if not _is_ws(bs[i]):
             count += 1

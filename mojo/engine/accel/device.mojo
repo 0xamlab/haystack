@@ -69,7 +69,7 @@ Public API:
   accel_device_name_len()            -> Int
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.sys import has_accelerator
 from std.sys.info import _accelerator_arch
 from accel.contract import (
@@ -155,7 +155,7 @@ def accel_device_name_len() -> Int:
         # early-return on it would be dead code; the try/except carries the real middle state.
         try:
             var ctx = DeviceContext()
-            return len(ctx.name())
+            return ctx.name().byte_length()
         except:
             # A device that is present but cannot be opened. Reported as zero rather than raised:
             # this is a capability query, and a query that throws is harder to use than one that

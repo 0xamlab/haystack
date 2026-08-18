@@ -97,10 +97,10 @@ struct ResidentStreams(Copyable, Movable):
 
     def open_from_json(mut self, raw: String, datasets: ResidentDatasets) raises -> String:
         var handle = json_get_string(raw, "handle")
-        if len(handle) == 0:
+        if handle.byte_length() == 0:
             return _stream_error("invalid_arguments", "stream_open requires a handle.")
         var value = datasets.lookup(handle)
-        if len(value) == 0:
+        if value.byte_length() == 0:
             return _stream_error(
                 "dataset_not_found", "no resident dataset for handle " + handle + "."
             )
@@ -135,7 +135,7 @@ struct ResidentStreams(Copyable, Movable):
 
     def next_from_json(mut self, raw: String, datasets: ResidentDatasets) raises -> String:
         var cursor = json_get_string(raw, "cursor")
-        if len(cursor) == 0:
+        if cursor.byte_length() == 0:
             return _stream_error("invalid_arguments", "stream_next requires a cursor.")
         var index = self._index_of(cursor)
         if index < 0:
@@ -144,7 +144,7 @@ struct ResidentStreams(Copyable, Movable):
         # Re-read the dataset each pull: closing it mid-stream must surface as a
         # clean not-found rather than a stale snapshot.
         var value = datasets.lookup(self.handles[index])
-        if len(value) == 0:
+        if value.byte_length() == 0:
             return _stream_error(
                 "dataset_not_found",
                 "dataset " + self.handles[index] + " was closed while streaming.",
@@ -190,7 +190,7 @@ struct ResidentStreams(Copyable, Movable):
 
     def close_from_json(mut self, raw: String) -> String:
         var cursor = json_get_string(raw, "cursor")
-        if len(cursor) == 0:
+        if cursor.byte_length() == 0:
             return _stream_error("invalid_arguments", "stream_close requires a cursor.")
         var index = self._index_of(cursor)
         if index < 0:

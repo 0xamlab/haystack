@@ -776,7 +776,7 @@ def _crit_of(v: CellValue) -> _Crit:
     for j in range(i, n):
         bbuf.append(bs[j])
     var body = _bs_str(bbuf)
-    if len(body) == 0:
+    if body.byte_length() == 0:
         c.kind = _CK_EMPTY
         return c^
     var parsed: Float64 = 0.0
@@ -822,8 +822,8 @@ def _crit_match(c: _Crit, v: CellValue) -> Bool:
     if c.kind == _CK_EMPTY:
         # "" matches blank or empty text; "<>" matches non-blank
         if c.op == _CEQ:
-            return v.kind == VK_TEXT and len(v.text) == 0
-        return not (v.kind == VK_TEXT and len(v.text) == 0)
+            return v.kind == VK_TEXT and v.text.byte_length() == 0
+        return not (v.kind == VK_TEXT and v.text.byte_length() == 0)
     if c.kind == _CK_NUM:
         var x: Float64 = 0.0
         if v.kind == VK_NUM:

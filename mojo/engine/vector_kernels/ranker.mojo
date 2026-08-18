@@ -117,14 +117,14 @@ def _split_tokens(s: String) -> List[String]:
     for i in range(len(b)):
         var c = b[i]
         if c == 95 or c == 45 or c == 46 or c == 32:   # _ - . space
-            if len(cur) > 0:
+            if cur.byte_length() > 0:
                 tokens.append(cur)
                 cur = String("")
         elif c >= 65 and c <= 90:
             cur += chr(Int(c + 32))
         else:
             cur += chr(Int(c))
-    if len(cur) > 0:
+    if cur.byte_length() > 0:
         tokens.append(cur)
     return tokens^
 
@@ -313,7 +313,7 @@ def _json_f32(key: String, val: Float32) -> String:
     var whole = vi // 10000
     var frac  = vi  % 10000
     var fs = String(frac)
-    while len(fs) < 4:
+    while fs.byte_length() < 4:
         fs = "0" + fs
     return '"' + key + '":' + String(whole) + "." + fs
 
@@ -331,11 +331,11 @@ def _json_get(raw: String, key: String) -> String:
     var ki = raw.find(needle)
     if ki == -1:
         return ""
-    var colon = raw.find(":", ki + len(needle))
+    var colon = raw.find(":", ki + needle.byte_length())
     if colon == -1:
         return ""
     var start = colon + 1
-    var rlen  = len(raw)
+    var rlen  = raw.byte_length()
     var rb    = raw.as_bytes()
     # skip whitespace (32=' ', 9='\t')
     while start < rlen and (rb[start] == 32 or rb[start] == 9):
@@ -433,13 +433,13 @@ def run_column_rank_v2(raw: String) -> String:
             q_role = _json_get(q_block, "role_hint")
             q_src  = _json_get(q_block, "source")
 
-    if len(q_name) == 0:
+    if q_name.byte_length() == 0:
         return '{"error":"missing query.name"}'
 
     # Parse top_k (Int(str) raises, wrap in try)
     var top_k = 5
     var top_k_s = _json_get(raw, "top_k")
-    if len(top_k_s) > 0:
+    if top_k_s.byte_length() > 0:
         try:
             var parsed = Int(top_k_s)
             if parsed > 0:
@@ -486,7 +486,7 @@ def run_column_rank_v2(raw: String) -> String:
         pos    = obj_close + 1
         count += 1
 
-        if len(c_name) == 0:
+        if c_name.byte_length() == 0:
             continue
 
         # SIMD bigram cosine

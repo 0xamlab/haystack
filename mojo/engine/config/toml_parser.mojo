@@ -127,7 +127,7 @@ struct _TomlPool(Copyable, Movable):
 def _toml_strip(s: String) -> String:
     """Strip leading and trailing whitespace."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var start = 0
     while start < n:
         var c = Int(bs[start])
@@ -150,7 +150,7 @@ def _toml_substring(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var result = String("")
-    var e = min(end, len(s))
+    var e = min(end, s.byte_length())
     for i in range(start, e):
         result += chr(Int(bs[i]))
     return result
@@ -160,7 +160,7 @@ def _toml_split_lines(content: String) -> List[String]:
     """Split string by newline."""
     var lines = List[String]()
     var bs = content.as_bytes()
-    var n = len(content)
+    var n = content.byte_length()
     var start = 0
     for i in range(n):
         if Int(bs[i]) == 10:  # \n
@@ -215,7 +215,7 @@ def _toml_split_dot(path: String) -> List[String]:
     """Split a dot-notation path into segments."""
     var parts = List[String]()
     var bs = path.as_bytes()
-    var n = len(path)
+    var n = path.byte_length()
     var start = 0
     for i in range(n):
         if Int(bs[i]) == 46:  # '.'
@@ -227,7 +227,7 @@ def _toml_split_dot(path: String) -> List[String]:
 
 def _toml_unquote(s: String) -> String:
     """Remove surrounding quotes if present."""
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2:
         return s
     var bs = s.as_bytes()
@@ -246,7 +246,7 @@ def _toml_is_digit(c: Int) -> Bool:
 def _toml_parse_value(mut pool: _TomlPool, raw: String) -> Int:
     """Parse a TOML value string and add to pool. Returns node index."""
     var val = _toml_strip(raw)
-    var vlen = len(val)
+    var vlen = val.byte_length()
 
     if vlen == 0:
         return pool.add_scalar(String(""))
@@ -276,13 +276,13 @@ def _toml_parse_array(mut pool: _TomlPool, raw: String) -> Int:
     """Parse a TOML array like [1, 2, 3] or ["a", "b"]. Returns list node index."""
     var list_idx = pool.add_list()
     # Strip surrounding brackets
-    var inner = _toml_strip(_toml_substring(raw, 1, len(raw) - 1))
-    if len(inner) == 0:
+    var inner = _toml_strip(_toml_substring(raw, 1, raw.byte_length() - 1))
+    if inner.byte_length() == 0:
         return list_idx
 
     # Simple comma split (no nested arrays support needed for config subset)
     var bs = inner.as_bytes()
-    var n = len(inner)
+    var n = inner.byte_length()
     var start = 0
     var in_string = False
     var quote_char = 0
@@ -297,13 +297,13 @@ def _toml_parse_array(mut pool: _TomlPool, raw: String) -> Int:
                 quote_char = c
             elif c == 44:  # ','
                 var element = _toml_strip(_toml_substring(inner, start, i))
-                if len(element) > 0:
+                if element.byte_length() > 0:
                     var el_idx = _toml_parse_value(pool, element)
                     pool.nodes[list_idx].list_vals.append(el_idx)
                 start = i + 1
     # Last element
     var last = _toml_strip(_toml_substring(inner, start, n))
-    if len(last) > 0:
+    if last.byte_length() > 0:
         var el_idx = _toml_parse_value(pool, last)
         pool.nodes[list_idx].list_vals.append(el_idx)
 
@@ -349,7 +349,7 @@ def toml_parse(content: String) -> TomlDoc:
         var line = _toml_strip(raw_line)
 
         # Skip empty lines and comments
-        if len(line) == 0:
+        if line.byte_length() == 0:
             continue
         var lbs = line.as_bytes()
         if Int(lbs[0]) == 35:  # '#'
@@ -360,7 +360,7 @@ def toml_parse(content: String) -> TomlDoc:
         var in_str = False
         var str_char = 0
         var ebs = effective.as_bytes()
-        for ci in range(len(effective)):
+        for ci in range(effective.byte_length()):
             var cc = Int(ebs[ci])
             if in_str:
                 if cc == str_char:
@@ -373,14 +373,14 @@ def toml_parse(content: String) -> TomlDoc:
                     effective = _toml_strip(_toml_substring(effective, 0, ci))
                     break
 
-        if len(effective) == 0:
+        if effective.byte_length() == 0:
             continue
 
         var ebs2 = effective.as_bytes()
 
         # Section header: [section] or [section.sub]
-        if Int(ebs2[0]) == 91 and Int(ebs2[len(effective) - 1]) == 93:  # '[' ... ']'
-            var header = _toml_strip(_toml_substring(effective, 1, len(effective) - 1))
+        if Int(ebs2[0]) == 91 and Int(ebs2[effective.byte_length() - 1]) == 93:  # '[' ... ']'
+            var header = _toml_strip(_toml_substring(effective, 1, effective.byte_length() - 1))
             var parts = _toml_split_dot(header)
             # Navigate/create nested sections from root
             current_section = root
@@ -393,7 +393,7 @@ def toml_parse(content: String) -> TomlDoc:
         var eq_pos = -1
         var in_s2 = False
         var sc2 = 0
-        for ki in range(len(effective)):
+        for ki in range(effective.byte_length()):
             var kc = Int(ebs2[ki])
             if in_s2:
                 if kc == sc2:
@@ -408,7 +408,7 @@ def toml_parse(content: String) -> TomlDoc:
 
         if eq_pos > 0:
             var key = _toml_strip(_toml_substring(effective, 0, eq_pos))
-            var val_str = _toml_strip(_toml_substring(effective, eq_pos + 1, len(effective)))
+            var val_str = _toml_strip(_toml_substring(effective, eq_pos + 1, effective.byte_length()))
             var val_idx = _toml_parse_value(pool, val_str)
             pool.map_set(current_section, key, val_idx)
 
@@ -463,7 +463,7 @@ def toml_get_string(doc: TomlDoc, path: String) -> String:
 def toml_get_int(doc: TomlDoc, path: String, default: Int) -> Int:
     """Get an integer value by dot-notation path. Returns default if not found."""
     var s = toml_get_string(doc, path)
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return default
     try:
         return atol(s)
@@ -474,7 +474,7 @@ def toml_get_int(doc: TomlDoc, path: String, default: Int) -> Int:
 def toml_get_float(doc: TomlDoc, path: String, default: Float64) -> Float64:
     """Get a float value by dot-notation path. Returns default if not found."""
     var s = toml_get_string(doc, path)
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return default
     try:
         return atof(s)
@@ -485,7 +485,7 @@ def toml_get_float(doc: TomlDoc, path: String, default: Float64) -> Float64:
 def toml_get_bool(doc: TomlDoc, path: String, default: Bool) -> Bool:
     """Get a boolean value by dot-notation path. Returns default if not found."""
     var s = toml_get_string(doc, path)
-    if len(s) == 0:
+    if s.byte_length() == 0:
         return default
     if s == "true" or s == "True":
         return True

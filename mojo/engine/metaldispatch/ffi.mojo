@@ -52,7 +52,7 @@ dispatches sit at the ceiling; the previous 16 left headroom only while `residen
 largest list -- `_pf_ropewrt_kernel`'s 15 -- bounded the stride).
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.ffi import external_call
 from std.memory import alloc
 
@@ -93,7 +93,7 @@ def _mb_pipeline_name(idx: Int, mut out: String) -> Int:
     `idx` is out of range."""
     var buf = alloc[UInt8](256)
     var n = external_call[
-        "algenta_pipeline_name", Int64, Int64, UnsafePointer[UInt8, origin=MutAnyOrigin], Int64
+        "algenta_pipeline_name", Int64, Int64, UnsafePointer[UInt8, origin=MutUntrackedOrigin], Int64
     ](Int64(idx), buf, Int64(256))
     if n < 0:
         buf.free()
@@ -107,7 +107,7 @@ def _mb_pipeline_name(idx: Int, mut out: String) -> Int:
 
 
 def _mb_alloc_buffer(
-    nbytes: Int, mut addr: UInt64, mut contents: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    nbytes: Int, mut addr: UInt64, mut contents: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 ) -> Int:
     """Allocates one Shared-storage-mode `MTLBuffer` of `nbytes`. On success, `addr` holds the
     buffer's `gpuAddress` (the value a kernel's pointer argument binds to) and `contents` holds a
@@ -117,18 +117,25 @@ def _mb_alloc_buffer(
     return Int(
         external_call[
             "algenta_alloc_buffer", Int64, Int64,
-            UnsafePointer[UInt64, origin=MutAnyOrigin],
-            UnsafePointer[UnsafePointer[UInt8, origin=MutAnyOrigin], origin=MutAnyOrigin],
-        ](Int64(nbytes), UnsafePointer(to=addr), UnsafePointer(to=contents))
+            UnsafePointer[UInt64, origin=MutUntrackedOrigin],
+            UnsafePointer[UnsafePointer[UInt8, origin=MutUntrackedOrigin], origin=MutUntrackedOrigin],
+        ](
+            Int64(nbytes),
+            # Mojo 1.0.0 dropped the implicit concrete-origin -> any-origin widening: the FFI
+            # out-params borrow `addr`/`contents`, so cast the borrow to the untracked origin the
+            # external_call signature names.
+            UnsafePointer(to=addr).unsafe_origin_cast[MutUntrackedOrigin](),
+            UnsafePointer(to=contents).unsafe_origin_cast[MutUntrackedOrigin](),
+        )
     )
 
 
-def _mb_run_token(descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], n: Int) -> Int:
+def _mb_run_token(descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin], n: Int) -> Int:
     """THE per-token call: one command buffer, one encoder, `n` dispatches, one commit, one wait —
     entirely inside the shim, zero Mojo<->C crossings between the first dispatch and the last.
     Returns 0 on success, -1 if Metal reported a command-buffer failure."""
     return Int(
-        external_call["algenta_run_token", Int64, UnsafePointer[UInt8, origin=MutAnyOrigin], Int64](
+        external_call["algenta_run_token", Int64, UnsafePointer[UInt8, origin=MutUntrackedOrigin], Int64](
             descriptors, Int64(n)
         )
     )
@@ -160,7 +167,7 @@ def _mb_free_all_buffers():
     _ = external_call["algenta_free_all_buffers", Int64]()
 
 
-def _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutAnyOrigin]:
+def _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutUntrackedOrigin]:
     """Allocates a flat, zero-initialized array of `n` `AlgentaDispatchDesc` records."""
     var total = n * MB_DESC_STRIDE
     var p = alloc[UInt8](total)
@@ -170,7 +177,7 @@ def _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutAnyOrigin]:
 
 
 def _mb_set_header(
-    descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin],
+    descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
     desc_idx: Int, pipeline_idx: Int, grid_x: Int, threads_x: Int, num_args: Int,
 ):
     var base = (descriptors + desc_idx * MB_DESC_STRIDE).bitcast[Int32]()
@@ -181,7 +188,7 @@ def _mb_set_header(
 
 
 def _mb_set_arg_ptr(
-    descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], desc_idx: Int, arg_idx: Int, addr: UInt64
+    descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin], desc_idx: Int, arg_idx: Int, addr: UInt64
 ):
     var off = descriptors + desc_idx * MB_DESC_STRIDE + MB_DESC_HEADER + arg_idx * MB_ARG_STRIDE
     off.bitcast[Int32]()[0] = MB_TAG_PTR
@@ -189,7 +196,7 @@ def _mb_set_arg_ptr(
 
 
 def _mb_set_arg_int(
-    descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], desc_idx: Int, arg_idx: Int, v: Int
+    descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin], desc_idx: Int, arg_idx: Int, v: Int
 ):
     var off = descriptors + desc_idx * MB_DESC_STRIDE + MB_DESC_HEADER + arg_idx * MB_ARG_STRIDE
     off.bitcast[Int32]()[0] = MB_TAG_INT
@@ -197,7 +204,7 @@ def _mb_set_arg_int(
 
 
 def _mb_set_arg_f32(
-    descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], desc_idx: Int, arg_idx: Int, v: Float32
+    descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin], desc_idx: Int, arg_idx: Int, v: Float32
 ):
     var off = descriptors + desc_idx * MB_DESC_STRIDE + MB_DESC_HEADER + arg_idx * MB_ARG_STRIDE
     off.bitcast[Int32]()[0] = MB_TAG_F32

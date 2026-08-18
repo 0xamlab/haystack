@@ -16,7 +16,7 @@ entirely — this file's whole question is "do these two kernels compute the sam
         ../mojo/tests/libs/test_residentk_prefill_gemm_kernels.mojo
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import sqrt
 from std.sys import has_accelerator
 from residentk.session import RESIDENT_GPU_BUILD

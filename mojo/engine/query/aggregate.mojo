@@ -193,7 +193,7 @@ excludes its row and is counted in `null_key_rows`; a null value joins its group
 count but moves no accumulator). Serial only, matching where `group_by` itself started —
 parallelizing this path is a possible follow-up, not a correctness requirement.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.memory import alloc, bitcast
 from std.sys import info
 
@@ -1748,7 +1748,7 @@ def _fused_scan_w1(
     var kp = key_col.values[].unsafe_ptr() + key_col.offset
     var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
     for j in range(n_aggs):
-        vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+        vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
 
     if not key_nulls:
         var hbuf = List[UInt64](length=HASH_BLOCK, fill=0)
@@ -1823,10 +1823,10 @@ def _fused_scan_wn(
         group_count = len(key_tuples) // width
     var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
     for c in range(width):
-        kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+        kps.append((key_cols[c].values[].unsafe_ptr() + key_cols[c].offset).as_unsafe_any_origin())
     var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
     for j in range(n_aggs):
-        vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+        vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
     # One key buffer per scan, overwritten per row — round 1's allocation fix.
     var key = List[Float64](length=width, fill=0.0)
     var kb = key.unsafe_ptr()
@@ -2164,7 +2164,7 @@ def group_by_many_radix(
             hi = n_rows
         var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
         for c in range(width):
-            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+            kps.append((key_cols[c].values[].unsafe_ptr() + key_cols[c].offset).as_unsafe_any_origin())
         # Worker-local counters, copied out once: adjacent workers' slices of
         # the shared counts array share cache lines, and a per-row bump there
         # would be false sharing on the hottest store in the pass.
@@ -2178,7 +2178,7 @@ def group_by_many_radix(
             for r in range(lo, hi):
                 var h = fnv_fold(FNV_OFFSET_BASIS, normalize_bits(kp0[r]))
                 hrow[r] = h
-                lp[Int(h >> (64 - RADIX_BITS))] += 1
+                lp[Int(h >> UInt64(64 - RADIX_BITS))] += 1
         else:
             for r in range(lo, hi):
                 if key_nulls:
@@ -2194,7 +2194,7 @@ def group_by_many_radix(
                 for c in range(width):
                     h = fnv_fold(h, normalize_bits(kps[c][r]))
                 hrow[r] = h
-                lp[Int(h >> (64 - RADIX_BITS))] += 1
+                lp[Int(h >> UInt64(64 - RADIX_BITS))] += 1
         for p in range(RADIX_PARTITIONS):
             cp[w * RADIX_PARTITIONS + p] = lp[p]
         np[w] = nulls
@@ -2240,10 +2240,10 @@ def group_by_many_radix(
             hi = n_rows
         var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
         for c in range(width):
-            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+            kps.append((key_cols[c].values[].unsafe_ptr() + key_cols[c].offset).as_unsafe_any_origin())
         var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
         for j in range(n_aggs):
-            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+            vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
         var local = List[Int](length=RADIX_PARTITIONS, fill=0)
         var lp = local.unsafe_ptr()
         for p in range(RADIX_PARTITIONS):
@@ -2259,7 +2259,7 @@ def group_by_many_radix(
             var full_mask = (1 << n_aggs) - 1
             for r in range(lo, hi):
                 var h = hrow[r]
-                var part = Int(h >> (64 - RADIX_BITS))
+                var part = Int(h >> UInt64(64 - RADIX_BITS))
                 var s = lp[part]
                 lp[part] = s + 1
                 var base = s * row_floats
@@ -2281,7 +2281,7 @@ def group_by_many_radix(
                     if any_null:
                         continue
                 var h = hrow[r]
-                var part = Int(h >> (64 - RADIX_BITS))
+                var part = Int(h >> UInt64(64 - RADIX_BITS))
                 var s = lp[part]
                 lp[part] = s + 1
                 var base = s * row_floats
@@ -2507,7 +2507,7 @@ def group_by_coded_parallel(
         var kp = key_col.values[].unsafe_ptr() + key_col.offset
         var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
         for j in range(n_aggs):
-            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+            vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
         for r in range(n_rows):
             if key_has_nulls and not key_col.is_valid_at(r):
                 null_key_rows += 1
@@ -2576,7 +2576,7 @@ def group_by_coded_parallel(
         var kp = key_col.values[].unsafe_ptr() + key_col.offset
         var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
         for j in range(n_aggs):
-            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+            vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
         for r in range(lo, hi):
             if key_has_nulls and not key_col.is_valid_at(r):
                 nulls += 1

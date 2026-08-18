@@ -305,7 +305,7 @@ def _parse_token(bytes: Span[Byte, _], start: Int, end: Int) -> Tuple[Bool, Floa
 def _sanitize_name(name: String) -> String:
     """Replace '|', '\\n', '\\r' bytes with '_'; unchanged names pass through."""
     var bytes = name.as_bytes()
-    var n = len(name)
+    var n = name.byte_length()
     var has_bad = False
     for i in range(n):
         var c = bytes[i]
@@ -442,7 +442,7 @@ def weights_from_string(s: String) -> WeightsBundle:
     """
     var bundle = WeightsBundle()
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var pos = 0
     while pos < n:
         var eol = pos
@@ -477,7 +477,7 @@ def string_checksum(s: String) -> Float64:
     """
     var h: UInt64 = UInt64(0xCBF29CE484222325)  # FNV offset basis
     var bytes = s.as_bytes()
-    for i in range(len(s)):
+    for i in range(s.byte_length()):
         h = h ^ UInt64(Int(bytes[i]))
         h = h * UInt64(0x100000001B3)  # FNV prime (wrapping)
     var folded = (h >> 32) ^ (h & UInt64(0xFFFFFFFF))

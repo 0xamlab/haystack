@@ -50,7 +50,7 @@ def env_get(key: String, default: String = "") raises -> String:
         The environment variable value, or default.
     """
     var val = _env_get_raw(key)
-    if len(val) == 0:
+    if val.byte_length() == 0:
         # Could be empty or not set — check existence
         if not _env_has(key):
             return default
@@ -68,9 +68,9 @@ def env_get_int(key: String, default: Int = 0) raises -> Int:
         The parsed integer value, or default.
     """
     var val = _env_get_raw(key)
-    if len(val) == 0 and not _env_has(key):
+    if val.byte_length() == 0 and not _env_has(key):
         return default
-    if len(val) == 0:
+    if val.byte_length() == 0:
         return default
     return parse_int(val)
 
@@ -86,9 +86,9 @@ def env_get_float(key: String, default: Float64 = 0.0) raises -> Float64:
         The parsed float value, or default.
     """
     var val = _env_get_raw(key)
-    if len(val) == 0 and not _env_has(key):
+    if val.byte_length() == 0 and not _env_has(key):
         return default
-    if len(val) == 0:
+    if val.byte_length() == 0:
         return default
     return parse_float64(val)
 
@@ -108,7 +108,7 @@ def env_get_bool(key: String, default: Bool = False) raises -> Bool:
         The parsed boolean value, or default.
     """
     var val = _env_get_raw(key)
-    if len(val) == 0 and not _env_has(key):
+    if val.byte_length() == 0 and not _env_has(key):
         return default
 
     # Lowercase the value for comparison
@@ -140,7 +140,7 @@ def _to_lower(s: String) -> String:
     """Convert ASCII string to lowercase."""
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     for i in range(n):
         var c = bytes[i]
         if c >= UInt8(65) and c <= UInt8(90):  # A-Z

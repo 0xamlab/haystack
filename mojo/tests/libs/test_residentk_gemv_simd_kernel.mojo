@@ -49,7 +49,7 @@ REJECT a bound ten thousand times looser, so it is a real, discriminating check,
 stamp.
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import exp, sqrt
 from std.sys import has_accelerator
 from residentk.session import RESIDENT_GPU_BUILD

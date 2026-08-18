@@ -146,14 +146,14 @@ def run_server_loop(socket_path: String) raises:
 
         while True:
             var raw = recv_frame(conn_fd)
-            if len(raw) == 0:
+            if raw.byte_length() == 0:
                 break
 
             var response: String
             var msg_type = json_get_string(raw, "type")
-            if len(msg_type) == 0:
+            if msg_type.byte_length() == 0:
                 msg_type = json_get_string(raw, "engine_type")
-            if len(msg_type) == 0:
+            if msg_type.byte_length() == 0:
                 msg_type = "request"
 
             if msg_type == "shutdown":
@@ -227,5 +227,5 @@ def main() raises:
     var sys_m = Python.import_module("sys")
     var raw = py_str(sys_m.stdin.read())
     var out = _run_raw(raw)
-    if len(out) > 0:
+    if out.byte_length() > 0:
         print(out)

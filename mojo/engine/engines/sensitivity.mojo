@@ -28,7 +28,7 @@ def run_sensitivity(req: SimRequest) raises -> String:
     var expr_nodes = List[ExprNode]()
     var expr_root  = -1
     var use_expr   = False
-    if len(obj_fn) > 0 and n_vars > 0:
+    if obj_fn.byte_length() > 0 and n_vars > 0:
         expr_root = parse_expr(obj_fn, req.vnames, expr_nodes)
         use_expr  = expr_root >= 0
 

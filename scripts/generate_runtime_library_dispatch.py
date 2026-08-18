@@ -829,7 +829,10 @@ def render_dispatch_source(
     lines.extend(
         [
             "def _unquote_json_string(token: String) -> String:",
-            f"{INDENT}var n = len(token)",
+            # Mojo 1.0.0 removed len(String). Everything downstream of n is
+            # byte-offset arithmetic over token.as_bytes(), so byte_length()
+            # is the exact pre-1.0 semantics (old len(String) == byte count).
+            f"{INDENT}var n = token.byte_length()",
             f"{INDENT}if n < 2:",
             f"{INDENT * 2}return token",
             f"{INDENT}var bytes = token.as_bytes()",
@@ -863,7 +866,9 @@ def render_dispatch_source(
             "def _escape_json_string(value: String) -> String:",
             f'{INDENT}var result = String("")',
             f"{INDENT}var bytes = value.as_bytes()",
-            f"{INDENT}for i in range(len(value)):",
+            # Mojo 1.0.0 removed len(String); the loop indexes bytes[i], so
+            # the bound is the UTF-8 byte count (the pre-1.0 len semantics).
+            f"{INDENT}for i in range(value.byte_length()):",
             f"{INDENT * 2}var b = bytes[i]",
             f"{INDENT * 2}if b == UInt8(34):",
             f'{INDENT * 3}result += "\\\\\\""',
@@ -935,21 +940,22 @@ def render_dispatch_source(
         [
             "def dispatch_runtime_library(raw: String) raises -> String:",
             f'{INDENT}var module_name = json_get_string(raw, "module")',
-            f"{INDENT}if len(module_name) == 0:",
+            # Mojo 1.0.0 removed len(String); emptiness check -> byte_length().
+            f"{INDENT}if module_name.byte_length() == 0:",
             (
                 f"{INDENT * 2}return _error_json("
                 '"invalid_arguments", '
                 '"library_execute request requires a non-empty module.")'
             ),
             f'{INDENT}var function_name = json_get_string(raw, "function")',
-            f"{INDENT}if len(function_name) == 0:",
+            f"{INDENT}if function_name.byte_length() == 0:",
             (
                 f"{INDENT * 2}return _error_json("
                 '"invalid_arguments", '
                 '"library_execute request requires a non-empty function.")'
             ),
             f'{INDENT}var args_array = json_get_array(raw, "args")',
-            f"{INDENT}if len(args_array) == 0:",
+            f"{INDENT}if args_array.byte_length() == 0:",
             f'{INDENT * 2}args_array = "[]"',
         ]
     )

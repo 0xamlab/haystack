@@ -32,13 +32,13 @@ def _to_tokens(s: String) -> List[String]:
     for i in range(n):
         var b = s_bytes[i]
         if b == 95 or b == 32 or b == 45:
-            if len(current) > 0:
+            if current.byte_length() > 0:
                 result.append(current)
                 current = String("")
         else:
             current = current + chr(Int(b))
 
-    if len(current) > 0:
+    if current.byte_length() > 0:
         result.append(current)
 
     return result^
@@ -58,7 +58,7 @@ def _count_shared_tokens(a_tokens: List[String], b_tokens: List[String]) -> Int:
 def _ngrams(s: String, n: Int) -> List[String]:
     """Extract all character n-grams of length n from s."""
     var result = List[String]()
-    var s_len = len(s)
+    var s_len = s.byte_length()
     if s_len < n:
         return result^
     var s_bytes = s.as_bytes()
@@ -153,8 +153,8 @@ def score_prefix_match(hint: String, col: String) -> Float64:
     Useful for abbreviation matching: "unit" is a prefix of "unit_cost".
     Returns 1.0 when hint is empty. Returns 0.0 when col is empty.
     """
-    var la = len(hint)
-    var lb = len(col)
+    var la = hint.byte_length()
+    var lb = col.byte_length()
     if la == 0:
         return 1.0
     if lb == 0:
@@ -198,9 +198,9 @@ def score_column_hint(
     Both strings must already be lower-cased and normalised by the caller.
     Returns a score clamped to [0, 1].
     """
-    if len(hint) == 0 and len(col) == 0:
+    if hint.byte_length() == 0 and col.byte_length() == 0:
         return 1.0
-    if len(hint) == 0 or len(col) == 0:
+    if hint.byte_length() == 0 or col.byte_length() == 0:
         return 0.0
 
     var tok   = score_token_overlap(hint, col)

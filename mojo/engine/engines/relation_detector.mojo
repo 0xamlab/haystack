@@ -54,7 +54,7 @@ from dimensions import (
 def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var i = start if start >= 0 else 0
     var e = end if end <= n else n
     while i < e:
@@ -79,7 +79,7 @@ struct ColVector(Copyable, Movable):
 def _parse_float_array(arr_str: String) -> List[Float64]:
     """Parse a JSON numeric array like [1, 2.5, -3, 1e4] → List[Float64]."""
     var result = List[Float64]()
-    var n = len(arr_str)
+    var n = arr_str.byte_length()
     var bytes = arr_str.as_bytes()
     var i = 0
 
@@ -120,7 +120,7 @@ def _parse_float_array(arr_str: String) -> List[Float64]:
                 i += 1
 
         var num_str = _substr(arr_str, start, i)
-        if len(num_str) > 0:
+        if num_str.byte_length() > 0:
             result.append(parse_float64(num_str))
 
     return result^
@@ -137,13 +137,13 @@ def _parse_columns(raw: String) -> List[ColVector]:
     if cols_pos < 0:
         return result^
 
-    var after_cols = _substr(raw, cols_pos + len(cols_key), len(raw))
+    var after_cols = _substr(raw, cols_pos + cols_key.byte_length(), raw.byte_length())
     var outer_brace = after_cols.find("{")
     if outer_brace < 0:
         return result^
 
-    var cols_json = _substr(after_cols, outer_brace, len(after_cols))
-    var n = len(cols_json)
+    var cols_json = _substr(after_cols, outer_brace, after_cols.byte_length())
+    var n = cols_json.byte_length()
     var bytes = cols_json.as_bytes()
     var i = 1  # skip {
 
@@ -196,7 +196,7 @@ def _parse_columns(raw: String) -> List[ColVector]:
         i = j
 
         var values = _parse_float_array(arr_str)
-        if len(field_name) > 0 and len(values) > 0:
+        if field_name.byte_length() > 0 and len(values) > 0:
             result.append(ColVector(field_name, values))
 
     return result^

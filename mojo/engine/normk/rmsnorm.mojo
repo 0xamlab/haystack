@@ -55,7 +55,7 @@ Public API:
   rmsnorm_gradcheck_flat(x, gamma, n_rows, n_cols, eps, step)      -> NormAgreement
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.math import sqrt
 from std.sys.info import num_physical_cores
 from normalization_layers import rms_norm

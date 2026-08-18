@@ -22,8 +22,8 @@ def levenshtein_distance(a: String, b: String) -> Int:
 
     Time: O(m*n), Space: O(min(m,n)) using two-row optimisation.
     """
-    var m = len(a)
-    var n = len(b)
+    var m = a.byte_length()
+    var n = b.byte_length()
     if m == 0:
         return n
     if n == 0:
@@ -72,8 +72,8 @@ def normalized_levenshtein(a: String, b: String) -> Float64:
     Returns value in [0, 1]. Returns 1.0 for identical strings.
     Returns 1.0 if both strings are empty.
     """
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     if la == 0 and lb == 0:
         return 1.0
     var max_len = la
@@ -94,8 +94,8 @@ def jaro_similarity(a: String, b: String) -> Float64:
       - count matching characters and transpositions
       - jaro = (m/|a| + m/|b| + (m-t)/m) / 3
     """
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     if la == 0 and lb == 0:
         return 1.0
     if la == 0 or lb == 0:
@@ -169,8 +169,8 @@ def jaro_winkler_similarity(
     var jaro = jaro_similarity(a, b)
 
     # Common prefix length (up to 4)
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     var max_prefix = 4
     if la < max_prefix:
         max_prefix = la
@@ -197,8 +197,8 @@ def hamming_distance(a: String, b: String) raises -> Int:
 
     Raises if strings have different lengths.
     """
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     if la != lb:
         raise Error("hamming_distance: strings must be equal length")
 
@@ -219,8 +219,8 @@ def longest_common_subsequence(a: String, b: String) -> Int:
 
     Time: O(m*n), Space: O(min(m,n)) using two-row optimisation.
     """
-    var m = len(a)
-    var n = len(b)
+    var m = a.byte_length()
+    var n = b.byte_length()
     if m == 0 or n == 0:
         return 0
 
@@ -260,8 +260,8 @@ def fuzzy_ratio(a: String, b: String) -> Float64:
 
     Returns 1.0 for identical strings. Returns 0.0 if both are empty.
     """
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     if la == 0 and lb == 0:
         return 1.0
     if la == 0 or lb == 0:

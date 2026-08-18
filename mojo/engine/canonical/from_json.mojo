@@ -247,7 +247,7 @@ def _decode_string_token(data: String, start: Int, end: Int) raises -> String:
 def _looks_integer(token: String) -> Bool:
     """True when a number token has no fractional or exponent part."""
     var bytes = token.as_bytes()
-    for i in range(len(token)):
+    for i in range(token.byte_length()):
         if bytes[i] == _DOT or bytes[i] == _UPPER_E or bytes[i] == _LOWER_E:
             return False
     return True
@@ -261,16 +261,16 @@ def _is_number_token(token: String) -> Bool:
     hash the same. A canonical encoder that silently agrees on garbage is worse than
     one that refuses it.
     """
-    if len(token) == 0:
+    if token.byte_length() == 0:
         return False
     var bytes = token.as_bytes()
     var i = 0
     if bytes[0] == _MINUS:
         i = 1
-    if i >= len(token):
+    if i >= token.byte_length():
         return False
     var digits = 0
-    while i < len(token):
+    while i < token.byte_length():
         var c = bytes[i]
         if c >= _ZERO and c <= _NINE:
             digits += 1
@@ -292,7 +292,7 @@ def _parse_int_token(token: String) raises -> Int:
     if bytes[0] == _MINUS:
         negative = True
         i = 1
-    while i < len(token):
+    while i < token.byte_length():
         if bytes[i] < _ZERO or bytes[i] > _NINE:
             break
         value = value * 10 + Int(bytes[i] - _ZERO)
@@ -325,7 +325,7 @@ def _write_value(
         raise Error("canonical.from_json: nesting deeper than " + String(MAX_JSON_DEPTH))
 
     var pos = skip_whitespace(data, start)
-    if pos >= len(data):
+    if pos >= data.byte_length():
         raise Error("canonical.from_json: unexpected end of input")
     var bytes = data.as_bytes()
     var first = bytes[pos]
@@ -377,11 +377,11 @@ def _write_array(
     var pos = skip_whitespace(data, start + 1)
     var count = 0
     var scan = pos
-    while scan < len(data) and bytes[scan] != _BRACKET_CLOSE:
+    while scan < data.byte_length() and bytes[scan] != _BRACKET_CLOSE:
         scan = skip_json_value(data, skip_whitespace(data, scan))
         count += 1
         scan = skip_whitespace(data, scan)
-        if scan < len(data) and bytes[scan] == _COMMA:
+        if scan < data.byte_length() and bytes[scan] == _COMMA:
             scan = skip_whitespace(data, scan + 1)
     write_array_header(out, count)
 
@@ -389,7 +389,7 @@ def _write_array(
     for _ in range(count):
         cursor = _write_value(data, cursor, out, depth + 1)
         cursor = skip_whitespace(data, cursor)
-        if cursor < len(data) and bytes[cursor] == _COMMA:
+        if cursor < data.byte_length() and bytes[cursor] == _COMMA:
             cursor = skip_whitespace(data, cursor + 1)
     return skip_json_value(data, start)
 
@@ -406,17 +406,17 @@ def _write_object(
     var value_starts = List[Int]()
 
     var scan = skip_whitespace(data, start + 1)
-    while scan < len(data) and bytes[scan] != _BRACE_CLOSE:
+    while scan < data.byte_length() and bytes[scan] != _BRACE_CLOSE:
         var key_end = skip_json_value(data, scan)
         # A non-string key raises here rather than being read as bare text: `{a:1}` is
         # not JSON, and giving it a canonical form would make it collide with `{"a":1}`.
         keys.append(_decode_string_token(data, scan, key_end))
         var after = skip_whitespace(data, key_end)
-        if after < len(data) and bytes[after] == _COLON:
+        if after < data.byte_length() and bytes[after] == _COLON:
             after = skip_whitespace(data, after + 1)
         value_starts.append(after)
         scan = skip_whitespace(data, skip_json_value(data, after))
-        if scan < len(data) and bytes[scan] == _COMMA:
+        if scan < data.byte_length() and bytes[scan] == _COMMA:
             scan = skip_whitespace(data, scan + 1)
 
     write_object_header(out, len(keys))

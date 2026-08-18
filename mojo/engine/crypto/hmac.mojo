@@ -117,7 +117,7 @@ def hmac_sha256(key: String, message: String) -> String:
     # ── Step 1: Normalize key to bytes ──
     var key_bytes = List[UInt8](capacity=_BLOCK_SIZE)
     var raw_key = key.as_bytes()
-    var key_len = len(key)
+    var key_len = key.byte_length()
 
     if key_len > _BLOCK_SIZE:
         # Hash the key if it's longer than the block size
@@ -138,7 +138,7 @@ def hmac_sha256(key: String, message: String) -> String:
     # ── Step 3: Compute inner hash ──
     # Build inner data: (key XOR 0x36) || message
     var msg_bytes = message.as_bytes()
-    var msg_len = len(message)
+    var msg_len = message.byte_length()
     var inner_data = List[UInt8](capacity=_BLOCK_SIZE + msg_len)
 
     for i in range(_BLOCK_SIZE):
@@ -170,13 +170,13 @@ def hmac_sha256_verify(key: String, message: String, expected_hex: String) -> Bo
     using constant-time comparison to prevent timing attacks.
     """
     var computed = hmac_sha256(key, message)
-    if len(computed) != len(expected_hex):
+    if computed.byte_length() != expected_hex.byte_length():
         return False
 
     # Constant-time comparison: always check every character
     var cb = computed.as_bytes()
     var eb = expected_hex.as_bytes()
     var diff = 0
-    for i in range(len(computed)):
+    for i in range(computed.byte_length()):
         diff |= Int(cb[i]) ^ Int(eb[i])
     return diff == 0

@@ -85,7 +85,7 @@ Build (PINNED `mojo_env` toolchain, NOT mma_forge -- exact command form followin
         -Xlinker -framework -Xlinker IOKit
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/candidate_a_blob_test
 """
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from metaldispatch.ffi import (
     _mb_open_session,
     _mb_pipeline_count,

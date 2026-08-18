@@ -48,7 +48,7 @@ time in milliseconds. `depth` here means `n_keys` exactly (`pos = depth - 1`, `n
 
 from std.ffi import external_call
 from std.memory import alloc
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.gpu import WARP_SIZE
 from std.sys import argv, has_accelerator
 from std.time import perf_counter_ns
@@ -271,7 +271,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
         # twin, plus the two kernels with no per-dtype variant. Deliberately NEVER the
         # Float32/Float16 GEMV-shaped kernels, NOR the barrier-tree `_lmhead_argmax_kernel_i8`, NOR
         # the barrier-tree `_argmax_reduce_kernel` — see the struct docstring.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
         _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
@@ -497,7 +497,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
         immediately."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
         _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()

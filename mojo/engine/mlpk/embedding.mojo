@@ -53,7 +53,7 @@ Public API:
   embedding_ids_in_range(ids, n_tok, vocab)                      -> Bool
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys.info import num_physical_cores
 from mlpk.contract import (
     MLP_ERR_LENGTH_MISMATCH,

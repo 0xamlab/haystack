@@ -10,7 +10,7 @@ divergence here is the narrow kernel's OWN inner loop, not a tiling/boundary iss
     DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer \
       pixi run mojo run -D ALGENTA_GPU -I ../mojo/engine ../mma_forge/probes/debug_narrow_accum.mojo
 """
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from residentk.kernels import _pf_gnrw_accum_kernel_i8
 
 comptime M: Int = 8

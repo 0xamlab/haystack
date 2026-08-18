@@ -527,10 +527,10 @@ def _jget(raw: String, key: String) -> String:
     var needle = '"' + key + '"'
     var ki = raw.find(needle)
     if ki == -1: return ""
-    var colon = raw.find(":", ki + len(needle))
+    var colon = raw.find(":", ki + needle.byte_length())
     if colon == -1: return ""
     var start = colon + 1
-    var rlen = len(raw)
+    var rlen = raw.byte_length()
     var rb = raw.as_bytes()
     while start < rlen and (rb[start] == 32 or rb[start] == 9):
         start += 1
@@ -583,7 +583,7 @@ def build_table_json(candidates_json: String) -> CandidateTable:
         var c_id_s   = _jget(obj, "id")
 
         var c_id = auto_id
-        if len(c_id_s) > 0:
+        if c_id_s.byte_length() > 0:
             try:
                 c_id = UInt32(Int(c_id_s))
             except:
@@ -591,7 +591,7 @@ def build_table_json(candidates_json: String) -> CandidateTable:
         auto_id += 1
 
         pos = obj_close + 1
-        if len(c_name) == 0:
+        if c_name.byte_length() == 0:
             continue
 
         table.add_column(c_id, source_id_of(c_source), role_id_of(c_role), c_name)

@@ -267,7 +267,7 @@ def parse_query_string(query: String) -> List[List[String]]:
     Example: "a=1&b=2" → [["a","1"], ["b","2"]]
     """
     var result = List[List[String]]()
-    if len(query) == 0:
+    if query.byte_length() == 0:
         return result^
 
     var q_bytes = query.as_bytes()

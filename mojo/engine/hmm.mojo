@@ -162,7 +162,7 @@ def _exp(x: Float64) -> Float64:
     s = s * r + 0.5
     s = s * r + 1.0
     s = s * r + 1.0
-    return ldexp(s, k)
+    return ldexp(s, Int32(k))  # Mojo 1.0.0: ldexp exponent is Int32
 
 
 def _log_safe(x: Float64) -> Float64:

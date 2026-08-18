@@ -76,7 +76,7 @@ Public API:
   gate_bytes_moved(n)                              -> Float64
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.math import erf, exp, tanh
 from std.sys import info
 from std.sys.info import simd_width_of

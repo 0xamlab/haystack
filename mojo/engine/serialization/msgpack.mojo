@@ -180,7 +180,7 @@ def msgpack_encode_string(v: String) -> List[UInt8]:
     """Encode a string using the most compact MessagePack string format."""
     var buf = List[UInt8]()
     var bs = v.as_bytes()
-    var n = len(v)
+    var n = v.byte_length()
 
     if n <= 31:
         buf.append(UInt8(0xa0 | n))

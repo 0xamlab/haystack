@@ -419,7 +419,7 @@ def plan_problem(
     a scan, after some rows were already produced.
     """
     var structural = validation_error(nodes, root, batch_width)
-    if len(structural) > 0:
+    if structural.byte_length() > 0:
         return structural
     var unsupported = first_unsupported_op(nodes)
     if unsupported >= 0:

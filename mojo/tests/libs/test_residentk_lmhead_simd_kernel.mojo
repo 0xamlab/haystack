@@ -39,7 +39,7 @@ bound); argmax INDICES are compared for EXACT equality (ties are as good as impo
 pseudo-random inputs, so "exact" is the real, discriminating check, not a rubber stamp).
 """
 
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.math import sqrt
 from std.sys import has_accelerator
 from residentk.session import RESIDENT_GPU_BUILD

@@ -41,7 +41,7 @@ comptime N_ITERS: Int = 200
 
 
 def main() raises:
-    from std.gpu.host import DeviceContext
+    from max.gpu.host import DeviceContext
     var cctx = DeviceContext()
     _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
 

@@ -78,7 +78,7 @@ def _int_to_string(val: Int) -> String:
 
 def rle_encode_string(data: String) -> String:
     """Compress a string using RLE. E.g., "AAABBC" → "3A2B1C"."""
-    var n = len(data)
+    var n = data.byte_length()
     if n == 0:
         return String("")
 
@@ -100,7 +100,7 @@ def rle_encode_string(data: String) -> String:
 
 def rle_decode_string(compressed: String) -> String:
     """Decompress an RLE-encoded string. E.g., "3A2B1C" → "AAABBC"."""
-    var n = len(compressed)
+    var n = compressed.byte_length()
     if n == 0:
         return String("")
 

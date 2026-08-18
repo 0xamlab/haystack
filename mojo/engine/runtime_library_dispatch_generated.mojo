@@ -9061,7 +9061,7 @@ from vector_kernels.table import (
 )
 
 def _unquote_json_string(token: String) -> String:
-    var n = len(token)
+    var n = token.byte_length()
     if n < 2:
         return token
     var bytes = token.as_bytes()
@@ -9095,7 +9095,7 @@ def _unquote_json_string(token: String) -> String:
 def _escape_json_string(value: String) -> String:
     var result = String("")
     var bytes = value.as_bytes()
-    for i in range(len(value)):
+    for i in range(value.byte_length()):
         var b = bytes[i]
         if b == UInt8(34):
             result += "\\\""
@@ -153934,13 +153934,13 @@ def _dispatch_workflow_engine(function_name: String, args_array: String) raises 
 
 def dispatch_runtime_library(raw: String) raises -> String:
     var module_name = json_get_string(raw, "module")
-    if len(module_name) == 0:
+    if module_name.byte_length() == 0:
         return _error_json("invalid_arguments", "library_execute request requires a non-empty module.")
     var function_name = json_get_string(raw, "function")
-    if len(function_name) == 0:
+    if function_name.byte_length() == 0:
         return _error_json("invalid_arguments", "library_execute request requires a non-empty function.")
     var args_array = json_get_array(raw, "args")
-    if len(args_array) == 0:
+    if args_array.byte_length() == 0:
         args_array = "[]"
     if module_name == "ab_testing":
         return _dispatch_ab_testing(function_name, args_array)

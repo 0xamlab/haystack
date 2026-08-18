@@ -50,7 +50,7 @@ def _b64_decode_byte(b: UInt8) -> Int:
 
 def b64_encode(data: String) -> String:
     """Encode a string to Base64 (RFC 4648). Returns the encoded string with '=' padding."""
-    var n = len(data)
+    var n = data.byte_length()
     if n == 0:
         return ""
 
@@ -90,7 +90,7 @@ def b64_encode(data: String) -> String:
 
 def b64_decode(encoded: String) -> String:
     """Decode a Base64 string (RFC 4648). Returns the decoded string."""
-    var n = len(encoded)
+    var n = encoded.byte_length()
     if n == 0:
         return ""
 
@@ -125,7 +125,7 @@ def b64_url_encode(data: String) -> String:
     var standard = b64_encode(data)
     var result = String("")
     var sb = standard.as_bytes()
-    for i in range(len(standard)):
+    for i in range(standard.byte_length()):
         var b = sb[i]
         if b == UInt8(43):       # '+'
             result += "-"
@@ -143,7 +143,7 @@ def b64_url_decode(encoded: String) -> String:
     # Convert URL-safe chars back to standard, then decode
     var standard = String("")
     var eb = encoded.as_bytes()
-    for i in range(len(encoded)):
+    for i in range(encoded.byte_length()):
         var b = eb[i]
         if b == UInt8(45):       # '-'
             standard += "+"
@@ -153,7 +153,7 @@ def b64_url_decode(encoded: String) -> String:
             standard += chr(Int(b))
 
     # Add padding if needed
-    var pad = len(standard) % 4
+    var pad = standard.byte_length() % 4
     if pad == 2:
         standard += "=="
     elif pad == 3:

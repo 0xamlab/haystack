@@ -77,7 +77,7 @@ def bind_dataset_references(
     empty list.
     """
     var args_json = json_get_array(request, "args")
-    if len(args_json) == 0:
+    if args_json.byte_length() == 0:
         return request
 
     var tokens = json_array_tokens(args_json)
@@ -96,7 +96,7 @@ def bind_dataset_references(
         if is_dataset_reference(tokens[i]):
             var handle = dataset_reference_handle(tokens[i])
             var value = datasets.lookup(handle)
-            if len(value) == 0:
+            if value.byte_length() == 0:
                 raise Error("unknown dataset handle " + handle)
             bound += value
         else:
@@ -120,7 +120,7 @@ def response_is_error(response: String) -> Bool:
     Keyed on `error_code` rather than a prefix check so it stays correct if the
     generated envelope ever reorders its keys.
     """
-    return len(json_get_string(response, "error_code")) > 0
+    return json_get_string(response, "error_code").byte_length() > 0
 
 
 def run_batch_execute[DispatchT: def(String) raises -> String](
@@ -130,7 +130,7 @@ def run_batch_execute[DispatchT: def(String) raises -> String](
 ) raises -> String:
     """Execute every request in `raw` and return one combined envelope."""
     var requests_json = json_get_array(raw, "requests")
-    if len(requests_json) == 0:
+    if requests_json.byte_length() == 0:
         return _batch_error(
             "invalid_arguments",
             "batch_execute requires a non-empty requests array.",
@@ -158,7 +158,7 @@ def run_batch_execute[DispatchT: def(String) raises -> String](
         # Checked before starting the item, so a budget is never blamed for work
         # it did not authorise.
         var exhausted = budget.exceeded()
-        if len(exhausted) > 0:
+        if exhausted.byte_length() > 0:
             return budget_exceeded_json(
                 exhausted,
                 results + "]",
@@ -179,7 +179,7 @@ def run_batch_execute[DispatchT: def(String) raises -> String](
             results += ","
         results += response
         count += 1
-        budget.record(len(response))
+        budget.record(response.byte_length())
 
         if response_is_error(response):
             failed += 1

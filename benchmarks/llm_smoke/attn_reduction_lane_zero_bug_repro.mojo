@@ -43,16 +43,17 @@ scale. Reproduced by dispatching the SAME compiled kernel twice with IDENTICAL i
 the two outputs against each other -- no oracle-vs-candidate comparison involved, so this is the
 kernel's own nondeterminism, not a diff artifact.
 """
-from std.gpu.host import DeviceContext
-from std.gpu import barrier, block_idx, thread_idx
-from std.gpu.memory import AddressSpace
+from max.gpu.host import DeviceContext
+from std.gpu import block_idx, thread_idx
+from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
+from max.gpu.memory import AddressSpace
 from std.gpu.primitives.warp import sum as warp_sum
 from std.gpu.primitives.id import lane_id, warp_id
 from std.gpu.globals import WARP_SIZE
 from std.memory import stack_allocation
 from std.math import exp, sqrt
 from std.sys import has_accelerator
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from residentk.kernels import _pf_attn_tiled_kernel_simd, _sdpa_kernel_simd
 
 comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]

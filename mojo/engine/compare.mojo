@@ -133,7 +133,7 @@ def run_compare(req: SimRequest) raises -> String:
         var expr_nodes = List[ExprNode]()
         var expr_root  = -1
         var use_expr   = False
-        if len(sc_obj) > 0 and n_vars > 0:
+        if sc_obj.byte_length() > 0 and n_vars > 0:
             expr_root = parse_expr(sc_obj, vnames, expr_nodes)
             use_expr  = expr_root >= 0
 

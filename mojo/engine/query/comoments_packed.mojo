@@ -57,7 +57,7 @@ mixed-radix pack, its guard (`_packed_digit`), and its two safety ceilings
 aggregate shape is unsafe to pack for this one too — there is no reason for
 the two modules to disagree about what a valid domain is.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.math import sqrt
 from std.sys import info
 
@@ -318,7 +318,7 @@ def group_comoments_packed_parallel(
 
         var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
         for c in range(width):
-            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+            kps.append((key_cols[c].values[].unsafe_ptr() + key_cols[c].offset).as_unsafe_any_origin())
         var kp = kps.unsafe_ptr()
         var nulls = 0
         var bad = False

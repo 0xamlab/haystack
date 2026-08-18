@@ -8,7 +8,7 @@ from json.parser import (
 
 
 def _unquote(s: String) -> String:
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2:
         return s
     var bytes = s.as_bytes()
@@ -46,7 +46,7 @@ def _parse_string_array(obj: String, key: String) -> List[String]:
     var values = List[String]()
     for index in range(count):
         var value = _unquote(json_array_get(arr, index))
-        if len(value) > 0:
+        if value.byte_length() > 0:
             values.append(value)
     return values^
 
@@ -62,7 +62,7 @@ def _count_overlap(left: List[String], right: List[String]) -> Int:
     var hits = 0
     for left_index in range(len(left)):
         var token = left[left_index]
-        if len(token) == 0:
+        if token.byte_length() == 0:
             continue
         if _contains(right, token):
             hits += 1
@@ -125,10 +125,10 @@ def run_repo_classifier(raw: String) raises -> String:
             var language_tokens = _parse_string_array(language_json, "tokens")
 
             var suffix_match = False
-            if len(suffix) > 0 and _contains(language_suffixes, suffix):
+            if suffix.byte_length() > 0 and _contains(language_suffixes, suffix):
                 suffix_match = True
             var basename_match = False
-            if len(basename) > 0 and _contains(language_basenames, basename):
+            if basename.byte_length() > 0 and _contains(language_basenames, basename):
                 basename_match = True
 
             var path_token_hits = _count_overlap(language_tokens, path_tokens)

@@ -39,8 +39,8 @@ def str_split(s: String, delimiter: String) -> List[String]:
     If delimiter is empty, returns the whole string as a single element.
     """
     var result = List[String]()
-    var s_len = len(s)
-    var d_len = len(delimiter)
+    var s_len = s.byte_length()
+    var d_len = delimiter.byte_length()
 
     if d_len == 0 or s_len == 0:
         result.append(s)
@@ -98,8 +98,8 @@ def str_join(parts: List[String], delimiter: String) -> String:
 
 def str_replace(s: String, old: String, new: String) -> String:
     """Replace all non-overlapping occurrences of old with new."""
-    var s_len = len(s)
-    var old_len = len(old)
+    var s_len = s.byte_length()
+    var old_len = old.byte_length()
 
     if old_len == 0 or s_len == 0:
         return s
@@ -135,8 +135,8 @@ def str_replace(s: String, old: String, new: String) -> String:
 
 def str_startswith(s: String, prefix: String) -> Bool:
     """Return True if s starts with prefix."""
-    var s_len = len(s)
-    var p_len = len(prefix)
+    var s_len = s.byte_length()
+    var p_len = prefix.byte_length()
     if p_len > s_len:
         return False
     var s_bytes = s.as_bytes()
@@ -152,8 +152,8 @@ def str_startswith(s: String, prefix: String) -> Bool:
 
 def str_endswith(s: String, suffix: String) -> Bool:
     """Return True if s ends with suffix."""
-    var s_len = len(s)
-    var suf_len = len(suffix)
+    var s_len = s.byte_length()
+    var suf_len = suffix.byte_length()
     if suf_len > s_len:
         return False
     var s_bytes = s.as_bytes()
@@ -170,8 +170,8 @@ def str_endswith(s: String, suffix: String) -> Bool:
 
 def str_contains(s: String, substr: String) -> Bool:
     """Return True if s contains substr."""
-    var s_len = len(s)
-    var sub_len = len(substr)
+    var s_len = s.byte_length()
+    var sub_len = substr.byte_length()
     if sub_len == 0:
         return True
     if sub_len > s_len:
@@ -207,12 +207,12 @@ def str_pad_left(s: String, width: Int, ch: String) -> String:
     """Left-pad s to given width with ch (uses first character of ch).
     If s is already >= width, returns s unchanged.
     """
-    var s_len = len(s)
+    var s_len = s.byte_length()
     if s_len >= width:
         return s
     var pad_len = width - s_len
     var fill_char = ch
-    if len(ch) == 0:
+    if ch.byte_length() == 0:
         fill_char = String(" ")
     var result = String("")
     for _ in range(pad_len):
@@ -228,12 +228,12 @@ def str_pad_right(s: String, width: Int, ch: String) -> String:
     """Right-pad s to given width with ch (uses first character of ch).
     If s is already >= width, returns s unchanged.
     """
-    var s_len = len(s)
+    var s_len = s.byte_length()
     if s_len >= width:
         return s
     var pad_len = width - s_len
     var fill_char = ch
-    if len(ch) == 0:
+    if ch.byte_length() == 0:
         fill_char = String(" ")
     var result = s
     for _ in range(pad_len):
@@ -247,7 +247,7 @@ def str_pad_right(s: String, width: Int, ch: String) -> String:
 def str_upper(s: String) -> String:
     """Convert all lowercase ASCII letters to uppercase."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var result = String("")
     for i in range(n):
         var c = Int(bs[i])
@@ -264,7 +264,7 @@ def str_upper(s: String) -> String:
 def str_lower(s: String) -> String:
     """Convert all uppercase ASCII letters to lowercase."""
     var bs = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var result = String("")
     for i in range(n):
         var c = Int(bs[i])
@@ -280,7 +280,7 @@ def str_lower(s: String) -> String:
 
 def str_trim(s: String) -> String:
     """Strip leading and trailing ASCII whitespace (space, tab, newline, etc.)."""
-    var n = len(s)
+    var n = s.byte_length()
     if n == 0:
         return String("")
     var bs = s.as_bytes()
@@ -303,8 +303,8 @@ def str_trim(s: String) -> String:
 
 def str_count(s: String, substr: String) -> Int:
     """Count non-overlapping occurrences of substr in s."""
-    var s_len = len(s)
-    var sub_len = len(substr)
+    var s_len = s.byte_length()
+    var sub_len = substr.byte_length()
     if sub_len == 0 or sub_len > s_len:
         return 0
     var s_bytes = s.as_bytes()
@@ -330,7 +330,7 @@ def str_count(s: String, substr: String) -> Int:
 
 def str_reverse(s: String) -> String:
     """Reverse a string (byte-level, ASCII-safe)."""
-    var n = len(s)
+    var n = s.byte_length()
     if n == 0:
         return String("")
     var bs = s.as_bytes()
@@ -347,10 +347,10 @@ def str_truncate(s: String, max_len: Int, suffix: String) -> String:
     """Truncate s to max_len characters, appending suffix if truncated.
     The total returned length including suffix will be <= max_len.
     """
-    var s_len = len(s)
+    var s_len = s.byte_length()
     if s_len <= max_len:
         return s
-    var suf_len = len(suffix)
+    var suf_len = suffix.byte_length()
     var keep = max_len - suf_len
     if keep < 0:
         keep = 0
@@ -367,14 +367,14 @@ def str_truncate(s: String, max_len: Int, suffix: String) -> String:
 
 def str_center(s: String, width: Int, fill: String) -> String:
     """Center s within a field of given width, padding with fill character."""
-    var s_len = len(s)
+    var s_len = s.byte_length()
     if s_len >= width:
         return s
     var total_pad = width - s_len
     var left_pad = total_pad // 2
     var right_pad = total_pad - left_pad
     var fill_char = fill
-    if len(fill) == 0:
+    if fill.byte_length() == 0:
         fill_char = String(" ")
     var result = String("")
     for _ in range(left_pad):

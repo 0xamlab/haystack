@@ -56,7 +56,7 @@ Public API:
   swiglu_gradcheck_flat(value, gate, n_tok, d_ff, step)      -> GeluAgreement
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.math import erf, exp, sqrt, tanh
 from std.sys.info import num_physical_cores
 from activations import gelu_new, swiglu

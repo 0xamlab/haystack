@@ -12,7 +12,7 @@ Build:
       -Xlinker -framework -Xlinker Foundation -Xlinker -framework -Xlinker Metal
 """
 from std.ffi import external_call
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 

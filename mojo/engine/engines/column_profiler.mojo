@@ -61,7 +61,7 @@ def _substr(s: String, start: Int, end: Int) -> String:
     """Build substring s[start:end] using byte-by-byte copy."""
     var result = String("")
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var i = start
     var e = end
     if i < 0:
@@ -79,7 +79,7 @@ def _substr(s: String, start: Int, end: Int) -> String:
 def _djb2_str(s: String) -> Int:
     var h: Int = 5381
     var bytes = s.as_bytes()
-    for i in range(len(s)):
+    for i in range(s.byte_length()):
         h = ((h << 5) + h) ^ Int(bytes[i])
     if h < 0:
         h = -h
@@ -127,7 +127,7 @@ def _approx_entropy(values: List[Float64]) -> Float64:
 
 def _is_date_string(s: String) -> Bool:
     """Check if string looks like a date (contains digit + separator)."""
-    var n = len(s)
+    var n = s.byte_length()
     if n < 6 or n > 32:
         return False
     var bytes = s.as_bytes()
@@ -144,7 +144,7 @@ def _is_date_string(s: String) -> Bool:
 
 def _is_alphanumeric_id(s: String) -> Bool:
     """Check if string looks like an ID (alphanum, possibly with dashes)."""
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2 or n > 30:
         return False
     var bytes = s.as_bytes()
@@ -300,7 +300,7 @@ def _extract_float_array(arr_json: String) -> List[Float64]:
     Always advances i to prevent infinite loops on unexpected tokens.
     """
     var result = List[Float64]()
-    var n = len(arr_json)
+    var n = arr_json.byte_length()
     var bytes = arr_json.as_bytes()
     var i = 0
     while i < n and bytes[i] != UInt8(91):
@@ -332,7 +332,7 @@ def _extract_float_array(arr_json: String) -> List[Float64]:
             if i < n:
                 i += 1  # skip closing "
             # Validate: must start with digit, '-', or '.' to be numeric
-            if len(num_str) > 0:
+            if num_str.byte_length() > 0:
                 var first = num_str.as_bytes()[0]
                 var looks_numeric = (
                     (first >= UInt8(48) and first <= UInt8(57)) or  # 0-9
@@ -370,7 +370,7 @@ def _extract_float_array(arr_json: String) -> List[Float64]:
 def _extract_string_array(arr_json: String) -> List[String]:
     """Parse JSON array of strings → List[String]."""
     var result = List[String]()
-    var n = len(arr_json)
+    var n = arr_json.byte_length()
     var bytes = arr_json.as_bytes()
     var i = 0
     while i < n and bytes[i] != UInt8(91):
@@ -402,11 +402,11 @@ def _find_bracket_value(s: String, key: String) -> String:
     var pos = s.find(key_quoted)
     if pos < 0:
         return ""
-    var after = _substr(s, pos + len(key_quoted), len(s))
+    var after = _substr(s, pos + key_quoted.byte_length(), s.byte_length())
     var bracket = after.find("[")
     if bracket < 0:
         return ""
-    return _substr(after, bracket, len(after))
+    return _substr(after, bracket, after.byte_length())
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -424,13 +424,13 @@ def run_column_profile(raw: String) raises -> String:
         return '{"error":"column_profile requires a columns object"}'
 
     # Find the outer { of the columns object
-    var after_cols = _substr(raw, cols_pos + len(cols_key), len(raw))
+    var after_cols = _substr(raw, cols_pos + cols_key.byte_length(), raw.byte_length())
     var outer_brace = after_cols.find("{")
     if outer_brace < 0:
         return '{"error":"columns must be a JSON object"}'
 
-    var cols_json = _substr(after_cols, outer_brace, len(after_cols))
-    var n = len(cols_json)
+    var cols_json = _substr(after_cols, outer_brace, after_cols.byte_length())
+    var n = cols_json.byte_length()
     var bytes = cols_json.as_bytes()
     var i = 1  # skip opening {
 
@@ -487,11 +487,11 @@ def run_column_profile(raw: String) raises -> String:
         var strings_arr_str = _find_bracket_value(col_obj, "strings")
 
         var values = List[Float64]()
-        if len(values_arr_str) > 0:
+        if values_arr_str.byte_length() > 0:
             values = _extract_float_array(values_arr_str)
 
         var strings = List[String]()
-        if len(strings_arr_str) > 0:
+        if strings_arr_str.byte_length() > 0:
             strings = _extract_string_array(strings_arr_str)
 
         # Compute semantic profile
@@ -589,7 +589,7 @@ def run_column_profile(raw: String) raises -> String:
             result += ',"distribution":"' + dist_name + '"'
             result += ',"dist_params":' + dist_params
 
-        if len(unit) > 0:
+        if unit.byte_length() > 0:
             result += ',"unit":"' + unit + '"'
 
         result += "}"

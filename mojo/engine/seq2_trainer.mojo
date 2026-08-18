@@ -80,7 +80,7 @@ Public API:
 """
 
 from std.math import sqrt, exp, tanh
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 from seq_nn import xavier_flat
 
@@ -792,9 +792,9 @@ def seq2_forward(
     var Dh = params.dense_h
     var w = seq2_export(params)
     var scratch = _zeros(8 * H + Dh)
-    var wp = w.unsafe_ptr()
-    var xp = x_flat.unsafe_ptr()
-    var sp = scratch.unsafe_ptr()
+    var wp = w.unsafe_ptr().as_unsafe_any_origin()
+    var xp = x_flat.unsafe_ptr().as_unsafe_any_origin()
+    var sp = scratch.unsafe_ptr().as_unsafe_any_origin()
     out = List[Float64](capacity=n_seq)
     for i in range(n_seq):
         out.append(
@@ -856,10 +856,10 @@ def seq2_grad(
     var w = seq2_export(params)
     var grad = _zeros(len(w))
     var scratch = _zeros(_Scr(T, H, Dh).total)
-    var wp = w.unsafe_ptr()
-    var xp = x_flat.unsafe_ptr()
-    var sp = scratch.unsafe_ptr()
-    var gp = grad.unsafe_ptr()
+    var wp = w.unsafe_ptr().as_unsafe_any_origin()
+    var xp = x_flat.unsafe_ptr().as_unsafe_any_origin()
+    var sp = scratch.unsafe_ptr().as_unsafe_any_origin()
+    var gp = grad.unsafe_ptr().as_unsafe_any_origin()
     _fill_masks_one(sp, T, H, Dh)
     var inv_n = 1.0 / Float64(n_seq)
     for i in range(n_seq):
@@ -952,7 +952,7 @@ def _train_impl[
     var pscratch = _zeros(8 * H + Dh)  # validation forward scratch
     if p_drop <= 0.0:
         for wk in range(nw):
-            _fill_masks_one(sbuf.unsafe_ptr() + wk * s_size, T, H, Dh)
+            _fill_masks_one((sbuf.unsafe_ptr() + wk * s_size).as_unsafe_any_origin(), T, H, Dh)
 
     var idx = List[Int](capacity=n_seq)
     for i in range(n_seq):
@@ -970,14 +970,14 @@ def _train_impl[
     var b1t = 1.0
     var b2t = 1.0
 
-    var wp = w.unsafe_ptr()
-    var xp = x_flat.unsafe_ptr()
-    var yp = y.unsafe_ptr()
-    var idxp = idx.unsafe_ptr()
-    var gbp = gbuf.unsafe_ptr()
-    var sbp = sbuf.unsafe_ptr()
-    var lbp = lbuf.unsafe_ptr()
-    var gp = grad.unsafe_ptr()
+    var wp = w.unsafe_ptr().as_unsafe_any_origin()
+    var xp = x_flat.unsafe_ptr().as_unsafe_any_origin()
+    var yp = y.unsafe_ptr().as_unsafe_any_origin()
+    var idxp = idx.unsafe_ptr().as_unsafe_any_origin()
+    var gbp = gbuf.unsafe_ptr().as_unsafe_any_origin()
+    var sbp = sbuf.unsafe_ptr().as_unsafe_any_origin()
+    var lbp = lbuf.unsafe_ptr().as_unsafe_any_origin()
+    var gp = grad.unsafe_ptr().as_unsafe_any_origin()
 
     var best_w = w.copy()
     var best_val = 1e300
@@ -1072,8 +1072,8 @@ def _train_impl[
 
         if nv > 0:
             var vsq = 0.0
-            var xvp = x_val_flat.unsafe_ptr()
-            var psp = pscratch.unsafe_ptr()
+            var xvp = x_val_flat.unsafe_ptr().as_unsafe_any_origin()
+            var psp = pscratch.unsafe_ptr().as_unsafe_any_origin()
             for i in range(nv):
                 var e = (
                     _predict_sample[simd](wp, xvp, i * T * D, T, D, H, Dh, psp)

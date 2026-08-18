@@ -2,10 +2,10 @@
 does a hand-rolled dispatch of the SIMPLEST possible Mojo-compiled kernel (one buffer arg,
 unconditional write, no scalar args, no loop) actually get seen by the host afterward?
 """
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.ffi import external_call
 from std.gpu import block_dim, block_idx, thread_idx
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.memory import alloc
 from std.sys import has_accelerator
 

@@ -54,21 +54,23 @@ thing in the tree that requires `DEVELOPER_DIR` to be set.
 
 The launch spelling, which cost six attempts to find
 ------------------------------------------------------
-On this pinned nightly the kernel is passed TWICE as compile-time parameters, and the dimensions are
-keyword-only:
+On Mojo 1.0.0 (MAX 26.5) the kernel is passed ONCE as a compile-time parameter, the kernel's own
+arguments follow as positional arguments, and the dimensions are keyword-only:
 
-    ctx.enqueue_function[kernel, kernel](args..., grid_dim=..., block_dim=...)
+    ctx.enqueue_function[kernel](args..., grid_dim=..., block_dim=...)
 
-`enqueue_function[kernel]` with one parameter fails `signature_func` inference. A pointer argument
-needs an explicit origin — `UnsafePointer[Float32, origin=MutAnyOrigin]`, with `MutAnyOrigin` from
-`std.builtin.type_aliases`, NOT `MutableAnyOrigin`. `DeviceContext()` raises. All four of those are
-one-line mistakes that produce long error messages, which is why the spelling lives in exactly one
-file.
+(The pre-1.0 `enqueue_function[kernel, kernel]` two-parameter form is gone: 1.0.0 reworked the
+overload set in max.gpu.host.DeviceContext, and the single-parameter form is what MAX's own
+vector_addition example uses.) A pointer argument needs an explicit origin —
+`UnsafePointer[Float32, origin=MutAnyOrigin]`, with `MutAnyOrigin` from `std.origin` (it left
+`std.builtin.type_aliases` in 1.0.0), NOT `MutableAnyOrigin`. `DeviceContext()` raises. All four of
+those are one-line mistakes that produce long error messages, which is why the spelling lives in
+exactly one file.
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.gpu import block_dim, block_idx, thread_idx
-from std.gpu.host import DeviceContext
+from max.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 comptime _THREADS_PER_GROUP: Int = 256
@@ -125,7 +127,7 @@ def _accel_saxpy(mut out_host: List[Float32], x_host: List[Float32], alpha: Floa
 
     # Round the grid UP so every element is covered; the kernel's bounds check handles the overhang.
     var groups = (n + _THREADS_PER_GROUP - 1) // _THREADS_PER_GROUP
-    ctx.enqueue_function[_saxpy_kernel, _saxpy_kernel](
+    ctx.enqueue_function[_saxpy_kernel](
         out_buf.unsafe_ptr(),
         x_buf.unsafe_ptr(),
         alpha,

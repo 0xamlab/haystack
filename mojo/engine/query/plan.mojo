@@ -483,8 +483,8 @@ def json_unescape(token: String) -> String:
 def _unquote(token: String) -> String:
     """Strip one layer of quotes and decode JSON escapes — the caller's real name."""
     var bytes = token.as_bytes()
-    if len(token) >= 2 and bytes[0] == 34 and bytes[len(token) - 1] == 34:
-        return json_unescape(substring(token, 1, len(token) - 1))
+    if token.byte_length() >= 2 and bytes[0] == 34 and bytes[token.byte_length() - 1] == 34:
+        return json_unescape(substring(token, 1, token.byte_length() - 1))
     return json_unescape(token)
 
 
@@ -578,7 +578,7 @@ def json_raw_tokens(array: String) -> List[String]:
     found, and `json/parser.mojo` documents it on `json_array_tokens` itself.
     """
     var bytes = array.as_bytes()
-    var n = len(array)
+    var n = array.byte_length()
     var result = List[String]()
     var p = skip_whitespace(array, 0)
     if p >= n or bytes[p] != UInt8(91):  # '['
@@ -904,7 +904,7 @@ def reject_non_json_literals(text: String, rows_shaped: Bool) raises:
     """Raise if `text` holds a bare token JSON does not define. See `json_literal_problem`.
     """
     var problem = json_literal_problem(text, rows_shaped)
-    if len(problem) > 0:
+    if problem.byte_length() > 0:
         raise Error(problem)
 
 
@@ -915,7 +915,7 @@ def parse_column_names(raw: String) raises -> List[String]:
     """The `columns` array as a name list."""
     var names = List[String]()
     var array = json_raw_array(raw, "columns")
-    if len(array) == 0:
+    if array.byte_length() == 0:
         return names^
     for token in json_raw_tokens(array):
         names.append(_unquote(token))
@@ -975,7 +975,7 @@ def parse_rows(
                 masks[c].append(False)
                 continue
             ref cell = cells[c]
-            if cell == "null" or len(cell) == 0:
+            if cell == "null" or cell.byte_length() == 0:
                 values[c].append(0.0)
                 masks[c].append(False)
             else:
@@ -1085,7 +1085,7 @@ def table_names(raw: String) -> List[String]:
     """
     var out = List[String]()
     var tables = json_raw_array(raw, "tables")
-    if len(tables) == 0:
+    if tables.byte_length() == 0:
         return out^
     for token in json_raw_tokens(tables):
         out.append(json_string_field(token, "name"))
@@ -1108,12 +1108,12 @@ def table_dataset_handles(raw: String) -> List[String]:
     """
     var out = List[String]()
     var tables = json_raw_array(raw, "tables")
-    if len(tables) == 0:
+    if tables.byte_length() == 0:
         return out^
     for token in json_raw_tokens(tables):
         var handle = json_string_field(token, "dataset")
-        if len(handle) > 1 and handle.as_bytes()[0] == 64:  # '@', optional
-            handle = substring(handle, 1, len(handle))
+        if handle.byte_length() > 1 and handle.as_bytes()[0] == 64:  # '@', optional
+            handle = substring(handle, 1, handle.byte_length())
         out.append(handle)
     return out^
 
@@ -1141,7 +1141,7 @@ def parse_named_tables(
     var out_names = List[String]()
     var out_batches = List[RecordBatch]()
     var tables_json = json_raw_array(raw, "tables")
-    if len(tables_json) == 0:
+    if tables_json.byte_length() == 0:
         return NamedBatches(out_names^, out_batches^)
 
     var tokens = json_raw_tokens(tables_json)
@@ -1157,7 +1157,7 @@ def parse_named_tables(
     for i in range(len(tokens)):
         ref token = tokens[i]
         var name = json_string_field(token, "name")
-        if len(name) == 0:
+        if name.byte_length() == 0:
             raise Error("table " + String(i) + " has no 'name'")
         for j in range(len(out_names)):
             if out_names[j] == name:
@@ -1168,17 +1168,17 @@ def parse_named_tables(
         var reference = json_string_field(token, "dataset")
         var inline_rows = json_raw_array(token, "rows")
         var rows_json = String("")
-        if len(reference) > 0 and len(inline_rows) > 0:
+        if reference.byte_length() > 0 and inline_rows.byte_length() > 0:
             raise Error(
                 "table '"
                 + name
                 + "' declares both 'rows' and 'dataset'; supply exactly one"
             )
-        if len(reference) > 0:
+        if reference.byte_length() > 0:
             var handle = reference
-            if len(handle) > 1 and handle.as_bytes()[0] == 64:  # '@'
-                handle = substring(handle, 1, len(handle))
-            if i >= len(table_rows) or len(table_rows[i]) == 0:
+            if handle.byte_length() > 1 and handle.as_bytes()[0] == 64:  # '@'
+                handle = substring(handle, 1, handle.byte_length())
+            if i >= len(table_rows) or table_rows[i].byte_length() == 0:
                 # No session resolved this entry. The handle form is reachable only from a
                 # caller holding a connection; a missing handle ON a connection is
                 # reported by the resolver as unknown_dataset instead.
@@ -1191,7 +1191,7 @@ def parse_named_tables(
                     " connection or inline its rows"
                 )
             rows_json = table_rows[i]
-        elif len(inline_rows) > 0:
+        elif inline_rows.byte_length() > 0:
             rows_json = inline_rows
         else:
             raise Error(
@@ -1217,9 +1217,11 @@ def parse_named_tables(
         #
         # So the covered case is the one where a header EXISTS, which is every dataset
         # written by `query_execute` itself.
-        if len(reference) > 0 and i < len(table_headers) and len(
-            table_headers[i]
-        ) > 0:
+        if (
+            reference.byte_length() > 0
+            and i < len(table_headers)
+            and table_headers[i].byte_length() > 0
+        ):
             # The resident value is the object form `{"columns":[...],"rows":[...]}` that
             # query_execute itself returns, so its header must match. `parse_rows` PADS a
             # short row with nulls, so a header mismatch would produce all-null columns
@@ -1294,7 +1296,7 @@ def parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
     """
     var nodes = List[ExprNode]()
     var array = json_raw_array(expr_json, "nodes")
-    if len(array) == 0:
+    if array.byte_length() == 0:
         return nodes^
     var tokens = json_raw_tokens(array)
     for i in range(len(tokens)):
@@ -1304,7 +1306,7 @@ def parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
             raise Error("expression node " + String(i) + " has no 'op'")
 
         var column_name = json_string_field(token, "column")
-        if len(column_name) > 0:
+        if column_name.byte_length() > 0:
             var index = schema.index_of(column_name)
             if index < 0:
                 raise Error(
@@ -1393,7 +1395,7 @@ def _resolve_column_list(
     schema: Schema, array: String, what: String
 ) raises -> List[Int]:
     var out = List[Int]()
-    if len(array) == 0:
+    if array.byte_length() == 0:
         return out^
     for token in json_raw_tokens(array):
         out.append(_resolve_column(schema, _unquote(token), what))
@@ -1449,7 +1451,7 @@ def _resolve_aggs(
     the same rule `_apply_join` uses for `on` vs `left_on`/`right_on` together.
     """
     var aggs_array = json_raw_array(op_json, "aggs")
-    var has_aggs = len(aggs_array) > 0
+    var has_aggs = aggs_array.byte_length() > 0
     var has_single = find_key(op_json, "value") >= 0 or find_key(op_json, "agg") >= 0
     if has_aggs and has_single:
         raise Error(
@@ -1578,18 +1580,18 @@ def apply_op_detailed(
 
     if op == "filter":
         var predicate = json_raw_object(op_json, "predicate")
-        if len(predicate) == 0:
+        if predicate.byte_length() == 0:
             raise Error("filter requires a 'predicate' object")
         var nodes = parse_nodes(predicate, batch.schema)
         var root = json_get_int(predicate, "root", len(nodes) - 1)
         var problem = plan_problem(batch.width(), nodes, root)
-        if len(problem) > 0:
+        if problem.byte_length() > 0:
             raise Error("filter predicate: " + problem)
         return filter_rows(batch, nodes, root, strict)
 
     if op == "project":
         var expressions = json_raw_object(op_json, "expressions")
-        if len(expressions) == 0:
+        if expressions.byte_length() == 0:
             # No expressions: a plain column selection.
             var picked = _resolve_column_list(
                 batch.schema, json_raw_array(op_json, "columns"), "projected"
@@ -1605,7 +1607,7 @@ def apply_op_detailed(
             roots.append(len(nodes) - 1)
         for i in range(len(roots)):
             var problem = plan_problem(batch.width(), nodes, roots[i])
-            if len(problem) > 0:
+            if problem.byte_length() > 0:
                 raise Error("project expression " + String(i) + ": " + problem)
         var names = List[String]()
         var names_json = json_raw_array(op_json, "names")
@@ -1622,7 +1624,7 @@ def apply_op_detailed(
     if op == "sort":
         var nulls_last = json_get_bool(op_json, "nulls_last", True)
         var by_list = json_raw_array(op_json, "by")
-        if len(by_list) > 0:
+        if by_list.byte_length() > 0:
             var keys = _resolve_column_list(batch.schema, by_list, "sort")
             var desc_list = json_raw_array(op_json, "desc")
             var desc = List[Bool]()
@@ -1676,7 +1678,7 @@ def apply_op_detailed(
         _resolve_aggs(batch.schema, op_json, value_columns, opcodes, value_names)
 
         var by_array = json_raw_array(op_json, "by")
-        if len(by_array) > 0:
+        if by_array.byte_length() > 0:
             var key_columns = _resolve_column_list(batch.schema, by_array, "group")
             # Routed through the composed scan strategy (dense / packed / fused
             # radix — see query.composed), NOT re-implemented: at the SAME worker
@@ -1726,7 +1728,7 @@ def apply_op_detailed(
             return RecordBatch(Schema(names^, dtypes^), columns^, out_rows)
 
         var single_by = json_string_field(op_json, "by")
-        if len(single_by) == 0:
+        if single_by.byte_length() == 0:
             raise Error("aggregate requires 'by' (a column name or an array)")
         var key = _resolve_column(batch.schema, single_by, "group")
         # Same substitution as the multi-key branch above, at width 1: composed,
@@ -1750,7 +1752,7 @@ def apply_op_detailed(
     if op == "window":
         return _apply_window(batch, op_json, detail)
 
-    if len(op) == 0:
+    if op.byte_length() == 0:
         # An empty op name means the op object could not be READ, not that the caller
         # sent an empty name. Echo what arrived so the difference is visible instead of
         # being reported as a bad plan.
@@ -1803,7 +1805,7 @@ def _apply_join(
     supplies the rows as a named table.
     """
     var table_name = json_string_field(op_json, "table")
-    if len(table_name) == 0:
+    if table_name.byte_length() == 0:
         raise Error("join requires 'table'")
     var table_index = tables.index_of(table_name)
     if table_index < 0:
@@ -1824,17 +1826,17 @@ def _apply_join(
     # json_string_field reads a non-string as absent, so without this it would be reported
     # as a MISSING key, which sends the caller looking for the wrong mistake.
     if (
-        (find_key(op_json, "left_on") >= 0 and len(left_name) == 0)
-        or (find_key(op_json, "right_on") >= 0 and len(right_name) == 0)
-        or (find_key(op_json, "on") >= 0 and len(shared) == 0)
+        (find_key(op_json, "left_on") >= 0 and left_name.byte_length() == 0)
+        or (find_key(op_json, "right_on") >= 0 and right_name.byte_length() == 0)
+        or (find_key(op_json, "on") >= 0 and shared.byte_length() == 0)
     ):
         raise Error(
             "join keys must each be a single column name: 'on', or both 'left_on' and"
             " 'right_on'. A composite multi-column equality key is not implemented"
             " (hash_join_indices takes one key column per side)"
         )
-    if len(left_name) == 0 or len(right_name) == 0:
-        if len(shared) == 0:
+    if left_name.byte_length() == 0 or right_name.byte_length() == 0:
+        if shared.byte_length() == 0:
             raise Error("join requires 'on', or both 'left_on' and 'right_on'")
         left_name = shared
         right_name = shared
@@ -1844,7 +1846,7 @@ def _apply_join(
     var right_key = _resolve_column(right.schema, right_name, "join right key")
 
     var how = json_string_field(op_json, "how")
-    if len(how) == 0:
+    if how.byte_length() == 0:
         how = "inner"
     var join_type = JOIN_INNER
     var semi = False
@@ -1867,7 +1869,7 @@ def _apply_join(
         )
 
     var method = json_string_field(op_json, "method")
-    if len(method) == 0:
+    if method.byte_length() == 0:
         method = "hash"
     if method != "hash" and method != "merge" and method != "direct_address":
         raise Error(
@@ -2026,7 +2028,7 @@ def _apply_join(
             )
 
     var prefix = json_string_field(op_json, "prefix")
-    if len(prefix) == 0:
+    if prefix.byte_length() == 0:
         # An empty prefix is not expressible: json_string_field cannot tell absent from
         # "", and a caller cannot ask for a name collision anyway.
         prefix = String("")
@@ -2292,7 +2294,7 @@ def _apply_window(
     assertions and must not change. The gate belongs here, at the wire.
     """
     var window_fn = json_string_field(op_json, "fn")
-    if len(window_fn) == 0:
+    if window_fn.byte_length() == 0:
         raise Error("window requires 'fn'")
     if not _window_fn_is_known(window_fn):
         raise Error(
@@ -2308,7 +2310,7 @@ def _apply_window(
     # in `ops`, hence in plan_hash — correct, since two plans producing differently-named
     # columns produce different results.
     var output_name = json_string_field(op_json, "as")
-    if len(output_name) == 0:
+    if output_name.byte_length() == 0:
         raise Error("window requires 'as' (the output column name)")
     if batch.schema.index_of(output_name) >= 0:
         raise Error(
@@ -2336,7 +2338,7 @@ def _apply_window(
         )
 
     var partition_array = json_raw_array(op_json, "partition_by")
-    if find_key(op_json, "partition_by") >= 0 and len(partition_array) == 0:
+    if find_key(op_json, "partition_by") >= 0 and partition_array.byte_length() == 0:
         # `json_raw_array` reads a non-array as absent, and absent means ONE partition over
         # everything — so `"partition_by":"region"` would answer a different question under
         # a success status. `[]` is explicitly legal and reaches here as "[]", not "".
@@ -2399,10 +2401,10 @@ def _apply_window(
     var value_name = json_string_field(op_json, "value")
     var value_column = 0
     if needs_value:
-        if len(value_name) == 0:
+        if value_name.byte_length() == 0:
             raise Error("window fn '" + window_fn + "' requires 'value'")
         value_column = _resolve_column(batch.schema, value_name, "window value")
-    elif len(value_name) > 0:
+    elif value_name.byte_length() > 0:
         # Rejected rather than ignored: a caller who thinks they are computing something
         # over `amount` is told they are not.
         raise Error("window fn '" + window_fn + "' takes no 'value'")
@@ -2588,7 +2590,7 @@ def _serialized_bytes_exact(batch: RecordBatch) -> Int:
     for c in range(batch.width()):
         if c > 0:
             total += 1
-        total += 2 + len(_json_escape(batch.schema.name_at(c)))
+        total += 2 + _json_escape(batch.schema.name_at(c)).byte_length()
     for r in range(batch.n_rows):
         if r > 0:
             total += 1
@@ -2598,7 +2600,7 @@ def _serialized_bytes_exact(batch: RecordBatch) -> Int:
                 total += 1
             ref column = batch.columns[c]
             if column.is_valid_at(r):
-                total += len(_cell_text(column.get(r)))
+                total += _cell_text(column.get(r)).byte_length()
             else:
                 total += 4  # null
     return total
@@ -2686,7 +2688,7 @@ def _parse_ops_prologue(raw: String) -> _OpsPrologue:
     """
     var ops = json_raw_array(raw, "ops")
     var ops_problem = json_literal_problem(ops, False)
-    if len(ops_problem) > 0:
+    if ops_problem.byte_length() > 0:
         return _OpsPrologue(
             ops,
             List[String](),
@@ -2694,7 +2696,7 @@ def _parse_ops_prologue(raw: String) -> _OpsPrologue:
             _plan_error("invalid_arguments", "the 'ops' array: " + ops_problem),
         )
     var op_tokens = List[String]()
-    if len(ops) > 0:
+    if ops.byte_length() > 0:
         op_tokens = json_raw_tokens(ops)
     var op_count = len(op_tokens)
     if op_count > MAX_OPS:
@@ -2738,7 +2740,7 @@ def _finish_query_execute(
 
     var strict = json_get_bool(raw, "strict", False)
     var lineage = String("[")
-    var hash_value = plan_hash(ops) if len(ops) > 0 else ""
+    var hash_value = plan_hash(ops) if ops.byte_length() > 0 else ""
 
     for i in range(op_count):
         ref op_json = op_tokens[i]
@@ -2777,7 +2779,7 @@ def _finish_query_execute(
         )
         # Omitted when empty, so the eight ops that carry no detail emit byte-identical
         # lineage to before.
-        if len(detail) > 0:
+        if detail.byte_length() > 0:
             lineage += ',"detail":"' + _json_escape(detail) + '"'
         lineage += "}"
     lineage += "]"
@@ -2795,7 +2797,7 @@ def _finish_query_execute(
     # ever refused because a bound was pessimistic.
     if _serialized_bytes_ceiling(batch.n_rows, batch.width()) > MAX_RESPONSE_BYTES:
         var exact = _serialized_bytes_exact(batch)
-        if exact + len(lineage) > MAX_RESPONSE_BYTES:
+        if exact + lineage.byte_length() > MAX_RESPONSE_BYTES:
             return _plan_error(
                 "result_too_large",
                 "the result is "
@@ -2866,7 +2868,7 @@ def run_query_execute_with_tables(
     build when a caller already has a parsed batch.
     """
     var prologue = _parse_ops_prologue(raw)
-    if len(prologue.error) > 0:
+    if prologue.error.byte_length() > 0:
         return prologue.error
 
     var batch: RecordBatch
@@ -2903,7 +2905,7 @@ def run_query_execute_on_batch(
     handle into `rows_json` before calling `run_query_execute_with_tables`.
     """
     var prologue = _parse_ops_prologue(raw)
-    if len(prologue.error) > 0:
+    if prologue.error.byte_length() > 0:
         return prologue.error
 
     return _finish_query_execute(

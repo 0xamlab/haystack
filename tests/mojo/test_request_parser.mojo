@@ -23,7 +23,7 @@ def _assert(condition: Bool, message: String):
         print("PASS: " + message)
 
 
-def test_monte_carlo_defaults():
+def test_monte_carlo_defaults() raises:
     """Minimal payload uses all defaults."""
     var req = parse_request('{"engine_type":"monte_carlo","runs":5000}')
     _assert(req.engine_type == "monte_carlo", "engine_type == monte_carlo")
@@ -34,7 +34,7 @@ def test_monte_carlo_defaults():
     _assert(req.scoring.w_dr == 0.4,          "w_dr default == 0.4")
 
 
-def test_qmc_sobol():
+def test_qmc_sobol() raises:
     var req = parse_request('{"engine_type":"qmc_sobol","runs":2000,'
         + '"variables":[{"name":"x","distribution":"uniform","params":{"low":0,"high":1}}],'
         + '"objective_function":"x"}')
@@ -45,7 +45,7 @@ def test_qmc_sobol():
     _assert(req.p1[0] == 1.0,                 "p1 == 1.0 (high)")
 
 
-def test_lhs():
+def test_lhs() raises:
     var req = parse_request('{"engine_type":"lhs","runs":1000,'
         + '"variables":[{"name":"v","distribution":"normal","params":{"mean":50,"std":10}}]}')
     _assert(req.engine_type == "lhs", "engine_type == lhs")
@@ -54,7 +54,7 @@ def test_lhs():
     _assert(req.p1[0] == 10.0,        "std == 10.0")
 
 
-def test_bootstrap():
+def test_bootstrap() raises:
     var raw = ('{"engine_type":"bootstrap","runs":500,'
         + '"bootstrap_config":{"historical_data":[1,2,3,4,5],"statistic":"mean"}}')
     var req = parse_request(raw)
@@ -65,7 +65,7 @@ def test_bootstrap():
     _assert(req.bootstrap_cfg.historical_data[0] == 1.0, "data[0] == 1.0")
 
 
-def test_scenario():
+def test_scenario() raises:
     var raw = ('{"engine_type":"scenario","runs":200,'
         + '"scenario_config":{"scenarios":['
         + '{"name":"Bull","probability":0.3,"variables":{"v":100}},'
@@ -74,10 +74,10 @@ def test_scenario():
     var req = parse_request(raw)
     _assert(req.engine_type == "scenario",  "engine_type == scenario")
     _assert(req.has_scenario_cfg,            "has_scenario_cfg")
-    _assert(len(req.scenario_cfg.raw_config) > 0, "scenario raw_config non-empty")
+    _assert(req.scenario_cfg.raw_config.byte_length() > 0, "scenario raw_config non-empty")
 
 
-def test_sensitivity():
+def test_sensitivity() raises:
     var raw = ('{"engine_type":"sensitivity","runs":1000,'
         + '"variables":[{"name":"a","distribution":"normal","params":{"mean":10,"std":2}}],'
         + '"objective_function":"a"}')
@@ -86,7 +86,7 @@ def test_sensitivity():
     _assert(req.n_vars == 1,                   "n_vars == 1")
 
 
-def test_mcmc():
+def test_mcmc() raises:
     var raw = ('{"engine_type":"mcmc","runs":200,'
         + '"mcmc_config":{"observed_data":[10,11,12,13,14],"chains":2,"burn_in":50}}')
     var req = parse_request(raw)
@@ -97,7 +97,7 @@ def test_mcmc():
     _assert(req.mcmc_cfg.n_data == 5,         "n_data == 5")
 
 
-def test_decision_tree():
+def test_decision_tree() raises:
     var raw = ('{"engine_type":"decision_tree","runs":500,'
         + '"decision_tree_config":{"paths":[{"label":"P1","probability":0.6,'
         + '"variables":[{"name":"r","distribution":"fixed","params":{"value":100}}],'
@@ -105,10 +105,10 @@ def test_decision_tree():
     var req = parse_request(raw)
     _assert(req.engine_type == "decision_tree",  "engine_type == decision_tree")
     _assert(req.has_decision_tree_cfg,            "has_decision_tree_cfg")
-    _assert(len(req.decision_tree_cfg.raw_config) > 0, "dt raw_config non-empty")
+    _assert(req.decision_tree_cfg.raw_config.byte_length() > 0, "dt raw_config non-empty")
 
 
-def test_time_series():
+def test_time_series() raises:
     var raw = ('{"engine_type":"time_series","runs":500,'
         + '"time_series_config":{"model":"gbm","initial_value":100,"horizons":[6,12],'
         + '"dt":0.0833,"drift":0.07,"volatility":0.20}}')
@@ -121,14 +121,14 @@ def test_time_series():
     _assert(req.time_series_cfg.horizons[0] == 6,     "horizon[0] == 6")
 
 
-def test_compare():
+def test_compare() raises:
     var raw = ('{"engine_type":"compare","runs":500,'
         + '"scenarios":[{"name":"A","variables":[]},{"name":"B","variables":[]}]}')
     var req = parse_request(raw)
     _assert(req.engine_type == "compare", "engine_type == compare")
 
 
-def test_importance_sampling():
+def test_importance_sampling() raises:
     var raw = ('{"engine_type":"importance_sampling","runs":1000,'
         + '"variables":[{"name":"x","distribution":"normal","params":{"mean":0,"std":1}}],'
         + '"objective_function":"x",'
@@ -140,7 +140,7 @@ def test_importance_sampling():
     _assert(req.is_cfg.tail_direction == "lower",         "tail_direction == lower")
 
 
-def test_all_distribution_types():
+def test_all_distribution_types() raises:
     """Verify all 27 distribution type codes parse correctly."""
     var dists = List[String]()
     dists.append('{"name":"a","distribution":"normal","params":{"mean":0,"std":1}}')
@@ -214,7 +214,7 @@ def test_all_distribution_types():
             "dist[" + String(i) + "] code == " + String(expected_codes[i]))
 
 
-def test_multi_output_objective():
+def test_multi_output_objective() raises:
     """Multi-output via | separator."""
     var raw = ('{"engine_type":"monte_carlo","runs":100,'
         + '"variables":[{"name":"a","distribution":"fixed","params":{"value":1}},'
@@ -227,13 +227,13 @@ def test_multi_output_objective():
     _assert(req.obj_fns[2] == "a+b", "obj[2] == a+b")
 
 
-def test_seed_sets_deterministic():
+def test_seed_sets_deterministic() raises:
     """Seed field parsed correctly."""
     var req = parse_request('{"engine_type":"monte_carlo","runs":100,"seed":12345}')
     _assert(req.seed == 12345, "seed == 12345")
 
 
-def test_scoring_weights():
+def test_scoring_weights() raises:
     """Custom scoring weights parsed correctly."""
     var raw = '{"engine_type":"monte_carlo","runs":100,"scoring":{"expected_value":0.8,"downside_risk":0.2}}'
     var req = parse_request(raw)
@@ -241,7 +241,7 @@ def test_scoring_weights():
     _assert(req.scoring.w_dr == 0.2, "w_dr == 0.2")
 
 
-def test_missing_optional_fields_use_defaults():
+def test_missing_optional_fields_use_defaults() raises:
     """Missing optional fields use canonical schema defaults."""
     var req = parse_request('{}')
     _assert(req.engine_type == "monte_carlo", "engine_type default == monte_carlo")
@@ -252,7 +252,7 @@ def test_missing_optional_fields_use_defaults():
     _assert(req.checkpoint_every == 1000,     "checkpoint_every default == 1000")
 
 
-def main():
+def main() raises:
     print("=== test_request_parser.mojo ===")
     test_monte_carlo_defaults()
     test_qmc_sobol()

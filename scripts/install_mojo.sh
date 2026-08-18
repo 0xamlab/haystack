@@ -87,6 +87,12 @@ cd "${PIXI_ENV_DIR}"
 pixi install
 pixi run mojo --version 2>/dev/null && info "Mojo version: $(pixi run mojo --version 2>/dev/null)"
 
+# MAX 26.5 ships precompiled packages named linalg/pipeline/quantization/kv_cache that shadow this
+# repo's runtime-library modules of the same names; hide them right after install so `mojo run`
+# lanes that never touch build_mojo_binary.sh see the engine's modules too. scripts/build_mojo_binary.sh
+# re-runs this on every build as well (a later `pixi install` restores the packages).
+bash "${REPO_ROOT}/scripts/shadow_max_pkg_name_collisions.sh" "${PIXI_ENV_DIR}/.pixi/envs/default/lib"
+
 # ── Step 3: Build the Mojo binary when the source entrypoint exists ───────────
 # Defaults to a small filtered build (a single, arbitrary runtime-library module --
 # the smoke test below never calls it, it only needs *some* value so

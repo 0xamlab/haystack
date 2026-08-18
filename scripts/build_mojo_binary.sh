@@ -57,8 +57,9 @@ MOJO_BUILD_EXTRA_DEFINES_RAW="${MOJO_BUILD_EXTRA_DEFINES:-}"
 # choice MOJO_BUILD_MCPU already makes for CPU builds. Override with MOJO_BUILD_METAL_TARGET if a
 # narrower target is ever needed.
 MOJO_BUILD_METAL_TARGET="${MOJO_BUILD_METAL_TARGET:-apple-m1}"
-# The pinned Mojo compiler (Mojo 1.0.0b2; this ceiling was first reproduced on the earlier
-# 0.26.3.0.dev nightly and is retained on 1.0 as a precaution) has a genuine, upstream, still-open
+# The pinned Mojo compiler (Mojo 1.0.0; this ceiling was first reproduced on the earlier
+# 0.26.3.0.dev nightly and was still present on 1.0.0b2 — scripts/probe_mojo_module_ceiling.sh
+# re-verifies the status on every pin change) has a genuine, upstream, still-open
 # bug: an
 # internal compiler pass recurses once per top-level declaration in a single translation unit
 # instead of iterating, and blows a worker thread's stack (EXC_BAD_ACCESS/KERN_PROTECTION_FAILURE
@@ -345,8 +346,8 @@ print(len(discover_runtime_library_modules(executable_only=True)))
             "${MOJO_BUILD_MAX_SAFE_MODULES}-module safety ceiling." >&2
         echo "   This is a confirmed upstream Mojo compiler bug (stack-overflow in an internal" \
             "recursive pass, not an RSS/memory limit -- see modular/modular#2766), reproduced" \
-            "deterministically on the pinned toolchain (first on the 0.26.3.0.dev nightly, ceiling" \
-            "retained on Mojo 1.0.0b2) between" \
+            "deterministically on the pinned toolchain (first on the 0.26.3.0.dev nightly, still" \
+            "present on 1.0.0b2; scripts/probe_mojo_module_ceiling.sh re-verifies per pin) between" \
             "500 (compiles) and 600 (crashes) modules. It will not simply go away with more RAM." >&2
         echo "   Use one of:" >&2
         echo "     - scripts/build_runtime_shards.py -- the production-authoritative, already-" \
@@ -385,15 +386,17 @@ if [[ "${#EXTRA_DEFINE_ARGS[@]}" -gt 0 ]]; then
     MOJO_TARGET_ARGS+=("${EXTRA_DEFINE_ARGS[@]}")
 fi
 
-# The link step binds four MAX-private runtime libraries by bare name. Which libraries a toolchain
-# release ships CHANGES between releases: the 1.1.0.dev2026080606 nightly recorded a load command
-# for libAsyncRTMojoBindings.dylib while no longer shipping the file, so every built kernel dlopen'd
-# fine at link time and failed at RUNTIME. Fail HERE, before spending minutes compiling, with an
-# actionable message naming the missing libraries and the pin to check — a bare linker
-# "library not found" at the end of the build helps nobody.
-MOJO_RUNTIME_LINK_LIBS=(KGENCompilerRTShared AsyncRTRuntimeGlobals AsyncRTMojoBindings MSupportGlobals)
+# The link step binds the MAX-private runtime libraries by bare name. Which libraries a toolchain
+# release ships CHANGES between releases: 1.0.0b2 shipped four, and 1.0.0 DROPPED
+# libAsyncRTMojoBindings (its contents merged into the remaining libs). So: link every runtime lib
+# that EXISTS in the env, but fail loudly if any of the CURRENT core set is missing — a future
+# rename must produce a red build with an actionable message, never a silently broken binary.
+# (Historical incident of the same class: the 1.1.0.dev2026080606 nightly recorded a load command
+# for libAsyncRTMojoBindings.dylib while no longer shipping the file, so kernels failed at RUNTIME.)
+MOJO_RUNTIME_CORE_LIBS=(KGENCompilerRTShared AsyncRTRuntimeGlobals MSupportGlobals)
+MOJO_RUNTIME_OPTIONAL_LIBS=(AsyncRTMojoBindings)   # shipped through 1.0.0b2, dropped in 1.0.0
 missing_runtime_libs=()
-for _rt_lib in "${MOJO_RUNTIME_LINK_LIBS[@]}"; do
+for _rt_lib in "${MOJO_RUNTIME_CORE_LIBS[@]}"; do
     if ! ls "${LIB_DIR}/lib${_rt_lib}".* >/dev/null 2>&1; then
         missing_runtime_libs+=("${_rt_lib}")
     fi
@@ -405,6 +408,18 @@ if [[ "${#missing_runtime_libs[@]}" -gt 0 ]]; then
     echo "[build_mojo_binary] Check the mojo pin in mojo_env/pixi.toml — a different release may rename or drop these." >&2
     exit 1
 fi
+MOJO_RUNTIME_LINK_ARGS=()
+for _rt_lib in "${MOJO_RUNTIME_CORE_LIBS[@]}" "${MOJO_RUNTIME_OPTIONAL_LIBS[@]}"; do
+    if ls "${LIB_DIR}/lib${_rt_lib}".* >/dev/null 2>&1; then
+        MOJO_RUNTIME_LINK_ARGS+=("-l${_rt_lib}")
+    fi
+done
+
+# Hide the MAX packages whose names collide with this repo's runtime-library modules — see
+# scripts/shadow_max_pkg_name_collisions.sh for the full rationale. Every build re-runs this so a
+# fresh `pixi install` (which restores the .mojoc files) can never leave the engine's own
+# linalg/pipeline/quantization/kv_cache modules shadowed.
+bash "${REPO_ROOT}/scripts/shadow_max_pkg_name_collisions.sh" "${LIB_DIR}"
 
 (
     cd "${PIXI_ENV_DIR}"
@@ -442,10 +457,7 @@ case "$(uname -s)" in
             -Wl,-syslibroot,"${SDKROOT_PATH}" \
             -Wl,-rpath,"${RPATH_RELATIVE}" \
             -Wl,-rpath,"${LIB_DIR}" \
-            -lKGENCompilerRTShared \
-            -lAsyncRTRuntimeGlobals \
-            -lAsyncRTMojoBindings \
-            -lMSupportGlobals \
+            "${MOJO_RUNTIME_LINK_ARGS[@]}" \
             "${PYTHON_RUNTIME_LIB}" \
             -lc++ \
             "${DARWIN_METAL_LINK_ARGS[@]+"${DARWIN_METAL_LINK_ARGS[@]}"}" \
@@ -474,10 +486,7 @@ case "$(uname -s)" in
             -L "${LIB_DIR}" \
             -Wl,-rpath,'$ORIGIN/../mojo_env/.pixi/envs/default/lib' \
             -Wl,-rpath,"${LIB_DIR}" \
-            -lKGENCompilerRTShared \
-            -lAsyncRTRuntimeGlobals \
-            -lAsyncRTMojoBindings \
-            -lMSupportGlobals \
+            "${MOJO_RUNTIME_LINK_ARGS[@]}" \
             "${PYTHON_RUNTIME_LIB}" \
             -lstdc++ \
             -ldl \

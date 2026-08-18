@@ -115,7 +115,7 @@ Status codes are `query.aggregate`'s 330-339 block, reused deliberately: a
 caller that already handles `coded_status_name` handles this engine too.
 334 and 335 are new; 330-333 keep their exact meanings.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from columnar.array import Float64Array
@@ -859,7 +859,7 @@ def group_by_coded_dense_parallel(
     # below returns early, and an owning container cannot leak on one.  The +8
     # is alignment headroom for the 64-byte base.
     var acc = List[Float64](length=workers * region + 8, fill=0.0)
-    var acc_raw = acc.unsafe_ptr()
+    var acc_raw = acc.unsafe_ptr().as_unsafe_any_origin()
     # Round the base up to a 64-byte boundary so no worker region shares a line
     # with another's and no power-of-two record straddles one — which is what
     # lets `_scan_shared_vec` use aligned vector loads. DEFENSIVE, not assumed:
@@ -871,9 +871,9 @@ def group_by_coded_dense_parallel(
     var slack = (8 - ((Int(acc_raw) // 8) % 8)) % 8
     var accp = acc_raw + slack
     var order = List[Int](length=workers * cardinality, fill=0)
-    var ordp = order.unsafe_ptr()
+    var ordp = order.unsafe_ptr().as_unsafe_any_origin()
     var seen = List[UInt8](length=1 if shared_count else workers * cardinality, fill=0)
-    var seenp = seen.unsafe_ptr()
+    var seenp = seen.unsafe_ptr().as_unsafe_any_origin()
     var olens = List[Int](length=workers, fill=0)
     var olenp = olens.unsafe_ptr()
     var wnulls = List[Int](length=workers, fill=0)
@@ -885,16 +885,16 @@ def group_by_coded_dense_parallel(
     # never touches a `List` element accessor.
     var vptrs = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
     for j in range(n_aggs):
-        vptrs.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
-    var vpp = vptrs.unsafe_ptr()
+        vptrs.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
+    var vpp = vptrs.unsafe_ptr().as_unsafe_any_origin()
     # A local copy, not `opcodes.unsafe_ptr()`: the parameter's origin is not
     # mutable, and the scans take one raw pointer type.
     var ops_local = opcodes.copy()
-    var opp = ops_local.unsafe_ptr()
+    var opp = ops_local.unsafe_ptr().as_unsafe_any_origin()
     var vnulls = List[UInt8](length=n_aggs, fill=0)
     for j in range(n_aggs):
         vnulls[j] = 1 if value_nulls[j] else 0
-    var vnp = vnulls.unsafe_ptr()
+    var vnp = vnulls.unsafe_ptr().as_unsafe_any_origin()
 
     # Payload slot of aggregate j inside a record, per layout.
     var pay0 = 1 if shared_count else 1
@@ -923,7 +923,7 @@ def group_by_coded_dense_parallel(
         if opcodes[j] != uniform_op:
             uniform_op = -1
 
-    var kp = key_col.values[].unsafe_ptr() + key_col.offset
+    var kp = (key_col.values[].unsafe_ptr() + key_col.offset).as_unsafe_any_origin()
 
     @parameter
     def dense_worker(w: Int):

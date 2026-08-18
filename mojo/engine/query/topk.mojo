@@ -77,7 +77,7 @@ and a caller with no nulls should not pay it. A caller with nulls uses the execu
 path, or compacts first. `top_k_indices_dense` bridges the two for the no-null case
 and REFUSES rather than guesses when the column has a null.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from columnar.array import Float64Array

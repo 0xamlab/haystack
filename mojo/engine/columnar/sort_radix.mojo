@@ -75,7 +75,7 @@ Everything else — the multiset of outputs, and the ordering of every non-NaN v
 `numpy.sort` exactly, with no tolerance, because a permutation of the input contains no
 arithmetic and therefore no rounding.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.memory import bitcast
 from std.sys import info
 

@@ -83,7 +83,7 @@ storing. That discipline is load-bearing, not stylistic: an index past the end
 of a Mojo buffer fires an assertion that kills the worker process and `try` does
 not contain it.
 """
-from std.algorithm.functional import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from columnar.array import Float64Array
@@ -395,7 +395,7 @@ def compose_exact_domain(
     var okp = oks.unsafe_ptr()
     var has_nulls = key_col.null_count() > 0 or key_col.length < n_rows
     var ceiling = Float64(DENSE_MAX_CARDINALITY)
-    var kp = key_col.values[].unsafe_ptr() + key_col.offset
+    var kp = (key_col.values[].unsafe_ptr() + key_col.offset).as_unsafe_any_origin()
 
     @parameter
     def domain_worker(w: Int):
@@ -613,13 +613,13 @@ def group_by_composed_dense_parallel(
     # Owning containers rather than `alloc`: every refusal path returns early
     # and a container cannot leak on one. +8 is alignment headroom.
     var acc = List[Float64](length=workers * region + 8, fill=0.0)
-    var acc_raw = acc.unsafe_ptr()
+    var acc_raw = acc.unsafe_ptr().as_unsafe_any_origin()
     var slack = (8 - ((Int(acc_raw) // 8) % 8)) % 8
     var accp = acc_raw + slack
     var order = List[Int](length=workers * cardinality, fill=0)
-    var ordp = order.unsafe_ptr()
+    var ordp = order.unsafe_ptr().as_unsafe_any_origin()
     var seen = List[UInt8](length=1 if shared_count else workers * cardinality, fill=0)
-    var seenp = seen.unsafe_ptr()
+    var seenp = seen.unsafe_ptr().as_unsafe_any_origin()
     var olens = List[Int](length=workers, fill=0)
     var olenp = olens.unsafe_ptr()
     var wnulls = List[Int](length=workers, fill=0)
@@ -629,14 +629,14 @@ def group_by_composed_dense_parallel(
 
     var vptrs = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
     for j in range(n_aggs):
-        vptrs.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
-    var vpp = vptrs.unsafe_ptr()
+        vptrs.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
+    var vpp = vptrs.unsafe_ptr().as_unsafe_any_origin()
     var ops_local = opcodes.copy()
-    var opp = ops_local.unsafe_ptr()
+    var opp = ops_local.unsafe_ptr().as_unsafe_any_origin()
     var vnulls = List[UInt8](length=n_aggs, fill=0)
     for j in range(n_aggs):
         vnulls[j] = 1 if value_nulls[j] else 0
-    var vnp = vnulls.unsafe_ptr()
+    var vnp = vnulls.unsafe_ptr().as_unsafe_any_origin()
 
     var pay0 = 1
     var paystep = 1 if shared_count else 2
@@ -653,7 +653,7 @@ def group_by_composed_dense_parallel(
         if opcodes[j] != uniform_op:
             uniform_op = -1
 
-    var kp = key_col.values[].unsafe_ptr() + key_col.offset
+    var kp = (key_col.values[].unsafe_ptr() + key_col.offset).as_unsafe_any_origin()
 
     @parameter
     def dense_worker(w: Int):

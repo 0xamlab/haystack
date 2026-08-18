@@ -145,7 +145,7 @@ thresholds, or any NaN/null/duplicate-key rule above — it is strictly cheaper 
 on paths that already existed, additive in the same sense `get_or_assign_bits` was:
 a new way to reach an unchanged answer, never a new answer.
 """
-from std.algorithm.functional import parallelize
+from max.algorithm import parallelize
 from std.memory import alloc
 from std.sys import info
 
@@ -515,7 +515,7 @@ def _build_right_index_parallel(
                 continue
             var h = hash_bits(normalize_bits(right_key.get_unchecked(r)))
             hrow[r] = h
-            lp[Int(h >> (64 - JOIN_BUILD_RADIX_BITS))] += 1
+            lp[Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))] += 1
         for p in range(JOIN_BUILD_RADIX_PARTITIONS):
             cp[w * JOIN_BUILD_RADIX_PARTITIONS + p] = lp[p]
         np[w] = nulls
@@ -557,7 +557,7 @@ def _build_right_index_parallel(
             if not is_matchable_key(right_key, r):
                 continue
             var h = hrow[r]
-            var part = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var part = Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))
             var s = lp[part]
             lp[part] = s + 1
             prow[s] = r
@@ -663,7 +663,7 @@ def _hash_join_probe_serial_partitioned(
         var key = left_key.get_unchecked(l)
         var bits = normalize_bits(key)
         var h = hash_bits(bits)
-        var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+        var p = Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))
         var slot = tables[p].find_bits(bits, h)
         if slot < 0:
             unmatched += 1
@@ -760,7 +760,7 @@ def _hash_join_probe_parallel_partitioned(
             var key = left_key.get_unchecked(l)
             var bits = normalize_bits(key)
             var h = hash_bits(bits)
-            var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var p = Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))
             var slot = tables[p].find_bits(bits, h)
             if slot < 0:
                 local_unmatched += 1
@@ -808,7 +808,7 @@ def _hash_join_probe_parallel_partitioned(
             var key = left_key.get_unchecked(l)
             var bits = normalize_bits(key)
             var h = hash_bits(bits)
-            var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var p = Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))
             var slot = tables[p].find_bits(bits, h)
             if slot < 0:
                 if emit_unmatched:
@@ -905,7 +905,7 @@ def _partition_left_rows_for_probe(
                 continue
             var h = hash_bits(normalize_bits(left_key.get_unchecked(l)))
             hrow[l] = h
-            lp[Int(h >> (64 - JOIN_BUILD_RADIX_BITS))] += 1
+            lp[Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))] += 1
         for p in range(JOIN_BUILD_RADIX_PARTITIONS):
             cp[w * JOIN_BUILD_RADIX_PARTITIONS + p] = lp[p]
         np[w] = nulls
@@ -946,7 +946,7 @@ def _partition_left_rows_for_probe(
             if not is_matchable_key(left_key, l):
                 continue
             var h = hrow[l]
-            var part = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var part = Int(h >> UInt64(64 - JOIN_BUILD_RADIX_BITS))
             var s = lp[part]
             lp[part] = s + 1
             pr_p[s] = l

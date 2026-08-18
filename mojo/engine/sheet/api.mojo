@@ -271,7 +271,7 @@ def sheet_recalc_report(workbook_text: String, budget_ops: Int) -> SheetRecalcRe
             s += "!"
             s += a1_of(lr.wb.c_coord[ci] // MAX_COLS, lr.wb.c_coord[ci] % MAX_COLS)
             s += " f="
-            if len(lr.wb.c_ftext[ci]) > 0:
+            if lr.wb.c_ftext[ci].byte_length() > 0:
                 s += _trunc80(lr.wb.c_ftext[ci])
             else:
                 s += "(shared follower)"
@@ -286,7 +286,7 @@ def sheet_recalc_report(workbook_text: String, budget_ops: Int) -> SheetRecalcRe
                 s += error_name(lr.wb.c_cerr[ci])
             s += " got="
             s += _trunc80(value_to_display(v))
-            if len(rep.mismatch_samples) > 0:
+            if rep.mismatch_samples.byte_length() > 0:
                 rep.mismatch_samples += " | "
             rep.mismatch_samples += s
     # uncovered tail, counted by name

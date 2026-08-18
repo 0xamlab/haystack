@@ -42,7 +42,7 @@ comptime _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 
 
 def main() raises:
-    from std.gpu.host import DeviceContext
+    from max.gpu.host import DeviceContext
     from std.gpu import thread_idx
 
     def _abism_pinned_kernel_real(d_out: _FP, scale: Int, base: Int):

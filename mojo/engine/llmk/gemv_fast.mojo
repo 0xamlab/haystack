@@ -69,7 +69,7 @@ deprecation_state: active
 @endcapability
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys.info import num_physical_cores
 from std.sys.info import simd_width_of
 from gemm.blocked import gemv_flat

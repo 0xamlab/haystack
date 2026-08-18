@@ -1,5 +1,5 @@
-from std.builtin.type_aliases import MutAnyOrigin
-from std.gpu.host import DeviceContext
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
+from max.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 

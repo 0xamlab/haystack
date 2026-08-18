@@ -70,7 +70,7 @@ comptime _EQUALS = UInt8(61)      # =
 def skip_whitespace(data: String, pos: Int) -> Int:
     """Advance pos past whitespace chars."""
     var bytes = data.as_bytes()
-    var n = len(data)
+    var n = data.byte_length()
     var p = pos
     while p < n and is_whitespace(bytes[p]):
         p += 1
@@ -90,7 +90,7 @@ def skip_json_value(data: String, pos: Int) -> Int:
     - Literals: true, false, null
     """
     var bytes = data.as_bytes()
-    var n = len(data)
+    var n = data.byte_length()
     var p = skip_whitespace(data, pos)
 
     if p >= n:
@@ -224,9 +224,9 @@ def find_key(data: String, key: String) -> Int:
     - Keys appearing inside nested string values
     """
     var bytes = data.as_bytes()
-    var n = len(data)
+    var n = data.byte_length()
     var key_bytes = key.as_bytes()
-    var key_len = len(key)
+    var key_len = key.byte_length()
 
     # Find opening brace
     var p = skip_whitespace(data, 0)
@@ -299,7 +299,7 @@ def json_get_string(raw: String, key: String) -> String:
         return String("")
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
 
     if pos >= n or bytes[pos] != _QUOTE:
         return String("")
@@ -341,7 +341,7 @@ def json_get_string(raw: String, key: String) -> String:
 def _extract_number_str(raw: String, pos: Int) -> String:
     """Extract the raw number string starting at pos (up to delimiter)."""
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     var p = pos
     while p < n:
         var c = bytes[p]
@@ -365,7 +365,7 @@ def json_get_float(raw: String, key: String, default: Float64) -> Float64:
         return default
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     if pos >= n:
         return default
 
@@ -374,7 +374,7 @@ def json_get_float(raw: String, key: String, default: Float64) -> Float64:
         return default
 
     var num_str = _extract_number_str(raw, pos)
-    if len(num_str) == 0:
+    if num_str.byte_length() == 0:
         return default
     return parse_float64(num_str)
 
@@ -389,7 +389,7 @@ def json_get_int(raw: String, key: String, default: Int) -> Int:
         return default
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     if pos >= n:
         return default
 
@@ -398,7 +398,7 @@ def json_get_int(raw: String, key: String, default: Int) -> Int:
         return default
 
     var num_str = _extract_number_str(raw, pos)
-    if len(num_str) == 0:
+    if num_str.byte_length() == 0:
         return default
     return parse_int(num_str)
 
@@ -413,7 +413,7 @@ def json_get_bool(raw: String, key: String, default: Bool) -> Bool:
         return default
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     if pos >= n:
         return default
 
@@ -434,7 +434,7 @@ def json_is_null(raw: String, key: String) -> Bool:
         return True  # key absent → treat as null
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     if pos >= n:
         return True
 
@@ -451,7 +451,7 @@ def json_get_object(raw: String, key: String) -> String:
         return String("")
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     if pos >= n or bytes[pos] != _LBRACE:
         return String("")
 
@@ -474,7 +474,7 @@ def json_get_array(raw: String, key: String) -> String:
         return String("")
 
     var bytes = raw.as_bytes()
-    var n = len(raw)
+    var n = raw.byte_length()
     if pos >= n or bytes[pos] != _LBRACKET:
         return String("")
 
@@ -493,7 +493,7 @@ def json_get_array(raw: String, key: String) -> String:
 def json_array_len(arr: String) -> Int:
     """Count elements in a JSON array string like "[1,2,3]"."""
     var bytes = arr.as_bytes()
-    var n = len(arr)
+    var n = arr.byte_length()
 
     var p = skip_whitespace(arr, 0)
     if p >= n or bytes[p] != _LBRACKET:
@@ -527,7 +527,7 @@ def json_array_len(arr: String) -> Int:
 def json_array_get(arr: String, index: Int) -> String:
     """Get element at index from a JSON array. Returns raw element string."""
     var bytes = arr.as_bytes()
-    var n = len(arr)
+    var n = arr.byte_length()
 
     var p = skip_whitespace(arr, 0)
     if p >= n or bytes[p] != _LBRACKET:
@@ -572,7 +572,7 @@ def json_array_tokens(arr: String) raises -> List[String]:
     (e.g. ~6 s for a 39k-element pixel buffer). This walks the array once instead.
     """
     var bytes = arr.as_bytes()
-    var n = len(arr)
+    var n = arr.byte_length()
     var result = List[String]()
 
     var p = skip_whitespace(arr, 0)
@@ -619,7 +619,7 @@ def _b64_sextet(c: UInt8) -> Int:
 def json_decode_base64_bytes(s: String) -> List[UInt8]:
     """Standard base64 → raw bytes, single pass O(n). Non-alphabet chars are skipped."""
     var bytes = s.as_bytes()
-    var n = len(s)
+    var n = s.byte_length()
     var out = List[UInt8]()
     var acc: Int = 0
     var nbits: Int = 0
@@ -646,7 +646,7 @@ def json_parse_float64_list(token: String) raises -> List[Float64]:
     avoids the float tokenizer entirely.
     """
     var bytes = token.as_bytes()
-    var n = len(token)
+    var n = token.byte_length()
     var p = skip_whitespace(token, 0)
     if p < n and bytes[p] == _QUOTE:
         # JSON string token → look for the "@u8:" binary-buffer marker.

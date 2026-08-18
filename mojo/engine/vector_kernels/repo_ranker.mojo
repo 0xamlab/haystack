@@ -119,10 +119,10 @@ def _split_tokens(s: String) -> List[String]:
         elif c >= 65 and c <= 90:
             cur += chr(Int(c + 32))
         else:
-            if len(cur) > 0:
+            if cur.byte_length() > 0:
                 tokens.append(cur)
                 cur = String("")
-    if len(cur) > 0:
+    if cur.byte_length() > 0:
         tokens.append(cur)
     return tokens^
 
@@ -191,7 +191,7 @@ def _json_f32(key: String, val: Float32) -> String:
     var whole = vi // 10000
     var frac  = vi  % 10000
     var fs = String(frac)
-    while len(fs) < 4:
+    while fs.byte_length() < 4:
         fs = "0" + fs
     return '"' + key + '":' + String(whole) + "." + fs
 
@@ -201,11 +201,11 @@ def _json_get(raw: String, key: String) -> String:
     var ki = raw.find(needle)
     if ki == -1:
         return ""
-    var colon = raw.find(":", ki + len(needle))
+    var colon = raw.find(":", ki + needle.byte_length())
     if colon == -1:
         return ""
     var start = colon + 1
-    var rlen  = len(raw)
+    var rlen  = raw.byte_length()
     var rb    = raw.as_bytes()
     while start < rlen and (rb[start] == 32 or rb[start] == 9):
         start += 1
@@ -242,7 +242,7 @@ def run_repo_rank(raw: String) -> String:
     # top_k
     var top_k = 25
     var top_k_s = _json_get(raw, "top_k")
-    if len(top_k_s) > 0:
+    if top_k_s.byte_length() > 0:
         try:
             var parsed = Int(top_k_s)
             if parsed > 0:
@@ -258,7 +258,7 @@ def run_repo_rank(raw: String) -> String:
         var qa_close = raw.find("]", qa_open)
         if qa_open != -1 and qa_close != -1 and qa_close > qa_open:
             q_text = String(raw[byte=qa_open + 1 : qa_close])
-    if len(q_text) == 0:
+    if q_text.byte_length() == 0:
         return '{"matches":[]}'
 
     var q_buf = List[Float32](capacity=VEC_DIM)
@@ -295,9 +295,9 @@ def run_repo_rank(raw: String) -> String:
         var c_text = _json_get(obj, "text")
         pos    = obj_close + 1
         count += 1
-        if len(c_path) == 0:
+        if c_path.byte_length() == 0:
             continue
-        if len(c_text) == 0:
+        if c_text.byte_length() == 0:
             c_text = c_path
         var c_ni  = _build_vec(c_text, c_buf)
         var nsim  = _cosine(q_buf, c_buf, q_ni, c_ni)

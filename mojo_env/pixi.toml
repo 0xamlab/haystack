@@ -11,7 +11,18 @@ version = "0.1.0"
 
 [dependencies]
 python = ">=3.14,<3.15"
-mojo = "==1.0.0b2"
+# Mojo 1.0.0 stable (MAX 26.5, 2026-08-11): the first release with the stability policy.
+# Bumped from 1.0.0b2 as the first step of the ecosystem sync; scripts/probe_mojo_module_ceiling.sh
+# re-tests modular/modular#2766 on this pin, and the runtime-lib link guard in
+# scripts/build_mojo_binary.sh fails loudly if this release renamed any runtime library.
+mojo = "==1.0.0"
+# MAX 26.5 is the release counterpart of mojo 1.0.0. 1.0.0 moved the accelerator-backed
+# data-parallel primitives OUT of std.algorithm into max.algorithm -- `parallelize`,
+# `parallelize_over_rows`, and `sync_parallelize` all now live in `max.algorithm`
+# (modular/modular@e449f2829a "Move part of std.algorithm to max.algorithm"), and the
+# engine's kernel modules import parallelize from there. std.algorithm keeps only the
+# non-accelerator algorithms (vectorize/tile/map).
+max = "==26.5.0"
 
 [pypi-dependencies]
 # Keep the repository test and verification lane inside the repo-local

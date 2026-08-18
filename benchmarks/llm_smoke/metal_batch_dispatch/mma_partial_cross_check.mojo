@@ -44,7 +44,7 @@ def _abs32(x: Float32) -> Float32:
 
 
 def main() raises:
-    from std.gpu.host import DeviceContext
+    from max.gpu.host import DeviceContext
     var cctx = DeviceContext()
     _ = cctx.compile_function[_pf_gemm_assign_kernel_i8]()
     _ = cctx.compile_function[_pf_gemm_accum_kernel_i8]()

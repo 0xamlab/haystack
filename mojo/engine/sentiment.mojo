@@ -39,7 +39,7 @@ def _to_lower_byte(c: UInt8) -> UInt8:
 def tokenize_lower(text: String) -> List[String]:
     """Lowercase tokenization: split on spaces, strip basic punctuation."""
     var bs = text.as_bytes()
-    var n = len(text)
+    var n = text.byte_length()
     var tokens = List[String]()
     var start = -1
     for i in range(n):
@@ -51,7 +51,7 @@ def tokenize_lower(text: String) -> List[String]:
                     var b = bs[j]
                     if _is_alpha_byte(b) or b == 39 or b == 45:  # ' or -
                         tok += chr(Int(_to_lower_byte(b)))
-                if len(tok) > 0:
+                if tok.byte_length() > 0:
                     tokens.append(tok^)
                 start = -1
         else:
@@ -63,7 +63,7 @@ def tokenize_lower(text: String) -> List[String]:
             var b = bs[j]
             if _is_alpha_byte(b) or b == 39 or b == 45:
                 tok += chr(Int(_to_lower_byte(b)))
-        if len(tok) > 0:
+        if tok.byte_length() > 0:
             tokens.append(tok^)
     return tokens^
 

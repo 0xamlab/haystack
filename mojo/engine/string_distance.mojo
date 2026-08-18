@@ -27,8 +27,8 @@ def damerau_levenshtein(a: String, b: String) -> Int:
     Uses the optimal string alignment (restricted edit distance) variant.
     Time: O(m*n), Space: O(m*n).
     """
-    var m = len(a)
-    var n = len(b)
+    var m = a.byte_length()
+    var n = b.byte_length()
     if m == 0:
         return n
     if n == 0:
@@ -109,7 +109,7 @@ def soundex(word: String) -> String:
     H and W do not separate two identical codes.
     Returns e.g. 'R163' for 'Robert'.
     """
-    if len(word) == 0:
+    if word.byte_length() == 0:
         return "0000"
 
     var w_bytes = word.as_bytes()
@@ -124,7 +124,7 @@ def soundex(word: String) -> String:
     var last_code = _sx_code(w_bytes[0])
     var count = 1
 
-    for i in range(1, len(word)):
+    for i in range(1, word.byte_length()):
         if count >= 4:
             break
         var ch = w_bytes[i]
@@ -155,8 +155,8 @@ def soundex(word: String) -> String:
 
 def _levenshtein(a: String, b: String) -> Int:
     """Internal Levenshtein distance."""
-    var m = len(a)
-    var n = len(b)
+    var m = a.byte_length()
+    var n = b.byte_length()
     if m == 0:
         return n
     if n == 0:
@@ -195,8 +195,8 @@ def edit_similarity(a: String, b: String) -> Float64:
 
     Range [0, 1]. Returns 1.0 for identical or both-empty strings.
     """
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     if la == 0 and lb == 0:
         return 1.0
     var mx = la
@@ -211,8 +211,8 @@ def edit_similarity(a: String, b: String) -> Float64:
 
 def common_prefix_length(a: String, b: String) -> Int:
     """Length of the common prefix of two strings."""
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     var n = la if la < lb else lb
     var a_bytes = a.as_bytes()
     var b_bytes = b.as_bytes()
@@ -230,8 +230,8 @@ def common_prefix_length(a: String, b: String) -> Int:
 
 def common_suffix_length(a: String, b: String) -> Int:
     """Length of the common suffix of two strings."""
-    var la = len(a)
-    var lb = len(b)
+    var la = a.byte_length()
+    var lb = b.byte_length()
     var n = la if la < lb else lb
     var a_bytes = a.as_bytes()
     var b_bytes = b.as_bytes()
@@ -250,7 +250,7 @@ def common_suffix_length(a: String, b: String) -> Int:
 def bigrams(s: String) -> List[String]:
     """Extract character bigrams from string. E.g. 'abc' -> ['ab', 'bc']."""
     var result = List[String]()
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2:
         return result^
     var s_bytes = s.as_bytes()
@@ -326,7 +326,7 @@ def overlap_coefficient(a: String, b: String) -> Float64:
 
 def string_reverse(s: String) -> String:
     """Reverse a string (byte-level reversal, ASCII safe)."""
-    var n = len(s)
+    var n = s.byte_length()
     if n == 0:
         return String("")
     var s_bytes = s.as_bytes()
@@ -346,7 +346,7 @@ def is_palindrome(s: String) -> Bool:
     # Build cleaned lowercase version
     var s_bytes = s.as_bytes()
     var cleaned = List[UInt8]()
-    for i in range(len(s)):
+    for i in range(s.byte_length()):
         var c = s_bytes[i]
         if c == 32:  # space
             continue

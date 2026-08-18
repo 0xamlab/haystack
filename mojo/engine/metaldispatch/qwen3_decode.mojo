@@ -163,7 +163,7 @@ def _tensor_loc(tensors_obj: String, name: String) raises -> _TensorLoc:
 
 def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
-    _ = f.seek(UInt64(byte_offset))
+    _ = f.seek(byte_offset)  # Mojo 1.0.0: FileHandle.seek takes Int
     var raw = f.read_bytes(n_elements * 8)
     f.close()
     if len(raw) != n_elements * 8:

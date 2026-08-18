@@ -177,9 +177,10 @@ is validated on the host by `residentk.contract`'s checks BEFORE the session is 
 session re-checks the one dimension that changes per step (`pos < max_ctx`) at every step.
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
-from std.gpu import barrier, block_idx, grid_dim, lane_id, thread_idx, warp_id, WARP_SIZE
-from std.gpu.memory import AddressSpace
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
+from std.gpu import block_idx, grid_dim, lane_id, thread_idx, warp_id, WARP_SIZE
+from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
+from max.gpu.memory import AddressSpace
 from std.gpu.primitives.warp import shuffle_xor as _shuffle_xor, sum as _warp_sum
 from std.math import exp, sqrt
 from std.memory import stack_allocation

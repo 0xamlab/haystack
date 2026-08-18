@@ -52,7 +52,7 @@ Public API:
   quantized_gemv_golden_delta(w_codes, w_scales, x, m, n, block)
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from quantization import dequantize_symmetric

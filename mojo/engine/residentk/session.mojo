@@ -77,7 +77,7 @@ of size on this backend, so a per-step download of the logits would cost more th
 """
 
 from std.gpu import WARP_SIZE
-from std.gpu.host import DeviceBuffer, DeviceContext, DeviceFunction, HostBuffer
+from max.gpu.host import DeviceBuffer, DeviceContext, DeviceFunction, HostBuffer
 from std.sys import has_accelerator, is_defined
 from residentk.contract import (
     RESIDENT_ERR_CONTEXT_FULL,

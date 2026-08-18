@@ -29,7 +29,7 @@ def _unquote(s: String) -> String:
     elements, e.g. '"revenue"'.  This helper strips them so we get 'revenue'.
     Non-string tokens (numbers, objects) are returned unchanged.
     """
-    var n = len(s)
+    var n = s.byte_length()
     if n < 2:
         return s
     var bytes = s.as_bytes()
@@ -71,7 +71,7 @@ def parse_request(raw: String) raises -> SimRequest:
 
     # ── Top-level scalar fields ────────────────────────────────────────────
     var et = json_get_string(raw, "engine_type")
-    req.engine_type = et if len(et) > 0 else "monte_carlo"
+    req.engine_type = et if et.byte_length() > 0 else "monte_carlo"
     req.runs = json_get_int(raw, "runs", 10000)
     if req.runs < 1: req.runs = 1
 
@@ -88,7 +88,7 @@ def parse_request(raw: String) raises -> SimRequest:
 
     # ── Scoring weights ────────────────────────────────────────────────────
     var scoring_str = json_get_object(raw, "scoring")
-    if len(scoring_str) > 2:  # "{}" is 2 chars — empty object
+    if scoring_str.byte_length() > 2:  # "{}" is 2 chars — empty object
         req.scoring = ScoringSpec(
             json_get_float(scoring_str, "expected_value", 0.6),
             json_get_float(scoring_str, "downside_risk",  0.4),
@@ -211,11 +211,11 @@ def parse_request(raw: String) raises -> SimRequest:
     # ── Objective functions ────────────────────────────────────────────────
     req.obj_fn = json_get_string(raw, "objective_function")
 
-    if len(req.obj_fn) > 0:
+    if req.obj_fn.byte_length() > 0:
         var cur_start = 0
         var pipe      = UInt8(ord("|"))
         var obj_bytes = req.obj_fn.as_bytes()
-        for ci in range(len(req.obj_fn)):
+        for ci in range(req.obj_fn.byte_length()):
             if obj_bytes[ci] == pipe:
                 var seg = span_to_str(req.obj_fn, cur_start, ci)
                 req.obj_fns.append(String(seg.strip()))
@@ -230,11 +230,11 @@ def parse_request(raw: String) raises -> SimRequest:
 
     # Time Series
     var ts_str = json_get_object(raw, "time_series_config")
-    if len(ts_str) > 2:
+    if ts_str.byte_length() > 2:
         req.has_time_series_cfg = True
         var tsc = TimeSeriesCfg()
         var ts_model = json_get_string(ts_str, "model")
-        tsc.model         = ts_model if len(ts_model) > 0 else "gbm"
+        tsc.model         = ts_model if ts_model.byte_length() > 0 else "gbm"
         tsc.initial_value = json_get_float(ts_str, "initial_value", 100.0)
         tsc.drift         = json_get_float(ts_str, "drift", 0.0)
         tsc.volatility    = json_get_float(ts_str, "volatility", 0.20)
@@ -243,7 +243,7 @@ def parse_request(raw: String) raises -> SimRequest:
         tsc.ou_mu         = json_get_float(ts_str, "ou_mu", tsc.initial_value)
         tsc.autocorr      = json_get_float(ts_str, "autocorrelation", 0.0)
         var ts_gran = json_get_string(ts_str, "granularity")
-        tsc.granularity   = ts_gran if len(ts_gran) > 0 else "month"
+        tsc.granularity   = ts_gran if ts_gran.byte_length() > 0 else "month"
         var h_str = json_get_array(ts_str, "horizons")
         var n_h = json_array_len(h_str)
         if n_h == 0:
@@ -269,18 +269,18 @@ def parse_request(raw: String) raises -> SimRequest:
 
     # Decision Tree — store raw JSON for re-parsing inside engine
     var dt_str = json_get_object(raw, "decision_tree_config")
-    if len(dt_str) > 2:
+    if dt_str.byte_length() > 2:
         req.has_decision_tree_cfg = True
         req.decision_tree_cfg = DecisionTreeCfg(dt_str)
 
     # Importance Sampling
     var is_str = json_get_object(raw, "importance_sampling_config")
-    if len(is_str) > 2:
+    if is_str.byte_length() > 2:
         req.has_is_cfg = True
         var isc = ISCfg()
         isc.target_threshold = json_get_float(is_str, "target_threshold", -1e30)
         var is_dir = json_get_string(is_str, "tail_direction")
-        isc.tail_direction   = is_dir if len(is_dir) > 0 else "lower"
+        isc.tail_direction   = is_dir if is_dir.byte_length() > 0 else "lower"
         var is_tvar = json_get_string(is_str, "tilt_variable")
         isc.tilt_var_name    = is_tvar  # "" if absent is fine
         isc.tilt_override    = json_get_float(is_str, "tilt_sigma", 0.0)
@@ -288,17 +288,17 @@ def parse_request(raw: String) raises -> SimRequest:
 
     # Scenario — store raw JSON for re-parsing inside engine
     var sc_str = json_get_object(raw, "scenario_config")
-    if len(sc_str) > 2:
+    if sc_str.byte_length() > 2:
         req.has_scenario_cfg = True
         req.scenario_cfg = ScenarioCfg(sc_str)
 
     # Bootstrap
     var bs_str = json_get_object(raw, "bootstrap_config")
-    if len(bs_str) > 2:
+    if bs_str.byte_length() > 2:
         req.has_bootstrap_cfg = True
         var bsc = BootstrapCfg()
         var bs_stat = json_get_string(bs_str, "statistic")
-        bsc.statistic = bs_stat if len(bs_stat) > 0 else "mean"
+        bsc.statistic = bs_stat if bs_stat.byte_length() > 0 else "mean"
         var hist_str = json_get_array(bs_str, "historical_data")
         bsc.n_data = json_array_len(hist_str)
         for i in range(bsc.n_data):
@@ -307,13 +307,13 @@ def parse_request(raw: String) raises -> SimRequest:
 
     # MCMC
     var mc_str = json_get_object(raw, "mcmc_config")
-    if len(mc_str) > 2:
+    if mc_str.byte_length() > 2:
         req.has_mcmc_cfg = True
         var mcc = MCMCCfg()
         mcc.burn_in    = json_get_int(mc_str, "burn_in", 1000)
         mcc.n_chains   = json_get_int(mc_str, "chains", 4)
         var mc_like = json_get_string(mc_str, "likelihood")
-        mcc.likelihood = mc_like if len(mc_like) > 0 else "normal"
+        mcc.likelihood = mc_like if mc_like.byte_length() > 0 else "normal"
         var obs_str = json_get_array(mc_str, "observed_data")
         mcc.n_data = json_array_len(obs_str)
         for i in range(mcc.n_data):

@@ -176,7 +176,7 @@ def _rope_table_from_manifest(
     var config = json_get_object(manifest, "config")
 
     var factors_arr = json_get_array(config, "rope_freq_factors")
-    if len(factors_arr) > 0:
+    if factors_arr.byte_length() > 0:
         var factor_tokens = json_array_tokens(factors_arr)
         var factors = List[Float64]()
         for i in range(len(factor_tokens)):
@@ -219,7 +219,7 @@ def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> L
     # peak memory (no second full-size copy). Identical bytes either way -- the campaign's
     # Qwen3-0.6B-Base checkpoints read back byte-for-byte the same through this path.
     var f = open(path, "r")
-    _ = f.seek(UInt64(byte_offset))
+    _ = f.seek(byte_offset)  # Mojo 1.0.0: FileHandle.seek takes Int
     var out = List[Float64](capacity=n_elements)
     var remaining = n_elements
     alias CHUNK_ELEMS = 1 << 24  # 16 Mi elements = 128 MiB per read
@@ -2727,7 +2727,7 @@ def _resident_key_of(
     for j in range(len(scalars)):
         var v = UInt64(scalars[j])
         for b in range(8):
-            h = (h ^ ((v >> (8 * b)) & 255)) * _FNV_PRIME
+            h = (h ^ ((v >> UInt64(8 * b)) & 255)) * _FNV_PRIME
     return h
 
 
@@ -3133,7 +3133,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                             )
                     var wf = open(cache_path, "w")
                     wf.write_bytes(Span[UInt8, origin_of(header_out)](
-                        ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
+                        unsafe_ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
                     ))
                     var written = 0
                     while written < len(state_out):
@@ -3141,7 +3141,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                         if len(state_out) - written < take:
                             take = len(state_out) - written
                         wf.write_bytes(Span[UInt8, origin_of(state_out)](
-                            ptr=state_out.unsafe_ptr() + written, length=take
+                            unsafe_ptr=state_out.unsafe_ptr() + written, length=take
                         ))
                         written += take
                     wf.close()
@@ -3643,7 +3643,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                             )
                     var wf = open(cache_path, "w")
                     wf.write_bytes(Span[UInt8, origin_of(header_out)](
-                        ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
+                        unsafe_ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
                     ))
                     var written = 0
                     while written < len(state_out):
@@ -3651,7 +3651,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                         if len(state_out) - written < take:
                             take = len(state_out) - written
                         wf.write_bytes(Span[UInt8, origin_of(state_out)](
-                            ptr=state_out.unsafe_ptr() + written, length=take
+                            unsafe_ptr=state_out.unsafe_ptr() + written, length=take
                         ))
                         written += take
                     wf.close()
@@ -4211,7 +4211,7 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
                             )
                     var wf = open(cache_path, "w")
                     wf.write_bytes(Span[UInt8, origin_of(header_out)](
-                        ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
+                        unsafe_ptr=header_out.unsafe_ptr(), length=_I8_CACHE_HEADER_BYTES
                     ))
                     var written = 0
                     while written < len(state_out):
@@ -4219,7 +4219,7 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
                         if len(state_out) - written < take:
                             take = len(state_out) - written
                         wf.write_bytes(Span[UInt8, origin_of(state_out)](
-                            ptr=state_out.unsafe_ptr() + written, length=take
+                            unsafe_ptr=state_out.unsafe_ptr() + written, length=take
                         ))
                         written += take
                     wf.close()

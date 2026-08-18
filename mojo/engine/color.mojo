@@ -285,10 +285,10 @@ def hex_to_rgb(hex: String) -> RGB:
     """Parse '#RRGGBB' or 'RRGGBB' to RGB."""
     var bspan = hex.as_bytes()
     var offset = 0
-    if len(hex) > 0 and Int(bspan[0]) == 35:  # '#' == 35
+    if hex.byte_length() > 0 and Int(bspan[0]) == 35:  # '#' == 35
         offset = 1
     # Need a full RRGGBB body of hex digits, else the fixed offsets abort.
-    if len(hex) < offset + 6:
+    if hex.byte_length() < offset + 6:
         return RGB(0.0, 0.0, 0.0)
     for i in range(offset, offset + 6):
         if not _is_hex_byte(bspan[i]):

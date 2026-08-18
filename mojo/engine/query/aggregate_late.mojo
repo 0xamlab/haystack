@@ -136,7 +136,7 @@ Entry points
     routing decision, the skew measurement and the byte model are testable
     rather than asserted.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.memory import alloc, bitcast
 from std.sys import info
 
@@ -246,7 +246,7 @@ def fused_partition_peak(batch: RecordBatch, key_column: Int, probe_rows: Int) -
         if not col.is_valid_at(r):
             continue
         var h = fnv_fold(FNV_OFFSET_BASIS, normalize_bits(col.get(r)))
-        counts[Int(h >> (64 - RADIX_BITS))] += 1
+        counts[Int(h >> UInt64(64 - RADIX_BITS))] += 1
     var peak = 0
     for p in range(RADIX_PARTITIONS):
         if counts[p] > peak:
@@ -400,8 +400,11 @@ struct _FusedIndex(Copyable, Movable):
     which matters here because the identity is a hash, not a small code.
     """
 
-    var keys: UnsafePointer[UInt64, origin=MutAnyOrigin]
-    var slots: UnsafePointer[Int, origin=MutAnyOrigin]
+    # Mojo 1.0.0: struct fields can no longer expose an AnyOrigin. Both
+    # fields only ever hold alloc() memory (MutUntrackedOrigin), so name that
+    # concrete origin instead of the old MutAnyOrigin catch-all.
+    var keys: UnsafePointer[UInt64, origin=MutUntrackedOrigin]
+    var slots: UnsafePointer[Int, origin=MutUntrackedOrigin]
     var mask: Int
     var count: Int
     var limit: Int
@@ -553,7 +556,7 @@ def group_by_many_radix_fused(
             hi = n_rows
         var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
         for j in range(n_aggs):
-            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+            vps.append((value_cols[j].values[].unsafe_ptr() + value_cols[j].offset).as_unsafe_any_origin())
         var vp = vps.unsafe_ptr()
         # Worker-local cursors and segment bases: the shared `fill` array is
         # written once at the end of the band, because a per-row bump there
@@ -567,7 +570,7 @@ def group_by_many_radix_fused(
         var over = 0
         for r in range(lo, hi):
             var h = fnv_fold(FNV_OFFSET_BASIS, normalize_bits(kp[r]))
-            var part = Int(h >> (64 - RADIX_BITS))
+            var part = Int(h >> UInt64(64 - RADIX_BITS))
             var c = cp[part]
             if c >= segcap:
                 # Bounded BEFORE the store, never after: the call is refused

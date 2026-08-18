@@ -22,7 +22,7 @@ def _path_substring(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var result = String("")
-    var e = min(end, len(s))
+    var e = min(end, s.byte_length())
     for i in range(start, e):
         result += chr(Int(bs[i]))
     return result
@@ -41,11 +41,11 @@ def path_join(parts: List[String]) -> String:
     var result = String("")
     for i in range(len(parts)):
         var part = parts[i]
-        if len(part) == 0:
+        if part.byte_length() == 0:
             continue
-        if len(result) > 0:
+        if result.byte_length() > 0:
             # Check if result already ends with /
-            if _path_char_at(result, len(result) - 1) != 47:  # '/'
+            if _path_char_at(result, result.byte_length() - 1) != 47:  # '/'
                 result += "/"
         result += part
     return result
@@ -53,10 +53,10 @@ def path_join(parts: List[String]) -> String:
 
 def path_basename(path: String) -> String:
     """Return the last component of a path (filename)."""
-    if len(path) == 0:
+    if path.byte_length() == 0:
         return String("")
     var bs = path.as_bytes()
-    var n = len(path)
+    var n = path.byte_length()
     # Strip trailing slashes
     var end = n
     while end > 0 and Int(bs[end - 1]) == 47:  # '/'
@@ -73,10 +73,10 @@ def path_basename(path: String) -> String:
 
 def path_dirname(path: String) -> String:
     """Return the parent directory of a path."""
-    if len(path) == 0:
+    if path.byte_length() == 0:
         return String(".")
     var bs = path.as_bytes()
-    var n = len(path)
+    var n = path.byte_length()
     # Strip trailing slashes (unless it's just "/")
     var end = n
     while end > 1 and Int(bs[end - 1]) == 47:
@@ -96,10 +96,10 @@ def path_dirname(path: String) -> String:
 def path_extension(path: String) -> String:
     """Return the file extension including the dot. Returns '' if none."""
     var base = path_basename(path)
-    if len(base) == 0:
+    if base.byte_length() == 0:
         return String("")
     var bs = base.as_bytes()
-    var n = len(base)
+    var n = base.byte_length()
     # Find last dot
     var last_dot = -1
     for i in range(n):
@@ -113,10 +113,10 @@ def path_extension(path: String) -> String:
 def path_stem(path: String) -> String:
     """Return the filename without extension."""
     var base = path_basename(path)
-    if len(base) == 0:
+    if base.byte_length() == 0:
         return String("")
     var bs = base.as_bytes()
-    var n = len(base)
+    var n = base.byte_length()
     # Find last dot
     var last_dot = -1
     for i in range(n):
@@ -129,7 +129,7 @@ def path_stem(path: String) -> String:
 
 def path_is_absolute(path: String) -> Bool:
     """Check if path is absolute (starts with /)."""
-    if len(path) == 0:
+    if path.byte_length() == 0:
         return False
     return Int(path.as_bytes()[0]) == 47  # '/'
 
@@ -137,10 +137,10 @@ def path_is_absolute(path: String) -> Bool:
 def path_split(path: String) -> List[String]:
     """Split a path into its components. Leading / becomes empty first element."""
     var parts = List[String]()
-    if len(path) == 0:
+    if path.byte_length() == 0:
         return parts^
     var bs = path.as_bytes()
-    var n = len(path)
+    var n = path.byte_length()
     var start = 0
 
     # Handle leading /
@@ -165,7 +165,7 @@ def path_split(path: String) -> List[String]:
 
 def path_normalize(path: String) -> String:
     """Normalize a path: resolve . and .. components, collapse multiple slashes."""
-    if len(path) == 0:
+    if path.byte_length() == 0:
         return String(".")
 
     var is_abs = path_is_absolute(path)

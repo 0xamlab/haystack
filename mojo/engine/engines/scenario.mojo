@@ -38,7 +38,7 @@ def run_scenario(req: SimRequest) raises -> String:
     var expr_nodes = List[ExprNode]()
     var expr_root  = -1
     var use_expr   = False
-    if len(obj_fn) > 0 and n_vars > 0:
+    if obj_fn.byte_length() > 0 and n_vars > 0:
         expr_root = parse_expr(obj_fn, req.vnames, expr_nodes)
         use_expr  = expr_root >= 0
 
@@ -58,7 +58,7 @@ def run_scenario(req: SimRequest) raises -> String:
             samp.append(fast_f64(sc_vars.get(req.vnames[i], req.p0[i])))
 
         var outcome: Float64
-        if len(sc_fn) > 0 and sc_fn != obj_fn:
+        if sc_fn.byte_length() > 0 and sc_fn != obj_fn:
             var sc_nodes = List[ExprNode]()
             var sc_root  = parse_expr(sc_fn, req.vnames, sc_nodes)
             outcome = eval_expr(sc_nodes, sc_root, samp)

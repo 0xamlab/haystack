@@ -56,7 +56,7 @@ Public API:
   gemm_reference_delta_flat(a, b, m, n, k) -> RefDelta
 """
 
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 from std.sys.info import simd_width_of
 from gemm.contract import (

@@ -98,13 +98,13 @@ def _extract_value_json(raw: String) -> String:
     record, or an opaque blob without the caller declaring which.
     """
     var as_array = json_get_array(raw, "value")
-    if len(as_array) > 0:
+    if as_array.byte_length() > 0:
         return as_array
     var as_object = json_get_object(raw, "value")
-    if len(as_object) > 0:
+    if as_object.byte_length() > 0:
         return as_object
     var as_string = json_get_string(raw, "value")
-    if len(as_string) > 0:
+    if as_string.byte_length() > 0:
         return '"' + as_string + '"'
     return ""
 
@@ -153,7 +153,7 @@ struct ResidentDatasets(Copyable, Movable):
         `signature` (the request's raw `columns` array text). See the module docstring
         for why the key is the header text, not the handle alone.
         """
-        if len(signature) == 0:
+        if signature.byte_length() == 0:
             return False
         var index = self._index_of(handle)
         if index < 0:
@@ -188,11 +188,11 @@ struct ResidentDatasets(Copyable, Movable):
 
     def open_from_json(mut self, raw: String) -> String:
         var value = _extract_value_json(raw)
-        if len(value) == 0:
+        if value.byte_length() == 0:
             return _session_error(
                 "invalid_arguments", "dataset_open requires a non-empty value."
             )
-        if self.total_bytes + len(value) > MAX_RESIDENT_BYTES:
+        if self.total_bytes + value.byte_length() > MAX_RESIDENT_BYTES:
             return _session_error(
                 "dataset_capacity_exceeded",
                 "resident datasets would exceed "
@@ -205,7 +205,7 @@ struct ResidentDatasets(Copyable, Movable):
         self.next_id += 1
         self.handles.append(handle)
         self.names.append(name)
-        self.total_bytes += len(value)
+        self.total_bytes += value.byte_length()
         self.values.append(value)
         # No parse yet for the new handle — "" never matches a real `columns` text.
         self.cache_keys.append("")
@@ -217,7 +217,7 @@ struct ResidentDatasets(Copyable, Movable):
             + '","name":"'
             + name
             + '","bytes":'
-            + String(len(self.values[len(self.values) - 1]))
+            + String(self.values[len(self.values) - 1].byte_length())
             + ',"count":'
             + String(self.count())
             + "}"
@@ -225,7 +225,7 @@ struct ResidentDatasets(Copyable, Movable):
 
     def close_from_json(mut self, raw: String) -> String:
         var handle = json_get_string(raw, "handle")
-        if len(handle) == 0:
+        if handle.byte_length() == 0:
             return _session_error("invalid_arguments", "dataset_close requires a handle.")
         var index = self._index_of(handle)
         if index < 0:
@@ -233,7 +233,7 @@ struct ResidentDatasets(Copyable, Movable):
                 "dataset_not_found", "no resident dataset for handle " + handle + "."
             )
 
-        self.total_bytes -= len(self.values[index])
+        self.total_bytes -= self.values[index].byte_length()
         # Rebuild without the closed entry: handles are never reused, so the gap
         # cannot be filled by a later open. The cache arrays are rebuilt in the same
         # pass, at the same index, so a closed handle's cached parse is freed with it
@@ -270,7 +270,7 @@ struct ResidentDatasets(Copyable, Movable):
                 + '","name":"'
                 + self.names[i]
                 + '","bytes":'
-                + String(len(self.values[i]))
+                + String(self.values[i].byte_length())
                 + "}"
             )
         out += (
@@ -285,11 +285,11 @@ struct ResidentDatasets(Copyable, Movable):
 
 def is_dataset_reference(token: String) -> Bool:
     """True for a `"@handle"` argument token."""
-    if len(token) < 4:
+    if token.byte_length() < 4:
         return False
     var bytes = token.as_bytes()
     # 34 = '"', 64 = '@'
-    if bytes[0] != 34 or bytes[len(token) - 1] != 34:
+    if bytes[0] != 34 or bytes[token.byte_length() - 1] != 34:
         return False
     return bytes[1] == 64
 
@@ -298,6 +298,6 @@ def dataset_reference_handle(token: String) -> String:
     """The handle inside a validated `"@handle"` token."""
     var bytes = token.as_bytes()
     var handle = String("")
-    for i in range(2, len(token) - 1):
+    for i in range(2, token.byte_length() - 1):
         handle += chr(Int(bytes[i]))
     return handle

@@ -64,10 +64,11 @@ Public API:
   gemm_metal_agreement(a, b, m, n, k)                        -> MetalGemmAgreement
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
-from std.gpu import barrier, block_dim, block_idx, thread_idx
-from std.gpu.host import DeviceContext
-from std.gpu.memory import AddressSpace
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
+from std.gpu import block_dim, block_idx, thread_idx
+from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
+from max.gpu.host import DeviceContext
+from max.gpu.memory import AddressSpace
 from std.memory import stack_allocation
 from std.sys import has_accelerator, is_defined
 from accel.contract import (
@@ -344,7 +345,7 @@ def _run_metal_gemm(
 
     var grid_x = (n + BN - 1) // BN
     var grid_y = (m + BM - 1) // BM
-    ctx.enqueue_function[_tiled_gemm_kernel, _tiled_gemm_kernel](
+    ctx.enqueue_function[_tiled_gemm_kernel](
         c_buf.unsafe_ptr(),
         a_buf.unsafe_ptr(),
         b_buf.unsafe_ptr(),

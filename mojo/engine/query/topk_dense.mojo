@@ -52,7 +52,7 @@ above), band-order first-appearance group ordering identical to every other
 engine in this plane, and a typed refusal — never an out-of-bounds write — on
 a key that is not a code, exactly `coded_dense`'s safety argument.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 
 from columnar.array import Float64Array

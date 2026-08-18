@@ -84,7 +84,7 @@ So both arms are reported and clearly separated:
 The gap between them IS the available headroom, which makes it the most actionable number
 here: a kernel sitting at the 1T-scalar figure has the whole NT-SIMD multiple still to gain.
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.sys import info
 from std.time import perf_counter_ns
 

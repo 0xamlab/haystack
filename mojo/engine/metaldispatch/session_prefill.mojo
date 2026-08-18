@@ -134,7 +134,7 @@ path only ever needs one more branch here, reading THAT path's own already-self-
 a new formula.
 """
 
-from std.builtin.type_aliases import MutAnyOrigin
+from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.gpu import WARP_SIZE
 from residentk.contract import (
     RESIDENT_MAX_HEAD_DIM,
@@ -378,9 +378,9 @@ both. Named, never a bare literal, per the never-hardcode-silently mandate."""
 
 
 def _dequant_i8_into_f16(
-    dst_f16: UnsafePointer[UInt8, origin=MutAnyOrigin],
-    src_w: UnsafePointer[UInt8, origin=MutAnyOrigin],
-    src_scale: UnsafePointer[UInt8, origin=MutAnyOrigin],
+    dst_f16: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
+    src_w: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
+    src_scale: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
     n_rows: Int,
     width: Int,
 ) raises:
@@ -435,9 +435,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
     var layers: List[_MBLayerBufI8]
     var embed_addr: UInt64
-    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var embed_scale_addr: UInt64
-    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var tied_embeddings: Int
     """Llama-family support (2026-08-13): 1 = the checkpoint ties `lm_head.weight` to
     `model.embed_tokens.weight` (Qwen3 convention) -- the lm_head dispatches then read the embed
@@ -451,48 +451,48 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     this is `embed_addr` itself (aliased at construction, zero extra memory, byte-for-byte the
     pre-llama wiring); for an UNTIED model it is its own `_mb_alloc_buffer` pair uploaded by
     `upload_lm_head`."""
-    var lm_head_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var lm_head_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var lm_head_scale_addr: UInt64
-    var lm_head_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var lm_head_scale_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var final_norm_addr: UInt64
-    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var cos_addr: UInt64
-    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var sin_addr: UInt64
-    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var hidden_addr: UInt64
-    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var xn_addr: UInt64
-    var xn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var xn_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     """`[PREFILL_MAX_TILE, d_model]` -- `_pf_rmsnorm_rows_kernel`'s output, `_pf_gemm_assign_kernel_
     i8`'s input. Split out specifically because the qkv_proj role became a pure GEMM (no norm baked
     in) -- see `residentk.kernels`' own module comment for why."""
     var qkv_addr: UInt64
-    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var q_rot_addr: UInt64
-    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var attn_out_addr: UInt64
-    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var act_addr: UInt64
-    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_val_addr: UInt64
-    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var blk_idx_addr: UInt64
-    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_val_addr: UInt64
-    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var out_idx_addr: UInt64
-    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     # ── Parity gap 3 (sampling, 2026-08-10): the vocabulary-wide Float32 logits row the logits-
     # emitting lm_head twin writes for the host-side sampler. Same lifetime as every other buffer
     # here; the greedy path simply never reads it.
     var logits_addr: UInt64
-    var logits_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var logits_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     var prompt_ids_addr: UInt64
-    var prompt_ids_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var prompt_ids_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
 
     # ── Project Slipstream Phase 3 (2026-08-09): batched-decode tail + per-sequence state buffers.
     # B-sized argmax partial/output buffers (the single-row tail's `blk_val/blk_idx/out_val/out_idx`
@@ -500,22 +500,22 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     # batched attention-partial blobs read, and the batched descriptor table + its bookkeeping. All
     # allocated/built ONLY when `decode_batched_built`.
     var batch_blk_val_addr: UInt64
-    var batch_blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var batch_blk_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var batch_blk_idx_addr: UInt64
-    var batch_blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var batch_blk_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var batch_out_val_addr: UInt64
-    var batch_out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var batch_out_val_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var batch_out_idx_addr: UInt64
-    var batch_out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var batch_out_idx_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var batch_poss_addr: UInt64
-    var batch_poss_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var batch_poss_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var batch_nkeys_addr: UInt64
-    var batch_nkeys_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_decode_batched: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var batch_nkeys_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_decode_batched: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_decode_batched: Int
     var decode_batched_B: Int
 
-    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors: Int
     var token_id_offset: Int
     var pos_offsets: List[Int]
@@ -527,19 +527,19 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     var n_splits_max: Int
     var deep_last_n_splits: Int
     var m_partial_addr: UInt64
-    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var l_partial_addr: UInt64
-    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var o_partial_addr: UInt64
-    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
-    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_deep: Int
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
     var nkeys_offsets_deep: List[Int]
     var deep_ready: Bool
 
-    var descriptors_prefill: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_prefill: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_prefill: Int
     var embed_d: Int
     var rmsnorm_d: List[Int]
@@ -628,14 +628,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     `native_kv_producer.mojo`'s own docstring item 5 for why the stride must be a property of how the
     scratch buffer was ALLOCATED, not of any one dispatch)."""
     var q_native_addr: UInt64
-    var q_native_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_native_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     """`[PREFILL_MAX_TILE, h_q * d_head]` row-major, Float16 -- the native-KV-producer's own `q_rot`
     output (F16-narrowed, layout UNCHANGED from `self.q_rot_addr`'s F32 shape) and Candidate A's own
     `q_ptr` input. A SEPARATE buffer from `self.q_rot_addr` (never repurposed: the OFF path's
     `_pf_ropewrt_kernel` still writes `self.q_rot_addr` at F32 every call, completely unaware this
     buffer exists), reused across layers exactly like `self.q_rot_addr` already is."""
     var lse_scratch_addr: UInt64
-    var lse_scratch_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var lse_scratch_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     """`[h_q, PREFILL_MAX_TILE]`, Float32 -- Candidate A's own `lse_ptr` output argument. Written by
     the kernel every dispatch (numerically-stable log-sum-exp per row, per this task's own
     architecture) but never READ by anything downstream in this struct's own production dispatch
@@ -643,9 +643,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     because the kernel's own signature requires a valid, correctly-sized destination to write into,
     not because any consumer needs its contents."""
     var af_ck_native_addr: List[UInt64]
-    var af_ck_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_ck_native_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var af_cv_native_addr: List[UInt64]
-    var af_cv_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_cv_native_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     """Per-layer, parallel to `self.layers[layer].ck_addr`/`cv_addr` but NOT added as new fields on
     `_MBLayerBufI8` itself -- that struct is shared by EVERY session struct in `metaldispatch.session`
     (decode-only, non-prefill, every `_MBQwen3I8AllSimd*` arm), and adding fields there would force
@@ -660,13 +660,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     element count for both; only the byte ORDER differs, per the producer's own module docstring)."""
 
     var af_ck_i8_addr: List[UInt64]
-    var af_ck_i8_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_ck_i8_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var af_cv_i8_addr: List[UInt64]
-    var af_cv_i8_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_cv_i8_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var af_ck_i8_scale_addr: List[UInt64]
-    var af_ck_i8_scale_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_ck_i8_scale_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var af_cv_i8_scale_addr: List[UInt64]
-    var af_cv_i8_scale_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var af_cv_i8_scale_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     """Beat-llama.cpp campaign (2026-08-12, int8-KV decode mirror): per-layer INT8 mirrors of the
     f16 native-packed K/V caches above, in the FLAT `[hk][key][d_head]` layout the v4 partial reads
     (NOT the transposed f16 packing), plus per-key Float32 absmax scale arrays sized
@@ -680,9 +680,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
     var batch_kv_stride_elems: Int
     var batch_ck_native_addr: List[UInt64]
-    var batch_ck_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var batch_ck_native_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var batch_cv_native_addr: List[UInt64]
-    var batch_cv_native_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var batch_cv_native_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     """Project Slipstream Phase 3 (2026-08-09): per-layer native-packed K/V caches for the BATCHED
     decode path -- `_BATCH_DECODE_MAX_SEQS` independent sequences' caches per layer, concatenated into
     ONE oversized K buffer and ONE oversized V buffer per layer (same native-packed layouts as
@@ -694,7 +694,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     memory. Kept as separate lists parallel to `self.layers` (NOT fields on the shared `_MBLayerBufI8`)
     for the same blast-radius reason as `af_ck_native_addr` above."""
 
-    var descriptors_prefill_af: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_prefill_af: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_prefill_af: Int
     """A COMPLETE, SEPARATE descriptor table -- never a partial overlay onto `self.descriptors_
     prefill` -- built only if BOTH `self.af_pipeline_idx` entries were discovered (`> 0` here implies
@@ -1154,9 +1154,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     argmax) over the logits scratch, writing the blk_val/blk_idx pair layout the EXISTING
     `_batched_argmax_reduce_kernel_simd` already collapses. Both-or-neither with the GEMM above."""
     var db_swiglu_scratch_addr: UInt64
-    var db_swiglu_scratch_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var db_swiglu_scratch_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var db_logits_addr: UInt64
-    var db_logits_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var db_logits_ptr: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     """Round-3 scratch buffers for the batched decode table (allocated per B inside
     `_ensure_decode_batched_ready`, only when their kernels were discovered): swiglu scratch
     `[B, 2*d_ff]` floats and lm_head logits `[B, vocab]` floats."""
@@ -1167,13 +1167,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     byte-for-byte identical in memory layout and upload behavior to its pre-Phase-3 self (every
     existing suite/OFF-path binary is exactly such a binary)."""
     var msl_w_qkv_f16_addr: List[UInt64]
-    var msl_w_qkv_f16_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var msl_w_qkv_f16_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var msl_w_o_f16_addr: List[UInt64]
-    var msl_w_o_f16_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var msl_w_o_f16_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var msl_w_gu_f16_addr: List[UInt64]
-    var msl_w_gu_f16_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var msl_w_gu_f16_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     var msl_w_down_f16_addr: List[UInt64]
-    var msl_w_down_f16_ptr: List[UnsafePointer[UInt8, origin=MutAnyOrigin]]
+    var msl_w_down_f16_ptr: List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]
     """Per-layer, parallel to `self.layers[layer].w_qkv_addr`/`w_o_addr`/`w_gu_addr`/`w_down_addr`
     but Float16 and ALREADY DEQUANTIZED (`w_f16[row][i] = Float16(Float32(i8[row][i]) * scale[row])`,
     read back from the very Int8+scale buffers the production GEMM kernels read -- never from the
@@ -1186,7 +1186,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     shared `_MBLayerBufI8`, the same blast-radius discipline `self.af_ck_native_addr`'s own field
     docstring already gives."""
 
-    var descriptors_prefill_af_nomirror: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_prefill_af_nomirror: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_prefill_af_nomirror: Int
     """`1 + n_layers*8 + 2` -- see `PF_ATTN_GROUPED_FA_NO_MIRROR`'s own docstring. Built
     (copy-and-extend of `_build_descriptors_prefill_af`, minus the mirror dispatch) only if BOTH
@@ -1212,7 +1212,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     suffix marks "AF table, mirror-free variant", parallel to (never replacing) the `af` suffix's own
     with-mirror table."""
 
-    var descriptors_prefill_pnat: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_prefill_pnat: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_prefill_pnat: Int
     var pnat_built: Bool
     """feat/llama-native-deep (2026-08-13): the `PF_ATTN_PARAMETRIC_NATIVE_DECODE` prefill table --
@@ -1242,7 +1242,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     table's own `self.embed_d`/`rmsnorm_d`/etc., the `pnat` suffix marking the parametric-prefill
     + native-KV-write variant, parallel to (never replacing) every other prefill table."""
 
-    var descriptors_decode_native: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_decode_native: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_decode_native: Int
     """Same dispatch COUNT as `self.descriptors` (`metaldispatch_dispatch_budget(n_layers)`, `1 +
     n_layers*6 + 2`) -- six per-layer roles either way (`norm_gemv`/native-KV-producer/native-decode-
@@ -1262,7 +1262,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     index 4 of `_native_kv_decode_attn_kernel`'s own 11-arg signature) -- patched to `pos + 1` every
     `step_native_kv` call, parallel to `self.nkeys_offsets`."""
 
-    var descriptors_decode_native_splitk: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_decode_native_splitk: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_decode_native_splitk: Int
     """`1 + n_layers*7 + 2` -- the native-KV decode table's split-K twin (beat-llama.cpp campaign,
     2026-08-08 night): SAME seven per-layer roles minus one plus two -- the naive single-dispatch
@@ -1302,7 +1302,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     the sweep-measured `_NATIVE_DECODE_N_SPLITS_OPT` this replaces -- but it now tracks the device.
     Falls back to `_NATIVE_DECODE_N_SPLITS_OPT` when the probe fails (cores <= 0), the documented
     conservative constant, matching the shim's own typed-failure contract."""
-    var descriptors_decode_native_splitk_i8: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_decode_native_splitk_i8: UnsafePointer[UInt8, origin=MutUntrackedOrigin]
     var n_descriptors_decode_native_splitk_i8: Int
     var native_decode_splitk_i8_built: Bool
     var token_id_offset_native_splitk_i8: Int
@@ -1438,7 +1438,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # compiles or dispatches it (see `_PF_N_ROLES`'s own docstring in `metaldispatch.session`).
         # The deep split-K pair is still deferred to `_ensure_deep_initialized`, unchanged from
         # `_MBQwen3I8AllSimd7`.
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_embed_row_kernel_i8]()
         _ = cctx.compile_function[_norm_gemv_kernel_simd_i8]()
@@ -1553,9 +1553,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.msl_lmhead_gemm_pipeline_idx = -1
         self.msl_logits_blockmax_pipeline_idx = -1
         self.db_swiglu_scratch_addr = UInt64(0)
-        self.db_swiglu_scratch_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.db_swiglu_scratch_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.db_logits_addr = UInt64(0)
-        self.db_logits_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.db_logits_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         var count = _mb_pipeline_count()
         self.pipeline_idx_split = -1
         self.pipeline_idx_merge = -1
@@ -1892,13 +1892,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             or self.msl_parity_swiglu_pipeline_idx >= 0
         )
         self.msl_w_qkv_f16_addr = List[UInt64]()
-        self.msl_w_qkv_f16_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.msl_w_qkv_f16_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.msl_w_o_f16_addr = List[UInt64]()
-        self.msl_w_o_f16_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.msl_w_o_f16_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.msl_w_gu_f16_addr = List[UInt64]()
-        self.msl_w_gu_f16_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.msl_w_gu_f16_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.msl_w_down_f16_addr = List[UInt64]()
-        self.msl_w_down_f16_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.msl_w_down_f16_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.af_n_blocks = (max_ctx + _AF_KEY_BLOCK_SIZE - 1) // _AF_KEY_BLOCK_SIZE
 
         # ── resident buffers: SAME shapes as `_MBQwen3I8AllSimd7` for weights/KV-cache/globals.
@@ -1906,46 +1906,46 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         var n_pairs = d_head // 2
 
         self.af_ck_native_addr = List[UInt64]()
-        self.af_ck_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_ck_native_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.af_cv_native_addr = List[UInt64]()
-        self.af_cv_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_cv_native_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
 
         # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): per-layer int8 mirror + scale
         # lists (allocated per layer below, gated on `decode_i8kv_built`).
         self.af_ck_i8_addr = List[UInt64]()
-        self.af_ck_i8_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_ck_i8_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.af_cv_i8_addr = List[UInt64]()
-        self.af_cv_i8_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_cv_i8_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.af_ck_i8_scale_addr = List[UInt64]()
-        self.af_ck_i8_scale_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_ck_i8_scale_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.af_cv_i8_scale_addr = List[UInt64]()
-        self.af_cv_i8_scale_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.af_cv_i8_scale_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
 
         # ── Project Slipstream Phase 3: batched-decode per-sequence KV cache lists (allocated per
         # layer below, gated on `decode_batched_built`). `batch_kv_stride_elems` = one sequence's
         # native-packed cache element count, the batched kernels' `kv_stride` argument.
         self.batch_kv_stride_elems = h_kv * self.af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE
         self.batch_ck_native_addr = List[UInt64]()
-        self.batch_ck_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.batch_ck_native_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
         self.batch_cv_native_addr = List[UInt64]()
-        self.batch_cv_native_ptr = List[UnsafePointer[UInt8, origin=MutAnyOrigin]]()
+        self.batch_cv_native_ptr = List[UnsafePointer[UInt8, origin=MutUntrackedOrigin]]()
 
         self.layers = List[_MBLayerBufI8]()
         for _ in range(n_layers):
-            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
                 raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
             if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
@@ -1991,8 +1991,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # element count as `ck`/`cv` (`h_kv * af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE`, vs.
             # `ck`/`cv`'s own `max_ctx * h_kv * d_head` -- equal since `af_n_blocks *
             # _AF_KEY_BLOCK_SIZE >= max_ctx` by construction), at 2 bytes (Float16) instead of 4.
-            var ckna = UInt64(0); var cknp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var cvna = UInt64(0); var cvnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var ckna = UInt64(0); var cknp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var cvna = UInt64(0); var cvnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             var af_native_elems = h_kv * self.af_n_blocks * d_head * _AF_KEY_BLOCK_SIZE
             if _mb_alloc_buffer(af_native_elems * 2, ckna, cknp) < 0:
                 raise Error("metaldispatch: buffer alloc failed (af ck_native)")
@@ -2007,10 +2007,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # scales for this layer, ONLY when both int8 blobs were discovered (gated memory, same
             # discipline as the batched caches below); placeholders keep the lists parallel otherwise.
             if self.decode_i8kv_built:
-                var ckia = UInt64(0); var ckip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var cvia = UInt64(0); var cvip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var cksa = UInt64(0); var cksip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var cvsa = UInt64(0); var cvsip = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var ckia = UInt64(0); var ckip = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var cvia = UInt64(0); var cvip = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var cksa = UInt64(0); var cksip = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var cvsa = UInt64(0); var cvsip = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
                 var i8_elems = h_kv * self.af_n_blocks * _AF_KEY_BLOCK_SIZE * d_head
                 var n_keys_cap = self.af_n_blocks * _AF_KEY_BLOCK_SIZE
                 if _mb_alloc_buffer(i8_elems * 1, ckia, ckip) < 0:
@@ -2031,13 +2031,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.af_cv_i8_scale_ptr.append(cvsip)
             else:
                 self.af_ck_i8_addr.append(UInt64(0))
-                self.af_ck_i8_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_ck_i8_ptr.append(UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1))
                 self.af_cv_i8_addr.append(UInt64(0))
-                self.af_cv_i8_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_cv_i8_ptr.append(UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1))
                 self.af_ck_i8_scale_addr.append(UInt64(0))
-                self.af_ck_i8_scale_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_ck_i8_scale_ptr.append(UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1))
                 self.af_cv_i8_scale_addr.append(UInt64(0))
-                self.af_cv_i8_scale_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.af_cv_i8_scale_ptr.append(UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1))
 
             # ── Project Slipstream Phase 3 (2026-08-09): per-sequence BATCHED-decode KV caches for
             # this layer -- `_BATCH_DECODE_MAX_SEQS` concatenated sequence-caches per K and per V,
@@ -2045,8 +2045,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # batched decode pipelines were discovered (`decode_batched_built`), so a blobs-absent
             # binary pays none of this memory (same gating discipline as the MSL f16 twins below).
             if self.decode_batched_built:
-                var bckna = UInt64(0); var bcknp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var bcvna = UInt64(0); var bcvnp = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var bckna = UInt64(0); var bcknp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var bcvna = UInt64(0); var bcvnp = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
                 var batch_elems = _BATCH_DECODE_MAX_SEQS * self.batch_kv_stride_elems
                 if _mb_alloc_buffer(batch_elems * 2, bckna, bcknp) < 0:
                     raise Error("metaldispatch: buffer alloc failed (batch ck_native)")
@@ -2059,9 +2059,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             else:
                 # Keep the per-layer lists parallel to `self.layers` even when not provisioned.
                 self.batch_ck_native_addr.append(UInt64(0))
-                self.batch_ck_native_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.batch_ck_native_ptr.append(UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1))
                 self.batch_cv_native_addr.append(UInt64(0))
-                self.batch_cv_native_ptr.append(UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1))
+                self.batch_cv_native_ptr.append(UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1))
 
             # ── Phase 3 (2026-08-08): per-layer ALREADY-DEQUANTIZED Float16 twins of the four
             # GEMM weight buffers, allocated ONLY when at least one MSL parity pipeline was
@@ -2069,10 +2069,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # the Int8 originals, 2 bytes instead of 1. A blobs-absent binary never reaches this
             # branch and keeps its pre-Phase-3 allocation sequence exactly.
             if self.msl_any_linked:
-                var wqkva16 = UInt64(0); var wqkvp16 = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var wo16 = UInt64(0); var wop16 = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var wgu16 = UInt64(0); var wgup16 = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-                var wdown16 = UInt64(0); var wdownp16 = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+                var wqkva16 = UInt64(0); var wqkvp16 = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var wo16 = UInt64(0); var wop16 = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var wgu16 = UInt64(0); var wgup16 = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+                var wdown16 = UInt64(0); var wdownp16 = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
                 if _mb_alloc_buffer(n_qkv * d_model * 2, wqkva16, wqkvp16) < 0:
                     raise Error("metaldispatch: buffer alloc failed (msl w_qkv f16)")
                 if _mb_alloc_buffer(d_model * h_q * d_head * 2, wo16, wop16) < 0:
@@ -2090,11 +2090,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.msl_w_down_f16_addr.append(wdown16)
                 self.msl_w_down_f16_ptr.append(wdownp16)
 
-        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (embed i8)")
         if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
@@ -2113,9 +2113,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.lm_head_scale_ptr = self.embed_scale_ptr
         else:
             self.lm_head_addr = UInt64(0)
-            self.lm_head_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            self.lm_head_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             self.lm_head_scale_addr = UInt64(0)
-            self.lm_head_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            self.lm_head_scale_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             if _mb_alloc_buffer(vocab * d_model * 1, self.lm_head_addr, self.lm_head_ptr) < 0:
                 raise Error("metaldispatch: buffer alloc failed (lm_head i8)")
             if _mb_alloc_buffer(vocab * 4, self.lm_head_scale_addr, self.lm_head_scale_ptr) < 0:
@@ -2129,17 +2129,17 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
 
         # ── activation buffers: sized for `PREFILL_MAX_TILE` ROWS, not one -- see module docstring
         # "BUFFER SIZING". `step()`'s own descriptor plan below never asks for more than row 0.
-        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.xn_addr = UInt64(0); self.xn_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.prompt_ids_addr = UInt64(0); self.prompt_ids_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.xn_addr = UInt64(0); self.xn_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.prompt_ids_addr = UInt64(0); self.prompt_ids_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         var n_q = h_q * d_head
         if _mb_alloc_buffer(PREFILL_MAX_TILE * d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (hidden)")
@@ -2165,7 +2165,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             raise Error("metaldispatch: buffer alloc failed (prompt_ids)")
         # ── Parity gap 3 (sampling, 2026-08-10): vocab-wide Float32 logits row (~600 KB at
         # Qwen3 scale) -- the sampled tail's output buffer, read back host-side by the sampler.
-        self.logits_addr = UInt64(0); self.logits_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.logits_addr = UInt64(0); self.logits_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(vocab * 4, self.logits_addr, self.logits_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (logits)")
 
@@ -2174,13 +2174,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # reuses the single-row kernels dispatched B times (one per sequence) into B-sized partial/out
         # regions; `batch_poss`/`batch_nkeys` are the per-sequence Int64 device arrays the batched
         # kvprod / batched attention-partial blobs read.
-        self.batch_blk_val_addr = UInt64(0); self.batch_blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.batch_blk_idx_addr = UInt64(0); self.batch_blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.batch_out_val_addr = UInt64(0); self.batch_out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.batch_out_idx_addr = UInt64(0); self.batch_out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.batch_poss_addr = UInt64(0); self.batch_poss_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.batch_nkeys_addr = UInt64(0); self.batch_nkeys_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.descriptors_decode_batched = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.batch_blk_val_addr = UInt64(0); self.batch_blk_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.batch_blk_idx_addr = UInt64(0); self.batch_blk_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.batch_out_val_addr = UInt64(0); self.batch_out_val_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.batch_out_idx_addr = UInt64(0); self.batch_out_idx_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.batch_poss_addr = UInt64(0); self.batch_poss_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.batch_nkeys_addr = UInt64(0); self.batch_nkeys_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.descriptors_decode_batched = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.n_descriptors_decode_batched = 0
         self.decode_batched_B = 0
         if self.decode_batched_built:
@@ -2202,8 +2202,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # allocated UNCONDITIONALLY (same "always allocate, never populate/dispatch when off" choice
         # as the per-layer native K/V buffers above) -- see `self.q_native_addr`'s/`self.lse_scratch_
         # addr`'s own field docstrings.
-        self.q_native_addr = UInt64(0); self.q_native_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.lse_scratch_addr = UInt64(0); self.lse_scratch_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.q_native_addr = UInt64(0); self.q_native_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.lse_scratch_addr = UInt64(0); self.lse_scratch_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(PREFILL_MAX_TILE * n_q * 2, self.q_native_addr, self.q_native_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (af q_native)")
         if _mb_alloc_buffer(h_q * PREFILL_MAX_TILE * 4, self.lse_scratch_addr, self.lse_scratch_ptr) < 0:
@@ -2217,9 +2217,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.splitk_m_addr = UInt64(0)
         self.splitk_l_addr = UInt64(0)
         self.splitk_o_addr = UInt64(0)
-        var splitk_m_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        var splitk_l_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        var splitk_o_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        var splitk_m_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        var splitk_l_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        var splitk_o_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS_MAX * 4, self.splitk_m_addr, splitk_m_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (splitk m)")
         if _mb_alloc_buffer(h_q * _NATIVE_DECODE_N_SPLITS_MAX * 4, self.splitk_l_addr, splitk_l_ptr) < 0:
@@ -2233,9 +2233,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.batch_splitk_l_addr = UInt64(0)
         self.batch_splitk_o_addr = UInt64(0)
         if self.decode_batched_built:
-            var bsm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var bsl_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-            var bso_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+            var bsm_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var bsl_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+            var bso_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
             var b_ml_elems = _BATCH_DECODE_MAX_SEQS * h_q * _NATIVE_DECODE_N_SPLITS
             if _mb_alloc_buffer(b_ml_elems * 4, self.batch_splitk_m_addr, bsm_ptr) < 0:
                 raise Error("metaldispatch: buffer alloc failed (batch splitk m)")
@@ -2244,9 +2244,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             if _mb_alloc_buffer(b_ml_elems * d_head * 4, self.batch_splitk_o_addr, bso_ptr) < 0:
                 raise Error("metaldispatch: buffer alloc failed (batch splitk o)")
 
-        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
-        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -2255,7 +2255,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.nkeys_offsets = List[Int]()
 
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
@@ -2298,7 +2298,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             else 0
         )
         self.n_descriptors_prefill_af = 1 + self.n_layers * 9 + 2 + kvprod_v2_af_extra
-        self.descriptors_prefill_af = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_prefill_af = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.embed_af_d = -1
         self.rmsnorm_af_d = List[Int]()
         self.gemm_assign_af_d = List[Int]()
@@ -2319,7 +2319,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # both budgets must agree with the builder branch's own (v2-linked AND qk_norm==1 AND
         # d_head==128) condition, never the blob-linked bit alone.
         self.n_descriptors_prefill_af_nomirror = 1 + self.n_layers * 8 + 2 + kvprod_v2_af_extra
-        self.descriptors_prefill_af_nomirror = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_prefill_af_nomirror = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.embed_af2_d = -1
         self.rmsnorm_af2_d = List[Int]()
         self.gemm_assign_af2_d = List[Int]()
@@ -2336,7 +2336,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # budget now, allocate/build only if the guard below passes" discipline -- NINE per-layer
         # dispatches (the OFF table's eight + the native-KV-producer write).
         self.n_descriptors_prefill_pnat = 1 + self.n_layers * 9 + 2
-        self.descriptors_prefill_pnat = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_prefill_pnat = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.pnat_built = False
         self.embed_pnat_d = -1
         self.rmsnorm_pnat_d = List[Int]()
@@ -2351,7 +2351,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.lmhead_pnat_d = -1
 
         self.n_descriptors_decode_native = metaldispatch_dispatch_budget(n_layers)
-        self.descriptors_decode_native = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_decode_native = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.token_id_offset_native = -1
         self.pos_offsets_native = List[Int]()
         self.nkeys_offsets_native = List[Int]()
@@ -2362,7 +2362,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # `_build_descriptors_decode_native_splitk`'s own tail; never actually allocated unless the
         # four-pipeline guard below passes.
         self.n_descriptors_decode_native_splitk = 1 + n_layers * 7 + 2
-        self.descriptors_decode_native_splitk = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_decode_native_splitk = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.native_decode_splitk_built = False
         self.token_id_offset_native_splitk = -1
         self.pos_offsets_native_splitk = List[Int]()
@@ -2373,7 +2373,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # same convention -- count `1 + n_layers*8 + 2` (the split-K table's seven per-layer roles
         # + one quant dispatch), allocated only if `decode_i8kv_built` survives pipeline discovery.
         self.n_descriptors_decode_native_splitk_i8 = 1 + n_layers * 8 + 2
-        self.descriptors_decode_native_splitk_i8 = UnsafePointer[UInt8, origin=MutAnyOrigin](unsafe_from_address=1)
+        self.descriptors_decode_native_splitk_i8 = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.native_decode_splitk_i8_built = False
         self.token_id_offset_native_splitk_i8 = -1
         self.pos_offsets_native_splitk_i8 = List[Int]()
@@ -2559,7 +2559,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         """Byte-identical lazy-init discipline to `_MBQwen3I8AllSimd7._ensure_deep_initialized`."""
         if self.deep_ready:
             return
-        from std.gpu.host import DeviceContext
+        from max.gpu.host import DeviceContext
         var cctx = DeviceContext()
         _ = cctx.compile_function[_splitk_partial_kernel_simd_native]()
         _ = cctx.compile_function[_splitk_merge_kernel_simd]()
@@ -6353,7 +6353,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     # wiring immediately after, so interleaving sampled and greedy calls on one session is safe and
     # the greedy path never sees a mutated descriptor.
 
-    def _patch_tail_logits(mut self, table: UnsafePointer[UInt8, origin=MutAnyOrigin], d_lm: Int, x_addr: UInt64) raises:
+    def _patch_tail_logits(mut self, table: UnsafePointer[UInt8, origin=MutUntrackedOrigin], d_lm: Int, x_addr: UInt64) raises:
         """Overwrite tail slot `d_lm` with the logits kernel's header + 9 args (logits first, then
         the argmax kernel's args minus blk_val/blk_idx). Caller restores via `_restore_tail_argmax`."""
         var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
@@ -6368,7 +6368,7 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         _mb_set_arg_f32(table, d_lm, 7, self.eps)
         _mb_set_arg_int(table, d_lm, 8, n_iters)
 
-    def _restore_tail_argmax(mut self, table: UnsafePointer[UInt8, origin=MutAnyOrigin], d_lm: Int, x_addr: UInt64) raises:
+    def _restore_tail_argmax(mut self, table: UnsafePointer[UInt8, origin=MutUntrackedOrigin], d_lm: Int, x_addr: UInt64) raises:
         """Byte-exact restoration of the greedy tail (both descriptors) after a logits run -- the
         same header + arg values the table builders wrote at construction."""
         var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)

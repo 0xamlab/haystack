@@ -74,7 +74,7 @@ comptime ROLE_DERIVED_ID:   UInt8  = 2
 def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes  = s.as_bytes()
-    var n      = len(s)
+    var n      = s.byte_length()
     var i      = start if start >= 0 else 0
     var e      = end if end <= n else n
     while i < e:
@@ -92,7 +92,7 @@ def _normalize(s: String) -> String:
     """Lowercase and replace separators with spaces."""
     var result = String("")
     var bytes  = s.as_bytes()
-    var n      = len(s)
+    var n      = s.byte_length()
     for i in range(n):
         var c = bytes[i]
         if _is_sep(c):
@@ -109,17 +109,17 @@ def _tokens(s: String) -> List[String]:
     var result = List[String]()
     var norm   = _normalize(s)
     var bytes  = norm.as_bytes()
-    var n      = len(norm)
+    var n      = norm.byte_length()
     var cur    = String("")
     for i in range(n):
         var c = bytes[i]
         if c == 32:
-            if len(cur) > 0:
+            if cur.byte_length() > 0:
                 result.append(cur)
                 cur = String("")
         else:
             cur += chr(Int(c))
-    if len(cur) > 0:
+    if cur.byte_length() > 0:
         result.append(cur)
     return result^
 
@@ -133,7 +133,7 @@ def _bigram_vec(s: String) -> List[Float64]:
         vec.append(0.0)
     var norm_s = _normalize(s)
     var bytes  = norm_s.as_bytes()
-    var n      = len(norm_s)
+    var n      = norm_s.byte_length()
     if n < 2:
         return vec^
     for i in range(n - 1):
@@ -201,7 +201,7 @@ def _role_boost(role: String, hint_toks: List[String], query_role: String) -> Fl
     var query_role_norm = to_lower(query_role)
     var BOOST: Float64 = 0.12
 
-    if len(query_role_norm) > 0:
+    if query_role_norm.byte_length() > 0:
         var query_wants_unit = (
             query_role_norm == "unit_measure" or query_role_norm == "ratio"
         )
@@ -281,7 +281,7 @@ def _prior_boost(source_type: String, col_norm: String) -> Float64:
 
     # Normalise source_type comparison (quick checks on substrings)
     var src_bytes = src.as_bytes()
-    var src_len   = len(src)
+    var src_len   = src.byte_length()
     var s_lower   = String("")
     for i in range(src_len):
         var c = src_bytes[i]
@@ -524,7 +524,7 @@ struct ResidentColumnRankState(Movable):
             var column_name = json_get_string(entry_json, "column")
             var source_id = json_get_int(entry_json, "source_id", 0)
             var role_id = json_get_int(entry_json, "role_id", 0)
-            if len(column_name) == 0:
+            if column_name.byte_length() == 0:
                 continue
             self.table.add_column(
                 UInt32(idx),
@@ -681,7 +681,7 @@ def run_column_rank(raw: String) raises -> String:
         var hw = to_lower(json_array_get(hint_arr, i))
         # Strip surrounding quotes if the JSON extractor includes them
         var hw_bytes = hw.as_bytes()
-        var hw_n     = len(hw)
+        var hw_n     = hw.byte_length()
         var hs = 0
         var he = hw_n
         if hw_n >= 2 and hw_bytes[0] == 34 and hw_bytes[hw_n - 1] == 34:

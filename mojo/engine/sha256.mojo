@@ -161,7 +161,7 @@ struct SHA256:
     def update(mut self, data: String):
         """Feed data into the hasher.  May be called multiple times."""
         var bspan = data.as_bytes()
-        var data_len = len(data)
+        var data_len = data.byte_length()
         self._total += data_len
         var pos = 0
 

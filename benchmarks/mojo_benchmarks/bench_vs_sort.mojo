@@ -103,7 +103,7 @@ Environment knobs
   SORT_BENCH_HOT_REPS  hot repetitions per cell (default 5)
   SORT_BENCH_SKIP_LEGACY  set to 1 to skip the frozen/insertion sweep
 """
-from std.algorithm import parallelize
+from max.algorithm import parallelize
 from std.os import getenv
 from std.sys import info
 from std.time import perf_counter_ns
