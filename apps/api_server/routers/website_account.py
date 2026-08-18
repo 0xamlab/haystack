@@ -22,18 +22,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_redis
+from apps.api_server.models.github_app_installation import GithubAppInstallation
 from apps.api_server.models.organization import Organization
 from apps.api_server.models.user import User, UserRole
-from apps.api_server.services import website_identity
+from apps.api_server.services import github_app_auth, website_identity
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["account"])
+
+
+class GithubInstallationInfo(BaseModel):
+    installation_id: int
+    account_login: str | None
+    account_type: str | None
+    suspended: bool
 
 
 class AccountSettingsResponse(BaseModel):
     org_id: str
     org_name: str
     codna_fix_enabled: bool
+    # REAL GitHub App install state for this org, verified against GitHub. The account page used
+    # to infer "Connected via GitHub" from "the caller resolved at least one org", which is a
+    # completely different fact: an org resolves from an identity_org_links row / an email
+    # membership / a CLI onboard, none of which involve a GitHub App install at all. So the card
+    # read "Connected via GitHub" for every signed-in user forever -- including right after they
+    # uninstalled the App, which is exactly what was reported.
+    github_installations: list[GithubInstallationInfo]
+    github_connected: bool
 
 
 class UpdateAccountSettingsRequest(BaseModel):
@@ -62,6 +78,64 @@ async def _require_org_admin(db: AsyncSession, org: Organization, identity: dict
         )
 
 
+async def _live_github_installations(
+    db: AsyncSession, org: Organization, redis: Any | None = None
+) -> list[GithubInstallationInfo]:
+    """This org's GitHub App installations, each verified to still exist on GitHub.
+
+    A row here is NOT proof of a live install. The codna-ai App's webhooks are delivered to
+    codna's own webhook service, not to this backend, so this backend's ``installation.deleted``
+    handler never fires for it -- an uninstall leaves the row behind indefinitely (confirmed
+    live: GitHub reported 0 installations while two rows were still present). Verify against
+    GitHub and PRUNE what's definitively gone, so every reader converges on the truth instead
+    of trusting a row nothing maintains.
+
+    Fails OPEN: only a definitive 404 prunes. An unverifiable result (egress denied,
+    GitHub unreachable, App unconfigured) keeps the row and reports it as-is, so a transient
+    blip never tells a paying customer their integration vanished."""
+    rows = (
+        (
+            await db.execute(
+                select(GithubAppInstallation).where(GithubAppInstallation.org_id == org.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows or not github_app_auth.app_configured():
+        return [
+            GithubInstallationInfo(
+                installation_id=r.installation_id,
+                account_login=r.account_login,
+                account_type=r.account_type,
+                suspended=r.suspended,
+            )
+            for r in rows
+        ]
+    live: list[GithubInstallationInfo] = []
+    pruned = 0
+    for row in rows:
+        alive = await github_app_auth.installation_is_live(
+            row.installation_id, org_id=org.id, redis=redis
+        )
+        if alive is False:
+            await db.delete(row)
+            pruned += 1
+            continue
+        live.append(
+            GithubInstallationInfo(
+                installation_id=row.installation_id,
+                account_login=row.account_login,
+                account_type=row.account_type,
+                suspended=row.suspended,
+            )
+        )
+    if pruned:
+        await db.commit()
+        logger.info("website_pruned_dead_github_installations", org_id=str(org.id), pruned=pruned)
+    return live
+
+
 @router.get(
     "/account/settings",
     response_model=AccountSettingsResponse,
@@ -78,8 +152,13 @@ async def get_account_settings(
     org, _identity = await website_identity.verify_and_resolve_org(
         authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
     )
+    installs = await _live_github_installations(db, org, redis)
     return AccountSettingsResponse(
-        org_id=str(org.id), org_name=org.name, codna_fix_enabled=org.codna_fix_enabled
+        org_id=str(org.id),
+        org_name=org.name,
+        codna_fix_enabled=org.codna_fix_enabled,
+        github_installations=installs,
+        github_connected=any(not i.suspended for i in installs),
     )
 
 
@@ -113,6 +192,31 @@ async def update_account_settings(
         codna_fix_enabled_updated=payload.codna_fix_enabled is not None,
         org_name_updated=payload.org_name is not None,
     )
+    # Report install state straight from the rows here (no GitHub round-trip): a settings WRITE
+    # must not be able to fail, or slow down, on an unrelated GitHub API call. The GET is what
+    # reconciles.
+    rows = (
+        (
+            await db.execute(
+                select(GithubAppInstallation).where(GithubAppInstallation.org_id == org.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    installs = [
+        GithubInstallationInfo(
+            installation_id=r.installation_id,
+            account_login=r.account_login,
+            account_type=r.account_type,
+            suspended=r.suspended,
+        )
+        for r in rows
+    ]
     return AccountSettingsResponse(
-        org_id=str(org.id), org_name=org.name, codna_fix_enabled=org.codna_fix_enabled
+        org_id=str(org.id),
+        org_name=org.name,
+        codna_fix_enabled=org.codna_fix_enabled,
+        github_installations=installs,
+        github_connected=any(not i.suspended for i in installs),
     )

@@ -24,6 +24,10 @@ _GITHUB_API = "https://api.github.com"
 _GITHUB_OAUTH_TOKEN = "https://github.com/login/oauth/access_token"
 _REFRESH_SAFETY_S = 300  # refresh 5 min before GitHub's ~1h expiry
 _REDIS_PREFIX = "github_app:inst_token:"
+# Liveness cache (positive answers only — see installation_is_live). Short: an uninstall should
+# surface within a minute, while the account page stops re-asking GitHub on every single load.
+_LIVE_CACHE_PREFIX = "github_app:inst_live:"
+_LIVE_CACHE_TTL_S = 60
 
 
 class GithubAppNotConfiguredError(RuntimeError):
@@ -195,6 +199,65 @@ async def resolve_installation_account(
     if acct_id is None or not acct_login or not acct_type:
         return None
     return {"id": int(acct_id), "login": acct_login, "type": acct_type}
+
+
+async def installation_is_live(
+    installation_id: int,
+    *,
+    org_id: uuid.UUID | str | None = None,
+    redis: Any | None = None,
+) -> bool | None:
+    """Does ``installation_id`` still exist on GitHub? ``True``/``False``, or ``None`` = unknown.
+
+    TRI-STATE on purpose. ``resolve_installation_account`` collapses every >=400 (and every
+    transport failure) to ``None``, which cannot distinguish "the user uninstalled the App"
+    from "GitHub was briefly unreachable" — and a caller that treats those alike either lies
+    about a live install or wrongly reports a healthy one as gone. Only a definitive 404
+    returns ``False``; anything unverifiable returns ``None`` so callers can fail open.
+
+    Caches only the LIVE answer, briefly. Every App-JWT call draws on ONE per-App rate-limit
+    pool shared with ``_mint_installation_token`` — the credential the fix pipeline needs — so
+    an uncached per-page-load check could starve fix jobs. A live install is the steady state,
+    so caching just that bounds the steady-state cost to one call per installation per TTL. A
+    404 is deliberately NOT cached: the caller prunes the row on that answer, so it is asked at
+    most once anyway, and caching it would delay a reconnect from showing up."""
+    key = f"{_LIVE_CACHE_PREFIX}{installation_id}"
+    if redis is not None:
+        try:
+            if await redis.get(key):
+                return True
+        except Exception:  # noqa: BLE001 — cache is best-effort
+            pass
+    audit = egress_guard.EgressAuditContext(
+        org_id=org_id if isinstance(org_id, uuid.UUID) else None
+    )
+    try:
+        resp = await egress_guard.async_http_request(
+            method="GET",
+            url=f"{_GITHUB_API}/app/installations/{installation_id}",
+            surface="github_app_oauth",
+            egress_class="customer_connector",
+            explicit_configured=True,
+            audit_context=audit,
+            headers={
+                "Authorization": f"Bearer {_app_jwt()}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            client_kwargs={"timeout": 15.0},
+        )
+    except Exception:  # noqa: BLE001 — egress denied / transport / JWT: all "can't tell"
+        return None
+    if resp.status_code == 404:
+        return False
+    if resp.status_code < 400:
+        if redis is not None:
+            try:
+                await redis.set(key, b"1", ex=_LIVE_CACHE_TTL_S)
+            except Exception:  # noqa: BLE001 — cache is best-effort
+                pass
+        return True
+    return None
 
 
 async def _gh_get_app(url: str, audit: Any) -> Any | None:
