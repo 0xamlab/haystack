@@ -33,6 +33,27 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 _STRUCT_ENVELOPE_TYPE_KEY = "__algenta_struct"
 _STRUCT_ENVELOPE_VALUES_KEY = "v"
 
+# Explicit signal, set by the daemon's bundle autoconfiguration, that a precompiled runtime
+# worker (the sharded workers reached through the executor's socket) is present and can serve
+# library calls. Required for the baked-inventory availability path so a stray
+# ALGENTA_RUNTIME_LIBRARY_INVENTORY file cannot make the plane look available when no worker
+# exists.
+PRECOMPILED_WORKER_ENV = "ALGENTA_RUNTIME_LIBRARY_PRECOMPILED"
+_TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
+
+def _env_truthy(value: str | None) -> bool:
+    return value is not None and value.strip().lower() in _TRUTHY_ENV_VALUES
+
+
+def _toolchain_present() -> bool:
+    return _MOJO_BIN.exists() and _MODULAR_HOME.exists()
+
+
+def precompiled_worker_mode() -> bool:
+    """True when the provisioner has flagged a precompiled runtime worker is present."""
+    return _env_truthy(os.environ.get(PRECOMPILED_WORKER_ENV))
+
 
 @dataclass
 class MojoLibraryError(Exception):
@@ -80,7 +101,16 @@ def _module_struct_specs(module_name: str) -> dict[str, RuntimeStructSpec]:
 
 
 def library_runtime_available() -> bool:
-    return _MOJO_BIN.exists() and _MODULAR_HOME.exists()
+    # (a) Local Mojo toolchain present -> the `mojo run` path can serve calls.
+    if _toolchain_present():
+        return True
+    # (b) Lean/precompiled bundle: no toolchain, but the daemon's bundle autoconfiguration
+    # flagged a precompiled worker AND a baked inventory loads non-empty. Both execution
+    # paths (sim + library) run through the precompiled worker over the socket, so
+    # availability holds without the toolchain or any .mojo source present.
+    if precompiled_worker_mode():
+        return bool(runtime_library_modules())
+    return False
 
 
 def find_runtime_function(

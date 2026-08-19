@@ -81,7 +81,27 @@ def test_generated_contract_is_sanitized() -> None:
     assert "runtime_library_dispatch_generated" not in {
         module["name"] for module in payload["modules"]
     }
-    assert set(payload) == {"schema_version", "module_count", "function_count", "modules"}
+    # runtime_bundle is the OPTIONAL managed-runtime footer (version + per-platform
+    # URLs + sha256s + public key) stamped at bundle-cut time by
+    # scripts/generate_algenta_runtime_contract.py --bundle-metadata; the surface
+    # gate (--check) ignores it, so it may be absent or present.
+    assert set(payload) <= {
+        "schema_version",
+        "module_count",
+        "function_count",
+        "modules",
+        "runtime_bundle",
+    }
+    assert {"schema_version", "module_count", "function_count", "modules"} <= set(payload)
+    if "runtime_bundle" in payload:
+        footer = payload["runtime_bundle"]
+        assert isinstance(footer.get("version"), str) and footer["version"]
+        platforms = footer.get("platforms")
+        assert isinstance(platforms, dict) and platforms
+        for platform, pin in platforms.items():
+            assert isinstance(platform, str) and platform
+            assert isinstance(pin.get("url"), str) and pin["url"].startswith("https://")
+            assert isinstance(pin.get("sha256"), str) and len(pin["sha256"]) == 64
     for module in payload["modules"]:
         assert set(module) == {"name", "engine", "functions", "structs"}
         for function in module["functions"]:

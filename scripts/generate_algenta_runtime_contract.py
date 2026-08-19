@@ -130,8 +130,58 @@ def build_contract() -> dict[str, Any]:
     }
 
 
-def _encoded_contract() -> bytes:
-    return (json.dumps(build_contract(), sort_keys=True, separators=(",", ":")) + "\n").encode()
+def load_bundle_metadata(paths: list[Path]) -> list[dict[str, Any]]:
+    """Load + shape-check bundle-metadata.json files from build_runtime_bundle.py."""
+    entries: list[dict[str, Any]] = []
+    for path in paths:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise SystemExit(f"bundle metadata {path} is not a JSON object")
+        for field in ("version", "platform", "sha256", "url_template"):
+            if not isinstance(payload.get(field), str) or not payload[field]:
+                raise SystemExit(f"bundle metadata {path} missing string field {field!r}")
+        entries.append(payload)
+    return entries
+
+
+def build_runtime_bundle_footer(
+    metadata_entries: list[dict[str, Any]],
+    *,
+    public_key_pem: str | None = None,
+) -> dict[str, Any]:
+    """The runtime_bundle footer: version + per-platform URLs + sha256s (+ public key).
+
+    This is the fragment the SQAI capability contract's runtime_bundle section is
+    updated from at bundle-cut time. It is deliberately EXCLUDED from --check
+    comparisons: the footer is stamped when a bundle is cut, never regenerated
+    from the engine sources, so the library-surface gate must not churn on it.
+    """
+    versions = sorted({entry["version"] for entry in metadata_entries})
+    if len(versions) != 1:
+        raise SystemExit(
+            f"bundle metadata files disagree on version: {', '.join(versions) or '(none)'}"
+        )
+    platforms: dict[str, Any] = {}
+    for entry in sorted(metadata_entries, key=lambda item: str(item["platform"])):
+        platform = entry["platform"]
+        if platform in platforms:
+            raise SystemExit(f"duplicate bundle metadata platform: {platform!r}")
+        platforms[platform] = {
+            "sha256": entry["sha256"],
+            "url": entry["url_template"].format(version=entry["version"], platform=platform),
+        }
+    footer: dict[str, Any] = {"version": versions[0], "platforms": platforms}
+    if public_key_pem:
+        footer["public_key"] = public_key_pem
+    return footer
+
+
+def _strip_footer(payload: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in payload.items() if key != "runtime_bundle"}
+
+
+def _encoded_contract(contract: dict[str, Any]) -> bytes:
+    return (json.dumps(contract, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
 def _write_atomic(path: Path, content: bytes) -> None:
@@ -149,15 +199,67 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--bundle-metadata",
+        type=Path,
+        action="append",
+        default=[],
+        help="bundle-metadata.json from scripts/build_runtime_bundle.py (repeat per "
+        "platform); stamps the runtime_bundle footer (version + per-platform URLs + "
+        "sha256s). --check ignores the footer either way.",
+    )
+    parser.add_argument(
+        "--bundle-public-key",
+        type=Path,
+        default=None,
+        help="PEM public key used to verify bundle manifests; embedded in the footer "
+        "next to the URLs/hashes (requires --bundle-metadata)",
+    )
     args = parser.parse_args()
-    content = _encoded_contract()
+
+    public_key_pem: str | None = None
+    if args.bundle_public_key is not None:
+        if not args.bundle_metadata:
+            raise SystemExit("--bundle-public-key requires --bundle-metadata")
+        public_key_pem = args.bundle_public_key.read_text(encoding="utf-8").strip()
+        if not public_key_pem:
+            raise SystemExit(f"--bundle-public-key file is empty: {args.bundle_public_key}")
+
+    contract = build_contract()
+    footer = (
+        build_runtime_bundle_footer(
+            load_bundle_metadata(args.bundle_metadata), public_key_pem=public_key_pem
+        )
+        if args.bundle_metadata
+        else None
+    )
+
     if args.check:
-        if not args.output.is_file() or args.output.read_bytes() != content:
+        # The gate covers the library SURFACE only. The runtime_bundle footer is stamped
+        # at bundle-cut time and carried verbatim in the checked-in file; it is never
+        # derivable from the engine sources, so it must not affect freshness.
+        if not args.output.is_file():
+            raise SystemExit(f"stale generated runtime contract: {args.output}")
+        checked = json.loads(args.output.read_text(encoding="utf-8"))
+        if _encoded_contract(_strip_footer(checked)) != _encoded_contract(contract):
             raise SystemExit(f"stale generated runtime contract: {args.output}")
         print(f"runtime contract OK: {args.output}")
+        if args.bundle_metadata:
+            print(json.dumps({"runtime_bundle": footer}, indent=2, sort_keys=True))
         return 0
-    _write_atomic(args.output, content)
+
+    if footer is None and args.output.is_file():
+        # A regeneration without fresh metadata must NOT drop a stamped footer —
+        # `make inventory-refresh` keeps the pinned bundle until the next cut.
+        existing = json.loads(args.output.read_text(encoding="utf-8"))
+        if isinstance(existing.get("runtime_bundle"), dict):
+            footer = existing["runtime_bundle"]
+    if footer is not None:
+        contract["runtime_bundle"] = footer
+    _write_atomic(args.output, _encoded_contract(contract))
     print(f"wrote {args.output}")
+    if footer is not None:
+        print(json.dumps({"runtime_bundle": footer}, indent=2, sort_keys=True))
     return 0
 
 

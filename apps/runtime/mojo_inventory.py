@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -63,6 +64,12 @@ DEFAULT_BENCHMARK_MOJO_DIR = _PROJECT_ROOT / "benchmarks" / "mojo_benchmarks"
 DEFAULT_RUNTIME_LIBRARY_CACHE = (
     _PROJECT_ROOT / ".cache" / "algenta" / "runtime_library_inventory.json"
 )
+# Env override pointing at a prebuilt runtime-library inventory JSON (same schema the
+# source-scan cache uses, minus the source fingerprint). The managed-runtime bundle
+# (scripts/build_runtime_bundle.py) ships this baked inventory next to the precompiled
+# workers and no .mojo source to scan; when present and valid, the baked inventory is
+# returned ahead of any source discovery.
+RUNTIME_LIBRARY_INVENTORY_ENV = "ALGENTA_RUNTIME_LIBRARY_INVENTORY"
 # Bump this whenever the PARSE changes shape, not only when the cached record's fields do.
 # The cache fingerprint is built from source mtimes alone, so a parser fix is invisible to it:
 # with a warm cache the old parse is replayed and the fix silently does nothing. That is how
@@ -839,12 +846,60 @@ def _write_runtime_library_manifest(
         return
 
 
+def load_prebuilt_inventory(
+    path: Path,
+    *,
+    executable_only: bool,
+) -> tuple[RuntimeLibraryModule, ...] | None:
+    """Load a prebuilt runtime-library inventory JSON produced at build time.
+
+    Uses the same on-disk schema as the source-scan cache
+    (``{schema_version, engine_root, executable_only, modules:[...]}``) but deliberately
+    does NOT require a source fingerprint match: the managed-runtime bundle ships this
+    baked inventory with the precompiled workers and no ``.mojo`` source to fingerprint,
+    so gating on the source snapshot would always fail.
+
+    Returns ``None`` (so callers can fall back to the source scan) when the file is
+    missing/unreadable, is not a dict, or its ``schema_version`` / ``executable_only``
+    do not match. Module ``path`` values are resolved against the payload's
+    ``engine_root`` when present, else :data:`DEFAULT_ENGINE_DIR`; these paths need not
+    exist on disk in a bundle.
+    """
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("schema_version") != _RUNTIME_LIBRARY_CACHE_SCHEMA_VERSION:
+        return None
+    if bool(payload.get("executable_only", True)) != executable_only:
+        return None
+    modules = payload.get("modules")
+    if not isinstance(modules, list):
+        return None
+    engine_root_value = payload.get("engine_root")
+    engine_root = Path(str(engine_root_value)) if engine_root_value else DEFAULT_ENGINE_DIR
+    try:
+        return tuple(_runtime_module_from_dict(dict(module), engine_root) for module in modules)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def discover_runtime_library_modules(
     engine_root: Path = DEFAULT_ENGINE_DIR,
     *,
     executable_only: bool = True,
     cache_path: Path | None = None,
 ) -> tuple[RuntimeLibraryModule, ...]:
+    prebuilt_env = os.environ.get(RUNTIME_LIBRARY_INVENTORY_ENV)
+    if prebuilt_env:
+        prebuilt = load_prebuilt_inventory(Path(prebuilt_env), executable_only=executable_only)
+        if prebuilt is not None:
+            return prebuilt
+
     resolved_cache_path = _runtime_cache_path(engine_root, cache_path)
     targets, fingerprint = _runtime_module_targets_snapshot(engine_root)
     if resolved_cache_path is not None:

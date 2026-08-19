@@ -1,0 +1,384 @@
+# Build + sign + verify + publish the managed-runtime bundle — the artifact the SQAI
+# provisioner downloads and runs transparently (no venv, no repo checkout, no manual
+# daemon). The bundle carries main's SHARDED runtime workers (27 shards × <=24 modules,
+# the #2766 module-ceiling mitigation) + their runtime-shards.json routing map, a frozen
+# PyInstaller daemon, a baked runtime-library inventory (the lean bundle ships no .mojo
+# source) and a trimmed CPython home for the workers' embedded interpreter.
+#
+# Fleet conventions (GitHub-hosted runners are billing-blocked for this org): the darwin
+# leg runs on the self-hosted macOS fleet with the Homebrew python3.14 shim (no
+# actions/setup-python — it hardcodes GitHub-hosted toolcache paths); the linux-x64 leg
+# runs inside an amd64 ubuntu:22.04 container on the same fleet (same pattern as
+# build-runtime.yml's build-linux job). Linux OS baseline: the daemon is PyInstaller-built
+# ON ubuntu:22.04, so its floor is ubuntu:22.04's glibc (2.35); the acceptance gate below
+# re-runs the built bundle inside a CLEAN ubuntu:22.04 container.
+#
+# Signing: secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY (RSA-4096; the matching public key
+# is embedded in the SQAI SDK's trust root — runtime/trust.ts, key_id
+# algenta-runtime-bundle-release-1). Without the secret (forks / dry runs) the build falls
+# back to a LOUDLY-flagged dev keypair; the SQAI provisioner rejects dev-signed bundles.
+#
+# Distribution: GitHub Release assets on runtime-bundle-v* tags (this repo has no R2
+# secrets; the provisioner fetches plain HTTPS URLs, so release asset URLs work as-is).
+# The runtime_bundle footer for the capability contract is regenerated at cut time with
+# scripts/generate_algenta_runtime_contract.py --bundle-metadata.
+
+name: build-runtime-bundle
+
+on:
+  push:
+    tags: ["runtime-bundle-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "runtime_bundle_version (default: 0.1.1-dev)"
+        required: false
+        default: "0.1.1-dev"
+
+permissions:
+  contents: write # release upload on runtime-bundle-v* tags
+
+# Never let two overlapping cuts of the same ref race on the release tag; queue instead
+# of cancelling a cut mid-flight.
+concurrency:
+  group: runtime-bundle-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Job-level (not step-level) so BOTH the shard compiles AND the bundle's
+  # inventory-baking step see the same module set — the baked inventory must match the
+  # compiled workers (else discovery advertises functions the worker can't run). The
+  # production cut leaves this EMPTY: build_runtime_shards.py compiles the full catalog
+  # across the shards, and the baked inventory is the same full catalog. A filtered
+  # local/dry-run build sets it for both halves at once.
+  MOJO_RUNTIME_MODULE_FILTER: ""
+
+jobs:
+  build:
+    name: bundle (darwin-arm64)
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 300
+    env:
+      ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY: ${{ secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Resolve bundle version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == runtime-bundle-v* ]]; then
+            echo "version=${GITHUB_REF_NAME#runtime-bundle-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ github.event.inputs.version || '0.1.1-dev' }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # setup-python's macOS .pkg installer needs passwordless sudo (not available on this
+      # self-hosted runner), so shim the Homebrew python3.14 binary onto PATH as
+      # `python3`/`python` instead (same shim as build-runtime.yml).
+      - name: Shim python3.14 as python3/python (macOS)
+        run: |
+          PY314="$(command -v python3.14 || true)"
+          for candidate in "$PY314" /opt/homebrew/bin/python3.14 /usr/local/bin/python3.14; do
+            if [[ -n "$candidate" && -x "$candidate" ]]; then PY314="$candidate"; break; fi
+          done
+          if [[ -z "${PY314:-}" || ! -x "$PY314" ]]; then
+            echo "::error::python3.14 not found on this runner" >&2
+            exit 1
+          fi
+          echo "shimming $PY314 as python3/python" >&2
+          mkdir -p "$RUNNER_TEMP/py314-shim"
+          ln -sf "$PY314" "$RUNNER_TEMP/py314-shim/python3"
+          ln -sf "$PY314" "$RUNNER_TEMP/py314-shim/python"
+          echo "$RUNNER_TEMP/py314-shim" >> "$GITHUB_PATH"
+
+      - name: Verify generated public runtime contract
+        run: python3 scripts/generate_algenta_runtime_contract.py --check
+
+      - name: Install Pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$GITHUB_WORKSPACE/.pixi" PIXI_BIN_DIR="$GITHUB_WORKSPACE/.pixi/bin" PIXI_NO_PATH_UPDATE=1 bash
+          echo "$GITHUB_WORKSPACE/.pixi/bin" >> "$GITHUB_PATH"
+
+      - name: Install Mojo/Pixi environment
+        run: PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
+
+      - name: Select an Xcode with the Metal toolchain Mojo requires
+        run: |
+          # Mirror of build-runtime.yml's Metal selection: Mojo's Metal backend refuses
+          # anything below Xcode 16.0, and the darwin bundle ships METAL workers (the
+          # -D ALGENTA_GPU lane), so the shard compile needs a real Metal toolchain.
+          best_path=""
+          best_version="0"
+          for app in /Applications/Xcode*.app; do
+            [[ -d "$app" ]] || continue
+            version=$(DEVELOPER_DIR="$app/Contents/Developer" /usr/bin/xcodebuild -version 2>/dev/null | \
+              awk '/^Xcode/{print $2; exit}')
+            [[ -z "$version" ]] && continue
+            if [[ "$(printf '%s\n%s\n' "$version" "$best_version" | sort -V | tail -1)" == "$version" ]]; then
+              best_version="$version"
+              best_path="$app"
+            fi
+          done
+          if [[ -z "$best_path" || "$(printf '%s\n16.0\n' "$best_version" | sort -V | head -1)" != "16.0" ]]; then
+            echo "::error::no Xcode >= 16.0 found under /Applications on this runner" >&2
+            exit 1
+          fi
+          echo "selecting ${best_path} (Xcode ${best_version})" >&2
+          echo "DEVELOPER_DIR=${best_path}/Contents/Developer" >> "$GITHUB_ENV"
+
+      - name: Compile bounded runtime worker shards
+        env:
+          # Same matrix values as build-runtime.yml's macos-arm64 leg: Metal GPU ON (the
+          # darwin bundle ships Metal workers), no mcpu override, no RSS ceiling (macOS
+          # compresses/swaps dynamically).
+          MOJO_BUILD_METAL_GPU: "1"
+          PIXI_HOME: ${{ github.workspace }}/.pixi
+          RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
+        run: |
+          set -euo pipefail
+          python3 scripts/build_runtime_shards.py \
+            --out "${GITHUB_WORKSPACE}/mojo_build/runtime-shards" \
+            --shard-size 24 \
+            --timeout-seconds 300 \
+            --max-rss-mb 0
+
+      - name: Stage self-contained runtime package
+        run: |
+          set -euo pipefail
+          python3 scripts/stage_runtime_worker_package.py \
+            --worker-dir "${GITHUB_WORKSPACE}/mojo_build/runtime-shards" \
+            --shard-map "${GITHUB_WORKSPACE}/mojo_build/runtime-shards/runtime-shards.json" \
+            --lib-root "${GITHUB_WORKSPACE}/mojo_env/.pixi/envs/default/lib" \
+            --out "${GITHUB_WORKSPACE}/mojo_build/runtime-wheel" \
+            --platform darwin
+
+      - name: Strip staged runtime artifacts
+        run: |
+          set -euo pipefail
+          cd mojo_build/runtime-wheel
+          for artifact in *; do
+            [ -f "$artifact" ] || continue
+            strip -x "$artifact" 2>/dev/null || true
+          done
+          for artifact in *; do
+            [ -f "$artifact" ] || continue
+            if file -b "$artifact" | grep -q 'Mach-O'; then
+              codesign --force --sign - "$artifact"
+              codesign --verify --strict "$artifact"
+            fi
+          done
+
+      - name: Install daemon build deps (PyInstaller closure)
+        run: |
+          # The frozen daemon's third-party closure (scripts/runtime_bundle.spec):
+          # structlog, grpcio, protobuf, PyJWT, cryptography, pydantic + pydantic_settings
+          # (the AuthContext chain). The shimmed Homebrew python3.14 is PEP 668 externally
+          # managed; this runner's tool interpreter IS the intended environment.
+          python3 -m pip install --quiet --break-system-packages \
+            pyinstaller structlog grpcio protobuf PyJWT cryptography pydantic pydantic_settings
+          python3 -m PyInstaller --version
+
+      - name: Build signed runtime bundle
+        run: |
+          python3 scripts/build_runtime_bundle.py \
+            --version "${{ steps.version.outputs.version }}" \
+            --output-dir dist/runtime-bundle
+
+      - name: Verify bundle (reference verifier)
+        run: |
+          python3 scripts/verify_runtime_bundle.py \
+            dist/runtime-bundle/algenta-runtime-*-darwin-arm64.tar.gz \
+            --public-key dist/runtime-bundle/bundle-signing-public.pem
+
+      - name: Acceptance gate — run the bundled daemon directly (macOS)
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/bundle-extract-darwin
+          mkdir -p /tmp/bundle-extract-darwin
+          tar -xzf dist/runtime-bundle/algenta-runtime-*-darwin-arm64.tar.gz -C /tmp/bundle-extract-darwin
+          ALGENTA_RUNTIME_DIR=/tmp/bundle-extract-darwin/.runtime \
+            /tmp/bundle-extract-darwin/daemon/algenta-runtime-daemon --version
+          ALGENTA_RUNTIME_DIR=/tmp/bundle-extract-darwin/.runtime \
+            ALGENTA_DAEMON_TCP=127.0.0.1:50198 \
+            ALGENTA_DAEMON_SOCK=/tmp/bundle-extract-darwin/daemon.sock \
+            ALGENTA_MOJO_SOCK=/tmp/bundle-extract-darwin/worker.sock \
+            /tmp/bundle-extract-darwin/daemon/algenta-runtime-daemon start &
+          DAEMON_PID=$!
+          for i in $(seq 1 90); do
+            if ALGENTA_RUNTIME_DIR=/tmp/bundle-extract-darwin/.runtime \
+               /tmp/bundle-extract-darwin/daemon/algenta-runtime-daemon status | grep -q "Algenta Runtime running"; then
+              echo "HEALTH CHECK OK (macOS direct run)"
+              ALGENTA_RUNTIME_DIR=/tmp/bundle-extract-darwin/.runtime \
+                /tmp/bundle-extract-darwin/daemon/algenta-runtime-daemon stop || true
+              kill "$DAEMON_PID" 2>/dev/null || true
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::daemon did not become healthy"
+          exit 1
+
+      - name: Stage per-platform artifacts
+        run: |
+          cp dist/runtime-bundle/bundle-metadata.json \
+             "dist/runtime-bundle/bundle-metadata-darwin-arm64.json"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: runtime-bundle-darwin-arm64
+          if-no-files-found: error
+          path: |
+            dist/runtime-bundle/algenta-runtime-*.tar.gz
+            dist/runtime-bundle/bundle-metadata-darwin-arm64.json
+            dist/runtime-bundle/bundle-signing-public.pem
+
+  build-linux:
+    name: bundle (linux-x64)
+    # The linux leg runs on the self-hosted macOS fleet inside an amd64 ubuntu:22.04
+    # container (GitHub-hosted runners are billing-blocked, and job-level `container:`
+    # requires a Linux runner) — the same pattern build-runtime.yml's build-linux uses.
+    # Everything inside the container mirrors the hosted pipeline — see
+    # .github/scripts/build_runtime_bundle_linux_amd64.sh.
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 420
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Resolve bundle version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == runtime-bundle-v* ]]; then
+            echo "version=${GITHUB_REF_NAME#runtime-bundle-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ github.event.inputs.version || '0.1.1-dev' }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build linux bundle in an amd64 container
+        env:
+          ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY: ${{ secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY }}
+          BUNDLE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker pull --platform linux/amd64 ubuntu:22.04
+          # Emulation is slower than native x86_64, so the per-shard timeout is enlarged
+          # (same budget as build-runtime's build-linux); the RSS ceiling is generous
+          # (fleet RAM >> the compiler's peak).
+          docker run --rm --platform linux/amd64 \
+            --user root \
+            -v "$GITHUB_WORKSPACE:/work" -w /work \
+            -e ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY \
+            -e BUNDLE_VERSION \
+            -e GITHUB_REPOSITORY \
+            -e SHARD_TIMEOUT=2700 -e SHARD_MAX_RSS_MB=32768 \
+            ubuntu:22.04 bash .github/scripts/build_runtime_bundle_linux_amd64.sh
+
+      - name: Acceptance gate — clean ubuntu:22.04 container health check
+        run: |
+          rm -rf /tmp/bundle-extract-linux
+          mkdir -p /tmp/bundle-extract-linux
+          docker run --rm --platform linux/amd64 \
+            -v "$GITHUB_WORKSPACE/dist/runtime-bundle:/opt/bundle" \
+            -v /tmp/bundle-extract-linux:/opt/extract \
+            ubuntu:22.04 bash -ec '
+              tar -xzf /opt/bundle/algenta-runtime-*-linux-x64.tar.gz -C /opt/extract
+              ALGENTA_RUNTIME_DIR=/opt/extract/.runtime /opt/extract/daemon/algenta-runtime-daemon --version
+              ALGENTA_RUNTIME_DIR=/opt/extract/.runtime \
+                ALGENTA_DAEMON_TCP=127.0.0.1:50199 \
+                ALGENTA_DAEMON_SOCK=/opt/extract/daemon.sock \
+                ALGENTA_MOJO_SOCK=/opt/extract/worker.sock \
+                /opt/extract/daemon/algenta-runtime-daemon start &
+              for i in $(seq 1 90); do
+                if ALGENTA_RUNTIME_DIR=/opt/extract/.runtime \
+                   /opt/extract/daemon/algenta-runtime-daemon status | grep -q "Algenta Runtime running"; then
+                  echo "HEALTH CHECK OK (clean ubuntu:22.04, glibc baseline)"
+                  exit 0
+                fi
+                sleep 1
+              done
+              echo "daemon did not become healthy in a clean container"
+              ALGENTA_RUNTIME_DIR=/opt/extract/.runtime /opt/extract/daemon/algenta-runtime-daemon status || true
+              exit 1
+            '
+
+      - name: Stage per-platform artifacts
+        run: |
+          cp dist/runtime-bundle/bundle-metadata.json \
+             "dist/runtime-bundle/bundle-metadata-linux-x64.json"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: runtime-bundle-linux-x64
+          if-no-files-found: error
+          path: |
+            dist/runtime-bundle/algenta-runtime-*.tar.gz
+            dist/runtime-bundle/bundle-metadata-linux-x64.json
+            dist/runtime-bundle/bundle-signing-public.pem
+
+  release:
+    name: GitHub release (runtime-bundle-v* tags)
+    needs: [build, build-linux]
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'runtime-bundle-v')
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: runtime-bundle-darwin-arm64
+          path: artifacts
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: runtime-bundle-linux-x64
+          path: artifacts
+
+      - name: Create release with bundles + metadata + public key
+        # The fleet runners are bare Macs with no guaranteed `gh`; the release is created
+        # through the REST API with curl so the job has zero toolchain dependencies.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ls -la artifacts/
+          PY="$(command -v python3.14 || command -v python3)"
+          API="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          AUTH=(-H "authorization: Bearer ${GH_TOKEN}" -H "accept: application/vnd.github+json")
+          VERSION="${GITHUB_REF_NAME#runtime-bundle-v}"
+          RELEASE_JSON="$(mktemp)"
+          curl -fsSL -X POST "${AUTH[@]}" \
+            -H "content-type: application/json" \
+            -d @- "${API}/releases" -o "$RELEASE_JSON" <<JSON
+          {
+            "tag_name": "${GITHUB_REF_NAME}",
+            "name": "Algenta managed-runtime bundle ${VERSION}",
+            "body": "Signed self-contained Algenta runtime bundles (frozen daemon + sharded Mojo workers). Verify with scripts/verify_runtime_bundle.py and bundle-signing-public.pem."
+          }
+          JSON
+          UPLOAD_URL="$("$PY" -c "import json,sys; print(json.load(open(sys.argv[1]))['upload_url'].split('{')[0])" "$RELEASE_JSON")"
+          for asset in artifacts/algenta-runtime-*.tar.gz artifacts/bundle-metadata-*.json artifacts/bundle-signing-public.pem; do
+            name="$(basename "$asset")"
+            case "$name" in
+              *.tar.gz) ctype="application/gzip" ;;
+              *.json)   ctype="application/json" ;;
+              *.pem)    ctype="application/x-pem-file" ;;
+              *)        ctype="application/octet-stream" ;;
+            esac
+            curl -fsSL -X POST "${AUTH[@]}" \
+              -H "content-type: ${ctype}" \
+              --data-binary "@${asset}" \
+              "${UPLOAD_URL}?name=${name}" > /dev/null
+            echo "uploaded ${name}"
+          done
+
+      - name: Print contract footer fragment
+        # The runtime_bundle footer for the SQAI capability contract, regenerated with the
+        # REAL release URLs + hashes. Land it with:
+        #   python3 scripts/generate_algenta_runtime_contract.py \
+        #     --bundle-metadata .../bundle-metadata-darwin-arm64.json \
+        #     --bundle-metadata .../bundle-metadata-linux-x64.json \
+        #     --bundle-public-key .../bundle-signing-public.pem
+        run: |
+          PY="$(command -v python3.14 || command -v python3)"
+          "$PY" scripts/generate_algenta_runtime_contract.py --check \
+            --bundle-metadata artifacts/bundle-metadata-darwin-arm64.json \
+            --bundle-metadata artifacts/bundle-metadata-linux-x64.json \
+            --bundle-public-key artifacts/bundle-signing-public.pem

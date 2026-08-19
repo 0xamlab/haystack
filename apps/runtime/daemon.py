@@ -303,7 +303,58 @@ def is_running() -> bool:
 # ── Main daemon loop ──────────────────────────────────────────────────────────
 
 
+def _autoconfigure_bundle_runtime() -> None:
+    """Zero-setup wiring when the daemon runs from the managed runtime BUNDLE.
+
+    The bundle (scripts/build_runtime_bundle.py) ships, next to the sharded precompiled
+    workers, a baked runtime-library inventory and a trimmed CPython home — but no Mojo
+    toolchain and no .mojo source. When that layout is detected (runtime-shards.json AND
+    runtime_library_inventory.json next to the resolved worker) the library plane is pointed
+    at the baked inventory + precompiled-worker mode, and the worker's embedded CPython is
+    pointed at the bundled stdlib, so the runtime works with no toolchain and no checkout.
+    In the full workspace or an installed wheel none of these file pairs exist next to the
+    worker, so this is a no-op and behavior is unchanged.
+    """
+    engine_dir = _MOJO_BINARY.resolve().parent
+    shard_map = engine_dir / "runtime-shards.json"
+    inventory = engine_dir / "runtime_library_inventory.json"
+    if not (shard_map.is_file() and inventory.is_file()):
+        return
+    os.environ.setdefault("ALGENTA_RUNTIME_LIBRARY_INVENTORY", str(inventory))
+    os.environ.setdefault("ALGENTA_RUNTIME_LIBRARY_PRECOMPILED", "1")
+
+    # The workers embed CPython; on a clean machine the stdlib home is the bundle's own
+    # trimmed copy (<bundle-root>/python/lib/pythonX.Y). Point PYTHONHOME + the Mojo
+    # python-library override at the bundle so Py_Initialize finds it without any
+    # system interpreter. MOJO_PYTHON_LIBRARY targets the libpython staged next to the
+    # workers (the staging script relinks them to loader-relative paths).
+    bundle_root = engine_dir.parent
+    python_prefix = bundle_root / "python"
+    if os.environ.get("PYTHONHOME") is None:
+        lib_dir = python_prefix / "lib"
+        if lib_dir.is_dir():
+            homes = sorted(
+                entry for entry in lib_dir.iterdir()
+                if entry.is_dir() and entry.name.startswith("python3.")
+            )
+            if homes and (homes[0] / "os.py").is_file():
+                os.environ["PYTHONHOME"] = str(python_prefix)
+    if os.environ.get("MOJO_PYTHON_LIBRARY") is None:
+        for pattern in ("libpython3*.so*", "libpython3*.dylib"):
+            candidates = sorted(engine_dir.glob(pattern))
+            if candidates:
+                os.environ["MOJO_PYTHON_LIBRARY"] = str(candidates[0])
+                break
+    logger.info(
+        "bundle_runtime_autoconfigured",
+        engine_dir=str(engine_dir),
+        pythonhome=os.environ.get("PYTHONHOME"),
+    )
+
+
 async def _run_daemon() -> None:
+    _autoconfigure_bundle_runtime()
+
     from apps.runtime.executor import Executor
     from apps.runtime.metering import metering
     from apps.runtime.mojo_library_runner import library_runtime_available
