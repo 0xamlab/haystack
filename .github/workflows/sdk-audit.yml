@@ -154,7 +154,12 @@ jobs:
       # python3.14 is a Homebrew-installed binary already on this runner's PATH.
       - name: Install published SDK from PyPI
         run: |
-          python3.14 -m venv /tmp/algenta-audit-venv
+          # --clear: this runs directly on the self-hosted fleet, where /tmp persists between
+          # jobs. A stale /tmp/algenta-audit-venv created by an earlier run keeps its OLD base
+          # interpreter (venv without --clear reuses an existing dir's pyvenv.cfg), and pip then
+          # rejects the >=3.14 wheels with "requires a different Python" — the same poisoned-venv
+          # pattern that broke build-runtime's wheel validation (fixed there in #762).
+          python3.14 -m venv --clear /tmp/algenta-audit-venv
           /tmp/algenta-audit-venv/bin/pip install --upgrade pip
           /tmp/algenta-audit-venv/bin/pip install algenta
 

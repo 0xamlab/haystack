@@ -34,6 +34,19 @@ MOJO_BUILD_MCPU="${MOJO_BUILD_MCPU:-}"
 # instead of reporting `shader_toolchain_absent`. Darwin only: there is no Metal on Linux, so this
 # is refused rather than silently ignored there (see the platform check below).
 MOJO_BUILD_METAL_GPU="${MOJO_BUILD_METAL_GPU:-0}"
+# Opt-IN CUDA GPU build, mirror image of the Metal knob. Default OFF everywhere, deliberately.
+# Set MOJO_BUILD_CUDA_GPU=1 to additionally pass `-D ALGENTA_GPU -D ALGENTA_CUDA` and
+# `--target-accelerator ${MOJO_BUILD_CUDA_TARGET}`. The define pair is the two-tier GPU gate the
+# engine's sources implement (see tests/test_accel_gpu_isolation.py): ALGENTA_GPU compiles in the
+# PORTABLE GPU kernels (accel/residentk), while metaldispatch's Metal shim machinery additionally
+# requires ALGENTA_METAL — so a CUDA build gets the portable kernels WITHOUT the Objective-C shim
+# its FFI layer would otherwise reference as undefined symbols at link time. CUDA
+# cross-compilation needs NO CUDA toolkit and NO GPU: the NVPTX backend lives inside the pinned
+# mojo-compiler itself, and `--emit object` + external clang link is the exact pattern the Metal
+# lane already uses GPU-less (the CUDA runtime ships inside max-core's linux-64 package; runtime
+# deployment additionally needs an NVIDIA driver >= 580 and real hardware, which is a docs concern,
+# not a build one). Linux only: refused on Darwin exactly as Metal is refused on non-Darwin below.
+MOJO_BUILD_CUDA_GPU="${MOJO_BUILD_CUDA_GPU:-0}"
 METAL_SHIM_SOURCE_PATH="${METAL_SHIM_SOURCE_PATH:-${REPO_ROOT}/benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m}"
 # Extra prebuilt object files to append to the final link (comma- and/or space-separated paths).
 # The GPU session's pipeline discovery finds its Metal kernels by NAME inside whatever blob
@@ -57,6 +70,12 @@ MOJO_BUILD_EXTRA_DEFINES_RAW="${MOJO_BUILD_EXTRA_DEFINES:-}"
 # choice MOJO_BUILD_MCPU already makes for CPU builds. Override with MOJO_BUILD_METAL_TARGET if a
 # narrower target is ever needed.
 MOJO_BUILD_METAL_TARGET="${MOJO_BUILD_METAL_TARGET:-apple-m1}"
+# The CUDA counterpart of MOJO_BUILD_METAL_TARGET: the explicit accelerator architecture the
+# NVPTX backend inside mojo-compiler emits for, sidestepping the build-host GPU query exactly as
+# the Metal knob does (and for the same reason — the build host has no NVIDIA GPU to query).
+# `sm_90` (Hopper) is the default the CUDA compile gate was spiked against; override with e.g.
+# `cuda` (generic PTX) or a narrower `sm_NN` when a specific deployment fleet needs it.
+MOJO_BUILD_CUDA_TARGET="${MOJO_BUILD_CUDA_TARGET:-sm_90}"
 # The pinned Mojo compiler (Mojo 1.0.0; this ceiling was first reproduced on the earlier
 # 0.26.3.0.dev nightly and was still present on 1.0.0b2 — scripts/probe_mojo_module_ceiling.sh
 # re-verifies the status on every pin change) has a genuine, upstream, still-open
@@ -199,6 +218,29 @@ if [[ "${METAL_GPU_BUILD}" == "1" && "$(uname -s)" != "Darwin" ]]; then
 fi
 if [[ "${METAL_GPU_BUILD}" == "1" && ! -f "${METAL_SHIM_SOURCE_PATH}" ]]; then
     echo "METAL_SHIM_SOURCE_PATH not found: ${METAL_SHIM_SOURCE_PATH}" >&2
+    exit 1
+fi
+
+CUDA_GPU_BUILD=0
+case "${MOJO_BUILD_CUDA_GPU}" in
+    1 | true | TRUE | yes | YES) CUDA_GPU_BUILD=1 ;;
+esac
+if [[ "${CUDA_GPU_BUILD}" == "1" && "$(uname -s)" != "Linux" ]]; then
+    # Mirror image of the Metal guard above, and refused for the same class of reason: a caller
+    # who set this expects a binary that runs CUDA kernels. The COMPILE itself is host-agnostic
+    # (the NVPTX backend is inside mojo-compiler), but the runtime this build links against —
+    # max-core's libMGPRT plus a dlopen'd libcuda.so.1 — is Linux-only, so a Darwin build here
+    # could only produce a binary that never runs. Refused, not silently ignored.
+    echo "MOJO_BUILD_CUDA_GPU=1 requested on $(uname -s); the CUDA runtime lane is Linux-only." \
+        "Unset it for a portable build, or build in a Linux environment." >&2
+    exit 1
+fi
+if [[ "${CUDA_GPU_BUILD}" == "1" && "${METAL_GPU_BUILD}" == "1" ]]; then
+    # One worker binary ships ONE accelerator backend (see accel/device.mojo's backend selector):
+    # the defines would both be set, and the Metal shim and CUDA runtime would fight over the
+    # same binary. Build the two lanes as two binaries.
+    echo "MOJO_BUILD_CUDA_GPU=1 and MOJO_BUILD_METAL_GPU=1 are mutually exclusive; a worker" \
+        "binary ships one accelerator backend. Run one build per backend." >&2
     exit 1
 fi
 
@@ -379,8 +421,20 @@ if [[ -n "${MOJO_BUILD_MCPU}" ]]; then
     echo "[build_mojo_binary] target CPU: ${MOJO_BUILD_MCPU} (portable; not host-native)" >&2
 fi
 if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
-    MOJO_TARGET_ARGS+=(-D ALGENTA_GPU --target-accelerator "${MOJO_BUILD_METAL_TARGET}")
+    # BOTH defines: ALGENTA_GPU compiles the portable GPU kernels in, ALGENTA_METAL compiles the
+    # metaldispatch shim machinery in (its gate conjuncts the two — see
+    # metaldispatch/session.mojo's MB_GPU_BUILD). Metal builds passed only ALGENTA_GPU before the
+    # two-tier split; passing both keeps that lane's gate values bit-identical.
+    MOJO_TARGET_ARGS+=(-D ALGENTA_GPU -D ALGENTA_METAL --target-accelerator "${MOJO_BUILD_METAL_TARGET}")
     echo "[build_mojo_binary] target accelerator: ${MOJO_BUILD_METAL_TARGET} (portable; not host-queried)" >&2
+fi
+if [[ "${CUDA_GPU_BUILD}" == "1" ]]; then
+    # BOTH defines: ALGENTA_GPU compiles the portable GPU kernels in, ALGENTA_CUDA selects the
+    # CUDA backend answer in accel.device — and, by NOT passing ALGENTA_METAL, compiles the
+    # metaldispatch shim machinery OUT (its absence is what makes this link succeed without the
+    # Objective-C shim object).
+    MOJO_TARGET_ARGS+=(-D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator "${MOJO_BUILD_CUDA_TARGET}")
+    echo "[build_mojo_binary] target accelerator: ${MOJO_BUILD_CUDA_TARGET} (CUDA; portable, not host-queried)" >&2
 fi
 if [[ "${#EXTRA_DEFINE_ARGS[@]}" -gt 0 ]]; then
     MOJO_TARGET_ARGS+=("${EXTRA_DEFINE_ARGS[@]}")
@@ -414,6 +468,19 @@ for _rt_lib in "${MOJO_RUNTIME_CORE_LIBS[@]}" "${MOJO_RUNTIME_OPTIONAL_LIBS[@]}"
         MOJO_RUNTIME_LINK_ARGS+=("-l${_rt_lib}")
     fi
 done
+
+if [[ "${CUDA_GPU_BUILD}" == "1" ]]; then
+    # Same fail-loud discipline as the core-set check above, for the CUDA lane's own runtime: a
+    # CUDA build links the MAX CUDA runtime by name, so a toolchain release that stops shipping
+    # it must produce a red build with an actionable message — never a link error that surfaces
+    # as an undifferentiated wall of undefined symbols.
+    if ! ls "${LIB_DIR}/libMGPRT."* >/dev/null 2>&1; then
+        echo "[build_mojo_binary] ERROR: CUDA build requested, but libMGPRT (the MAX CUDA runtime) is missing from ${LIB_DIR}." >&2
+        echo "[build_mojo_binary] It ships inside the linux-64 max-core package — check the mojo/max pins in mojo_env/pixi.toml," >&2
+        echo "[build_mojo_binary] and that this environment was installed for linux-64." >&2
+        exit 1
+    fi
+fi
 
 # Hide the MAX packages whose names collide with this repo's runtime-library modules — see
 # scripts/shadow_max_pkg_name_collisions.sh for the full rationale. Every build re-runs this so a
@@ -482,6 +549,20 @@ case "$(uname -s)" in
         fi
         echo "[build_mojo_binary] C++ runtime libs in ${LIB_DIR}:" >&2
         ls -la "${LIB_DIR}"/libstdc++* "${LIB_DIR}"/libc++* >&2 2>&1 || true
+        CUDA_LINUX_LINK_ARGS=()
+        if [[ "${CUDA_GPU_BUILD}" == "1" ]]; then
+            # The CUDA lane's runtime library is libMGPRT (the MAX CUDA runtime, shipped inside
+            # linux-64 max-core — presence asserted loudly above). Measured during the compile
+            # gate spike: the current shard set links clean even WITHOUT it (no undefined MGPRT
+            # symbols — today only accel.gemm_metal's kernel is reachable as PTX from a worker
+            # shard), so under the distro linker's default --as-needed this costs nothing now;
+            # it is declared anyway because the day more resident kernels become reachable from
+            # a CUDA shard the object WILL reference it, and the link must succeed then.
+            # libcuda.so.1 stays a RUNTIME dlopen of the host's NVIDIA driver (>= 580 for this
+            # MAX release) and is NEVER a link dependency: the build host has no driver
+            # installed and must not need one.
+            CUDA_LINUX_LINK_ARGS+=(-lMGPRT)
+        fi
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
             -L "${LIB_DIR}" \
             -Wl,-rpath,'$ORIGIN/../mojo_env/.pixi/envs/default/lib' \
@@ -492,6 +573,7 @@ case "$(uname -s)" in
             -ldl \
             -lpthread \
             -lm \
+            "${CUDA_LINUX_LINK_ARGS[@]+"${CUDA_LINUX_LINK_ARGS[@]}"}" \
             "${EXTRA_LINK_OBJECTS[@]+"${EXTRA_LINK_OBJECTS[@]}"}"
         ;;
     *)

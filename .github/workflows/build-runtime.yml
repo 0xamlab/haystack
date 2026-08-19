@@ -344,6 +344,43 @@ jobs:
           name: algenta-runtime-native-linux-x86_64
           path: dist-runtime/*.whl
 
+  build-linux-cuda:
+    name: build bundled runtime wheel (linux-x86_64, CUDA compile gate)
+    # COMPILE-GATED lane — compile-verified, launch-UNVERIFIED without NVIDIA hardware.
+    # Cross-compiling the portable GPU kernels for NVIDIA targets
+    # (`-D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_90`) needs NO CUDA toolkit and NO
+    # GPU: the NVPTX backend ships inside the pinned mojo toolchain and the MAX CUDA runtime
+    # (libMGPRT) ships inside linux-64 max-core, both already in the lock. This job proves on
+    # every run that the CUDA lane still compiles and links. Launching the result needs an
+    # NVIDIA driver >= 580 plus real hardware, which the fleet does not have — so this job is
+    # deliberately NOT in clean-machine-contract's or publish-pypi's `needs`, and its wheel is a
+    # compile-gate artifact, not a shippable one (publish-pypi downloads release artifacts by
+    # explicit name below, so this wheel can never reach PyPI by accident).
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Build linux CUDA runtime in an amd64 container
+        env:
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
+          RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
+        run: |
+          docker pull --platform linux/amd64 ubuntu:22.04
+          # Same emulation budget as build-linux: the CUDA variant compiles the SAME shard set,
+          # with PTX codegen added for the gated kernels (measured shard-time growth during the
+          # spike stays inside this timeout).
+          docker run --rm --platform linux/amd64 \
+            --user root \
+            -v "$GITHUB_WORKSPACE:/work" -w /work \
+            -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
+            -e BUILD_VARIANT=cuda \
+            -e SHARD_TIMEOUT=2700 -e SHARD_MAX_RSS_MB=32768 \
+            ubuntu:22.04 bash .github/scripts/build_runtime_linux_amd64.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: algenta-runtime-native-linux-x86_64-cuda
+          path: dist-runtime/*.whl
+
   clean-machine-contract:
     name: clean-machine contract (no external toolchain)
     needs: [build, build-linux]
@@ -386,11 +423,21 @@ jobs:
     permissions:
       contents: read
     steps:
+      # EXPLICIT artifact names, not the historical `algenta-runtime-native-*` glob: the CUDA
+      # compile-gate job above uploads algenta-runtime-native-linux-x86_64-cuda, whose wheel
+      # carries the SAME filename as the shipped linux wheel (same package, same platform tag —
+      # only the compiled shards inside differ). A glob download merged with `merge-multiple`
+      # would non-deterministically overwrite one with the other inside dist-pypi, and the CUDA
+      # wheel is launch-unverified: it must never reach PyPI. Compile-gate artifacts stay out of
+      # the publish set by construction.
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          pattern: algenta-runtime-native-*
+          name: algenta-runtime-native-macos-arm64
           path: dist-pypi
-          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: algenta-runtime-native-linux-x86_64
+          path: dist-pypi
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: algenta-package

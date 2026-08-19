@@ -70,9 +70,10 @@ Public API:
 """
 
 from max.gpu.host import DeviceContext
-from std.sys import has_accelerator
+from std.sys import has_accelerator, is_defined
 from std.sys.info import _accelerator_arch
 from accel.contract import (
+    ACCEL_BACKEND_CUDA,
     ACCEL_BACKEND_METAL,
     ACCEL_BACKEND_NONE,
     ACCEL_ERR_NO_DEVICE,
@@ -182,9 +183,15 @@ def accel_device_probe() -> DeviceProbe:
             # Present but not openable. Still not `ACCEL_OK`, and still not "no device".
             return DeviceProbe(True, False, ACCEL_BACKEND_NONE, 0, ACCEL_ERR_NO_DEVICE)
 
-        # This build ships ONE accelerator backend, so the answer is Metal or nothing.
-        # Discriminating CUDA from ROCm from Metal is deliberately NOT attempted here: the tree has
-        # no CUDA or ROCm kernels yet, and a probe that reported `cuda` on a Linux host would be
-        # claiming a backend that does not exist. The discrimination arrives with the backends, not
-        # before them.
-        return DeviceProbe(True, False, ACCEL_BACKEND_METAL, name_len, ACCEL_OK)
+        # This build ships ONE accelerator backend, discriminated by the backend-selector
+        # define the binary was compiled with: a CUDA build (`-D ALGENTA_GPU -D ALGENTA_CUDA`)
+        # answers `ACCEL_BACKEND_CUDA`, every other accelerator build answers Metal. The
+        # discrimination is a BUILD fact (which define was passed), not a host query: a probe
+        # that sniffed the host's device to pick a backend would be guessing at exactly the
+        # thing the build already decided, and could report a backend whose kernels are not even
+        # compiled into this binary. ROCm arrives the same way CUDA did — with its own define.
+        @parameter
+        if is_defined["ALGENTA_CUDA"]():
+            return DeviceProbe(True, False, ACCEL_BACKEND_CUDA, name_len, ACCEL_OK)
+        else:
+            return DeviceProbe(True, False, ACCEL_BACKEND_METAL, name_len, ACCEL_OK)

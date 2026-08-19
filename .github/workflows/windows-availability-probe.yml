@@ -1,0 +1,137 @@
+# Windows availability probe — the win-64 runtime lane is blocked on upstream: Modular ships
+# Mojo/MAX for osx-arm64 and linux-64 only. This probe asks the two distribution surfaces daily
+# whether native Windows support has appeared, and opens ONE issue the day it has, so the win-64
+# lane (campaign memory M2-M5 plan) starts without anyone having to remember to re-check by hand.
+#
+#   (a) the conda channel grows a win-64 subdir carrying mojo packages
+#       (https://conda.modular.com/max/win-64/repodata.json)
+#   (b) PyPI's `mojo` distribution grows win_amd64 wheels
+#
+# Either signal alone is enough: the lane needs the TOOLCHAIN on Windows, and either surface
+# delivering it unblocks the same work. When nothing has changed the probe exits 0 with a
+# "still no native Windows" notice — green is the steady state.
+#
+# Deliberately dependency-free (curl + the fleet tool cache's python3, same shape as the other
+# fleet workflows): no actions/setup-python (needs passwordless sudo on this fleet), no pip
+# installs, nothing that can rot between daily runs.
+name: windows-availability-probe
+
+on:
+  schedule:
+    # Daily, off-minute per org convention (cf. codeql.yml's 23-past).
+    - cron: "41 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    name: probe for native Windows Mojo support
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 15
+    steps:
+      - name: Check the conda channel and PyPI for win-64 Mojo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          WORKDIR="$(mktemp -d)"
+          trap 'rm -rf "$WORKDIR"' EXIT
+
+          conda_signal=""
+          pypi_signal=""
+
+          # ── (a) conda channel: does https://conda.modular.com/max/win-64/ exist and ship mojo? ──
+          # A missing subdir answers 404 (curl -f fails); treat every non-200 as "not there yet".
+          if curl -fsSL --retry 3 --retry-delay 5 -o "$WORKDIR/repodata.json" \
+              https://conda.modular.com/max/win-64/repodata.json; then
+            conda_signal="$(python3 - "$WORKDIR/repodata.json" <<'PY'
+          import json
+          import sys
+
+          try:
+              with open(sys.argv[1], encoding="utf-8") as handle:
+                  data = json.load(handle)
+          except (OSError, ValueError):
+              sys.exit(0)  # unparseable body == not a real repodata == no signal
+          packages = {**data.get("packages", {}), **data.get("packages.conda", {})}
+          names = sorted({info.get("name", "") for info in packages.values() if isinstance(info, dict)})
+          if any(name == "mojo" for name in names):
+              print(f"conda channel win-64 repodata is live and ships mojo (channel packages: {', '.join(names)})")
+          PY
+            )"
+          else
+            echo "conda: no win-64 subdir (non-200 or unreachable) — not there yet"
+          fi
+
+          # ── (b) PyPI: does the `mojo` distribution ship win_amd64 wheels? ──
+          if curl -fsSL --retry 3 --retry-delay 5 -o "$WORKDIR/pypi.json" \
+              https://pypi.org/pypi/mojo/json; then
+            pypi_signal="$(python3 - "$WORKDIR/pypi.json" <<'PY'
+          import json
+          import sys
+
+          try:
+              with open(sys.argv[1], encoding="utf-8") as handle:
+                  data = json.load(handle)
+          except (OSError, ValueError):
+              sys.exit(0)
+          urls = data.get("urls", [])  # files of the LATEST release
+          wins = sorted({u.get("filename", "") for u in urls if "win_amd64" in u.get("filename", "")})
+          if wins:
+              print(f"PyPI mojo ships win_amd64 wheels: {', '.join(wins)}")
+          PY
+            )"
+          else
+            echo "pypi: mojo/json unreachable — treating as no signal this run"
+          fi
+
+          # ── Steady state: nothing changed, green with an honest notice. ──
+          if [[ -z "$conda_signal" && -z "$pypi_signal" ]]; then
+            echo "still no native Windows Mojo support (no win-64 conda packages, no win_amd64 PyPI wheels) — probe green, nothing to do"
+            exit 0
+          fi
+
+          {
+            echo "SIGNAL DETECTED:"
+            [[ -n "$conda_signal" ]] && echo "  - $conda_signal"
+            [[ -n "$pypi_signal" ]] && echo "  - $pypi_signal"
+          } | tee "$WORKDIR/signals.txt"
+
+          # ── Open ONE issue: skip when an open issue with this exact title already exists. ──
+          TITLE="Mojo native Windows support detected — start the win-64 lane (see campaign memory M2-M5 plan)"
+          SEARCH_URL="https://api.github.com/search/issues?q=repo:${GITHUB_REPOSITORY}+is:issue+is:open+in:title+%22Mojo+native+Windows+support+detected%22"
+          existing="$(curl -fsSL --retry 3 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$SEARCH_URL" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("total_count", 0))')"
+          if [[ "$existing" != "0" ]]; then
+            echo "open issue already tracks this; not opening a duplicate"
+            exit 0
+          fi
+
+          python3 - "$TITLE" "$WORKDIR/signals.txt" > "$WORKDIR/issue.json" <<'PY'
+          import json
+          import sys
+
+          title, signals_path = sys.argv[1], sys.argv[2]
+          with open(signals_path, encoding="utf-8") as handle:
+              signals = handle.read()
+          body = (
+              "The daily windows-availability-probe detected native Windows Mojo support:\n\n"
+              "```\n" + signals + "\n```\n\n"
+              "This unblocks the win-64 runtime lane — start it per the campaign memory M2-M5 "
+              "plan (windows-availability-probe.yml is the sentinel that fired; the lane work "
+              "itself is tracked in the campaign memory, not here)."
+          )
+          print(json.dumps({"title": title, "body": body}))
+          PY
+          curl -fsSL --retry 3 \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
+              -d @"$WORKDIR/issue.json" > "$WORKDIR/created.json"
+          echo "opened issue: $(python3 -c 'import json; print(json.load(open("'"$WORKDIR"'/created.json")).get("html_url", "?"))')"

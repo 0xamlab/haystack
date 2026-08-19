@@ -23,8 +23,9 @@ ONE model shape, ONE hardware family, ONE decode mode: Qwen3-0.6B-Base, greedy (
 Apple Silicon with Metal. This is not a general LLM-serving surface — it is today's real,
 race-verified win (`_MBQwen3I8AllSimd7`, see `metaldispatch.session`'s own module docstring for the
 full calibration record) made callable, and nothing more. A checkpoint of any other shape, or a
-host with no Metal accelerator, or a binary built without `-D ALGENTA_GPU`, is refused with a named
-status rather than silently run, downgraded, or faked (rule: no silent fallback).
+host with no Metal accelerator, or a binary built without `-D ALGENTA_GPU -D ALGENTA_METAL`, is
+refused with a named status rather than silently run, downgraded, or faked (rule: no silent
+fallback).
 
 `max_ctx` is raised above `RESIDENT_DEFAULT_CONTEXT` (512) whenever `n_prompt + max_new_tokens`
 would not fit in it, up to `RESIDENT_MAX_CONTEXT`'s own safety ceiling -- the same auto-raise
@@ -187,7 +188,7 @@ def qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) -
     Every failure mode is a returned `status`, never a crash and never a silently-wrong answer:
     `MB_ERR_CHECKPOINT_UNREADABLE` (bad path/format), `MB_ERR_UNSUPPORTED_ARCHITECTURE` (not
     Qwen3-0.6B-Base's exact shape), `MB_ERR_SHADER_TOOLCHAIN_ABSENT` (this binary was not built with
-    `-D ALGENTA_GPU`), `MB_ERR_NO_DEVICE` (no Metal accelerator on this host), or one of
+    `-D ALGENTA_GPU -D ALGENTA_METAL`), `MB_ERR_NO_DEVICE` (no Metal accelerator on this host), or one of
     `metaldispatch.contract`'s own shim-level codes (session/buffer/dispatch failures), each carrying
     `metaldispatch_status_name(status)` in `error_message` alongside any extra detail.
     """
@@ -309,7 +310,7 @@ def qwen3_i8_allsimd7_decode_flat(checkpoint_dir: String, max_new_tokens: Int) -
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU decode is compiled "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU decode is compiled "
             + "out of this binary",
         )
     else:

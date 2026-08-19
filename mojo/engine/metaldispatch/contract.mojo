@@ -54,9 +54,11 @@ comptime MB_OK: Int = 620
 """The shim call succeeded, or the query answered normally."""
 
 comptime MB_ERR_SHADER_TOOLCHAIN_ABSENT: Int = 621
-"""Built without `-D ALGENTA_GPU` — no kernel was compiled into this binary, so there is nothing to
-extract a metallib from and nothing to open a session for. Same build-vs-deployment distinction
-`residentk.contract.RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT` documents."""
+"""Built without `-D ALGENTA_GPU -D ALGENTA_METAL` — no Metal kernel was compiled into this binary
+(a CUDA build passes `ALGENTA_GPU` but not `ALGENTA_METAL`, and a CPU build passes neither), so
+there is nothing to extract a metallib from and nothing to open a session for. Same
+build-vs-deployment distinction `residentk.contract.RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT`
+documents."""
 
 comptime MB_ERR_NO_DEVICE: Int = 622
 """Built with GPU kernels, but this host has no accelerator."""

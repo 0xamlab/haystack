@@ -508,13 +508,26 @@ def test_qwen3_decode_constructs_the_gpu_struct_only_behind_the_gate() -> None:
 
 
 def test_every_gpu_build_gate_keys_off_the_same_define() -> None:
-    """One flag turns GPU kernels on for the whole tree.
+    """The GPU build flag scheme has TWO tiers, and each tier must stay unfragmented.
 
-    Each package declares its own `<PKG>_GPU_BUILD` constant rather than importing another
+    Tier 1 — `-D ALGENTA_GPU`: the portable GPU kernels. One flag turns them on for the whole
+    tree. Each package declares its own `<PKG>_GPU_BUILD` constant rather than importing another
     package's — importing `accel.gemm_metal` merely to read a boolean would drag a launch-containing
     module onto the importer's graph for no benefit. The cost of that choice is that the constants
     can drift apart, producing a binary with a Metal GEMM but no Metal decode, which nobody would
     ever want and nothing else would catch. So it is asserted.
+
+    Tier 2 — backend selectors on top of tier 1. A GPU build is never "GPU" in the abstract; it is
+    compiled for ONE backend, and the define says which:
+      * Metal build = `-D ALGENTA_GPU -D ALGENTA_METAL`
+      * CUDA build  = `-D ALGENTA_GPU -D ALGENTA_CUDA`
+      * CPU build   = neither
+    `ALGENTA_METAL` gates the metaldispatch shim machinery specifically: `metaldispatch.ffi`
+    `external_call`s into the Objective-C batched-dispatch shim, and those calls are undefined
+    symbols at LINK time when the shim object is not linked (ffi.mojo's own contract says so). A
+    CUDA build has `ALGENTA_GPU` on but no shim in the link, so the metaldispatch gate must
+    require MORE than `ALGENTA_GPU` — it conjuncts `ALGENTA_METAL`. `ALGENTA_CUDA` selects the
+    backend answer `accel.device.accel_device_probe` reports.
     """
     declarations = {
         "accel/gemm_metal.mojo": "ACCEL_GPU_BUILD",
@@ -527,3 +540,42 @@ def test_every_gpu_build_gate_keys_off_the_same_define() -> None:
             f"{relative} no longer declares {constant} off is_defined[\"ALGENTA_GPU\"]; the GPU "
             "build flag has fragmented and a binary can now have some GPU kernels but not others"
         )
+
+    # The metaldispatch gate is tier 2: it must require the METAL define in addition to the
+    # portable-kernel tier, or a CUDA build (GPU on, shim absent) dies at link time on the shim's
+    # undefined symbols — the exact failure the define split exists to prevent.
+    metal_session = (ENGINE / "metaldispatch" / "session.mojo").read_text(encoding="utf-8")
+    assert (
+        'comptime MB_GPU_BUILD: Bool = RESIDENT_GPU_BUILD and is_defined["ALGENTA_METAL"]()'
+        in metal_session
+    ), (
+        "metaldispatch/session.mojo's MB_GPU_BUILD no longer conjuncts RESIDENT_GPU_BUILD with "
+        'is_defined["ALGENTA_METAL"]. The Metal batched-dispatch shim is linked only into Metal '
+        "builds; gating this package on ALGENTA_GPU alone makes a CUDA build (GPU kernels on, no "
+        "shim) fail at LINK time with undefined algenta_* symbols."
+    )
+
+    # The backend selector: a CUDA build must answer ACCEL_BACKEND_CUDA from the define, and the
+    # Metal answer must remain the default for every other accelerator build.
+    device = (ENGINE / "accel" / "device.mojo").read_text(encoding="utf-8")
+    assert 'is_defined["ALGENTA_CUDA"]()' in device, (
+        "accel/device.mojo no longer discriminates the CUDA backend off is_defined[\"ALGENTA_CUDA\"]"
+    )
+    assert "ACCEL_BACKEND_CUDA" in device and "ACCEL_BACKEND_METAL" in device, (
+        "accel/device.mojo lost one of its backend answers"
+    )
+
+    # The build script is where the tier combinations are actually formed. Assert the exact
+    # pairings so a knob edit cannot silently ship a GPU build with no backend selector (or a
+    # backend selector with no GPU tier).
+    build_script = (ENGINE.parents[1] / "scripts" / "build_mojo_binary.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "-D ALGENTA_GPU -D ALGENTA_METAL" in build_script, (
+        "scripts/build_mojo_binary.sh no longer passes BOTH -D ALGENTA_GPU and -D ALGENTA_METAL "
+        "for a Metal build; metaldispatch would compile out of every Metal binary"
+    )
+    assert "-D ALGENTA_GPU -D ALGENTA_CUDA" in build_script, (
+        "scripts/build_mojo_binary.sh no longer passes BOTH -D ALGENTA_GPU and -D ALGENTA_CUDA "
+        "for a CUDA build; the portable GPU kernels would compile out of every CUDA binary"
+    )

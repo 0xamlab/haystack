@@ -698,7 +698,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -1000,7 +1000,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -1306,7 +1306,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -1612,7 +1612,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_msl(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -1905,7 +1905,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -2229,7 +2229,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -2532,7 +2532,7 @@ def qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -2907,7 +2907,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -3436,7 +3436,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:
@@ -3985,7 +3985,7 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
     if not MB_GPU_BUILD:
         return _decode_err(
             MB_ERR_SHADER_TOOLCHAIN_ABSENT,
-            "this runtime worker was built without -D ALGENTA_GPU; Qwen3 GPU prefill+decode is "
+            "this runtime worker was built without -D ALGENTA_GPU -D ALGENTA_METAL; Qwen3 GPU prefill+decode is "
             + "compiled out of this binary",
         )
     else:

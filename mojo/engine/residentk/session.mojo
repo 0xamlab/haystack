@@ -129,7 +129,10 @@ comptime RESIDENT_GPU_BUILD: Bool = is_defined["ALGENTA_GPU"]()
 """Whether this binary was built with `mojo build -D ALGENTA_GPU`. The SAME define
 `accel.gemm_metal.ACCEL_GPU_BUILD` and `residentk.probe.RESIDENT_GPU_BUILD` key off; asserted by
 `tests/test_accel_gpu_isolation.py`. Unset by default so the ordinary build needs no shader
-compiler."""
+compiler. `metaldispatch.session.MB_GPU_BUILD` conjuncts this with `-D ALGENTA_METAL` — the Metal
+batched-dispatch shim is a separate build-time mechanism from these portable GPU kernels, and a
+CUDA build (`-D ALGENTA_GPU -D ALGENTA_CUDA`) must not drag the shim's FFI symbols into its link.
+"""
 
 comptime _LM_BLOCKS: Int = 2048
 """Threadgroups the lm_head projection launches, regardless of vocabulary size.

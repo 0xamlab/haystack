@@ -8,8 +8,29 @@
 # The hosted leg's swap-provisioning step is deliberately NOT reproduced: it existed because the
 # hosted VM has 7.8 GiB RAM; this fleet's machines carry far more, so the shard compiler gets a
 # generous fixed RSS ceiling instead (SHARD_MAX_RSS_MB).
+#
+# BUILD_VARIANT selects the accelerator tier of the compiled shards:
+#   cpu  (default) — portable build, no GPU defines, exactly the historical behaviour.
+#   cuda           — `-D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_90` through
+#                    scripts/build_mojo_binary.sh's CUDA knob: the portable GPU kernels compile
+#                    for NVIDIA hardware while metaldispatch's Metal shim machinery stays
+#                    compiled out. COMPILE-GATED lane: cross-compilation needs no CUDA toolkit
+#                    and no GPU (the NVPTX backend ships inside the pinned toolchain), but the
+#                    result is launch-UNVERIFIED — actually running it needs an NVIDIA driver
+#                    >= 580 and real hardware. The cuda wheel is therefore an artifact of the
+#                    compile gate only; it is not in publish-pypi's dependency chain.
 set -euo pipefail
 cd /work
+
+BUILD_VARIANT="${BUILD_VARIANT:-cpu}"
+case "${BUILD_VARIANT}" in
+    cpu | cuda) ;;
+    *)
+        echo "::error::unknown BUILD_VARIANT '${BUILD_VARIANT}' (expected 'cpu' or 'cuda')" >&2
+        exit 1
+        ;;
+esac
+echo "linux-x86_64 runtime build: BUILD_VARIANT=${BUILD_VARIANT}"
 
 # shellcheck source=_linux_container_bootstrap.sh
 source "$(dirname "$0")/_linux_container_bootstrap.sh"
@@ -30,6 +51,13 @@ pixi install --manifest-path mojo_env/pixi.toml
 # the hosted matrix values for the linux leg exactly (x86-64-v3 binaries, no Metal).
 export MOJO_BUILD_MCPU=x86-64-v3
 export MOJO_BUILD_METAL_GPU=0
+if [[ "${BUILD_VARIANT}" == "cuda" ]]; then
+    # build_runtime_shards.py forwards the environment wholesale to build_mojo_binary.sh, so the
+    # CUDA knob set here reaches every shard compile: portable GPU kernels in for sm_90, Metal
+    # shim machinery out (no ALGENTA_METAL), no CUDA toolkit or GPU on this builder.
+    export MOJO_BUILD_CUDA_GPU=1
+    export MOJO_BUILD_CUDA_TARGET="${MOJO_BUILD_CUDA_TARGET:-sm_90}"
+fi
 python3 scripts/build_runtime_shards.py \
   --out /work/mojo_build/runtime-shards \
   --shard-size 24 \
@@ -124,4 +152,4 @@ ls -la /work/dist-runtime/
 # are not locked out by root-owned files.
 OWNER="$(stat -c '%u:%g' /work/.git)"
 chown -R "$OWNER" /work/mojo_build /work/dist-runtime /work/.pixi /work/.cache 2>/dev/null || true
-echo "linux-x86_64 runtime build OK"
+echo "linux-x86_64 runtime build OK (${BUILD_VARIANT} variant)"

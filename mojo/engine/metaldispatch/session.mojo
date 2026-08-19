@@ -22,11 +22,17 @@ NOT a contract module. Every entry point here is private, and every launch is co
 Identical discipline to `residentk.session` (see that file's module docstring for the full
 reasoning): leading underscores keep this out of `apps/runtime/mojo_inventory.py`, and every
 function that would force shader codegen opens with `@parameter if not MB_GPU_BUILD: return
-<toolchain_absent>`. `MB_GPU_BUILD` keys off the exact same `-D ALGENTA_GPU` define
-`residentk.session.RESIDENT_GPU_BUILD` and `accel.gemm_metal.ACCEL_GPU_BUILD` do (imported directly
-from `residentk.session`, not redeclared — a second `is_defined` call reading the same flag is a
-value duplicated at two call sites for no reason, and rule 3's spirit is "don't restate an existing
-answer" as much as "don't restate an existing kernel").
+<toolchain_absent>`. `MB_GPU_BUILD` is the Metal-shim tier of the GPU build flag: it keys off
+`residentk.session.RESIDENT_GPU_BUILD` (the same `-D ALGENTA_GPU` define
+`accel.gemm_metal.ACCEL_GPU_BUILD` reads — imported directly, not redeclared, because a second
+`is_defined` call reading the same flag is a value duplicated at two call sites for no reason)
+CONJUNCTED with `-D ALGENTA_METAL`. The conjunct exists because this package's FFI layer
+(`metaldispatch.ffi`) `external_call`s into the Objective-C batched-dispatch shim: with
+`ALGENTA_GPU` on but the shim machinery gated in while the shim object is NOT linked — the exact
+shape of a CUDA build (`-D ALGENTA_GPU -D ALGENTA_CUDA`) — those calls are undefined symbols at
+LINK time (per the link contract `metaldispatch.ffi`'s own docstring records). A Metal build passes
+BOTH defines, so this package compiles exactly as it did before the split; a CUDA build compiles
+the portable GPU kernels (`accel`, `residentk`) and leaves this package's machinery compiled out.
 
 Why this package's buffers are NOT `residentk`'s `DeviceBuffer`s
 ---------------------------------------------------------------------
@@ -84,7 +90,7 @@ versions of those three, harmlessly.
 from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
 from std.gpu import WARP_SIZE
 from std.math import abs
-from std.sys import has_accelerator
+from std.sys import has_accelerator, is_defined
 from residentk.contract import (
     RESIDENT_MAX_CONTEXT,
     residentk_splitk_should_split,
@@ -153,8 +159,12 @@ from metaldispatch.ffi import (
     _mb_set_header,
 )
 
-comptime MB_GPU_BUILD: Bool = RESIDENT_GPU_BUILD
-"""Reuses `residentk.session`'s own build flag — see the module docstring."""
+comptime MB_GPU_BUILD: Bool = RESIDENT_GPU_BUILD and is_defined["ALGENTA_METAL"]()
+"""The portable-kernel tier (`RESIDENT_GPU_BUILD`, i.e. `-D ALGENTA_GPU`) conjuncted with the
+Metal-shim tier (`-D ALGENTA_METAL`) — see the module docstring for why the conjunct exists. A
+Metal build passes BOTH defines, so this constant reads exactly as `RESIDENT_GPU_BUILD` alone did
+before the split; a CUDA build (`-D ALGENTA_GPU -D ALGENTA_CUDA`) leaves this package compiled
+out, which is what keeps `metaldispatch.ffi`'s shim `external_call`s out of the link."""
 
 comptime _LM_BLOCKS: Int = 2048
 """Same value, same reason, as `residentk.session._LM_BLOCKS` (imported by value, not import,

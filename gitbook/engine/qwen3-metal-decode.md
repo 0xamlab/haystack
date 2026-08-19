@@ -14,6 +14,21 @@ The model-agnostic door onto the same kernel family — any supported Qwen3-fami
 sampling, text in/text out — is `algenta.inference.decode`; see
 [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md).
 
+## GPU support matrix
+
+Algenta's GPU lanes are at different maturity stages, and this page's entry point sits on exactly
+one of them:
+
+| Backend | Build status | Launch status | What running it needs |
+| --- | --- | --- | --- |
+| Metal (Apple Silicon) | Run-verified, ships in the macOS runtime | Run-verified end to end on real hardware | An M-series Mac — nothing else |
+| CUDA (NVIDIA) | **Compile-verified only** — cross-compiles for `sm_90` in CI with no CUDA toolkit and no GPU on the builder | **Launch-unverified** | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver ≥ 580, and real hardware to validate on |
+| ROCm (AMD) | Not built yet | — | — |
+
+The CUDA lane compiles the PORTABLE gpu kernels (`accel`, `residentk`); the Metal batched-dispatch
+machinery this page documents is gated separately (`ALGENTA_METAL`) and is not part of it. Until a
+CUDA build has been launched on real NVIDIA hardware, treat it as a compile gate, not a capability.
+
 ## Functions
 
 | Function | What it does |
