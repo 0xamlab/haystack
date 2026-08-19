@@ -1,4 +1,11 @@
 # Validate the TPM 2.0 device-key backend (apps/runtime/hardware_key_store.TpmKeyStore) against a real
+
+# Shares the one-machine self-hosted runner fleet with thyn-ai/codna, so cap it: a superseded
+# run on the same ref is moot, and two heavy runs starve each other (a codna parity sidecar
+# missed its 30s port-bind deadline purely from contention on 2026-08-19).
+concurrency:
+  group: tpm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 # TPM 2.0 software stack (swtpm + libtss2 + tpm2-pytss) — the same ESAPI code a discrete/firmware TPM runs.
 # This is the authoritative validation of the TPM path (a discrete TPM chip is unavailable on GitHub runners
 # and on the macOS dev box, where libtss2 doesn't exist). swtpm proves the code is CORRECT; the anti-clone

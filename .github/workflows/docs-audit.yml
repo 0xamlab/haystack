@@ -1,5 +1,12 @@
 name: docs-audit
 
+# Shares the one-machine self-hosted runner fleet with thyn-ai/codna, so cap it: a superseded
+# run on the same ref is moot, and two heavy runs starve each other (a codna parity sidecar
+# missed its 30s port-bind deadline purely from contention on 2026-08-19).
+concurrency:
+  group: docs-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Enforces the shared GitBook interaction contract repo-side (GitBook itself allows no custom
 # CSS/HTML/JS, so quality is gated here). See GITBOOK.md for the rules and scripts/gitbook/audit.py.
 # Algenta layout: docs pages live in gitbook/ (the GitBook Git Sync root); the golden-template
