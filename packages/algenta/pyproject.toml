@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta"
-version = "1.0.7"
+version = "1.0.8"
 description = "Algenta repository intelligence and computational runtime CLI with an automatically installed native runtime."
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
@@ -30,7 +30,7 @@ classifiers = [
 # a broken CLI. Pinned == keeps the package/runtime ABI in lockstep.
 # cryptography backs offline manifest/license verification.
 dependencies = [
-    "algenta-runtime-native==1.0.4",
+    "algenta-runtime-native==1.0.5",
     "cryptography>=42",
     "keyring>=25,<26",
 ]
