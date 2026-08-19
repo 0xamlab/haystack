@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 import statistics
 from pathlib import Path
@@ -11,9 +12,9 @@ from .map_parsing import _parse_source
 _AGG_KEYWORDS: dict[str, str] = {
     "total": "sum",
     "sum": "sum",
-    "average": "mean",
-    "avg": "mean",
-    "mean": "mean",
+    "average": "avg",
+    "avg": "avg",
+    "mean": "avg",
     "count": "count",
     "number of": "count",
     "how many": "count",
@@ -24,6 +25,41 @@ _AGG_KEYWORDS: dict[str, str] = {
     "minimum": "min",
     "lowest": "min",
 }
+
+# Canonical aggregation names shared verbatim with the TS SDK (`avg`, never `mean`) —
+# the canonical string is embedded in resolved plans and therefore in plan_hash, so both
+# SDKs must canonicalize identically for cross-language hash parity.
+CANONICAL_AGGREGATIONS: frozenset[str] = frozenset({"sum", "avg", "count", "min", "max"})
+
+_AGGREGATION_ALIASES: dict[str, str] = {
+    "sum": "sum",
+    "total": "sum",
+    "avg": "avg",
+    "average": "avg",
+    "mean": "avg",
+    "count": "count",
+    "min": "min",
+    "minimum": "min",
+    "max": "max",
+    "maximum": "max",
+}
+
+
+def canonicalize_aggregation(value: str) -> str:
+    """Map an aggregation spelling to its canonical name; raise on unknown.
+
+    Unknown aggregations must never silently fall back to sum.
+    """
+    canonical = _AGGREGATION_ALIASES.get(value.strip().lower())
+    if canonical is None:
+        from algenta.runtime_errors import RuntimeValidationError
+
+        raise RuntimeValidationError(
+            "invalid_aggregation",
+            f"Unknown aggregation '{value}'. Supported: {sorted(CANONICAL_AGGREGATIONS)}.",
+            {"aggregation": value, "supported": sorted(CANONICAL_AGGREGATIONS)},
+        )
+    return canonical
 
 _METRIC_SYNONYMS: dict[str, list[str]] = {
     "revenue": [
@@ -154,15 +190,39 @@ def _best_field(
     return best_field
 
 
+def _numeric_value(value: Any) -> float | None:
+    """Admit a value into aggregation, mirroring the TS SDK's numericValue exactly:
+    finite numbers (bool excluded) and finite numeric strings; everything else is null."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value) if math.isfinite(value) else None
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = float(value)
+        except ValueError:
+            return None
+        return parsed if math.isfinite(parsed) else None
+    return None
+
+
 def _is_numeric_field(field_name: str, records: list[dict[str, Any]]) -> bool:
     count = len(records)
     if count == 0:
         return False
     step = max(1, count // 50)
     for index in range(0, count, step):
-        if isinstance(records[index].get(field_name), int | float):
+        if _numeric_value(records[index].get(field_name)) is not None:
             return True
     return False
+
+
+def _metric_sort_key(row: dict[str, Any], metric_field: str) -> tuple[int, float]:
+    """Descending metric sort with null-metric rows last, identical to the TS SDK."""
+    value = row.get(metric_field)
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        return (0, -float(value))
+    return (1, 0.0)
 
 
 def _execute(
@@ -176,43 +236,47 @@ def _execute(
         if not metric_field:
             return [{"count": len(records)}]
         values = [
-            record[metric_field]
+            admitted
             for record in records
-            if isinstance(record.get(metric_field), int | float)
+            if (admitted := _numeric_value(record.get(metric_field))) is not None
         ]
-        return [{metric_field: round(_agg(values, aggregation), 4), "count": len(values)}]
+        return [{metric_field: _agg(values, aggregation), "count": len(values)}]
 
     groups: dict[Any, list[float]] = {}
     for record in records:
         group_key = record.get(group_field, "__unknown__")
-        value = (
-            float(record.get(metric_field, 1))
-            if metric_field and isinstance(record.get(metric_field), int | float)
-            else 1.0
-        )
-        groups.setdefault(group_key, []).append(value)
+        group_values = groups.setdefault(group_key, [])
+        if metric_field:
+            admitted = _numeric_value(record.get(metric_field))
+            if admitted is not None:
+                group_values.append(admitted)
 
     rows: list[dict[str, Any]] = []
     for group_key, values in groups.items():
         row: dict[str, Any] = {group_field: group_key}
         if metric_field:
-            row[metric_field] = round(_agg(values, aggregation), 4)
+            row[metric_field] = _agg(values, aggregation)
         row["count"] = len(values)
         rows.append(row)
 
     if metric_field:
-        rows.sort(key=lambda row: row.get(metric_field, 0), reverse=True)
+        rows.sort(key=lambda row: _metric_sort_key(row, metric_field))
     return rows[:limit]
 
 
-def _agg(values: list[float], aggregation: str) -> float:
+def _agg(values: list[float], aggregation: str) -> float | None:
+    """Aggregate admitted values. Canonical names only; empty avg/min/max is null
+    (never 0), empty sum is 0, count counts admitted values. Unknown aggregations
+    raise — silent sum fallback is forbidden."""
+    canonical = canonicalize_aggregation(aggregation)
+    if canonical == "count":
+        return float(len(values))
+    if canonical == "sum":
+        return float(sum(values))
     if not values:
-        return 0.0
-    aggregation_fn = {
-        "sum": sum,
-        "mean": statistics.mean,
-        "max": max,
-        "min": min,
-        "count": lambda items: float(len(items)),
-    }.get(aggregation, sum)
-    return aggregation_fn(values)
+        return None
+    if canonical == "avg":
+        return float(statistics.mean(values))
+    if canonical == "max":
+        return float(max(values))
+    return float(min(values))

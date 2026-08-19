@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from algenta.map_matching import _normalize
-from algenta.map_query import _AGG_KEYWORDS, _METRIC_SYNONYMS
+from algenta.map_query import _AGG_KEYWORDS, _METRIC_SYNONYMS, canonicalize_aggregation
 
 _RAW_TEXT_GROUP_RE = re.compile(r"\b(?:by|per|grouped by|group by|for each)\s+([a-zA-Z0-9_ ]+)")
 
@@ -40,7 +40,9 @@ def parse_raw_text(raw_text: str) -> dict[str, Any]:
 
 def resolve_aggregation(request: Mapping[str, Any]) -> str:
     if isinstance(request.get("aggregation"), str):
-        return request["aggregation"].lower().strip()
+        # Canonicalize (mean/average -> avg, ...) and reject unknown names —
+        # the canonical string feeds plan_hash, so it must match the TS SDK exactly.
+        return canonicalize_aggregation(request["aggregation"])
     raw_text = request.get("raw_text")
     if isinstance(raw_text, str):
         parsed = parse_raw_text(raw_text)
