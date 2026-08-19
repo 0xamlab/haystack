@@ -74,9 +74,25 @@ jobs:
       # `python3`/`python` instead -- every later step's bare `python3 ...` call keeps working.
       - name: Shim python3.14 as python3/python (macOS)
         run: |
+          # Runner jobs start with a minimal PATH: /opt/homebrew/bin is NOT guaranteed to be
+          # on it, so `command -v python3.14` alone can come back empty even on machines that
+          # have Homebrew's python@3.14 installed. ln -sf with an empty target then produces
+          # a DANGLING symlink, PATH resolution silently falls through to whatever older
+          # python is next (observed: 3.12.5), and the wheel-validation venv later fails with
+          # "requires a different Python". Resolve through the known locations, and fail LOUD
+          # here rather than as a confusing pip error ten steps later.
+          PY314="$(command -v python3.14 || true)"
+          for candidate in "$PY314" /opt/homebrew/bin/python3.14 /usr/local/bin/python3.14; do
+            if [[ -n "$candidate" && -x "$candidate" ]]; then PY314="$candidate"; break; fi
+          done
+          if [[ -z "${PY314:-}" || ! -x "$PY314" ]]; then
+            echo "::error::python3.14 not found on this runner -- the runtime now requires >=3.14; install python@3.14 (Homebrew) or provision it in the fleet tool cache." >&2
+            exit 1
+          fi
+          echo "shimming $PY314 as python3/python" >&2
           mkdir -p "$RUNNER_TEMP/py314-shim"
-          ln -sf "$(command -v python3.14)" "$RUNNER_TEMP/py314-shim/python3"
-          ln -sf "$(command -v python3.14)" "$RUNNER_TEMP/py314-shim/python"
+          ln -sf "$PY314" "$RUNNER_TEMP/py314-shim/python3"
+          ln -sf "$PY314" "$RUNNER_TEMP/py314-shim/python"
           echo "$RUNNER_TEMP/py314-shim" >> "$GITHUB_PATH"
 
       - name: Verify generated public runtime contract
@@ -270,7 +286,11 @@ jobs:
           # jobs. A stale /tmp/algenta-macos-wheel created by a pre-3.14 run keeps its OLD base
           # interpreter (venv without --clear reuses an existing dir's pyvenv.cfg), and pip then
           # rejects the >=3.14 wheels with "requires a different Python: 3.12.5".
-          python -m venv --clear /tmp/algenta-macos-wheel
+          # Base the venv on the PIXI env's interpreter explicitly, not on the PATH shim: the
+          # pixi env is pinned to python >=3.14 in mojo_env/pixi.toml and was installed earlier
+          # in this very job, so this is immune to runner-PATH variance (a dangling shim or a
+          # stale tool-cache python must not be able to poison the validation venv again).
+          mojo_env/.pixi/envs/default/bin/python3 -m venv --clear /tmp/algenta-macos-wheel
           . /tmp/algenta-macos-wheel/bin/activate
           pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
           algenta runtime doctor | tee /tmp/algenta-macos-doctor.txt | grep -q "status:          READY"
