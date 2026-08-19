@@ -266,7 +266,11 @@ jobs:
           Path("packages/algenta/algenta/_keys/algenta_release_pub.pem").write_bytes(public_key)
           PY
           python -P -m build --wheel packages/algenta --outdir dist-algenta
-          python -m venv /tmp/algenta-macos-wheel
+          # --clear: this runs directly on the self-hosted fleet, where /tmp persists between
+          # jobs. A stale /tmp/algenta-macos-wheel created by a pre-3.14 run keeps its OLD base
+          # interpreter (venv without --clear reuses an existing dir's pyvenv.cfg), and pip then
+          # rejects the >=3.14 wheels with "requires a different Python: 3.12.5".
+          python -m venv --clear /tmp/algenta-macos-wheel
           . /tmp/algenta-macos-wheel/bin/activate
           pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
           algenta runtime doctor | tee /tmp/algenta-macos-doctor.txt | grep -q "status:          READY"
