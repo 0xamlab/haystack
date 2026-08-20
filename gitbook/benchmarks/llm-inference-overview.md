@@ -58,6 +58,7 @@ sequences instead of once per token.
 * [Decode throughput](decode-throughput.md) — single-stream generation vs llama.cpp & mlx-lm.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — call it from Python.
+* [GPU support](../engine/gpu-support.md) — which GPU lanes are run-verified, and what that covers.
 * [Run local LLM decode](../guides/run-qwen3-decode.md) — step-by-step guide.
 * [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md) — the model-agnostic SDK path (0.6B, 1.7B, and other supported shapes).
 * [Benchmarks](overview.md) — methodology and what is not published.

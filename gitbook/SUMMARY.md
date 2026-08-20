@@ -18,6 +18,7 @@
 * [Runtime libraries](engine/runtime-libraries.md)
 * [Runtime library catalog](engine/runtime-library-catalog.md)
 * [Metal LLM decode](engine/qwen3-metal-decode.md)
+* [GPU support](engine/gpu-support.md)
 * [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)
 * [Columnar queries](engine/columnar-queries.md)
@@ -218,6 +219,7 @@
 
 * [Benchmarks](benchmarks/overview.md)
 * [Compute kernels](benchmarks/compute-kernels.md)
+* [NVIDIA kernel benchmarks](benchmarks/nvidia-kernel-benchmarks.md)
 * [Attention](benchmarks/attention.md)
 * [Normalization](benchmarks/normalization.md)
 * [Feed-forward](benchmarks/feed-forward.md)

@@ -17,17 +17,19 @@ sampling, text in/text out — is `algenta.inference.decode`; see
 ## GPU support matrix
 
 Algenta's GPU lanes are at different maturity stages, and this page's entry point sits on exactly
-one of them:
+one of them. The canonical matrix — every backend, what is verified, and the requirements — is
+[GPU support](gpu-support.md); the short version for this page:
 
 | Backend | Build status | Launch status | What running it needs |
 | --- | --- | --- | --- |
 | Metal (Apple Silicon) | Run-verified, ships in the macOS runtime | Run-verified end to end on real hardware | An M-series Mac — nothing else |
-| CUDA (NVIDIA) | **Compile-verified only** — cross-compiles for `sm_90` in CI with no CUDA toolkit and no GPU on the builder | **Launch-unverified** | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver ≥ 580, and real hardware to validate on |
-| ROCm (AMD) | Not built yet | — | — |
+| CUDA (NVIDIA) | Portable kernel layer **run-verified**, compile-gated in CI | Portable kernels run bit-exact on real T4, L4 and A100 hardware; **the batched-dispatch session this page documents is not part of that yet** | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver ≥ 580 |
+| ROCm (AMD) | Compile-gate in progress | Not verified | — |
 
-The CUDA lane compiles the PORTABLE gpu kernels (`accel`, `residentk`); the Metal batched-dispatch
-machinery this page documents is gated separately (`ALGENTA_METAL`) and is not part of it. Until a
-CUDA build has been launched on real NVIDIA hardware, treat it as a compile gate, not a capability.
+The CUDA lane runs the PORTABLE gpu kernels; the Metal batched-dispatch machinery this page
+documents is gated separately (`ALGENTA_METAL`) and has no CUDA counterpart yet — a CUDA-native
+session layer is the next engineering step. Measured NVIDIA numbers:
+[NVIDIA kernel benchmarks](../benchmarks/nvidia-kernel-benchmarks.md).
 
 ## Functions
 

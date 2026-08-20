@@ -80,4 +80,5 @@ Fresh-process (cold start, warm-up prefills included) reproduces the resident nu
 * [Decode throughput](decode-throughput.md) — single-stream generation.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — the kernel path.
+* [GPU support](../engine/gpu-support.md) — the lane-by-lane verification matrix behind these Metal results.
 * [Benchmarks](overview.md) — methodology and what is not published.

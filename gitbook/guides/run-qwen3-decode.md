@@ -11,7 +11,7 @@ This is a narrow, real capability, not a general LLM-serving surface. Read [Requ
 
 ## Requirements
 
-* **Apple Silicon (M-series) Mac with Metal.** There is no CPU fallback and no support for other GPU vendors. Metal is the only GPU backend that is RUN-verified today — NVIDIA CUDA compiles in CI but has never been launched on real hardware (it needs an NVIDIA driver ≥ 580 and a validation machine that does not exist yet), and AMD ROCm is not built. See the [GPU support matrix](../engine/qwen3-metal-decode.md#gpu-support-matrix).
+* **Apple Silicon (M-series) Mac with Metal.** There is no CPU fallback and no support for other GPU vendors. The full LLM serving path — this decode included — runs on Metal only, the one backend run-verified end to end. NVIDIA CUDA is run-verified for the portable GPU kernel layer on real T4, L4 and A100 hardware, but has no LLM session layer yet, and AMD ROCm is not verified. See [GPU support](../engine/gpu-support.md).
 * **Python 3.14** — `pip install algenta` requires it.
 * **The exact checkpoint this kernel path was compiled for**: [`Qwen/Qwen3-0.6B-Base`](https://huggingface.co/Qwen/Qwen3-0.6B-Base) (Apache-2.0, ungated — no Hugging Face account or token needed). No other Qwen3 size and no other model family.
 * **`numpy`**, to convert the checkpoint's published BF16 weights. Install it with the `benchmark` extra: `pip install "algenta[benchmark]"`.
@@ -20,7 +20,7 @@ This is a narrow, real capability, not a general LLM-serving surface. Read [Requ
 ## Limitations
 
 * **One model, one exact shape.** Qwen3-0.6B-Base's exact architecture only (`hidden_size=1024`, 28 layers, 16 query heads, 8 key/value heads, `head_dim=128`, `vocab_size=151936`, tied embeddings). A checkpoint of any other shape is refused by name before any conversion or GPU work starts. Other Qwen3 sizes (for example Qwen3-1.7B) run through the model-agnostic path instead — see [Model-agnostic LLM inference](run-qwen3-family-inference.md).
-* **One hardware family, run-verified.** Apple Silicon with Metal, and nothing else — the only GPU lane that has actually run. A host with no Metal accelerator gets a named refusal, never a slower silent substitute. (CUDA is compile-verified only and ROCm is not built — [GPU support matrix](../engine/qwen3-metal-decode.md#gpu-support-matrix).)
+* **One hardware family, run-verified.** Apple Silicon with Metal, and nothing else — the only GPU lane this LLM path runs on. A host with no Metal accelerator gets a named refusal, never a slower silent substitute. (CUDA runs the portable kernel layer but not this session path, and ROCm is not verified — [GPU support](../engine/gpu-support.md).)
 * **Greedy decode only.** Every generated token is the argmax at that step. There is no sampling, no temperature, no top-p/top-k, and no beam search.
 * **One call, start to finish.** There is no session you open once and step token-by-token across separate calls — a single call prefills the prompt and decodes to `max_new_tokens` or an end-of-text token in one round trip.
 * **Every call converts the checkpoint first.** The checkpoint's BF16 weights are converted into the kernel's own flat format on every call by default, which takes real time before decoding starts.

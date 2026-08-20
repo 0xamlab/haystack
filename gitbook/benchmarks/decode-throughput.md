@@ -148,6 +148,8 @@ Rome." No arm diverged from any other in any round checked.
 * [Attention](attention.md) — tiled attention memory and rotary embedding cost.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — call this
   kernel path yourself, from Python, against your own checkpoint.
+* [GPU support](../engine/gpu-support.md) — the lane-by-lane verification
+  matrix behind these Metal results.
 * [Run local LLM decode](../guides/run-qwen3-decode.md) — a step-by-step
   guide: install, get the checkpoint, tokenize a prompt, and run a decode end to end.
 

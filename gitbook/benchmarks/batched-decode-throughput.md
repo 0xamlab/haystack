@@ -100,6 +100,8 @@ A faster wrong answer is not a result. The batched path was checked two ways:
 * [Decode throughput](decode-throughput.md) — the single-stream race this extends.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — the kernel
   path behind both single-stream and batched decode.
+* [GPU support](../engine/gpu-support.md) — the lane-by-lane verification
+  matrix behind these Metal results.
 * [Run local LLM decode](../guides/run-qwen3-decode.md) — install, get the
   checkpoint, and run a decode end to end.
 * [Benchmarks](overview.md) — methodology and what is not published.

@@ -54,6 +54,7 @@ A result appears in this section only if it meets all of the following condition
 ## Related
 
 * [Compute kernels](compute-kernels.md) — dense and quantized matrix kernel results.
+* [NVIDIA kernel benchmarks](nvidia-kernel-benchmarks.md) — the portable validation kernel measured unmodified on T4, L4 and A100.
 * [Attention](attention.md) — tiled attention memory, rotary embedding, and block-size invariance.
 * [Normalization](normalization.md) — RMSNorm and LayerNorm, and the price of a safe variance.
 * [Feed-forward](feed-forward.md) — gated activations, the two GELU conventions, and embedding cost.
