@@ -29,10 +29,13 @@
 # touches neither repo's remote state nor any registry (`-f target=sdk-rehearse`), and a manual
 # `pypi` run if a tag push isn't the trigger source for some reason.
 #
-# IDEMPOTENCY: rerunning the same tag is safe. Each push step first checks its target state --
-# mirror already in sync -> skip; identical authorization already on main -> skip; tag already
-# exists at the authorized commit -> skip. A tag that exists at a DIFFERENT commit, or a
-# DIFFERENT authorization for the same version, fails loud and is never overwritten.
+# IDEMPOTENCY: rerunning the same tag is safe and GREEN. Each step first checks its target
+# state -- mirror already in sync -> skip push; authorization for this version already on main
+# AND its authorized tree still identical to the tested tree -> REUSE it verbatim (no re-sign,
+# no push -- re-signing against main's moved tip would manufacture a conflicting authorization);
+# tag already exists at the authorized commit -> skip. A tag that exists at a DIFFERENT commit,
+# or an authorization whose tree no longer matches the tested source (new source under an
+# already-authorized version), fails loud and is never overwritten.
 #
 # SECURITY NOTE (post SDK-repo-goes-public hardening): this workflow used to also trigger on every
 # push to `main`, auto-publishing on merge. That's removed — the source for these SDKs is now also
@@ -359,6 +362,45 @@ jobs:
             fi
           done
 
+      - name: Check whether this version is already authorized on algenta-sdk main
+        # Rerun idempotency for the authorization itself. If main already carries an
+        # authorization for this version AND the tree it authorized is still identical to the
+        # tested tree (for everything mirrored), the existing authorization is reused verbatim:
+        # re-signing against main's NEW tip would manufacture a conflicting authorization for
+        # the same version (main has moved past the authorized commit -- e.g. via this chain's
+        # own delivery commit or later unrelated merges -- without any source change), which is
+        # exactly the state every rerun lands in. Reusing keeps one authorization per version
+        # and makes reruns green no-ops. If the authorized tree DIFFERS from the tested tree,
+        # new source is trying to publish under an already-authorized version -- never allowed
+        # silently: fail loud.
+        id: authcheck
+        working-directory: algenta-sdk-checkout
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          AUTH_PATH="releases/authorization/sdk-v${VERSION}.json"
+          echo "reuse=false" >> "$GITHUB_OUTPUT"
+          [ -f "$AUTH_PATH" ] || exit 0
+          EXISTING_VERSION="$(python3 -c "import json; print(json.load(open('$AUTH_PATH'))['version'])")"
+          EXISTING_COMMIT="$(python3 -c "import json; print(json.load(open('$AUTH_PATH'))['sdk_commit'])")"
+          if [ "$EXISTING_VERSION" != "$VERSION" ]; then
+            echo "::error::The authorization file at $AUTH_PATH says version '$EXISTING_VERSION', not '$VERSION' -- refusing to continue. Investigate manually." >&2
+            exit 1
+          fi
+          if ! git cat-file -e "${EXISTING_COMMIT}^{commit}" 2>/dev/null; then
+            echo "::error::The authorization at $AUTH_PATH references sdk_commit $EXISTING_COMMIT, which is not in algenta-sdk's history -- refusing to continue. Investigate manually." >&2
+            exit 1
+          fi
+          if git diff --quiet "$EXISTING_COMMIT" HEAD -- packages examples; then
+            echo "A valid authorization for sdk-v${VERSION} is already on main and its authorized tree is still identical to this tested tree (for everything mirrored) -- REUSING it; not re-signing, not pushing (check-if-authorized guard)."
+            cp "$AUTH_PATH" "$RUNNER_TEMP/release-authorization.json"
+            echo "reuse=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::An authorization for sdk-v${VERSION} already exists on algenta-sdk main (sdk_commit ${EXISTING_COMMIT}), but its authorized tree DIFFERS from this tested tree in packages/ or examples/ -- refusing to overwrite or reuse it. New source cannot publish under an already-authorized version: bump the version, or investigate manually." >&2
+          exit 1
+
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.14"
@@ -366,6 +408,7 @@ jobs:
       - run: python -m pip install --quiet --disable-pip-version-check cryptography
 
       - name: Sign the release authorization
+        if: ${{ steps.authcheck.outputs.reuse != 'true' }}
         env:
           SDK_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.SDK_RELEASE_SIGNING_PRIVATE_KEY }}
         run: |
@@ -379,10 +422,12 @@ jobs:
             --out "$RUNNER_TEMP/release-authorization.json"
           rm -f "$KEY_FILE"
 
-      - name: Deliver the authorization directly to algenta-sdk main (check-if-authorized guard)
-        # WHY a direct push: this file is machine-generated and machine-signed -- there is nothing
+      - name: Deliver the authorization directly to algenta-sdk main
+        # Runs only when authcheck found no reusable authorization for this version. WHY a
+        # direct push: this file is machine-generated and machine-signed -- there is nothing
         # for a human to review (the signature IS the review). Committing it straight to main
         # removes the "authorization PR left unmerged" failure mode that stranded sdk-v1.0.8.
+        if: ${{ steps.authcheck.outputs.reuse != 'true' }}
         working-directory: algenta-sdk-checkout
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -391,28 +436,11 @@ jobs:
           AUTH_PATH="releases/authorization/sdk-v${VERSION}.json"
           mkdir -p releases/authorization
           if [ -f "$AUTH_PATH" ]; then
-            # Compare the security-relevant fields only: authorized_at and signature legitimately
-            # differ between two signings of the same authorization, so byte-comparing would
-            # break rerun idempotency.
-            RC=0
-            python3 - "$AUTH_PATH" "$RUNNER_TEMP/release-authorization.json" <<'PYEOF' || RC=$?
-          import json, sys
-          fields = ("schema_version", "version", "sdk_repo", "sdk_commit",
-                    "contract_sha256", "signature_algorithm", "key_id")
-          existing = json.load(open(sys.argv[1]))
-          new = json.load(open(sys.argv[2]))
-          if all(existing.get(f) == new.get(f) for f in fields):
-              sys.exit(0)   # same authorization, signed again -- idempotent no-op
-          print("::error::A DIFFERENT authorization for this version already exists on "
-                "algenta-sdk main -- refusing to overwrite it. Investigate manually.",
-                file=sys.stderr)
-          sys.exit(1)
-          PYEOF
-            if [ "$RC" -eq 0 ]; then
-              echo "Identical authorization for sdk-v${VERSION} already on main -- nothing to push."
-              exit 0
-            fi
-            exit "$RC"
+            # authcheck already decided this case: an existing file whose tree no longer
+            # matches means a version collision -- it exits 1 there, so this is unreachable
+            # except as defense-in-depth.
+            echo "::error::Unexpected: $AUTH_PATH appeared after authcheck -- refusing to overwrite." >&2
+            exit 1
           fi
           if [ "$REHEARSE" = "true" ]; then
             echo "REHEARSE mode: signed authorization below; NOT delivering it to algenta-sdk."
@@ -433,12 +461,18 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          # Closes the rehearsal loop: the artifact this job WOULD deliver must pass the exact
-          # gate (version/commit/contract/signature) that release.yml's D0 will run for real.
+          # Closes the rehearsal loop: the artifact this job WOULD deliver (or reuse) must pass
+          # the exact gate (version/commit/contract/signature) release.yml's D0 runs for real.
+          # The verifier checks HEAD of --repo-root against sdk_commit, so run it in a worktree
+          # OF the authorized commit (which on the reuse path is behind main's tip).
+          AUTH_COMMIT="$(python3 -c "import json; print(json.load(open('$RUNNER_TEMP/release-authorization.json'))['sdk_commit'])")"
+          VERIFY_ROOT="$RUNNER_TEMP/verify-at-sdk-commit"
+          git worktree add "$VERIFY_ROOT" "$AUTH_COMMIT"
           python scripts/verify_release_authorization.py \
             --authorization-file "$RUNNER_TEMP/release-authorization.json" \
             --expected-version "$VERSION" \
-            --repo-root .
+            --repo-root "$VERIFY_ROOT"
+          git worktree remove --force "$VERIFY_ROOT"
           echo "Rehearsal verification passed: D0 would accept this authorization."
 
       - name: Tag the authorized commit on algenta-sdk (check-if-tagged guard)
