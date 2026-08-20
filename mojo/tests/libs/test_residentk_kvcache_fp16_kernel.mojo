@@ -4,7 +4,7 @@ else `residentk` does.
 
 Hand-written. `test_residentk_session.mojo` judges every precision arm at the WHOLE-SESSION level
 (a full small transformer, GPU vs frozen CPU kernels) because that is the only level at which a
-`compile_function` launch-site mistake — a swapped pointer, a wrong dimension — would
+launch-site mistake — a swapped pointer, a wrong dimension — would
 show up. This file exists for a DIFFERENT, narrower question that whole-session judging cannot
 answer cleanly: **exactly how much error does narrowing the KV cache to Float16 introduce, on its
 own, with no weight quantization, no RoPE, no normalization and no fused projection anywhere in the
@@ -140,21 +140,22 @@ def main() raises:
             var ck16 = ctx.enqueue_create_buffer[DType.float16](max_ctx * H_KV * D_HEAD)
             var cv16 = ctx.enqueue_create_buffer[DType.float16](max_ctx * H_KV * D_HEAD)
 
-            var f_rope32 = ctx.compile_function[_qk_rope_write_kernel]()
-            var f_rope16 = ctx.compile_function[_qk_rope_write_kernel_kvf16]()
-
-            ctx.enqueue_function_unchecked(
-                f_rope32,
+            # Mojo 1.0.0: the checked parameter form is the only launch spelling
+            # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+            # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+            # `qk_norm=1`: the kernels gained the family-convention flag (llama-family support);
+            # 1 = the Qwen3 per-head QK-norm this package's sessions always run, and the norm is
+            # what this pair's qn/kn buffers feed.
+            ctx.enqueue_function[_qk_rope_write_kernel](
                 q_rot32.unsafe_ptr(), ck32.unsafe_ptr(), cv32.unsafe_ptr(), qkv_buf.unsafe_ptr(),
                 qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(), cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
-                pos, H_Q, H_KV, D_HEAD, EPS,
+                Int64(pos), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), EPS, Int64(1),
                 grid_dim=H_Q + H_KV, block_dim=D_HEAD,
             )
-            ctx.enqueue_function_unchecked(
-                f_rope16,
+            ctx.enqueue_function[_qk_rope_write_kernel_kvf16](
                 q_rot16.unsafe_ptr(), ck16.unsafe_ptr(), cv16.unsafe_ptr(), qkv_buf.unsafe_ptr(),
                 qn_buf.unsafe_ptr(), kn_buf.unsafe_ptr(), cos_buf.unsafe_ptr(), sin_buf.unsafe_ptr(),
-                pos, H_Q, H_KV, D_HEAD, EPS,
+                Int64(pos), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), EPS, Int64(1),
                 grid_dim=H_Q + H_KV, block_dim=D_HEAD,
             )
             ctx.synchronize()
@@ -229,19 +230,14 @@ def main() raises:
         var attn16 = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
         var scale = Float32(1.0 / sqrt(Float64(D_HEAD)))
 
-        var f_sdpa32 = ctx.compile_function[_sdpa_kernel]()
-        var f_sdpa16 = ctx.compile_function[_sdpa_kernel_kvf16]()
-
-        ctx.enqueue_function_unchecked(
-            f_sdpa32,
+        ctx.enqueue_function[_sdpa_kernel](
             attn32.unsafe_ptr(), qr_buf.unsafe_ptr(), ck32r.unsafe_ptr(), cv32r.unsafe_ptr(),
-            N_KEYS, H_Q, H_KV, D_HEAD, scale,
+            Int64(N_KEYS), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
             grid_dim=H_Q, block_dim=D_HEAD,
         )
-        ctx.enqueue_function_unchecked(
-            f_sdpa16,
+        ctx.enqueue_function[_sdpa_kernel_kvf16](
             attn16.unsafe_ptr(), qr_buf.unsafe_ptr(), ck16r.unsafe_ptr(), cv16r.unsafe_ptr(),
-            N_KEYS, H_Q, H_KV, D_HEAD, scale,
+            Int64(N_KEYS), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
             grid_dim=H_Q, block_dim=D_HEAD,
         )
         ctx.synchronize()

@@ -54,7 +54,7 @@ def _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
 
 
 def _run_case(
-    ctx: DeviceContext, m_rows: Int, pos_base: Int, h_q: Int, h_kv: Int, d_head: Int,
+    mut ctx: DeviceContext, m_rows: Int, pos_base: Int, h_q: Int, h_kv: Int, d_head: Int,
     mut passed: Int, mut failed: Int,
 ) raises:
     var n_q = h_q * d_head
@@ -81,19 +81,18 @@ def _run_case(
             h[i] = v_vals[i]
 
     var grid = h_q * m_rows
-    var f_oracle = ctx.compile_function[_pf_attn_tiled_kernel_simd]()
-    ctx.enqueue_function(
-        f_oracle,
+    # Mojo 1.0.0: the checked parameter form is the only launch spelling (the
+    # `compile_function` handle and the handle-taking `enqueue_function` overload are removed);
+    # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+    ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
         out_oracle.unsafe_ptr(), q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
-        pos_base, h_q, h_kv, d_head, scale, m_rows,
+        Int64(pos_base), Int64(h_q), Int64(h_kv), Int64(d_head), scale, Int64(m_rows),
         grid_dim=grid, block_dim=d_head,
     )
 
-    var f_block8 = ctx.compile_function[_pf_attn8_kernel_simd]()
-    ctx.enqueue_function(
-        f_block8,
+    ctx.enqueue_function[_pf_attn8_kernel_simd](
         out_block8.unsafe_ptr(), q_buf.unsafe_ptr(), k_buf.unsafe_ptr(), v_buf.unsafe_ptr(),
-        pos_base, h_q, h_kv, d_head, scale, m_rows,
+        Int64(pos_base), Int64(h_q), Int64(h_kv), Int64(d_head), scale, Int64(m_rows),
         grid_dim=grid, block_dim=d_head,
     )
     ctx.synchronize()

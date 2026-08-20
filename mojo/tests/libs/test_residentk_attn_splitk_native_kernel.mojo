@@ -124,7 +124,7 @@ def _host_reference(
 
 
 def _run_case(
-    ctx: DeviceContext, name: String, h_q: Int, h_kv: Int, d_head: Int, n_keys: Int, n_splits: Int,
+    mut ctx: DeviceContext, name: String, h_q: Int, h_kv: Int, d_head: Int, n_keys: Int, n_splits: Int,
     mut passed: Int, mut failed: Int,
 ) raises:
     """One (h_q, h_kv, d_head, n_keys, n_splits) case: builds fresh deterministic inputs, then runs
@@ -156,11 +156,12 @@ def _run_case(
 
     # ── the single-dispatch original ──
     var attn_orig = ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
-    var f_orig = ctx.compile_function[_sdpa_kernel_simd]()
-    ctx.enqueue_function_unchecked(
-        f_orig,
+    # Mojo 1.0.0: the checked parameter form is the only launch spelling
+    # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+    # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+    ctx.enqueue_function[_sdpa_kernel_simd](
         attn_orig.unsafe_ptr(), q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-        n_keys, h_q, h_kv, d_head, scale,
+        Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d_head), scale,
         grid_dim=h_q, block_dim=d_head,
     )
 
@@ -170,19 +171,15 @@ def _run_case(
     var o_buf = ctx.enqueue_create_buffer[DType.float32](h_q * n_splits * d_head)
     var attn_split = ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
 
-    var f_partial = ctx.compile_function[_splitk_partial_kernel_simd]()
-    var f_merge = ctx.compile_function[_splitk_merge_kernel_simd]()
-    ctx.enqueue_function_unchecked(
-        f_partial,
+    ctx.enqueue_function[_splitk_partial_kernel_simd](
         m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
         q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-        n_keys, n_splits, h_q, h_kv, d_head, scale,
+        Int64(n_keys), Int64(n_splits), Int64(h_q), Int64(h_kv), Int64(d_head), scale,
         grid_dim=h_q * n_splits, block_dim=d_head,
     )
-    ctx.enqueue_function_unchecked(
-        f_merge,
+    ctx.enqueue_function[_splitk_merge_kernel_simd](
         attn_split.unsafe_ptr(), m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
-        n_splits, d_head,
+        Int64(n_splits), Int64(d_head),
         grid_dim=h_q, block_dim=d_head,
     )
 
@@ -195,18 +192,15 @@ def _run_case(
     var o_buf2 = ctx.enqueue_create_buffer[DType.float32](h_q * n_splits * d_head)
     var attn_native = ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
 
-    var f_partial_n = ctx.compile_function[_splitk_partial_kernel_simd_native]()
-    ctx.enqueue_function_unchecked(
-        f_partial_n,
+    ctx.enqueue_function[_splitk_partial_kernel_simd_native](
         m_buf2.unsafe_ptr(), l_buf2.unsafe_ptr(), o_buf2.unsafe_ptr(),
         q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-        n_keys, n_splits, h_q, h_kv, d_head, scale,
+        Int64(n_keys), Int64(n_splits), Int64(h_q), Int64(h_kv), Int64(d_head), scale,
         grid_dim=h_q * n_splits, block_dim=32,
     )
-    ctx.enqueue_function_unchecked(
-        f_merge,
+    ctx.enqueue_function[_splitk_merge_kernel_simd](
         attn_native.unsafe_ptr(), m_buf2.unsafe_ptr(), l_buf2.unsafe_ptr(), o_buf2.unsafe_ptr(),
-        n_splits, d_head,
+        Int64(n_splits), Int64(d_head),
         grid_dim=h_q, block_dim=d_head,
     )
     ctx.synchronize()

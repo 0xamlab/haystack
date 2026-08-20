@@ -111,7 +111,7 @@ def _host_reference(
 
 
 def _run_case(
-    ctx: DeviceContext, name: String, n_keys: Int, n_splits: Int,
+    mut ctx: DeviceContext, name: String, n_keys: Int, n_splits: Int,
     mut passed: Int, mut failed: Int,
 ) raises:
     """One (n_keys, n_splits) case: builds fresh deterministic inputs, runs `_sdpa_kernel_simd`
@@ -141,11 +141,12 @@ def _run_case(
 
     # ── the single-dispatch original, `_sdpa_kernel_simd` at its own grid shape ──
     var attn_orig = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
-    var f_orig = ctx.compile_function[_sdpa_kernel_simd]()
-    ctx.enqueue_function_unchecked(
-        f_orig,
+    # Mojo 1.0.0: the checked parameter form is the only launch spelling
+    # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+    # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+    ctx.enqueue_function[_sdpa_kernel_simd](
         attn_orig.unsafe_ptr(), q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-        n_keys, H_Q, H_KV, D_HEAD, scale,
+        Int64(n_keys), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
         grid_dim=H_Q, block_dim=D_HEAD,
     )
 
@@ -155,19 +156,15 @@ def _run_case(
     var o_buf = ctx.enqueue_create_buffer[DType.float32](H_Q * n_splits * D_HEAD)
     var attn_split = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
 
-    var f_partial = ctx.compile_function[_splitk_partial_kernel_simd]()
-    var f_merge = ctx.compile_function[_splitk_merge_kernel_simd]()
-    ctx.enqueue_function_unchecked(
-        f_partial,
+    ctx.enqueue_function[_splitk_partial_kernel_simd](
         m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
         q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-        n_keys, n_splits, H_Q, H_KV, D_HEAD, scale,
+        Int64(n_keys), Int64(n_splits), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
         grid_dim=H_Q * n_splits, block_dim=D_HEAD,
     )
-    ctx.enqueue_function_unchecked(
-        f_merge,
+    ctx.enqueue_function[_splitk_merge_kernel_simd](
         attn_split.unsafe_ptr(), m_buf.unsafe_ptr(), l_buf.unsafe_ptr(), o_buf.unsafe_ptr(),
-        n_splits, D_HEAD,
+        Int64(n_splits), Int64(D_HEAD),
         grid_dim=H_Q, block_dim=D_HEAD,
     )
     ctx.synchronize()

@@ -167,19 +167,17 @@ def main() raises:
         var attn_tree = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
         var attn_simd = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
 
-        var f_tree = ctx.compile_function[_sdpa_kernel]()
-        var f_simd = ctx.compile_function[_sdpa_kernel_simd]()
-
-        ctx.enqueue_function_unchecked(
-            f_tree,
+        # Mojo 1.0.0: the checked parameter form is the only launch spelling
+        # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+        # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+        ctx.enqueue_function[_sdpa_kernel](
             attn_tree.unsafe_ptr(), q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-            N_KEYS, H_Q, H_KV, D_HEAD, scale,
+            Int64(N_KEYS), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
             grid_dim=H_Q, block_dim=D_HEAD,
         )
-        ctx.enqueue_function_unchecked(
-            f_simd,
+        ctx.enqueue_function[_sdpa_kernel_simd](
             attn_simd.unsafe_ptr(), q_buf.unsafe_ptr(), ck_buf.unsafe_ptr(), cv_buf.unsafe_ptr(),
-            N_KEYS, H_Q, H_KV, D_HEAD, scale,
+            Int64(N_KEYS), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
             grid_dim=H_Q, block_dim=D_HEAD,
         )
         ctx.synchronize()
@@ -266,19 +264,14 @@ def main() raises:
         var attn_tree16 = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
         var attn_simd16 = ctx.enqueue_create_buffer[DType.float32](H_Q * D_HEAD)
 
-        var f_tree16 = ctx.compile_function[_sdpa_kernel_kvf16]()
-        var f_simd16 = ctx.compile_function[_sdpa_kernel_simd_kvf16]()
-
-        ctx.enqueue_function_unchecked(
-            f_tree16,
+        ctx.enqueue_function[_sdpa_kernel_kvf16](
             attn_tree16.unsafe_ptr(), q_buf.unsafe_ptr(), ck16_buf.unsafe_ptr(), cv16_buf.unsafe_ptr(),
-            N_KEYS, H_Q, H_KV, D_HEAD, scale,
+            Int64(N_KEYS), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
             grid_dim=H_Q, block_dim=D_HEAD,
         )
-        ctx.enqueue_function_unchecked(
-            f_simd16,
+        ctx.enqueue_function[_sdpa_kernel_simd_kvf16](
             attn_simd16.unsafe_ptr(), q_buf.unsafe_ptr(), ck16_buf.unsafe_ptr(), cv16_buf.unsafe_ptr(),
-            N_KEYS, H_Q, H_KV, D_HEAD, scale,
+            Int64(N_KEYS), Int64(H_Q), Int64(H_KV), Int64(D_HEAD), scale,
             grid_dim=H_Q, block_dim=D_HEAD,
         )
         ctx.synchronize()

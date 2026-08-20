@@ -111,8 +111,10 @@ def main() raises:
             return
 
         var ctx = DeviceContext()
-        var f_tree = ctx.compile_function[_argmax_reduce_kernel]()
-        var f_simd = ctx.compile_function[_argmax_reduce_kernel_simd]()
+
+        # Mojo 1.0.0: the checked parameter form is the only launch spelling
+        # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+        # the Int scalar widens to the kernels' fixed-width Int64 DevicePassable parameter.
 
         # ── general shapes: unique maxima, idle/partial SIMD groups exercised ──────────────────
         var n_cases = List[Int]()
@@ -145,14 +147,14 @@ def main() raises:
             var out_val_simd = ctx.enqueue_create_buffer[DType.float32](1)
             var out_idx_simd = ctx.enqueue_create_buffer[DType.int32](1)
 
-            ctx.enqueue_function_unchecked(
-                f_tree, out_val_tree.unsafe_ptr(), out_idx_tree.unsafe_ptr(),
-                vbuf.unsafe_ptr(), ibuf.unsafe_ptr(), n,
+            ctx.enqueue_function[_argmax_reduce_kernel](
+                out_val_tree.unsafe_ptr(), out_idx_tree.unsafe_ptr(),
+                vbuf.unsafe_ptr(), ibuf.unsafe_ptr(), Int64(n),
                 grid_dim=1, block_dim=_TG,
             )
-            ctx.enqueue_function_unchecked(
-                f_simd, out_val_simd.unsafe_ptr(), out_idx_simd.unsafe_ptr(),
-                vbuf.unsafe_ptr(), ibuf.unsafe_ptr(), n,
+            ctx.enqueue_function[_argmax_reduce_kernel_simd](
+                out_val_simd.unsafe_ptr(), out_idx_simd.unsafe_ptr(),
+                vbuf.unsafe_ptr(), ibuf.unsafe_ptr(), Int64(n),
                 grid_dim=1, block_dim=_TG,
             )
             ctx.synchronize()
@@ -212,12 +214,12 @@ def main() raises:
             var oti2 = ctx.enqueue_create_buffer[DType.int32](1)
             var osv2 = ctx.enqueue_create_buffer[DType.float32](1)
             var osi2 = ctx.enqueue_create_buffer[DType.int32](1)
-            ctx.enqueue_function_unchecked(
-                f_tree, otv2.unsafe_ptr(), oti2.unsafe_ptr(), vbuf2.unsafe_ptr(), ibuf2.unsafe_ptr(), 64,
+            ctx.enqueue_function[_argmax_reduce_kernel](
+                otv2.unsafe_ptr(), oti2.unsafe_ptr(), vbuf2.unsafe_ptr(), ibuf2.unsafe_ptr(), Int64(64),
                 grid_dim=1, block_dim=_TG,
             )
-            ctx.enqueue_function_unchecked(
-                f_simd, osv2.unsafe_ptr(), osi2.unsafe_ptr(), vbuf2.unsafe_ptr(), ibuf2.unsafe_ptr(), 64,
+            ctx.enqueue_function[_argmax_reduce_kernel_simd](
+                osv2.unsafe_ptr(), osi2.unsafe_ptr(), vbuf2.unsafe_ptr(), ibuf2.unsafe_ptr(), Int64(64),
                 grid_dim=1, block_dim=_TG,
             )
             ctx.synchronize()
@@ -263,12 +265,12 @@ def main() raises:
             var oti3 = ctx.enqueue_create_buffer[DType.int32](1)
             var osv3 = ctx.enqueue_create_buffer[DType.float32](1)
             var osi3 = ctx.enqueue_create_buffer[DType.int32](1)
-            ctx.enqueue_function_unchecked(
-                f_tree, otv3.unsafe_ptr(), oti3.unsafe_ptr(), vbuf3.unsafe_ptr(), ibuf3.unsafe_ptr(), 256,
+            ctx.enqueue_function[_argmax_reduce_kernel](
+                otv3.unsafe_ptr(), oti3.unsafe_ptr(), vbuf3.unsafe_ptr(), ibuf3.unsafe_ptr(), Int64(256),
                 grid_dim=1, block_dim=_TG,
             )
-            ctx.enqueue_function_unchecked(
-                f_simd, osv3.unsafe_ptr(), osi3.unsafe_ptr(), vbuf3.unsafe_ptr(), ibuf3.unsafe_ptr(), 256,
+            ctx.enqueue_function[_argmax_reduce_kernel_simd](
+                osv3.unsafe_ptr(), osi3.unsafe_ptr(), vbuf3.unsafe_ptr(), ibuf3.unsafe_ptr(), Int64(256),
                 grid_dim=1, block_dim=_TG,
             )
             ctx.synchronize()

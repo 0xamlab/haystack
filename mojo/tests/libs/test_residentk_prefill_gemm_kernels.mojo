@@ -95,7 +95,7 @@ def _quantize_i8_rows(w_f32: List[Float32], n: Int, k: Int) -> _QuantResult:
 
 
 def _run_case(
-    ctx: DeviceContext, m_rows: Int, k: Int, n: Int, mut passed: Int, mut failed: Int,
+    mut ctx: DeviceContext, m_rows: Int, k: Int, n: Int, mut passed: Int, mut failed: Int,
 ) raises:
     var eps = Float32(1.0e-6)
     var x_vals = _pseudo_f32(m_rows * k, 3 + m_rows + k + n, 0.6)
@@ -122,42 +122,37 @@ def _run_case(
 
     # ── oracle: the byte-unmodified Phase-1 row-flattened kernel ──
     var y_oracle = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
-    var f_oracle = ctx.compile_function[_pf_qkv_proj_kernel_simd_i8]()
     var n_units = (n + _SUBS - 1) // _SUBS
-    ctx.enqueue_function(
-        f_oracle,
+    # Mojo 1.0.0: the checked parameter form is the only launch spelling (the
+    # `compile_function` handle and the handle-taking `enqueue_function` overload are removed);
+    # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+    ctx.enqueue_function[_pf_qkv_proj_kernel_simd_i8](
         y_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
-        w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(), k, n, eps, m_rows,
+        w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(), Int64(k), Int64(n), eps, Int64(m_rows),
         grid_dim=n_units * m_rows, block_dim=_TG,
     )
 
     # ── candidate: rmsnorm split out, then the weight-stationary tiled GEMM ──
     var xn_buf = ctx.enqueue_create_buffer[DType.float32](m_rows * k)
-    var f_norm = ctx.compile_function[_pf_rmsnorm_rows_kernel]()
-    ctx.enqueue_function(
-        f_norm,
-        xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), k, eps, m_rows,
+    ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+        xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), Int64(k), eps, Int64(m_rows),
         grid_dim=m_rows, block_dim=_TG,
     )
 
     var y_new = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
-    var f_gemm = ctx.compile_function[_pf_gemm_assign_kernel_i8]()
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n + _GEMM_BN - 1) // _GEMM_BN
-    ctx.enqueue_function(
-        f_gemm,
+    ctx.enqueue_function[_pf_gemm_assign_kernel_i8](
         y_new.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        m_rows, k, n,
+        Int64(m_rows), Int64(k), Int64(n),
         grid_dim=n_tile_rows * n_tile_cols, block_dim=_GEMM_NTHREADS,
     )
 
     var y_new_narrow = ctx.enqueue_create_buffer[DType.float32](m_rows * n)
-    var f_gemm_narrow = ctx.compile_function[_pf_gnrw_assign_kernel_i8]()
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
-    ctx.enqueue_function(
-        f_gemm_narrow,
+    ctx.enqueue_function[_pf_gnrw_assign_kernel_i8](
         y_new_narrow.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        m_rows, k, n,
+        Int64(m_rows), Int64(k), Int64(n),
         grid_dim=n_tile_rows_narrow * n_tile_cols, block_dim=_GEMM_NTHREADS_NARROW,
     )
     ctx.synchronize()
@@ -204,7 +199,7 @@ def _run_case(
 
 
 def _run_case_accum(
-    ctx: DeviceContext, m_rows: Int, k: Int, n: Int, mut passed: Int, mut failed: Int,
+    mut ctx: DeviceContext, m_rows: Int, k: Int, n: Int, mut passed: Int, mut failed: Int,
 ) raises:
     """`_pf_gemm_accum_kernel_i8` vs `_pf_gemv_accum_kernel_simd_i8` -- both start from the SAME
     pseudo-random `y0` baseline (the residual `+=` lands on), so the diff isolates the projection
@@ -236,21 +231,17 @@ def _run_case_accum(
             h[i] = y0_vals[i]
 
     var n_units = (n + _SUBS - 1) // _SUBS
-    var f_oracle = ctx.compile_function[_pf_gemv_accum_kernel_simd_i8]()
-    ctx.enqueue_function(
-        f_oracle,
+    ctx.enqueue_function[_pf_gemv_accum_kernel_simd_i8](
         y_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        k, n, m_rows,
+        Int64(k), Int64(n), Int64(m_rows),
         grid_dim=n_units * m_rows, block_dim=_TG,
     )
 
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n + _GEMM_BN - 1) // _GEMM_BN
-    var f_gemm = ctx.compile_function[_pf_gemm_accum_kernel_i8]()
-    ctx.enqueue_function(
-        f_gemm,
+    ctx.enqueue_function[_pf_gemm_accum_kernel_i8](
         y_new.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        m_rows, k, n,
+        Int64(m_rows), Int64(k), Int64(n),
         grid_dim=n_tile_rows * n_tile_cols, block_dim=_GEMM_NTHREADS,
     )
 
@@ -259,11 +250,9 @@ def _run_case_accum(
         for i in range(m_rows * n):
             h[i] = y0_vals[i]
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
-    var f_gemm_narrow = ctx.compile_function[_pf_gnrw_accum_kernel_i8]()
-    ctx.enqueue_function(
-        f_gemm_narrow,
+    ctx.enqueue_function[_pf_gnrw_accum_kernel_i8](
         y_new_narrow.unsafe_ptr(), x_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        m_rows, k, n,
+        Int64(m_rows), Int64(k), Int64(n),
         grid_dim=n_tile_rows_narrow * n_tile_cols, block_dim=_GEMM_NTHREADS_NARROW,
     )
     ctx.synchronize()
@@ -310,7 +299,7 @@ def _run_case_accum(
 
 
 def _run_case_swiglu(
-    ctx: DeviceContext, m_rows: Int, k: Int, n_ff: Int, mut passed: Int, mut failed: Int,
+    mut ctx: DeviceContext, m_rows: Int, k: Int, n_ff: Int, mut passed: Int, mut failed: Int,
 ) raises:
     """`_pf_rmsnorm_rows_kernel` + `_pf_gemm_swiglu_kernel_i8` vs the fused, single-row-flattened
     `_pf_swiglu_kernel_simd_i8` -- the oracle norms `x` inline; the candidate norms it via the SAME
@@ -339,41 +328,33 @@ def _run_case_swiglu(
             h[i] = q.scale[i]
 
     var act_oracle = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
-    var f_oracle = ctx.compile_function[_pf_swiglu_kernel_simd_i8]()
     var n_units = (n_ff + _SUBS - 1) // _SUBS
-    ctx.enqueue_function(
-        f_oracle,
+    ctx.enqueue_function[_pf_swiglu_kernel_simd_i8](
         act_oracle.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
-        w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(), k, n_ff, eps, m_rows,
+        w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(), Int64(k), Int64(n_ff), eps, Int64(m_rows),
         grid_dim=n_units * m_rows, block_dim=_TG,
     )
 
     var xn_buf = ctx.enqueue_create_buffer[DType.float32](m_rows * k)
-    var f_norm = ctx.compile_function[_pf_rmsnorm_rows_kernel]()
-    ctx.enqueue_function(
-        f_norm,
-        xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), k, eps, m_rows,
+    ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+        xn_buf.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), Int64(k), eps, Int64(m_rows),
         grid_dim=m_rows, block_dim=_TG,
     )
 
     var act_new = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
-    var f_gemm = ctx.compile_function[_pf_gemm_swiglu_kernel_i8]()
     var n_tile_rows = (m_rows + _GEMM_BM - 1) // _GEMM_BM
     var n_tile_cols = (n_ff + _GEMM_BN - 1) // _GEMM_BN
-    ctx.enqueue_function(
-        f_gemm,
+    ctx.enqueue_function[_pf_gemm_swiglu_kernel_i8](
         act_new.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        m_rows, k, n_ff,
+        Int64(m_rows), Int64(k), Int64(n_ff),
         grid_dim=n_tile_rows * n_tile_cols, block_dim=_GEMM_NTHREADS,
     )
 
     var act_new_narrow = ctx.enqueue_create_buffer[DType.float32](m_rows * n_ff)
-    var f_gemm_narrow = ctx.compile_function[_pf_gnrw_swiglu_kernel_i8]()
     var n_tile_rows_narrow = (m_rows + _GEMM_BM_NARROW - 1) // _GEMM_BM_NARROW
-    ctx.enqueue_function(
-        f_gemm_narrow,
+    ctx.enqueue_function[_pf_gnrw_swiglu_kernel_i8](
         act_new_narrow.unsafe_ptr(), xn_buf.unsafe_ptr(), w_buf.unsafe_ptr(), scale_buf.unsafe_ptr(),
-        m_rows, k, n_ff,
+        Int64(m_rows), Int64(k), Int64(n_ff),
         grid_dim=n_tile_rows_narrow * n_tile_cols, block_dim=_GEMM_NTHREADS_NARROW,
     )
     ctx.synchronize()

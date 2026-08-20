@@ -242,21 +242,20 @@ def main() raises:
         var blk_idx_tree = ctx.enqueue_create_buffer[DType.int32](GRID_DIM)
         var blk_val_simd = ctx.enqueue_create_buffer[DType.float32](GRID_DIM)
         var blk_idx_simd = ctx.enqueue_create_buffer[DType.int32](GRID_DIM)
-        var f_tree = ctx.compile_function[_lmhead_argmax_kernel_i8]()
-        var f_simd = ctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
 
-        ctx.enqueue_function_unchecked(
-            f_tree,
+        # Mojo 1.0.0: the checked parameter form is the only launch spelling
+        # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+        # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+        ctx.enqueue_function[_lmhead_argmax_kernel_i8](
             blk_val_tree.unsafe_ptr(), blk_idx_tree.unsafe_ptr(),
             x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), w_buf.unsafe_ptr(), wscale_buf.unsafe_ptr(),
-            K, N, EPS, N_ITERS,
+            Int64(K), Int64(N), EPS, Int64(N_ITERS),
             grid_dim=GRID_DIM, block_dim=_TG,
         )
-        ctx.enqueue_function_unchecked(
-            f_simd,
+        ctx.enqueue_function[_lmhead_argmax_kernel_simd_i8](
             blk_val_simd.unsafe_ptr(), blk_idx_simd.unsafe_ptr(),
             x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(), w_buf.unsafe_ptr(), wscale_buf.unsafe_ptr(),
-            K, N, EPS, N_ITERS,
+            Int64(K), Int64(N), EPS, Int64(N_ITERS),
             grid_dim=GRID_DIM, block_dim=_TG,
         )
         ctx.synchronize()

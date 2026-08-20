@@ -257,19 +257,18 @@ def main() raises:
 
         var y_tree = ctx.enqueue_create_buffer[DType.float32](N)
         var y_simd = ctx.enqueue_create_buffer[DType.float32](N)
-        var f_ng_tree = ctx.compile_function[_norm_gemv_kernel_i8]()
-        var f_ng_simd = ctx.compile_function[_norm_gemv_kernel_simd_i8]()
 
-        ctx.enqueue_function_unchecked(
-            f_ng_tree,
+        # Mojo 1.0.0: the checked parameter form is the only launch spelling
+        # (`enqueue_function_unchecked` and the `compile_function` handle are removed);
+        # Int scalars widen to the kernels' fixed-width Int64 DevicePassable parameters.
+        ctx.enqueue_function[_norm_gemv_kernel_i8](
             y_tree.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
-            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), K, N, EPS,
+            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), Int64(K), Int64(N), EPS,
             grid_dim=grid_n, block_dim=_TG,
         )
-        ctx.enqueue_function_unchecked(
-            f_ng_simd,
+        ctx.enqueue_function[_norm_gemv_kernel_simd_i8](
             y_simd.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
-            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), K, N, EPS,
+            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), Int64(K), Int64(N), EPS,
             grid_dim=grid_n, block_dim=_TG,
         )
         ctx.synchronize()
@@ -316,18 +315,14 @@ def main() raises:
                 h[j] = Float32(y0_64[j])
         ctx.synchronize()
 
-        var f_ga_tree = ctx.compile_function[_gemv_accum_kernel_i8]()
-        var f_ga_simd = ctx.compile_function[_gemv_accum_kernel_simd_i8]()
-        ctx.enqueue_function_unchecked(
-            f_ga_tree,
+        ctx.enqueue_function[_gemv_accum_kernel_i8](
             y0_tree_buf.unsafe_ptr(), x_buf.unsafe_ptr(),
-            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), K, N,
+            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), Int64(K), Int64(N),
             grid_dim=grid_n, block_dim=_TG,
         )
-        ctx.enqueue_function_unchecked(
-            f_ga_simd,
+        ctx.enqueue_function[_gemv_accum_kernel_simd_i8](
             y0_simd_buf.unsafe_ptr(), x_buf.unsafe_ptr(),
-            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), K, N,
+            w_a_buf.unsafe_ptr(), wscale_a_buf.unsafe_ptr(), Int64(K), Int64(N),
             grid_dim=grid_n, block_dim=_TG,
         )
         ctx.synchronize()
@@ -402,19 +397,15 @@ def main() raises:
 
         var act_tree = ctx.enqueue_create_buffer[DType.float32](N)
         var act_simd = ctx.enqueue_create_buffer[DType.float32](N)
-        var f_gu_tree = ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
-        var f_gu_simd = ctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
 
-        ctx.enqueue_function_unchecked(
-            f_gu_tree,
+        ctx.enqueue_function[_norm_gemv2_swiglu_kernel_i8](
             act_tree.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
-            wgu_buf.unsafe_ptr(), wgu_scale_buf.unsafe_ptr(), K, N, EPS,
+            wgu_buf.unsafe_ptr(), wgu_scale_buf.unsafe_ptr(), Int64(K), Int64(N), EPS,
             grid_dim=grid_n, block_dim=_TG,
         )
-        ctx.enqueue_function_unchecked(
-            f_gu_simd,
+        ctx.enqueue_function[_norm_gemv2_swiglu_kernel_simd_i8](
             act_simd.unsafe_ptr(), x_buf.unsafe_ptr(), gamma_buf.unsafe_ptr(),
-            wgu_buf.unsafe_ptr(), wgu_scale_buf.unsafe_ptr(), K, N, EPS,
+            wgu_buf.unsafe_ptr(), wgu_scale_buf.unsafe_ptr(), Int64(K), Int64(N), EPS,
             grid_dim=grid_n, block_dim=_TG,
         )
         ctx.synchronize()
