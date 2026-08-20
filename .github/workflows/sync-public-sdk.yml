@@ -34,7 +34,7 @@ jobs:
     # platform-independent once python + gitleaks are provisioned runner-agnostically.
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -67,7 +67,7 @@ jobs:
           repositories: algenta-sdk
 
       - name: Check out the public SDK repo alongside this one
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: thyn-ai/algenta-sdk
           path: algenta-sdk-public

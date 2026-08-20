@@ -94,7 +94,7 @@ jobs:
     name: license + version guard (D2)
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # Fails if any public SDK is not Apache-2.0, versions diverge, or a LICENSE is missing.
       # The test is pure-stdlib (tomllib + json), so pytest is the only dependency to install.
       # -c /dev/null ignores the app's pytest config (asyncio plugin etc.) and --noconftest skips
@@ -124,7 +124,7 @@ jobs:
     needs: guard
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Build + check the Python SDKs (wheel + sdist + metadata)
         run: |
           set -euo pipefail
@@ -161,7 +161,7 @@ jobs:
       contents: read # token auth via TEST_PYPI_TOKEN — no id-token / Trusted Publishing
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Publish algenta-mcp to TestPyPI
         # Native twine: the pypa action is a Linux-only container action (see file header).
         # twine >= 7 accepts core packaging metadata 2.5 (hatchling >= 1.32 emits it).
@@ -188,7 +188,7 @@ jobs:
       contents: read
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Build the publishable Python package
         # Native toolchain: the pypa action is a Linux-only container action (see file header).
         # twine >= 7 accepts core packaging metadata 2.5 (hatchling >= 1.32 emits it).
@@ -222,7 +222,7 @@ jobs:
       # algenta-sdk's own verifier, but nothing reaches algenta-sdk's remotes or any registry.
       REHEARSE: ${{ inputs.target == 'sdk-rehearse' }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Regenerate contract snapshots (must match what's about to be verified)
         run: python3 scripts/generate_platform_contract_artifacts.py
@@ -247,7 +247,7 @@ jobs:
           repositories: algenta-sdk
 
       - name: Check out the public SDK repo alongside this one
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: thyn-ai/algenta-sdk
           path: algenta-sdk-checkout

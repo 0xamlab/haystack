@@ -35,7 +35,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Run gap checks
         run: python3 scripts/audit_gap_checks.py
@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Start Postgres, wait for it
         run: |
@@ -148,7 +148,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       # No actions/setup-python (needs passwordless sudo on macOS, not configured here) —
       # python3.14 is a Homebrew-installed binary already on this runner's PATH.
