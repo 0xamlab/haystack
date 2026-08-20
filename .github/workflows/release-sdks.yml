@@ -1,19 +1,38 @@
 # Releases two different things, on two different mechanisms:
 #   - algenta-mcp (PyPI only): published directly from here, by token, same as always.
-#   - algenta-sdk (PyPI + npm, the extracted public SDK): this repo no longer publishes it at
-#     all. This job signs a release authorization (version + exact thyn-ai/algenta-sdk commit +
-#     contract-file digest + Ed25519 signature) and hands it to that repo via a reviewable PR;
-#     a human then tags the authorized commit `sdk-vX.Y.Z` in thyn-ai/algenta-sdk, which triggers
-#     that repo's own release.yml to actually build and `npm publish`/`twine upload`. This split
-#     exists because PyPI/npm Trusted Publishing only issues genuine source-to-package provenance
-#     for a workflow that runs from a PUBLIC repository — this repo is private, algenta-sdk isn't.
-#     See the approved SDK-repo extraction plan's Step 4 amendment for the full rationale.
+#   - algenta-sdk (PyPI + npm, the extracted public SDK): this repo never publishes it. Instead
+#     the sdk-release job below drives the WHOLE chain automatically, in order:
+#       1. mirror packages/python-sdk + packages/ts-sdk (and examples/) from the tested tree
+#          DIRECTLY onto thyn-ai/algenta-sdk's main,
+#       2. re-run the diff guard as the verification backstop,
+#       3. sign the release authorization (version + exact algenta-sdk commit + contract-file
+#          digest + Ed25519 signature),
+#       4. commit the authorization DIRECTLY onto algenta-sdk's main,
+#       5. tag the authorized commit sdk-vX.Y.Z on algenta-sdk, which triggers that repo's own
+#          release.yml (D0 gate: authorization fetched from its main + signature/commit/contract
+#          verification) to build and `npm publish`/`twine upload`.
+#     WHY direct pushes instead of the old reviewable PRs + human tagging: the mirrored content
+#     is algenta's own PR-gated main-branch source -- it already passed algenta's full CI before
+#     it could ever be tagged here, so a separate human review of the mirror/authorization PRs
+#     was redundant ceremony (and a failure mode: an unmerged PR stranded the release). The
+#     authorization is machine-signed; the Ed25519 signing key remains the trust anchor, and
+#     algenta-sdk's release.yml still refuses to publish anything D0 cannot verify. The sync App
+#     token used for these pushes never exists outside this run and holds no publish credentials.
+#     This split exists because PyPI/npm Trusted Publishing only issues genuine
+#     source-to-package provenance for a workflow that runs from a PUBLIC repository -- this repo
+#     is private, algenta-sdk isn't. See the approved SDK-repo extraction plan's Step 4 amendment.
 #
 # Flow: guard (license/version drift) -> build + dry-run checks (always) -> publish-pypi (mcp) +
-# sign-release-authorization (algenta-sdk), in parallel. Only a tag push (sdk-v*) triggers a real
+# sdk-release (algenta-sdk chain), in parallel. Only a tag push (sdk-v*) triggers a real
 # release; workflow_dispatch remains available for dry-run/testpypi rehearsals
-# (`gh workflow run release-sdks.yml -f target=dry-run`) and for a manual `pypi` run if a tag push
-# isn't the trigger source for some reason.
+# (`gh workflow run release-sdks.yml -f target=dry-run`), an end-to-end SDK-chain rehearsal that
+# touches neither repo's remote state nor any registry (`-f target=sdk-rehearse`), and a manual
+# `pypi` run if a tag push isn't the trigger source for some reason.
+#
+# IDEMPOTENCY: rerunning the same tag is safe. Each push step first checks its target state --
+# mirror already in sync -> skip; identical authorization already on main -> skip; tag already
+# exists at the authorized commit -> skip. A tag that exists at a DIFFERENT commit, or a
+# DIFFERENT authorization for the same version, fails loud and is never overwritten.
 #
 # SECURITY NOTE (post SDK-repo-goes-public hardening): this workflow used to also trigger on every
 # push to `main`, auto-publishing on merge. That's removed — the source for these SDKs is now also
@@ -31,11 +50,14 @@
 #   - Repo secret `SDK_RELEASE_SIGNING_PRIVATE_KEY` = the PEM-encoded Ed25519 private key whose
 #     public half is embedded in thyn-ai/algenta-sdk's release.yml
 #     (scripts/verify_release_authorization.py's TRUSTED_PUBLIC_KEYS["sdk-release-2026-08"]).
-#     TODO(owner): this secret is not yet set — sign-release-authorization cannot succeed until it
-#     is. Never let this key touch algenta-sdk; only its public half does.
+#     Set and proven in production (it signed the sdk-v1.0.8 authorization). Never let this key
+#     touch algenta-sdk; only its public half does.
 #   - Same GitHub App as sync-public-sdk.yml (ALGENTA_SDK_SYNC_APP_ID /
-#     ALGENTA_SDK_SYNC_APP_PRIVATE_KEY) is reused here to open the authorization PR — no new App
-#     needed, its existing `contents` + `pull_requests` scope on thyn-ai/algenta-sdk is sufficient.
+#     ALGENTA_SDK_SYNC_APP_PRIVATE_KEY) is reused here — no new App needed. Its `contents` scope
+#     on thyn-ai/algenta-sdk covers the direct main/tag pushes this chain makes. NOTE: those
+#     pushes require the App to be a bypass actor on algenta-sdk's default-branch ruleset (the
+#     ruleset's pull_request rule otherwise rejects direct pushes) — configured in repo settings,
+#     not declarable here. `pull_requests` scope is retained for sync-public-sdk.yml only.
 
 name: release-sdks
 
@@ -50,9 +72,10 @@ on:
         description: "Publish target"
         type: choice
         options:
-          - dry-run # guard + build/pack checks only — no upload
+          - dry-run # guard + build/pack checks only — no upload, no algenta-sdk side effects
           - testpypi # rehearse: publish algenta-mcp to test.pypi.org
-          - pypi # real release: publish algenta-mcp + sign the algenta-sdk release authorization
+          - sdk-rehearse # full algenta-sdk chain EXCEPT all pushes: mirror diffed+logged not pushed, authorization signed+verified not delivered, tag resolved not pushed
+          - pypi # real release: publish algenta-mcp + run the full algenta-sdk chain
         default: dry-run
 
 permissions:
@@ -185,14 +208,19 @@ jobs:
           . "$RUNNER_TEMP/publish-venv/bin/activate"
           twine upload --non-interactive --skip-existing packages/mcp/dist/*
 
-  sign-release-authorization:
-    name: sign algenta-sdk release authorization (no publish happens here)
+  sdk-release:
+    name: sync + sign + deliver + tag algenta-sdk (fully automated; no publish here)
     needs: [guard, build]
-    if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
+    if: ${{ github.event_name == 'push' || inputs.target == 'pypi' || inputs.target == 'sdk-rehearse' }}
     environment: release # TODO(owner): re-enable required-reviewers protection on this environment
     permissions:
       contents: read
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    env:
+      # REHEARSE runs every step of the chain EXCEPT the pushes (mirror, authorization, tag):
+      # the diff is computed and logged, the authorization is signed and verified against
+      # algenta-sdk's own verifier, but nothing reaches algenta-sdk's remotes or any registry.
+      REHEARSE: ${{ inputs.target == 'sdk-rehearse' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
@@ -225,11 +253,100 @@ jobs:
           path: algenta-sdk-checkout
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
+          fetch-depth: 0
 
-      - name: Refuse to sign unless algenta-sdk's source actually matches this tested tree
-        # sync-public-sdk.yml is what's supposed to keep these in sync via a human-reviewed PR.
-        # This is the safety net: never sign an authorization for public source this test run
-        # didn't actually validate, e.g. because a sync PR is still open/unmerged.
+      # --- Inline mirror sync (replaces the old sync-public-sdk PR + human merge) -------------
+      # WHY a direct push: the mirrored content is this repo's own PR-gated main-branch source --
+      # it already passed algenta's full CI to get here, so a separate human review of the mirror
+      # was redundant ceremony (and a failure mode: an unmerged sync PR stranded sdk-v1.0.9's
+      # signing). The Ed25519 signature produced below remains the trust anchor for what the
+      # public repo is allowed to publish. sync-public-sdk.yml stays available as a manual
+      # repair/review path via its workflow_dispatch trigger.
+      - name: Mirror the two SDK packages into the algenta-sdk checkout
+        working-directory: algenta-sdk-checkout
+        run: |
+          set -euo pipefail
+          # Mirror logic is byte-for-byte the one from sync-public-sdk.yml -- keep them in lockstep.
+          for pkg in python-sdk ts-sdk; do
+            mkdir -p "packages/$pkg"
+            # Explicit allowlist copy, not a blind rsync of the whole tree -- anything not
+            # matched here simply doesn't cross the boundary. --delete propagates real deletions
+            # from this repo, but packages/python-sdk/tests/ is excluded: it's a smoke-test suite
+            # that only exists in the public repo (this repo's python-sdk test coverage lives
+            # elsewhere, see the guard job above) -- a blind mirror would silently delete it.
+            rsync -a --delete --exclude 'build/' --exclude '*.egg-info' --exclude 'node_modules/' \
+              --exclude 'dist/' --exclude '.git' --exclude 'tests/' \
+              "../packages/$pkg/" "packages/$pkg/"
+            # Reject symlinks in what actually got copied (see sync-public-sdk.yml for why the
+            # OUTPUT is checked, not the source tree).
+            find "packages/$pkg" -type l -print -quit | grep -q . && {
+              echo "::error::Refusing to sync -- symlink found in the mirrored output for $pkg" >&2
+              exit 1
+            }
+          done
+          # examples/ is also part of the public surface (linked from both package READMEs).
+          rm -rf examples
+          mkdir -p examples
+          rsync -a --exclude '__pycache__' --exclude '*.pyc' ../examples/ examples/
+
+      - name: Install gitleaks
+        # Runner-agnostic install under RUNNER_TEMP -- no sudo (same as sync-public-sdk.yml).
+        run: |
+          set -euo pipefail
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64|amd64) ARCH=x64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+            *) echo "::error::unsupported arch $ARCH"; exit 1 ;;
+          esac
+          BIN_DIR="$RUNNER_TEMP/gitleaks-bin"
+          mkdir -p "$BIN_DIR"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_${OS}_${ARCH}.tar.gz" \
+            | tar -xz -C "$BIN_DIR" gitleaks
+          echo "$BIN_DIR" >> "$GITHUB_PATH"
+          "$BIN_DIR/gitleaks" version
+
+      - name: Outbound secret + forbidden-path scan (blocks the push, not just warns)
+        run: |
+          set -euo pipefail
+          # --no-git: scans the working tree as plain files, including the just-mirrored changes.
+          # Zero unresolved findings required -- a real false positive needs an explicit
+          # .gitleaksignore entry, never a silently-loosened scan step.
+          gitleaks detect --source algenta-sdk-checkout --no-git --no-banner -v
+          # Reject submodules regardless of what the scanner finds.
+          find algenta-sdk-checkout/packages -name ".gitmodules" -print -quit | grep -q . && {
+            echo "::error::Refusing to sync -- a submodule was found in the export" >&2
+            exit 1
+          }
+          true
+
+      - name: Push the mirror directly to algenta-sdk main (check-if-synced guard)
+        working-directory: algenta-sdk-checkout
+        run: |
+          set -euo pipefail
+          git config user.name "algenta-sdk-sync[bot]"
+          git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
+          git add -A packages examples
+          if git diff --cached --quiet; then
+            echo "Mirror already in sync with this tested tree -- nothing to push (check-if-synced guard)."
+            exit 0
+          fi
+          echo "=== Mirrored changes about to be pushed DIRECTLY to thyn-ai/algenta-sdk main ==="
+          git status --porcelain
+          git diff --cached --stat
+          if [ "$REHEARSE" = "true" ]; then
+            echo "REHEARSE mode: mirror diff computed and logged above; NOT committing or pushing."
+            exit 0
+          fi
+          git commit -m "sync: mirror packages/python-sdk + packages/ts-sdk from thyn-ai/algenta@${{ github.sha }}"
+          git push origin HEAD:main
+          echo "Mirror pushed to thyn-ai/algenta-sdk main."
+
+      - name: Refuse to continue unless algenta-sdk's source actually matches this tested tree
+        # Verification backstop for the inline mirror above: with the mirror just pushed (or just
+        # verified in sync) this must always pass -- if it ever fails, the mirror step has a bug
+        # and nothing below may run.
         run: |
           set -euo pipefail
           EXCLUDES=(--exclude=build --exclude='*.egg-info' --exclude=node_modules --exclude=dist \
@@ -237,7 +354,7 @@ jobs:
             --exclude=_build_info.py --exclude=_build_info.ts)
           for pkg in python-sdk ts-sdk; do
             if ! diff -rq "${EXCLUDES[@]}" "packages/$pkg" "algenta-sdk-checkout/packages/$pkg"; then
-              echo "::error::thyn-ai/algenta-sdk's packages/$pkg doesn't match this repo's tree -- refusing to sign. Run sync-public-sdk.yml and merge its PR first." >&2
+              echo "::error::thyn-ai/algenta-sdk's packages/$pkg doesn't match this repo's tree after the inline mirror -- refusing to sign. This indicates a bug in the mirror step above." >&2
               exit 1
             fi
           done
@@ -262,41 +379,106 @@ jobs:
             --out "$RUNNER_TEMP/release-authorization.json"
           rm -f "$KEY_FILE"
 
-      - name: Open a PR delivering the authorization into algenta-sdk
+      - name: Deliver the authorization directly to algenta-sdk main (check-if-authorized guard)
+        # WHY a direct push: this file is machine-generated and machine-signed -- there is nothing
+        # for a human to review (the signature IS the review). Committing it straight to main
+        # removes the "authorization PR left unmerged" failure mode that stranded sdk-v1.0.8.
+        working-directory: algenta-sdk-checkout
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          AUTH_PATH="releases/authorization/sdk-v${VERSION}.json"
+          mkdir -p releases/authorization
+          if [ -f "$AUTH_PATH" ]; then
+            # Compare the security-relevant fields only: authorized_at and signature legitimately
+            # differ between two signings of the same authorization, so byte-comparing would
+            # break rerun idempotency.
+            RC=0
+            python3 - "$AUTH_PATH" "$RUNNER_TEMP/release-authorization.json" <<'PYEOF' || RC=$?
+          import json, sys
+          fields = ("schema_version", "version", "sdk_repo", "sdk_commit",
+                    "contract_sha256", "signature_algorithm", "key_id")
+          existing = json.load(open(sys.argv[1]))
+          new = json.load(open(sys.argv[2]))
+          if all(existing.get(f) == new.get(f) for f in fields):
+              sys.exit(0)   # same authorization, signed again -- idempotent no-op
+          print("::error::A DIFFERENT authorization for this version already exists on "
+                "algenta-sdk main -- refusing to overwrite it. Investigate manually.",
+                file=sys.stderr)
+          sys.exit(1)
+          PYEOF
+            if [ "$RC" -eq 0 ]; then
+              echo "Identical authorization for sdk-v${VERSION} already on main -- nothing to push."
+              exit 0
+            fi
+            exit "$RC"
+          fi
+          if [ "$REHEARSE" = "true" ]; then
+            echo "REHEARSE mode: signed authorization below; NOT delivering it to algenta-sdk."
+            cat "$RUNNER_TEMP/release-authorization.json"
+            exit 0
+          fi
+          AUTHORIZED_COMMIT="$(python3 -c "import json; print(json.load(open('$RUNNER_TEMP/release-authorization.json'))['sdk_commit'])")"
+          cp "$RUNNER_TEMP/release-authorization.json" "$AUTH_PATH"
+          git add "$AUTH_PATH"
+          git commit -m "release: authorize sdk-v${VERSION} @ ${AUTHORIZED_COMMIT}"
+          git push origin HEAD:main
+          echo "Authorization for sdk-v${VERSION} pushed to thyn-ai/algenta-sdk main."
+
+      - name: Verify the signed authorization against algenta-sdk's own gate (rehearse only)
+        if: ${{ inputs.target == 'sdk-rehearse' }}
+        working-directory: algenta-sdk-checkout
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Closes the rehearsal loop: the artifact this job WOULD deliver must pass the exact
+          # gate (version/commit/contract/signature) that release.yml's D0 will run for real.
+          python scripts/verify_release_authorization.py \
+            --authorization-file "$RUNNER_TEMP/release-authorization.json" \
+            --expected-version "$VERSION" \
+            --repo-root .
+          echo "Rehearsal verification passed: D0 would accept this authorization."
+
+      - name: Tag the authorized commit on algenta-sdk (check-if-tagged guard)
         working-directory: algenta-sdk-checkout
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          # The commit this authorization covers is main's CURRENT tip -- i.e. whatever
-          # sync-public-sdk.yml's last merged PR left behind, matched against this tested tree
-          # two steps ago. It is NOT the commit this step is about to create (that one only adds
-          # the authorization file itself, and may not even survive as-is through a squash-merge).
-          # The human must tag THIS sha, read back out of the signed file itself so there is only
-          # one source of truth for it, not re-derived here and risk drifting from what was signed.
+          # Read back out of the signed file itself so there is only one source of truth for
+          # the authorized commit, never re-derived here.
           AUTHORIZED_COMMIT="$(python3 -c "import json; print(json.load(open('$RUNNER_TEMP/release-authorization.json'))['sdk_commit'])")"
-          git config user.name "algenta-sdk-sync[bot]"
-          git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
-          BRANCH="authorize/sdk-v${VERSION}"
-          git checkout -b "$BRANCH"
-          mkdir -p releases/authorization
-          cp "$RUNNER_TEMP/release-authorization.json" "releases/authorization/sdk-v${VERSION}.json"
-          git add "releases/authorization/sdk-v${VERSION}.json"
-          if git diff --cached --quiet; then
-            echo "Authorization for sdk-v${VERSION} already delivered — clean no-op."
+          TAG="sdk-v${VERSION}"
+          # Does the tag already exist, and if so, does it point at the authorized commit?
+          # NB: `|| EXISTING_OBJ=""` -- on a 404 gh can leave error-body text on stdout, which
+          # must never be mistaken for a resolved ref (tested).
+          EXISTING_OBJ="$(gh api "repos/thyn-ai/algenta-sdk/git/refs/tags/$TAG" --jq '.object.type + " " + .object.sha' 2>/dev/null)" || EXISTING_OBJ=""
+          case "$EXISTING_OBJ" in
+            ""|"tag "*|"commit "*) ;;
+            *) echo "::error::Unexpected response resolving tag $TAG on thyn-ai/algenta-sdk: '$EXISTING_OBJ' -- refusing to continue." >&2; exit 1 ;;
+          esac
+          if [ -n "$EXISTING_OBJ" ]; then
+            OBJ_TYPE="${EXISTING_OBJ%% *}"
+            OBJ_SHA="${EXISTING_OBJ##* }"
+            if [ "$OBJ_TYPE" = "tag" ]; then
+              OBJ_SHA="$(gh api "repos/thyn-ai/algenta-sdk/git/tags/$OBJ_SHA" --jq '.object.sha')"
+            fi
+            if [ "$OBJ_SHA" = "$AUTHORIZED_COMMIT" ]; then
+              echo "Tag $TAG already exists at the authorized commit $AUTHORIZED_COMMIT -- nothing to do (check-if-tagged guard)."
+              exit 0
+            fi
+            echo "::error::Tag $TAG already exists but points at $OBJ_SHA, not the authorized commit $AUTHORIZED_COMMIT -- refusing to move it. Investigate manually." >&2
+            exit 1
+          fi
+          if [ "$REHEARSE" = "true" ]; then
+            echo "REHEARSE mode: would tag $AUTHORIZED_COMMIT as $TAG on thyn-ai/algenta-sdk; NOT pushing."
             exit 0
           fi
-          git commit -m "release: authorize sdk-v${VERSION} @ ${AUTHORIZED_COMMIT}"
-          git push origin "$BRANCH"
-          gh pr create \
-            --repo thyn-ai/algenta-sdk \
-            --base main \
-            --head "$BRANCH" \
-            --title "release: authorize sdk-v${VERSION}" \
-            --body "Signed by thyn-ai/algenta's private test suite (run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-
-          After merging this PR, tag commit \`${AUTHORIZED_COMMIT}\` (main's tip **before** this PR — not this PR's own commit, and not necessarily main's tip after merging) as \`sdk-v${VERSION}\` to trigger release.yml:
-
-              git tag sdk-v${VERSION} ${AUTHORIZED_COMMIT}
-              git push origin sdk-v${VERSION}"
+          # Annotated tag, matching how sdk-v1.0.8 was cut: carries the authorization provenance.
+          git tag -a "$TAG" "$AUTHORIZED_COMMIT" -m \
+            "release: algenta-sdk ${VERSION}, authorized by thyn-ai/algenta run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          git push origin "refs/tags/$TAG"
+          echo "Pushed $TAG -> $AUTHORIZED_COMMIT; thyn-ai/algenta-sdk's release.yml (D0 gate) now drives the publish."
