@@ -308,7 +308,7 @@ jobs:
           assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0, p
           PY
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: algenta-runtime-native-${{ matrix.target }}
           path: dist-runtime/*.whl
@@ -339,7 +339,7 @@ jobs:
             -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
             -e SHARD_TIMEOUT=2700 -e SHARD_MAX_RSS_MB=32768 \
             ubuntu:22.04 bash .github/scripts/build_runtime_linux_amd64.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: algenta-runtime-native-linux-x86_64
           path: dist-runtime/*.whl
@@ -376,7 +376,7 @@ jobs:
             -e BUILD_VARIANT=cuda \
             -e SHARD_TIMEOUT=2700 -e SHARD_MAX_RSS_MB=32768 \
             ubuntu:22.04 bash .github/scripts/build_runtime_linux_amd64.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: algenta-runtime-native-linux-x86_64-cuda
           path: dist-runtime/*.whl
@@ -392,7 +392,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: algenta-runtime-native-linux-x86_64
           path: dist-runtime
@@ -408,7 +408,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET \
             ubuntu:22.04 bash .github/scripts/clean_machine_contract_linux_amd64.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: algenta-package
           path: dist-algenta/*.whl
@@ -430,15 +430,15 @@ jobs:
       # would non-deterministically overwrite one with the other inside dist-pypi, and the CUDA
       # wheel is launch-unverified: it must never reach PyPI. Compile-gate artifacts stay out of
       # the publish set by construction.
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: algenta-runtime-native-macos-arm64
           path: dist-pypi
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: algenta-runtime-native-linux-x86_64
           path: dist-pypi
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: algenta-package
           path: dist-pypi
