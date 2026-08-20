@@ -17,6 +17,7 @@ import stat
 import struct
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import time
@@ -63,15 +64,19 @@ def _worker_environment(resolution: NativeWorkerResolution) -> dict[str, str]:
     if resolution.source == "bundled runtime":
         env["PYTHONHOME"] = sys.base_prefix
         if "MOJO_PYTHON_LIBRARY" not in env:
-            libpython = _prefix_libpython(Path(sys.base_prefix))
+            artifact_dir = resolution.path.parent
+            required_version = _required_libpython_version(artifact_dir)
+            libpython = _prefix_libpython(Path(sys.base_prefix), required_version)
             if libpython is not None:
                 # The embedded interpreter must be the SAME distribution as the stdlib and C
                 # extension modules it loads from PYTHONHOME: the wheel's bundled libpython is
                 # built from the toolchain env and mismatches the caller's extensions, breaking
                 # the interpreter at the first extension import (observed: `import socket` ->
-                # "failed to create socket" on bare amd64 containers). Point Mojo at the
-                # caller's libpython and force the dynamic loader to it too -- the worker's
-                # DT_RUNPATH ($ORIGIN, the wheel's bundled copy) otherwise gets loaded instead.
+                # "failed to create socket" on bare amd64 servers, worker dies before binding
+                # its socket). Point the runtime at the caller's own libpython AND force the
+                # dynamic loader to it: LD_LIBRARY_PATH is searched BEFORE DT_RUNPATH, so the
+                # system copy wins over the $ORIGIN-bundled one the worker would otherwise
+                # load regardless of MOJO_PYTHON_LIBRARY (current binaries ignore it).
                 env["MOJO_PYTHON_LIBRARY"] = str(libpython)
                 if ".so" in libpython.name:
                     lib_dir = str(libpython.parent)
@@ -80,25 +85,130 @@ def _worker_environment(resolution: NativeWorkerResolution) -> dict[str, str]:
                         lib_dir + ((os.pathsep + existing) if existing else "")
                     )
             else:
-                # Caller interpreter ships no shared libpython (static builds): fall back to the
-                # copy bundled beside the worker so the runtime still links.
-                bundled = _bundled_libpython(resolution.path.parent)
+                # No shared libpython matching the worker's Python exists on this system
+                # (static builds, or the distro's libpython package is not installed): fall
+                # back to the copy bundled beside the worker so the runtime still links.
+                # `algenta runtime doctor` proves whether this fallback can actually execute.
+                bundled = _bundled_libpython(artifact_dir)
                 if bundled is not None:
                     env["MOJO_PYTHON_LIBRARY"] = str(bundled)
     return env
 
 
-def _prefix_libpython(prefix: Path) -> Path | None:
+_LIBPYTHON_PATTERNS = ("libpython3*.so*", "libpython3*.dylib")
+
+# Debian/Ubuntu multiarch keeps shared libraries in lib/<triplet>/, not lib/, so a plain
+# <prefix>/lib/ glob misses every distro-packaged libpython on those systems (Ubuntu 22.04:
+# /usr/lib/x86_64-linux-gnu/libpython3.14.so.1.0).
+_MULTIARCH_TRIPLETS = ("x86_64-linux-gnu", "aarch64-linux-gnu")
+
+
+def _required_libpython_version(artifact_dir: Path | None) -> str:
+    """Major.minor of the CPython the worker binary links against (e.g. ``3.14``).
+
+    Prefer the libpython bundled beside the worker — its filename encodes the exact version
+    the binary loads. Fall back to the caller's version: the caller is the interpreter whose
+    prefix becomes the worker's PYTHONHOME, and the package pins it to the worker's Python.
+    """
+    if artifact_dir is not None:
+        bundled = _bundled_libpython(artifact_dir)
+        if bundled is not None:
+            match = re.match(r"libpython(\d+\.\d+)", bundled.name)
+            if match:
+                return match.group(1)
+    return f"{sys.version_info.major}.{sys.version_info.minor}"
+
+
+def _is_libpython_for_version(name: str, required_version: str) -> bool:
+    """True when a file named `name` is a shared libpython of exactly `required_version`."""
+    stem = f"libpython{required_version}"
+    if not name.startswith(stem):
+        return False
+    if name[len(stem) : len(stem) + 1].isdigit():
+        return False  # required 3.1 must not claim libpython3.14
+    return ".so" in name or ".dylib" in name
+
+
+def _is_under_prefix(path: Path, prefix: Path) -> bool:
+    try:
+        if path.is_relative_to(prefix):
+            return True
+    except OSError:
+        pass
+    try:
+        return path.resolve().is_relative_to(prefix.resolve())
+    except OSError:
+        return False
+
+
+def _libpython_search_dirs(prefix: Path) -> tuple[Path, ...]:
+    """Directories that may hold `prefix`'s shared libpython, in preference order."""
     lib_dir = prefix / "lib"
-    for pattern in ("libpython3*.so*", "libpython3*.dylib"):
-        for candidate in sorted(lib_dir.glob(pattern)):
-            if candidate.is_file():
-                return candidate
+    return (
+        lib_dir,
+        *(lib_dir / triplet for triplet in _MULTIARCH_TRIPLETS),
+        prefix / "lib64",
+    )
+
+
+def _sysconfig_libpython_hint(prefix: Path) -> tuple[Path | None, Path | None]:
+    """The interpreter's own record of where its shared libpython lives.
+
+    Returns ``(directory, exact_file)`` derived from ``LIBDIR`` / ``INSTSONAME``, restricted
+    to paths under `prefix` so a foreign interpreter's sysconfig can never hijack the search.
+    """
+    try:
+        libdir = sysconfig.get_config_var("LIBDIR")
+        instsoname = sysconfig.get_config_var("INSTSONAME")
+    except Exception:  # noqa: BLE001 — a stripped interpreter may not answer sysconfig queries
+        return None, None
+    if not libdir:
+        return None, None
+    directory = Path(str(libdir))
+    if not _is_under_prefix(directory, prefix):
+        return None, None
+    exact = None
+    if instsoname:
+        candidate = directory / str(instsoname)
+        if _is_under_prefix(candidate, prefix):
+            exact = candidate
+    return directory, exact
+
+
+def _prefix_libpython(prefix: Path, required_version: str | None = None) -> Path | None:
+    """The shared libpython under `prefix` matching `required_version`, or None.
+
+    Searches the plain ``lib/`` layout, the Debian/Ubuntu multiarch layout
+    (``lib/<triplet>/``), ``lib64``, and the interpreter's sysconfig ``LIBDIR`` /
+    ``INSTSONAME``. `required_version` is a ``major.minor`` pair; None keeps the historical
+    any-python-3 behaviour. Returns None when no matching shared library exists (static
+    interpreter builds, or a distro whose libpython package is not installed).
+    """
+
+    def _admits(candidate: Path) -> bool:
+        return candidate.is_file() and (
+            required_version is None
+            or _is_libpython_for_version(candidate.name, required_version)
+        )
+
+    sysconfig_dir, sysconfig_file = _sysconfig_libpython_hint(prefix)
+    directories = [*_libpython_search_dirs(prefix)]
+    if sysconfig_dir is not None and sysconfig_dir not in directories:
+        directories.append(sysconfig_dir)
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for pattern in _LIBPYTHON_PATTERNS:
+            for candidate in sorted(directory.glob(pattern)):
+                if _admits(candidate):
+                    return candidate
+    if sysconfig_file is not None and _admits(sysconfig_file):
+        return sysconfig_file
     return None
 
 
 def _bundled_libpython(artifact_dir: Path) -> Path | None:
-    for pattern in ("libpython3*.so*", "libpython3*.dylib"):
+    for pattern in _LIBPYTHON_PATTERNS:
         for candidate in sorted(artifact_dir.glob(pattern)):
             if candidate.is_file():
                 return candidate

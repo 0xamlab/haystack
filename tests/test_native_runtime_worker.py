@@ -572,3 +572,155 @@ def test_worker_environment_non_bundled_source_gets_no_python_home(
 
     assert "PYTHONHOME" not in env
     assert "MOJO_PYTHON_LIBRARY" not in env
+
+
+# ── multiarch libpython discovery (the Ubuntu/Debian out-of-the-box defect) ────────────────────
+#
+# Debian/Ubuntu keep shared libraries in lib/<multiarch-triplet>/, not lib/. The launcher used
+# to glob <prefix>/lib/ only, so on a plain Ubuntu server it never saw the distro's
+# /usr/lib/x86_64-linux-gnu/libpython3.14.so.1.0, the worker loaded the wheel's bundled
+# toolchain libpython against deadsnakes' stdlib, and `import socket` killed it before it
+# could bind (doctor said READY anyway). Discovery must see the multiarch layout.
+
+
+@pytest.mark.parametrize("triplet", ["x86_64-linux-gnu", "aarch64-linux-gnu"])
+def test_prefix_libpython_finds_debian_multiarch_layout(
+    tmp_path: Path, triplet: str
+) -> None:
+    prefix = tmp_path / "prefix"
+    multiarch_dir = prefix / "lib" / triplet
+    multiarch_dir.mkdir(parents=True)
+    system_libpython = multiarch_dir / "libpython3.14.so.1.0"
+    system_libpython.write_bytes(b"")
+
+    found = package_worker._prefix_libpython(prefix, "3.14")
+
+    assert found == system_libpython
+
+
+def test_prefix_libpython_finds_lib64_layout(tmp_path: Path) -> None:
+    prefix = tmp_path / "prefix"
+    (prefix / "lib64").mkdir(parents=True)
+    libpython = prefix / "lib64" / "libpython3.14.so.1.0"
+    libpython.write_bytes(b"")
+
+    assert package_worker._prefix_libpython(prefix, "3.14") == libpython
+
+
+def test_prefix_libpython_keeps_plain_lib_layout(tmp_path: Path) -> None:
+    # The historical layout (macOS frameworks, conda/pixi envs) must keep working.
+    prefix = tmp_path / "prefix"
+    (prefix / "lib").mkdir(parents=True)
+    libpython = prefix / "lib" / "libpython3.14.dylib"
+    libpython.write_bytes(b"")
+
+    assert package_worker._prefix_libpython(prefix, "3.14") == libpython
+
+
+def test_prefix_libpython_none_when_no_shared_library(tmp_path: Path) -> None:
+    # deadsnakes without apt's libpython package: the prefix exists, even with a multiarch
+    # dir, but no shared libpython is installed — discovery must say so (None), not invent one.
+    prefix = tmp_path / "prefix"
+    (prefix / "lib" / "x86_64-linux-gnu").mkdir(parents=True)
+    (prefix / "lib" / "python3.14").mkdir(parents=True)  # stdlib dir is not a shared lib
+
+    assert package_worker._prefix_libpython(prefix, "3.14") is None
+
+
+def test_prefix_libpython_filters_by_required_version(tmp_path: Path) -> None:
+    prefix = tmp_path / "prefix"
+    multiarch_dir = prefix / "lib" / "x86_64-linux-gnu"
+    multiarch_dir.mkdir(parents=True)
+    wrong_version = multiarch_dir / "libpython3.13.so.1.0"
+    wrong_version.write_bytes(b"")
+
+    assert package_worker._prefix_libpython(prefix, "3.14") is None
+    assert package_worker._prefix_libpython(prefix, "3.13") == wrong_version
+    # No version requirement keeps the historical any-python-3 behaviour.
+    assert package_worker._prefix_libpython(prefix) == wrong_version
+
+
+def test_prefix_libpython_version_filter_is_exact_major_minor(tmp_path: Path) -> None:
+    # Required 3.1 must not claim libpython3.14 (prefix match on digits alone is a bug).
+    assert package_worker._is_libpython_for_version("libpython3.14.so.1.0", "3.1") is False
+    assert package_worker._is_libpython_for_version("libpython3.14.so.1.0", "3.14") is True
+    assert package_worker._is_libpython_for_version("libpython3.14.dylib", "3.14") is True
+    assert package_worker._is_libpython_for_version("libpython3.14m.so.1.0", "3.14") is True
+    assert package_worker._is_libpython_for_version("libpython2.7.so.1.0", "3.14") is False
+
+
+def test_required_libpython_version_reads_bundled_artifact(tmp_path: Path) -> None:
+    artifact_dir = tmp_path / "runtime"
+    artifact_dir.mkdir()
+    (artifact_dir / "libpython3.14.so.1.0").write_bytes(b"")
+
+    assert package_worker._required_libpython_version(artifact_dir) == "3.14"
+
+
+def test_required_libpython_version_falls_back_to_caller(tmp_path: Path) -> None:
+    empty_dir = tmp_path / "runtime"
+    empty_dir.mkdir()
+
+    expected = f"{sys.version_info.major}.{sys.version_info.minor}"
+    assert package_worker._required_libpython_version(empty_dir) == expected
+    assert package_worker._required_libpython_version(None) == expected
+
+
+def _bundled_runtime_resolution(
+    tmp_path: Path, *, bundled_libpython: str | None
+) -> package_worker.NativeWorkerResolution:
+    artifact_dir = tmp_path / "runtime"
+    artifact_dir.mkdir()
+    if bundled_libpython is not None:
+        (artifact_dir / bundled_libpython).write_bytes(b"")
+    worker_path = artifact_dir / package_worker.WORKER_BASENAME
+    worker_path.write_bytes(b"")
+    return package_worker.NativeWorkerResolution("bundled runtime", worker_path, True)
+
+
+def test_worker_environment_prefers_multiarch_system_libpython(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    # THE field defect: on Ubuntu the system libpython lives in lib/x86_64-linux-gnu/, which
+    # the old <prefix>/lib/-only glob never searched, so the worker kept loading the wheel's
+    # bundled toolchain libpython (ABI mismatch -> dead worker). The launcher must find the
+    # multiarch copy, force the dynamic loader to it via LD_LIBRARY_PATH (searched BEFORE the
+    # worker's $ORIGIN DT_RUNPATH), and set MOJO_PYTHON_LIBRARY for binaries that honor it.
+    monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    monkeypatch.delenv("LD_LIBRARY_PATH", raising=False)
+    base_prefix = tmp_path / "base_prefix"
+    system_libpython = base_prefix / "lib" / "x86_64-linux-gnu" / "libpython3.14.so.1.0"
+    system_libpython.parent.mkdir(parents=True)
+    system_libpython.write_bytes(b"")
+    monkeypatch.setattr(sys, "base_prefix", str(base_prefix))
+
+    resolution = _bundled_runtime_resolution(tmp_path, bundled_libpython="libpython3.14.so.1.0")
+
+    env = package_worker._worker_environment(resolution)
+
+    assert env["MOJO_PYTHON_LIBRARY"] == str(system_libpython)
+    assert env["LD_LIBRARY_PATH"].split(os.pathsep)[0] == str(system_libpython.parent)
+
+
+def test_worker_environment_ignores_wrong_version_system_libpython(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    # A system libpython for a DIFFERENT Python (e.g. the distro's 3.10/3.13) must not be
+    # forced into the worker: keep the bundled copy and leave LD_LIBRARY_PATH alone.
+    monkeypatch.delenv("MOJO_PYTHON_LIBRARY", raising=False)
+    monkeypatch.delenv("LD_LIBRARY_PATH", raising=False)
+    base_prefix = tmp_path / "base_prefix"
+    wrong_libpython = base_prefix / "lib" / "x86_64-linux-gnu" / "libpython3.13.so.1.0"
+    wrong_libpython.parent.mkdir(parents=True)
+    wrong_libpython.write_bytes(b"")
+    monkeypatch.setattr(sys, "base_prefix", str(base_prefix))
+
+    resolution = _bundled_runtime_resolution(tmp_path, bundled_libpython="libpython3.14.so.1.0")
+
+    env = package_worker._worker_environment(resolution)
+
+    bundled = resolution.path.parent / "libpython3.14.so.1.0"
+    assert env["MOJO_PYTHON_LIBRARY"] == str(bundled)
+    assert "LD_LIBRARY_PATH" not in env
