@@ -34,6 +34,7 @@ from apps.runtime.mojo_library_runner import (
     parse_runtime_library_worker_response,
     runtime_library_modules,
 )
+from apps.runtime.runtime_shards import ShardWorkerPool, ShardWorkerUnavailable
 
 logger = structlog.get_logger(__name__)
 
@@ -129,13 +130,45 @@ class Executor:
     """
     Stateless executor — each call opens and closes a Mojo socket connection.
     v2+ will use a persistent connection pool.
+
+    Shard-aware mode: when constructed with a ``shard_pool`` (the daemon found
+    a ``runtime-shards.json`` next to the worker), each ``library_execute``
+    request is routed to the shard owning that module — the pool spawns/caches
+    the shard's worker lazily. Simulation engines and the query plane always
+    run on the default shard. Without a pool the single-worker socket path is
+    preserved exactly.
     """
 
-    def __init__(self, mojo_sock: str = _DEFAULT_MOJO_SOCK) -> None:
+    def __init__(
+        self,
+        mojo_sock: str = _DEFAULT_MOJO_SOCK,
+        shard_pool: ShardWorkerPool | None = None,
+    ) -> None:
         self._mojo_sock = mojo_sock
+        self._shard_pool = shard_pool
 
     def _mojo_available(self) -> bool:
         return Path(self._mojo_sock).exists()
+
+    async def _worker_call(
+        self,
+        payload: dict[str, Any],
+        routing_module: str | None,
+    ) -> dict[str, Any]:
+        """Send one framed request to the worker that owns ``routing_module``.
+
+        ``None`` routes to the default worker (simulation engines, the query
+        plane). With no shard pool this is the historical single socket,
+        unchanged. Acquire/release bracket the call so the pool never evicts a
+        shard while a request is in flight on it.
+        """
+        if self._shard_pool is None:
+            return await _mojo_call(payload, self._mojo_sock)
+        sock_path = await self._shard_pool.acquire(routing_module)
+        try:
+            return await _mojo_call(payload, sock_path)
+        finally:
+            self._shard_pool.release(routing_module)
 
     def _library_runtime_available(self) -> bool:
         return library_runtime_available()
@@ -201,7 +234,11 @@ class Executor:
         is_sim_engine = module in _SIMULATION_ENGINES
 
         try:
-            if not self._mojo_available():
+            # With a shard pool the socket-existence gate is skipped: shard
+            # sockets legitimately don't exist until their first routed request,
+            # and the pool spawns/revives workers itself (raising
+            # ShardWorkerUnavailable, handled below, when it cannot).
+            if self._shard_pool is None and not self._mojo_available():
                 return {
                     "result_json": "null",
                     "latency_ms": round((time.monotonic() - t0) * 1000, 2),
@@ -218,7 +255,8 @@ class Executor:
                     mojo_payload = {**args, "engine_type": module}
                 else:
                     mojo_payload = {"engine_type": module}
-                raw = await _mojo_call(mojo_payload, self._mojo_sock)
+                # Simulation engines live in the default shard.
+                raw = await self._worker_call(mojo_payload, None)
                 result_payload = raw.get("result", raw)
                 has_error = bool(raw.get("error"))
                 engine_used = "mojo"
@@ -229,7 +267,10 @@ class Executor:
                     function,
                     args,
                 )
-                raw = await _mojo_call(mojo_payload, self._mojo_sock)
+                # Route to the shard owning this module (default shard when no
+                # shard pool, or the module is unrouted — same fallback the SDK
+                # native path uses).
+                raw = await self._worker_call(mojo_payload, module)
                 result_payload = parse_runtime_library_worker_response(
                     module,
                     function,
@@ -239,6 +280,28 @@ class Executor:
                 has_error = False
                 engine_used = "mojo"
                 error_message = ""
+        except ShardWorkerUnavailable as exc:
+            logger.warning("runtime_shard_worker_unavailable", module=module, error=str(exc))
+            latency_ms = round((time.monotonic() - t0) * 1000, 2)
+            append_event(
+                task_id=task_id,
+                surface="runtime",
+                action="execute_module",
+                status="failed",
+                target=target,
+                request_id=request_id,
+                engine_used="unavailable",
+                latency_ms=latency_ms,
+                success=False,
+                error=f"compute_runtime_unavailable: {exc}",
+            )
+            return {
+                "result_json": "null",
+                "latency_ms": latency_ms,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": f"compute_runtime_unavailable: {exc}",
+            }
         except MojoLibraryError as exc:
             latency_ms = round((time.monotonic() - t0) * 1000, 2)
             append_event(
@@ -403,7 +466,9 @@ class Executor:
         t0 = time.monotonic()
 
         try:
-            if not self._mojo_available():
+            # Same gate semantics as execute_module: with a shard pool the
+            # default worker is spawned/revived on demand by the pool.
+            if self._shard_pool is None and not self._mojo_available():
                 return {
                     "response_json": "null",
                     "latency_ms": round((time.monotonic() - t0) * 1000, 2),
@@ -414,7 +479,32 @@ class Executor:
                         "not available. Start the daemon with a compiled Mojo binary."
                     ),
                 }
-            raw = await _mojo_call(payload, self._mojo_sock)
+            # The query plane runs in the default shard.
+            raw = await self._worker_call(payload, None)
+        except ShardWorkerUnavailable as exc:
+            logger.warning(
+                "runtime_shard_worker_unavailable", target="query_execute", error=str(exc)
+            )
+            latency_ms = round((time.monotonic() - t0) * 1000, 2)
+            append_event(
+                task_id=task_id,
+                surface="runtime",
+                action="execute_query",
+                status="failed",
+                target="query_execute",
+                request_id=request_id,
+                engine_used="unavailable",
+                latency_ms=latency_ms,
+                success=False,
+                error="compute_runtime_unavailable",
+            )
+            return {
+                "response_json": "null",
+                "latency_ms": latency_ms,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": f"compute_runtime_unavailable: {exc}",
+            }
         except (ConnectionRefusedError, FileNotFoundError, OSError) as exc:
             logger.warning("mojo_socket_unavailable", sock=self._mojo_sock, error=str(exc))
             latency_ms = round((time.monotonic() - t0) * 1000, 2)

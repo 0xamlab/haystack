@@ -35,6 +35,12 @@ import structlog
 
 from apps.runtime.mojo_binary_freshness import inspect_mojo_binary_freshness
 from apps.runtime.native_worker import resolve_native_worker
+from apps.runtime.runtime_shards import (
+    ShardMapError,
+    ShardWorkerPool,
+    load_runtime_shard_map,
+    max_lazy_shard_workers,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -352,6 +358,36 @@ def _autoconfigure_bundle_runtime() -> None:
     )
 
 
+def _build_shard_pool() -> ShardWorkerPool | None:
+    """A shard worker pool when a VALID runtime-shards.json sits next to the worker.
+
+    Returns None — silently falling back to the historical single-worker path —
+    when there is no shard map (dev builds, env-override workers, repo-dev
+    binaries) or when the map is invalid (logged; the daemon must not refuse to
+    boot over a bad map, it just loses per-module routing).
+    """
+    engine_dir = _MOJO_BINARY.resolve().parent
+    try:
+        shard_map = load_runtime_shard_map(engine_dir)
+    except ShardMapError as exc:
+        logger.warning(
+            "runtime_shard_map_invalid_falling_back_to_single_worker",
+            path=str(engine_dir / "runtime-shards.json"),
+            error=str(exc),
+        )
+        return None
+    if shard_map is None:
+        return None
+    return ShardWorkerPool(
+        shard_map,
+        engine_dir,
+        _MOJO_SOCK,
+        worker_source=_MOJO_BINARY_SOURCE,
+        verified=_MOJO_BINARY_VERIFIED,
+        max_lazy_workers=max_lazy_shard_workers(),
+    )
+
+
 async def _run_daemon() -> None:
     _autoconfigure_bundle_runtime()
 
@@ -364,10 +400,29 @@ async def _run_daemon() -> None:
     _validate_daemon_startup_prerequisites()
     _write_pid()
 
-    mojo = MojoProcess()
-    mojo_started = mojo.start()
+    # Shard-aware mode: when a runtime-shards.json routes modules across shard
+    # workers, the pool owns the eagerly-started default worker plus lazily
+    # spawned shards. No map → the historical single MojoProcess, unchanged.
+    shard_pool = _build_shard_pool()
+    mojo: MojoProcess | None = None
+    if shard_pool is not None:
+        mojo_started = shard_pool.start_default()
+        logger.info(
+            "runtime_shard_pool_configured",
+            default_worker=shard_pool.shard_map.default_worker,
+            shard_count=shard_pool.shard_map.shard_count,
+            module_count=len(shard_pool.shard_map.module_workers),
+            max_lazy_workers=max_lazy_shard_workers(),
+        )
+    else:
+        mojo = MojoProcess()
+        mojo_started = mojo.start()
     if mojo_started:
-        ready = mojo.wait_ready(timeout=8.0)
+        ready = (
+            shard_pool.wait_default_ready(timeout=8.0)
+            if shard_pool is not None
+            else mojo.wait_ready(timeout=8.0)
+        )
         if ready:
             logger.info("runtime_worker_ready", sock=_MOJO_SOCK)
         else:
@@ -375,7 +430,7 @@ async def _run_daemon() -> None:
     else:
         logger.info("runtime_worker_unavailable_runtime_continues")
 
-    executor = Executor(mojo_sock=_MOJO_SOCK)
+    executor = Executor(mojo_sock=_MOJO_SOCK, shard_pool=shard_pool)
     server = RuntimeServer(executor=executor, start_time=start_time)
     await server.start()
 
@@ -407,7 +462,10 @@ async def _run_daemon() -> None:
     # Graceful shutdown
     metering.stop()
     await server.stop(grace=5.0)
-    mojo.stop()
+    if shard_pool is not None:
+        shard_pool.stop_all()
+    if mojo is not None:
+        mojo.stop()
     _remove_pid()
     logger.info("daemon_shutdown_complete")
 
