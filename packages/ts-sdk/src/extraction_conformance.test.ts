@@ -20,7 +20,7 @@ import { Runtime, RuntimeValidationError } from "./runtime.js";
 import type { ColumnExtractOptions } from "./_runtime_class_methods_extract.js";
 import type { LocalRecord } from "./_runtime_constants.js";
 
-const vectorsPath = join(__dirname, "..", "..", "..", "tests", "conformance", "extraction_vectors.json");
+const vectorsPath = join(__dirname, "..", "conformance", "extraction_vectors.json");
 const vectors = JSON.parse(readFileSync(vectorsPath, "utf-8"));
 
 interface SourceSpec {

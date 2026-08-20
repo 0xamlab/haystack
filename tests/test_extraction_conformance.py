@@ -23,7 +23,7 @@ import pytest
 from algenta import Runtime
 from algenta.runtime_errors import RuntimeValidationError
 
-_VECTORS_PATH = Path(__file__).parent / "conformance" / "extraction_vectors.json"
+_VECTORS_PATH = Path(__file__).parent.parent / "packages" / "ts-sdk" / "conformance" / "extraction_vectors.json"
 _VECTORS = json.loads(_VECTORS_PATH.read_text())
 
 
