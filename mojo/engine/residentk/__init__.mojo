@@ -93,6 +93,9 @@ Modules
               public.
   kernels_prefill_f32 — PRIVATE Float32-weight batched-prefill kernels (the m_rows > 1 tiled GEMM
               path residentk.session_cuda dispatches). Same privacy discipline as `kernels`.
+  kernels_cuda_graph — PRIVATE graph-replay twins of the three position-dependent decode kernels
+              (embed / RoPE-write / SDPA read their per-token scalar from a resident state buffer
+              so ONE captured DeviceGraph serves every decode step). Same privacy discipline.
   session   — PRIVATE resident state: the context, the Float32 weight buffers, the in-place KV
               cache, and the per-token step. Every launch sits inside `@parameter if
               RESIDENT_GPU_BUILD` and every entry point is private.

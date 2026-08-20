@@ -20,7 +20,7 @@ Build (the CUDA lane recipe, no CUDA toolkit at build time — see the Phase-0 e
 """
 
 from std.math import sqrt
-from std.sys import exit, has_accelerator
+from std.sys import exit, has_accelerator, is_defined
 from std.time import perf_counter_ns
 from json.parser import json_get_array, json_get_float, json_get_int, json_get_object, json_array_tokens
 from conv import parse_int
@@ -34,7 +34,7 @@ from residentk.contract import (
     residentk_weight_elems,
 )
 from residentk.probe import resident_session_probe
-from residentk.session import _resident_preflight
+from residentk.session import _resident_preflight, _StepOut
 from residentk.session_cuda import CUDA_PREFILL_TILE, CUDA_SESSION_BUILD, _CudaResidentQwen3
 
 comptime MANIFEST_PATH: String = "/tmp/qwen3smoke/manifest.json"
@@ -47,6 +47,11 @@ comptime EOS_TOKEN_ID: Int = 151643
 comptime MAX_CTX: Int = 1024
 """Room for the 256-token race prompt plus a long decode tail (Phase 3's gen=256 benchmark
 included) without re-opening the session."""
+
+comptime USE_GRAPH: Bool = is_defined["ALGENTA_CUDA_GRAPH"]()
+"""Build with `-D ALGENTA_CUDA_GRAPH` to decode through the session's captured DeviceGraph
+(`step_graph`) instead of the per-dispatch path (`step`). The oracle gate below is the
+correctness check for the graph arm: it must produce the campaign's exact continuation."""
 
 comptime ORACLE_WINDOW: Int = 8
 """The campaign's known-correct greedy window for the 256-token race prompt on Qwen3-0.6B-Base —
@@ -297,32 +302,52 @@ def main() raises:
         generated_ids.append(pf.token_id)
         var stopped_on_eos = pf.token_id == EOS_TOKEN_ID
 
-        # ═══ DECODE: one token at a time, everything already resident ═══
+        # ═══ DECODE ═══
         var per_step_ms = List[Float64]()
         var t_decode_start = perf_counter_ns()
         var n_decoded = 1
-        if not stopped_on_eos:
-            for step in range(1, N_NEW_MAX):
-                var pos = n_prompt + step - 1
-                var ts0 = perf_counter_ns()
-                var r = s.step(generated_ids[len(generated_ids) - 1], pos)
-                var ts1 = perf_counter_ns()
-                _check_resident(r.status, "step(decode pos " + String(pos) + ")")
-                if r.dispatches != residentk_dispatch_budget(n_layers):
-                    raise Error(
-                        "qwen3_generate_cuda: the session issued " + String(r.dispatches)
-                        + " dispatches but residentk_dispatch_budget says "
-                        + String(residentk_dispatch_budget(n_layers))
-                        + " -- the design and the code disagree"
-                    )
-                generated_ids.append(r.token_id)
-                per_step_ms.append(_ms(ts1 - ts0))
-                n_decoded += 1
-                print("  decode step", step, "pos=", pos, "-> id=", r.token_id,
-                      "logit=", r.logit, _ms(ts1 - ts0), "ms")
-                if r.token_id == EOS_TOKEN_ID:
-                    stopped_on_eos = True
-                    break
+        @parameter
+        if USE_GRAPH:
+            # The graph arm decodes the whole tail as ONE async chain: n_steps back-to-back
+            # replays of the captured graph, the device-side advance kernel feeding each
+            # replay's token/pos/n_keys into the next — zero per-token host traffic, one
+            # synchronize, then the token log is verified token-for-token below. This is the
+            # STRONGER oracle gate: the entire continuation from a single async chain.
+            if not stopped_on_eos:
+                var st = s.seed_and_run_graph(pf.token_id, n_prompt, N_NEW_MAX - 1)
+                _check_resident(st, "seed_and_run_graph")
+                for step in range(1, N_NEW_MAX):
+                    var pos = n_prompt + step - 1
+                    var tok = s.graph_token(pos)
+                    generated_ids.append(tok)
+                    n_decoded += 1
+                    print("  decode step", step, "pos=", pos, "-> id=", tok)
+                    if tok == EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
+        else:
+            if not stopped_on_eos:
+                for step in range(1, N_NEW_MAX):
+                    var pos = n_prompt + step - 1
+                    var ts0 = perf_counter_ns()
+                    var r = s.step(generated_ids[len(generated_ids) - 1], pos)
+                    var ts1 = perf_counter_ns()
+                    _check_resident(r.status, "step(decode pos " + String(pos) + ")")
+                    if r.dispatches != residentk_dispatch_budget(n_layers):
+                        raise Error(
+                            "qwen3_generate_cuda: the session issued " + String(r.dispatches)
+                            + " dispatches but residentk_dispatch_budget says "
+                            + String(residentk_dispatch_budget(n_layers))
+                            + " -- the design and the code disagree"
+                        )
+                    generated_ids.append(r.token_id)
+                    per_step_ms.append(_ms(ts1 - ts0))
+                    n_decoded += 1
+                    print("  decode step", step, "pos=", pos, "-> id=", r.token_id,
+                          "logit=", r.logit, _ms(ts1 - ts0), "ms")
+                    if r.token_id == EOS_TOKEN_ID:
+                        stopped_on_eos = True
+                        break
         var t_decode_end = perf_counter_ns()
 
         var decode_steps = n_decoded - 1

@@ -64,7 +64,15 @@ wire is Float64 narrowed ONCE at upload, and the bar is agreement of the greedy 
 the `transformers` reference, not bit-equality of logits.
 """
 
-from max.gpu.host import DeviceBuffer, DeviceContext, HostBuffer
+from max.gpu.host import (
+    DeviceBuffer,
+    DeviceContext,
+    DeviceGraph,
+    DeviceGraphBuilder,
+    HostBuffer,
+)
+from std.collections import Optional
+from std.origin import MutAnyOrigin
 from std.sys import has_accelerator, is_defined
 from residentk.contract import (
     RESIDENT_ERR_CONTEXT_FULL,
@@ -93,12 +101,20 @@ from residentk.kernels import (
     _pf_rmsnorm_rows_kernel,
     _pf_ropewrt_kernel,
     _pf_attn_tiled_kernel_simd,
+    _splitk_merge_kernel_simd,
 )
 from residentk.kernels_prefill_f32 import (
     _pf_embed_rows_kernel,
     _pf_gemm_assign_kernel,
     _pf_gemm_accum_kernel,
     _pf_gemm_swiglu_kernel,
+)
+from residentk.kernels_cuda_graph import (
+    _embed_row_kernel_g,
+    _graph_advance_kernel,
+    _qk_rope_write_kernel_g,
+    _sdpa_kernel_simd_g,
+    _splitk_partial_kernel_simd_g,
 )
 from residentk.session import (
     RESIDENT_GPU_BUILD,
@@ -116,6 +132,11 @@ conjoined with the CUDA backend selector, the two-tier split `metaldispatch.sess
 mirrors on the Metal side (with `ALGENTA_METAL`). A Metal build sets `ALGENTA_GPU` but NOT
 `ALGENTA_CUDA`, so every launch in this file is removed before shader codegen there — the Metal
 lane is untouched by this module's existence."""
+
+comptime CUDA_GRAPH_N_SPLITS: Int = 32
+"""The split-K attention fan-out of the graph decode arm: h_q x N_SPLITS = 128 blocks on the
+A100's 108 SMs. The extra in-graph dispatch costs nothing (replay amortizes it), so the
+Metal-side ~500-key crossover (a launch-overhead argument) does not apply inside the graph."""
 
 comptime CUDA_PREFILL_TILE: Int = 128
 """Largest m_rows tile one prefill chunk processes. 128 keeps every scratch buffer this file
@@ -174,6 +195,22 @@ struct _CudaResidentQwen3(Movable):
     var pf_q_rot: DeviceBuffer[DType.float32]
     var pf_attn: DeviceBuffer[DType.float32]
     var pf_act: DeviceBuffer[DType.float32]
+
+    # decode-graph arm — the captured per-token dispatch sequence and its dynamic-scalar feed.
+    # `step_state` holds [token_id, pos, n_keys] on the device; `host_state` is the pinned twin
+    # the host rewrites before every replay. The graph itself is built LAZILY on the first
+    # `step_graph` call (a constructor must initialise every field; `Optional` is the empty
+    # initial, and capture needs every resident buffer already allocated — true only at the end
+    # of `__init__`).
+    var step_state: DeviceBuffer[DType.int64]
+    var host_state: HostBuffer[DType.int64]
+    var token_log: DeviceBuffer[DType.int64]
+    var host_token_log: HostBuffer[DType.int64]
+    var sk_m: DeviceBuffer[DType.float32]
+    var sk_l: DeviceBuffer[DType.float32]
+    var sk_o: DeviceBuffer[DType.float32]
+    var decode_graph: Optional[DeviceGraph]
+    var decode_graph_built: Bool
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -243,6 +280,18 @@ struct _CudaResidentQwen3(Movable):
         self.pf_q_rot = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
         self.pf_attn = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
         self.pf_act = self.ctx.enqueue_create_buffer[DType.float32](t * d_ff)
+
+        self.step_state = self.ctx.enqueue_create_buffer[DType.int64](3)
+        self.host_state = self.ctx.enqueue_create_host_buffer[DType.int64](3)
+        self.token_log = self.ctx.enqueue_create_buffer[DType.int64](max_ctx)
+        self.host_token_log = self.ctx.enqueue_create_host_buffer[DType.int64](max_ctx)
+        self.sk_m = self.ctx.enqueue_create_buffer[DType.float32](h_q * CUDA_GRAPH_N_SPLITS)
+        self.sk_l = self.ctx.enqueue_create_buffer[DType.float32](h_q * CUDA_GRAPH_N_SPLITS)
+        self.sk_o = self.ctx.enqueue_create_buffer[DType.float32](
+            h_q * CUDA_GRAPH_N_SPLITS * d_head
+        )
+        self.decode_graph = Optional[DeviceGraph]()
+        self.decode_graph_built = False
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -579,3 +628,316 @@ struct _CudaResidentQwen3(Movable):
             if tok < 0 or tok >= self.vocab:
                 return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
             return _StepOut(tok, lg, issued, RESIDENT_OK)
+
+    def _build_decode_graph(mut self) raises:
+        """Capture the whole per-token decode dispatch sequence into ONE `DeviceGraph`.
+
+        The recording context (`builder.recording_context()`) records the ordinary
+        `enqueue_function` / `enqueue_copy` calls as graph nodes in enqueue order instead of
+        executing them — so this method is literally `step`'s dispatch plan, replayed against
+        the recording context, with the three position-dependent launches reading their dynamic
+        scalars from the resident `step_state` buffer through the `_g` kernel twins
+        (`residentk.kernels_cuda_graph`). Every other launch's arguments are fixed addresses and
+        constants, valid for the session's life, so ONE captured graph serves every decode step:
+        replay feeds it the per-token scalars by copying `host_state -> step_state` (the first
+        recorded node), and reads the argmax result back through the two recorded D2H copies.
+
+        Called once, lazily, from `step_graph` — every resident buffer must already exist, and
+        the constructor cannot capture a graph of buffers it has not finished allocating.
+
+        POINTER HOISTING DISCIPLINE (paid in three build failures, recorded): the build callback
+        is an `{imm}` closure, and an immutable borrow of `self` yields IMMUTABLE branded
+        pointers — the kernels' `_FP`/`_IP` parameters are MUTABLE MutAnyOrigin pointers, and
+        Mojo 1.0.0 has no implicit branded->MutAnyOrigin conversion at ordinary initialization,
+        and an `{imm}` capture cannot take mutable pointers from `self` at all.
+        The proven round trip: take each pointer in the method scope (where `self` is mut),
+        keep its address as a plain Int (`Int(ptr)`), and rebuild a mutable MutAnyOrigin
+        pointer from the address inside the capture (`UnsafePointer[...](unsafe_from_address=
+        ...)`, the spelling `metaldispatch.session` uses). Session buffers are resident for the
+        session's life, so the addresses are stable for every replay.
+        """
+        var hidden_a = Int(self.hidden.unsafe_ptr())
+        var qkv_a = Int(self.qkv.unsafe_ptr())
+        var q_rot_a = Int(self.q_rot.unsafe_ptr())
+        var attn_out_a = Int(self.attn_out.unsafe_ptr())
+        var act_a = Int(self.act.unsafe_ptr())
+        var blk_val_a = Int(self.blk_val.unsafe_ptr())
+        var blk_idx_a = Int(self.blk_idx.unsafe_ptr())
+        var out_val_a = Int(self.out_val.unsafe_ptr())
+        var out_idx_a = Int(self.out_idx.unsafe_ptr())
+        var embed_a = Int(self.embed.unsafe_ptr())
+        var final_norm_a = Int(self.final_norm.unsafe_ptr())
+        var cos_a = Int(self.cos_t.unsafe_ptr())
+        var sin_a = Int(self.sin_t.unsafe_ptr())
+        var state_a = Int(self.step_state.unsafe_ptr())
+        var tlog_a = Int(self.token_log.unsafe_ptr())
+        var skm_a = Int(self.sk_m.unsafe_ptr())
+        var skl_a = Int(self.sk_l.unsafe_ptr())
+        var sko_a = Int(self.sk_o.unsafe_ptr())
+
+        var ln1s = List[Int]()
+        var ln2s = List[Int]()
+        var qns = List[Int]()
+        var kns = List[Int]()
+        var w_qkvs = List[Int]()
+        var w_os = List[Int]()
+        var w_gus = List[Int]()
+        var w_downs = List[Int]()
+        var cks = List[Int]()
+        var cvs = List[Int]()
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            ln1s.append(Int(lw.ln1.unsafe_ptr()))
+            ln2s.append(Int(lw.ln2.unsafe_ptr()))
+            qns.append(Int(lw.qn.unsafe_ptr()))
+            kns.append(Int(lw.kn.unsafe_ptr()))
+            w_qkvs.append(Int(lw.w_qkv.unsafe_ptr()))
+            w_os.append(Int(lw.w_o.unsafe_ptr()))
+            w_gus.append(Int(lw.w_gu.unsafe_ptr()))
+            w_downs.append(Int(lw.w_down.unsafe_ptr()))
+            cks.append(Int(lw.ck.unsafe_ptr()))
+            cvs.append(Int(lw.cv.unsafe_ptr()))
+
+        var n_layers_c = self.n_layers
+        var d_model_i = Int64(self.d_model)
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var n_qkv_i = Int64(n_q + 2 * n_kv)
+        var h_q_i = Int64(self.h_q)
+        var h_kv_i = Int64(self.h_kv)
+        var d_head_i = Int64(self.d_head)
+        var n_q_i = Int64(n_q)
+        var d_ff_i = Int64(self.d_ff)
+        var vocab_i = Int64(self.vocab)
+        var eps_c = self.eps
+        var scale_c = self.scale
+        var n_iters_i = Int64(_ceil_div(self.vocab, _LM_BLOCKS * _SUBS))
+
+        def build(mut builder: DeviceGraphBuilder) raises {imm}:
+            # ── rebuild the mutable MutAnyOrigin pointers from the hoisted addresses ──
+            var hidden_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=hidden_a)
+            var qkv_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=qkv_a)
+            var q_rot_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=q_rot_a)
+            var attn_out_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=attn_out_a)
+            var act_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=act_a)
+            var blk_val_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=blk_val_a)
+            var blk_idx_p = UnsafePointer[Int32, origin=MutAnyOrigin](unsafe_from_address=blk_idx_a)
+            var out_val_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=out_val_a)
+            var out_idx_p = UnsafePointer[Int32, origin=MutAnyOrigin](unsafe_from_address=out_idx_a)
+            var embed_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=embed_a)
+            var final_norm_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=final_norm_a)
+            var cos_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=cos_a)
+            var sin_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=sin_a)
+            var state_p = UnsafePointer[Int64, origin=MutAnyOrigin](unsafe_from_address=state_a)
+
+            var rec = builder.recording_context()
+
+            # NOTE: the host_state -> step_state feed is DELIBERATELY NOT recorded here.
+            # Run-verified on the A100 (oracle FAIL, bit-identical logits on every replay):
+            # a host->device copy captured into the graph reads a capture-time snapshot of
+            # the host buffer, never the live contents — every replay saw stale state. The
+            # feed therefore happens as ONE eager enqueue per token in `step_graph` before
+            # the replay (same stream, ordered before the graph's kernels). The device->host
+            # argmax readback at the end IS captured: it lands live (run-verified).
+
+            # ── the embedding row, gathered from the resident table ──
+            rec.enqueue_function[_embed_row_kernel_g](
+                hidden_p, embed_p, state_p, d_model_i,
+                grid_dim=_ceil_div(Int(d_model_i), _TG), block_dim=_TG,
+            )
+
+            for layer in range(n_layers_c):
+                var ln1_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=ln1s[layer])
+                var ln2_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=ln2s[layer])
+                var qn_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=qns[layer])
+                var kn_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=kns[layer])
+                var wqkv_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=w_qkvs[layer])
+                var wo_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=w_os[layer])
+                var wgu_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=w_gus[layer])
+                var wd_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=w_downs[layer])
+                var ck_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=cks[layer])
+                var cv_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=cvs[layer])
+                # 1 ── rmsnorm(input_layernorm) + fused Q/K/V projection
+                rec.enqueue_function[_norm_gemv_kernel](
+                    qkv_p, hidden_p, ln1_p,
+                    wqkv_p, d_model_i, n_qkv_i, eps_c,
+                    grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
+                )
+                # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write (pos: state[1])
+                rec.enqueue_function[_qk_rope_write_kernel_g](
+                    q_rot_p, ck_p, cv_p,
+                    qkv_p, qn_p, kn_p,
+                    cos_p, sin_p,
+                    state_p, h_q_i, h_kv_i, d_head_i, eps_c,
+                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    grid_dim=Int(h_q_i) + Int(h_kv_i), block_dim=Int(d_head_i),
+                )
+                # 3 ── attention over every cached key (n_keys: state[2]) — the SPLIT-K
+                # flash-decoding pair (partial + merge): the simd-shuffle reduction twin split
+                # across CUDA_GRAPH_N_SPLITS blocks per head (h_q x splits = 128 blocks on the
+                # A100's 108 SMs vs 16 for the unsplit kernel), warp-shuffle reduction body
+                # gated by sdpa_simd_nvidia_probe.mojo (0/2100 mismatches vs the barrier-tree
+                # reference on this toolchain/GPU). The merge is the residentk engine kernel
+                # byte-unmodified — no dynamic arguments, captured directly.
+                var skm_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=skm_a)
+                var skl_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=skl_a)
+                var sko_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=sko_a)
+                rec.enqueue_function[_splitk_partial_kernel_simd_g](
+                    skm_p, skl_p, sko_p, q_rot_p,
+                    ck_p, cv_p,
+                    state_p, Int64(CUDA_GRAPH_N_SPLITS), h_q_i, h_kv_i, d_head_i, scale_c,
+                    grid_dim=Int(h_q_i) * CUDA_GRAPH_N_SPLITS, block_dim=Int(d_head_i),
+                )
+                rec.enqueue_function[_splitk_merge_kernel_simd](
+                    attn_out_p, skm_p, skl_p, sko_p,
+                    Int64(CUDA_GRAPH_N_SPLITS), d_head_i,
+                    grid_dim=Int(h_q_i), block_dim=Int(d_head_i),
+                )
+                # 4 ── o_proj accumulated straight into the residual stream
+                rec.enqueue_function[_gemv_accum_kernel](
+                    hidden_p, attn_out_p, wo_p,
+                    n_q_i, d_model_i,
+                    grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                )
+                # 5 ── rmsnorm(post_attention_layernorm) + gate/up + SwiGLU
+                rec.enqueue_function[_norm_gemv2_swiglu_kernel](
+                    act_p, hidden_p, ln2_p,
+                    wgu_p, d_model_i, d_ff_i, eps_c,
+                    grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                )
+                # 6 ── down_proj accumulated straight into the residual stream
+                rec.enqueue_function[_gemv_accum_kernel](
+                    hidden_p, act_p, wd_p,
+                    d_ff_i, d_model_i,
+                    grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                )
+
+            # ── final rmsnorm + lm_head + per-threadgroup argmax, then the reduce ──
+            rec.enqueue_function[_lmhead_argmax_kernel](
+                blk_val_p, blk_idx_p, hidden_p,
+                final_norm_p, embed_p,
+                d_model_i, vocab_i, eps_c, n_iters_i,
+                grid_dim=_LM_BLOCKS, block_dim=_TG,
+            )
+            rec.enqueue_function[_argmax_reduce_kernel](
+                out_val_p, out_idx_p,
+                blk_val_p, blk_idx_p, Int64(_LM_BLOCKS),
+                grid_dim=1, block_dim=_TG,
+            )
+            # ── the device-side generation chain: log the token, feed it forward, advance
+            #    pos/n_keys — so N back-to-back replays run a whole generation with zero
+            #    per-token host traffic (the host seeds once and synchronizes once) ──
+            var tlog_p = UnsafePointer[Int64, origin=MutAnyOrigin](unsafe_from_address=tlog_a)
+            rec.enqueue_function[_graph_advance_kernel](
+                state_p, out_idx_p, tlog_p,
+                grid_dim=1, block_dim=1,
+            )
+            # NO memcpy nodes are recorded — neither direction. Run-verified on the A100
+            # (benchmarks/llm_smoke/nvidia_race/state_probe.mojo, PART1-3): captured copies
+            # route through graph-owned staging and never touch the caller's buffers at
+            # replay, in either direction; eager copies around the replay do. `step_graph`
+            # therefore feeds the state and reads the argmax back eagerly.
+
+        self.decode_graph = DeviceGraph.create(self.ctx, build)
+
+    def step_graph(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """ONE decode token through the captured device graph — the same computation as `step`,
+        one replay instead of 171 per-dispatch enqueues. The per-token scalars (token_id, pos,
+        n_keys) are written into the pinned `host_state`; the graph's first recorded node copies
+        them to the device `step_state` buffer the `_g` kernels read. Same `_StepOut` contract
+        as `step`, including the dispatch budget report (the replayed plan IS that budget)."""
+
+        @parameter
+        if not CUDA_SESSION_BUILD:
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.max_ctx:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            if not self.decode_graph_built:
+                self._build_decode_graph()
+                self.decode_graph_built = True
+
+            # HostBuffer is host-visible already — write the three scalars through its
+            # pointer directly (no map_to_host; that is the DeviceBuffer API).
+            var state_h = self.host_state.unsafe_ptr()
+            state_h[0] = Int64(token_id)
+            state_h[1] = Int64(pos)
+            state_h[2] = Int64(pos + 1)
+
+            # The feed: ONE eager H2D copy on the context stream, ordered before the replay.
+            # A recorded copy would read a capture-time snapshot instead (see
+            # `_build_decode_graph`'s note); one enqueue is noise next to the 171 deleted.
+            self.ctx.enqueue_copy(self.step_state, self.host_state)
+
+            self.decode_graph.value().replay()
+
+            # The 8-byte readback, eagerly (a recorded D2H copy would land in graph-owned
+            # staging, never in these host buffers — state_probe.mojo PART2/3 evidence).
+            self.ctx.enqueue_copy(self.host_val, self.out_val)
+            self.ctx.enqueue_copy(self.host_idx, self.out_idx)
+            self.ctx.synchronize()
+
+            var tok = Int(self.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(
+                tok, lg, residentk_dispatch_budget(self.n_layers), RESIDENT_OK
+            )
+
+    def seed_and_run_graph(
+        mut self, first_token: Int, start_pos: Int, n_steps: Int,
+    ) raises -> Int:
+        """Run `n_steps` decode steps as `n_steps` back-to-back replays of ONE captured graph,
+        with ZERO per-token host traffic — the device-side chain (`_graph_advance_kernel`,
+        captured as the graph's last node) logs each token to `token_log`, feeds it as the
+        next embed input, and advances pos/n_keys; replays run in stream order, so replay k
+        consumes exactly what replay k-1 advanced. The host seeds `step_state` once, enqueues
+        every replay, synchronizes once, and pulls the whole token log back eagerly.
+
+        Returns a RESIDENT_* status. Tokens are read afterwards with `graph_token(pos)` —
+        the log is indexed by ABSOLUTE position, so the token generated at position
+        `start_pos + i` is `graph_token(start_pos + i)`. The caller owns `pos` bookkeeping
+        exactly as with `step`/`prefill`: the next position after this call is
+        `start_pos + n_steps`.
+        """
+
+        @parameter
+        if not CUDA_SESSION_BUILD:
+            return RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT
+        else:
+            if n_steps < 1:
+                return RESIDENT_ERR_UPLOAD_LENGTH
+            if start_pos < 0 or start_pos + n_steps > self.max_ctx:
+                return RESIDENT_ERR_CONTEXT_FULL
+            if first_token < 0 or first_token >= self.vocab:
+                return RESIDENT_ERR_UPLOAD_LENGTH
+
+            if not self.decode_graph_built:
+                self._build_decode_graph()
+                self.decode_graph_built = True
+
+            # Seed the chain once: the prefill's first token + the position it occupies.
+            var state_h = self.host_state.unsafe_ptr()
+            state_h[0] = Int64(first_token)
+            state_h[1] = Int64(start_pos)
+            state_h[2] = Int64(start_pos + 1)
+            self.ctx.enqueue_copy(self.step_state, self.host_state)
+
+            for _ in range(n_steps):
+                self.decode_graph.value().replay()
+
+            # One synchronize for the whole generation, then the log readback (eager — a
+            # recorded copy would land in graph-owned staging, never this host buffer).
+            self.ctx.synchronize()
+            self.ctx.enqueue_copy(self.host_token_log, self.token_log)
+            self.ctx.synchronize()
+            return RESIDENT_OK
+
+    def graph_token(self, pos: Int) raises -> Int:
+        """The token generated at ABSOLUTE position `pos` by the last `seed_and_run_graph`
+        call, read from the host-side token log."""
+        return Int(self.host_token_log.unsafe_ptr()[pos])

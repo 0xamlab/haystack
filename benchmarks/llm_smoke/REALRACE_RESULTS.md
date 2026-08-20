@@ -12870,3 +12870,311 @@ conversion at 15 GB — the converter holds the whole Float64 tensor set in memo
 (g2-standard-4, ~12 min, same conversion OOM), L4 (g2-standard-8, ~20 min), A100
 (a2-highgpu-1g, ~25 min). Total ~$2.50 spot. Every VM was deleted immediately after its suite;
 no GPU idled unattended.
+
+## FIRST NVIDIA HEAD-TO-HEAD — algenta vs llama.cpp on the A100-SXM4-40GB: the race opens with the frozen discipline, an honest ~0.19x/~0.20x starting point, and the dispatch-bound decode ceiling confirmed on a second architecture (2026-08-20)
+
+The NVIDIA race front the entry above opened is now measured. Same campaign fixture (the
+256-token race prompt, tokenized to exactly 256 ids by the repo's own tokenizer — the prep
+script refuses to write any other count), same greedy discipline, and the FROZEN tolerance
+table from `benchmarks/competitors/llama_cpp/README.md` applied to every cell: 20 runs/cell,
+median, relative IQR = (p75 − p25)/median against the 5% tolerance, runs deviating >10% from
+the median flagged as outliers and excluded only if >= 16/20 remain. Every cell below PASSES;
+verdicts reported, never adjusted.
+
+WHAT RAN
+--------
+* GPU: NVIDIA A100-SXM4-40GB (a2-highgpu-1g spot, us-central1-a), driver 595.71.05 — the same
+  driver series PR #778's oracle round used. CUDA toolkit 12.6.3 (llama.cpp build only; the
+  algenta binaries need no toolkit, per the entry above).
+* llama.cpp at the campaign pin `000547513f1530346ecd163db8b3e13962949961` (the Apple races'
+  pin, build 10210), `-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=80-real` (this VM's arch only —
+  stated because the default multi-arch build is not what was raced).
+* Checkpoint: Qwen/Qwen3-0.6B-Base BF16 safetensors, converted on-VM twice, independently:
+  llama.cpp's own `convert_hf_to_gguf.py` -> F16 GGUF (+ `llama-quantize` Q8_0), and the repo's
+  numpy-only `prepare_model_checkpoint()` -> /tmp/qwen3smoke for the algenta arm.
+* algenta: `feat/nvidia-race-campaign` (PR #778's session + the frozen-discipline bench upgrade),
+  drivers built for sm_80, weights resident as Float32.
+* Harness: `benchmarks/llm_smoke/nvidia_race/nvidia_race.py` — 20 invocations per llama cell
+  (one measurement per invocation = the 20-sample distribution the frozen table prescribes),
+  the algenta bench runs its 20 timed generations in-process, and a 500 ms nvidia-smi sampler
+  ran alongside every timed window (raw samples in the campaign's clocks.csv; JSON summary in
+  nvidia_race_summary.json).
+
+RESULTS — llama.cpp microbenchmark (llama-bench, 20 runs/cell, this arch's build)
+----------------------------------------------------------------------------------
+  Cell           median tok/s    p25        p75        rel IQR   outliers   verdict
+  F16  pp256     14330.1         14281.0    14362.3    0.57%     1          PASS
+  F16  pp512     22831.6         22670.5    22858.4    0.82%     0          PASS
+  F16  tg128     375.9           375.8      376.0      0.06%     0          PASS
+  Q8_0 pp256     11205.3         11189.9    11235.5    0.41%     0          PASS
+  Q8_0 pp512     16471.7         16430.1    16498.8    0.42%     0          PASS
+  Q8_0 tg128     430.0           429.6      430.3      0.17%     0          PASS
+
+RESULTS — the race fixture (256-token prompt, greedy --temp 0, all layers on GPU;
+llama-completion -no-cnv raw completion, -n gen+1 so llama's eval window spans exactly gen
+tokens, matching the algenta decode window token-for-token; the observed eval counts [64]/[256]
+are recorded in the JSON to keep the scope auditable)
+---------------------------------------------------------------------------------------------
+  Engine/format        prefill tok/s (256)   decode gen=64      decode gen=256     verdicts
+  algenta f32          483.0  (IQR 0.073%)   71.0 (IQR 0.019%)  56.0 (IQR 0.011%)  PASS/PASS
+  llama.cpp F16        2554.6 (IQR 0.65%)    357.4 (IQR 0.17%)  367.0 (IQR 0.10%)  PASS/PASS
+  llama.cpp Q8_0       13084.6 (IQR 0.51%)   404.8 (IQR 0.12%)  420.0 (IQR 0.16%)  PASS/PASS
+
+Head-to-head against the F16 control (the Apple races' format): algenta f32 = 0.19x prefill,
+0.20x decode at gen=64, 0.15x at gen=256. This is the campaign's starting point, stated plainly.
+
+ORACLE: the algenta arm re-verified before any number counted — 16/16 greedy tokens match the
+campaign continuation ([374, 12095, 13, 576, 6722, 315, 9625, 374] + the 7-token cycle) on this
+VM's fresh conversion + fresh sm_80 build, and every timed run agreed on the first token.
+
+HONEST SCOPE — what these numbers are and are not
+-------------------------------------------------
+* WEIGHT FORMAT: algenta races FLOAT32 weights; the llama.cpp control is F16 (full-precision
+  family, the Apple races' control) and Q8_0 is the quantized deployment datapoint. The f32-vs-F16
+  comparison carries a 2x weight-traffic handicap for algenta by construction; the format-fair
+  F16-vs-F16 arm is Phase 3b and is recorded when it lands.
+* FIXTURE PREFILL IS COLD ON THE LLAMA SIDE: each llama-completion invocation's prompt-eval is
+  that process's FIRST prefill (first-use graph capture included — llama.cpp runs CUDA graphs
+  internally; its logs print "graphs reused"), while the algenta number is warm (one untimed
+  warmup generation precedes the timed runs, the frozen protocol's rule). The warm-vs-warm
+  prefill gap is therefore LARGER than the fixture ratio; the llama-bench table above is
+  llama.cpp's warm prefill rate, reported alongside so neither view is hidden. Decode scopes
+  have no such asymmetry (both sides warm inside the timed window).
+* algenta's gen=256 decode (56.0) runs SLOWER than gen=64 (71.0) — the per-dispatch attention
+  loop grows with pos; the same shape PR #778 recorded on T4/L4. The graph arm attacks the
+  dispatch count, not this growth.
+* TWO HARNESS BUGS WERE CAUGHT AND FIXED BEFORE THESE NUMBERS COUNTED (integrity note): (1)
+  llama-cli's conversation mode — auto-enabled because the converted GGUF carries the Qwen3 chat
+  template even for a Base model — wrapped the fixture in template tokens (>256) and then
+  busy-looped on stdin EOF; the fixture moved to llama-completion with -no-cnv, run-verified to
+  span exactly 256 prompt tokens and exit cleanly. (2) llama-bench with `-p N` ALSO emits the
+  default tg128 row, and the first parser kept the last matched row — silently reporting tg
+  numbers for the pp cells; caught by cross-checking bench vs fixture, fixed to match the exact
+  test label, and the whole matrix re-run (this table is the re-run).
+
+CLOCK EVIDENCE (500 ms sampler, 2119 samples across the suite): SM clock 210–1410 MHz (the low
+samples are the inter-run idle gaps of a spot suite, not throttle), max temp 46 C, max power
+219.3 W of a 400 W part — a datacenter A100 far from any thermal wall; the decode number is
+dispatch-bound, not clock-bound, the same diagnosis PR #778 measured.
+
+COST LEDGER (spot, eplanev2): A100 provisioning + race + re-run ≈ 2.5 h ≈ $3.2 (a2-highgpu-1g
+spot); one wasted all-arch llama.cpp build killed at ~30% and re-run arch-pinned (~$0.5 of that).
+The VM stays up only for the lever-3a verification round and is deleted immediately after.
+
+NEXT (measured-lever order): (a) CUDA-graph capture/replay decode arm — written on this branch
+(residentk.kernels_cuda_graph + session_cuda.step_graph, MAX 26.5's device_graph recording
+context), oracle gate before numbers; (b) the F16 CUDA session for the format-fair race; (c) the
+T4 lane for the second-GPU row.
+
+## LEVER 3a VERIFIED ON THE A100 — CUDA-graph decode arm oracle-exact, and the dispatch-bound diagnosis CORRECTED by measurement: host submission was NOT the binding constraint; the f32 kernel floors are, and the kernel-by-kernel sweep names them (2026-08-20)
+
+The CUDA-graph decode arm (feat/nvidia-race-campaign, MAX 26.5's max.gpu.host.device_graph)
+is built, and the oracle gate passed BEFORE any number counted — 16/16 greedy tokens match the
+campaign continuation, verified twice: once with per-token host-fed state, and once as a single
+async chain (the whole 15-token tail from back-to-back replays with a device-side token chain
+and ONE synchronize). Both designs are in the tree; the bench races the async chain.
+
+WHAT THE BUILD PAID FOR THE RECORD (integrity notes; each is documented where it lives)
+---------------------------------------------------------------------------------------
+* Recorded host->device memcpy nodes read a CAPTURE-TIME SNAPSHOT of the host buffer, never
+  live contents, and recorded device->host copies land in graph-owned staging, never the
+  caller's buffer — bit-identical logits on every replay was the symptom. state_probe.mojo
+  (benchmarks/llm_smoke/nvidia_race/) isolates all three facts. Fix: kernels-only capture,
+  eager copies around the replay.
+* Branded buffer origins convert to the kernels' mutable MutAnyOrigin parameters only at the
+  enqueue call site, and an {imm} capture cannot take mutable pointers from self — the capture
+  hoists Int(ptr) addresses and rebuilds the pointers via unsafe_from_address inside the build
+  callback.
+* The device-side generation chain (_graph_advance_kernel, captured last in the graph) logs
+  each token to token_log[pos], feeds it as the next embed input, and advances pos/n_keys —
+  N back-to-back replays run a whole generation with zero per-token host traffic.
+
+THE NUMBERS (A100-SXM4-40GB, 20 runs/cell, frozen discipline)
+--------------------------------------------------------------
+  Arm                          prefill tok/s (256)     decode gen=64          verdicts
+  per-dispatch (baseline)      483.0  (IQR 0.073%)     71.0  (IQR 0.019%)     PASS/PASS
+  CUDA-graph async chain       482.7  (IQR 0.021%)     72.1  (IQR 0.007%)     PASS/PASS
+
+THE DIAGNOSIS CORRECTION — stated plainly, because the ledger exists to do exactly this
+----------------------------------------------------------------------------------------
+PR #778 named decode DISPATCH-BOUND (171 dispatches/token, decode flat across T4->L4->A100
+while prefill scales). The graph arm tests that hypothesis directly: it deletes 170 of the 171
+per-token enqueues (one replay, host-side cost near zero). Decode moves 71.0 -> 72.1 tok/s =
++1.6%, inside the noise band. HOST SUBMISSION WAS NOT THE BINDING CONSTRAINT on this stack —
+the device-side kernel work itself is ~13.9 ms/token. The flat-across-GPUs signature that
+motivated the original diagnosis has a second explanation the data cannot distinguish without
+this experiment: kernels that run far below every GPU's floor on all three GPUs. The sweep
+below shows that is the case.
+
+KERNEL-BY-KERNEL SWEEP (kernel_sweep_cuda.mojo, same tree/GPU; REPS dispatches back-to-back,
+one synchronize after the loop = device-bound windows; layer-0 shapes, real resident f32
+weights; floors: A100-SXM4 HBM 1555 GB/s, FP32 SIMT 19.5 TFLOP/s — tensor cores not used by
+these kernels; verdict bands frozen in the driver docstring)
+=============================================================================================
+DECODE family (per dispatch; x28 layers unless noted):
+  embed_row              3.8 us    2 GB/s    (0.1%)  very-low-bw   (tiny; launch floor)
+  norm_gemv(qkv)        12.4 us  1350 GB/s   (87%)   ok            <- AT the bandwidth floor
+  qk_rope_write          4.5 us    —                  dispatch-floor
+  sdpa n_keys=256      233.3 us    9 GB/s   (0.6%)   very-low-bw   <- 136x BELOW the floor
+  sdpa n_keys=512      461.6 us    9 GB/s   (0.6%)   very-low-bw   (linear in n_keys)
+  sdpa n_keys=1024     920.3 us    9 GB/s   (0.6%)   very-low-bw
+  gemv_accum(o_proj)     9.9 us   844 GB/s   (54%)   low-bw
+  norm_gemv2_swiglu(gu) 15.8 us  1592 GB/s  (102%)   ok            <- AT/above peak (boost)
+  gemv_accum(down)      11.0 us  1145 GB/s   (74%)   ok
+  lmhead_argmax (once) 445.9 us  1396 GB/s   (90%)   ok  (streams the 616MB tied table)
+  argmax_reduce (once)   5.4 us    —                  dispatch-floor
+PREFILL family (m_rows=128):
+  pf_gemm_assign(qkv)   2269 us   473 GF/s  (2.4%)   very-low-compute
+  pf_gemm_accum(o)      1621 us   331 GF/s  (1.7%)   very-low-compute
+  pf_gemm_swiglu(gu)    2771 us   581 GF/s  (3.0%)   very-low-compute
+  pf_gemm_accum(down)   2417 us   333 GF/s  (1.7%)   very-low-compute
+  pf_attn_tiled(causal)  149 us   449 GF/s  (2.3%)   very-low-compute
+  pf_rmsnorm_rows         20 us    52 GB/s  (3.4%)   very-low-bw
+
+VERDICTS AND THE OPTIMIZATION PLAN (measured-lever order, stated before the fixes are built)
+---------------------------------------------------------------------------------------------
+1. sdpa decode attention is the single largest decode cost: ~233 us x 28 layers = 6.5 ms of
+   the ~13.9 ms token (47%), at 0.6% of the bandwidth floor — the barrier-tree reduction
+   (9 barriers per key at d_head=128) is the mechanism. Metal solved exactly this with the
+   warp-shuffle twin `_sdpa_kernel_simd` (2 barriers per key) — it is portable code, but its
+   own docstring records a real codegen bug found on Metal/1.0.0b2 (lane-0/1 zero-contribution,
+   ~1% of dispatches at production shapes), so it gets a dedicated NVIDIA correctness probe
+   BEFORE adoption, not a blind dispatch swap. Expected if clean: ~5.5-6 ms/token back.
+2. Prefill's tiled GEMMs run at 1.7-3.0% of the FP32 SIMT peak — naive tiling, no vectorized
+   loads, no double-buffering. llama.cpp's 14.3k tok/s warm pp256 rides FP16 tensor cores;
+   SIMT f32 cannot get there. The honest levers, in order: (a) vectorized/buffered tiling for
+   a few x, (b) an f16-activation/f16-weight GEMM path if the toolchain exposes tensor-core
+   mma on NVIDIA, (c) otherwise prefill is documented as the format/architecture gap rather
+   than tuned away.
+3. Weight format: the GEMV family already runs at 54-102% of HBM peak in f32 — the only way
+   to move them is fewer BYTES: the f16 CUDA session (Phase 3b; the Metal f16 family exists
+   and is portable) halves every GEMV + the lm_head stream; int8 halves again. This is also
+   the format-fair race arm (F16 vs llama.cpp F16).
+4. Dispatch/launch floor: embed/ropewrt/argmax_reduce sit at 3.8-5.4 us each — the graph arm
+   already deletes their submission cost; nothing left there.
+
+CLOCK/COST NOTE: same VM, same session, same spot window as the race entry above; sweep adds
+~15 min A100 time (~$0.3). The A100 stays up for the sdpa probe + f16 arm rounds.
+
+## THE NVIDIA DECODE LEVER SWEEP, COMPLETE — CUDA-graph + split-K attention take algenta 71.0 -> 329.8 tok/s (4.6x) on the A100, to 0.92x of llama.cpp F16; the weight-format arms are measured-and-diagnosed as toolchain-blocked, with every probe named (2026-08-20)
+
+This is the optimization round the entry above planned, executed lever-by-lever on the same
+A100-SXM4-40GB spot VM, every step gated by the 16/16 greedy oracle BEFORE its numbers counted,
+every bench at the frozen 20-run discipline. The decode progression, all on the 256-token race
+fixture, f32 weights:
+
+  Arm                                            gen=64 tok/s    gen=256 tok/s
+  per-dispatch baseline (PR #778 path)           71.0            56.0
+  + CUDA-graph capture/replay (kernels-only      72.1            66.8
+    capture; the +1.6% proved host submission
+    was NOT the binding constraint)
+  + warp-shuffle sdpa (2 barriers/key vs 9)      84.3            66.8->
+  + split-K flash-decoding, N_SPLITS=8           262.9           238.2
+  + N_SPLITS=16                                  307.1           —
+  + N_SPLITS=32 (FINAL; plateau measured:        329.8           318.9
+    64 splits = 328.0, no further gain)
+  llama.cpp F16 control                          357.4           367.0
+  llama.cpp Q8_0 control                         404.8           420.0
+
+FINAL VERDICT vs the F16 control: 0.92x at gen=64, 0.87x at gen=256 — from a 0.20x/0.15x
+start. The oracle passed 16/16 at every adoption step; final medians carry rel IQR 0.022%
+(gen=64) and 0.007% (gen=256), both PASS the frozen 5%.
+
+WHAT CLOSED THE GAP, MECHANISM BY MECHANISM
+--------------------------------------------
+* CUDA-graph arm (session_cuda.step_graph / seed_and_run_graph): one captured graph per
+  session, a device-side generation chain (_graph_advance_kernel: logs the token, feeds it as
+  the next embed input, advances pos/n_keys) so N back-to-back replays run a whole generation
+  with ZERO per-token host traffic. Kernels-only capture — state_probe.mojo proved recorded
+  memcpy nodes (both directions) never touch the caller's buffers; the feed and readback are
+  eager copies around the replay. The +1.6% over per-dispatch is the honest measurement that
+  host submission was NOT the bottleneck on this stack — the kernels were.
+* Warp-shuffle attention reduction: sdpa ran at 0.6% of the bandwidth floor (9 barriers/key);
+  the simd-shuffle twin cut that to 2 (1.38x standalone). Its docstring documents a real
+  codegen bug on Metal/1.0.0b2 — sdpa_simd_nvidia_probe.mojo re-ran the exact minimal repro
+  (d_head=32/n_keys=1, 100% deterministic there) x100 plus 2000-dispatch production stress on
+  the A100: 0 mismatches, worst diff 3e-7 — the bug does not exist on NVIDIA/mojo 1.0.0.
+* Split-K flash-decoding in the capture: 16 blocks (one per head) on 108 SMs was the sweep's
+  named occupancy wall; N_SPLITS fan-out recruits h_q x N_SPLITS blocks. Inside a captured
+  graph the extra dispatch costs nothing, so the Metal-side ~500-key crossover (a launch-
+  overhead argument) does not apply — the sweep 8/16/32/64 = 262.9/307.1/329.8/328.0 shows
+  the plateau at 32.
+
+THE WEIGHT-FORMAT ARMS — MEASURED, DIAGNOSED, TOOLCHAIN-BLOCKED (stated plainly)
+-----------------------------------------------------------------------------------
+The F16 CUDA session was BUILT and oracle-verified 16/16 (session_cuda_f16: f16 weights via
+the Metal-proven _f16 kernel twins, f16 prefill GEMM twins in kernels_prefill_f16, same graph
+decode arm). It measured 87.1/84.2 tok/s decode — 3x SLOWER than f32, the opposite of halved
+bytes. The probe battery (benchmarks/llm_smoke/nvidia_race/) isolated why, each probe a
+committed artifact:
+  * f16_gemv_probe: the f16 GEMV family runs at 5.5-6.9% of HBM peak on NVIDIA (86-108 GB/s)
+    vs 53-91% for the f32 twins.
+  * f16_vec8_probe: width-8 f16 loads are WORSE (23-62 GB/s) — vector width is not the
+    variable.
+  * f16_stream_probe: the f16->f32 cast costs ~2x, but Int32 loads of the SAME bytes are just
+    as slow — it is the load path, not the cast.
+  * i8_gemv_probe: the int8 family (char4 loads, the Metal race arm's kernels) collapses to
+    1.0-1.6% of peak.
+  * i8_via_int32_probe: even Int32-typed SIMD loads run at ~2% of peak in the GEMV shape.
+  VERDICT: in the Mojo 1.0.0 / MAX 26.5 CUDA backend, ONLY Float32 vector loads stream at HBM
+  speed; every sub-f32 SIMD load path is scalarized. MAX exposes TMA but no tensor-core mma
+  surface to route around it, and the toolchain has no value-level bit-reinterpretation
+  primitive to unpack f16/i8 bytes loaded as f32 words. The quantized/f16 arms are therefore
+  toolchain-blocked, not kernel-blocked; the f16 session stays in-tree (correct, race-ready)
+  for the day the backend load paths are fixed, and the race rows stand on f32 until then.
+
+WHAT REMAINS BETWEEN HERE AND A WIN — costed honestly
+------------------------------------------------------
+* Decode (0.92x): the residual ~1.5 ms/token is dominated by the f32 weight streams already at
+  54-91% of HBM peak plus the 616 MB f32 lm_head stream (446 us at 90% of peak). Inside f32
+  there is nothing left to take; the win requires either the backend f16/i8 load fix or a
+  tensor-core surface — both upstream of this repo.
+* Prefill (482.6 tok/s vs llama-bench warm 14330 F16): the tiled GEMMs run at 1.7-3.0% of FP32
+  SIMT peak (kernel sweep above) — naive tiling, no double-buffering. The honest path is a
+  register-blocked/double-buffered tiled GEMM (days of kernel work, 5-10x headroom measured in
+  the gap to SIMT peak), then the same format question as decode. Recorded as the next
+  campaign phase, not taken in this round.
+
+CLOCK/COST LEDGER (spot, eplanev2): A100-SXM4-40GB kept ~4 h for the full sweep ≈ $5.2;
+llama.cpp raced on the same VM (no second provisioning). The VM is deleted immediately after
+this entry lands and the T4 lane VM takes over (second-GPU row).
+
+## THE SECOND-GPU LANE — L4 (T4 spot was preempted 3x, unusable): graph arm 1.8-2.1x, and the decode gap proven to be a WEIGHT-FORMAT (bandwidth) gap, not a kernel-efficiency gap (2026-08-21)
+
+The second-GPU lane went to the L4 (g2-standard-8, sm_89, us-central1-a) after T4 spot was
+preempted three times running (us-central1-a/-b/-f; -c stockout) — recorded as the honest
+reason the matrix row is L4, not T4. Same fixture, same frozen discipline, oracle PASS 16/16
+before any number.
+
+  Arm (L4, 256-token fixture)              prefill tok/s    decode gen64    decode gen256
+  algenta f32 per-dispatch baseline        271.4            53.9            46.6
+  algenta f32 CUDA-graph arm               262.1            98.1            97.2
+  llama.cpp F16 control                    2165.4 (cold)    171.3           172.6
+  llama.cpp Q8_0 control                   13438 (cold)     263.2           268.3
+
+(algenta prefill is the batched f32 path, unchanged by the graph arm; llama fixture prefill is
+cold-per-process, the warm-vs-warm view is llama-bench: F16 pp256 7555, tg128 176.8; Q8_0
+pp256 11247, tg128 277.4. All medians PASS the frozen 5% IQR.)
+
+* Graph arm on L4: decode 53.9 -> 98.1 (1.82x) gen64, 46.6 -> 97.2 (2.09x) gen256 — smaller
+  than the A100's 4.6x because the L4's per-dispatch host overhead was lower to begin with.
+  graph_nsteps_probe.mojo confirms the graph path is FLAT across generation length
+  (10.10/10.12/10.15/10.22 ms/token at n_steps 32/64/128/256).
+* THE DECODE GAP IS BANDWIDTH, NOT KERNELS: algenta f32 streams 2.62 GB/token. The A100
+  (1555 GB/s) floor is ~593 tok/s, the L4 (300 GB/s) floor is ~114 tok/s. On the L4 algenta
+  measures 98 tok/s = 86% of the f32 bandwidth floor — there is almost nothing left to take
+  inside f32. llama.cpp's F16 (1.31 GB/token, floor ~229 tok/s) measures 171 = 75% of ITS
+  floor. The 0.57x L4 ratio vs F16 is therefore the 2x weight-bytes, exactly the format gap
+  the f16 CUDA arm would close — which the probe battery above proved is toolchain-blocked
+  (sub-f32 SIMD loads scalarize). On the A100 the same logic holds at a different operating
+  point (0.92x vs F16).
+
+INTEGRITY NOTE (the stale-binary catch): the first L4 gen256 graph build measured 46.6 =
+baseline (graph did not engage) while its oracle still passed 16/16 — the oracle gate cannot
+detect a no-op optimization. graph_nsteps_probe.mojo exposed it; a clean rebuild gave the true
+97.2. The harness result above is the rebuilt binary. Lesson recorded: after building an
+optimization arm, confirm the bench number actually moved before trusting it.
+
+CLOCK/COST LEDGER: L4 max SM 2040 MHz, max temp 83 C (boost-heavy part), max power 74 W. L4
+spot ~2 h ≈ $1.2; T4 preempted attempts ≈ $0.3 (wasted to preemption). Combined NVIDIA campaign
+spot spend ≈ $6.7.

@@ -1,9 +1,12 @@
-"""qwen3_bench_cuda.mojo — the CUDA-native session benchmarked, with the same methodology
-discipline the GPU-matrix work uses: ONE resident session, one untimed warmup generation, then
-three timed generations of the SAME race prompt + generation length (replayed on the same
-session — every KV slot a replay reads is rewritten by the replay before it is read, so runs are
-self-consistent), per-phase medians of three, and nvidia-smi clock evidence captured alongside
-by the calling script.
+"""qwen3_bench_cuda.mojo — the CUDA-native session benchmarked under the race ledger's FROZEN
+tolerance discipline (benchmarks/competitors/llama_cpp/README.md, frozen 2026-08-07): ONE
+resident session, one untimed warmup generation, then N_RUNS = 20 timed generations of the SAME
+race prompt + generation length (replayed on the same session — every KV slot a replay reads is
+rewritten by the replay before it is read, so runs are self-consistent). Per phase the driver
+reports the median, the relative IQR = (p75 − p25) / median, and the PASS/FLAG verdict against
+the frozen 5% tolerance; runs deviating >10% from the median are flagged as outliers, reported,
+and excluded only if >= 16/20 remain (the frozen rule). nvidia-smi clock evidence is captured
+alongside by the calling script.
 
 Timed phases, stated precisely:
   * PREFILL tok/s = n_prompt / (time for the chunked batched prefill, which INCLUDES the
@@ -28,7 +31,7 @@ from residentk.contract import (
     residentk_dispatch_budget,
     residentk_status_name,
 )
-from residentk.session import _resident_preflight
+from residentk.session import _resident_preflight, _StepOut
 from residentk.session_cuda import CUDA_PREFILL_TILE, CUDA_SESSION_BUILD, _CudaResidentQwen3
 
 comptime MANIFEST_PATH: String = "/tmp/qwen3smoke/manifest.json"
@@ -37,7 +40,20 @@ comptime BLOB_PATH: String = "/tmp/qwen3smoke/weights.blob"
 comptime GEN_256: Bool = is_defined["ALGENTA_GEN_256"]()
 comptime N_NEW_MAX: Int = 256 if GEN_256 else 64
 comptime MAX_CTX: Int = 1024
-comptime N_RUNS: Int = 3
+
+comptime USE_GRAPH: Bool = is_defined["ALGENTA_CUDA_GRAPH"]()
+"""Build with `-D ALGENTA_CUDA_GRAPH` to decode through the session's captured DeviceGraph
+(`step_graph`) instead of the per-dispatch path (`step`) — the lever-3a arm the race ledger's
+dispatch-bound diagnosis names as the decode ceiling."""
+comptime N_RUNS: Int = 20
+"""The frozen 20-runs/cell discipline (benchmarks/competitors/llama_cpp/README.md)."""
+
+comptime IQR_TOLERANCE: Float64 = 0.05
+"""The frozen relative-IQR tolerance: (p75 − p25) / median <= 5%."""
+
+comptime OUTLIER_DEVIATION: Float64 = 0.10
+"""The frozen outlier rule: a run deviating >10% from the median is flagged and reported, and
+excluded only if >= 16 of the 20 runs remain after exclusion."""
 
 
 def _check(status: Int, ok: Int, ctx: String) raises:
@@ -98,23 +114,70 @@ def _ms(ns: Int) -> Float64:
     return Float64(ns) / 1.0e6
 
 
-def _median3(a: Float64, b: Float64, c: Float64) -> Float64:
-    var x = a
-    var y = b
-    var z = c
-    if x > y:
-        var t = x
-        x = y
-        y = t
-    if y > z:
-        var t = y
-        y = z
-        z = t
-    if x > y:
-        var t = x
-        x = y
-        y = t
-    return y
+def _sort_ascending(mut xs: List[Float64]):
+    """In-place insertion sort — N_RUNS is 20, so the quadratic cost is noise."""
+    for i in range(1, len(xs)):
+        var v = xs[i]
+        var j = i - 1
+        while j >= 0 and xs[j] > v:
+            xs[j + 1] = xs[j]
+            j -= 1
+        xs[j + 1] = v
+
+
+def _percentile(sorted_xs: List[Float64], q: Float64) -> Float64:
+    """Linear-interpolation percentile (numpy's default method) over ASCENDING-sorted samples:
+    position = (n − 1) * q, fractional part interpolates between the two neighbours."""
+    var n = len(sorted_xs)
+    if n == 1:
+        return sorted_xs[0]
+    var pos = Float64(n - 1) * q
+    var lo = Int(pos)
+    var frac = pos - Float64(lo)
+    if lo >= n - 1:
+        return sorted_xs[n - 1]
+    return sorted_xs[lo] + frac * (sorted_xs[lo + 1] - sorted_xs[lo])
+
+
+@fieldwise_init
+struct CellStats(Copyable, Movable):
+    """The frozen-table verdict for one cell: median, relative IQR, outlier census, and the
+    PASS/FLAG judgement — computed exactly the way the 2026-08-08 harness entry describes."""
+
+    var median: Float64
+    var p25: Float64
+    var p75: Float64
+    var rel_iqr: Float64
+    var n_outliers: Int
+    var passes: Bool
+
+
+def _cell_stats(samples: List[Float64]) raises -> CellStats:
+    # Mojo 1.0.0 has no List.clone(); build the working copy element-wise so the caller's
+    # list is not disturbed by the in-place sort.
+    var sorted_runs = List[Float64]()
+    for i in range(len(samples)):
+        sorted_runs.append(samples[i])
+    _sort_ascending(sorted_runs)
+    var n = len(sorted_runs)
+    var median = _percentile(sorted_runs, 0.5)
+    var p25 = _percentile(sorted_runs, 0.25)
+    var p75 = _percentile(sorted_runs, 0.75)
+    var rel_iqr = (p75 - p25) / median
+
+    # The frozen outlier census: runs deviating >10% from the median, flagged and reported.
+    var n_outliers = 0
+    for i in range(n):
+        # Mojo 1.0.0: no Float64.abs() method — fold the sign by hand.
+        var delta = sorted_runs[i] - median
+        if delta < 0.0:
+            delta = -delta
+        var dev = delta / median
+        if dev > OUTLIER_DEVIATION:
+            n_outliers += 1
+
+    var passes = rel_iqr <= IQR_TOLERANCE
+    return CellStats(median, p25, p75, rel_iqr, n_outliers, passes)
 
 
 @fieldwise_init
@@ -128,24 +191,35 @@ def run_generation(
     mut s: _CudaResidentQwen3, prompt_ids: List[Int], n_prompt: Int, n_layers: Int, timed: Bool
 ) raises -> RunTimes:
     """One full generation: batched prefill then N_NEW_MAX decode steps. `timed=False` is the
-    warmup — same code path, numbers discarded."""
+    warmup — same code path, numbers discarded.
+
+    The graph arm decodes as ONE async chain (N_NEW_MAX back-to-back replays of the captured
+    graph, device-side token chain, one synchronize) — zero per-token host traffic; the timed
+    decode window is that single call. The per-dispatch arm decodes one enqueue-heavy step at
+    a time, exactly as before."""
     var tp0 = perf_counter_ns()
     var pf = s.prefill(prompt_ids)
     var tp1 = perf_counter_ns()
     _check_resident(pf.status, "prefill")
 
-    var last = pf.token_id
+    var first_tok = pf.token_id
     var td0 = perf_counter_ns()
-    for step in range(N_NEW_MAX):
-        var pos = n_prompt + step
-        var r = s.step(last, pos)
-        _check_resident(r.status, "step(decode pos " + String(pos) + ")")
-        if r.dispatches != residentk_dispatch_budget(n_layers):
-            raise Error("qwen3_bench_cuda: dispatch budget disagreement")
-        last = r.token_id
+    @parameter
+    if USE_GRAPH:
+        var st = s.seed_and_run_graph(pf.token_id, n_prompt, N_NEW_MAX)
+        _check_resident(st, "seed_and_run_graph")
+    else:
+        var last = pf.token_id
+        for step in range(N_NEW_MAX):
+            var pos = n_prompt + step
+            var r = s.step(last, pos)
+            _check_resident(r.status, "step(decode pos " + String(pos) + ")")
+            if r.dispatches != residentk_dispatch_budget(n_layers):
+                raise Error("qwen3_bench_cuda: dispatch budget disagreement")
+            last = r.token_id
     var td1 = perf_counter_ns()
 
-    return RunTimes(_ms(tp1 - tp0), _ms(td1 - td0), pf.token_id)
+    return RunTimes(_ms(tp1 - tp0), _ms(td1 - td0), first_tok)
 
 
 def main() raises:
@@ -236,21 +310,34 @@ def main() raises:
         print("  warmup: prefill", warm.prefill_ms, "ms, decode", warm.decode_ms,
               "ms, first_token =", warm.first_token)
 
-        # ═══ three timed runs ═══
-        var p1 = run_generation(s, prompt_ids, n_prompt, n_layers, True)
-        var p2 = run_generation(s, prompt_ids, n_prompt, n_layers, True)
-        var p3 = run_generation(s, prompt_ids, n_prompt, n_layers, True)
-        print("  run 1: prefill", p1.prefill_ms, "ms decode", p1.decode_ms, "ms")
-        print("  run 2: prefill", p2.prefill_ms, "ms decode", p2.decode_ms, "ms")
-        print("  run 3: prefill", p3.prefill_ms, "ms decode", p3.decode_ms, "ms")
-        if p1.first_token != p2.first_token or p2.first_token != p3.first_token \
-           or p1.first_token != warm.first_token:
-            raise Error("qwen3_bench_cuda: runs disagree on the first generated token")
-        print("  all runs agree on first generated token:", p1.first_token)
+        # ═══ the frozen 20 timed runs ═══
+        var pf_ms = List[Float64]()
+        var dc_ms = List[Float64]()
+        var first_tok = warm.first_token
+        for run in range(N_RUNS):
+            var r = run_generation(s, prompt_ids, n_prompt, n_layers, True)
+            print("  run", run + 1, ": prefill", r.prefill_ms, "ms decode", r.decode_ms, "ms")
+            if r.first_token != first_tok:
+                raise Error("qwen3_bench_cuda: runs disagree on the first generated token")
+            pf_ms.append(r.prefill_ms)
+            dc_ms.append(r.decode_ms)
+        print("  all", N_RUNS, "runs agree on first generated token:", first_tok)
 
-        var pf_med = _median3(p1.prefill_ms, p2.prefill_ms, p3.prefill_ms)
-        var dc_med = _median3(p1.decode_ms, p2.decode_ms, p3.decode_ms)
-        print("RESULT prefill_tok_per_s:", Float64(n_prompt) / (pf_med / 1000.0),
-              "(median prefill", pf_med, "ms over", n_prompt, "prompt tokens)")
-        print("RESULT decode_tok_per_s:", Float64(N_NEW_MAX) / (dc_med / 1000.0),
-              "(median decode", dc_med, "ms over", N_NEW_MAX, "generated tokens)")
+        var pf_stats = _cell_stats(pf_ms)
+        var dc_stats = _cell_stats(dc_ms)
+        var pf_verdict = "PASS" if pf_stats.passes else "FLAGGED"
+        var dc_verdict = "PASS" if dc_stats.passes else "FLAGGED"
+
+        print("  prefill: median", pf_stats.median, "ms | p25", pf_stats.p25, "| p75",
+              pf_stats.p75, "| rel IQR", pf_stats.rel_iqr * 100.0, "% | outliers (>10% dev):",
+              pf_stats.n_outliers, "|", pf_verdict, "(frozen tolerance 5%)")
+        print("  decode: median", dc_stats.median, "ms | p25", dc_stats.p25, "| p75",
+              dc_stats.p75, "| rel IQR", dc_stats.rel_iqr * 100.0, "% | outliers (>10% dev):",
+              dc_stats.n_outliers, "|", dc_verdict, "(frozen tolerance 5%)")
+
+        print("RESULT prefill_tok_per_s:", Float64(n_prompt) / (pf_stats.median / 1000.0),
+              "(median prefill", pf_stats.median, "ms over", n_prompt,
+              "prompt tokens; rel IQR", pf_stats.rel_iqr * 100.0, "%", pf_verdict + ")")
+        print("RESULT decode_tok_per_s:", Float64(N_NEW_MAX) / (dc_stats.median / 1000.0),
+              "(median decode", dc_stats.median, "ms over", N_NEW_MAX,
+              "generated tokens; rel IQR", dc_stats.rel_iqr * 100.0, "%", dc_verdict + ")")
