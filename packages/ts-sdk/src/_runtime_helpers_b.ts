@@ -265,9 +265,41 @@ export function mergeRequest(
   return merged;
 }
 
+// Canonical aggregation names shared verbatim with the Python SDK (`avg`, never `mean`) —
+// the canonical string is embedded in resolved plans and therefore in plan_hash, so both
+// SDKs must canonicalize identically for cross-language hash parity.
+export const CANONICAL_AGGREGATIONS = ["sum", "avg", "count", "min", "max"] as const;
+
+const AGGREGATION_ALIASES: Record<string, string> = {
+  sum: "sum",
+  total: "sum",
+  avg: "avg",
+  average: "avg",
+  mean: "avg",
+  count: "count",
+  min: "min",
+  minimum: "min",
+  max: "max",
+  maximum: "max",
+};
+
+/** Map an aggregation spelling to its canonical name; throw on unknown.
+ * Unknown aggregations must never silently fall back to sum. */
+export function canonicalizeAggregation(value: string): string {
+  const canonical = AGGREGATION_ALIASES[value.trim().toLowerCase()];
+  if (!canonical) {
+    throw new RuntimeValidationError(
+      "invalid_aggregation",
+      `Unknown aggregation '${value}'. Supported: ${[...CANONICAL_AGGREGATIONS].sort().join(", ")}.`,
+      { aggregation: value, supported: [...CANONICAL_AGGREGATIONS].sort() },
+    );
+  }
+  return canonical;
+}
+
 export function resolveAggregation(request: Record<string, unknown>): string {
   if (typeof request.aggregation === "string" && request.aggregation.trim()) {
-    return request.aggregation.trim().toLowerCase();
+    return canonicalizeAggregation(request.aggregation);
   }
   if (typeof request.raw_text === "string") {
     const parsed = parseRawText(request.raw_text);

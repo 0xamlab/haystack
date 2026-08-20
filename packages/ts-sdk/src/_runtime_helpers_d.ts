@@ -194,7 +194,7 @@ import { Runtime } from "./_runtime_class.js";
 import { ImportFailureResult, LocalRecord, RuntimeMode } from "./_runtime_constants.js";
 import { RuntimeValidationError } from "./_runtime_errors.js";
 import { normalizeText, runtimeBanner, stableHash, stableStringify } from "./_runtime_helpers_a.js";
-import { numericValue, registrationFields, resolveAggregation } from "./_runtime_helpers_b.js";
+import { canonicalizeAggregation, numericValue, registrationFields, resolveAggregation } from "./_runtime_helpers_b.js";
 import {
   bundleOverlapLines,
   canonicalizeCsvHeaders,
@@ -502,8 +502,31 @@ export function renderSourceBundlePreview(
   return runtimeBanner("Algenta Source Bundle", lines, options.color);
 }
 
+/** Recursively drop object entries whose value is null or undefined — the
+ * plan hash is defined over the null-stripped payload so a plan without an
+ * optional key and one with the key set to null hash equally (Python parity). */
+export function stripNullEntries(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(item => stripNullEntries(item));
+  }
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(record)) {
+      if (item === null || item === undefined) continue;
+      output[key] = stripNullEntries(item);
+    }
+    return output;
+  }
+  return value;
+}
+
 export function exactPlanHash(plan: ResolvedPlan): string {
-  return stableHash(plan);
+  // sha256 over the null-stripped plan — mirrors the Python SDK's plan_hash
+  // (stable_hash) so both SDKs stamp byte-identical hashes on the same plan.
+  return createHash("sha256")
+    .update(stableStringify(stripNullEntries(plan)), "utf-8")
+    .digest("hex");
 }
 
 export function looksLikeResolvedPlan(value: unknown): value is ResolvedPlan {
@@ -562,20 +585,35 @@ export async function coerceRecords(
   return [{ ...source }];
 }
 
-export function aggregateValues(values: number[], aggregation: string): number {
-  switch (aggregation) {
+/** Aggregate admitted values. Canonical names only; empty avg/min/max is null
+ * (never 0), empty sum is 0, count counts admitted values. Unknown aggregations
+ * throw — silent sum fallback is forbidden. Semantics mirror the Python SDK's
+ * `_agg` exactly (conformance-tested cross-language). */
+export function aggregateValues(values: number[], aggregation: string): number | null {
+  const canonical = canonicalizeAggregation(aggregation);
+  switch (canonical) {
     case "count":
       return values.length;
-    case "avg":
-      return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
-    case "min":
-      return values.length === 0 ? 0 : Math.min(...values);
-    case "max":
-      return values.length === 0 ? 0 : Math.max(...values);
     case "sum":
-    default:
       return values.reduce((sum, value) => sum + value, 0);
+    case "avg":
+      return values.length === 0
+        ? null
+        : values.reduce((sum, value) => sum + value, 0) / values.length;
+    case "min":
+      return values.length === 0 ? null : Math.min(...values);
+    default:
+      return values.length === 0 ? null : Math.max(...values);
   }
+}
+
+/** Descending metric sort with null-metric rows last, identical to the Python SDK. */
+function metricSortRank(row: Record<string, unknown>, metricColumn: string): [number, number] {
+  const value = row[metricColumn];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return [0, -value];
+  }
+  return [1, 0];
 }
 
 export function executePlan(
@@ -589,7 +627,7 @@ export function executePlan(
     const values = records
       .map(record => numericValue(record[metricColumn]))
       .filter((value): value is number => value !== null);
-    return [{ [metricColumn]: aggregateValues(values, aggregation) }];
+    return [{ [metricColumn]: aggregateValues(values, aggregation), count: values.length }];
   }
 
   const groups = new Map<string, { label: unknown; values: number[] }>();
@@ -609,8 +647,13 @@ export function executePlan(
     .map(group => ({
       [groupColumn]: group.label,
       [metricColumn]: aggregateValues(group.values, aggregation),
+      count: group.values.length,
     }))
-    .sort((left, right) => Number(right[metricColumn] ?? 0) - Number(left[metricColumn] ?? 0))
+    .sort((left, right) => {
+      const [leftNullRank, leftValue] = metricSortRank(left, metricColumn);
+      const [rightNullRank, rightValue] = metricSortRank(right, metricColumn);
+      return leftNullRank - rightNullRank || leftValue - rightValue;
+    })
     .slice(0, limit);
 }
 
