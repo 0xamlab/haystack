@@ -1,8 +1,6 @@
 /** Auto-split sub-module of runtime.ts — internal helpers (part B). */
 
 import type {
-  APIKeyCreated,
-  APIKeyInfo,
   AgentRunCheckpointListResponse,
   AgentRunCheckpointsResponse,
   AgentRunCreateRequest,
@@ -15,61 +13,14 @@ import type {
   AgentRunStreamEventResponse,
   AgentRunTelemetryListResponse,
   AgentRunTelemetryResponse,
-  AuditLogResponse,
-  BillingInfoResponse,
-  BillingSessionResponse,
-  BatchResult,
-  ChatCompletionsRequest,
-  ChatCompletionsResponse,
-  ChatCompletionsStreamChunkResponse,
-  CompareResponse,
-  ConnectDataRequest,
-  ConnectorBrowseResult,
-  ConnectorInfo,
-  ConnectorListResult,
-  ConnectorTestInfo,
-  CountTokensRequest,
-  CountTokensResponse,
-  CreditRefreshRequest,
-  CreditRefreshResponse,
-  CreateAPIKeyRequest,
-  DecisionEnvelope,
-  DecisionListResponse,
-  DecisionLogResponse,
-  DeviceListResponse,
-  DeviceRevokeResponse,
-  DistributionListResponse,
-  DecisionPlanResponse,
-  DecisionEngineClientConfig,
-  DeploymentCostResponse,
-  DeploymentDeleteResponse,
-  DeploymentRegionsResponse,
-  DeploymentResponse,
-  ProductAgentRunRequest,
-  ProductAgentRunResponse,
-  ProductDecisionRequest,
-  ProductDecisionResponse,
-  ProductForecastRequest,
-  ProductForecastResponse,
-  ProductOptimizeRequest,
-  ProductOptimizeResponse,
-  ProductRetrieveRequest,
-  ProductRetrieveResponse,
-  DatasetConnectResult,
-  DatasetDeleteResult,
-  DatasetDetailResult,
-  DatasetListResult,
-  DatasetSummaryResult,
-  EmbeddingsRequest,
-  EmbeddingsResponse,
-  EmbeddingSimilarityRequest,
-  EmbeddingSimilarityResponse,
-  ExecuteDecisionRequest,
-  ExecutionReceiptResponse,
-  ExecutionPolicyResponse,
-  ExecutionPolicySnapshotListResponse,
+  APIKeyCreated,
+  APIKeyInfo,
   ArtifactBridgeResolveRequest,
   ArtifactBridgeResolveResponse,
+  AuditLogResponse,
+  BatchResult,
+  BillingInfoResponse,
+  BillingSessionResponse,
   BindingScope,
   BindingStatus,
   CapabilityAdapter,
@@ -92,45 +43,95 @@ import type {
   CapabilityProviderResponse,
   CapabilityRoutePlan,
   CapabilityRouteRequest,
+  ChatCompletionsRequest,
+  ChatCompletionsResponse,
+  ChatCompletionsStreamChunkResponse,
+  CompareResponse,
+  ConnectDataRequest,
+  ConnectorBrowseResult,
+  ConnectorInfo,
+  ConnectorListResult,
+  ConnectorTestInfo,
+  CountTokensRequest,
+  CountTokensResponse,
+  CreateAPIKeyRequest,
+  CreditRefreshRequest,
+  CreditRefreshResponse,
+  DatasetConnectResult,
+  DatasetDeleteResult,
+  DatasetDetailResult,
+  DatasetListResult,
+  DatasetSummaryResult,
+  DecisionEngineClientConfig,
+  DecisionEnvelope,
+  DecisionListResponse,
+  DecisionLogResponse,
+  DecisionPlanResponse,
+  DeploymentCostResponse,
+  DeploymentDeleteResponse,
+  DeploymentRegionsResponse,
+  DeploymentResponse,
+  DeviceListResponse,
+  DeviceRevokeResponse,
+  DistributionListResponse,
+  EmbeddingSimilarityRequest,
+  EmbeddingSimilarityResponse,
+  EmbeddingsRequest,
+  EmbeddingsResponse,
+  ExecuteDecisionRequest,
   ExecutionOwner,
+  ExecutionPolicyResponse,
+  ExecutionPolicySnapshotListResponse,
+  ExecutionReceiptResponse,
   ExecutionSessionStatus,
+  JobListResponse,
   JobStatusResponse,
   JobSubmitResponse,
-  JobListResponse,
-  WebhookTestResponse,
+  LimitsInfo,
   LLMModelListResponse,
   LogDecisionRequest,
+  MeResponse,
   MeteringBatchRequest,
   MeteringBatchResponse,
-  MeResponse,
   PlatformContractResponse,
-  QueryCandidate,
+  ProductAgentRunRequest,
+  ProductAgentRunResponse,
+  ProductDecisionRequest,
+  ProductDecisionResponse,
+  ProductForecastRequest,
+  ProductForecastResponse,
+  ProductOptimizeRequest,
+  ProductOptimizeResponse,
+  ProductRetrieveRequest,
+  ProductRetrieveResponse,
   QueryBatchResponse,
+  QueryCandidate,
+  QueryResponse,
   QuerySqlReportRequest,
   QuerySqlReportResponse,
-  QueryResponse,
   QueryWithMetadataResponse,
+  RecommendResponse,
   RecordOutcomeRequest,
+  RegisterTriggerRequest,
   RepositoryApplyRequest,
   RepositoryApplyResponse,
-  RepositoryIntelligenceCapabilitiesResponse,
   RepositoryDecisionPlanCreateRequest,
   RepositoryDecisionPlanRevisionResponse,
   RepositoryGraphQueryRequest,
   RepositoryGraphQueryResponse,
+  RepositoryIntelligenceCapabilitiesResponse,
   RepositorySimulationRequest,
   RepositorySnapshotCreateRequest,
   RepositorySnapshotResponse,
   RepositoryTriageRequest,
   RepositoryTriageResponse,
-  RecommendResponse,
-  ResolveResponse,
-  ResolvedPlan,
-  ResponseStreamEventResponse,
-  ResponsesRequest,
-  ResponsesResponse,
   RerankRequest,
   RerankResponse,
+  ResolvedPlan,
+  ResolveResponse,
+  ResponsesRequest,
+  ResponsesResponse,
+  ResponseStreamEventResponse,
   RuntimeAdminBenchmarksResponse,
   RuntimeAdminModulesResponse,
   RuntimeManifestResponse,
@@ -138,25 +139,26 @@ import type {
   ScoreResponse,
   SimulateRequest,
   SourceRegistrationResponse,
-  TokenizeRequest,
-  TokenizeResponse,
-  TeamListResponse,
   TeamInviteRequest,
   TeamInviteResponse,
+  TeamListResponse,
   TeamRemoveResponse,
   TeamRoleUpdateResponse,
   TemplateListResponse,
+  TokenizeRequest,
+  TokenizeResponse,
   TriggerDeleteResponse,
   TriggerFireResponse,
   TriggerListResponse,
   TriggerPauseResponse,
   TriggerResponse,
-  RegisterTriggerRequest,
-  UpdateMeRequest,
+  TypedField,
+  TypedFieldType,
   UpdateExecutionPolicyRequest,
+  UpdateMeRequest,
   UsageInfo,
-  LimitsInfo,
   VerifyResponse,
+  WebhookTestResponse,
 } from "./types.js";
 import {
   DecisionEngineClient,
@@ -330,6 +332,62 @@ export function numericValue(value: unknown): number | null {
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
+}
+
+// ISO-date-like strings vote "date" during typed-field inference. Shared
+// verbatim with the Python SDK's _ISO_DATE_LIKE_RE.
+const ISO_DATE_LIKE_RE = /^\d{4}-\d{2}-\d{2}([T ].*)?$/;
+
+// Tie-break precedence for typed-field majority votes. Shared verbatim with the
+// Python SDK's _TYPED_FIELD_PRECEDENCE (conformance-tested cross-language).
+const TYPED_FIELD_PRECEDENCE: TypedFieldType[] = [
+  "number",
+  "date",
+  "string",
+  "boolean",
+  "unknown",
+];
+
+const TYPED_FIELD_SAMPLE_SIZE = 50;
+
+function typedFieldVote(value: unknown): TypedFieldType {
+  if (numericValue(value) !== null) return "number";
+  if (typeof value === "boolean") return "boolean";
+  if (typeof value === "string") {
+    return ISO_DATE_LIKE_RE.test(value) ? "date" : "string";
+  }
+  return "unknown";
+}
+
+/** Infer a coarse type per field from up to the first 50 records.
+ *
+ * Semantics mirror the Python SDK's infer_typed_fields exactly (conformance-
+ * tested): non-null sampled values vote number / boolean / date / string /
+ * unknown, the majority wins, ties break by precedence number > date > string >
+ * boolean > unknown, and fields with no non-null sampled values are "unknown". */
+export function inferTypedFields(records: LocalRecord[], fields: string[]): TypedField[] {
+  const sample = records.slice(0, TYPED_FIELD_SAMPLE_SIZE);
+  return fields.map(fieldName => {
+    const votes = new Map<TypedFieldType, number>(
+      TYPED_FIELD_PRECEDENCE.map(typeName => [typeName, 0]),
+    );
+    for (const record of sample) {
+      const value = record[fieldName];
+      if (value === null || value === undefined) continue;
+      const vote = typedFieldVote(value);
+      votes.set(vote, (votes.get(vote) ?? 0) + 1);
+    }
+    let inferred: TypedFieldType = "unknown";
+    let bestCount = 0;
+    for (const typeName of TYPED_FIELD_PRECEDENCE) {
+      const count = votes.get(typeName) ?? 0;
+      if (count > bestCount) {
+        inferred = typeName;
+        bestCount = count;
+      }
+    }
+    return { name: fieldName, type: inferred };
+  });
 }
 
 export function booleanValue(value: unknown): boolean | null {

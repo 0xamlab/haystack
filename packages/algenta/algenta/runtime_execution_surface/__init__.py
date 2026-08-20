@@ -152,6 +152,8 @@ __all__ = [
     "coerce_api_query_payload",
     "coerce_api_resolve_payload",
     "coerce_plan",
+    "extract_columns_local_request",
+    "extract_columns_runtime_request",
     "contract_runtime_request",
     "consume_local_credit",
     "ensure_local_execution_entitlement",

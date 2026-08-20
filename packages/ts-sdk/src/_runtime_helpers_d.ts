@@ -193,7 +193,7 @@ import {
 import { Runtime } from "./_runtime_class.js";
 import { ImportFailureResult, LocalRecord, RuntimeMode } from "./_runtime_constants.js";
 import { RuntimeValidationError } from "./_runtime_errors.js";
-import { normalizeText, runtimeBanner, stableHash, stableStringify } from "./_runtime_helpers_a.js";
+import { normalizeText, runtimeBanner, stableHash, stableStringify, stripNullEntries } from "./_runtime_helpers_a.js";
 import { canonicalizeAggregation, numericValue, registrationFields, resolveAggregation } from "./_runtime_helpers_b.js";
 import {
   bundleOverlapLines,
@@ -500,25 +500,6 @@ export function renderSourceBundlePreview(
     ),
   ];
   return runtimeBanner("Algenta Source Bundle", lines, options.color);
-}
-
-/** Recursively drop object entries whose value is null or undefined — the
- * plan hash is defined over the null-stripped payload so a plan without an
- * optional key and one with the key set to null hash equally (Python parity). */
-export function stripNullEntries(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(item => stripNullEntries(item));
-  }
-  if (value !== null && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const output: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(record)) {
-      if (item === null || item === undefined) continue;
-      output[key] = stripNullEntries(item);
-    }
-    return output;
-  }
-  return value;
 }
 
 export function exactPlanHash(plan: ResolvedPlan): string {

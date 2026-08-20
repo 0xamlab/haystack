@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
 from algenta.map_matching import _normalize, _semantic_similarity
-from algenta.map_query import _METRIC_SYNONYMS, _execute, _is_numeric_field
+from algenta.map_query import _METRIC_SYNONYMS, _execute, _is_numeric_field, _numeric_value
 from algenta.runtime_errors import RuntimeConfigurationError, RuntimeValidationError
+from algenta.runtime_model_column_extract import ColumnExtract
 
 
 @dataclass(frozen=True)
@@ -221,6 +223,133 @@ def execute_local_plan(source: LocalSource, plan: Any) -> LocalExecutionResult:
         result_type="scalar",
         row_count=1 if scalar_row else 0,
         plan_steps=tuple(plan_steps),
+    )
+
+
+# ISO-date-like strings vote "date" during typed-field inference. `\Z` (absolute
+# end) mirrors the TS SDK's `$` — Python's bare `$` would also match before a
+# trailing newline. re.ASCII keeps `\d` at [0-9] like the TS regex.
+_ISO_DATE_LIKE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}([T ].*)?\Z", re.ASCII)
+
+# Tie-break precedence for typed-field majority votes. Shared verbatim with the
+# TS SDK's inferTypedFields (conformance-tested cross-language).
+_TYPED_FIELD_PRECEDENCE = ("number", "date", "string", "boolean", "unknown")
+
+_TYPED_FIELD_SAMPLE_SIZE = 50
+
+
+
+def _typed_field_vote(value: Any) -> str:
+    if _numeric_value(value) is not None:
+        return "number"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, str):
+        return "date" if _ISO_DATE_LIKE_RE.match(value) else "string"
+    return "unknown"
+
+
+def infer_typed_fields(
+    records: list[dict[str, Any]],
+    fields: tuple[str, ...] | list[str],
+) -> list[dict[str, str]]:
+    """Infer a coarse type per field from up to the first 50 records.
+
+    Semantics mirror the TS SDK's inferTypedFields exactly (conformance-tested):
+    non-null sampled values vote number / boolean / date / string / unknown, the
+    majority wins, ties break by precedence number > date > string > boolean >
+    unknown, and fields with no non-null sampled values are "unknown".
+    """
+    sample = records[:_TYPED_FIELD_SAMPLE_SIZE]
+    typed_fields: list[dict[str, str]] = []
+    for field_name in fields:
+        votes = dict.fromkeys(_TYPED_FIELD_PRECEDENCE, 0)
+        for record in sample:
+            value = record.get(field_name)
+            if value is None:
+                continue
+            votes[_typed_field_vote(value)] += 1
+        inferred = "unknown"
+        best_count = 0
+        for type_name in _TYPED_FIELD_PRECEDENCE:
+            if votes[type_name] > best_count:
+                inferred = type_name
+                best_count = votes[type_name]
+        typed_fields.append({"name": field_name, "type": inferred})
+    return typed_fields
+
+
+_EXTRACT_NULL_POLICIES = ("pairwise", "preserve")
+
+
+def extract_local_columns(
+    source: LocalSource,
+    columns: list[str],
+    *,
+    filter_spec: Mapping[str, Any] | None,
+    limit: int | None,
+    null_policy: str,
+    ensure_local_execution_entitlement: Callable[[], None],
+    consume_local_credit: Callable[[], None],
+    stable_hash: Callable[[Any], str],
+) -> ColumnExtract:
+    """Extract rowwise-aligned numeric columns from a connected local source.
+
+    Semantics mirror the TS SDK's Runtime.extractColumns exactly (conformance-
+    tested): filters run through the shared local filter helpers, cells are
+    admitted via _numeric_value, null_policy 'pairwise' keeps only rowwise-
+    complete rows while 'preserve' keeps nulls, and limit truncates AFTER
+    filtering/alignment.
+    """
+    if null_policy not in _EXTRACT_NULL_POLICIES:
+        raise RuntimeValidationError(
+            "invalid_null_policy",
+            f"Unknown null_policy '{null_policy}'. Supported: pairwise, preserve.",
+            {"null_policy": null_policy, "supported": list(_EXTRACT_NULL_POLICIES)},
+        )
+    for column in columns:
+        if column not in source.fields:
+            raise RuntimeValidationError(
+                "unknown_column",
+                f"Column '{column}' is not present on source '{source.name}'.",
+                {"column": column, "available": sorted(source.fields)},
+            )
+    ensure_local_execution_entitlement()
+    consume_local_credit()
+
+    conditions = _resolve_local_filter_conditions(source, dict(filter_spec or {}))
+    filtered_records, _filter_steps = _apply_local_filter_conditions(source.records, conditions)
+
+    aligned_rows: list[list[float | None]] = []
+    for record in filtered_records:
+        cells = [_numeric_value(record.get(column)) for column in columns]
+        if null_policy == "pairwise" and any(cell is None for cell in cells):
+            continue
+        aligned_rows.append(cells)
+    limited_rows = aligned_rows if limit is None else aligned_rows[: max(0, limit)]
+
+    extracted = {
+        column: [cells[index] for cells in limited_rows] for index, column in enumerate(columns)
+    }
+    # Hash payload is shared verbatim with the TS SDK; null-stripping is
+    # intentionally NOT applied so `limit: null` hashes explicitly.
+    input_hash = stable_hash(
+        {
+            "source_name": source.name,
+            "schema_revision": source.schema_revision,
+            "columns": sorted(columns),
+            "filter": dict(filter_spec) if filter_spec else {},
+            "limit": limit,
+            "null_policy": null_policy,
+        }
+    )
+    return ColumnExtract(
+        columns=extracted,
+        row_count=len(limited_rows),
+        source_name=source.name,
+        schema_revision=source.schema_revision,
+        alignment="rowwise",
+        input_hash=input_hash,
     )
 
 

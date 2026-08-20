@@ -7,8 +7,8 @@ import {
   aggregateValues,
   exactPlanHash,
   executePlan,
-  stripNullEntries,
 } from "./_runtime_helpers_d.js";
+import { stripNullEntries } from "./_runtime_helpers_a.js";
 import {
   CANONICAL_AGGREGATIONS,
   canonicalizeAggregation,

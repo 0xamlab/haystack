@@ -40,6 +40,11 @@ def _runtime_local_limits_module() -> ModuleType:
 
 
 @cache
+def _runtime_local_execution_module() -> ModuleType:
+    return import_module("algenta.runtime_local_execution")
+
+
+@cache
 def _runtime_local_query_module() -> ModuleType:
     return import_module("algenta.runtime_local_query")
 
@@ -241,6 +246,32 @@ def verify_local_request(runtime: Any, request: Any, kwargs: Mapping[str, Any]) 
         plan_hash=_runtime_intent_module().plan_hash,
     )
 
+
+
+def extract_columns_local_request(
+    runtime: Any,
+    source_name: str,
+    columns: list[str],
+    *,
+    filter: Mapping[str, Any] | None = None,
+    limit: int | None = None,
+    null_policy: str = "pairwise",
+) -> Any:
+    local_execution = _runtime_local_execution_module()
+    source = local_execution.select_local_source(
+        runtime._local_sources,
+        {"source_name": source_name},
+    )
+    return local_execution.extract_local_columns(
+        source,
+        columns,
+        filter_spec=filter,
+        limit=limit,
+        null_policy=null_policy,
+        ensure_local_execution_entitlement=lambda: ensure_local_execution_entitlement(runtime),
+        consume_local_credit=lambda: consume_local_credit(runtime),
+        stable_hash=_runtime_intent_module().stable_hash,
+    )
 
 def coerce_api_query_payload(request: Any, kwargs: Mapping[str, Any]) -> dict[str, Any]:
     return _runtime_api_payloads_module().coerce_api_query_payload(request, kwargs)

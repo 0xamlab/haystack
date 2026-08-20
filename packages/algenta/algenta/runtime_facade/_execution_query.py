@@ -19,6 +19,8 @@ from algenta.runtime_errors import RuntimeConfigurationError
 if TYPE_CHECKING:
     from types import ModuleType
 
+    from algenta.runtime_model_column_extract import ColumnExtract
+
     from algenta.runtime_model_account import (
         APIKeyCreatedOutput,
         APIKeyInfoOutput,
@@ -186,6 +188,24 @@ class _ExecutionQueryMixin:
             self,
             request,
             **kwargs,
+        )
+
+    def extract_columns(
+        self,
+        source_name: str,
+        columns: list[str],
+        *,
+        filter: Mapping[str, Any] | None = None,
+        limit: int | None = None,
+        null_policy: str = "pairwise",
+    ) -> ColumnExtract:
+        return _runtime_execution_surface_module().extract_columns_runtime_request(
+            self,
+            source_name,
+            columns,
+            filter=filter,
+            limit=limit,
+            null_policy=null_policy,
         )
 
     def query_with_metadata(

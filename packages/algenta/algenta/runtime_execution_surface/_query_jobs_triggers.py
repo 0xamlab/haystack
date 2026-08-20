@@ -122,6 +122,7 @@ def _runtime_model_control_plane_module() -> ModuleType:
 from algenta.runtime_execution_surface._api_client_local import *  # noqa: F401, F403
 from algenta.runtime_execution_surface._api_client_local import (
     _run_sync,
+    extract_columns_local_request,
 )
 from algenta.runtime_execution_surface._validation import *  # noqa: F401, F403
 from algenta.runtime_execution_surface._validation import (
@@ -163,6 +164,30 @@ def query_runtime_request(runtime: Any, request: Any = None, **kwargs: Any) -> A
         )
     return query_local_request(runtime, request, kwargs)
 
+
+
+def extract_columns_runtime_request(
+    runtime: Any,
+    source_name: str,
+    columns: list[str],
+    *,
+    filter: Mapping[str, Any] | None = None,
+    limit: int | None = None,
+    null_policy: str = "pairwise",
+) -> Any:
+    if runtime._uses_api_transport():
+        raise RuntimeValidationError(
+            "extract_requires_local_mode",
+            "Runtime.extract_columns() is local-mode only in v1. Construct Runtime(mode='local').",
+        )
+    return extract_columns_local_request(
+        runtime,
+        source_name,
+        columns,
+        filter=filter,
+        limit=limit,
+        null_policy=null_policy,
+    )
 
 def query_with_metadata_runtime_request(runtime: Any, request: Any = None, **kwargs: Any) -> Any:
     metadata_models = _runtime_model_query_metadata_module()

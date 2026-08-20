@@ -27,6 +27,7 @@ import { Runtime } from "./_runtime_class.js";
 import { RuntimeError, RuntimeValidationError } from "./_runtime_errors.js";
 import { stableHash } from "./_runtime_helpers_a.js";
 import {
+  inferTypedFields,
   orderedFields,
   registrationFields as _unused_registrationFields,
   roundLatency,
@@ -258,6 +259,7 @@ Runtime.prototype.connect = async function (
 
   const name = options.name ?? localSourceName(source, this.localSources.size);
   const fields = orderedFields(records);
+  const typedFields = inferTypedFields(records, fields);
   const datasetId = stableHash({ name, fields }).slice(0, 24);
   const schemaRevision = stableHash({ datasetId, fields });
   this.localSources.set(name, {
@@ -274,13 +276,14 @@ Runtime.prototype.connect = async function (
     name,
     status: "ready",
     ingest_mode: "local",
-    schema: { fields },
-    source_schema: { fields },
+    schema: { fields, typed_fields: typedFields },
+    source_schema: { fields, typed_fields: typedFields },
     planner_cache_hit: false,
     planner_schema_revision: schemaRevision,
     planner_prewarm_ms: 0,
     latency_ms: roundLatency(startMs),
     row_count: records.length,
+    typed_fields: typedFields,
   };
 };
 

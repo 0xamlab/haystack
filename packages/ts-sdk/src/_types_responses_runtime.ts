@@ -643,6 +643,15 @@ export interface SourceRegistrationRequest {
   description?: string;
 }
 
+/** Coarse per-field type inferred at local connect() time. Inference rules are
+ * shared verbatim with the Python SDK (conformance-tested cross-language). */
+export type TypedFieldType = "number" | "string" | "boolean" | "date" | "unknown";
+
+export interface TypedField {
+  name: string;
+  type: TypedFieldType;
+}
+
 export interface SourceRegistrationResponse {
   source_id?: string | null;
   dataset_id?: string | null;
@@ -657,7 +666,19 @@ export interface SourceRegistrationResponse {
   planner_prewarm_ms?: number | null;
   latency_ms?: number | null;
   row_count?: number | null;
+  typed_fields?: TypedField[] | null;
   [key: string]: unknown;
+}
+
+/** Aligned numeric column extraction result — mirrors the Python SDK's
+ * ColumnExtract dataclass exactly (conformance-tested cross-language). */
+export interface ColumnExtractResult {
+  columns: Record<string, Array<number | null>>;
+  row_count: number;
+  source_name: string;
+  schema_revision: string;
+  alignment: "rowwise";
+  input_hash: string;
 }
 
 export interface CreateConnectorRequest {

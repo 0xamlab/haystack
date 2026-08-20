@@ -24,3 +24,4 @@ import "./_runtime_class_methods_admin.js";
 import "./_runtime_class_methods_capability.js";
 import "./_runtime_class_methods_resolve_query.js";
 import "./_runtime_class_methods_local_query.js";
+import "./_runtime_class_methods_extract.js";

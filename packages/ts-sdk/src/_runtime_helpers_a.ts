@@ -245,16 +245,74 @@ export function stableStringify(value: unknown): string {
   return `{${keys.map(key => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
-export function stableHash(value: unknown): string {
-  const input = stableStringify(value);
-  let high = 0x9e3779b1;
-  let low = 0x85ebca77;
-  for (let index = 0; index < input.length; index += 1) {
-    const code = input.charCodeAt(index);
-    high = Math.imul(high ^ code, 0x45d9f3b) >>> 0;
-    low = Math.imul(low ^ code, 0x119de1f3) >>> 0;
+function escapeNonAscii(json: string): string {
+  return json.replace(
+    /[\u0080-\uffff]/g,
+    char => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
+/** Canonical JSON serialization shared byte-for-byte with the Python SDK
+ * (packages/algenta-core/algenta/canonical_json.py). Both SDKs hash plans and
+ * intents with sha256 over this exact rendering — plan_hash / intent_signature
+ * parity depends on it. Rules: sorted keys, "," / ":" separators, non-ASCII
+ * escaped as \uXXXX, numbers as ECMAScript String(number) with -0 normalized
+ * to 0, NaN/Infinity rejected, undefined object entries omitted. */
+export function canonicalJson(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "null";
   }
-  return `${high.toString(16).padStart(8, "0")}${low.toString(16).padStart(8, "0")}`;
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new TypeError("NaN and Infinity cannot appear in canonically hashed payloads");
+    }
+    return Object.is(value, -0) ? "0" : String(value);
+  }
+  if (typeof value === "string") {
+    return escapeNonAscii(JSON.stringify(value));
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(item => canonicalJson(item)).join(",")}]`;
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record)
+      .filter(key => record[key] !== undefined)
+      .sort();
+    return `{${keys
+      .map(key => `${escapeNonAscii(JSON.stringify(key))}:${canonicalJson(record[key])}`)
+      .join(",")}}`;
+  }
+  return escapeNonAscii(JSON.stringify(String(value)));
+}
+
+/** Recursively drop object entries whose value is null or undefined — plan
+ * hashing is defined over the null-stripped payload so a TS plan without an
+ * optional key and a Python plan with the key set to None hash equally. */
+export function stripNullEntries(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(item => stripNullEntries(item));
+  }
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(record)) {
+      if (item !== null && item !== undefined) {
+        output[key] = stripNullEntries(item);
+      }
+    }
+    return output;
+  }
+  return value;
+}
+
+/** sha256 over the canonical cross-language JSON form — must stay byte-identical
+ * with the Python SDK's stable_hash. */
+export function stableHash(value: unknown): string {
+  return createHash("sha256").update(canonicalJson(value), "utf-8").digest("hex");
 }
 
 export function runtimeEnv(): Record<string, string | undefined> {

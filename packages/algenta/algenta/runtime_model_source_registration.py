@@ -19,6 +19,10 @@ class SourceRegistration:
     planner_prewarm_ms: float | None = None
     latency_ms: float | None = None
     row_count: int | None = None
+    # Local registrations infer coarse per-field types ({name, type} with type in
+    # number/string/boolean/date/unknown). Optional and additive; also mirrored
+    # under source_schema["typed_fields"].
+    typed_fields: list[dict[str, str]] | None = None
 
     @property
     def dataset_name(self) -> str | None:
@@ -39,6 +43,7 @@ class SourceRegistration:
             planner_prewarm_ms=data.get("planner_prewarm_ms"),
             latency_ms=data.get("latency_ms"),
             row_count=_registration_row_count(data),
+            typed_fields=_registration_typed_fields(data),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -54,4 +59,16 @@ def _registration_row_count(data: dict[str, Any]) -> int | None:
         schema_row_count = source_schema.get("row_count")
         if isinstance(schema_row_count, int):
             return schema_row_count
+    return None
+
+
+def _registration_typed_fields(data: dict[str, Any]) -> list[dict[str, str]] | None:
+    direct_typed_fields = data.get("typed_fields")
+    if isinstance(direct_typed_fields, list):
+        return direct_typed_fields
+    source_schema = data.get("source_schema") or data.get("schema")
+    if isinstance(source_schema, dict):
+        schema_typed_fields = source_schema.get("typed_fields")
+        if isinstance(schema_typed_fields, list):
+            return schema_typed_fields
     return None

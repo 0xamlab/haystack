@@ -1,0 +1,752 @@
+{
+  "version": 1,
+  "sources": {
+    "extract_base": {
+      "name": "conformance_extract",
+      "dataset_id": "extractconformance000001",
+      "schema_revision": "extract_conformance_rev_1",
+      "records": [
+        {
+          "region": "east",
+          "revenue": 100.5,
+          "units": 2,
+          "flag": true,
+          "when": "2024-01-05"
+        },
+        {
+          "region": "east",
+          "revenue": "50.5",
+          "units": "3",
+          "flag": false,
+          "when": "2024-02-10"
+        },
+        {
+          "region": "west",
+          "revenue": true,
+          "units": 4,
+          "flag": true,
+          "when": "2024-03-15"
+        },
+        {
+          "region": "west",
+          "revenue": "n/a",
+          "units": 5,
+          "flag": "yes",
+          "when": "not-a-date"
+        },
+        {
+          "region": "west",
+          "revenue": "NaN",
+          "units": 6,
+          "flag": null,
+          "when": "2024-04-20"
+        },
+        {
+          "region": "north",
+          "revenue": 10
+        },
+        {
+          "region": "north",
+          "revenue": 7.25,
+          "units": null
+        },
+        {
+          "region": "south",
+          "revenue": -3,
+          "units": "8.5"
+        }
+      ]
+    }
+  },
+  "extract": [
+    {
+      "name": "pairwise drops rows with missing, boolean, or NaN-string cells",
+      "source": "extract_base",
+      "columns": [
+        "revenue",
+        "units"
+      ],
+      "expected": {
+        "columns": {
+          "revenue": [
+            100.5,
+            50.5,
+            -3.0
+          ],
+          "units": [
+            2.0,
+            3.0,
+            8.5
+          ]
+        },
+        "row_count": 3,
+        "input_hash": "79bfad947b2dacefc0185fc642c4d5c88ff95a87aea9fc01a3fd919a8b405df4"
+      }
+    },
+    {
+      "name": "preserve keeps all filtered rows with nulls",
+      "source": "extract_base",
+      "columns": [
+        "revenue",
+        "units"
+      ],
+      "null_policy": "preserve",
+      "expected": {
+        "columns": {
+          "revenue": [
+            100.5,
+            50.5,
+            null,
+            null,
+            null,
+            10.0,
+            7.25,
+            -3.0
+          ],
+          "units": [
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            null,
+            null,
+            8.5
+          ]
+        },
+        "row_count": 8,
+        "input_hash": "4d8493f2ac805afaae57d1d5eb388e70b5af3cf208f6549eaf71f2decc9e3e78"
+      }
+    },
+    {
+      "name": "single column pairwise admits numeric strings",
+      "source": "extract_base",
+      "columns": [
+        "units"
+      ],
+      "expected": {
+        "columns": {
+          "units": [
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            8.5
+          ]
+        },
+        "row_count": 6,
+        "input_hash": "c2952e9b5474e1326e255063432a410c84c84f2ee98d5c39415d5e070e2ac86b"
+      }
+    },
+    {
+      "name": "filter applied before alignment (preserve)",
+      "source": "extract_base",
+      "columns": [
+        "revenue",
+        "units"
+      ],
+      "filter": {
+        "conditions": [
+          {
+            "column": "region",
+            "op": "eq",
+            "value": "west"
+          }
+        ]
+      },
+      "null_policy": "preserve",
+      "expected": {
+        "columns": {
+          "revenue": [
+            null,
+            null,
+            null
+          ],
+          "units": [
+            4.0,
+            5.0,
+            6.0
+          ]
+        },
+        "row_count": 3,
+        "input_hash": "32c23be28593e75b65d5438d3b9f66158038dfbd273a0de1bc5d2fe758ccc33c"
+      }
+    },
+    {
+      "name": "filter applied before alignment (pairwise gte)",
+      "source": "extract_base",
+      "columns": [
+        "revenue",
+        "units"
+      ],
+      "filter": {
+        "conditions": [
+          {
+            "column": "units",
+            "op": "gte",
+            "value": 3
+          }
+        ]
+      },
+      "expected": {
+        "columns": {
+          "revenue": [
+            50.5,
+            -3.0
+          ],
+          "units": [
+            3.0,
+            8.5
+          ]
+        },
+        "row_count": 2,
+        "input_hash": "f9b2ad14fe840b915fbb700fda488c9c38cd48486d8d3c9998edc77155e610f7"
+      }
+    },
+    {
+      "name": "limit truncates after filtering and alignment",
+      "source": "extract_base",
+      "columns": [
+        "revenue",
+        "units"
+      ],
+      "limit": 2,
+      "expected": {
+        "columns": {
+          "revenue": [
+            100.5,
+            50.5
+          ],
+          "units": [
+            2.0,
+            3.0
+          ]
+        },
+        "row_count": 2,
+        "input_hash": "e9a5db88524191079ee8719076d7333b8f89b7a103fb7c611cd4c0488c20f85f"
+      }
+    },
+    {
+      "name": "limit zero yields empty aligned columns",
+      "source": "extract_base",
+      "columns": [
+        "revenue"
+      ],
+      "limit": 0,
+      "null_policy": "preserve",
+      "expected": {
+        "columns": {
+          "revenue": []
+        },
+        "row_count": 0,
+        "input_hash": "f9b1e50cc736b6e24a3b124f2eb6eb415a304cc52e09579a9eb088d9f42f4cf3"
+      }
+    }
+  ],
+  "extract_errors": [
+    {
+      "name": "unknown column",
+      "source": "extract_base",
+      "source_name": "conformance_extract",
+      "columns": [
+        "revenue",
+        "missing"
+      ],
+      "error_code": "unknown_column",
+      "details": {
+        "column": "missing",
+        "available": [
+          "flag",
+          "region",
+          "revenue",
+          "units",
+          "when"
+        ]
+      }
+    },
+    {
+      "name": "unknown source",
+      "source": "extract_base",
+      "source_name": "nope",
+      "columns": [
+        "revenue"
+      ],
+      "error_code": "unknown_source",
+      "details": {
+        "requested": "nope",
+        "available": [
+          "conformance_extract"
+        ]
+      }
+    },
+    {
+      "name": "invalid null policy",
+      "source": "extract_base",
+      "source_name": "conformance_extract",
+      "columns": [
+        "revenue"
+      ],
+      "null_policy": "zip",
+      "error_code": "invalid_null_policy",
+      "details": {
+        "null_policy": "zip",
+        "supported": [
+          "pairwise",
+          "preserve"
+        ]
+      }
+    }
+  ],
+  "typed_fields": [
+    {
+      "name": "numbers-as-strings column votes number",
+      "records": [
+        {
+          "v": "1"
+        },
+        {
+          "v": "2.5"
+        },
+        {
+          "v": "3"
+        }
+      ],
+      "expected": [
+        {
+          "name": "v",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "date majority beats number minority",
+      "records": [
+        {
+          "d": "2024-01-01"
+        },
+        {
+          "d": "2024-02-01"
+        },
+        {
+          "d": 5
+        }
+      ],
+      "expected": [
+        {
+          "name": "d",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "name": "number wins date tie by precedence",
+      "records": [
+        {
+          "m": "2024-01-01"
+        },
+        {
+          "m": 5
+        }
+      ],
+      "expected": [
+        {
+          "name": "m",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "all-null column is unknown",
+      "records": [
+        {
+          "a": 1,
+          "b": null
+        },
+        {
+          "a": 2,
+          "b": null
+        }
+      ],
+      "expected": [
+        {
+          "name": "a",
+          "type": "number"
+        },
+        {
+          "name": "b",
+          "type": "unknown"
+        }
+      ]
+    },
+    {
+      "name": "boolean column votes boolean",
+      "records": [
+        {
+          "flag": true
+        },
+        {
+          "flag": false
+        },
+        {
+          "flag": true
+        }
+      ],
+      "expected": [
+        {
+          "name": "flag",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "numbers outvote booleans",
+      "records": [
+        {
+          "x": true
+        },
+        {
+          "x": 1
+        },
+        {
+          "x": 2
+        }
+      ],
+      "expected": [
+        {
+          "name": "x",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "datetime strings with time part are dates",
+      "records": [
+        {
+          "ts": "2024-01-05T10:30:00Z"
+        },
+        {
+          "ts": "2024-01-06 08:00:00"
+        }
+      ],
+      "expected": [
+        {
+          "name": "ts",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "name": "non-numeric string majority votes string",
+      "records": [
+        {
+          "s": "abc"
+        },
+        {
+          "s": "def"
+        },
+        {
+          "s": "1"
+        }
+      ],
+      "expected": [
+        {
+          "name": "s",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "objects vote unknown",
+      "records": [
+        {
+          "o": {
+            "nested": 1
+          }
+        },
+        {
+          "o": [
+            1,
+            2
+          ]
+        },
+        {
+          "o": "text"
+        }
+      ],
+      "expected": [
+        {
+          "name": "o",
+          "type": "unknown"
+        }
+      ]
+    },
+    {
+      "name": "sampling stops at the first 50 records",
+      "records": [
+        {
+          "n": 0
+        },
+        {
+          "n": 1
+        },
+        {
+          "n": 2
+        },
+        {
+          "n": 3
+        },
+        {
+          "n": 4
+        },
+        {
+          "n": 5
+        },
+        {
+          "n": 6
+        },
+        {
+          "n": 7
+        },
+        {
+          "n": 8
+        },
+        {
+          "n": 9
+        },
+        {
+          "n": 10
+        },
+        {
+          "n": 11
+        },
+        {
+          "n": 12
+        },
+        {
+          "n": 13
+        },
+        {
+          "n": 14
+        },
+        {
+          "n": 15
+        },
+        {
+          "n": 16
+        },
+        {
+          "n": 17
+        },
+        {
+          "n": 18
+        },
+        {
+          "n": 19
+        },
+        {
+          "n": 20
+        },
+        {
+          "n": 21
+        },
+        {
+          "n": 22
+        },
+        {
+          "n": 23
+        },
+        {
+          "n": 24
+        },
+        {
+          "n": 25
+        },
+        {
+          "n": 26
+        },
+        {
+          "n": 27
+        },
+        {
+          "n": 28
+        },
+        {
+          "n": 29
+        },
+        {
+          "n": 30
+        },
+        {
+          "n": 31
+        },
+        {
+          "n": 32
+        },
+        {
+          "n": 33
+        },
+        {
+          "n": 34
+        },
+        {
+          "n": 35
+        },
+        {
+          "n": 36
+        },
+        {
+          "n": 37
+        },
+        {
+          "n": 38
+        },
+        {
+          "n": 39
+        },
+        {
+          "n": 40
+        },
+        {
+          "n": 41
+        },
+        {
+          "n": 42
+        },
+        {
+          "n": 43
+        },
+        {
+          "n": 44
+        },
+        {
+          "n": 45
+        },
+        {
+          "n": 46
+        },
+        {
+          "n": 47
+        },
+        {
+          "n": 48
+        },
+        {
+          "n": 49
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        },
+        {
+          "n": "not numeric"
+        }
+      ],
+      "expected": [
+        {
+          "name": "n",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "base extraction source inference",
+      "records": [
+        {
+          "region": "east",
+          "revenue": 100.5,
+          "units": 2,
+          "flag": true,
+          "when": "2024-01-05"
+        },
+        {
+          "region": "east",
+          "revenue": "50.5",
+          "units": "3",
+          "flag": false,
+          "when": "2024-02-10"
+        },
+        {
+          "region": "west",
+          "revenue": true,
+          "units": 4,
+          "flag": true,
+          "when": "2024-03-15"
+        },
+        {
+          "region": "west",
+          "revenue": "n/a",
+          "units": 5,
+          "flag": "yes",
+          "when": "not-a-date"
+        },
+        {
+          "region": "west",
+          "revenue": "NaN",
+          "units": 6,
+          "flag": null,
+          "when": "2024-04-20"
+        },
+        {
+          "region": "north",
+          "revenue": 10
+        },
+        {
+          "region": "north",
+          "revenue": 7.25,
+          "units": null
+        },
+        {
+          "region": "south",
+          "revenue": -3,
+          "units": "8.5"
+        }
+      ],
+      "expected": [
+        {
+          "name": "region",
+          "type": "string"
+        },
+        {
+          "name": "revenue",
+          "type": "number"
+        },
+        {
+          "name": "units",
+          "type": "number"
+        },
+        {
+          "name": "flag",
+          "type": "boolean"
+        },
+        {
+          "name": "when",
+          "type": "date"
+        }
+      ]
+    }
+  ]
+}

@@ -13,6 +13,7 @@ from algenta.runtime_errors import RuntimeValidationError
 from algenta.runtime_local_execution import (
     LocalSource,
     infer_numeric_fields,
+    infer_typed_fields,
 )
 from algenta.runtime_model_source_registration import SourceRegistration
 from algenta.runtime_source_naming import (
@@ -63,6 +64,7 @@ def register_local_source(
     )
     fields = _ordered_fields(records)
     numeric_fields = infer_numeric_fields(records, fields)
+    typed_fields = infer_typed_fields(records, fields)
     dataset_id = _stable_hash({"source_name": source_name, "fields": fields})[:24]
     schema_revision = _stable_hash({"dataset_id": dataset_id, "fields": fields})
     local_sources[source_name] = LocalSource(
@@ -80,12 +82,13 @@ def register_local_source(
         name=source_name,
         status="ready",
         ingest_mode="local",
-        source_schema={"fields": list(fields)},
+        source_schema={"fields": list(fields), "typed_fields": typed_fields},
         planner_cache_hit=False,
         planner_schema_revision=schema_revision,
         planner_prewarm_ms=0.0,
         latency_ms=latency_ms,
         row_count=len(records),
+        typed_fields=typed_fields,
     )
 
 
