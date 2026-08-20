@@ -4,7 +4,14 @@ authors = ["angelatgithub <79715912+angelatgithub@users.noreply.github.com>"]
 # the stable max channel, which is also what mojolang.org/install documents.
 channels = ["https://conda.modular.com/max/", "conda-forge"]
 name = "mojo_env"
-platforms = ["osx-arm64", "linux-64"]
+# linux-aarch64 added 2026-08-19 after end-to-end verification on real ARM server
+# silicon (GCP Tau T2A, Ampere Altra Armv8.2-A): the pinned mojo/max resolve for the
+# platform from the Modular channel, `pixi install --locked` succeeds, and both a
+# CPU-only kernel suite and a filtered runtime-worker build (vector_kernels.dot,
+# library_execute dot64_f32 == 13.0 over the --server socket protocol) execute
+# correctly there. scripts/build_mojo_binary.sh's Linux lane is arch-parametric
+# (uname-based, no x86 assumptions), so the build path needed no changes.
+platforms = ["osx-arm64", "linux-64", "linux-aarch64"]
 version = "0.1.0"
 
 [tasks]
