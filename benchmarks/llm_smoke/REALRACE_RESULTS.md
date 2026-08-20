@@ -12784,3 +12784,89 @@ fix = persistent session across requests (open once; keep weights resident; per-
 re-derivation only) -- parity-gap item 4 from 2026-08-09, now the TOP campaign priority because
 it is the difference between "wins warm" and "wins unconditionally". The ~550ms breakdown
 (upload/restore vs pipeline-build vs KV alloc) needs engine-side instrumentation before cutting.
+
+
+## FIRST NVIDIA LLM INFERENCE — the CUDA-native resident session: Qwen3-0.6B on T4/L4/A100, oracle-exact, portable max.gpu.host only (2026-08-20)
+
+Everything in this entry is the first of its kind in this tree: residentk kernels compiled for an
+NVIDIA target, executed on real NVIDIA hardware, generating real Qwen3-0.6B-Base tokens — through
+the PORTABLE `max.gpu.host` API (`DeviceContext` + checked `enqueue_function[kernel]`), with no
+Metal shim and no metallib blobs anywhere in the path. The work landed on `feat/cuda-native-session`
+(PR #778) in three phases; each phase's evidence is stated below, nothing inferred.
+
+WHAT WAS BUILT
+--------------
+1. residentk on Mojo 1.0.0 (Phase 0). The resident GPU lane predated the 1.0 migration (#755) and
+   did not compile on the pinned toolchain — invisible because CI never reaches it (it is private).
+   Kernel scalar parameters are now fixed-width DevicePassable (`<name>_i64: Int64`, widened back
+   to Int once at entry; Int64 keeps the Metal shim's 64-bit descriptor ABI byte-identical), and
+   launches use 1.0.0's checked parameter form. Same dispatch plan, same numerics.
+2. residentk.session_cuda._CudaResidentQwen3 (Phase 1): the CUDA-native session — resident f32
+   weights, in-place KV cache, batched m_rows>1 PREFILL (new f32 tiled-GEMM twins of the `_pf_*`
+   family in residentk/kernels_prefill_f32.mojo; the weightless batched kernels reused
+   byte-unmodified), 128-row chunks, one lm_head+argmax on the final row; then the six-per-layer
+   decode path per token, per-dispatch enqueue, NO batching/graphs yet. Gated behind
+   `-D ALGENTA_GPU -D ALGENTA_CUDA` (the PR #765 two-tier split's first consumer on the resident
+   path); a Metal or CPU build elides every launch.
+3. Benchmarks (this section): benchmarks/llm_smoke/qwen3_generate_cuda.mojo (oracle driver) and
+   qwen3_bench_cuda.mojo (benchmark driver).
+
+ORACLE (Phase 2): exact
+-------------------------
+256-token race prompt ("The capital of France is Paris. " x36 + "The capital of France"), greedy,
+weights converted on-VM from the Qwen/Qwen3-0.6B-Base BF16 safetensors via the repo's own
+`prepare_model_checkpoint()` (numpy, no torch). All three GPUs generated the campaign's exact
+known-correct continuation — first 8 tokens [374, 12095, 13, 576, 6722, 315, 9625, 374], then the
+7-token repeat cycle — 16/16 tokens checked per GPU, driver exits nonzero on any mismatch:
+
+  Tesla T4  (sm_75, driver 595.71.05): RESULT: PASS — 16 greedy tokens match the campaign oracle
+  NVIDIA L4 (sm_89, driver 595.71.05): RESULT: PASS — 16 greedy tokens match the campaign oracle
+  A100-40GB (sm_80, driver 595.71.05): RESULT: PASS — 16 greedy tokens match the campaign oracle
+
+Additionally, the FULL golden-vector suite (mojo/tests/libs/test_residentk_session.mojo — all five
+resident arms against the frozen Float64 CPU reference) passed 51/51 on the T4 in Phase 0, and
+still passes 51/51 on Apple M4 Max Metal at the branch HEAD — the Metal lane is preserved.
+
+BENCHMARKS (Phase 3): first NVIDIA LLM numbers
+----------------------------------------------
+Methodology (stated, repeatable): ONE resident session per GPU; weights loaded once (untimed);
+one full untimed WARMUP generation; then THREE timed generations of the same 256-token race
+prompt replayed on the same session (every KV slot a replay reads is rewritten before it is read,
+so replays are self-consistent); medians of the three. Timed scopes: PREFILL = the chunked batched
+pass INCLUDING the lm_head+argmax that yields the first token; DECODE = the gen steps after
+prefill, one per-dispatch-enqueue token each. Checkpoint: BF16 safetensors -> Float64 blob ->
+resident Float32. Clock evidence: nvidia-smi 500 ms samplers ran alongside every timed window
+(T4 boosted 300 -> 1590 MHz max under load; L4 held 2040 MHz max; A100 row below).
+
+  GPU          | prefill tok/s (256 prompt) | decode tok/s gen=64 | decode tok/s gen=256
+  -------------|----------------------------|---------------------|----------------------
+  Tesla T4     | 120.9 (2117 ms)            | 51.6 (1241 ms)      | 43.9 (5829 ms)
+  NVIDIA L4    | 274.8 (931 ms)             | 53.8 (1189 ms)      | 46.6 (5492 ms)
+  A100-40GB    | 479.4 (534 ms)             | 70.1 (913 ms)       | 55.2 (4638 ms)
+
+Per-run variance is small (T4 decode gen=64: 1238.1/1241.4/1242.2 ms; L4: 1188.5/1189.3/1188.9 ms)
+— the medians are stable numbers, not lucky draws.
+
+HONEST SCOPE — what these numbers are and are not
+-------------------------------------------------
+* They are FLOAT32-weight, per-dispatch-enqueue numbers: no CUDA graphs, no kernel fusion beyond
+  the resident family's own, no quantization. The int8 Metal race arms are a different (faster)
+  weight format; a CUDA int8 arm is future work, not claimed here.
+* DECODE is dispatch-bound, not compute-bound: prefill scales 2.3x from T4 to L4 (bandwidth +
+  compute both help the tiled GEMMs), but decode barely moves (51.6 -> 53.8). At 171 dispatches
+  per token, the per-launch host cost is the dominant term — exactly the regime the Metal batched
+  shim exists to delete on Metal, and exactly what a CUDA-graph capture/replay follow-up attacks
+  on NVIDIA (see PR #778's integration notes). The bandwidth floor for f32 0.6B decode on a T4
+  (~300 GB/s practical, 2.62 GB resident) is ~8-9 ms/token; the measured ~19 ms/token is mostly
+  submission, not arithmetic.
+* PREFILL tok/s here is the chunked batched path's first measurement; it is NOT raced against
+  llama.cpp in this entry — the NVIDIA race front opens once the dispatch-bound decode is unbound.
+
+COST LEDGER (spot, eplanev2)
+----------------------------
+Phase-0 T4 (n1-standard-4, ~15 min), Phase-2 first attempt (n1-standard-4, ~8 min, OOM'd the
+conversion at 15 GB — the converter holds the whole Float64 tensor set in memory, so it needs a
+~30 GB host; noted for the record), Phase-2/3 T4 (n1-standard-8, ~40 min), L4 first attempt
+(g2-standard-4, ~12 min, same conversion OOM), L4 (g2-standard-8, ~20 min), A100
+(a2-highgpu-1g, ~25 min). Total ~$2.50 spot. Every VM was deleted immediately after its suite;
+no GPU idled unattended.

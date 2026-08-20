@@ -212,9 +212,11 @@ DEPRECATION_STATES = ("active", "soft_deprecated", "deprecated", "scheduled_remo
 #: prerequisite, a different failure mode (``Metal Compiler failed to compile metallib`` at COMPILE
 #: time, on a host that has no compiler) and a different runtime owner. Declaring `accel/launch.mojo`
 #: as ``mojo`` would have made this field say the one thing about that module that is not true.
-#: ``cuda`` and ``rocm`` are deliberately NOT added until kernels exist for them — an enum value with
-#: no implementation behind it is a claim.
-BACKENDS = ("mojo", "mojo_simd", "python_fallback", "metal")
+#: ``cuda`` joined when kernels existed for it — ``residentk/kernels_prefill_f32.mojo`` and
+#: ``residentk/session_cuda.mojo``, run-verified on a real Tesla T4 (the Phase-0/Phase-2 CUDA-native
+#: session evidence) — per this enum's own rule that a value with no implementation behind it is a
+#: claim. ``rocm`` stays out until kernels exist for it.
+BACKENDS = ("mojo", "mojo_simd", "python_fallback", "metal", "cuda")
 SURFACES = (
     "library_execute",
     "batch_execute",

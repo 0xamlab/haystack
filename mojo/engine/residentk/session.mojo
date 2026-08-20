@@ -41,25 +41,28 @@ Verified on this toolchain by compiling this package three ways — default (acc
 flag), `--target-accelerator=none`, and with the flag — and the first two build, link, and answer
 `resident_shader_toolchain_absent`.
 
-Why the compiled kernel handles are struct FIELDS
+The launch spelling, re-derived for Mojo 1.0.0
 ----------------------------------------------------
-Measured on this host, same binary, same trivial kernel, 50 launches:
+Pre-1.0 this file compiled every kernel ONCE at session open with `compile_function` and held the
+handle as a struct FIELD — measured then at ~180 us per launch through a held handle against
+~390 us through the parameter form, 2.2x, worth ~36 ms of a token's latency at 171 dispatches.
 
-    enqueue through a struct-held compiled handle   ~180 us
-    enqueue_function[kernel, kernel](...)           ~390 us
+Mojo 1.0.0 (MAX 26.5) removed BOTH halves of that idiom: `enqueue_function_unchecked` is gone from
+`max.gpu.host.DeviceContext`, and the compiled-handle type `compile_function[k]()` returns is no
+longer writable as a struct field (its `declared_arg_types` parameter fails inference from the old
+`None` spelling and cannot be bound by hand). The session therefore launches through the checked
+parameter form — `ctx.enqueue_function[kernel](args..., grid_dim=..., block_dim=...)`, the same
+spelling `accel/launch.mojo` documents for 1.0.0 — and the kernels are compiled once per process by
+the backend's own cache rather than once per session by this file. The dispatch PLAN is unchanged
+(six per layer plus three fixed, asserted below); the host-side cost of the parameter form under
+1.0.0 is a number this file no longer claims without re-measurement.
 
-2.2x, and at 171 dispatches per token that is ~36 ms of a token's latency. So every kernel is
-compiled ONCE at session open with `compile_function` and the handle is held for the
-session's life.
-
-`_unchecked` is not a shortcut, it is the only spelling whose RESULT TYPE can be written down. The
-checked `compile_function[k, k]()` returns a type parameterised on the packed argument list, which
-has no writable surface syntax, so it cannot be a struct field. The cost of `_unchecked` is that
-argument types are not verified at the call site — a swapped pointer compiles and produces wrong
-numbers rather than a compile error. That is a real hazard and it is answered by measurement, not
-by care: `mojo/tests/libs/test_residentk_session.mojo` checks every kernel against a hand-computed
-value, and `benchmarks/llm_smoke/verify_generation.py` checks the whole stack against an
-independent `transformers` reference token by token.
+The checked form's cost is that argument types ARE verified at the call site — a swapped pointer is
+a compile error, not a silent wrong-number run — which is the opposite hazard balance the
+`_unchecked` spelling had. Correctness is still answered by measurement: `mojo/tests/libs/
+test_residentk_session.mojo` checks every kernel against a hand-computed value, and
+`benchmarks/llm_smoke/verify_generation.py` checks the whole stack against an independent
+`transformers` reference token by token.
 
 What is resident, and what crosses the bus per step
 ------------------------------------------------------
@@ -77,7 +80,7 @@ of size on this backend, so a per-step download of the logits would cost more th
 """
 
 from std.gpu import WARP_SIZE
-from max.gpu.host import DeviceBuffer, DeviceContext, DeviceFunction, HostBuffer
+from max.gpu.host import DeviceBuffer, DeviceContext, HostBuffer
 from std.sys import has_accelerator, is_defined
 from residentk.contract import (
     RESIDENT_ERR_CONTEXT_FULL,
@@ -655,8 +658,8 @@ struct _ResidentQwen3(Movable):
 
     `Movable` is mandatory, not decorative: without it `var moved = session^` fails with
     `cannot transfer value into destination, because '_ResidentQwen3' doesn't conform to 'Movable'`.
-    `DeviceContext`, `DeviceBuffer`, `HostBuffer` and `DeviceFunction` are all themselves
-    Copyable+Movable, so a `List[_LayerGpu]` of device buffers is a legal field.
+    `DeviceContext`, `DeviceBuffer` and `HostBuffer` are all themselves Copyable+Movable, so a
+    `List[_LayerGpu]` of device buffers is a legal field.
 
     HAZARD, recorded because the compiler will not catch it: there is no lifetime tie between a
     `DeviceBuffer` and the `DeviceContext` it came from. Nothing stops the context being dropped
@@ -694,31 +697,6 @@ struct _ResidentQwen3(Movable):
     var out_idx: DeviceBuffer[DType.int32]
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
-
-    var f_embed: DeviceFunction[
-        _embed_row_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -784,17 +762,6 @@ struct _ResidentQwen3(Movable):
         # no per-step path in this file calls `map_to_host`.
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
-
-        # Compiled once. See the module docstring: 180 us per launch through a held handle against
-        # 390 us through the `enqueue_function[k, k]` parameter form.
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -918,9 +885,8 @@ struct _ResidentQwen3(Movable):
             var issued = 0
 
             # ── the embedding row, gathered on-device from the resident table ──
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
-                self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), token_id, self.d_model,
+            self.ctx.enqueue_function[_embed_row_kernel](
+                self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -929,66 +895,58 @@ struct _ResidentQwen3(Movable):
                 ref lw = self.layers[layer]
 
                 # 1 ── rmsnorm(input_layernorm) + fused Q/K/V projection
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
-                    lw.w_qkv.unsafe_ptr(), self.d_model, n_qkv, self.eps,
+                    lw.w_qkv.unsafe_ptr(), Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
                 # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 # 3 ── attention over every cached key, online softmax
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
                 # 4 ── o_proj accumulated straight into the residual stream
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(), lw.w_o.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 # 5 ── rmsnorm(post_attention_layernorm) + gate/up + SwiGLU
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
-                    lw.w_gu.unsafe_ptr(), self.d_model, self.d_ff, self.eps,
+                    lw.w_gu.unsafe_ptr(), Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
                 # 6 ── down_proj accumulated straight into the residual stream
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(), lw.w_down.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             # ── final rmsnorm + lm_head + per-threadgroup argmax, then the reduce ──
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -1054,31 +1012,6 @@ struct _ResidentQwen3F16(Movable):
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
 
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_f16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_f16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_f16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_f16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_f16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -1136,15 +1069,6 @@ struct _ResidentQwen3F16(Movable):
         self.out_idx = self.ctx.enqueue_create_buffer[DType.int32](1)
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
-
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_f16]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_f16]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_f16]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_f16]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_f16]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -1254,9 +1178,8 @@ struct _ResidentQwen3F16(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
-                self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), token_id, self.d_model,
+            self.ctx.enqueue_function[_embed_row_kernel_f16](
+                self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -1264,60 +1187,52 @@ struct _ResidentQwen3F16(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_f16](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
-                    lw.w_qkv.unsafe_ptr(), self.d_model, n_qkv, self.eps,
+                    lw.w_qkv.unsafe_ptr(), Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_f16](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(), lw.w_o.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_f16](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
-                    lw.w_gu.unsafe_ptr(), self.d_model, self.d_ff, self.eps,
+                    lw.w_gu.unsafe_ptr(), Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_f16](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(), lw.w_down.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_f16](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -1376,31 +1291,6 @@ struct _ResidentQwen3I8(Movable):
     var out_idx: DeviceBuffer[DType.int32]
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
-
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -1465,15 +1355,6 @@ struct _ResidentQwen3I8(Movable):
         self.out_idx = self.ctx.enqueue_create_buffer[DType.int32](1)
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
-
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i8]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i8]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -1589,10 +1470,9 @@ struct _ResidentQwen3I8(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
+            self.ctx.enqueue_function[_embed_row_kernel_i8](
                 self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                token_id, self.d_model,
+                Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -1600,64 +1480,56 @@ struct _ResidentQwen3I8(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_i8](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
                     lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
-                    self.d_model, n_qkv, self.eps,
+                    Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i8](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
                     lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_i8](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
                     lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
-                    self.d_model, self.d_ff, self.eps,
+                    Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i8](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
                     lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_i8](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -1688,9 +1560,9 @@ struct _ResidentQwen3I8SDPASimd(Movable):
     Additive alongside every existing arm, exactly as `_ResidentQwen3I8KVF16` is additive
     alongside `_ResidentQwen3I8`: this struct is a NEW twin, `_ResidentQwen3I8` above is
     untouched. Unlike the batched-shim `metaldispatch.session._MBQwen3I8SDPASimd`, this session
-    has no pipeline-name-discovery step to worry about — `f_sdpa` is a directly-typed struct
-    field holding its own `compile_function[_sdpa_kernel_simd]()` handle, the same way
-    `_ResidentQwen3I8`'s own `f_sdpa` field holds `_sdpa_kernel`'s.
+    has no pipeline-name-discovery step to worry about — its SDPA dispatch is a direct
+    `enqueue_function[_sdpa_kernel_simd](...)` launch, the same way `_ResidentQwen3I8`'s own
+    attention dispatch launches `_sdpa_kernel` (Mojo 1.0.0's checked parameter form).
     """
 
     var ctx: DeviceContext
@@ -1723,31 +1595,6 @@ struct _ResidentQwen3I8SDPASimd(Movable):
     var out_idx: DeviceBuffer[DType.int32]
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
-
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel_simd, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -1830,15 +1677,6 @@ struct _ResidentQwen3I8SDPASimd(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i8]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i8]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_simd]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
-
     def device_name(self) raises -> String:
         return self.ctx.name()
 
@@ -1953,10 +1791,9 @@ struct _ResidentQwen3I8SDPASimd(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
+            self.ctx.enqueue_function[_embed_row_kernel_i8](
                 self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                token_id, self.d_model,
+                Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -1964,64 +1801,56 @@ struct _ResidentQwen3I8SDPASimd(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_i8](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
                     lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
-                    self.d_model, n_qkv, self.eps,
+                    Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel_simd](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i8](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
                     lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_i8](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
                     lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
-                    self.d_model, self.d_ff, self.eps,
+                    Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i8](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
                     lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_i8](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -2094,31 +1923,6 @@ struct _ResidentQwen3I8AllSimd(Movable):
     var out_idx: DeviceBuffer[DType.int32]
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
-
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel_simd, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -2201,15 +2005,6 @@ struct _ResidentQwen3I8AllSimd(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_simd_i8]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_simd_i8]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_simd]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
-
     def device_name(self) raises -> String:
         return self.ctx.name()
 
@@ -2324,10 +2119,9 @@ struct _ResidentQwen3I8AllSimd(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
+            self.ctx.enqueue_function[_embed_row_kernel_i8](
                 self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                token_id, self.d_model,
+                Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -2335,64 +2129,56 @@ struct _ResidentQwen3I8AllSimd(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_simd_i8](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
                     lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
-                    self.d_model, n_qkv, self.eps,
+                    Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel_simd](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_simd_i8](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
                     lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_simd_i8](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
                     lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
-                    self.d_model, self.d_ff, self.eps,
+                    Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_simd_i8](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
                     lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_i8](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -2467,31 +2253,6 @@ struct _ResidentQwen3I8AllSimd2(Movable):
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
 
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel_simd, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_simd_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -2563,15 +2324,6 @@ struct _ResidentQwen3I8AllSimd2(Movable):
         self.out_idx = self.ctx.enqueue_create_buffer[DType.int32](1)
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
-
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_simd_i8]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_simd_i8]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_simd_i8]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_simd]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_simd_i8]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -2686,10 +2438,9 @@ struct _ResidentQwen3I8AllSimd2(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
+            self.ctx.enqueue_function[_embed_row_kernel_i8](
                 self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                token_id, self.d_model,
+                Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -2697,64 +2448,56 @@ struct _ResidentQwen3I8AllSimd2(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_simd_i8](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
                     lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
-                    self.d_model, n_qkv, self.eps,
+                    Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel_simd](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_simd_i8](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
                     lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_simd_i8](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
                     lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
-                    self.d_model, self.d_ff, self.eps,
+                    Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_simd_i8](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
                     lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_simd_i8](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -2819,31 +2562,6 @@ struct _ResidentQwen3I4(Movable):
     var out_idx: DeviceBuffer[DType.int32]
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
-
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_i4, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_i4, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_i4, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -2916,15 +2634,6 @@ struct _ResidentQwen3I4(Movable):
         self.out_idx = self.ctx.enqueue_create_buffer[DType.int32](1)
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
-
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i4]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i4]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i4]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -3039,10 +2748,9 @@ struct _ResidentQwen3I4(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
+            self.ctx.enqueue_function[_embed_row_kernel_i8](
                 self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                token_id, self.d_model,
+                Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -3050,64 +2758,56 @@ struct _ResidentQwen3I4(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_i4](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
                     lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
-                    self.d_model, n_qkv, self.eps,
+                    Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i4](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
                     lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_i4](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
                     lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
-                    self.d_model, self.d_ff, self.eps,
+                    Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i4](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
                     lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_i8](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2
@@ -3167,31 +2867,6 @@ struct _ResidentQwen3I8KVF16(Movable):
     var out_idx: DeviceBuffer[DType.int32]
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
-
-    var f_embed: DeviceFunction[
-        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_norm_gemv: DeviceFunction[
-        _norm_gemv_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gemv_acc: DeviceFunction[
-        _gemv_accum_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_gu: DeviceFunction[
-        _norm_gemv2_swiglu_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_rope: DeviceFunction[
-        _qk_rope_write_kernel_kvf16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_sdpa: DeviceFunction[
-        _sdpa_kernel_kvf16, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_lm: DeviceFunction[
-        _lmhead_argmax_kernel_i8, None, target = DeviceContext.default_device_info.target()
-    ]
-    var f_argmax: DeviceFunction[
-        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
-    ]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -3255,15 +2930,6 @@ struct _ResidentQwen3I8KVF16(Movable):
         self.out_idx = self.ctx.enqueue_create_buffer[DType.int32](1)
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
-
-        self.f_embed = self.ctx.compile_function[_embed_row_kernel_i8]()
-        self.f_norm_gemv = self.ctx.compile_function[_norm_gemv_kernel_i8]()
-        self.f_gemv_acc = self.ctx.compile_function[_gemv_accum_kernel_i8]()
-        self.f_gu = self.ctx.compile_function[_norm_gemv2_swiglu_kernel_i8]()
-        self.f_rope = self.ctx.compile_function[_qk_rope_write_kernel_kvf16]()
-        self.f_sdpa = self.ctx.compile_function[_sdpa_kernel_kvf16]()
-        self.f_lm = self.ctx.compile_function[_lmhead_argmax_kernel_i8]()
-        self.f_argmax = self.ctx.compile_function[_argmax_reduce_kernel]()
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -3378,10 +3044,9 @@ struct _ResidentQwen3I8KVF16(Movable):
             var n_keys = pos + 1
             var issued = 0
 
-            self.ctx.enqueue_function_unchecked(
-                self.f_embed,
+            self.ctx.enqueue_function[_embed_row_kernel_i8](
                 self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                token_id, self.d_model,
+                Int64(token_id), Int64(self.d_model),
                 grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
             )
             issued += 1
@@ -3389,64 +3054,56 @@ struct _ResidentQwen3I8KVF16(Movable):
             for layer in range(self.n_layers):
                 ref lw = self.layers[layer]
 
-                self.ctx.enqueue_function_unchecked(
-                    self.f_norm_gemv,
+                self.ctx.enqueue_function[_norm_gemv_kernel_i8](
                     self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
                     lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
-                    self.d_model, n_qkv, self.eps,
+                    Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_rope,
+                self.ctx.enqueue_function[_qk_rope_write_kernel_kvf16](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
-                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
-                    1,  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
+                    Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
+                    Int64(1),  # qk_norm: residentk decode sessions are Qwen3-family only -- per-head QK-norm always on
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_sdpa,
+                self.ctx.enqueue_function[_sdpa_kernel_kvf16](
                     self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
                     lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    Int64(n_keys), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.scale,
                     grid_dim=self.h_q, block_dim=self.d_head,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i8](
                     self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
                     lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
-                    n_q, self.d_model,
+                    Int64(n_q), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gu,
+                self.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_i8](
                     self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
                     lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
-                    self.d_model, self.d_ff, self.eps,
+                    Int64(self.d_model), Int64(self.d_ff), self.eps,
                     grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
                 )
-                self.ctx.enqueue_function_unchecked(
-                    self.f_gemv_acc,
+                self.ctx.enqueue_function[_gemv_accum_kernel_i8](
                     self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
                     lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
-                    self.d_ff, self.d_model,
+                    Int64(self.d_ff), Int64(self.d_model),
                     grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
                 )
                 issued += 6
 
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
-            self.ctx.enqueue_function_unchecked(
-                self.f_lm,
+            self.ctx.enqueue_function[_lmhead_argmax_kernel_i8](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
-                self.d_model, self.vocab, self.eps, n_iters,
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
-            self.ctx.enqueue_function_unchecked(
-                self.f_argmax,
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
                 self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
-                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
                 grid_dim=1, block_dim=_TG,
             )
             issued += 2

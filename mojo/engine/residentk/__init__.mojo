@@ -88,10 +88,18 @@ Modules
               contract module: no `std.gpu` import, buildable and honest on any host.
   probe     — the public capability answer. Calls `accel.device.accel_device_probe` (rule 3)
               rather than opening a second `DeviceContext`, and never launches anything.
-  kernels   — PRIVATE Metal kernels. Not a contract module; nothing here is public.
+  kernels   — PRIVATE GPU kernels (portable max.gpu.host; Metal run-verified since 0.7.0, CUDA
+              run-verified by the Phase-0 T4 round trip). Not a contract module; nothing here is
+              public.
+  kernels_prefill_f32 — PRIVATE Float32-weight batched-prefill kernels (the m_rows > 1 tiled GEMM
+              path residentk.session_cuda dispatches). Same privacy discipline as `kernels`.
   session   — PRIVATE resident state: the context, the Float32 weight buffers, the in-place KV
-              cache, the compiled kernel handles, and the per-token step. Every launch sits inside
-              `@parameter if RESIDENT_GPU_BUILD` and every entry point is private.
+              cache, and the per-token step. Every launch sits inside `@parameter if
+              RESIDENT_GPU_BUILD` and every entry point is private.
+  session_cuda — PRIVATE CUDA-native resident session: the same resident state plus the batched
+              prefill pass. Every launch sits inside `@parameter if CUDA_SESSION_BUILD` (the
+              ALGENTA_GPU + ALGENTA_CUDA conjunct), so a Metal or CPU build compiles it with every
+              launch elided.
 
 Dependency direction is one-way: `residentk` uses `accel` for the device probe, `attnk.rope` for the
 RoPE table and `tensorx` for finiteness, and never the reverse.

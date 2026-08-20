@@ -363,7 +363,7 @@ comptime _NEG_HUGE: Float32 = -3.0e38
 first key underflows to a clean 0.0 instead of producing `inf - inf`."""
 
 
-def _embed_row_kernel(hidden: _FP, embed: _FP, token_id: Int, d_model: Int):
+def _embed_row_kernel(hidden: _FP, embed: _FP, token_id_i64: Int64, d_model_i64: Int64):
     """`hidden = embed[token_id]` — the one-token embedding gather that starts a decode step.
 
     Its own dispatch rather than folded into the first projection, and that costs ~180 us per token
@@ -373,12 +373,16 @@ def _embed_row_kernel(hidden: _FP, embed: _FP, token_id: Int, d_model: Int):
     the row redundantly — works but then `hidden` is never materialised, and the residual stream
     needs it materialised two dispatches later.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var token_id = Int(token_id_i64)
+    var d_model = Int(d_model_i64)
     var i = Int(block_idx.x) * _TG + Int(thread_idx.x)
     if i < d_model:
         hidden[i] = embed[token_id * d_model + i]
 
 
-def _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id: Int, d_model: Int):
+def _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id_i64: Int64, d_model_i64: Int64):
     """The fp16-weight twin of `_embed_row_kernel`. `embed` is the SAME tied embedding/lm_head
     table `_lmhead_argmax_kernel_f16` reads as `w` — resident as Float16 in the fp16 session — so
     the gather widens the one row it reads to Float32 before writing `hidden`, which stays Float32
@@ -386,12 +390,16 @@ def _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id: Int, d_model: Int):
     costs nothing measurable; it exists so the fp16 session never needs a second, Float32 copy of a
     155M-element table just to serve the gather.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var token_id = Int(token_id_i64)
+    var d_model = Int(d_model_i64)
     var i = Int(block_idx.x) * _TG + Int(thread_idx.x)
     if i < d_model:
         hidden[i] = Float32(embed[token_id * d_model + i])
 
 
-def _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: Int, d_model: Int):
+def _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id_i64: Int64, d_model_i64: Int64):
     """The int8-weight twin of `_embed_row_kernel`. `embed` is the SAME tied embedding/lm_head
     table `_lmhead_argmax_kernel_i8` reads as `w` — resident as Int8 in the int8 session, one
     Float32 scale per VOCABULARY ROW in `embed_scale` (so `embed_scale[token_id]` is exactly the
@@ -401,6 +409,10 @@ def _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: I
     exists so the int8 session never needs a second, Float32 copy of a 155M-element table just to
     serve the gather.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var token_id = Int(token_id_i64)
+    var d_model = Int(d_model_i64)
     var i = Int(block_idx.x) * _TG + Int(thread_idx.x)
     if i < d_model:
         var s = embed_scale[token_id]
@@ -408,7 +420,7 @@ def _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: I
 
 
 def _norm_gemv_kernel(
-    y: _FP, x: _FP, gamma: _FP, w: _FP, k: Int, n: Int, eps: Float32
+    y: _FP, x: _FP, gamma: _FP, w: _FP, k_i64: Int64, n_i64: Int64, eps: Float32
 ):
     """`y = W @ (rmsnorm(x) * gamma)`, `W` held `[n, k]` row-major. One dispatch, one normalization.
 
@@ -423,6 +435,10 @@ def _norm_gemv_kernel(
     Threadgroup shape: 256 threads = 8 SIMD groups of 32 lanes, one group per output column, so
     `grid_dim = ceil(n / 8)`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -493,7 +509,7 @@ def _norm_gemv_kernel(
 
 
 def _norm_gemv_kernel_f16(
-    y: _FP, x: _FP, gamma: _FP, w: _HP, k: Int, n: Int, eps: Float32
+    y: _FP, x: _FP, gamma: _FP, w: _HP, k_i64: Int64, n_i64: Int64, eps: Float32
 ):
     """The fp16-weight twin of `_norm_gemv_kernel`. Identical except `w`'s type: a resident Float16
     buffer instead of Float32. The normalization, the shared staging, the accumulator and the
@@ -503,6 +519,10 @@ def _norm_gemv_kernel_f16(
     kernel, and `_VEC_H`'s for why the vector width is `half4`, not the `half8` a byte-matched
     guess would reach for.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -561,7 +581,7 @@ def _norm_gemv_kernel_f16(
 
 
 def _norm_gemv_kernel_i8(
-    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32
+    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64, eps: Float32
 ):
     """The int8-weight twin of `_norm_gemv_kernel`. Identical except `w`'s type: a resident Int8
     buffer instead of Float32, with a companion per-output-row Float32 scale buffer `wscale`
@@ -571,6 +591,10 @@ def _norm_gemv_kernel_i8(
     Float32 AND multiplied by its row's scale — immediately on load, inside the reduction loop,
     before any multiply consumes it. See `_VEC_I8`'s docstring for why the vector width is `char4`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -631,7 +655,7 @@ def _norm_gemv_kernel_i8(
 
 
 def _norm_gemv_kernel_simd_i8(
-    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32
+    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64, eps: Float32
 ):
     """The REDUCTION-MECHANISM twin of `_norm_gemv_kernel_i8` — IDENTICAL int8-dequant GEMV math,
     IDENTICAL per-output-row `wscale`, only HOW its two internal reductions collapse to a scalar
@@ -689,6 +713,10 @@ def _norm_gemv_kernel_simd_i8(
     surviving shared allocation is `_SUBS` floats for the sum-of-squares combine. Occupancy stops
     being staging-bound.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
     var lane = tid % _LANES
@@ -757,7 +785,7 @@ def _norm_gemv_kernel_simd_i8(
 
 
 def _norm_gemv_kernel_i4(
-    y: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n: Int, eps: Float32
+    y: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k_i64: Int64, n_i64: Int64, eps: Float32
 ):
     """The int4-weight twin of `_norm_gemv_kernel_i8`. Identical except `w`'s type: a resident
     PACKED-int4 buffer (two signed nibbles per byte, `_I4P`'s docstring gives the packing and unpack
@@ -767,6 +795,10 @@ def _norm_gemv_kernel_i4(
     int8 kernel; only the weight-load-and-unpack step differs, per `_VEC_I4B`'s docstring's measured
     vector-width choice.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -841,7 +873,7 @@ def _norm_gemv_kernel_i4(
         y[j] = red[sub * _LANES]
 
 
-def _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
+def _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k_i64: Int64, n_i64: Int64):
     """`y += W @ x`, `W` held `[n, k]` row-major. The projection AND its residual add, one dispatch.
 
     `+=` rather than `=` is the whole point: `o_proj` and `down_proj` both feed a residual
@@ -849,6 +881,10 @@ def _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
     threadgroup, so the read-modify-write has no race and needs no barrier. Splitting the add into
     its own elementwise dispatch would cost ~180 us of blocked host time for ~1 us of arithmetic.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -889,10 +925,14 @@ def _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-def _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k: Int, n: Int):
+def _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k_i64: Int64, n_i64: Int64):
     """The fp16-weight twin of `_gemv_accum_kernel` — `o_proj`/`down_proj` plus the residual `+=`,
     with `w` a resident Float16 buffer widened to Float32 on load. See `_norm_gemv_kernel_f16`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -934,10 +974,14 @@ def _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-def _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64):
     """The int8-weight twin of `_gemv_accum_kernel` — `o_proj`/`down_proj` plus the residual `+=`,
     with `w` a resident Int8 buffer and `wscale` its per-output-row Float32 scale. See
     `_norm_gemv_kernel_i8`."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -981,7 +1025,7 @@ def _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64):
     """The REDUCTION-MECHANISM twin of `_gemv_accum_kernel_i8` — IDENTICAL `o_proj`/`down_proj` +
     residual-add math, only HOW each output column's dot product collapses to a scalar differs.
 
@@ -1008,6 +1052,10 @@ def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: 
     (`k = d_ff`, the ONLY role whose staging genuinely needed the 6144 tier), so de-staging it is
     what frees the whole tier from the one-threadgroup-per-core ceiling.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var tid = Int(thread_idx.x)
 
     var lane = tid % _LANES
@@ -1064,10 +1112,14 @@ def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: 
         y[j] = y[j] + total
 
 
-def _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
+def _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k_i64: Int64, n_i64: Int64):
     """The int4-weight twin of `_gemv_accum_kernel_i8` — `o_proj`/`down_proj` plus the residual
     `+=`, with `w` a resident packed-int4 buffer and `wscale` its per-output-row Float32 scale. See
     `_norm_gemv_kernel_i4`."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -1122,7 +1174,7 @@ def _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
 
 
 def _norm_gemv2_swiglu_kernel(
-    act: _FP, x: _FP, gamma: _FP, w: _FP, k: Int, n_ff: Int, eps: Float32
+    act: _FP, x: _FP, gamma: _FP, w: _FP, k_i64: Int64, n_ff_i64: Int64, eps: Float32
 ):
     """`act = swish(W_gate @ xn) * (W_up @ xn)` with `xn = rmsnorm(x) * gamma`. One dispatch.
 
@@ -1136,6 +1188,10 @@ def _norm_gemv2_swiglu_kernel(
     produces a plausible-looking network that generates different text, which is why the naming is
     spelled out here rather than left to the argument order.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -1225,11 +1281,15 @@ def _norm_gemv2_swiglu_kernel(
 
 
 def _norm_gemv2_swiglu_kernel_f16(
-    act: _FP, x: _FP, gamma: _FP, w: _HP, k: Int, n_ff: Int, eps: Float32
+    act: _FP, x: _FP, gamma: _FP, w: _HP, k_i64: Int64, n_ff_i64: Int64, eps: Float32
 ):
     """The fp16-weight twin of `_norm_gemv2_swiglu_kernel` — gate/up/SwiGLU, with `w` a resident
     Float16 buffer widened to Float32 on load. See `_norm_gemv_kernel_f16`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -1321,7 +1381,7 @@ def _norm_gemv2_swiglu_kernel_f16(
 
 
 def _norm_gemv2_swiglu_kernel_i8(
-    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
+    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_ff_i64: Int64, eps: Float32
 ):
     """The int8-weight twin of `_norm_gemv2_swiglu_kernel` — gate/up/SwiGLU, with `w` a resident
     Int8 buffer and `wscale` a per-output-row Float32 scale over its `2 * n_ff` rows (gate rows
@@ -1329,6 +1389,10 @@ def _norm_gemv2_swiglu_kernel_i8(
     `_narrow_transposed_into`'s Float32/Float16 twins already use for the concatenated gate/up
     matrix, applied to the scale buffer alongside it). See `_norm_gemv_kernel_i8`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -1424,7 +1488,7 @@ def _norm_gemv2_swiglu_kernel_i8(
 
 
 def _norm_gemv2_swiglu_kernel_simd_i8(
-    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
+    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_ff_i64: Int64, eps: Float32
 ):
     """The REDUCTION-MECHANISM twin of `_norm_gemv2_swiglu_kernel_i8` — IDENTICAL gate/up/SwiGLU
     math, IDENTICAL per-output-row `wscale` over the concatenated `2 * n_ff` rows, only HOW its
@@ -1475,6 +1539,10 @@ def _norm_gemv2_swiglu_kernel_simd_i8(
     and the SwiGLU combine is untouched. The `gsh` array and its barrier are gone; `grp` is the
     only threadgroup allocation left. Measured effect recorded in REALRACE_RESULTS.md.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
     var lane = tid % _LANES
@@ -1556,7 +1624,7 @@ def _norm_gemv2_swiglu_kernel_simd_i8(
 
 
 def _norm_gemv2_swiglu_kernel_i4(
-    act: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
+    act: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k_i64: Int64, n_ff_i64: Int64, eps: Float32
 ):
     """The int4-weight twin of `_norm_gemv2_swiglu_kernel_i8` — gate/up/SwiGLU, with `w` a resident
     packed-int4 buffer and `wscale` a per-output-row Float32 scale over its `2 * n_ff` rows (gate
@@ -1565,6 +1633,10 @@ def _norm_gemv2_swiglu_kernel_i4(
     twin's element offsets, because this format packs two elements per byte. See
     `_norm_gemv_kernel_i4`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -1680,8 +1752,8 @@ def _norm_gemv2_swiglu_kernel_i4(
 
 def _qk_rope_write_kernel(
     q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
-    cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
-    qk_norm: Int,
+    cos_t: _FP, sin_t: _FP, pos_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, eps: Float32,
+    qk_norm_i64: Int64,
 ):
     """Per-head rmsnorm on Q and K, RoPE on both, and the KV-cache slot write — all in one dispatch.
 
@@ -1706,6 +1778,13 @@ def _qk_rope_write_kernel(
     Note the order: q_norm/k_norm FIRST, then RoPE. Qwen3 normalizes each head before rotating it,
     which is not what every Llama-family model does.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var pos = Int(pos_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var qk_norm = Int(qk_norm_i64)
     var xs = stack_allocation[
         RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
     ]()
@@ -1764,8 +1843,8 @@ def _qk_rope_write_kernel(
 
 def _qk_rope_write_kernel_kvf16(
     q_rot: _FP, ck: _HP, cv: _HP, qkv: _FP, qn_w: _FP, kn_w: _FP,
-    cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
-    qk_norm: Int,
+    cos_t: _FP, sin_t: _FP, pos_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, eps: Float32,
+    qk_norm_i64: Int64,
 ):
     """The fp16-KV-CACHE twin of `_qk_rope_write_kernel` — a THIRD precision axis, orthogonal to the
     `_f16`/`_i8` WEIGHT-storage twins above. `ck`/`cv` are resident Float16 here instead of Float32;
@@ -1785,6 +1864,13 @@ def _qk_rope_write_kernel_kvf16(
     steps as the position stays resident) are the narrowed buffers, since those are what this arm's
     task is reducing the bytes-per-entry of.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var pos = Int(pos_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var qk_norm = Int(qk_norm_i64)
     var xs = stack_allocation[
         RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
     ]()
@@ -1841,7 +1927,7 @@ def _qk_rope_write_kernel_kvf16(
 
 def _sdpa_kernel(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """Attention for ONE new query token over `n_keys` cached keys. `grid_dim = h_q`, `block = d_head`.
 
@@ -1860,6 +1946,12 @@ def _sdpa_kernel(
     Grouped-query attention maps query head `h` to key/value head `h / (h_q / h_kv)`, the same
     integer division `attnk.sdpa.sdpa_forward_flat` performs.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     var red = stack_allocation[
         RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
     ]()
@@ -1900,7 +1992,7 @@ def _sdpa_kernel(
 
 def _sdpa_kernel_kvf16(
     attn_out: _FP, q_rot: _FP, ck: _HP, cv: _HP,
-    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """The fp16-KV-cache twin of `_sdpa_kernel` — the READ half of the KV-cache-precision arm, paired
     with `_qk_rope_write_kernel_kvf16`'s WRITE half. `ck`/`cv` are resident Float16; `q_rot` (this
@@ -1919,6 +2011,12 @@ def _sdpa_kernel_kvf16(
     cached K/V element's bytes halves the bytes THIS kernel actually streams per key, independent of
     whatever the weight-precision track does to the four GEMV-shaped kernels elsewhere in this file.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     var red = stack_allocation[
         RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
     ]()
@@ -1956,7 +2054,7 @@ def _sdpa_kernel_kvf16(
 
 def _sdpa_kernel_simd(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """The REDUCTION-MECHANISM twin of `_sdpa_kernel` — IDENTICAL online-softmax math, IDENTICAL
     Float32 KV-cache storage, only HOW each key's `d_head`-wide dot product collapses to one scalar
@@ -2015,6 +2113,12 @@ def _sdpa_kernel_simd(
     rate), consistent with a real Mojo 1.0.0b2 codegen bug in this toolchain rather than a logic
     error in this kernel's own math, which is independently verified correct.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     """Fixed upper bound on the number of SIMD-groups one threadgroup can contain, sized off the
     same `RESIDENT_MAX_HEAD_DIM` ceiling `red`'s allocation above uses for the same reason: the real
@@ -2064,7 +2168,7 @@ def _sdpa_kernel_simd(
 
 def _sdpa_kernel_simd_kvf16(
     attn_out: _FP, q_rot: _FP, ck: _HP, cv: _HP,
-    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """The fp16-KV-cache twin of `_sdpa_kernel_simd`, composing the reduction-mechanism axis with
     the KV-cache-precision axis exactly as `_sdpa_kernel_kvf16` composes the ORIGINAL barrier-tree
@@ -2073,6 +2177,12 @@ def _sdpa_kernel_simd_kvf16(
     it touches the dot product or the online-softmax accumulator). Every reduction-mechanism detail
     is identical to `_sdpa_kernel_simd`'s own docstring; only `ck`/`cv`'s storage type differs.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
     var h = Int(block_idx.x)
@@ -2112,7 +2222,7 @@ def _sdpa_kernel_simd_kvf16(
 
 def _splitk_partial_kernel_simd(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, n_splits_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """The OCCUPANCY twin of `_sdpa_kernel_simd` — IDENTICAL per-key math (the SIMD-shuffle two-level
     reduction copied byte-for-byte from that kernel's own loop body), only the KEY RANGE and what
@@ -2147,6 +2257,13 @@ def _splitk_partial_kernel_simd(
     ONLY kernel dispatched below the session's threshold; this kernel and its merge twin are
     additional, never a replacement.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var n_splits = Int(n_splits_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
     var idx = Int(block_idx.x)
@@ -2192,7 +2309,7 @@ def _splitk_partial_kernel_simd(
 
 
 def _splitk_merge_kernel_simd(
-    attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits: Int, d_head: Int,
+    attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits_i64: Int64, d_head_i64: Int64,
 ):
     """The MERGE half of `_splitk_partial_kernel_simd`'s two-dispatch fix — collapses that
     kernel's `n_splits` unnormalized `(m, l, o)` partials per query head into ONE final normalized
@@ -2217,6 +2334,10 @@ def _splitk_merge_kernel_simd(
     deliberately included more splits than keys, in the isolated kernel-level test this pair ships
     with (`test_residentk_attn_splitk_kernel.mojo`), before this docstring's claim was trusted.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_splits = Int(n_splits_i64)
+    var d_head = Int(d_head_i64)
     var h = Int(block_idx.x)
     var e = Int(thread_idx.x)
 
@@ -2239,7 +2360,7 @@ def _splitk_merge_kernel_simd(
 
 
 def _batched_splitk_merge_kernel_simd(
-    attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits: Int, h_q: Int, d_head: Int,
+    attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits_i64: Int64, h_q_i64: Int64, d_head_i64: Int64,
 ):
     """Project Slipstream Phase 3 (2026-08-09): the B-aware / continuous-batching twin of
     `_splitk_merge_kernel_simd`, engine-side half of the batched flash-decoding pair (the partial
@@ -2261,6 +2382,11 @@ def _batched_splitk_merge_kernel_simd(
     `_splitk_merge_kernel_simd` (visible `splitk_merg`) WITHIN that window -- `_batched_splitk_merge_
     kernel_simd` is visible as `batched_spl`. A name like `_splitk_merge_kernel_simd_batched` would
     ALSO truncate to `splitk_merg` and collide with the single-stream merge at discovery."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_splits = Int(n_splits_i64)
+    var h_q = Int(h_q_i64)
+    var d_head = Int(d_head_i64)
     var idx = Int(block_idx.x)
     var b = idx // h_q
     var h = idx % h_q
@@ -2287,7 +2413,7 @@ def _batched_splitk_merge_kernel_simd(
 
 def _splitk_partial_kernel_simd_batched4(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, n_splits_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """The BARRIER-BATCHING twin of `_splitk_partial_kernel_simd` — IDENTICAL math (same online-
     softmax accumulation, same split-range partition, same two-level SIMD-shuffle-then-shared-array
@@ -2394,6 +2520,13 @@ def _splitk_partial_kernel_simd_batched4(
     splitk_pipeline`'s own match substring, so two pipelines matching one role in the same binary
     would collide with no way to tell them apart.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var n_splits = Int(n_splits_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     comptime _BATCH_K: Int = 4
     var grp = stack_allocation[_SIMD_GROUPS * _BATCH_K, DType.float32, address_space = AddressSpace.SHARED]()
@@ -2462,7 +2595,7 @@ def _splitk_partial_kernel_simd_batched4(
 
 def _splitk_partial_kernel_simd_native(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+    n_keys_i64: Int64, n_splits_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32,
 ):
     """The REDUCTION-SHAPE twin of `_splitk_partial_kernel_simd` — IDENTICAL online-softmax math,
     IDENTICAL split-range partition, IDENTICAL `(m, l, o)` output contract; only HOW one (head,
@@ -2606,6 +2739,13 @@ def _splitk_partial_kernel_simd_native(
     more key-parallel workers) exists to close, and exactly why that candidate is a SEPARATE,
     subsequent step rather than folded into this one.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n_keys = Int(n_keys_i64)
+    var n_splits = Int(n_splits_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
     comptime _MAX_PER_LANE: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     """Upper bound on elements one lane can own, sized off the same `RESIDENT_MAX_HEAD_DIM` ceiling
     `_SIMD_GROUPS` above uses for the identical reason: `d_head` is a runtime value but `InlineArray`
@@ -2652,7 +2792,7 @@ def _splitk_partial_kernel_simd_native(
 
 def _lmhead_argmax_kernel(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _FP,
-    k: Int, n: Int, eps: Float32, n_iters: Int,
+    k_i64: Int64, n_i64: Int64, eps: Float32, n_iters_i64: Int64,
 ):
     """Final rmsnorm, the full-vocabulary projection, and a per-threadgroup argmax. One dispatch.
 
@@ -2675,6 +2815,11 @@ def _lmhead_argmax_kernel(
     `llmk.generate.greedy_argmax_flat`'s documented convention — so a comparison against a reference
     implementation agrees even in an exact tie.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -2759,7 +2904,7 @@ def _lmhead_argmax_kernel(
 
 def _lmhead_argmax_kernel_f16(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _HP,
-    k: Int, n: Int, eps: Float32, n_iters: Int,
+    k_i64: Int64, n_i64: Int64, eps: Float32, n_iters_i64: Int64,
 ):
     """The fp16-weight twin of `_lmhead_argmax_kernel` — final rmsnorm, the tied lm_head projection
     and the per-threadgroup argmax, with `w` a resident Float16 buffer widened to Float32 on load.
@@ -2769,6 +2914,11 @@ def _lmhead_argmax_kernel_f16(
     bandwidth back. See `_norm_gemv_kernel_f16` for the widening discipline and `_HP` for why this
     stays a mixed-precision kernel rather than a half-precision one.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -2853,7 +3003,7 @@ def _lmhead_argmax_kernel_f16(
 
 def _lmhead_argmax_kernel_i8(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
-    k: Int, n: Int, eps: Float32, n_iters: Int,
+    k_i64: Int64, n_i64: Int64, eps: Float32, n_iters_i64: Int64,
 ):
     """The int8-weight twin of `_lmhead_argmax_kernel` — final rmsnorm, the tied lm_head projection
     and the per-threadgroup argmax, with `w` a resident Int8 buffer and `wscale` a per-vocabulary-
@@ -2867,6 +3017,11 @@ def _lmhead_argmax_kernel_i8(
     discipline and `_I8P` for why this stays a mixed-precision kernel (Float32 activations and
     accumulator throughout) rather than an all-int8 one.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
     var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -2953,7 +3108,7 @@ def _lmhead_argmax_kernel_i8(
 
 def _lmhead_argmax_kernel_simd_i8(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
-    k: Int, n: Int, eps: Float32, n_iters: Int,
+    k_i64: Int64, n_i64: Int64, eps: Float32, n_iters_i64: Int64,
 ):
     """The REDUCTION-MECHANISM twin of `_lmhead_argmax_kernel_i8` — IDENTICAL final rmsnorm, tied
     lm_head projection and per-threadgroup argmax math, only HOW its two internal reductions
@@ -3019,6 +3174,11 @@ def _lmhead_argmax_kernel_simd_i8(
     array, and the per-`it`-iteration reuse of the normalized vector becomes a re-read of two
     SLC/L2-resident `k`-vectors instead of a shared-memory hit.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var si = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
@@ -3107,7 +3267,7 @@ def _lmhead_argmax_kernel_simd_i8(
 
 def _lmhead_logits_kernel_simd_i8(
     logits: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
-    k: Int, n: Int, eps: Float32, n_iters: Int,
+    k_i64: Int64, n_i64: Int64, eps: Float32, n_iters_i64: Int64,
 ):
     """Parity gap 3 (sampling, 2026-08-10): the LOGITS-EMITTING twin of `_lmhead_argmax_kernel_
     simd_i8` -- byte-for-byte the SAME stage 1 (whole-vector sum of squares, two-level SIMD-shuffle
@@ -3133,6 +3293,11 @@ def _lmhead_logits_kernel_simd_i8(
     (see `_lmhead_argmax_kernel_simd_i8`'s STAGING REMOVED note) — the `_STAGE` shared vector is
     gone and each dot loop applies `(x * inv) * gamma` on the fly with the identical left-to-right
     Float32 expression, so `logits[j]` stays bit-for-bit the value the argmax kernel compares."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
     var lane = tid % _LANES
@@ -3199,7 +3364,7 @@ def _lmhead_logits_kernel_simd_i8(
             logits[j] = total
 
 
-def _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
+def _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n_i64: Int64):
     """Collapse the per-threadgroup `(logit, id)` pairs to one. `grid_dim = 1`, `block_dim = 256`.
 
     Ties resolve to the LOWEST id in both stages — the grid-stride scan uses strict `>`, and the
@@ -3207,6 +3372,9 @@ def _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP
     clause the winner of a tie would depend on threadgroup scheduling, which is exactly the kind of
     non-determinism that makes a generated sequence irreproducible.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n = Int(n_i64)
     var sv = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var si = stack_allocation[_TG, DType.int32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -3239,7 +3407,7 @@ def _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP
         out_idx[0] = si[0]
 
 
-def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
+def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n_i64: Int64):
     """The REDUCTION-MECHANISM twin of `_argmax_reduce_kernel` — IDENTICAL per-thread grid-stride
     local-best scan over `blk_val`/`blk_idx` and IDENTICAL tie-break-to-lowest-id convention; only
     HOW the `_TG=256`-wide combine collapses every thread's local `(best, best_i)` pair to one final
@@ -3295,6 +3463,9 @@ def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx
     `n` left it with no valid `blk_val`/`blk_idx` entry at all — must not appear to "tie" a real
     winner just because `_NEG_HUGE == _NEG_HUGE`.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n = Int(n_i64)
     var grp_v = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var grp_i = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
@@ -3361,7 +3532,7 @@ avoid a metaldispatch<->residentk import cycle."""
 
 def _batched_lmhead_argmax_kernel_simd_i8(
     blk_val: _FP, blk_idx: _IP, xn: _FP, w: _I8P, wscale: _FP,
-    B: Int, k: Int, n: Int, n_iters: Int,
+    B_i64: Int64, k_i64: Int64, n_i64: Int64, n_iters_i64: Int64,
 ):
     """Batched lm_head + per-vocab-slice argmax for B rows. `grid_dim = _LM_BLOCKS`, `block_dim =
     _TG`, same vocab partitioning as `_lmhead_argmax_kernel_simd_i8` (column
@@ -3371,6 +3542,12 @@ def _batched_lmhead_argmax_kernel_simd_i8(
     single-row kernel's per-threadgroup `(logit, id)` pair, consumed by
     `_batched_argmax_reduce_kernel_simd`. Rows beyond `B` are never touched; `B` must be <=
     `_BATCH_LMHEAD_MAX_ROWS`."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var B = Int(B_i64)
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
     var sv = stack_allocation[_SUBS * _BATCH_LMHEAD_MAX_ROWS, DType.float32, address_space = AddressSpace.SHARED]()
     var si = stack_allocation[_SUBS * _BATCH_LMHEAD_MAX_ROWS, DType.int32, address_space = AddressSpace.SHARED]()
     var acc = stack_allocation[_BATCH_LMHEAD_MAX_ROWS, DType.float32]()
@@ -3436,7 +3613,7 @@ def _batched_lmhead_argmax_kernel_simd_i8(
 
 
 def _batched_argmax_reduce_kernel_simd(
-    out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int,
+    out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n_i64: Int64,
 ):
     """B-row analogue of `_argmax_reduce_kernel_simd`: `grid_dim = B` (one threadgroup per sequence
     row), `block_dim = _TG`. Threadgroup `row` collapses that row's `n` per-vocab-slice
@@ -3444,6 +3621,9 @@ def _batched_argmax_reduce_kernel_simd(
     `out_val[row]`/`out_idx[row]`. Same grid-stride local scan, same 5-step lane butterfly, same
     `_SUBS`-way final combine, and the SAME tie-break-to-lowest-id clause as the single-row kernel,
     so each row resolves exactly as `_argmax_reduce_kernel_simd` would on that row's slice alone."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var n = Int(n_i64)
     var grp_v = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var grp_i = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
 
@@ -3539,7 +3719,7 @@ def _batched_argmax_reduce_kernel_simd(
 
 
 def _pf_embed_rows_kernel_i8(
-    hidden: _FP, embed: _I8P, embed_scale: _FP, token_ids: _IP, d_model: Int, m_rows: Int
+    hidden: _FP, embed: _I8P, embed_scale: _FP, token_ids: _IP, d_model_i64: Int64, m_rows_i64: Int64
 ):
     """Batched twin of `_embed_row_kernel_i8` -- gathers `m_rows` embedding rows in ONE dispatch
     instead of one dispatch per row. `grid_dim = ceil_div(d_model, _TG) * m_rows`; `block_idx.x`
@@ -3553,6 +3733,10 @@ def _pf_embed_rows_kernel_i8(
     `_embed_row_kernel_i8` would have written for token `token_ids[m]`, independent of every other
     row.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var d_model = Int(d_model_i64)
+    var m_rows = Int(m_rows_i64)
     var n_units = (d_model + _TG - 1) // _TG
     var unit = Int(block_idx.x) % n_units
     var m = Int(block_idx.x) // n_units
@@ -3566,7 +3750,7 @@ def _pf_embed_rows_kernel_i8(
 
 
 def _pf_qkv_proj_kernel_simd_i8(
-    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32, m_rows: Int
+    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64, eps: Float32, m_rows_i64: Int64
 ):
     """Batched twin of `_norm_gemv_kernel_simd_i8` -- IDENTICAL per-row rmsnorm+QKV-projection math
     and IDENTICAL two-level SIMD-shuffle reduction (see that kernel's own docstring for the full
@@ -3579,6 +3763,11 @@ def _pf_qkv_proj_kernel_simd_i8(
     `_norm_gemv_kernel_simd_i8` had been called `m_rows` separate times on `m_rows` separate single
     rows -- the oracle this kernel's own correctness gate diffs against).
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var m_rows = Int(m_rows_i64)
     var n_units = (n + _SUBS - 1) // _SUBS
     var unit = Int(block_idx.x) % n_units
     var m = Int(block_idx.x) // n_units
@@ -3640,8 +3829,8 @@ def _pf_qkv_proj_kernel_simd_i8(
 
 def _pf_ropewrt_kernel(
     q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
-    cos_t: _FP, sin_t: _FP, pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32, m_rows: Int,
-    qk_norm: Int,
+    cos_t: _FP, sin_t: _FP, pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, eps: Float32, m_rows_i64: Int64,
+    qk_norm_i64: Int64,
 ):
     """Batched twin of `_qk_rope_write_kernel` -- IDENTICAL per-row q_norm/k_norm/RoPE math and
     IDENTICAL in-place KV-cache write, computed independently for `m_rows` prefill rows in ONE
@@ -3654,6 +3843,14 @@ def _pf_ropewrt_kernel(
     per prefill position) instead of decode's single-row buffer -- the batched attention dispatch
     immediately after this one reads it row-by-row.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var m_rows = Int(m_rows_i64)
+    var qk_norm = Int(qk_norm_i64)
     var n_units = h_q + h_kv
     var b = Int(block_idx.x) % n_units
     var m = Int(block_idx.x) // n_units
@@ -3719,7 +3916,7 @@ def _pf_ropewrt_kernel(
 
 def _pf_attn_tiled_kernel_simd(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32, m_rows: Int,
+    pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32, m_rows_i64: Int64,
 ):
     """Phase-1 batched twin of `_sdpa_kernel_simd` -- IDENTICAL per-key online-softmax math and
     IDENTICAL two-level SIMD-shuffle reduction (see that kernel's own docstring for the full
@@ -3745,6 +3942,13 @@ def _pf_attn_tiled_kernel_simd(
     docstring and `benchmarks/llm_smoke/attn_reduction_lane_zero_bug_repro.mojo` for the full
     account. Byte-unmodified; this kernel does not introduce anything new.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var m_rows = Int(m_rows_i64)
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
     var n_q = h_q * d_head
@@ -3800,7 +4004,7 @@ inherit, isolating "does fewer rescales help" from "does hardware MMA help furth
 
 def _pf_attn8_kernel_simd(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
-    pos_base: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32, m_rows: Int,
+    pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, d_head_i64: Int64, scale: Float32, m_rows_i64: Int64,
 ):
     """Phase-1 twin of `_pf_attn_tiled_kernel_simd` -- IDENTICAL grid/block shape, IDENTICAL
     two-level SIMD-shuffle dot-product reduction per key (still one barrier pair per key; that cost
@@ -3825,6 +4029,13 @@ def _pf_attn8_kernel_simd(
     Shared memory is kept anyway (no correctness difference measured, and it avoids doubling the
     reduction cost, which a same-bug-either-way finding makes pointless).
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var m_rows = Int(m_rows_i64)
     comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
     var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
     var block_s = stack_allocation[_ATTN_BLOCK8_KEYS, DType.float32, address_space = AddressSpace.SHARED]()
@@ -3889,12 +4100,17 @@ def _pf_attn8_kernel_simd(
     attn_out[m * n_q + h * d_head + e] = o / denom
 
 
-def _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, m_rows: Int):
+def _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64, m_rows_i64: Int64):
     """Batched twin of `_gemv_accum_kernel_simd_i8` -- IDENTICAL projection-plus-residual-`+=` math
     and IDENTICAL single-level SIMD-shuffle reduction, computed independently for `m_rows` rows in
     ONE dispatch. Reused for BOTH `o_proj` (`k = h_q * d_head`, `n = d_model`) and `down_proj`
     (`k = d_ff`, `n = d_model`) exactly as its single-row twin already is by
     `metaldispatch.session_prefill`'s own descriptor plan -- see that module's docstring."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var m_rows = Int(m_rows_i64)
     var n_units = (n + _SUBS - 1) // _SUBS
     var unit = Int(block_idx.x) % n_units
     var m = Int(block_idx.x) // n_units
@@ -3939,11 +4155,16 @@ def _pf_gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, 
 
 
 def _pf_swiglu_kernel_simd_i8(
-    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32, m_rows: Int
+    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_ff_i64: Int64, eps: Float32, m_rows_i64: Int64
 ):
     """Batched twin of `_norm_gemv2_swiglu_kernel_simd_i8` -- IDENTICAL per-row rmsnorm/gate/up/
     SwiGLU math and IDENTICAL reduction shapes (see that kernel's own docstring), computed
     independently for `m_rows` rows in ONE dispatch."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
+    var m_rows = Int(m_rows_i64)
     var n_units = (n_ff + _SUBS - 1) // _SUBS
     var unit = Int(block_idx.x) % n_units
     var m = Int(block_idx.x) // n_units
@@ -4100,7 +4321,7 @@ runtime policy" pattern this file already uses for `_sdpa_kernel_simd` vs `_spli
 simd_native` vs `_splitk_partial_kernel_simd_batched4`."""
 
 
-def _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m_rows: Int):
+def _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k_i64: Int64, eps: Float32, m_rows_i64: Int64):
     """Batched RMSNorm + gamma over `m_rows` independent rows, writing the normalized result to a
     SEPARATE device buffer (`xn`) rather than keeping it in threadgroup-shared memory the way every
     fused GEMV kernel above does -- this kernel's whole purpose is to make that normalized row
@@ -4112,6 +4333,10 @@ def _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m
     byte-for-byte for that stage since the math is identical; only the final store differs (to
     device memory, not `stack_allocation`).
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var m_rows = Int(m_rows_i64)
     var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
     var m = Int(block_idx.x)
     if m >= m_rows:
@@ -4142,7 +4367,7 @@ def _pf_rmsnorm_rows_kernel(xn: _FP, x: _FP, gamma: _FP, k: Int, eps: Float32, m
         s += _TG
 
 
-def _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows_i64: Int64, k_i64: Int64, n_i64: Int64):
     """Weight-stationary tiled GEMM: `y[M,n] = xn[M,k] @ W^T[k,n]`, `w` stored `[n,k]` row-major
     (one output row's `k` coefficients contiguous). See this section's own module comment for the
     strategy this adapts from `accel.gemm_metal._tiled_gemm_kernel` and why the weight-tile
@@ -4174,6 +4399,11 @@ def _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int
     prefill chunks use hardware MMA unconditionally now (`session_prefill._apply_m_rows`), and this
     kernel's OWN other tested shapes (`m_rows` 8/33/128/512 at the same `k,n`) all pass cleanly.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var m_rows = Int(m_rows_i64)
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     comptime BM = _GEMM_BM
     comptime BN = _GEMM_BN
     comptime BK = _GEMM_BK
@@ -4241,7 +4471,7 @@ def _pf_gemm_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int
                 y[r * n + c] = acc[i2 * TN + j2]
 
 
-def _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows_i64: Int64, k_i64: Int64, n_i64: Int64):
     """Weight-stationary tiled GEMM: `y[M,n] += x[M,k] @ W^T[k,n]` -- byte-for-byte the same tiling
     as `_pf_gemm_assign_kernel_i8` (see that kernel's own docstring for the full account); the ONLY
     difference is the final store, `+=` instead of `=`, matching `_pf_gemv_accum_kernel_simd_i8`'s
@@ -4251,6 +4481,11 @@ def _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, 
     kernel this replaces either. Reused for BOTH `o_proj` and `down_proj`, exactly as that Phase-1
     kernel already is.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var m_rows = Int(m_rows_i64)
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     comptime BM = _GEMM_BM
     comptime BN = _GEMM_BN
     comptime BK = _GEMM_BK
@@ -4319,7 +4554,7 @@ def _pf_gemm_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, 
 
 
 def _pf_gemm_swiglu_kernel_i8(
-    act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n_ff: Int
+    act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows_i64: Int64, k_i64: Int64, n_ff_i64: Int64
 ):
     """Weight-stationary tiled GEMM computing BOTH gate and up projections from the SAME loaded
     `xn` tile in one pass -- gate rows `[0, n_ff)` of `w`/`wscale`, up rows `[n_ff, 2*n_ff)`, the SAME
@@ -4331,6 +4566,11 @@ def _pf_gemm_swiglu_kernel_i8(
     it twice" reuse `_pf_swiglu_kernel_simd_i8`'s own docstring achieves via `xs`, just register-
     tiled instead of one-column-per-SIMD-group.
     """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var m_rows = Int(m_rows_i64)
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     comptime BM = _GEMM_BM
     comptime BN = _GEMM_BN
     comptime BK = _GEMM_BK
@@ -4441,9 +4681,14 @@ def _pf_gemm_swiglu_kernel_i8(
 # ============================================================================================
 
 
-def _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows_i64: Int64, k_i64: Int64, n_i64: Int64):
     """The NARROW-tile twin of `_pf_gemm_assign_kernel_i8` -- see that kernel's own docstring for
     the full account; only `BM`/`TM` differ."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var m_rows = Int(m_rows_i64)
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     comptime BM = _GEMM_BM_NARROW
     comptime BN = _GEMM_BN
     comptime BK = _GEMM_BK
@@ -4511,9 +4756,14 @@ def _pf_gnrw_assign_kernel_i8(y: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int
                 y[r * n + c] = acc[i2 * TN + j2]
 
 
-def _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n: Int):
+def _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows_i64: Int64, k_i64: Int64, n_i64: Int64):
     """The NARROW-tile twin of `_pf_gemm_accum_kernel_i8` -- see that kernel's own docstring for
     the full account; only `BM`/`TM` differ."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var m_rows = Int(m_rows_i64)
+    var k = Int(k_i64)
+    var n = Int(n_i64)
     comptime BM = _GEMM_BM_NARROW
     comptime BN = _GEMM_BN
     comptime BK = _GEMM_BK
@@ -4582,10 +4832,15 @@ def _pf_gnrw_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, m_rows: Int, 
 
 
 def _pf_gnrw_swiglu_kernel_i8(
-    act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows: Int, k: Int, n_ff: Int
+    act: _FP, xn: _FP, w: _I8P, wscale: _FP, m_rows_i64: Int64, k_i64: Int64, n_ff_i64: Int64
 ):
     """The NARROW-tile twin of `_pf_gemm_swiglu_kernel_i8` -- see that kernel's own docstring for
     the full account; only `BM`/`TM` differ."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var m_rows = Int(m_rows_i64)
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
     comptime BM = _GEMM_BM_NARROW
     comptime BN = _GEMM_BN
     comptime BK = _GEMM_BK
