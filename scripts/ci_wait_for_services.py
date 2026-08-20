@@ -14,13 +14,18 @@ import sys
 import time
 import urllib.request
 
-# Non-standard host ports throughout — see ci.yml's `test` job env: block for why (a native
-# Homebrew Postgres permanently shadows 5432, and 9000 had a stale colima port-forward).
+# All three endpoints are overridable because ci.yml's `test` job no longer runs the services
+# on fixed host ports: each run gets Docker-assigned ports and exports the matching URLs
+# (CI_WAIT_POSTGRES_URL / CI_WAIT_REDIS_URL / CI_WAIT_MINIO_URL) before calling this script.
+# The defaults below are the LAST fixed ports the pre-redesign workflow used — they only apply
+# outside CI (e.g. a developer running this script by hand against the legacy layout).
 _POSTGRES_URL = os.environ.get(
     "CI_WAIT_POSTGRES_URL", "postgresql://postgres:postgres@localhost:15432/test_db"
 )
-_REDIS_URL = "redis://localhost:16379/0"
-_MINIO_READY = "http://localhost:19000/minio/health/ready"
+_REDIS_URL = os.environ.get("CI_WAIT_REDIS_URL", "redis://localhost:16379/0")
+_MINIO_READY = os.environ.get(
+    "CI_WAIT_MINIO_URL", "http://localhost:19000/minio/health/ready"
+)
 
 
 def _wait(name: str, check, attempts: int = 30, delay: float = 2.0) -> None:

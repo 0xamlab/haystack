@@ -9,19 +9,31 @@ on:
 permissions:
   contents: read
 
-# The self-hosted runner fleet shares one Docker daemon on one host. The `test` job's fixed
-# container names (postgres-ci, dragonfly-ci, minio) and fixed host ports let ANY two concurrent
-# runs clobber each other's containers mid-test (one run's `docker rm -f` deleting a still-in-use
-# container from another run — this bit us in practice: a PR's CI/CD and main's CI/CD overlapped
-# and main's Test failed with `psycopg2 ... connection ... refused` because the PR run had
-# `docker rm -f postgres-ci`'d main's live Postgres). The group is therefore WORKFLOW-WIDE, not
-# per-ref: only one CI/CD run may touch these shared containers at a time. cancel-in-progress is
-# false so runs QUEUE rather than cancel each other (a cancelled run leaves half-started containers
-# behind, and we don't want a PR push cancelling main's deploy run) — the cost is serialized CI,
-# which is the price of correctness on one shared Docker daemon.
+# Concurrency design (2026-08 redesign). History: the group used to be WORKFLOW-WIDE
+# (`ci-${{ github.workflow }}`, shared across ALL refs, cancel-in-progress: false) to stop two
+# runs clobbering the `test` job's then-fixed Docker service containers (postgres-ci /
+# dragonfly-ci / minio on fixed ports — one run's `docker rm -f` deleted another run's live
+# Postgres mid-test; PR #721 broadened the group to fix that). The cure had its own disease:
+# GitHub replaces a group's already-queued run whenever a newer run joins the same group, so
+# under merge-rush load the queue never drained — every new arrival EVICTED the waiting run
+# (cancelled with zero jobs), both PR runs (#776 was evicted ~5 times in ~3h) and main runs.
+#
+# The fix removes the shared resource instead of serializing harder: the `test` job now starts
+# its service containers with run-unique names and Docker-assigned host ports (see that job),
+# so runs for DIFFERENT refs can no longer collide and may run in parallel. The group is
+# therefore per-ref:
+#   - pull_request: one group per PR, cancel-in-progress TRUE — a new push supersedes that
+#     SAME PR's stale run and can never touch any other PR's run or a main run.
+#   - push (main/develop): one group per branch, cancel-in-progress FALSE — main runs still
+#     serialize so the build → deploy chain stays ordered (the deploy jobs additionally
+#     serialize per app). A queued main run replaced by a newer push is safe: main is
+#     cumulative, and the newer run's build+deploy publishes and rolls out `latest`, which
+#     contains the superseded commit.
+# Note: the job-level deploy concurrency groups below stay as they are — they serialize
+# migrations per Fly app, and a superseded deploy is likewise covered by the next one.
 concurrency:
-  group: ci-${{ github.workflow }}
-  cancel-in-progress: false
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.14"
@@ -39,15 +51,11 @@ jobs:
         python-version: ["3.14"]
 
     env:
-      # Non-standard host ports: this Mac already runs a native Homebrew Postgres bound to
-      # 127.0.0.1:5432 AND [::1]:5432 permanently. colima's docker port-forward binds the
-      # wildcard address on the SAME port number, and macOS routes "localhost" to whichever
-      # bind is more specific -- the native postgres always wins, silently, no bind-conflict
-      # error. Same story for port 9000 (a stale colima SSH-tunnel forward was still holding
-      # it). Sidestepping well-known ports entirely instead of relying on them being free.
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:15432/test_db
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:15432/test_db
-      REDIS_URL: redis://localhost:16379/0
+      # DATABASE_URL / DATABASE_URL_SYNC / REDIS_URL / S3_ENDPOINT_URL are NOT constants here
+      # anymore: the service containers below get Docker-assigned host ports (unique per run,
+      # so overlapping runs for different refs can't collide on this one shared Docker daemon),
+      # and the start step exports the port-derived URLs via $GITHUB_ENV once the ports are
+      # known. Everything that consumes them runs AFTER that step.
       JWT_SECRET: test-secret-not-for-production
       STRIPE_SECRET_KEY: sk_test_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
@@ -75,19 +83,93 @@ jobs:
       # Postgres up, and a manual step only has the ordering GitHub Actions gives it, not
       # services:'s automatic before-every-step guarantee.
       - name: Start Postgres + Dragonfly + MinIO, wait for integration services
+        env:
+          # Run/attempt/matrix-leg unique: with per-ref concurrency, runs for DIFFERENT refs
+          # may overlap on this one Docker daemon, and a re-run keeps the same run_id but
+          # bumps the attempt — the suffix must distinguish both.
+          CI_SERVICE_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.python-version }}
         run: |
-          # Persistent self-hosted runner, not an ephemeral cloud VM — a crashed/cancelled
-          # prior run can leave these containers behind, and a fixed --name collides on
-          # `docker run` otherwise.
-          docker rm -fv postgres-ci dragonfly-ci minio >/dev/null 2>&1 || true
-          docker run -d --name postgres-ci -p 15432:5432 \
+          # ── Reclaim leaked service containers ─────────────────────────────────────────
+          # Persistent self-hosted runner, not an ephemeral cloud VM: a cancelled or crashed
+          # run leaves its containers behind (a cancelled run stops at the step it dies in —
+          # the teardown below never gets to run). Every service container this workflow
+          # starts is labelled algenta-ci=test-services and carries its start epoch; anything
+          # older than the longest plausible test job (4h) is by definition a leak and is
+          # removed here. A CONCURRENT run's live containers are always younger than that and
+          # are never touched — that guarantee is what allows the per-ref concurrency above.
+          now=$(date +%s)
+          for cid in $(docker ps -aq --filter label=algenta-ci=test-services); do
+            created=$(docker inspect -f '{{ index .Config.Labels "algenta-ci-created" }}' "$cid" 2>/dev/null || true)
+            case "$created" in ''|*[!0-9]*) continue ;; esac
+            if [ $((now - created)) -gt 14400 ]; then
+              docker rm -fv "$cid" >/dev/null 2>&1 || true
+            fi
+          done
+          # Transitional sweep of the pre-redesign FIXED names (postgres-ci/dragonfly-ci/minio),
+          # under the same age guard so an in-flight old-style run's young containers survive.
+          # (.Created is UTC — parse it as UTC; this Mac's shell is not.)
+          for name in postgres-ci dragonfly-ci minio; do
+            cid=$(docker inspect -f '{{.Id}}' "$name" 2>/dev/null || true)
+            [ -n "$cid" ] || continue
+            raw=$(docker inspect -f '{{.Created}}' "$cid" 2>/dev/null | tr -d 'Z')
+            ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%S' "${raw%%.*}" +%s 2>/dev/null || echo 0)
+            case "$ts" in ''|*[!0-9]*) ts=0 ;; esac
+            if [ "$ts" -gt 0 ] && [ $((now - ts)) -gt 14400 ]; then
+              docker rm -fv "$cid" >/dev/null 2>&1 || true
+            fi
+          done
+
+          # ── Start THIS run's services: run-unique names + Docker-assigned host ports ──
+          # `-p 0:<container-port>` lets the daemon pick a free host port, so overlapping runs
+          # can never fight over a fixed port (and this also sidesteps this Mac's well-known
+          # port traps: a native Homebrew Postgres permanently shadows 5432 and 9000 had a
+          # stale colima forward — see git history for the fixed-port era). Verified on the
+          # fleet daemon: colima forwards the assigned port to the host and `localhost:<port>`
+          # is reachable from the runner.
+          pg_name="postgres-ci-${CI_SERVICE_SUFFIX}"
+          redis_name="dragonfly-ci-${CI_SERVICE_SUFFIX}"
+          minio_name="minio-ci-${CI_SERVICE_SUFFIX}"
+          docker run -d --name "$pg_name" -p 0:5432 \
+            --label algenta-ci=test-services \
+            --label "algenta-ci-created=$(date +%s)" \
+            --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
             postgres:16-alpine
-          docker run -d --name dragonfly-ci -p 16379:6379 --ulimit memlock=-1 \
+          docker run -d --name "$redis_name" -p 0:6379 --ulimit memlock=-1 \
+            --label algenta-ci=test-services \
+            --label "algenta-ci-created=$(date +%s)" \
+            --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
-          docker run -d --name minio -p 19000:9000 \
+          docker run -d --name "$minio_name" -p 0:9000 \
+            --label algenta-ci=test-services \
+            --label "algenta-ci-created=$(date +%s)" \
+            --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
             minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+
+          # docker port emits one line per binding (0.0.0.0:NNNN, then [::]:NNNN) — take the
+          # port number of the first.
+          pg_port=$(docker port "$pg_name" 5432 | head -n1 | awk -F: '{print $NF}')
+          redis_port=$(docker port "$redis_name" 6379 | head -n1 | awk -F: '{print $NF}')
+          minio_port=$(docker port "$minio_name" 9000 | head -n1 | awk -F: '{print $NF}')
+          echo "service containers: ${pg_name}:${pg_port} ${redis_name}:${redis_port} ${minio_name}:${minio_port}"
+
+          # The port-derived URLs used to be constants in the job env; they now follow the
+          # assigned ports. Export them for every subsequent step of this job — and into THIS
+          # step's own shell too, because ci_wait_for_services.py runs right here below.
+          {
+            echo "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:${pg_port}/test_db"
+            echo "DATABASE_URL_SYNC=postgresql://postgres:postgres@localhost:${pg_port}/test_db"
+            echo "REDIS_URL=redis://localhost:${redis_port}/0"
+            echo "S3_ENDPOINT_URL=http://localhost:${minio_port}"
+            echo "CI_WAIT_POSTGRES_URL=postgresql://postgres:postgres@localhost:${pg_port}/test_db"
+            echo "CI_WAIT_REDIS_URL=redis://localhost:${redis_port}/0"
+            echo "CI_WAIT_MINIO_URL=http://localhost:${minio_port}/minio/health/ready"
+          } >> "$GITHUB_ENV"
+          export CI_WAIT_POSTGRES_URL="postgresql://postgres:postgres@localhost:${pg_port}/test_db"
+          export CI_WAIT_REDIS_URL="redis://localhost:${redis_port}/0"
+          export CI_WAIT_MINIO_URL="http://localhost:${minio_port}/minio/health/ready"
+
           ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py
 
       # No actions/setup-python here: every Python invocation in this job goes through
@@ -191,7 +273,9 @@ jobs:
         env:
           ALGENTA_RI_OBJECT_STORE: s3
           ALGENTA_COORDINATION: redis
-          S3_ENDPOINT_URL: http://localhost:19000
+          # S3_ENDPOINT_URL is NOT set here on purpose: it follows the Docker-assigned MinIO
+          # port and arrives via $GITHUB_ENV from the service start step. A static value here
+          # would shadow it.
           ALGENTA_EGRESS_ALLOWLIST: localhost,127.0.0.1
           PYTEST_TIMEOUT: 60
         run: ./scripts/run_repo_python.sh -m pytest -q tests/test_object_store_minio_smoke.py tests/test_multi_replica_chaos.py
@@ -221,13 +305,17 @@ jobs:
           [ "$rc" -ne 0 ] && echo "::notice::test-impact exited $rc (observed-only, not gating)"
           exit 0
 
-      # End-of-run teardown — `if: always()` so FAILED/cancelled runs release disk too. Postgres
-      # and MinIO declare Dockerfile VOLUMEs, and a container left behind keeps its volumes
+      # End-of-run teardown — `if: always()` so FAILED runs release disk too. Postgres and
+      # MinIO declare Dockerfile VOLUMEs, and a container left behind keeps its volumes
       # referenced (undeletable by any prune). Without this step every run leaks them until the
-      # NEXT run's startup pre-clean — that is what refilled the runner disk after #733.
+      # NEXT run's startup reclaim — that is what refilled the runner disk after #733. If the
+      # run itself is CANCELLED the runner stops at the dying step and this never executes;
+      # the age-guarded label sweep in the start step reclaims those leftovers.
       - name: Stop integration services (release volumes)
         if: always()
-        run: docker rm -fv postgres-ci dragonfly-ci minio >/dev/null 2>&1 || true
+        env:
+          CI_SERVICE_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.python-version }}
+        run: docker rm -fv "postgres-ci-${CI_SERVICE_SUFFIX}" "dragonfly-ci-${CI_SERVICE_SUFFIX}" "minio-ci-${CI_SERVICE_SUFFIX}" >/dev/null 2>&1 || true
 
   # ── SDK artifact install ──────────────────────────────────────────────────
   # Proves the public Python SDKs install + import from the BUILT wheel in a fresh venv (not just
@@ -295,6 +383,12 @@ jobs:
     permissions:
       contents: read
       packages: read
+    env:
+      # Per-run-unique image tag: with per-ref concurrency, PR runs for DIFFERENT PRs may
+      # overlap, and a single shared tag (the old :pr) would let one PR's build overwrite
+      # the image another PR is about to verify. The verify script itself runs the image
+      # with an auto-generated container name and no published ports, so no collision there.
+      SMOKE_IMAGE_TAG: algenta-api-smoke:${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -313,11 +407,18 @@ jobs:
         # no native arm64 manifest to fall back to), but silently resolves the OTHER stages
         # (FROM python:3.14-slim, which DOES have an arm64 manifest) to the host's native arm64
         # instead -- producing a mixed-architecture image that would fail on real amd64 hardware.
-        # DOCKER_BUILDKIT=1 propagates --platform to every stage uniformly.
-        run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t algenta-api-smoke:pr .
+        # DOCKER_BUILDKIT=1 propagates --platform to every stage uniformly. The per-run tag
+        # keeps overlapping PR runs from clobbering each other's image (see the job env).
+        run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t "$SMOKE_IMAGE_TAG" .
 
       - name: Verify bundled Mojo server mode
-        run: bash scripts/verify_api_image_mojo_server_mode.sh algenta-api-smoke:pr
+        run: bash scripts/verify_api_image_mojo_server_mode.sh "$SMOKE_IMAGE_TAG"
+
+      # The unique-per-run tag means every run leaves an otherwise-orphan image on the shared
+      # daemon; drop it again so the fleet disk doesn't grow one API image per PR run.
+      - name: Remove smoke image (release disk)
+        if: always()
+        run: docker rmi "$SMOKE_IMAGE_TAG" >/dev/null 2>&1 || true
 
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
