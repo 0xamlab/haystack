@@ -329,11 +329,16 @@ jobs:
           ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
-          docker pull --platform linux/amd64 ubuntu:22.04
+          # docker_retry: transient Colima/dockerd flakes (exit 125 / unexpected EOF) wait
+          # for the fleet watchdog + guest systemd to heal the daemon, then retry; real
+          # build errors still fail immediately.
+          bash .github/scripts/docker_retry.sh \
+            docker pull --platform linux/amd64 ubuntu:22.04
           # Emulation is slower than the hosted native x86_64 runner, so the per-shard timeout
           # is enlarged (hosted: 900s). The RSS ceiling is generous: fleet machines carry far more
           # RAM than the hosted VM's 7.8 GiB, so no swap-provisioning step is needed.
-          docker run --rm --platform linux/amd64 \
+          bash .github/scripts/docker_retry.sh \
+            docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
@@ -365,11 +370,13 @@ jobs:
           ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
-          docker pull --platform linux/amd64 ubuntu:22.04
+          bash .github/scripts/docker_retry.sh \
+            docker pull --platform linux/amd64 ubuntu:22.04
           # Same emulation budget as build-linux: the CUDA variant compiles the SAME shard set,
           # with PTX codegen added for the gated kernels (measured shard-time growth during the
           # spike stays inside this timeout).
-          docker run --rm --platform linux/amd64 \
+          bash .github/scripts/docker_retry.sh \
+            docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
@@ -403,7 +410,8 @@ jobs:
           # than silently weakening the contract script's default.
           ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET: "60"
         run: |
-          docker run --rm --platform linux/amd64 \
+          bash .github/scripts/docker_retry.sh \
+            docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET \
