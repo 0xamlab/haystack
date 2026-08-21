@@ -5,26 +5,53 @@ description: Install Algenta, get a supported checkpoint, and run greedy decode 
 
 # Run local LLM decode
 
-By the end of this guide you will have installed Algenta, downloaded the one checkpoint this capability supports, tokenized a prompt, and run a real greedy decode through a compiled int8 Metal GPU kernel path — reading back the generated token ids on your own Apple Silicon machine. Everything runs inside the runtime that ships with the `algenta` package; there is nothing separate to start or manage.
+This guide installs Algenta, downloads the Qwen3-0.6B-Base checkpoint, tokenizes a prompt, and
+runs a greedy decode through the compiled int8 Metal GPU kernel path on an Apple Silicon machine.
+Everything runs inside the runtime that ships with the `algenta` package; there is nothing
+separate to start or manage.
 
-This is a narrow, real capability, not a general LLM-serving surface. Read [Requirements](#requirements) and [Limitations](#limitations) before you start — this page is only about **Qwen3-0.6B-Base**, on **Apple Silicon with Metal**.
+Scope: Qwen3-0.6B-Base on Apple Silicon with Metal. Read [Requirements](#requirements) and
+[Limitations](#limitations) before starting.
 
 ## Requirements
 
-* **Apple Silicon (M-series) Mac with Metal.** There is no CPU fallback and no support for other GPU vendors. The full LLM serving path — this decode included — runs on Metal only, the one backend run-verified end to end. NVIDIA CUDA is run-verified for the portable GPU kernel layer on real T4, L4 and A100 hardware, and a CUDA-native LLM session has been race-measured on A100/L4, but the shipped serving path here is Metal-only; AMD ROCm is not verified. See [GPU support](../engine/gpu-support.md).
-* **Python 3.14** — `pip install algenta` requires it.
-* **The exact checkpoint this kernel path was compiled for**: [`Qwen/Qwen3-0.6B-Base`](https://huggingface.co/Qwen/Qwen3-0.6B-Base) (Apache-2.0, ungated — no Hugging Face account or token needed). No other Qwen3 size and no other model family.
-* **`numpy`**, to convert the checkpoint's published BF16 weights. Install it with the `benchmark` extra: `pip install "algenta[benchmark]"`.
-* **A tokenizer for the checkpoint.** This capability takes token ids in and token ids out, not raw text — the example below uses `transformers`' `AutoTokenizer` against the same checkpoint directory.
+* Apple Silicon (M-series) Mac with Metal. There is no CPU fallback and no support for other GPU
+  vendors. The LLM serving path runs on Metal only. NVIDIA CUDA is run-verified for the portable
+  GPU kernel layer on T4, L4 and A100 hardware, and a CUDA-native LLM session is benchmarked on
+  A100/L4, but the shipped serving path here is Metal-only; AMD ROCm is not verified. See
+  [GPU support](../engine/gpu-support.md).
+* Python 3.14 — `pip install algenta` requires it.
+* The checkpoint this kernel path was compiled for:
+  [`Qwen/Qwen3-0.6B-Base`](https://huggingface.co/Qwen/Qwen3-0.6B-Base) (Apache-2.0, ungated — no
+  Hugging Face account or token needed). No other Qwen3 size and no other model family.
+* `numpy`, to convert the checkpoint's published BF16 weights. Install it with the `benchmark`
+  extra: `pip install "algenta[benchmark]"`.
+* A tokenizer for the checkpoint. This capability takes token ids in and token ids out, not raw
+  text — the example below uses `transformers`' `AutoTokenizer` against the same checkpoint
+  directory.
 
 ## Limitations
 
-* **One model, one exact shape.** Qwen3-0.6B-Base's exact architecture only (`hidden_size=1024`, 28 layers, 16 query heads, 8 key/value heads, `head_dim=128`, `vocab_size=151936`, tied embeddings). A checkpoint of any other shape is refused by name before any conversion or GPU work starts. Other Qwen3 sizes (for example Qwen3-1.7B) run through the model-agnostic path instead — see [Model-agnostic LLM inference](run-qwen3-family-inference.md).
-* **One hardware family, run-verified.** Apple Silicon with Metal, and nothing else — the only GPU lane this LLM path runs on. A host with no Metal accelerator gets a named refusal, never a slower silent substitute. (CUDA runs the portable kernel layer and has a race-measured native LLM session, but not this shipped session path, and ROCm is not verified — [GPU support](../engine/gpu-support.md).)
-* **Greedy decode only.** Every generated token is the argmax at that step. There is no sampling, no temperature, no top-p/top-k, and no beam search.
-* **One call, start to finish.** There is no session you open once and step token-by-token across separate calls — a single call prefills the prompt and decodes to `max_new_tokens` or an end-of-text token in one round trip.
-* **Every call converts the checkpoint first.** The checkpoint's BF16 weights are converted into the kernel's own flat format on every call by default, which takes real time before decoding starts.
-* **Not a chat template; token ids in.** This pinned path takes token ids, not raw text. Tokenize with the checkpoint's own tokenizer — either `algenta.load_tokenizer()` (built into the SDK, no dependencies) or `transformers`' `AutoTokenizer`; the example below shows the latter.
+* One model, one exact shape. Qwen3-0.6B-Base's exact architecture only (`hidden_size=1024`,
+  28 layers, 16 query heads, 8 key/value heads, `head_dim=128`, `vocab_size=151936`, tied
+  embeddings). A checkpoint of any other shape raises `UnsupportedCheckpointArchitectureError`
+  naming every mismatched field before any conversion or GPU work starts. Other Qwen3 sizes (for
+  example Qwen3-1.7B) run through the model-agnostic path — see
+  [Model-agnostic LLM inference](run-qwen3-family-inference.md).
+* One hardware family. Apple Silicon with Metal. A host without a Metal accelerator raises a
+  named error. CUDA runs the portable kernel layer and has a benchmarked native LLM session, but
+  not this shipped session path; ROCm is not verified —
+  [GPU support](../engine/gpu-support.md).
+* Greedy decode only. Every generated token is the argmax at that step. There is no sampling, no
+  temperature, no top-p/top-k, and no beam search.
+* One call, start to finish. A single call prefills the prompt and decodes to `max_new_tokens` or
+  an end-of-text token. There is no session to open once and step token-by-token across separate
+  calls.
+* Every call converts the checkpoint first. The checkpoint's BF16 weights are converted into the
+  kernel's own flat format on every call by default, which takes time before decoding starts.
+* Token ids in, not raw text. Tokenize with the checkpoint's own tokenizer — either
+  `algenta.load_tokenizer()` (built into the SDK, no dependencies) or `transformers`'
+  `AutoTokenizer`; the example below shows the latter.
 
 ## Install Algenta
 
@@ -32,7 +59,8 @@ This is a narrow, real capability, not a general LLM-serving surface. Read [Requ
 {% step %}
 ### Install the package
 
-The `algenta` package installs the matching compiled native runtime automatically — there is no separate Mojo/Metal toolchain to install.
+The `algenta` package installs the matching compiled native runtime automatically — there is no
+separate Mojo/Metal toolchain to install.
 
 ```bash
 python3.14 -m venv .venv
@@ -48,13 +76,13 @@ pip install "algenta[benchmark]"
 algenta runtime doctor
 ```
 
-Expect a report that ends in `READY`, with the bundled native runtime verified and no fallback. If this does not say `READY`, resolve that first — nothing in the rest of this guide will run without it.
+Expect a report that ends in `READY`, with the bundled native runtime verified and no fallback.
 {% endstep %}
 {% endstepper %}
 
 ## Get the checkpoint
 
-This capability does not download anything for you — get your own copy of `Qwen/Qwen3-0.6B-Base` onto disk first, the same way you would for any other checkpoint:
+Algenta does not download the checkpoint; get a copy of `Qwen/Qwen3-0.6B-Base` onto disk first:
 
 ```bash
 pip install huggingface_hub
@@ -74,7 +102,8 @@ snapshot_download(
 {% step %}
 ### Tokenize your prompt
 
-`qwen3_i8_allsimd7_decode()` takes a list of integer token ids, not a string. Tokenize with the checkpoint's own tokenizer:
+`qwen3_i8_allsimd7_decode()` takes a list of integer token ids, not a string. Tokenize with the
+checkpoint's own tokenizer:
 
 ```python title="tokenize_prompt.py"
 from transformers import AutoTokenizer
@@ -87,7 +116,9 @@ prompt_token_ids = tokenizer("The capital of France is", return_tensors=None)["i
 {% step %}
 ### Call the decode function
 
-`qwen3_i8_allsimd7_decode()` needs a `MojoRuntime` (so it can reach the bundled runtime), the checkpoint directory, your prompt token ids, and how many tokens to generate. It converts the checkpoint automatically the first time you call it.
+`qwen3_i8_allsimd7_decode()` takes a `MojoRuntime`, the checkpoint directory, your prompt token
+ids, and how many tokens to generate. It converts the checkpoint automatically the first time you
+call it.
 
 ```python title="run_decode.py"
 from algenta import MojoRuntime, qwen3_i8_allsimd7_decode
@@ -106,7 +137,8 @@ result = qwen3_i8_allsimd7_decode(
 {% step %}
 ### Read the result
 
-`result` is a `Qwen3DecodeResult`: `token_ids` is your prompt followed by every generated token, in order.
+`result` is a `Qwen3DecodeResult`: `token_ids` is your prompt followed by every generated token,
+in order.
 
 ```python title="read_result.py"
 print(result.token_ids)
@@ -118,13 +150,14 @@ print(tokenizer.decode(generated_only))
 {% endstep %}
 {% endstepper %}
 
-{% hint style="success" %}
-**Expected result** — `result.token_ids` is a non-empty list of integers starting with your prompt's own token ids, followed by up to `max_new_tokens` generated ids (fewer if the model produced an end-of-text token first). Decoding `generated_only` with the tokenizer reads as ordinary continuation text, and `result.decode_tokens_per_sec` is a positive number. If the call did not raise, generation happened — an empty result is never a silent, valid response.
-{% endhint %}
+Expected result: `result.token_ids` is a non-empty list of integers starting with your prompt's
+own token ids, followed by up to `max_new_tokens` generated ids (fewer if the model produced an
+end-of-text token first). Decoding `generated_only` with the tokenizer reads as ordinary
+continuation text, and `result.decode_tokens_per_sec` is a positive number.
 
 ## Troubleshooting
 
-`qwen3_i8_allsimd7_decode()` never returns a plausible-looking wrong answer for a mismatch it can detect — it raises instead, by name:
+Detected mismatches raise named errors:
 
 | What you did | What you get |
 | --- | --- |
@@ -132,7 +165,8 @@ print(tokenizer.decode(generated_only))
 | Pointed `checkpoint_dir` at a path with no `config.json` / `model.safetensors` | `Qwen3DecodeError` with code `checkpoint_not_found`. |
 | Ran on a host, or a runtime build, without working Metal GPU support | `Qwen3DecodeError` with code `metaldispatch_shader_toolchain_absent`. |
 
-Every one of these is a `Qwen3DecodeError` (or its subclass `UnsupportedCheckpointArchitectureError`), and every instance carries a stable `.code` string:
+Every one of these is a `Qwen3DecodeError` (or its subclass
+`UnsupportedCheckpointArchitectureError`), and every instance carries a stable `.code` string:
 
 ```python title="handle_errors.py"
 from algenta import Qwen3DecodeError

@@ -7,29 +7,28 @@ description: Greedy decode on Apple Silicon through the int8 Metal GPU kernel pa
 
 `metaldispatch.qwen3_decode` runs Qwen3-0.6B-Base end to end on Apple Silicon through the compiled
 int8-weight Metal kernel path (`_MBQwen3I8AllSimd7`): prompt in, generated token ids out, one call.
-One exact architecture and one hardware family, by construction — the kernels are compiled for this
-shape. Measured throughput: [Decode throughput](../benchmarks/decode-throughput.md).
+The kernels are compiled for this one architecture and hardware family. Measured throughput:
+[Decode throughput](../benchmarks/decode-throughput.md).
 
-The model-agnostic door onto the same kernel family — any supported Qwen3-family shape, seeded
+The model-agnostic entry point on the same kernel family — any supported Qwen3-family shape, seeded
 sampling, text in/text out — is `algenta.inference.decode`; see
 [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md).
 
 ## GPU support matrix
 
-Algenta's GPU lanes are at different maturity stages, and this page's entry point sits on exactly
-one of them. The canonical matrix — every backend, what is verified, and the requirements — is
-[GPU support](gpu-support.md); the short version for this page:
+The full matrix — every backend, verification status, and requirements — is
+[GPU support](gpu-support.md). Summary for this page's entry point:
 
-| Backend | Build status | Launch status | What running it needs |
+| Backend | Build status | Launch status | Requirements |
 | --- | --- | --- | --- |
-| Metal (Apple Silicon) | Run-verified, ships in the macOS runtime | Run-verified end to end on real hardware | An M-series Mac — nothing else |
-| CUDA (NVIDIA) | Portable kernel layer **run-verified**, compile-gated in CI; native LLM session **benchmarked** | Portable kernels run bit-exact on real T4, L4 and A100 hardware; a separate CUDA-native resident session is benchmarked on A100/L4 — this Metal entry point is not that session | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver ≥ 580 |
-| ROCm (AMD) | Compile-gate in progress | Not verified | — |
+| Metal (Apple Silicon) | Run-verified, ships in the macOS runtime | Run-verified end to end on real hardware | An M-series Mac |
+| CUDA (NVIDIA) | Portable kernel layer run-verified, compile-gated in CI; native LLM session benchmarked | Portable kernels run bit-exact on T4, L4 and A100; a separate CUDA-native resident session is benchmarked on A100/L4 — this Metal entry point is not that session | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver >= 580 |
+| ROCm (AMD) | Compile gate in progress | Not verified | — |
 
-The CUDA lane runs the PORTABLE gpu kernels; the Metal batched-dispatch machinery this page
-documents is gated separately (`ALGENTA_METAL`). The CUDA lane includes a native resident session
-(v2 prefill GEMMs + CUDA-graph decode) benchmarked on A100/L4; the SDK entry point on this page
-is Metal-only. Measured NVIDIA numbers:
+The CUDA lane runs the portable GPU kernels; the Metal batched-dispatch machinery documented on
+this page is gated separately (`ALGENTA_METAL`). The CUDA lane includes a native resident session
+(v2 prefill GEMMs + CUDA-graph decode) benchmarked on A100/L4; the SDK entry point on this page is
+Metal-only. Measured NVIDIA numbers:
 [NVIDIA kernel benchmarks](../benchmarks/nvidia-kernel-benchmarks.md) (portable kernels) and
 [NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md) (LLM session).
 
@@ -55,33 +54,37 @@ result.token_ids                # prompt ids followed by generated ids
 result.decode_tokens_per_sec
 ```
 
-## Usage guidance
+## Usage notes
 
-- **Checkpoint**: download the snapshot yourself (`huggingface_hub.snapshot_download` with
+* Checkpoint: download the snapshot yourself (`huggingface_hub.snapshot_download` with
   `repo_id="Qwen/Qwen3-0.6B-Base"`); nothing here fetches from the network. Pass
-  `converted_checkpoint_dir` after a one-time `prepare_qwen3_checkpoint()` to skip re-converting on
-  repeated calls.
-- **Tokens**: this path takes token ids. Tokenize with `algenta.load_tokenizer(checkpoint_dir)`
+  `converted_checkpoint_dir` after a one-time `prepare_qwen3_checkpoint()` to skip re-converting
+  on repeated calls.
+* Tokens: this path takes token ids. Tokenize with `algenta.load_tokenizer(checkpoint_dir)`
   (built in, no dependencies) or `transformers.AutoTokenizer` against the same directory.
-- **One-shot shape**: one call opens the session, uploads weights, prefills, and decodes. There is
-  no open/step/close surface; the weights load on every call.
-- **Refusals are named, never silent**: a checkpoint of any other shape raises
-  `UnsupportedCheckpointArchitectureError` naming every mismatched field before any GPU work; a
-  worker built without `-D ALGENTA_GPU` returns `metaldispatch_shader_toolchain_absent`; a host
-  without a Metal accelerator returns `metaldispatch_no_device`; missing files return
-  `checkpoint_not_found`. A call that returns at all has generated tokens.
+* One-shot shape: one call opens the session, uploads weights, prefills, and decodes. There is no
+  open/step/close surface; the weights load on every call.
+* Refusals: a checkpoint of any other shape raises `UnsupportedCheckpointArchitectureError` naming
+  every mismatched field before any GPU work; a worker built without `-D ALGENTA_GPU` returns
+  `metaldispatch_shader_toolchain_absent`; a host without a Metal accelerator returns
+  `metaldispatch_no_device`; missing files return `checkpoint_not_found`. A successful return
+  always contains generated token ids.
 
 ## Verification
 
-- `prepare_qwen3_checkpoint` is checked byte-for-byte against the benchmark's own converter on a
+* `prepare_qwen3_checkpoint` is checked byte-for-byte against the benchmark's own converter on a
   real checkpoint (`tests/test_qwen3_decode_checkpoint_conversion.py`).
-- The GPU end-to-end path asserts the reference first token (374) and the reference continuation
-  on the 256-token race prompt (`tests/test_inference_gpu_e2e.py`).
-- Every decode step asserts its dispatch count against the generated budget; a mismatch is an
-  error, not a result.
+* The GPU end-to-end path asserts the reference first token (374) and the reference continuation
+  on the 256-token benchmark prompt (`tests/test_inference_gpu_e2e.py`).
+* Every decode step asserts its dispatch count against the generated budget; a mismatch raises an
+  error.
 
-**Next:** the measured [decode throughput](../benchmarks/decode-throughput.md),
-[batched decode](../benchmarks/batched-decode-throughput.md) for multi-request workloads, the
-[model-agnostic guide](../guides/run-qwen3-family-inference.md), or the
-[runtime library catalog](runtime-libraries.md) (same call over `POST /v1/libraries/execute`,
-`module=metaldispatch.qwen3_decode`).
+## Related
+
+* [Decode throughput](../benchmarks/decode-throughput.md) — measured single-stream decode.
+* [Batched decode throughput](../benchmarks/batched-decode-throughput.md) — multi-request
+  workloads.
+* [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md) — the model-agnostic
+  guide.
+* [Runtime libraries](runtime-libraries.md) — the same call over `POST /v1/libraries/execute`,
+  `module=metaldispatch.qwen3_decode`.

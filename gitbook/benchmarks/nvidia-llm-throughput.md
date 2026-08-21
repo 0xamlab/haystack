@@ -8,7 +8,9 @@ description: Measured LLM inference throughput of the CUDA-native session on NVI
 This page reports measured throughput of the CUDA-native resident session (Qwen3-0.6B-Base) on
 NVIDIA A100-SXM4-40GB and L4, against llama.cpp built with GGML\_CUDA on the same machines.
 
-## Results — A100-SXM4-40GB
+## Results
+
+### A100-SXM4-40GB
 
 256-token prompt, greedy, resident weights. Median of 20 runs per cell; rel-IQR <= 5% on all cells.
 
@@ -24,7 +26,7 @@ NVIDIA A100-SXM4-40GB and L4, against llama.cpp built with GGML\_CUDA on the sam
 * Algenta weights are Float32 on this toolchain; see Implementation notes for the quantized-format
   status.
 
-## Results — L4
+### L4
 
 Same protocol on g2-standard-8 (sm\_89).
 
@@ -40,27 +42,27 @@ Algenta decode on the L4 runs at 86% of the fp32 weight-bandwidth floor (2.62 GB
 
 ## Implementation notes
 
-* **Prefill.** v2 GEMM family: 4x4 register block on a 64x64 output tile, software-pipelined
-  shared-memory loads, one 128-bit `float4` global load per thread per tile, bank-conflict-aware
-  layouts. Layer GEMM sum is 9.9x the first generation; wide roles reach 29-38% of the A100's
-  19.5 TFLOP/s FP32 SIMT peak (probe-measured ceiling: 90%).
-* **Decode.** One CUDA graph per session with zero per-token host traffic, split-K
-  flash-decoding (32 splits), warp-shuffle attention reduction; 4.6x the per-dispatch path.
-* **Weight format.** The pinned Mojo 1.0.0 / MAX 26.5 CUDA backend serves only Float32 vector
-  loads at memory bandwidth (probe battery: f16 4-7% of peak, int8 1-2%, Int32 ~2%) and exposes
-  no tensor-core or inline-asm surface to user code. Decode is therefore fp32-weight-bandwidth
-  bound; quantized CUDA weight formats activate when the backend load paths change.
+* Prefill: v2 GEMM family — 4x4 register block on a 64x64 output tile, software-pipelined
+  shared-memory loads, one 128-bit `float4` global load per thread per tile,
+  bank-conflict-aware layouts. Layer GEMM sum is 9.9x the first generation; wide roles reach
+  29-38% of the A100's 19.5 TFLOP/s FP32 SIMT peak (probe-measured ceiling: 90%).
+* Decode: one CUDA graph per session with zero per-token host traffic, split-K flash-decoding
+  (32 splits), warp-shuffle attention reduction; 4.6x the per-dispatch path.
+* Weight format: the pinned Mojo 1.0.0 / MAX 26.5 CUDA backend serves only Float32 vector loads
+  at memory bandwidth (probe battery: f16 4-7% of peak, int8 1-2%, Int32 ~2%) and exposes no
+  tensor-core or inline-asm surface to user code. Decode is fp32-weight-bandwidth bound;
+  quantized CUDA weight formats activate when the backend load paths change.
 
 ## Methodology
 
-* **Checkpoint.** `Qwen/Qwen3-0.6B-Base` (Hugging Face, unmodified). Workload: fixed 256-token
+* Checkpoint: `Qwen/Qwen3-0.6B-Base` (Hugging Face, unmodified). Workload: fixed 256-token
   prompt, greedy (temperature 0).
-* **Opponent.** llama.cpp pinned at 000547513f, GGML\_CUDA, same VM; fixture via
+* Opponent: llama.cpp pinned at 000547513f, GGML\_CUDA, same VM; fixture via
   `llama-completion -no-cnv`; warm references via llama-bench.
-* **Statistics.** 20 runs per cell, median, rel-IQR <= 5%; a 16/16 greedy-token oracle gates
-  every build before measurement; an optimization arm is accepted only after its bench number
-  moves over baseline.
-* **Hardware.** GCP a2-highgpu-1g (A100-SXM4-40GB) and g2-standard-8 (L4), driver 595.71.05,
+* Statistics: 20 runs per cell, median, rel-IQR <= 5%; a 16/16 greedy-token oracle gates every
+  build before measurement; an optimization variant is recorded only after its bench number moves
+  over baseline.
+* Hardware: GCP a2-highgpu-1g (A100-SXM4-40GB) and g2-standard-8 (L4), driver 595.71.05,
   Ubuntu 22.04, mojo 1.0.0 / MAX 26.5.0; clocks sampled during the timed regions.
 
 ## Scope
@@ -73,9 +75,11 @@ Algenta decode on the L4 runs at 86% of the fp32 weight-bandwidth floor (2.62 GB
 
 ## Related
 
-* [NVIDIA kernel benchmarks](nvidia-kernel-benchmarks.md) — the portable-kernel layer on T4/L4/A100.
+* [NVIDIA kernel benchmarks](nvidia-kernel-benchmarks.md) — the portable-kernel layer on
+  T4/L4/A100.
 * [GPU support](../engine/gpu-support.md) — the verification matrix.
 * [Prefill (token input) throughput](llm-prefill-throughput.md) — Metal prefill.
 * [Decode throughput](decode-throughput.md) — Metal single-stream decode.
-* [LLM inference overview](llm-inference-overview.md) — prefill and decode together on Apple silicon.
+* [LLM inference overview](llm-inference-overview.md) — prefill and decode together on Apple
+  silicon.
 * [Benchmarks](overview.md) — methodology.

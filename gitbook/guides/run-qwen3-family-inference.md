@@ -5,32 +5,35 @@ description: Run any supported checkpoint on Apple Silicon through Algenta's mod
 
 # Model-agnostic LLM inference
 
-By the end of this guide you will have installed Algenta, downloaded a Qwen3-family checkpoint of
-your choice, and run real greedy inference through the model-agnostic Metal GPU kernel path —
-one call, prompt token ids in, generated token ids out, on your own Apple Silicon machine.
-
-This is the **model-agnostic** door onto the same race-verified kernels the
-[local LLM decode guide](run-qwen3-decode.md) uses: instead of one SDK function compiled for one
-exact shape, `algenta.inference.decode()` accepts any model whose architecture the kernels support
-and routes it to the model-agnostic entry point. Verified end to end on **Qwen3-0.6B-Base** and
-**Qwen3-1.7B** with identical greedy output (first token matches an independent `transformers` CPU
-reference on both).
+`algenta.inference.decode()` runs any supported checkpoint through the model-agnostic Metal GPU
+kernel path: one call, prompt token ids in, generated token ids out, on Apple Silicon. It uses
+the same kernels as the [local LLM decode guide](run-qwen3-decode.md) and accepts any model whose
+architecture the kernels support. Verified end to end on Qwen3-0.6B-Base and Qwen3-1.7B with
+identical greedy output (first token matches an independent `transformers` CPU reference on
+both).
 
 ## Requirements
 
-* **Apple Silicon (M-series) Mac with Metal.** There is no CPU fallback and no support for other GPU vendors.
-* **Python 3.14** — `pip install algenta` requires it.
-* **A local Hugging Face checkpoint snapshot** (`config.json` + one or more `model*.safetensors`, single- or multi-shard). Downloaded by you, never by this call — for example `Qwen/Qwen3-0.6B-Base` or `Qwen/Qwen3-1.7B` (both Apache-2.0, ungated).
-* **`numpy`**, to convert the checkpoint's published BF16 weights: `pip install "algenta[benchmark]"`.
-* **No external tokenizer needed.** The SDK implements the checkpoint's own `tokenizer.json` (Qwen3-family byte-level BPE, byte-for-byte validated against `transformers`) — pass `prompt_text` straight to `decode()`. You can still bring your own token ids if you prefer.
-* **A Metal-GPU build of the runtime worker.** The GPU worker binaries are produced by the repo's own build script (`scripts/build_mojo_binary.sh` with `MOJO_BUILD_METAL_GPU=1`); GPU packaging for the signed bundled runtime is on the roadmap.
+* Apple Silicon (M-series) Mac with Metal. There is no CPU fallback and no support for other GPU
+  vendors.
+* Python 3.14 — `pip install algenta` requires it.
+* A local Hugging Face checkpoint snapshot (`config.json` + one or more `model*.safetensors`,
+  single- or multi-shard), downloaded separately — for example `Qwen/Qwen3-0.6B-Base` or
+  `Qwen/Qwen3-1.7B` (both Apache-2.0, ungated).
+* `numpy`, to convert the checkpoint's published BF16 weights: `pip install "algenta[benchmark]"`.
+* No external tokenizer needed. The SDK implements the checkpoint's own `tokenizer.json`
+  (Qwen3-family byte-level BPE, byte-for-byte validated against `transformers`) — pass
+  `prompt_text` straight to `decode()`. Token ids are also accepted.
+* A Metal-GPU build of the runtime worker. The GPU worker binaries are produced by the repo's own
+  build script (`scripts/build_mojo_binary.sh` with `MOJO_BUILD_METAL_GPU=1`); GPU packaging for
+  the signed bundled runtime is on the roadmap.
 
-## Supported models — and exactly what is refused
+## Supported models
 
-The kernels implement the **Qwen3 decoder family**: grouped-query attention with RMSNorm on Q/K,
-tied embeddings, SiLU-gated FFN, RoPE, no attention bias. Any checkpoint matching those structural
-invariants and the alignment gates runs; anything else raises `UnsupportedArchitectureError` naming
-the exact mismatch, from `config.json` alone, before any conversion or GPU work:
+The kernels implement the Qwen3 decoder family: grouped-query attention with RMSNorm on Q/K, tied
+embeddings, SiLU-gated FFN, RoPE, no attention bias. Any checkpoint matching those structural
+invariants and the alignment gates runs; anything else raises `UnsupportedArchitectureError`
+naming the exact mismatch, from `config.json` alone, before any conversion or GPU work:
 
 | Gate | Requirement |
 | --- | --- |
@@ -39,28 +42,37 @@ the exact mismatch, from `config.json` alone, before any conversion or GPU work:
 | Embeddings | `tie_word_embeddings` true |
 | Bias | no attention bias |
 
-One build serves one **staging tier**: the decode kernels' shared-memory staging is compiled to the
+One build serves one staging tier: the decode kernels' shared-memory staging is compiled to the
 model's own `stage_needed = max(hidden_size, num_attention_heads * head_dim, intermediate_size)`.
-Qwen3-0.6B-Base (3072) and Qwen3-1.7B (6144) are the two tiers with ready worker builds — a worker
-built for one tier refuses a model that needs the other, by name, rather than running it wrong.
+Qwen3-0.6B-Base (3072) and Qwen3-1.7B (6144) are the two tiers with ready worker builds; a worker
+built for one tier raises a named error for a model that needs the other.
 
-## Limitations
+## Notes
 
-* **Chat template applies via `messages`, not raw text.** Pass `messages=` (a list of chat dicts) and `decode()` formats them with the checkpoint's own `chat_template` — the SDK's dependency-free `algenta.chat_template`, byte-for-byte identical to `transformers`. A raw `prompt_text` string is tokenized as-is, with no template. Special strings in the text (like the end-of-text token) map to their own ids either way.
-* **Greedy by default.** `decode()` with no sampling arguments is the fused argmax path. Pass `temperature > 0` to sample — see [Sampling](#sampling).
-* **One call, start to finish.** One call prefills the prompt and decodes to `max_new_tokens` or end-of-text; there is no open session to step across calls.
-* **Weights load per call — with a cache.** Each call loads the weights, but the first call on a converted checkpoint writes `weights_i8.cache` (the exact quantized device bytes, 8x smaller than the converted blob); later calls restore it and skip re-quantization entirely. See [The quantized load cache](#the-quantized-load-cache).
+* Chat template applies via `messages`, not raw text. Pass `messages=` (a list of chat dicts) and
+  `decode()` formats them with the checkpoint's own `chat_template` — the SDK's dependency-free
+  `algenta.chat_template`, byte-for-byte identical to `transformers`. A raw `prompt_text` string
+  is tokenized as-is, with no template. Special strings in the text (like the end-of-text token)
+  map to their own ids either way.
+* Greedy by default. `decode()` with no sampling arguments is the fused argmax path. Pass
+  `temperature > 0` to sample — see [Sampling](#sampling).
+* One call, start to finish. One call prefills the prompt and decodes to `max_new_tokens` or
+  end-of-text; there is no open session to step across calls.
+* Weights load per call, with a cache. Each call loads the weights, but the first call on a
+  converted checkpoint writes `weights_i8.cache` (the exact quantized device bytes, 8x smaller
+  than the converted blob); later calls restore it and skip re-quantization entirely. See
+  [The quantized load cache](#the-quantized-load-cache).
 
 ## Convert once, decode many times
 
-`prepare_model_checkpoint()` reads the checkpoint's own `config.json` for the shape, handles single-
-or multi-shard safetensors, pre-transposes the GEMM weights the kernels expect, and writes the flat
-`manifest.json` + `weights.blob` pair the kernel reads. `decode()` converts for you into
+`prepare_model_checkpoint()` reads the checkpoint's own `config.json` for the shape, handles
+single- or multi-shard safetensors, pre-transposes the GEMM weights the kernels expect, and writes
+the flat `manifest.json` + `weights.blob` pair the kernel reads. `decode()` converts for you into
 `<checkpoint>/.algenta-cache/` on first use and reuses that pair on every later call — the prompt
 travels separately from the converted weights, so one conversion serves every prompt. Pass
 `converted_checkpoint_dir` to point at a conversion you placed elsewhere yourself.
 
-Within one worker process the loaded weights also stay RESIDENT: the first request loads them, and
+Within one worker process the loaded weights also stay resident: the first request loads them, and
 repeat requests adopt them directly (measured ~18x faster than the first load); switching to a
 different checkpoint loads that model instead.
 
@@ -90,22 +102,22 @@ print(result.token_ids[result.n_prompt:])      # ids are always available too
 print(result.prefill_tokens_per_sec, result.decode_tokens_per_sec)
 ```
 
-Prefer to keep working in token ids? Pass `prompt_token_ids=[...]` instead of `prompt_text` —
-`decode()` accepts exactly one of `prompt_text`, `prompt_token_ids`, or `messages`, and token-id
-calls never load the tokenizer. Chatting? Pass `messages=[{"role": "user", "content": ...}]` and
-the checkpoint's own `chat_template` formats the prompt before tokenization.
+To keep working in token ids, pass `prompt_token_ids=[...]` instead of `prompt_text` — `decode()`
+accepts exactly one of `prompt_text`, `prompt_token_ids`, or `messages`, and token-id calls never
+load the tokenizer. For chat, pass `messages=[{"role": "user", "content": ...}]` and the
+checkpoint's own `chat_template` formats the prompt before tokenization.
 `algenta.tokenizer.load_tokenizer()` and `algenta.chat_template.apply_chat_template()` are also
-exposed directly (`encode` / `decode`, and template rendering) if you want the ids or the formatted
-text without calling `decode()`.
+exposed directly (`encode` / `decode`, and template rendering) if you want the ids or the
+formatted text without calling `decode()`.
 
 ## Long context
 
 The engine sizes its own context as `max(512, n_prompt + max_new_tokens)`, auto-raised whenever a
-call needs more, up to a 65,536 safety ceiling — prompts and generations far past the historical 512
-default just work. Verified: a 256-token prompt + 300 new tokens (556 total) and deep soaks of 2,048
-new tokens on 0.6B / 1,024 on 1.7B, every token checked against the reference.
+call needs more, up to a 65,536 ceiling. Verified: a 256-token prompt + 300 new tokens (556
+total) and deep soaks of 2,048 new tokens on 0.6B / 1,024 on 1.7B, every token checked against
+the reference.
 
-`max_ctx` on `decode()` is a **caller-side guard**, not an override: a value below
+`max_ctx` on `decode()` is a caller-side guard, not an override: a value below
 `n_prompt + max_new_tokens` is refused before any work happens; a larger value is accepted but
 cannot change a one-shot run, because nothing inside a single call can consume context beyond what
 the prompt + generation uses.
@@ -133,30 +145,29 @@ result = decode(
 ```
 
 Properties: the same prompt + parameters + seed reproduce the identical token sequence; `top_k=1`
-at any temperature reproduces the greedy sequence exactly; and the sampled pass materializes the
-full logits row host-side, so it runs slower per token than greedy — it exists for generation
-parity, not speed.
+at any temperature reproduces the greedy sequence exactly; the sampled pass materializes the full
+logits row host-side, so it runs slower per token than greedy.
 
 ## The quantized load cache
 
-The first `decode()` on a converted checkpoint writes `weights_i8.cache` next to the manifest — the
-exact post-quantization device bytes (int8 weights + per-row scales, ~1 byte/param against the flat
-blob's 8). Every later call on that checkpoint restores the cache instead of re-reading the full
-blob and re-running quantization. Measured on M4 Max:
+The first `decode()` on a converted checkpoint writes `weights_i8.cache` next to the manifest —
+the exact post-quantization device bytes (int8 weights + per-row scales, ~1 byte/param against
+the flat blob's 8). Every later call on that checkpoint restores the cache instead of re-reading
+the full blob and re-running quantization. Measured on M4 Max:
 
 | Model | Converted blob | Cache | Cold call | Cached call |
 | --- | --- | --- | --- | --- |
 | Qwen3-0.6B-Base | 4.77 GB | 0.598 GB | 4.87 s | 1.57 s (3.10x) |
 | Qwen3-1.7B | 13.76 GB | 1.724 GB | 10.98 s | 5.70 s (1.93x) |
 
-Cached and cold calls produce **byte-identical greedy sequences** — the cache is the very bytes the
+Cached and cold calls produce byte-identical greedy sequences — the cache holds the same bytes the
 GPU kernels read. The validity gate is magic + dims + SHA-256 of `manifest.json` + exact length:
 any mismatch falls back to the full path and rewrites a fresh cache. A cache written for one
 checkpoint never passes another's gate.
 
-## Refusals, by name
+## Errors
 
-`decode()` never returns a plausible-looking wrong answer for a mismatch it can detect — it raises:
+Detected mismatches raise named errors:
 
 | Error | Meaning |
 | --- | --- |
