@@ -100,7 +100,9 @@ stage3() {
 
 # ── stage 4: llama.cpp at the campaign pin, CUDA build ───────────────────────
 stage4() {
-    if [[ -x "$LLAMA_DIR/build/bin/llama-bench" ]]; then log "stage 4 cached"; return; fi
+    if [[ -x "$LLAMA_DIR/build/bin/llama-bench" && -x "$LLAMA_DIR/build/bin/llama-server" ]]; then
+        log "stage 4 cached"; return
+    fi
     log "stage 4: llama.cpp @ $LLAMA_PIN with GGML_CUDA=ON"
     rm -rf "$LLAMA_DIR"
     # Pinned-commit source tarball (auditable: exact SHA, same pin as
@@ -120,7 +122,7 @@ stage4() {
         -DCMAKE_CUDA_ARCHITECTURES="${cuda_arch}-real" -DLLAMA_CURL=OFF \
         >/tmp/llama_cmake.log 2>&1 || { tail -40 /tmp/llama_cmake.log; exit 1; }
     cmake --build "$LLAMA_DIR/build" --config Release -j"$(nproc)" \
-        --target llama-bench llama-cli llama-completion llama-quantize \
+        --target llama-bench llama-cli llama-completion llama-quantize llama-server \
         >/tmp/llama_build.log 2>&1 \
         || { tail -40 /tmp/llama_build.log; exit 1; }
     log "stage 4 done: $("$LLAMA_DIR/build/bin/llama-cli" --version 2>&1 | head -1)"
