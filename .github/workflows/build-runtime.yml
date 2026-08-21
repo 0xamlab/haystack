@@ -361,6 +361,11 @@ jobs:
     # deliberately NOT in clean-machine-contract's or publish-pypi's `needs`, and its wheel is a
     # compile-gate artifact, not a shippable one (publish-pypi downloads release artifacts by
     # explicit name below, so this wheel can never reach PyPI by accident).
+    # Serialized AFTER build-linux (2026-08-21): all five runners share ONE Colima VM, and two
+    # concurrent amd64 emulation builds doubled the peak load until the VM wedged (docker socket
+    # AND sshd silent -> watchdog VM restart -> every in-flight container job died with
+    # unexpected EOF / exit 125). The gate is not on the publish critical path; stability wins.
+    needs: [build-linux]
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
     timeout-minutes: 360
     steps:
