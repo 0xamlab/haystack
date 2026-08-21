@@ -56,8 +56,11 @@ The kernel reads weights from a flat `manifest.json` + `weights.blob` pair, not 
 HuggingFace snapshot directly. `prepare_model_checkpoint()` is a model-agnostic converter (reads the
 checkpoint's own `config.json` for the shape, handles single- or multi-shard safetensors, pre-
 transposes the GEMM weights the kernels expect, and writes the same flat format the production
-session reads). `decode()` calls it for you; call it directly to convert once and reuse the result
-across many decode calls.
+session reads). Conversion STREAMS one tensor at a time -- peak host memory is O(one tensor / one
+tile), independent of model size, so small hosts convert models far bigger than their RAM (the
+pre-streaming path materialized the whole model several times at once and peaked ~30 GB on a
+Qwen3-0.6B checkpoint). `decode()` calls it for you; call it directly to convert once and reuse
+the result across many decode calls.
 
 GGUF model files, the llama.cpp interchange format
 --------------------------------------------------
@@ -80,6 +83,7 @@ from __future__ import annotations
 import json
 import struct
 import tempfile
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -248,6 +252,60 @@ def _bf16_bytes_to_f64(raw: bytes) -> Any:
     u16 = np.frombuffer(raw, dtype="<u2")
     u32 = u16.astype(np.uint32) << 16
     return u32.view(np.float32).astype(np.float64)
+
+
+# Host-memory ceiling of the streaming converter (2026-08-20): the BF16 -> Float64 widen and the
+# blob write run in tiles of this many elements, so conversion peaks at O(one tensor / one tile)
+# of host RAM, independent of model size. The pre-streaming path materialized EVERY tensor's
+# Float64 values at once and then ran the whole model through three more full copies (entries
+# list + np.concatenate + astype + tobytes) -- a Qwen3-0.6B BF16 checkpoint peaked at ~30 GB and
+# OOMed the NVIDIA race's 16 GB VMs. At 4 Mi elements one tile's transient footprint is ~56 MiB
+# (2 B/element of BF16 view + 4 B/element u32 widen + 8 B/element f64 out).
+_STREAM_TILE_ELEMENTS = 4 * 1024 * 1024
+
+
+def _bf16_bytes_to_f64_tiles(raw: bytes) -> Iterator[Any]:
+    """Exact BF16 -> Float64 widen streamed in `_STREAM_TILE_ELEMENTS` tiles: concatenating the
+    yielded arrays is BIT-identical to `_bf16_bytes_to_f64(raw)` -- the widen is element-wise, so
+    tiling it cannot change a single value. The tiles VIEW `raw` (no copy of the BF16 bytes)."""
+    import numpy as np
+
+    n_elements = len(raw) // 2
+    for start in range(0, n_elements, _STREAM_TILE_ELEMENTS):
+        count = min(_STREAM_TILE_ELEMENTS, n_elements - start)
+        u16 = np.frombuffer(raw, dtype="<u2", count=count, offset=start * 2)
+        yield (u16.astype(np.uint32) << 16).view(np.float32).astype(np.float64)
+
+
+def _bf16_bytes_to_f64_transposed(raw: bytes, shape: list[int]) -> Any:
+    """Exact BF16 -> Float64 widen of a `[rows, cols]` tensor, returned flat in the PRE-TRANSPOSED
+    order (`[cols, rows]` row-major) the kernels consume -- the exact values
+    `_bf16_bytes_to_f64(raw).reshape(shape).T.copy().reshape(-1)` produces, but filled row-tile by
+    row-tile so the transient ON TOP of the output buffer is O(tile), never a second full-tensor
+    copy. The output buffer itself is the one tensor-sized allocation an exact in-memory transpose
+    cannot avoid (and the GEMM weights it serves are the small hidden-x-hidden matrices, never the
+    embedding table)."""
+    import numpy as np
+
+    rows, cols = shape
+    out = np.empty((cols, rows), dtype=np.float64)
+    tile_rows = max(1, _STREAM_TILE_ELEMENTS // cols)
+    for r0 in range(0, rows, tile_rows):
+        r1 = min(rows, r0 + tile_rows)
+        u16 = np.frombuffer(raw, dtype="<u2", count=(r1 - r0) * cols, offset=r0 * cols * 2)
+        wide = (u16.astype(np.uint32) << 16).view(np.float32).astype(np.float64)
+        out[:, r0:r1] = wide.reshape(r1 - r0, cols).T
+    return out.reshape(-1)
+
+
+def _write_f64_streamed(handle: Any, values: Any) -> None:
+    """Write one tensor's Float64 values as the exact little-endian f8 bytes the session weight
+    loaders read, in tiles so the transient `tobytes()` copy is O(tile). `astype("<f8",
+    copy=False)` is a no-op view on a little-endian float64 array -- the bytes written are exactly
+    what the pre-streaming path's `values.astype("<f8").tobytes()` wrote."""
+    arr = values.astype("<f8", copy=False)
+    for start in range(0, arr.size, _STREAM_TILE_ELEMENTS):
+        handle.write(arr[start : start + _STREAM_TILE_ELEMENTS].tobytes())
 
 
 def _resolve_shard_for_tensor(
@@ -456,38 +514,58 @@ def _required_hf_tensor_names(
 def _write_converted_checkpoint(
     resolved_out_dir: Path,
     *,
-    entries: list[tuple[str, Any, list[int], bool]],
+    entries: Iterable[tuple[str, Iterable[Any], list[int], bool]],
     config: dict[str, Any],
     prompt_token_ids: list[int],
     has_qk_norm: bool,
     tied_embeddings: bool,
     rope_freq_factors: list[float] | None = None,
 ) -> Path:
-    """The shared converter tail: concatenate the per-tensor Float64 values (already widened and,
-    where the kernels want it, pre-transposed) into `weights.blob`, and write the `manifest.json`
-    the production session reads. Both `prepare_model_checkpoint()` (safetensors) and
-    `prepare_model_checkpoint_from_gguf()` (GGUF) end here, so the pair they produce is the SAME
-    format, written by the SAME code. `entries` is (hf_name, flat f64 values, shape, transposed)."""
-    import numpy as np
+    """The shared converter tail: STREAM the per-tensor Float64 values (already widened and,
+    where the kernels want it, pre-transposed) into `weights.blob` one tensor at a time, and
+    write the `manifest.json` the production session reads. Both `prepare_model_checkpoint()`
+    (safetensors) and `prepare_model_checkpoint_from_gguf()` (GGUF) end here, so the pair they
+    produce is the SAME format, written by the SAME code.
 
-    blob_chunks = []
+    `entries` is an iterable of `(hf_name, f64 value chunks, shape, transposed)` -- a GENERATOR
+    keeps host memory at O(one tensor): the blob grows by sequential append and no whole-model
+    buffer ever exists. (The pre-streaming tail held every tensor's Float64 values in an entries
+    list and then ran the whole model through np.concatenate, astype and tobytes -- four
+    whole-model buffers at once.) Each tensor's chunks concatenate to exactly its flat values, so
+    the bytes written are exactly the pre-streaming tail's. """
+    blob_path = resolved_out_dir / "weights.blob"
     manifest_tensors: dict[str, Any] = {}
     cursor = 0
-    for name, values, shape, transposed in entries:
-        n_elements = 1
-        for dim in shape:
-            n_elements *= dim
-        blob_chunks.append(values)
-        manifest_tensors[name] = {
-            "offset": cursor,
-            "n_elements": int(n_elements),
-            "shape": shape,
-            "transposed": transposed,
-        }
-        cursor += n_elements
-
-    blob = np.concatenate(blob_chunks)
-    (resolved_out_dir / "weights.blob").write_bytes(blob.astype("<f8").tobytes())
+    try:
+        with blob_path.open("wb") as blob_out:
+            for name, value_chunks, shape, transposed in entries:
+                n_elements = 1
+                for dim in shape:
+                    n_elements *= dim
+                written = 0
+                for chunk in value_chunks:
+                    _write_f64_streamed(blob_out, chunk)
+                    written += chunk.size
+                if written != n_elements:
+                    raise InferenceError(
+                        "checkpoint_not_found",
+                        f"tensor {name!r} converted to {written} Float64 values but its shape "
+                        f"{shape} declares {n_elements} -- the converter and the checkpoint "
+                        "disagree about this tensor's contents.",
+                    )
+                manifest_tensors[name] = {
+                    "offset": cursor,
+                    "n_elements": int(n_elements),
+                    "shape": shape,
+                    "transposed": transposed,
+                }
+                cursor += n_elements
+    except BaseException:
+        # A mid-stream failure (a later shard missing or corrupt) must not leave a PARTIAL blob
+        # behind: the pre-streaming tail converted every tensor before writing anything, so a
+        # failure left the output directory empty. Keep that contract.
+        blob_path.unlink(missing_ok=True)
+        raise
 
     manifest_config: dict[str, Any] = {
         "hidden_size": config["hidden_size"],
@@ -1125,26 +1203,29 @@ def prepare_model_checkpoint_from_gguf(
     )
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
 
-    entries: list[tuple[str, Any, list[int], bool]] = []
-    for name in sorted(required):
-        info = hf_tensors.get(name)
-        if info is None:
-            raise InferenceError(
-                "checkpoint_not_found",
-                f"the GGUF file {gguf_path} is missing the tensor the manifest needs as "
-                f"{name!r}.",
-            )
-        values, shape = _gguf_read_tensor_values(gguf_path, info, data_start)
-        transposed = False
-        if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
-            values = values.reshape(shape).T.copy().reshape(-1)
-            shape = [shape[1], shape[0]]
-            transposed = True
-        entries.append((name, values, shape, transposed))
+    def _iter_entries() -> Iterator[tuple[str, Iterable[Any], list[int], bool]]:
+        # One tensor in flight at a time, same discipline as the safetensors front door: the GGUF
+        # reader seek+reads one tensor's bytes per call, the streaming writer appends them, and no
+        # whole-model buffer ever exists.
+        for name in sorted(required):
+            info = hf_tensors.get(name)
+            if info is None:
+                raise InferenceError(
+                    "checkpoint_not_found",
+                    f"the GGUF file {gguf_path} is missing the tensor the manifest needs as "
+                    f"{name!r}.",
+                )
+            values, shape = _gguf_read_tensor_values(gguf_path, info, data_start)
+            transposed = False
+            if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
+                values = values.reshape(shape).T.copy().reshape(-1)
+                shape = [shape[1], shape[0]]
+                transposed = True
+            yield name, (values,), shape, transposed
 
     return _write_converted_checkpoint(
         resolved_out_dir,
-        entries=entries,
+        entries=_iter_entries(),
         config=config,
         prompt_token_ids=prompt_token_ids,
         has_qk_norm=has_qk_norm,
@@ -1237,37 +1318,40 @@ def prepare_model_checkpoint(
     )
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
 
-    entries: list[tuple[str, Any, list[int], bool]] = []
-    for name in sorted(required):
-        shard_path = _resolve_shard_for_tensor(checkpoint_dir, name, index)
-        header, data_start = _read_safetensors_header(shard_path)
-        info = header.get(name)
-        if info is None:
-            raise InferenceError(
-                "checkpoint_not_found", f"tensor {name!r} not found in {shard_path}."
-            )
-        if info.get("dtype") != "BF16":
-            raise InferenceError(
-                "checkpoint_not_found",
-                f"{name} in {shard_path} is {info.get('dtype')}, expected BF16 -- this converter "
-                "handles BF16 checkpoints.",
-            )
-        shape = list(info["shape"])
-        start, end = info["data_offsets"]
-        with shard_path.open("rb") as handle:
-            handle.seek(data_start + start)
-            raw = handle.read(end - start)
-        values = _bf16_bytes_to_f64(raw)
-        transposed = False
-        if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
-            values = values.reshape(shape).T.copy().reshape(-1)
-            shape = [shape[1], shape[0]]
-            transposed = True
-        entries.append((name, values, shape, transposed))
+    def _iter_entries() -> Iterator[tuple[str, Iterable[Any], list[int], bool]]:
+        # One tensor in flight at a time: read its BF16 bytes out of the shard, widen in tiles,
+        # yield to the streaming writer -- the full model is never resident in host memory.
+        for name in sorted(required):
+            shard_path = _resolve_shard_for_tensor(checkpoint_dir, name, index)
+            header, data_start = _read_safetensors_header(shard_path)
+            info = header.get(name)
+            if info is None:
+                raise InferenceError(
+                    "checkpoint_not_found", f"tensor {name!r} not found in {shard_path}."
+                )
+            if info.get("dtype") != "BF16":
+                raise InferenceError(
+                    "checkpoint_not_found",
+                    f"{name} in {shard_path} is {info.get('dtype')}, expected BF16 -- this "
+                    "converter handles BF16 checkpoints.",
+                )
+            shape = list(info["shape"])
+            start, end = info["data_offsets"]
+            with shard_path.open("rb") as handle:
+                handle.seek(data_start + start)
+                raw = handle.read(end - start)
+            transposed = False
+            if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
+                chunks = (_bf16_bytes_to_f64_transposed(raw, shape),)
+                shape = [shape[1], shape[0]]
+                transposed = True
+            else:
+                chunks = _bf16_bytes_to_f64_tiles(raw)
+            yield name, chunks, shape, transposed
 
     return _write_converted_checkpoint(
         resolved_out_dir,
-        entries=entries,
+        entries=_iter_entries(),
         config=config,
         prompt_token_ids=prompt_token_ids,
         has_qk_norm=has_qk_norm,

@@ -177,17 +177,6 @@ def _read_safetensors_header(path: Path) -> tuple[dict[str, Any], int]:
     return header, 8 + header_len
 
 
-def _bf16_bytes_to_f64(raw: bytes) -> Any:
-    """Exact BF16 -> Float64 widen. BF16 is the top 16 bits of FP32, so zero-extending the low 16
-    bits reconstructs the FP32 bit pattern exactly, and that FP32 value is exact in Float64 — the
-    same reasoning and the same bit operation `generate_manifest.py.bf16_bytes_to_f64` uses."""
-    import numpy as np
-
-    u16 = np.frombuffer(raw, dtype="<u2")
-    u32 = u16.astype(np.uint32) << 16
-    return u32.view(np.float32).astype(np.float64)
-
-
 def prepare_checkpoint(
     checkpoint_dir: str | Path,
     prompt_token_ids: list[int],
@@ -205,7 +194,9 @@ def prepare_checkpoint(
     Raises `UnsupportedCheckpointArchitectureError` if the checkpoint is not Qwen3-0.6B-Base's exact
     shape, and `Qwen3DecodeError("checkpoint_not_found", ...)` if the expected files are missing.
     Returns the directory the manifest + blob were written to (`out_dir`, or a fresh temporary
-    directory when omitted).
+    directory when omitted). Conversion STREAMS one tensor at a time -- peak host memory is
+    O(one tensor / one tile), independent of model size; the output bytes are exactly the
+    pre-streaming converter's.
     """
     try:
         import numpy as np  # noqa: F401
@@ -266,44 +257,69 @@ def prepare_checkpoint(
             f"{n_layers}-layer Qwen3-0.6B-Base checkpoint.",
         )
 
-    import numpy as np
+    # Streaming conversion (2026-08-20): one tensor in flight at a time, the blob written by
+    # sequential append -- the pre-streaming path read the WHOLE safetensors file into one bytes
+    # object and then ran the whole model through four full Float64 buffers at once (every
+    # tensor's values held at once + np.concatenate + astype + tobytes), peaking ~30 GB of host
+    # RAM on this very checkpoint. The widen/transpose/write primitives are `algenta.inference`'s
+    # own streaming helpers -- the exact same bit operations this module always used, tiled.
+    from algenta.inference import (
+        _bf16_bytes_to_f64_tiles,
+        _bf16_bytes_to_f64_transposed,
+        _write_f64_streamed,
+    )
 
-    with safetensors_path.open("rb") as handle:
-        raw_all = handle.read()
-
-    blob_chunks = []
+    blob_path = resolved_out_dir / "weights.blob"
     manifest_tensors: dict[str, Any] = {}
     cursor = 0
-    for name in names:
-        info = header[name]
-        if info.get("dtype") != "BF16":
-            raise Qwen3DecodeError(
-                "checkpoint_not_found",
-                f"{name} in {safetensors_path} is {info.get('dtype')}, expected BF16 — this "
-                "converter only handles Qwen3-0.6B-Base's own published (BF16) checkpoint.",
-            )
-        shape = list(info["shape"])
-        start, end = info["data_offsets"]
-        values = _bf16_bytes_to_f64(raw_all[data_start + start : data_start + end])
-        n_elements = 1
-        for dim in shape:
-            n_elements *= dim
-        transposed = False
-        if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
-            values = values.reshape(shape).T.copy().reshape(-1)
-            shape = [shape[1], shape[0]]
-            transposed = True
-        blob_chunks.append(values)
-        manifest_tensors[name] = {
-            "offset": cursor,
-            "n_elements": int(n_elements),
-            "shape": shape,
-            "transposed": transposed,
-        }
-        cursor += n_elements
-
-    blob = np.concatenate(blob_chunks)
-    (resolved_out_dir / "weights.blob").write_bytes(blob.astype("<f8").tobytes())
+    try:
+        with blob_path.open("wb") as blob_out:
+            for name in names:
+                info = header[name]
+                if info.get("dtype") != "BF16":
+                    raise Qwen3DecodeError(
+                        "checkpoint_not_found",
+                        f"{name} in {safetensors_path} is {info.get('dtype')}, expected BF16 — this "
+                        "converter only handles Qwen3-0.6B-Base's own published (BF16) checkpoint.",
+                    )
+                shape = list(info["shape"])
+                start, end = info["data_offsets"]
+                n_elements = 1
+                for dim in shape:
+                    n_elements *= dim
+                with safetensors_path.open("rb") as handle:
+                    handle.seek(data_start + start)
+                    raw = handle.read(end - start)
+                transposed = False
+                if len(shape) == 2 and name.endswith(_TRANSPOSE_SUFFIXES):
+                    chunks = (_bf16_bytes_to_f64_transposed(raw, shape),)
+                    shape = [shape[1], shape[0]]
+                    transposed = True
+                else:
+                    chunks = _bf16_bytes_to_f64_tiles(raw)
+                written = 0
+                for chunk in chunks:
+                    _write_f64_streamed(blob_out, chunk)
+                    written += chunk.size
+                if written != n_elements:
+                    raise Qwen3DecodeError(
+                        "checkpoint_not_found",
+                        f"tensor {name!r} converted to {written} Float64 values but its shape "
+                        f"{shape} declares {n_elements} — the converter and the checkpoint "
+                        "disagree about this tensor's contents.",
+                    )
+                manifest_tensors[name] = {
+                    "offset": cursor,
+                    "n_elements": int(n_elements),
+                    "shape": shape,
+                    "transposed": transposed,
+                }
+                cursor += n_elements
+    except BaseException:
+        # A mid-stream failure must not leave a PARTIAL blob behind: the pre-streaming path
+        # converted every tensor before writing anything, so a failure left the directory empty.
+        blob_path.unlink(missing_ok=True)
+        raise
 
     manifest = {
         "config": {
