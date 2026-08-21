@@ -109,6 +109,14 @@ from residentk.kernels_prefill_f32 import (
     _pf_gemm_accum_kernel,
     _pf_gemm_swiglu_kernel,
 )
+from residentk.kernels_prefill_f32_v2 import (
+    _G2_BM,
+    _G2_BN,
+    _G2_NTHREADS,
+    _pf_gemm_assign_kernel_v2,
+    _pf_gemm_accum_kernel_v2,
+    _pf_gemm_swiglu_kernel_v2,
+)
 from residentk.kernels_cuda_graph import (
     _embed_row_kernel_g,
     _graph_advance_kernel,
@@ -443,13 +451,14 @@ struct _CudaResidentQwen3(Movable):
                         Int64(self.d_model), self.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN)
-                    self.ctx.enqueue_function[_pf_gemm_assign_kernel](
+                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN) — the v2
+                    # register-blocked / double-buffered kernel (kernels_prefill_f32_v2)
+                    self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
                         self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
                         lw.w_qkv.unsafe_ptr(),
                         Int64(m), Int64(self.d_model), Int64((self.h_q + 2 * self.h_kv) * self.d_head),
-                        grid_dim=_ceil_div(m, _GEMM_BM) * _ceil_div((self.h_q + 2 * self.h_kv) * self.d_head, _GEMM_BN),
-                        block_dim=_GEMM_NTHREADS,
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div((self.h_q + 2 * self.h_kv) * self.d_head, _G2_BN),
+                        block_dim=_G2_NTHREADS,
                     )
                     # 3 ── q_norm + k_norm + RoPE + the in-place KV-cache write, every row
                     self.ctx.enqueue_function[_pf_ropewrt_kernel](
@@ -469,13 +478,13 @@ struct _CudaResidentQwen3(Movable):
                         self.scale, Int64(m),
                         grid_dim=self.h_q * m, block_dim=self.d_head,
                     )
-                    # 5 ── o_proj ACCUMULATED straight into the residual stream
-                    self.ctx.enqueue_function[_pf_gemm_accum_kernel](
+                    # 5 ── o_proj ACCUMULATED straight into the residual stream (v2 kernel)
+                    self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
                         self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
                         lw.w_o.unsafe_ptr(),
                         Int64(m), Int64(n_q), Int64(self.d_model),
-                        grid_dim=_ceil_div(m, _GEMM_BM) * _ceil_div(self.d_model, _GEMM_BN),
-                        block_dim=_GEMM_NTHREADS,
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                        block_dim=_G2_NTHREADS,
                     )
                     # 6 ── rmsnorm(post_attention_layernorm) over every row
                     self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
@@ -484,21 +493,21 @@ struct _CudaResidentQwen3(Movable):
                         Int64(self.d_model), self.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 7 ── gate/up + SwiGLU, one tiled GEMM pair
-                    self.ctx.enqueue_function[_pf_gemm_swiglu_kernel](
+                    # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2 kernel)
+                    self.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
                         self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
                         lw.w_gu.unsafe_ptr(),
                         Int64(m), Int64(self.d_model), Int64(self.d_ff),
-                        grid_dim=_ceil_div(m, _GEMM_BM) * _ceil_div(self.d_ff, _GEMM_BN),
-                        block_dim=_GEMM_NTHREADS,
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
+                        block_dim=_G2_NTHREADS,
                     )
-                    # 8 ── down_proj ACCUMULATED straight into the residual stream
-                    self.ctx.enqueue_function[_pf_gemm_accum_kernel](
+                    # 8 ── down_proj ACCUMULATED straight into the residual stream (v2 kernel)
+                    self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
                         self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
                         lw.w_down.unsafe_ptr(),
                         Int64(m), Int64(self.d_ff), Int64(self.d_model),
-                        grid_dim=_ceil_div(m, _GEMM_BM) * _ceil_div(self.d_model, _GEMM_BN),
-                        block_dim=_GEMM_NTHREADS,
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                        block_dim=_G2_NTHREADS,
                     )
                     issued += 8
                 pos += m

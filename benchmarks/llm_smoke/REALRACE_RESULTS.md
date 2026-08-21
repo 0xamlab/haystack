@@ -13178,3 +13178,154 @@ optimization arm, confirm the bench number actually moved before trusting it.
 CLOCK/COST LEDGER: L4 max SM 2040 MHz, max temp 83 C (boost-heavy part), max power 74 W. L4
 spot ~2 h ≈ $1.2; T4 preempted attempts ≈ $0.3 (wasted to preemption). Combined NVIDIA campaign
 spot spend ≈ $6.7.
+
+## THE PREFILL GAP CLOSED ON THE A100 — the v2 register-blocked / double-buffered GEMM family takes prefill 483 -> 3260 tok/s (6.75x), to 1.29x of llama.cpp F16; the SIMT-f32 arithmetic ceiling measured at 90% of peak, and the tensor-core battery re-confirmed definitive (2026-08-20/21)
+
+The round the "WHAT REMAINS" section above named as the next campaign phase, executed on a
+fresh a2-highgpu-1g spot VM (A100-SXM4-40GB, driver 595.71.05 — the SAME driver series as the
+first A100 round; provisioning hit and fixed one new gotcha, recorded below). Same fixture,
+same frozen discipline, oracle PASS 16/16 BEFORE any number counted, on BOTH decode arms.
+
+WHAT LANDED — the v2 prefill GEMM family (residentk/kernels_prefill_f32_v2.mojo, wired into
+residentk.session_cuda.prefill for all four roles)
+---------------------------------------------------------------------------------------------
+Mechanism-by-mechanism against the first generation's measured losses (1.7-3.0% of the A100's
+19.5 TFLOP/s FP32 SIMT peak):
+* REGISTER BLOCK 4x4 on a 64x64 output tile, 256 threads: 16 accumulator scalars per thread
+  (declared as 16 explicit `var`s — registers by construction), 16 FMAs per k-step against 8
+  shared loads = a 2:1 FMA:LDS mix vs the first generation's 1:1 (2x2 block, 4 FMAs / 4 loads).
+* SOFTWARE PIPELINING: two shared copies of each tile; the next tile's float4 loads are in
+  flight while the current tile is consumed. ONE barrier per k-step serves both directions,
+  where the first generation used two barriers per step and hid no latency.
+* VECTORIZED GLOBAL LOADS: exactly one `load[width=4]` (128-bit float4) per thread per tile —
+  the proven surface (the probe battery: Float32 vector loads are the ONLY SIMD loads that
+  stream at HBM speed on this backend, so v2 stays inside it).
+* BANK-CONFLICT-AWARE SHARED LAYOUTS: A row stride BK+4 (moves the 4-row register-block read
+  stride off one bank set); B stored TRANSPOSED [BK][BN+1] with column ownership c = tx+16*j
+  (conflict-free inner-loop reads; ~2-way scatter-writes, accepted and measured, not argued).
+
+THE GATES, IN ORDER (each passed before the next stage's numbers counted)
+--------------------------------------------------------------------------
+1. NUMERIC PROBE GATE (prefill_gemm_probe.mojo, real layer-0 weights, m=128 + ragged m=17/127):
+   v2 vs the oracle-verified first generation — BIT-EXACT, max diff 0.0 on every role (same
+   k-ascending accumulation order, same FMA contraction). The any-token-amount ragged rows
+   pass at 0.0 too.
+2. ORACLE: 16/16 greedy tokens match the campaign continuation on the fresh VM, BOTH arms —
+   the per-dispatch session and the CUDA-graph decode arm (the graph arm re-verified with the
+   v2 prefill feeding it).
+3. THE BENCH NUMBERS MOVED (the stale-binary lesson, applied as a rule): kernel sweep and
+   fixture prefill both moved by factors, and the decode numbers BYTE-REPRODUCED the previous
+   round (per-dispatch 70.7/55.7 vs 71.0/56.0; graph arm 329.8/318.9 vs 329.8/318.9) — proof
+   the change touched exactly the prefill GEMMs and nothing else.
+
+KERNEL SWEEP (prefill_gemm_probe, m=128, layer-0 shapes, real resident f32 weights; REPS
+dispatches back-to-back, one synchronize = device-bound windows; % of 19.5 TFLOP/s FP32 peak)
+=============================================================================================
+  Role                first gen              v2                       speedup
+  assign(qkv)         2729 us  393 GF/s 2.0%   189 us  5696 GF/s 29.2%   14.5x
+  accum(o_proj)       1618 us  332 GF/s 1.7%   222 us  2416 GF/s 12.4%    7.3x
+  swiglu(gate/up)     2782 us  579 GF/s 3.0%   217 us  7417 GF/s 38.0%   12.8x
+  accum(down_proj)    2421 us  333 GF/s 1.7%   340 us  2367 GF/s 12.1%    7.1x
+  LAYER GEMM SUM      9550 us                    968 us                    9.9x
+
+(The wide roles land highest; the narrow-N roles — o/down at n=1024 = only 2x16 = 32 blocks
+on 108 SMs — underfill the grid at the 64-tile and are the named follow-up if their share
+ever dominates again. At this model's mix they do not.)
+
+THE RACE (fixture, 256-token prompt, frozen 20 runs/cell, this round's numbers re-measured
+alongside fresh llama.cpp controls on the SAME VM — the controls reproduce the first A100
+round within noise, stated because it is the fairness anchor)
+=============================================================================================
+  Engine/format             prefill tok/s (256)     decode gen64      decode gen256
+  algenta f32 v2            3260.3 / 3259.7         70.8 (per-disp)   55.8 (per-disp)
+    (IQR 0.039% / 0.038%, PASS/PASS; oracle True both cells; prefill identical in both
+     drivers to 0.02% — the number is rock-stable across every build of this round)
+  algenta f32 v2, graph arm (decode only; prefill unchanged by the arm)
+                            —                       329.8 (0.020%)    318.9 (0.005%)
+  llama.cpp F16 control     2527.1 / 2536.8         356.9             366.6
+  llama.cpp Q8_0 control    13028.0 / 13044.6       404.2             419.8
+  llama-bench warm refs     F16 pp256 14100.9 (2.06% IQR, 1 outlier, PASS) | pp512 22583.2 |
+                            tg128 375.2; Q8_0 pp256 11148.5 | pp512 16374.5 | tg128 429.7
+
+HEAD-TO-HEAD vs the F16 control: PREFILL 1.29x — from a 0.19x starting point, the fixture
+prefill race is now an algenta WIN. Decode unchanged at 0.92x / 0.87x (graph arm) — the f32
+weight-streaming bandwidth floor established last round, reproduced byte-for-byte.
+
+HONEST SCOPE — restated and extended, nothing hidden
+-----------------------------------------------------
+* Fixture prefill asymmetry (carried from the first A100 entry, still true): each
+  llama-completion invocation's prompt-eval is that process's FIRST prefill; algenta's number
+  is warm. The warm-vs-warm view is llama-bench: F16 pp256 = 14100.9 tok/s = our 3260 is
+  0.23x of THAT. llama.cpp's warm prefill rides FP16 tensor cores; the SIMT-f32 ceiling
+  section below is the measured reason algenta cannot follow it there on this toolchain.
+* WEIGHT FORMAT (carried): algenta races Float32 weights vs the F16 control — a 2x
+  weight-traffic handicap by construction, unchanged this round.
+* Decode's per-dispatch row (70.8/55.8) is the baseline path the harness runs; the campaign's
+  final decode arm is the graph row (329.8/318.9), measured separately exactly as last round.
+  Both rows reported; neither is hidden.
+
+THE SIMT-F32 ARITHMETIC CEILING, MEASURED (f16_simd_arith_probe.mojo, new this round)
+--------------------------------------------------------------------------------------
+The question the optimization plan needed answered before declaring headroom spent: what does
+this backend actually deliver for FP32 SIMD arithmetic? Answer, measured with a compute-bound
+FMA-chain probe (no loads in the timed loop, 432 blocks x 256 threads, 4096 iterations):
+  f32 SIMD[4]:  17.6 TFLOP/s = 90% of the nominal 19.5 TFLOP/s FP32 SIMT peak
+  f16 SIMD[8]:  60.5 TFLOP/s (~3.4x the f32 rate — packed f16x2 FMAs DO lower)
+INTEGRITY — the probe only counts after three catches, each documented in its source:
+  (1) RECURRENCE-DOUBLING: Mojo lowers FP with reassociation enabled, so any LINEAR FMA
+      recurrence a' = a*b + c gets folded by LLVM from 4096 iterations to ~20 FMAs — with a
+      CONSTANT coefficient AND with a runtime one. First two probe versions reported 300-457%
+      of the physical peak; the embedded PTX proved the fold. The shipped probe uses a coupled
+      NONLINEAR recurrence (each accumulator multiplies its neighbour), which cannot fold.
+  (2) DEAD LANES: a `sink[0]` store lets DCE kill SIMD lanes 1-3 — ncu's executed-FFMA counter
+      showed exactly 1/4 of the claimed work running. The shipped probe stores all lanes' sum.
+  (3) HARDWARE WITNESS: ncu (cuda-nsight-compute) counted 7,248,199,680 executed thread-FFMAs
+      vs 7,247,757,312 expected (0.006% — the delta is seed/epilogue FMAs). The timing is now
+      witness-verified, not just plausible.
+VERDICT: the v2 GEMMs at 12-38% of peak are NOT at the arithmetic ceiling (90% measured) —
+the remainder is shared-memory traffic, grid fill on the narrow-N roles, and the HBM feed;
+further SIMT-f32 gains are possible but diminishing, and none of them change the headline
+result or close the warm-vs-warm tensor-core gap below.
+
+THE TENSOR-CORE BATTERY, RE-CONFIRMED DEFINITIVE (mma_surface_probe.sh + this round's runtime
+evidence — task item 3's "re-confirm for mma", done)
+---------------------------------------------------------------------------------------------
+* 15 compile probes on the pinned Mojo 1.0.0 / MAX 26.5 toolchain, sm_80 target: NO
+  std.gpu.mma / std.gpu.primitives.mma / max.gpu.mma / max.gpu.tensor_core / std.tensor_core
+  module, NO tma module at those paths, NO mma/mma_sync name inside max.gpu / std.gpu /
+  max.gpu.host, NO inline-asm escape hatch (std.sys.inline_asm absent, __builtin_asm unknown).
+* The internal `_cublas` / `_cudnn` modules EXIST (they import) but expose no callable
+  sgemm/gemm/math-mode surface under 45+ probed names (C API spellings, snake_case, Mojo
+  idioms) — they are MAX Engine's JIT-internal bindings, not a user surface; `matmul_rs`
+  fails to link ('linalg' absent) on this install.
+* RUNTIME refinement of the f16 question (new): f16 SIMD ARITHMETIC executes packed and fast
+  (60.5 TF/s above), but the campaign's probe battery already measured every sub-f32 LOAD
+  path scalarized (5-7% of HBM peak) — so the f16 arithmetic rate cannot be fed by f16
+  weights at HBM speed, and an f16-accumulation GEMM would also break the exact-token oracle.
+  Recorded as a NAMED FUTURE LEVER (ready-made for both GEMM and GEMV the day the backend
+  load paths are fixed), NOT an adopted arm.
+CONCLUSION, stated plainly: no tensor-core surface is routeable from Mojo user code on this
+toolchain; the warm-vs-warm prefill gap to llama.cpp (0.23x of 14101 tok/s) and the decode
+format gap (0.92x/0.87x) are BOTH the weight-format / tensor-core gap, upstream of this repo.
+That is the definitive, measured ceiling the campaign stops at.
+
+PROVISIONING GOTCHA (new this round, fixed in-line, recorded for the next VM)
+------------------------------------------------------------------------------
+On the 22.04 GCP image, `ubuntu-drivers install --gpgpu` now pulls the 595.84 NON-server
+stack; installing the matching prebuilt kernel module then conflict-REMOVES the userspace,
+leaving nvidia-smi absent after the reboot. Fix (run on this VM): `sudo apt-get install -y
+nvidia-utils-595-server libnvidia-compute-595-server`, then reboot — the -server userspace
+coexists with the -server kernel module (595.71.05, same series as the first A100 round).
+setup_vm.sh's stage-2 broadened detection covered the package-set discovery; this conflict
+ordering is the a2-specific variant of the g2/L4 gotcha its 2026-08-21 hardening documented.
+ALSO: port 22 to this VM was filtered from the build host — every ssh/scp ran through
+`--tunnel-through-iap` (slower but reliable); the VM needed `--network=default
+--subnet=default` (custom-subnet-mode project) and the older gcloud's `--preemptible`.
+
+CLOCK/COST LEDGER (spot, eplanev2): A100-SXM4-40GB kept ~1.7 h for provisioning + probe +
+race ≈ $2.2 (a2-highgpu-1g spot, ~$1.3/h); max SM clock 1410 MHz, max temp 52 C, max power
+197 W of a 400 W part (1036 samples) — no throttle involvement in any number. Combined
+NVIDIA campaign spot spend ≈ $8.9. The VM is deleted after this entry lands: the round ends
+at the definitive ceiling the owner authorized stopping at — fixture prefill WON (1.29x),
+decode at its f32 bandwidth floor (0.92x/0.87x, byte-reproduced), tensor cores measured
+unreachable from this toolchain.
