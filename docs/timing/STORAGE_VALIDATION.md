@@ -1,3 +1,8 @@
+---
+icon: database
+description: ClickHouse storage plane validation on a real race partition — measured codec choices (Delta beats DoubleDelta 1.8x), the sort-key trade-off, repeat-run semantics.
+---
+
 # Storage plane validation — measured, not assumed
 
 ClickHouse 24.8.14.39 (pinned), loopback-bound, `f1_current` database, 14 tables.
@@ -118,3 +123,9 @@ Round-trip verified: 767,448 rows, 22 cars, span `12:09:11.245644700` → `14:46
 **No TTL.** The retention matrix depends on a legal finding that is still pending. Inventing a period
 now would be a guess dressed as policy. TTL arrives as `ALTER TABLE ... MODIFY TTL` alongside the
 deletion-manifest job that proves removal of the external artifacts ClickHouse TTL cannot reach.
+
+## Related
+
+* [DATA_SOURCES.md](DATA_SOURCES.md) — the feeds this storage plane persists.
+* [FROZEN_SPECS.md](FROZEN_SPECS.md) — the frozen codec and sort-key choices validated here.
+* [GATE0_VERIFICATION.md](GATE0_VERIFICATION.md) — the Gate 0 record this validation supports.

@@ -1,3 +1,8 @@
+---
+icon: flag-checkered
+description: Inventory of F1 timing data sources — official live-timing archive, OpenF1, Jolpica, FastF1 — with the triangulation matrix and the 33/44/45 pit-stop discrepancy gating Gate 1.
+---
+
 # Data source inventory and triangulation matrix
 
 Engineering record. Probed 2026-07-29 against the Hungarian GP race, 2026-07-26 — the last completed
@@ -176,3 +181,9 @@ stronger primary source is ever required.
    remains the only viable telemetry source.
 7. OpenF1's coverage starts at **2023**, so pre-2023 corpus seasons have only official + Jolpica —
    triangulation depth is season-dependent and the manifest must record which layers were available.
+
+## Related
+
+* [FROZEN_SPECS.md](FROZEN_SPECS.md) — the frozen specs these sources feed.
+* [DATA_COVERAGE_AUDIT.md](DATA_COVERAGE_AUDIT.md) — coverage audit across these sources.
+* [GATE0_VERIFICATION.md](GATE0_VERIFICATION.md) — the Gate 0 record qualified by the pit-stop discrepancy.

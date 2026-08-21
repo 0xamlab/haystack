@@ -1,3 +1,8 @@
+---
+icon: magnifying-glass-chart
+description: Requirement-by-requirement data coverage audit — feed-availability eras, the 2025 frozen test season, single-source grid, and text-derived penalties.
+---
+
 # Data coverage audit — does every plan requirement have a source?
 
 Every data-dependent requirement in the plan, checked against a probed source. Probed 2026-07-29.
@@ -41,7 +46,7 @@ discrepancy already recorded.
 
 This gives a clean, well-motivated Gate 3 assignment rather than an arbitrary one:
 
-```
+```text title="Gate 3 season assignment"
 Gate 3A development   2019–2021, 2023–2024   (no PitStop feed → pit-loss from Jolpica/OpenF1)
 Gate 3B validation    subset of the above, held out by season
 Gate 3D final test    2025  — complete season, full 33-feed surface, most recent finished era
@@ -110,7 +115,7 @@ itself information the model wants.
 Status, Utc`. Categories in the probe race: `Flag` 28, `Other` 50, `SafetyCar` 2. Penalty content lives
 in `Message` as prose:
 
-```
+```text title="RaceControlMessages penalty prose"
 CAR 43 (COL) LAP DELETED - TRACK LIMITS AT TURN 4 LAP 1 15:03:59
 TURN 3 INCIDENT INVOLVING CARS 14 (ALO) AND 87 (BEA) NOTED - FORCING ANOTHER DRIVER OFF
 INCIDENT INVOLVING CAR 11 (PER) NOTED - STARTING PROCEDURE INFRINGEMENT (15:02:39)
@@ -154,3 +159,9 @@ suspension travel · ride height · torque · **remaining tyre inventory** · te
 6. **Mark `RaceState.penalties` as text-derived best-effort**, excluded from the decision path.
 7. **Record per-session in the manifest**: feed list, provider availability per quantity, and
    triangulation depth. Season-dependent coverage must be data, not folklore.
+
+## Related
+
+* [DATA_SOURCES.md](DATA_SOURCES.md) — the source inventory this audit checks against.
+* [FROZEN_SPECS.md](FROZEN_SPECS.md) — the frozen specs the covered requirements feed.
+* [GATE0_VERIFICATION.md](GATE0_VERIFICATION.md) — the Gate 0 record this audit refines.

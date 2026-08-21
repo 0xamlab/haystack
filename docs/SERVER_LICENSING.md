@@ -1,3 +1,8 @@
+---
+icon: key
+description: Engineering reference for the server licensing layer — Compute Units (4 effective vCPU = 1 unit), device vs deployment scope, strict JOSE verification, Relay leases, air-gap ceremony.
+---
+
 # Server / Enterprise Licensing — Compute Units (engineering reference)
 
 Internal engineering doc for the additive server/enterprise licensing layer. External-facing
@@ -36,7 +41,8 @@ quota, and the host CPU count (fallback only). So a 2-vCPU-limited pod on a 96-v
 measures 2.
 
 Aggregation rounds **once at the pool level**, never per node:
-```
+
+```text title="pool aggregation"
 node_contribution_i = effective_vcpu_i / vcpu_per_unit      # fractional, unrounded
 pool_units          = ceil( Σ node_contribution_i )
 ```
@@ -110,12 +116,13 @@ Compute-Unit model; only the product grant differs. Editions are distinguished b
 ## Operating steps
 
 **Mint an offline server (air-gap) license:**
-```
+
+```bash title="mint an offline server license"
 python3 scripts/issue_offline_license.py \
-  --device-id <deployment-node-id> --plan algenta_server --output server.jwt \
-  --private-key-file <control-plane-private-key.pem> --org-id <org> \
-  --license-scope deployment --deployment-id <deployment> \
-  --max-concurrent-units <purchased-units> --vcpu-per-unit 4 \
+  --device-id "$DEPLOYMENT_NODE_ID" --plan algenta_server --output server.jwt \
+  --private-key-file "$CONTROL_PLANE_PRIVATE_KEY_PEM" --org-id "$ORG_ID" \
+  --license-scope deployment --deployment-id "$DEPLOYMENT_ID" \
+  --max-concurrent-units "$PURCHASED_UNITS" --vcpu-per-unit 4 \
   --measurement-policy-version cgroup-v1 --grace-policy-id community-floor-v1 \
   --commercial-use --offline-grace-days 30 --paid-selfhost
 ```
@@ -258,3 +265,9 @@ A 5-dimension adversarial review (12 confirmed findings) drove these fixes, all 
 
 Deployment topology: Supabase (identity) · Fly.io (control plane + signing keys) · Cloudflare
 (mint edge) · accounts repo (billing/portal UX).
+
+## Related
+
+* [LICENSE_ENFORCEMENT_RUNBOOK.md](LICENSE_ENFORCEMENT_RUNBOOK.md) — operating the enforcement seams this page defines.
+* [BUSINESS_MODEL.md](BUSINESS_MODEL.md) — the commercial model these Compute Units price.
+* [pricing-algenta.md](pricing-algenta.md) — the published pricing surface.

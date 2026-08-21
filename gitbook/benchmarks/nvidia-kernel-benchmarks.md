@@ -79,9 +79,10 @@ Correctness gates the benchmarks: no timing is reported from a kernel that faile
 
 * **No tuned-GEMM claim.** The %-of-peak reflects a validation kernel, not the ceiling of what a
   tuned NVIDIA kernel would reach on these chips.
-* **No LLM-serving claim.** These are portable kernel-layer results. The batched-dispatch session
-  path that serves LLM inference is Metal-only today; see the
-  [GPU support matrix](../engine/gpu-support.md) for the lane-by-lane scope.
+* **No LLM-serving claim.** These are portable kernel-layer results. The shipped SDK serving path
+  is Metal-only; a CUDA-native LLM session has been race-measured on A100/L4 — see
+  [NVIDIA LLM throughput](nvidia-llm-throughput.md) — and the
+  [GPU support matrix](../engine/gpu-support.md) carries the lane-by-lane scope.
 * **V100 is absent by toolchain constraint, not by omission.** The pinned toolchain hard-rejects
   sm_70 (Volta) at compile time; the floor of the CUDA lane is Turing — see
   [Unsupported architectures](../engine/gpu-support.md#unsupported-architectures).
@@ -107,6 +108,7 @@ command.
 ## Related
 
 * [GPU support](../engine/gpu-support.md) — the matrix these numbers verify, lane by lane.
+* [NVIDIA LLM throughput](nvidia-llm-throughput.md) — the CUDA-native LLM session raced on A100/L4.
 * [Compute kernels](compute-kernels.md) — the Metal-side kernel measurements.
 * [Prefill (token input) throughput](llm-prefill-throughput.md) — what the production Metal path achieves end to end.
 * [Batched decode throughput](batched-decode-throughput.md) — batched serving on Metal.

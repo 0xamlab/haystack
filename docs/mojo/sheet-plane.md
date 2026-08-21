@@ -1,3 +1,8 @@
+---
+icon: table
+description: The spreadsheet formula plane — recalculates real .xlsx workbooks in pure Mojo and compares every formula cell against Excel's cached value; substrate under the finance-benchmark tier.
+---
+
 # The spreadsheet formula plane (`mojo/engine/sheet/`)
 
 Recalculates real .xlsx workbooks from their input cells and compares every
@@ -13,7 +18,7 @@ benchmarks additionally need are separate, owner-gated work.
 
 ## Architecture
 
-```
+```text title="recalc pipeline"
 xlsx ──(staged Python reader)──▶ .swt text ──▶ grid loader ──▶ recalc ──▶ compare
       scripts/sheet_plane/          │            sheet/grid     sheet/engine  sheet/api
       extract_xlsx.py               │            refusal-first  pure Mojo     typed report
@@ -147,3 +152,7 @@ python3 -P scripts/sheet_plane/validate_corpus.py \
   properties (correctness sentinel, bit-identical determinism, 8x scaling,
   charged work), demonstrated to fail on a mutated SUM.
 * Status codes: the package owns 1300-1349 (grid 1300-1319, engine 1320-1339).
+
+## Related
+
+* [new-kernel-package-rules.md](new-kernel-package-rules.md) — the rules a new Mojo kernel package (like `sheet/`) must follow.

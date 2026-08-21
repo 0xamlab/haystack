@@ -1,6 +1,6 @@
 ---
 icon: microchip
-description: Which GPU backends Algenta runs on and how far each lane is verified — Metal run-verified end to end, CUDA run-verified for the portable kernel layer, ROCm not yet.
+description: Which GPU backends Algenta runs on and how far each lane is verified — Metal end to end, CUDA kernel layer run-verified and LLM session race-verified on A100/L4, ROCm not yet.
 ---
 
 # GPU support
@@ -11,10 +11,12 @@ for each lane, exactly what the verification covers.
 
 {% hint style="info" %}
 **Scope honesty, up front.** "Run-verified" is always scoped to a lane. Metal is run-verified end
-to end — the full LLM serving path included. NVIDIA CUDA is run-verified for the **portable GPU
-kernel layer** on three real architectures; the flagship LLM serving path (batched-dispatch
-sessions) is Metal-only today, and a CUDA-native session layer is the next engineering step. Do not
-read a kernel-layer result as an LLM-serving result.
+to end — the full LLM serving path included, and it remains the production serving lane. NVIDIA
+CUDA is run-verified for the **portable GPU kernel layer** on three real architectures, and the
+CUDA-native resident LLM session has been **race-measured** on real A100 and L4 hardware (fixture
+prefill 1.29x llama.cpp F16; decode 0.92x at the f32 bandwidth floor) — but it is not a shipped
+serving path, and CI's CUDA lane stays compile-gated. Do not read a kernel-layer result as an
+LLM-serving result, or a race measurement as a serving guarantee.
 {% endhint %}
 
 ## The matrix
@@ -22,7 +24,7 @@ read a kernel-layer result as an LLM-serving result.
 | Backend | Status | What has been verified |
 | --- | --- | --- |
 | Metal (Apple Silicon) | **RUN-verified — the production path today** | The full serving path: resident kernels, batched-dispatch sessions, prefill and decode — race-proven on real M-series hardware |
-| NVIDIA CUDA | **RUN-verified for the portable kernel layer** | Bit-exact kernel runs on real T4 (sm_75), L4 (sm_89) and A100-40GB (sm_80) hardware; compile-gated in CI on every change |
+| NVIDIA CUDA | **RUN-verified for the portable kernel layer; LLM session race-measured** | Bit-exact kernel runs on real T4 (sm_75), L4 (sm_89) and A100-40GB (sm_80) hardware; the CUDA-native resident LLM session raced on A100/L4 (prefill 1.29x llama.cpp F16, decode 0.92x at its floor); compile-gated in CI on every change |
 | V100 / Volta (sm_70) | **Unsupported** | The pinned toolchain hard-rejects sm_70 at compile time — see [Unsupported architectures](#unsupported-architectures) |
 | AMD ROCm | **Compile-gate in progress** | Not verified — see [AMD ROCm](#amd-rocm) |
 
@@ -53,6 +55,17 @@ measured numbers, with full methodology, are on the
 The two-tier GPU gate is what scopes this lane: `-D ALGENTA_GPU` compiles in the **portable** GPU
 kernels, while the Metal batched-dispatch machinery additionally requires `-D ALGENTA_METAL`. A
 CUDA build therefore gets the portable kernels without the Metal-only session layer.
+
+### LLM session layer (race-measured, not a shipped serving path)
+
+Beyond the portable kernel layer, a **CUDA-native resident LLM session** now exists in-tree
+(resident weights, v2 prefill GEMMs, CUDA-graph decode with split-K flash-decoding) and has been
+raced head-to-head against llama.cpp on real A100 and L4 hardware under the campaign's frozen
+discipline: fixture prefill **1.29x** llama.cpp F16 (a win), decode **0.92x / 0.87x** at the
+measured f32 weight-streaming bandwidth floor (the f16/int8 arms that would close it are
+toolchain-blocked). Every number is oracle-gated and stated with its caveats on the
+[NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md) page. This is a race measurement on
+spot hardware — the production SDK serving path remains Metal, and no GPU runs in CI.
 
 ### Compile gate in CI
 
@@ -104,15 +117,16 @@ The compile gate is in progress — MAX bundles `_miopen`/`_rocblas` — but not
 
 ## What is not claimed
 
-* **No NVIDIA LLM serving yet.** The CUDA run-verification covers the portable kernel layer. The
-  batched-dispatch session path — resident weights, prefill, decode — is Metal-only today; a
-  CUDA-native session layer is the next engineering step.
+* **No NVIDIA LLM *serving*.** The CUDA-native LLM session is race-measured on spot A100/L4
+  hardware (see [NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md)), but the shipped
+  SDK serving path is Metal-only, and CI's CUDA lane is a compile gate without GPUs.
 * **No Volta.** sm_70 is a compile-time rejection, not a configuration choice.
 * **No ROCm numbers.** Nothing has been measured there.
 
 ## Related
 
 * [NVIDIA kernel benchmarks](../benchmarks/nvidia-kernel-benchmarks.md) — the measured CUDA numbers behind the matrix.
+* [NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md) — the CUDA-native LLM session raced on A100/L4.
 * [Metal LLM decode](qwen3-metal-decode.md) — the Metal serving entry point.
 * [Prefill (token input) throughput](../benchmarks/llm-prefill-throughput.md) — Metal, compute-bound.
 * [Batched decode throughput](../benchmarks/batched-decode-throughput.md) — Metal, batched serving.

@@ -1,3 +1,8 @@
+---
+icon: clipboard-check
+description: Gate 0 verification record — every external fact (calendar, live-timing endpoints, stream formats, telemetry decode, pit/track-status/stint feeds) probed against primary sources.
+---
+
 # Gate 0 — Verification record
 
 Engineering record, not published documentation. Every external fact the build depends on is verified
@@ -36,7 +41,7 @@ pre-target evidence.
 
 ## 2. Live-timing endpoints — VERIFIED
 
-```
+```text title="live-timing endpoint probes"
 POST https://livetiming.formula1.com/signalrcore/negotiate?negotiateVersion=1   → 200
 GET  https://livetiming.formula1.com/static/Index.json                          → {"Years":[{"Year":2026,"Path":"2026/"}]}
 GET  https://livetiming.formula1.com/static/2024/Index.json                     → 200
@@ -58,7 +63,7 @@ Probe session: `2026/2026-07-26_Hungarian_Grand_Prix/2026-07-26_Race/Index.json`
 
 The FastF1 client subscribes to 20 topics; the archive exposes 33. Full list:
 
-```
+```text title="archive feeds (33)"
 ArchiveStatus            AudioStreams             CarData.z
 ChampionshipPrediction   ContentStreams           CurrentTyres
 DriverList               DriverRaceInfo           DriverTracker
@@ -182,7 +187,7 @@ Session: *FORMULA 1 AWS HUNGARIAN GRAND PRIX 2026*, Hungaroring, key 11342, 70 l
 
 ### Telemetry — full decode
 
-```
+```text title="telemetry decode"
 CarData.z  : 9,342 stream lines → 9,342 parsed (zero loss) → 34,884 entries → 767,448 car-samples
              cars-per-entry histogram: {22: 34884} — every entry carries the full field
              span 12:09:11.2456447Z → 14:46:16.9584529Z (9,426 s)
@@ -233,7 +238,7 @@ no-data sentinel confined to pre-session frames. That was wrong. `104` appears i
 
 **`104` marks per-frame staleness.** A contiguous car-1 trace makes the mechanism plain:
 
-```
+```text title="car-1 trace excerpt"
 utc               rpm  spd  gr  ch4  ch5
 13:43:25.384     7782   87   2  104  104     <- rpm repeated 8x: no fresh values this frame
 13:43:26.064     7782   87   2  104  104
@@ -273,7 +278,7 @@ signal, not a telemetry channel. Any 2026 override modelling reads race control,
 
 `PitStop` is flat and per-stop: `{"RacingNumber","PitStopTime","PitLaneTime","Lap"}`.
 
-```
+```json title="PitStop feed records"
 {"RacingNumber":"18","PitStopTime":"2.1","PitLaneTime":"21.789","Lap":"8"}
 {"RacingNumber":"18","PitStopTime":"4.8","PitLaneTime":"24.241","Lap":"37"}
 ```
@@ -295,7 +300,7 @@ An earlier claim in this record and in the plan said `OvertakeSeries` gives "lab
 a direct fitting target for the overtake kernel". **That was wrong.** The actual shape is a per-car
 *count* series:
 
-```
+```json title="OvertakeSeries encodings"
 {"Overtakes":{"81":[{"Timestamp":"2026-07-26T13:03:28.883Z","count":1}]}}
 {"Overtakes":{"81":{"1":{"Timestamp":"2026-07-26T13:03:28.899Z","count":1}}}}
 ```
@@ -310,7 +315,7 @@ kernel therefore does **not** get a free labelled training target, and `Overtake
 
 ### Track status — a real VSC in the probe race
 
-```
+```text title="TrackStatus timeline"
 00:00:00 Yellow → 00:06:07 AllClear → 00:14:56 Yellow → 00:21:37 AllClear
 01:49:26 Yellow → 01:49:29 AllClear → 02:05:28 Yellow → 02:05:30 AllClear
 02:13:30 Yellow → 02:13:45 VSCDeployed → 02:15:03 VSCEnding → 02:15:14 AllClear
@@ -322,7 +327,7 @@ trusted.
 
 ### Tyre stints decode cleanly
 
-```
+```text title="tyre stints"
 NOR  MEDIUM(17L,new) → HARD(22L,new) → HARD(17L,new) → SOFT(17L)
 VER  MEDIUM(14L,new) → HARD(27L,new) → SOFT(32L)
 BOR  SOFT(29L,new)   → HARD(40L,new)
@@ -377,3 +382,10 @@ plane unreachable and egress restricted to the timing host.
 6. Tyre-inventory contract narrowed: fitted tyres are observed; only **remaining** inventory is
    assumption-driven.
 7. Channel semantics recorded as an open validation item rather than an assumption.
+
+## Related
+
+* [DATA_SOURCES.md](DATA_SOURCES.md) — the source inventory behind these probes.
+* [DATA_COVERAGE_AUDIT.md](DATA_COVERAGE_AUDIT.md) — requirement coverage built on this record.
+* [FROZEN_SPECS.md](FROZEN_SPECS.md) — the specs these verifications freeze.
+* [STORAGE_VALIDATION.md](STORAGE_VALIDATION.md) — the storage plane validated on the same partition.

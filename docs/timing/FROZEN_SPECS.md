@@ -1,3 +1,8 @@
+---
+icon: lock
+description: Frozen Gate 0 contracts — keyed randomness (philox4x64-10), uncertainty and bootstrap rules, RaceState, as-of replay, and the primary decision utility.
+---
+
 # Frozen specifications — Gate 0
 
 **Status: FROZEN.** These are the contracts every kernel is written against. Changing any of them is
@@ -25,7 +30,7 @@ what happened earlier in that option's trajectory.
 
 ### Generator
 
-```
+```text title="rng_version pin"
 rng_version = "philox4x64-10/v1"
 ```
 
@@ -38,7 +43,7 @@ general-purpose hash is never used for scientific randomness.**
 
 ### Counter and key layout
 
-```
+```text title="counter layout"
 counter (4 × uint64)
   c0 = replication_id                                    full 64 bits
   c1 = (lap_id << 32) | (car_id << 16) | process_id      16/16/16 bits used, top 16 reserved = 0
@@ -81,7 +86,7 @@ is the single most likely way to break this invariant by accident.
 | 9 | joint bootstrap over replication rows | `GLOBAL_SENTINEL` |
 | 10 | parameter search (not a race process) | gene index |
 
-```
+```text title="sentinel constants"
 GLOBAL_SENTINEL = 0xFFFF
 ```
 
@@ -113,7 +118,7 @@ word selection ever changes. Treat the probe convention as good practice, not a 
 
 Given a 64-bit output word `u`:
 
-```
+```text title="u01 mappings"
 u01_half_open(u) = (u >> 11) * 2^-53          →  [0, 1)     53-bit mantissa, exactly representable
 u01_left_open(u) = ((u >> 11) + 1) * 2^-53    →  (0, 1]     never zero — safe for log()
 ```
@@ -130,7 +135,7 @@ This is load-bearing. Variable-consumption sampling (ziggurat, rejection loops) 
 | Exponential(λ) | 1 | `-ln(u01_left_open(u)) / λ` |
 | Normal(0,1) | **2** | Box–Muller basic form (below) |
 
-```
+```text title="gaussian draw"
 z = sqrt(-2 * ln(u01_left_open(u₁))) * cos(2π * u01_half_open(u₂))
 ```
 
@@ -166,7 +171,7 @@ Welford mean/variance cannot support a percentile bootstrap over individual repl
 trajectories" cannot both hold. Resolution: the engine retains a **compact per-replication record**,
 not trajectories:
 
-```
+```text title="primary decision utility"
 per replication i, per option h:  final_position[i,h]  (uint8)
                                   finished_ahead[i,h]  (bool)
 ```
@@ -178,7 +183,7 @@ SDK boundary, which is why intervals are computed **inside** the engine and only
 
 Each bootstrap draw resamples whole **replication rows** with replacement:
 
-```
+```text title="bootstrap resample"
 draw b:  indices I_b ⊂ {1..N}, |I_b| = N, with replacement
          recompute all four option statistics from the SAME I_b
 ```
@@ -192,7 +197,7 @@ The board *selects* the largest of three contrasts (`box now`, `box+1`, `box+2`,
 marginal intervals overstate confidence. Coverage is family-wise over the three contrasts via a
 **max-statistic bootstrap**:
 
-```
+```text title="max-t statistic"
 for each resample b:  T_b = max over h of  |Δ̂_h^(b) − Δ̂_h| / se_h
 critical value        t* = the 90th percentile of {T_b}
 simultaneous CI       Δ̂_h ± t* · se_h        (family-wise 90%)
@@ -200,7 +205,7 @@ simultaneous CI       Δ̂_h ± t* · se_h        (family-wise 90%)
 
 ### Abstention rule (frozen; ε preregistered)
 
-```
+```text title="recommendation rule"
 Recommend option h only when
   (1) lower simultaneous bound of Δ_h  >  ε          and
   (2) Δ_h − Δ_(next best feasible)     >  margin
@@ -226,7 +231,7 @@ separately from Monte Carlo error and never combined into one number.
 
 ## Invariant 3 — `RaceState` contract and update order
 
-```
+```text title="RaceState"
 RaceState
   # provenance and as-of watermarks (Invariant 4)
   session_key · corpus_version · event_time_watermark · ingest_sequence_watermark
@@ -251,7 +256,7 @@ indistinguishable from "no penalty".
 
 ### Track regime enumeration (from observed `TrackStatus` codes)
 
-```
+```text title="TrackStatus codes"
 1 = AllClear      2 = Yellow       4 = SCDeployed
 6 = VSCDeployed   7 = VSCEnding
 ```
@@ -263,7 +268,7 @@ handling is unverified and is not in the Monza slice. `Category: SafetyCar` mess
 
 ### Update order (frozen, exact)
 
-```
+```text title="as-of replay order"
 1. apply incoming timing event
 2. resolve pit entry / exit          (honour _deleted retractions — see below)
 3. update lap / stint
@@ -320,7 +325,7 @@ that means touching every kernel signature, which is why it sits with the invari
 
 The three-class taxonomy is a runtime structure, not a documentation table:
 
-```
+```text title="FeatureValue"
 FeatureValue
   value        the number
   source       public_timing | team_telemetry | partner_model | inferred | assumed | manual
@@ -337,7 +342,7 @@ from any class-3 input is labelled exploratory in the TUI automatically — nobo
 
 Public `CarData` carries 5 channels; a team feed may carry ~300. So channel semantics are declarative:
 
-```
+```text title="channel contract"
 channel_id → semantic name · unit · valid range · missing-value convention · source · data_class
 ```
 
@@ -347,7 +352,7 @@ NaN, validity bitmask, per-channel timestamps). Adding channels is a registry en
 
 ### One event log, N adapters
 
-```
+```text title="archive boundary"
 public static archive ─┐
 public SignalR live   ─┼→ adapter → canonical typed records + provenance → append-only event log
 partner feed (any fmt)─┘                                                          ↓
@@ -393,7 +398,7 @@ The optimizer has exactly **one** primary utility. The TUI may display more; the
 choose among them after the fact — that is how a "best" strategy becomes whichever metric flattered the
 result.
 
-```
+```text title="decision utilities"
 PRIMARY    P(focal car finishes ahead of the named target rival)
 
 SECONDARY  (display and diagnostics only — never optimized against)
@@ -422,7 +427,7 @@ Any change to the utility or these rules is a new `objective_version` and a new 
 
 ## Lap-time model (frozen)
 
-```
+```text title="lap-time model"
 l(c, lap) = pace(c) + form(c) + tyre(age(c)) + fuel(lap) + lap_noise + dirty_air(c, lap)
 tyre(a)   = delta(c) * a + 1[a > cliff_age] * cliff_slope * (a - cliff_age)
 fuel(lap) = + fuel_effect * (laps_remaining - lap)
@@ -453,7 +458,7 @@ so the finishing order is the order statistic of independent normals, which a so
 directly. Measured as statistically indistinguishable from a one-line grid softmax (DM p = 0.758). The
 informative content is the coupling:
 
-```
+```text title="dirty air and overtaking"
 dirty air / overtaking   a car within dirty_window of the car ahead attempts a pass with
                          sigma(ot_bias + ot_kpace * delta_effective_pace + ot_kage * delta_age);
                          on failure it loses dirty_loss and is held no closer than min_follow.
@@ -473,7 +478,7 @@ free-reordering lap-time-sum model churns more, so blocking is what reproduces o
 
 ### Neutralisations are events with a duration (frozen)
 
-```
+```text title="per-lap hazard"
 per-lap hazard  sc_lambda, vsc_lambda   (events PER LAP, independent of remaining distance)
 duration        uniform on 1..sc_dur_max  /  1..vsc_dur_max
 SC takes priority; regimes are mutually exclusive; the window is contiguous
@@ -495,7 +500,7 @@ mean 1.28 laps. Two errors are recorded here because both were invisible in aggr
 Three defects of one shape, each found by measurement rather than review, and each invisible in every
 summary statistic:
 
-```
+```text title="form and pace"
 per-car FORM      car_pace measured in-race already contains the car's form, so drawing the pre-race
                   sigma on top double-counts it. Form uncertainty is now the standard error of the pace
                   estimate itself, sigma_lap / sqrt(k), which shrinks as the race is observed.
@@ -526,7 +531,7 @@ fitted vector scored **better** on held-out races while describing a world with 
 This is the dual-path hazard the plan names — *a calibration objective rewards whatever correlates with
 finishing order* — in its sharpest form, because the reward was real and the physics was wrong. So:
 
-```
+```text title="measured vs fitted parameters"
 MEASURED, pinned      sc_lambda · vsc_lambda · sc_dur_max · vsc_dur_max · slot_spread · dnf_prob
                       Observations from 131 races. The objective gets no vote on them. dnf_prob joined
                       the list after the search drove it to its LOWER bound -- it wanted no retirements
@@ -560,7 +565,7 @@ test is opened, and it is recorded here rather than quietly applied.
 
 ### The speed claim (rung 2) and what licenses it
 
-```
+```text title="compute budget"
 20 cars x 40 laps x 6,000 replications = 4,800,000 car-lap state updates per arm
   Mojo kernel, through the production socket      0.101 s    47.8M updates/s
   NumPy, fully vectorised over the replication axis  2.821 s     1.7M updates/s
@@ -586,7 +591,7 @@ be optimised away.
 Both frozen tests came out negative and both stand. But the preregistration contained no power analysis,
 and it should have — a test that cannot detect the effect it is testing for is not a test.
 
-```
+```text title="oracle ablation"
 development, 110 races   oracle minus grid_softmax  delta +0.00782  SE 0.00173  4.5 sigma  DM p=0.0000
 
   scaled to the frozen sample sizes, IF that effect is real:
@@ -632,7 +637,7 @@ uncertainty rather than from spending more simulation.
 
 Development, 97 races, identical total compute:
 
-```
+```text title="ensemble decomposition"
 ensemble   Brier      REL        RES
 0          0.03678    0.00331    0.01426
 4          0.03633    0.00293    0.01425
@@ -662,7 +667,7 @@ cannot resolve a 0.0007 Brier difference resolves an option contrast to a fracti
 
 45 real decision snapshots, reconstructed through the as-of replay:
 
-```
+```text title="CI-width calibration"
        N   CI width   predicted 1/sqrt(N)   rec == N=50k   |delta drift|   CRN ratio
    1,000   4.373 pp         4.373 pp             87%          0.267 pp       0.403
    2,000   3.035            3.092                93%          0.199          0.371
@@ -698,9 +703,15 @@ sample contains few genuine near-ties, so the abstention RATE here should not be
 
 Every result carries a `config_hash` over, at minimum:
 
-```
+```text title="version tuple"
 rng_version · objective_version · corpus_version · source_commit
 model parameter vector θ · enabled component flags
 ε · margin · B · N · bootstrap statistic
 metric definitions · exclusions · feed/provider availability per quantity
 ```
+
+## Related
+
+* [GATE0_VERIFICATION.md](GATE0_VERIFICATION.md) — the probes that verified these contracts' inputs.
+* [DATA_SOURCES.md](DATA_SOURCES.md) — the sources the corpus version pins.
+* [STORAGE_VALIDATION.md](STORAGE_VALIDATION.md) — the storage plane the frozen codecs land in.

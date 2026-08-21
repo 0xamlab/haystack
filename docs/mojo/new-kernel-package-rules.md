@@ -1,3 +1,8 @@
+---
+icon: list-check
+description: Empirically verified rules for adding a new Mojo kernel package — bounds checks, registration headroom, frozen-kernel reuse, Mojo 1.0.0 gotchas, per-module definition of done.
+---
+
 # Rules for new additive kernel packages
 
 Empirically established, not stylistic. Each rule below was verified against this
@@ -206,13 +211,13 @@ So: pack several parameters per line to leave real headroom, and put a comment a
 signature near the limit saying the packing is load-bearing. After **any** signature
 change, re-check the per-module function counts — a drop is the only symptom:
 
-```bash
-python3 -c "
+```bash title="per-module function counts"
+PACKAGE_PREFIX=optimization python3 -c "
 import sys; sys.path.insert(0,'.')
 from pathlib import Path
 from apps.runtime import mojo_inventory as mi
 for m in mi.discover_runtime_library_modules(Path('mojo/engine')):
-    if m.import_path.startswith('<your_package>.'):
+    if m.import_path.startswith('$PACKAGE_PREFIX.'):
         print(m.import_path, len(m.functions))"
 ```
 
@@ -489,3 +494,7 @@ what is left.
 5. Benchmark under `benchmarks/`.
 6. GitBook page, `make docs-check` green, artifacts regenerated via
    `make inventory-refresh`.
+
+## Related
+
+* [sheet-plane.md](sheet-plane.md) — a kernel package (`sheet/`) built under these rules.
