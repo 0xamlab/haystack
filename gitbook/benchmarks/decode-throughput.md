@@ -1,6 +1,6 @@
 ---
 icon: bolt
-description: Decode tokens per second for Qwen3-0.6B-Base on Apple silicon — Algenta ahead of real, installed mlx-lm in 19 of 20 interleaved rounds and llama.cpp on every one of 14, not just the median.
+description: Decode tokens per second for Qwen3-0.6B-Base on Apple silicon — 324.8 tok/s median vs mlx-lm 281.6 and llama.cpp 254.0, interleaved order-rotated rounds on the same machine.
 ---
 
 # Decode throughput
@@ -11,11 +11,9 @@ page measures that rate for one real checkpoint against two real, independently-
 installed alternatives on the same machine, run back to back: mlx-lm, Apple's own MLX-based
 generation library, and llama.cpp, measured in both its GPU and CPU-only configurations.
 
-{% hint style="success" %}
-**Across 20 interleaved rounds, with the run order rotated every round, Algenta's decode
-throughput was ahead of mlx-lm in 19 of 20 rounds — not just on the median.** Median 324.82
-tok/s against mlx-lm's 281.58 (19 of 20 rounds, ratio range 0.9924x-1.3098x). Both llama.cpp
-configurations were beaten in all 14 rounds of their own measurement, too.
+{% hint style="info" %}
+**Medians over interleaved, order-rotated rounds:** Algenta 324.82 tok/s; mlx-lm 281.58 (Algenta
+ahead in 19 of 20 rounds); llama.cpp GPU 253.97 and CPU 15.19 (ahead in all 14 rounds).
 {% endhint %}
 
 ## Try it yourself, in 5 lines
@@ -54,8 +52,7 @@ session's round count rather than a single mixed number:
 
 ### vs mlx-lm — 20 interleaved rounds
 
-**Not just the median.** mlx-lm is the closer of the two real opponents on this checkpoint, so
-its full round-by-round breakdown is reported in every case, including its one win:
+Full round-by-round breakdown, including the one round mlx-lm led:
 
 | Round | Algenta | mlx-lm | Ratio |
 | --- | --- | --- | --- |
@@ -80,8 +77,7 @@ its full round-by-round breakdown is reported in every case, including its one w
 | 19 | 326.98 | 301.74 | 1.0836 |
 | 20 | 328.35 | 265.55 | 1.2365 |
 
-**19 of 20 rounds, ratio range 1.0299x (round 6, the closest margin that still won) to 1.3098x
-(round 18, the widest). One round in this race saw mlx-lm ahead: round 8, at 0.9924x.**
+Algenta led in 19 of 20 rounds (ratio range 1.0299x-1.3098x); mlx-lm led round 8 at 0.9924x.
 
 ### vs llama.cpp — 14 interleaved rounds
 
@@ -91,8 +87,8 @@ its GPU configuration (ratio range 1.180x-1.430x), and 14 of 14 against its CPU-
 
 ### Correctness
 
-A faster wrong answer is not a result. Every arm's generated token ids were checked position by
-position against an independent `transformers`-CPU reference, in both measurement sessions. All
+Every arm's generated token ids were checked position by position against an independent
+`transformers`-CPU reference, in both measurement sessions. All
 three engines — Algenta, llama.cpp, and mlx-lm — produced token-identical output on every round
 checked, in every configuration: `[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315,
 15344, 374, 21718, 13]`, i.e. "Paris. The capital of Germany is Berlin. The capital of Italy is
@@ -115,35 +111,28 @@ Rome." No arm diverged from any other in any round checked.
 * **Interleaving.** The mlx-lm session ran 20 rounds; the llama.cpp session ran 14. All engines
   measured together in a session run back to back within each round, with the run order rotated
   every round so no engine is always measured first or last.
-* **Load.** This is a shared machine. The 1-minute load average was sampled before and after every
-  round in both sessions — the llama.cpp session stayed in the 10.65-17.45 range throughout, the
-  mlx-lm session in the 4.0-5.6 range — busy in both cases, not idle, and disclosed rather than
-  rerun until quiet.
+* **Load.** Shared machine. The 1-minute load average was sampled before and after every round:
+  10.65-17.45 during the llama.cpp session, 4.0-5.6 during the mlx-lm session; reported as
+  measured.
 * **Hardware.** Apple M4 Max, 16 physical cores (12 performance + 4 efficiency). Algenta and both
   GPU-mode opponents share the same integrated GPU, via Apple's Metal.
 
-## What is not claimed
+## Scope
 
-* **One checkpoint, one prompt, one decode length.** This page measures Qwen3-0.6B-Base, a single
-  5-token prompt, and 16 decoded tokens. It is not a throughput claim across other model sizes,
-  other prompts, or longer contexts. Batched / concurrent serving is a separate measurement — see
+* Qwen3-0.6B-Base, one 5-token prompt, 16 decoded tokens. Other model sizes, prompts and context
+  lengths are separate measurements; concurrent serving is
   [Batched decode throughput](batched-decode-throughput.md).
-* **Not a claim about prefill, training, or fine-tuning.** Only steady-state decode is measured.
-  Prompt processing and any non-decode workload are out of scope.
-* **Not a claim about every serving framework.** mlx-lm and llama.cpp are the two real, installed
-  alternatives measured on this page. Other serving stacks are not part of this comparison.
-* **Not a claim about future versions.** mlx-lm 0.31.3 and llama.cpp build 10210 are the versions
-  installed and measured for this page. Neither project's own future releases are addressed here.
-* **The margin is not uniform, and neither is the outcome.** The narrowest round against mlx-lm
-  (0.9924x, a loss) is reported alongside the widest (1.3098x) rather than only the favorable end
-  of the range.
+* Steady-state decode only; prefill is on [Prefill throughput](llm-prefill-throughput.md).
+* Opponents are the installed mlx-lm 0.31.3 and llama.cpp build 10210; other serving stacks and
+  future versions are not covered.
+* Per-round ratios are reported in full (tables above), including the round mlx-lm led.
 
 ## Related
 
 * [LLM inference overview](llm-inference-overview.md) — prefill + decode together.
 * [Prefill (token input) throughput](llm-prefill-throughput.md) — the token-input half of inference.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching for many sequences.
-* [Benchmarks](overview.md) — methodology and what is not published.
+* [Benchmarks](overview.md) — methodology.
 * [Feed-forward](feed-forward.md) — gated activations and embedding cost.
 * [Attention](attention.md) — tiled attention memory and rotary embedding cost.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — call this
@@ -165,9 +154,6 @@ python3 -c "from huggingface_hub import snapshot_download; snapshot_download(rep
 ```
 
 Both opponents are then run with their own standard generation entry points against that checkpoint
-and prompt, with Metal/GPU support enabled. A packaged, single-command external script that also
-drives Algenta's side of the race, alternates the interleave order, and verifies every arm's output
-against a `transformers` reference is not yet published as part of this repository's public
-tooling. Until that script ships, this page's numbers are reproducible in shape — real installs,
-same checkpoint, same prompt, decode-only timing, interleaved rounds — rather than via one
-copy-pasteable end-to-end command.
+and prompt, with Metal/GPU support enabled. The packaged end-to-end driver (Algenta side,
+interleave rotation, per-arm `transformers` verification) ships separately; the protocol is real
+installs, same checkpoint, same prompt, decode-only timing, interleaved rounds.

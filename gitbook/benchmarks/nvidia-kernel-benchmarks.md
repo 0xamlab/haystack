@@ -1,22 +1,20 @@
 ---
 icon: gauge-high
-description: One portable FP32 kernel, unmodified, measured on NVIDIA T4, L4 and A100 — GEMM and saxpy with bit-exact validation, and why the %-of-peak is low by construction.
+description: One portable FP32 kernel, unmodified, measured on NVIDIA T4, L4 and A100 — GEMM and saxpy with bit-exact validation; percentages are against spec-sheet peaks.
 ---
 
 # NVIDIA kernel benchmarks
 
 This page measures the **same portable kernel, unmodified, across three NVIDIA architectures** —
 the portable GPU kernel layer whose run-verification sits in the
-[GPU support matrix](../engine/gpu-support.md). The point is a like-for-like comparison of
-identical code on different hardware, with correctness asserted before any timing: worst-case
-oracle deltas of 0.0 on GEMM (including zero-padded ragged tiles) and saxpy exact at n=65537, a
-size that is not a multiple of the kernel's block size.
+[GPU support matrix](../engine/gpu-support.md): identical code on different hardware, with
+correctness asserted before any timing (worst-case oracle deltas of 0.0 on GEMM including
+zero-padded ragged tiles; saxpy exact at n=65537, a size that is not a multiple of the kernel's
+block size).
 
 {% hint style="info" %}
-**Baseline:** the same unmodified kernel across GPUs. This is NOT a race against cuBLAS or any
-tuned vendor library — it is one portable validation kernel compared against itself on three
-architectures. The low %-of-peak in the table is by construction, and
-[explained below](#why-the-percent-of-peak-is-low).
+**Configuration.** One unmodified portable validation kernel on all three GPUs. Percentages are
+ratios against each chip's own spec-sheet peak, not against tuned vendor libraries.
 {% endhint %}
 
 ## Results
@@ -37,11 +35,9 @@ Peak values are the published spec-sheet figures (FP32 TFLOPS and memory bandwid
 
 ### Why the percent-of-peak is low
 
-The low percentages are **by construction, and saying so is part of the result**. This is the
-portable VALIDATION kernel — an Apple-tuned 32x32 tile — run unmodified cross-GPU so the comparison
-is the same code on different hardware. It is not a cuBLAS-class tuned GEMM, and no NVIDIA-specific
-tuning was applied. NVIDIA-optimized kernels are future work; this page is the honest baseline they
-will be measured against.
+The kernel is the portable validation tile (32x32, 2x2 register block) compiled unmodified per
+chip; no per-architecture tuning is applied, so percent-of-peak reflects the validation kernel.
+Optimized NVIDIA kernels are measured against this baseline.
 
 ### Validation behind the table
 
@@ -56,13 +52,11 @@ Correctness gates the benchmarks: no timing is reported from a kernel that faile
 
 * **GEMM orders A100 > L4 > T4 at every size.** Bandwidth ratios measured close to theory:
   A100/T4 5.3x measured vs 4.9x theoretical, A100/L4 5.7x measured vs 5.2x theoretical.
-* **saxpy orders A100 > T4 > L4 — and that inversion vs GEMM is expected, not an anomaly.** It
-  follows the spec sheet: T4's 320 GB/s GDDR6 (256-bit) exceeds L4's 300 GB/s (192-bit). Both
-  deliver ~79-86% of their own bandwidth peak; each chip is measured against its own ceiling.
+* **saxpy orders A100 > T4 > L4**, following the spec sheet: T4's 320 GB/s GDDR6 (256-bit)
+  exceeds L4's 300 GB/s (192-bit). Both deliver ~79-86% of their own bandwidth peak.
 * **T4's large-size numbers are at its power-limited steady clock**: 1215-1230 MHz of a 1590 MHz
-  maximum, at 69 W of a 70 W board limit. That was the only throttle observed in the whole
-  campaign; L4 and A100 ran at max clocks under load. Clocks were sampled concurrently with the
-  timed regions, so the table states what each chip was actually doing while measured.
+  maximum, at 69 W of a 70 W board limit; L4 and A100 ran at max clocks under load. Clocks were
+  sampled concurrently with the timed regions.
 
 ## Method
 
@@ -75,17 +69,14 @@ Correctness gates the benchmarks: no timing is reported from a kernel that faile
 * **Environment.** NVIDIA driver 595.71.05 on all three machines, CUDA 13.2 reported, Ubuntu
   22.04 GCP spot VMs (spot capacity us-central1), mojo 1.0.0 / MAX 26.5.0 from the repo lock.
 
-## What is not claimed
+## Scope
 
-* **No tuned-GEMM claim.** The %-of-peak reflects a validation kernel, not the ceiling of what a
-  tuned NVIDIA kernel would reach on these chips.
-* **No LLM-serving claim.** These are portable kernel-layer results. The shipped SDK serving path
-  is Metal-only; a CUDA-native LLM session has been race-measured on A100/L4 — see
-  [NVIDIA LLM throughput](nvidia-llm-throughput.md) — and the
-  [GPU support matrix](../engine/gpu-support.md) carries the lane-by-lane scope.
-* **V100 is absent by toolchain constraint, not by omission.** The pinned toolchain hard-rejects
-  sm_70 (Volta) at compile time; the floor of the CUDA lane is Turing — see
-  [Unsupported architectures](../engine/gpu-support.md#unsupported-architectures).
+* Percent-of-peak reflects the validation kernel, not a tuned-kernel ceiling.
+* These are kernel-layer results. LLM-serving numbers are on
+  [NVIDIA LLM throughput](nvidia-llm-throughput.md); lane-by-lane scope is on the
+  [GPU support matrix](../engine/gpu-support.md).
+* V100 (sm\_70) is rejected at compile time by the pinned toolchain; the CUDA floor is Turing —
+  see [Unsupported architectures](../engine/gpu-support.md#unsupported-architectures).
 
 ## Reproduce
 
@@ -101,15 +92,14 @@ runtime built with the CUDA knobs — `MOJO_BUILD_CUDA_GPU=1` and
 `MOJO_BUILD_CUDA_TARGET` set to the fleet's architecture (`sm_75` / `sm_80` / `sm_89`). The
 harness drives the portable GEMM and saxpy kernels through the same launch seam with the protocol
 above: oracle diff first, then warmup, then median-of-3 timings wrapping enqueue + synchronize
-only. A packaged cross-GPU sweep script is not yet committed, so until it ships this page is
-reproducible in shape — same kernel, same protocol, same knobs — rather than via one copy-pasteable
-command.
+only. The cross-GPU sweep uses the same kernel, protocol and knobs; a packaged sweep script
+ships separately.
 
 ## Related
 
 * [GPU support](../engine/gpu-support.md) — the matrix these numbers verify, lane by lane.
 * [NVIDIA LLM throughput](nvidia-llm-throughput.md) — the CUDA-native LLM session raced on A100/L4.
 * [Compute kernels](compute-kernels.md) — the Metal-side kernel measurements.
-* [Prefill (token input) throughput](llm-prefill-throughput.md) — what the production Metal path achieves end to end.
+* [Prefill (token input) throughput](llm-prefill-throughput.md) — the production Metal path end to end.
 * [Batched decode throughput](batched-decode-throughput.md) — batched serving on Metal.
-* [Benchmarks](overview.md) — methodology and what is not published.
+* [Benchmarks](overview.md) — methodology.

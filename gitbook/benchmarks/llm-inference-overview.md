@@ -16,23 +16,21 @@ each with a different bottleneck and its own benchmark here:
 | **Batched decode (continuous batching)** | Generate for B requests at once | Weight sweep amortized over B | 2.1-2.6x llama.cpp concurrent at B=8-32 | [Batched decode throughput](batched-decode-throughput.md) |
 
 {% hint style="info" %}
-**The one-line summary:** Algenta is fastest at prefill (token input), competitive-to-fastest at
-single-stream decode, and runs 2.1-2.6x llama.cpp's concurrent decode throughput when decoding
-many sequences at once — because the batched path sweeps the model weights once per step for all B
-sequences instead of once per token.
+**Measured on Apple M4 Max:** prefill 10,676-10,734 tok/s (llama.cpp 10,199); single-stream decode
+leads at generation lengths >= 16; batched decode 2.1-2.6x llama.cpp at B=8-32, as the batched
+path sweeps the weights once per step for all B sequences.
 {% endhint %}
 
 ## Why the three workloads behave differently
 
 * **Prefill** processes every prompt token together, so each projection is one wide
-  `[m_rows, d_model] @ weights` matmul. Compute-bound, and a well-tiled GPU path wins big. This is
-  where Algenta leads.
-* **Single-stream decode** generates one token per step, streaming the full model weights for each.
-  Every engine sits near the same memory-bandwidth floor here, so it is a tight race — Algenta beats
-  llama.cpp and mlx-lm at generation lengths >=16.
-* **Batched decode** steps B sequences per step. The weights are still swept once, but now produce B
-  tokens, so the per-token weight cost falls with B. This is the structural way off the single-stream
-  floor for any serving workload with more than one request in flight.
+  `[m_rows, d_model] @ weights` matmul — compute-bound, scaling with GEMM tile quality.
+* **Single-stream decode** generates one token per step, streaming the full model weights for
+  each. Every engine sits near the same memory-bandwidth floor; Algenta leads at generation
+  lengths >= 16.
+* **Batched decode** steps B sequences per step. The weights are swept once but produce B tokens,
+  so the per-token weight cost falls with B — the structural way off the single-stream floor for
+  any serving workload with more than one request in flight.
 
 ## Cross-cutting properties
 
@@ -49,8 +47,8 @@ sequences instead of once per token.
   bytes next to each converted checkpoint; second-and-later calls load ~8x fewer bytes and skip
   quantization entirely (3.10x / 1.93x whole-call wall on 0.6B / 1.7B), token-identical to the
   uncached path.
-* **Correctness-gated, not just fast.** Every path checks generated tokens against a reference; a
-  faster wrong answer is not a result.
+* **Correctness-gated.** Every path checks generated tokens against a reference before any number
+  is reported.
 
 ## Related
 
@@ -59,7 +57,7 @@ sequences instead of once per token.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — call it from Python.
 * [GPU support](../engine/gpu-support.md) — which GPU lanes are run-verified, and what that covers.
-* [NVIDIA LLM throughput](nvidia-llm-throughput.md) — the same race on NVIDIA A100/L4: fixture prefill won 1.29x, decode at its f32 bandwidth floor.
+* [NVIDIA LLM throughput](nvidia-llm-throughput.md) — CUDA-native session numbers on A100/L4.
 * [Run local LLM decode](../guides/run-qwen3-decode.md) — step-by-step guide.
 * [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md) — the model-agnostic SDK path (0.6B, 1.7B, and other supported shapes).
-* [Benchmarks](overview.md) — methodology and what is not published.
+* [Benchmarks](overview.md) — methodology.

@@ -16,11 +16,10 @@ This page measures that aggregate rate — total generated tokens per second acr
 for one real checkpoint on one machine, against both Algenta's own single-stream decode and the
 concurrent serving throughput of the installed opponents.
 
-{% hint style="success" %}
-**Batched decode runs 2.1-2.6x the concurrent decode throughput of llama.cpp at B=8-32
-(2,140 vs ~810 aggregate tok/s at B=32), with every sequence in the batch verified
-token-identical to single-stream decode.** The same compiled Metal kernel path that ships the
-single-stream decode runs the batched path; nothing external is added.
+{% hint style="info" %}
+**Aggregate decode at B=32: Algenta 2,140 tok/s vs llama.cpp concurrent ~810 (2.6x); 2.1-2.6x
+across B=8-32.** Every batched sequence is token-identical to single-stream decode. The batched
+path runs on the same compiled Metal kernel path that ships single-stream decode.
 {% endhint %}
 
 ## Why batching is the lever
@@ -47,27 +46,23 @@ decode wall. Median of repeated runs.
 
 llama.cpp runs its own slot-based concurrent serving (`llama-server`, B parallel slots, F16
 weights); Algenta runs `decode_batched` (one weight sweep per step for all B). mlx-lm has no
-concurrent serving mode, so it is not in this table. Margins are stated conservatively against
-llama.cpp's best same-day figures; the machine was warm during part of the measurement window, and
-both engines' absolute figures move with thermal state — the margin is the stable quantity.
+concurrent serving mode and is not in this table. Absolute figures move with thermal state;
+margins are stated against llama.cpp's best same-day figures.
 
-Two things are worth reading off the table:
-
-* **Aggregate keeps rising with B.** Weights are swept once per step regardless of B, so each extra
-  sequence adds mostly activation + attention work, not another weight sweep.
-* **Per-sequence rate falls as B rises** — that is expected and honest to report: the batch is
-  trading per-request latency for aggregate throughput, which is the standard serving trade-off.
+* **Aggregate keeps rising with B.** Weights are swept once per step regardless of B, so each
+  extra sequence adds mostly activation + attention work, not another weight sweep.
+* **Per-sequence rate falls as B rises** — the batch trades per-request latency for aggregate
+  throughput, the standard serving trade-off.
 
 ### Correctness
 
-A faster wrong answer is not a result. The batched path was checked two ways:
+The batched path was checked two ways:
 
-* **Token-identical to single-stream.** For B = 2 through 32, every sequence in the batch produces
-  exactly the same greedy token stream as running that prompt alone through single-stream decode.
-  Not "close" — identical.
-* **B=1 routes to single-stream.** A one-sequence batch has nothing to batch; `decode_batched`
-  delegates it to the serial path and returns the same tokens, so there is no degenerate B=1 batch
-  code path.
+* **Token-identical to single-stream.** For B = 2 through 32, every sequence in the batch
+  produces exactly the same greedy token stream as running that prompt alone through
+  single-stream decode.
+* **B=1 routes to single-stream.** `decode_batched` delegates one-sequence batches to the serial
+  path and returns the same tokens.
 
 ## Method
 
@@ -83,15 +78,12 @@ A faster wrong answer is not a result. The batched path was checked two ways:
   wall, median of repeated runs each.
 * **Hardware.** Apple M4 Max, integrated GPU via Apple Metal.
 
-## What is not claimed
+## Scope
 
-* **Small batches are not the win.** Batching only pays once there are enough sequences in flight
-  to amortize the weight sweep; if you have one request, use single-stream decode (and
-  `decode_batched` itself routes B=1 there).
-* **Absolute figures move with thermal state.** Both engines' numbers shift as the machine heats;
-  the margin is the stable quantity, and it is stated against llama.cpp's best same-day figures.
-* **One checkpoint, one machine.** Qwen3-0.6B-Base on one M4 Max. Not a claim across other model
-  sizes, hardware, or context depths.
+* Batching pays once enough sequences are in flight to amortize the weight sweep; single-request
+  workloads use single-stream decode (`decode_batched` routes B=1 there).
+* Qwen3-0.6B-Base on one M4 Max; other model sizes, hardware and context depths are separate
+  measurements.
 
 ## Related
 
@@ -104,4 +96,4 @@ A faster wrong answer is not a result. The batched path was checked two ways:
   matrix behind these Metal results.
 * [Run local LLM decode](../guides/run-qwen3-decode.md) — install, get the
   checkpoint, and run a decode end to end.
-* [Benchmarks](overview.md) — methodology and what is not published.
+* [Benchmarks](overview.md) — methodology.

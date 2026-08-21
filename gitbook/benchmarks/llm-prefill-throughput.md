@@ -11,11 +11,10 @@ bound), prefill is a batched matmul over every prompt token — compute-bound, a
 well-tiled GPU kernel path pulls far ahead of a per-token loop. This page measures that rate for one
 real checkpoint against llama.cpp on the same machine.
 
-{% hint style="success" %}
-**Algenta prefills a 256-token prompt at ~10,700 tok/s (23.9 ms end-to-end), 1.049x llama.cpp's
-~10,199 tok/s fast regime and 1.15x its own prior pinned baseline.** The same kernel path handles
-**any prompt length** (not just 256) and is **model-agnostic** — verified on both Qwen3-0.6B-Base
-and Qwen3-1.7B with identical greedy output.
+{% hint style="info" %}
+**Algenta prefills a 256-token prompt at 10,676-10,734 tok/s (23.85-23.98 ms) on Apple M4 Max;
+llama.cpp measures 10,199 tok/s on the same machine (1.05x).** The kernel path handles any prompt
+length and is verified on Qwen3-0.6B-Base and Qwen3-1.7B with identical greedy output.
 {% endhint %}
 
 ## Results
@@ -23,14 +22,14 @@ and Qwen3-1.7B with identical greedy output.
 256-token prompt prefill, tokens per second, Apple M4 Max, resident session (weights uploaded once),
 greedy. Algenta is the no-mirror + MSL-parity-GEMM + split-K path:
 
-| Arm | Wall (ms) | Prefill tok/s | vs Algenta |
+| Arm | Wall (ms) | Prefill tok/s | Algenta / arm |
 | --- | --- | --- | --- |
 | **Algenta** (no-mirror + MSL + split-K) | **23.85 - 23.98** | **10,676 - 10,734** | 1.000x |
-| llama.cpp (build 10210), fast regime | 25.10 | 10,199 | 1.049x faster |
-| Algenta prior pinned baseline | 27.55 | 9,291.7 | 1.149x faster |
+| llama.cpp (build 10210), fast regime | 25.10 | 10,199 | 1.049x |
+| Algenta prior pinned baseline | 27.55 | 9,291.7 | 1.149x |
 
-Fresh-process (cold start, warm-up prefills included) reproduces the resident number: 10,698.8 tok/s
-(0.59% rel-IQR, PASS) — so the result is not an artifact of a long-lived warm session.
+A fresh process (cold start, warm-up prefills included) reproduces the resident number:
+10,698.8 tok/s (0.59% rel-IQR).
 
 ### Any prompt length, any Qwen3 model
 
@@ -42,17 +41,16 @@ Fresh-process (cold start, warm-up prefills included) reproduces the resident nu
   the split-K GEMM path is byte-identical-on/off for the generated sequence on both, and the first
   generated token matches an independent `transformers` CPU-fp32 reference.
 
-## What makes it fast
+## Implementation notes
 
-* **Batched matmul prefill, not a per-token loop.** The whole prompt is one `[m_rows, d_model] @
-  weights` multiply per projection, sweeping each weight matrix once for all prompt tokens.
-* **Hand-written MSL GEMMs at the hardware wall.** The four projection roles run Metal kernels
-  measured at ~12.9 TFLOP/s, ~92% of the M4 Max simdgroup-MMA ceiling (13.3 TFLOP/s).
-* **Split-K GPU-fill for narrow projections.** `o_proj`/`down_proj` (few output columns, few
-  threadgroups) split the K dimension across more threadgroups with an atomic-float-add epilogue,
-  lifting them to the wall instead of leaving cores idle.
-* **No-mirror native-packed KV.** The prefill writes the packed-F16 KV cache directly (no second
-  "mirror" pass), which decode then reads.
+* **Batched matmul prefill.** The whole prompt is one `[m_rows, d_model] @ weights` multiply per
+  projection, sweeping each weight matrix once for all prompt tokens.
+* **MSL GEMMs at 92% of the MMA ceiling.** The four projection roles run Metal kernels measured
+  at ~12.9 TFLOP/s against the M4 Max simdgroup-MMA ceiling of 13.3 TFLOP/s.
+* **Split-K for narrow projections.** `o_proj`/`down_proj` split the K dimension across more
+  threadgroups with an atomic-float-add epilogue.
+* **No-mirror native-packed KV.** The prefill writes the packed-F16 KV cache directly, and decode
+  reads it.
 
 ## Method
 
@@ -65,14 +63,12 @@ Fresh-process (cold start, warm-up prefills included) reproduces the resident nu
 * **Statistics.** 20 runs per cell, median, rel-IQR <= 5%, outliers dropped only if >=16/20 remain.
 * **Hardware.** Apple M4 Max, integrated GPU via Apple Metal.
 
-## What is not claimed
+## Scope
 
-* **One checkpoint family.** Measured on Qwen3-0.6B-Base and Qwen3-1.7B. Other model families are
-  not part of this page (the path is Qwen3-shaped).
-* **Prefill only.** This page measures prompt processing. Generation speed is
-  [decode throughput](decode-throughput.md) (single-stream) and
-  [batched decode throughput](batched-decode-throughput.md) (many sequences).
-* **Not a training or fine-tuning claim.** Inference prefill only.
+* Measured on Qwen3-0.6B-Base and Qwen3-1.7B; the path is Qwen3-shaped.
+* Prefill only. Generation speed is on [decode throughput](decode-throughput.md) (single-stream)
+  and [batched decode throughput](batched-decode-throughput.md) (many sequences).
+* Inference only; no training or fine-tuning results.
 
 ## Related
 
@@ -80,5 +76,5 @@ Fresh-process (cold start, warm-up prefills included) reproduces the resident nu
 * [Decode throughput](decode-throughput.md) — single-stream generation.
 * [Batched decode throughput](batched-decode-throughput.md) — continuous batching.
 * [Metal LLM decode](../engine/qwen3-metal-decode.md) — the kernel path.
-* [GPU support](../engine/gpu-support.md) — the lane-by-lane verification matrix behind these Metal results.
-* [Benchmarks](overview.md) — methodology and what is not published.
+* [GPU support](../engine/gpu-support.md) — the lane-by-lane verification matrix.
+* [Benchmarks](overview.md) — methodology.

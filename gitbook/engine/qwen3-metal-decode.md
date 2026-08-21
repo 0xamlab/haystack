@@ -23,15 +23,15 @@ one of them. The canonical matrix — every backend, what is verified, and the r
 | Backend | Build status | Launch status | What running it needs |
 | --- | --- | --- | --- |
 | Metal (Apple Silicon) | Run-verified, ships in the macOS runtime | Run-verified end to end on real hardware | An M-series Mac — nothing else |
-| CUDA (NVIDIA) | Portable kernel layer **run-verified**, compile-gated in CI; native LLM session **race-measured** | Portable kernels run bit-exact on real T4, L4 and A100 hardware; a separate CUDA-native resident session has been raced on A100/L4 — **this Metal entry point is not that session** | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver ≥ 580 |
+| CUDA (NVIDIA) | Portable kernel layer **run-verified**, compile-gated in CI; native LLM session **benchmarked** | Portable kernels run bit-exact on real T4, L4 and A100 hardware; a separate CUDA-native resident session is benchmarked on A100/L4 — this Metal entry point is not that session | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver ≥ 580 |
 | ROCm (AMD) | Compile-gate in progress | Not verified | — |
 
 The CUDA lane runs the PORTABLE gpu kernels; the Metal batched-dispatch machinery this page
-documents is gated separately (`ALGENTA_METAL`). The CUDA lane also grew its own native resident
-session (v2 prefill GEMMs + CUDA-graph decode), raced head-to-head against llama.cpp on A100/L4 —
-but the SDK entry point on this page remains Metal-only. Measured NVIDIA numbers:
+documents is gated separately (`ALGENTA_METAL`). The CUDA lane includes a native resident session
+(v2 prefill GEMMs + CUDA-graph decode) benchmarked on A100/L4; the SDK entry point on this page
+is Metal-only. Measured NVIDIA numbers:
 [NVIDIA kernel benchmarks](../benchmarks/nvidia-kernel-benchmarks.md) (portable kernels) and
-[NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md) (the LLM race).
+[NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md) (LLM session).
 
 ## Functions
 
