@@ -99,8 +99,15 @@ The packed3 resident session with captured-graph decode, against the llama.cpp c
 
 | GPU | Decode tok/s (gen=64) | Decode tok/s (gen=256) | vs llama.cpp F16 | vs llama.cpp Q8\_0 |
 | --- | --- | --- | --- | --- |
-| A100 | 420.8 | 402.4 | 1.18x / 1.10x | 1.04x / 0.96x |
+| A100 | 427.1 | 408.7 | 1.20x / 1.11x | 1.055x / 0.973x |
 | L4 | 191.1 | 184.8 | 1.12x / 1.07x | 0.73x / 0.69x |
+
+The A100 row is the tuned kernel (int32 word-view unpack + fused gate/up SwiGLU; bit-identical
+to the original, gates re-passed). Win-iteration note: gen256 trails Q8\_0 by 2.7%. ncu shows
+the packed3 GEMV family is L1/issue-bound (DRAM 24%, L1/TEX 70%, top stalls barrier +
+short-scoreboard), not HBM-bound, while the f32 twin streams at 75-105% of HBM; every
+compute-side intervention stopped at the same ~486 GB/s wall. Closing the residual gap needs
+sub-int8 weight streaming or an upstream backend load-path fix.
 
 ### Prefill
 
