@@ -1,0 +1,1043 @@
+"""
+residentk.session_cuda_p3 — the packed3 (arithmetic-packed-int8) DECODE twin of the CUDA-native
+resident session: `_CudaResidentQwen3P3` streams the four per-layer projection roles and the tied
+lm_head at the packed3 layout's ~1.5833 B/weight instead of Float32's 4 B/weight, while prefill,
+normalization, RoPE, attention and the KV cache stay BYTE-UNMODIFIED from
+`residentk.session_cuda._CudaResidentQwen3`. Zero Python.
+
+@capability-module
+deterministic: true
+stateful: true
+batch_capable: false
+stream_capable: false
+seed_requirements: none
+supported_dtypes: float32, uint8-packed
+backend: cuda
+surfaces: none
+golden_vectors: benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo
+benchmark: benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo
+docs: none
+version_introduced: 0.7.0
+deprecation_state: active
+@endcapability
+
+NOT a contract module. Every entry point is private and every launch compile-time gated — the
+same two defences `residentk.session_cuda`'s module docstring documents:
+
+1. **Private.** Nothing in this file is public, so `apps/runtime/mojo_inventory.py` skips it, it
+   never enters the runtime contract, and the generated dispatch never imports it. Today only
+   `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` reaches it.
+2. **Compile-time gated.** Every function here that issues an `enqueue_function` opens with
+   `@parameter if not CUDA_SESSION_BUILD: return <shader_toolchain_absent>` — the SAME gate
+   comptime `residentk.session_cuda` defines (`-D ALGENTA_GPU` conjuncted with `-D ALGENTA_CUDA`),
+   imported, not re-decided. The constructor carries no gate and is instead protected
+   structurally: the struct is constructed ONLY from inside a `@parameter if CUDA_SESSION_BUILD`
+   branch.
+
+What this session is FOR — decode = packed3, prefill = f32, stated as the split it is
+-------------------------------------------------------------------------------------------
+`REALRACE_RESULTS.md` established decode on this stack sits at its f32 bandwidth floor: 2.62 GB
+of Float32 weights streamed per token, 54-91% of HBM peak per role. `residentk.kernels_packed3`
+landed the kernel family that cuts that traffic: three unsigned int8 quants per Float32 word,
+block-32 zero-point scale+zero, streamed through the ONE load path this toolchain streams at HBM
+speed (128-bit `load[width=4]` on a Float32 pointer) and unpacked on-device with
+`std.memory.bitcast`. This session wires that family into a resident session:
+
+  * DECODE (`step_p3`) streams every projection weight as packed3 — 1.5833 B/weight
+    (4/3 B/w packed words + 8/32 B/w block-32 f32 scale+zero pair), so the 0.6B's 2.38 GB of f32
+    projection+lm_head weights become ~0.94 GB and per-token traffic ~1.18 GB all-in (the
+    module docstring of `residentk.kernels_packed3` states the ledger math).
+  * PREFILL (`prefill`) is delegated WHOLESALE to the inner f32 session — the compute-bound
+    m_rows > 1 pass keeps the f32 v2 tiled GEMMs. A packed prefill GEMM is future work; this
+    file deliberately does NOT attempt it.
+
+THE TWIN SESSION MEMORY MODEL (documented, not hidden): because prefill stays f32 and the f32
+prefill GEMMs read f32 weights, this session keeps BOTH formats resident — the inner f32
+session's full Float32 weight set (2.38 GB at 0.6B) PLUS the packed3 decode twins (~0.94 GB):
+~3.32 GB of weights total, plus the f32 KV cache. That is the price of a single session that
+runs both arms; a decode-only packed arm could drop the f32 projection matrices later. The f32
+embedding table stays resident in the inner session for the decode embed gather AND the f32
+prefill's embed/lm_head; the packed3 twin of the tied table exists ONLY as lm_head weights here.
+
+Kernel substitution table — `step` (f32) vs `step_p3` (packed3), per dispatch role
+-------------------------------------------------------------------------------------------
+| role                        | f32 session kernel            | this session dispatches            |
+|-----------------------------|-------------------------------|------------------------------------|
+| embed gather                | `_embed_row_kernel`           | UNCHANGED (embed stays f32)        |
+| rmsnorm(ln1) + qkv proj     | `_norm_gemv_kernel`           | `_norm_gemv_kernel_p3` (packed3)   |
+| qk_norm + RoPE + KV write   | `_qk_rope_write_kernel`       | UNCHANGED (f32 KV cache)           |
+| attention                   | `_sdpa_kernel`                | UNCHANGED (f32 KV cache)           |
+| o_proj + residual add       | `_gemv_accum_kernel`          | `_packed3_gemv_accum_kernel` (new) |
+| rmsnorm(ln2) + gate/up/SwiGLU | `_norm_gemv2_swiglu_kernel` | `_norm_gemv2_swiglu_kernel_p3` (new) |
+| down_proj + residual add    | `_gemv_accum_kernel`          | `_packed3_gemv_accum_kernel` (new) |
+| final norm + lm_head + argmax | `_lmhead_argmax_kernel`     | `_lmhead_argmax_kernel_p3` (new)   |
+| argmax reduce               | `_argmax_reduce_kernel`       | UNCHANGED                          |
+
+The dispatch PLAN is byte-identical to the f32 chain: `1 + 6 * n_layers + 2` dispatches per
+token = `residentk_dispatch_budget(n_layers)`, checked by the driver every step.
+
+DEVIATION FROM THE CAMPAIGN BRIEF, recorded: the brief sketched all four projections and the
+lm_head through `residentk.kernels_packed3._packed3_gemv_kernel`. That kernel is ASSIGN-only and
+one-row-per-block — composing it for the session's ACCUMULATE roles (o_proj/down_proj fuse the
+residual `+=`), the fused gate/up+SwiGLU role, and the logits-never-materialised lm_head+argmax
+role would need scratch buffers PLUS extra add/swiglu/argmax dispatches, breaking the frozen
+dispatch budget and adding per-token host cost. `step_p3` therefore keeps the f32 chain's
+dispatch shape exactly by dispatching the three packed3 twins defined in THIS file, each derived
+from its f32 twin by changing ONLY the weight load+dequant to the kernels_packed3 unpack — the
+same derivation `_norm_gemv_kernel_p3` performed for the qkv role (its docstring names itself
+"the structural mirror ... a session integration dispatches"). `_packed3_gemv_kernel` remains
+the probe's correctness/bandwidth kernel and is NOT dispatched by this session.
+
+The three new kernels, and the ONE rule they share with `residentk.kernels_packed3`
+-------------------------------------------------------------------------------------------
+Every scalar parameter is a fixed-width `Int64` (DevicePassable), widened back to `Int` once at
+entry — Mojo 1.0.0 kernel-parameter discipline, `accel/launch.mojo`'s pattern. The weight stream
+is typed Float32 (`_FP`) on purpose: it is read as Float32 WORDS (the only SIMD load this backend
+streams at HBM speed) and reinterpreted AFTER the load with `bitcast[DType.uint8, 16]`.
+
+ACTIVATION TAIL CONTRACT: packed3 rows pad to `k_pack = ceil(k/12)*12` slots, and the padded
+slots contribute EXACTLY zero because the activation side is zero there too. The two kernels
+`residentk.kernels_packed3` ships handle that on their caller's side; the twins in THIS file
+stage the activation into shared memory ZERO-FILLING the `k_pack - k` tail themselves, so
+`step_p3` needs no padded device copies of `attn_out` / `act` / `hidden` (the buffers stay the
+same sizes the f32 session allocates). `k_pack <= RESIDENT_MAX_D_MODEL` for every contract-legal
+`k` (`residentk_dims_check`'s `stage_needed = max(d_model, h_q*d_head, d_ff)` bound plus both
+staging tiers being multiples of 12), so the shared staging never overflows — the exact ceiling
+argument `residentk.kernels_packed3`'s `_P3_STAGE` docstring makes.
+
+Host pack flow (upload)
+------------------------
+`upload_globals` / `upload_layer` first forward every tensor to the INNER f32 session (its
+proven `_narrow_into` / `_narrow_transposed_into` helpers — the f32 half is byte-identical to
+`_CudaResidentQwen3`), then pack the SAME Float64 wire tensors — narrowed to Float32 exactly the
+way the f32 path narrows them, so quantization error is measured against the identical values —
+through `residentk.kernels_packed3._pack_f32_to_packed3` (the reference pack: pad K to a
+multiple of 12, block-32 zero-point quant, padding slots take the rounded zero-point and
+contribute exactly zero) and upload the packed words + scales + zeros buffers.
+
+Build / compile verification (macOS build host, NVPTX ships in the toolchain, no GPU needed)
+---------------------------------------------------------------------------------------------
+The module compiles THROUGH the gate driver — the campaign's compile-verification form, which
+also guarantees the kernels are actually LOWERED (an unreachable kernel would compile vacuously):
+
+    mojo build -D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_80 \
+        -I mojo/engine benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo \
+        -o /tmp/qwen3_p3_session_cuda_sm80
+(same with `sm_89` for the L4/4090 lane; the object+link fallback recipe lives in the driver's
+docstring, mirrored from `qwen3_serve_cuda.mojo`'s).
+"""
+
+from max.gpu.host import DeviceBuffer
+from std.gpu import block_idx, grid_dim, thread_idx
+from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
+from max.gpu.memory import AddressSpace
+from std.math import exp, sqrt
+from std.memory import bitcast, stack_allocation
+from std.origin import MutAnyOrigin
+from residentk.contract import (
+    RESIDENT_ERR_CONTEXT_FULL,
+    RESIDENT_ERR_LAUNCH_FAILED,
+    RESIDENT_ERR_UPLOAD_LENGTH,
+    RESIDENT_OK,
+    RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT,
+    residentk_dispatch_budget,
+)
+from residentk.kernels import (
+    _TG,
+    _LANES,
+    _SUBS,
+    _NEG_HUGE,
+    _embed_row_kernel,
+    _qk_rope_write_kernel,
+    _sdpa_kernel,
+    _argmax_reduce_kernel,
+)
+from residentk.kernels_packed3 import (
+    _P3_CHUNK,
+    _P3_QUANTS_PER_WORD,
+    _P3_BLOCK,
+    _P3_STAGE,
+    _norm_gemv_kernel_p3,
+    _pack_f32_to_packed3,
+    _p3_words_per_row,
+    _p3_blocks_per_row,
+)
+from residentk.session import (
+    _LM_BLOCKS,
+    _StepOut,
+    _ceil_div,
+)
+from residentk.session_cuda import (
+    CUDA_SESSION_BUILD,
+    _CudaResidentQwen3,
+)
+
+alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
+"""A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling, and the
+packed3 weight stream is typed Float32 on purpose (module docstring)."""
+
+
+# ── the three packed3 decode twins ─────────────────────────────────────────────
+
+
+def _packed3_gemv_accum_kernel(
+    y: _FP, x: _FP, wp: _FP, wscale: _FP, wzero: _FP, k_i64: Int64, n_i64: Int64,
+):
+    """`y += W @ x` with `W` held packed3 — the packed3 twin of `_gemv_accum_kernel`: 8 output
+    rows per block (`grid_dim = ceil(n / 8)`), the projection AND its residual add in one
+    dispatch (`+=` is the whole point for o_proj/down_proj's residual feed — each output element
+    is owned by exactly one SIMD group, so the read-modify-write has no race). ONLY the weight
+    load+dequant differs from the f32 twin; the shared staging, the accumulator and the
+    barrier-tree reduction are copied from it line for line.
+
+    ACTIVATION TAIL (module docstring): `x` arrives at its natural `k` elements; the staging
+    loop zero-fills the `k_pack - k` tail, so the 12-wide chunk loop's padded reads multiply
+    padding quants by exactly zero.
+    """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    # ── stage x, zero-filling the padded tail (the activation-side half of the tail contract) ──
+    var s = tid
+    while s < k_pack:
+        if s < k:
+            xs[s] = x[s]
+        else:
+            xs[s] = Float32(0.0)
+        s += _TG
+    barrier()
+
+    # ── one SIMD group per output row, packed3 chunk loop ──
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var wbase = j * words_per_row
+        var sbase = j * nblocks
+        var t = lane * _P3_CHUNK
+        while t < k_pack:
+            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var b = bitcast[DType.uint8, 16](v)
+            var xv0 = xs.load[width=4](t)
+            var xv1 = xs.load[width=4](t + 4)
+            var xv2 = xs.load[width=4](t + 8)
+
+            var blk = t >> 5
+            var s0 = wscale[sbase + blk]
+            var z0 = wzero[sbase + blk]
+            var s1 = s0
+            var z1 = z0
+            var r = t & 31
+            var cross = _P3_CHUNK
+            if r == 24:
+                cross = 8
+            if r == 28:
+                cross = 4
+            if cross < _P3_CHUNK:
+                s1 = wscale[sbase + blk + 1]
+                z1 = wzero[sbase + blk + 1]
+            var s_lo = s0
+            var z_lo = z0
+            if cross == 4:
+                s_lo = s1
+                z_lo = z1
+            var s_hi = s0
+            var z_hi = z0
+            if cross <= 8:
+                s_hi = s1
+                z_hi = z1
+
+            # MUST stay in sync with `_packed3_gemv_kernel`'s 12 dequant+mac lines in
+            # residentk.kernels_packed3 (and with the two other twins in this file).
+            acc += xv0[0] * ((Float32(Int32(b[0])) - z0) * s0)
+            acc += xv0[1] * ((Float32(Int32(b[1])) - z0) * s0)
+            acc += xv0[2] * ((Float32(Int32(b[2])) - z0) * s0)
+            acc += xv0[3] * ((Float32(Int32(b[4])) - z0) * s0)
+            acc += xv1[0] * ((Float32(Int32(b[5])) - z_lo) * s_lo)
+            acc += xv1[1] * ((Float32(Int32(b[6])) - z_lo) * s_lo)
+            acc += xv1[2] * ((Float32(Int32(b[8])) - z_lo) * s_lo)
+            acc += xv1[3] * ((Float32(Int32(b[9])) - z_lo) * s_lo)
+            acc += xv2[0] * ((Float32(Int32(b[10])) - z_hi) * s_hi)
+            acc += xv2[1] * ((Float32(Int32(b[12])) - z_hi) * s_hi)
+            acc += xv2[2] * ((Float32(Int32(b[13])) - z_hi) * s_hi)
+            acc += xv2[3] * ((Float32(Int32(b[14])) - z_hi) * s_hi)
+            t += _LANES * _P3_CHUNK
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = y[j] + red[sub * _LANES]
+
+
+def _norm_gemv2_swiglu_kernel_p3(
+    act: _FP, x: _FP, gamma: _FP, wp: _FP, wscale: _FP, wzero: _FP,
+    k_i64: Int64, n_ff_i64: Int64, eps: Float32,
+):
+    """`act = swish(W_gate @ xn) * (W_up @ xn)` with `xn = rmsnorm(x) * gamma`, `W_gate`/`W_up`
+    held packed3 — the packed3 twin of `_norm_gemv2_swiglu_kernel`, 8 output pairs per block
+    (`grid_dim = ceil(n_ff / 8)`). `wp` is the gate and up matrices CONCATENATED as
+    `[2 * n_ff, k]` row-major, gate rows first — packed row-wise, so the gate row `j` lives at
+    packed word offset `j * words_per_row` and its up partner at `(n_ff + j) * words_per_row`
+    (same layout statement the f32 twin makes, only the storage format changed). ONLY the weight
+    load+dequant differs from the f32 twin; the normalization, the shared staging, the two
+    barrier-tree reductions and the SwiGLU combine (including its `swish(gate) * up` convention,
+    which backwards would generate different text) are copied from it line for line.
+
+    ACTIVATION TAIL (module docstring): the staging loop stages the NORMALIZED vector with the
+    `k_pack - k` tail zero-filled.
+    """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    # ── 1. sum of squares over the whole vector, tree-reduced across the group ──
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    # ── 2. stage the normalized, gamma-scaled vector; zero-fill the padded tail ──
+    var s = tid
+    while s < k_pack:
+        if s < k:
+            xs[s] = x[s] * inv * gamma[s]
+        else:
+            xs[s] = Float32(0.0)
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+
+    # ── gate ──
+    var acc = Float32(0.0)
+    if j < n_ff:
+        var wbase = j * words_per_row
+        var sbase = j * nblocks
+        var t = lane * _P3_CHUNK
+        while t < k_pack:
+            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var b = bitcast[DType.uint8, 16](v)
+            var xv0 = xs.load[width=4](t)
+            var xv1 = xs.load[width=4](t + 4)
+            var xv2 = xs.load[width=4](t + 8)
+
+            var blk = t >> 5
+            var s0 = wscale[sbase + blk]
+            var z0 = wzero[sbase + blk]
+            var s1 = s0
+            var z1 = z0
+            var r = t & 31
+            var cross = _P3_CHUNK
+            if r == 24:
+                cross = 8
+            if r == 28:
+                cross = 4
+            if cross < _P3_CHUNK:
+                s1 = wscale[sbase + blk + 1]
+                z1 = wzero[sbase + blk + 1]
+            var s_lo = s0
+            var z_lo = z0
+            if cross == 4:
+                s_lo = s1
+                z_lo = z1
+            var s_hi = s0
+            var z_hi = z0
+            if cross <= 8:
+                s_hi = s1
+                z_hi = z1
+
+            # MUST stay in sync with `_packed3_gemv_kernel`'s 12 dequant+mac lines.
+            acc += xv0[0] * ((Float32(Int32(b[0])) - z0) * s0)
+            acc += xv0[1] * ((Float32(Int32(b[1])) - z0) * s0)
+            acc += xv0[2] * ((Float32(Int32(b[2])) - z0) * s0)
+            acc += xv0[3] * ((Float32(Int32(b[4])) - z0) * s0)
+            acc += xv1[0] * ((Float32(Int32(b[5])) - z_lo) * s_lo)
+            acc += xv1[1] * ((Float32(Int32(b[6])) - z_lo) * s_lo)
+            acc += xv1[2] * ((Float32(Int32(b[8])) - z_lo) * s_lo)
+            acc += xv1[3] * ((Float32(Int32(b[9])) - z_lo) * s_lo)
+            acc += xv2[0] * ((Float32(Int32(b[10])) - z_hi) * s_hi)
+            acc += xv2[1] * ((Float32(Int32(b[12])) - z_hi) * s_hi)
+            acc += xv2[2] * ((Float32(Int32(b[13])) - z_hi) * s_hi)
+            acc += xv2[3] * ((Float32(Int32(b[14])) - z_hi) * s_hi)
+            t += _LANES * _P3_CHUNK
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0:
+        gsh[sub] = red[sub * _LANES]
+    barrier()
+
+    # ── up ──
+    var acc2 = Float32(0.0)
+    if j < n_ff:
+        var wbase2 = (n_ff + j) * words_per_row
+        var sbase2 = (n_ff + j) * nblocks
+        var t2 = lane * _P3_CHUNK
+        while t2 < k_pack:
+            var v2 = wp.load[width=4](wbase2 + t2 // _P3_QUANTS_PER_WORD)
+            var b2 = bitcast[DType.uint8, 16](v2)
+            var xv0 = xs.load[width=4](t2)
+            var xv1 = xs.load[width=4](t2 + 4)
+            var xv2 = xs.load[width=4](t2 + 8)
+
+            var blk2 = t2 >> 5
+            var u0 = wscale[sbase2 + blk2]
+            var uz0 = wzero[sbase2 + blk2]
+            var u1 = u0
+            var uz1 = uz0
+            var r2 = t2 & 31
+            var cross2 = _P3_CHUNK
+            if r2 == 24:
+                cross2 = 8
+            if r2 == 28:
+                cross2 = 4
+            if cross2 < _P3_CHUNK:
+                u1 = wscale[sbase2 + blk2 + 1]
+                uz1 = wzero[sbase2 + blk2 + 1]
+            var ulo = u0
+            var uzlo = uz0
+            if cross2 == 4:
+                ulo = u1
+                uzlo = uz1
+            var uhi = u0
+            var uzhi = uz0
+            if cross2 <= 8:
+                uhi = u1
+                uzhi = uz1
+
+            # MUST stay in sync with `_packed3_gemv_kernel`'s 12 dequant+mac lines.
+            acc2 += xv0[0] * ((Float32(Int32(b2[0])) - uz0) * u0)
+            acc2 += xv0[1] * ((Float32(Int32(b2[1])) - uz0) * u0)
+            acc2 += xv0[2] * ((Float32(Int32(b2[2])) - uz0) * u0)
+            acc2 += xv0[3] * ((Float32(Int32(b2[4])) - uz0) * u0)
+            acc2 += xv1[0] * ((Float32(Int32(b2[5])) - uzlo) * ulo)
+            acc2 += xv1[1] * ((Float32(Int32(b2[6])) - uzlo) * ulo)
+            acc2 += xv1[2] * ((Float32(Int32(b2[8])) - uzlo) * ulo)
+            acc2 += xv1[3] * ((Float32(Int32(b2[9])) - uzlo) * ulo)
+            acc2 += xv2[0] * ((Float32(Int32(b2[10])) - uzhi) * uhi)
+            acc2 += xv2[1] * ((Float32(Int32(b2[12])) - uzhi) * uhi)
+            acc2 += xv2[2] * ((Float32(Int32(b2[13])) - uzhi) * uhi)
+            acc2 += xv2[3] * ((Float32(Int32(b2[14])) - uzhi) * uhi)
+            t2 += _LANES * _P3_CHUNK
+    red[tid] = acc2
+    barrier()
+    var st2 = _LANES // 2
+    while st2 > 0:
+        if lane < st2:
+            red[tid] = red[tid] + red[tid + st2]
+        barrier()
+        st2 //= 2
+    if lane == 0 and j < n_ff:
+        var g = gsh[sub]
+        var u = red[sub * _LANES]
+        act[j] = (g / (1.0 + exp(-g))) * u
+
+
+def _lmhead_argmax_kernel_p3(
+    blk_val: _FP, blk_idx: _I32P, x: _FP, gamma: _FP, wp: _FP, wscale: _FP, wzero: _FP,
+    k_i64: Int64, n_i64: Int64, eps: Float32, n_iters_i64: Int64,
+):
+    """Final rmsnorm, the full-vocabulary packed3 projection, and a per-threadgroup argmax — the
+    packed3 twin of `_lmhead_argmax_kernel`. The logits are NEVER materialised and never leave
+    the device, exactly as the f32 twin's docstring states: only each threadgroup's best
+    `(logit, id)` pair is written out, and the unchanged `_argmax_reduce_kernel` collapses those
+    to one pair the host reads as 8 bytes.
+
+    The GRID-STRIDE LOOP structure, the passed-in `n_iters` (uniform trip count — the loop
+    contains `barrier()`, and a barrier reached by only some threads hangs the GPU), and the
+    tie-resolves-to-lowest-id convention are copied from the f32 twin line for line; ONLY the
+    weight load+dequant differs.
+
+    ACTIVATION TAIL (module docstring): the staging loop stages the NORMALIZED vector with the
+    `k_pack - k` tail zero-filled.
+    """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var n_iters = Int(n_iters_i64)
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var si = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    # ── stage the normalized, gamma-scaled vector; zero-fill the padded tail ──
+    var st0 = tid
+    while st0 < k_pack:
+        if st0 < k:
+            xs[st0] = x[st0] * inv * gamma[st0]
+        else:
+            xs[st0] = Float32(0.0)
+        st0 += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var stride_cols = Int(grid_dim.x) * _SUBS
+    var best = _NEG_HUGE
+    var best_i = Int32(-1)
+
+    for it in range(n_iters):
+        var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
+        var acc = Float32(0.0)
+        if j < n:
+            var wbase = j * words_per_row
+            var sbase = j * nblocks
+            var t = lane * _P3_CHUNK
+            while t < k_pack:
+                var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+                var b = bitcast[DType.uint8, 16](v)
+                var xv0 = xs.load[width=4](t)
+                var xv1 = xs.load[width=4](t + 4)
+                var xv2 = xs.load[width=4](t + 8)
+
+                var blk = t >> 5
+                var s0 = wscale[sbase + blk]
+                var z0 = wzero[sbase + blk]
+                var s1 = s0
+                var z1 = z0
+                var r = t & 31
+                var cross = _P3_CHUNK
+                if r == 24:
+                    cross = 8
+                if r == 28:
+                    cross = 4
+                if cross < _P3_CHUNK:
+                    s1 = wscale[sbase + blk + 1]
+                    z1 = wzero[sbase + blk + 1]
+                var s_lo = s0
+                var z_lo = z0
+                if cross == 4:
+                    s_lo = s1
+                    z_lo = z1
+                var s_hi = s0
+                var z_hi = z0
+                if cross <= 8:
+                    s_hi = s1
+                    z_hi = z1
+
+                # MUST stay in sync with `_packed3_gemv_kernel`'s 12 dequant+mac lines.
+                acc += xv0[0] * ((Float32(Int32(b[0])) - z0) * s0)
+                acc += xv0[1] * ((Float32(Int32(b[1])) - z0) * s0)
+                acc += xv0[2] * ((Float32(Int32(b[2])) - z0) * s0)
+                acc += xv0[3] * ((Float32(Int32(b[4])) - z0) * s0)
+                acc += xv1[0] * ((Float32(Int32(b[5])) - z_lo) * s_lo)
+                acc += xv1[1] * ((Float32(Int32(b[6])) - z_lo) * s_lo)
+                acc += xv1[2] * ((Float32(Int32(b[8])) - z_lo) * s_lo)
+                acc += xv1[3] * ((Float32(Int32(b[9])) - z_lo) * s_lo)
+                acc += xv2[0] * ((Float32(Int32(b[10])) - z_hi) * s_hi)
+                acc += xv2[1] * ((Float32(Int32(b[12])) - z_hi) * s_hi)
+                acc += xv2[2] * ((Float32(Int32(b[13])) - z_hi) * s_hi)
+                acc += xv2[3] * ((Float32(Int32(b[14])) - z_hi) * s_hi)
+                t += _LANES * _P3_CHUNK
+        red[tid] = acc
+        barrier()
+        var st = _LANES // 2
+        while st > 0:
+            if lane < st:
+                red[tid] = red[tid] + red[tid + st]
+            barrier()
+            st //= 2
+        if lane == 0 and j < n:
+            var val = red[sub * _LANES]
+            if val > best:
+                best = val
+                best_i = Int32(j)
+        barrier()
+
+    if lane == 0:
+        sv[sub] = best
+        si[sub] = best_i
+    barrier()
+    if tid == 0:
+        var bv = sv[0]
+        var bi = si[0]
+        for u in range(1, _SUBS):
+            # Strictly greater, so the lowest id survives an exact tie.
+            if sv[u] > bv:
+                bv = sv[u]
+                bi = si[u]
+        blk_val[Int(block_idx.x)] = bv
+        blk_idx[Int(block_idx.x)] = bi
+
+
+alias _I32P = UnsafePointer[Int32, origin=MutAnyOrigin]
+"""The `blk_idx` buffer as a kernel parameter — `residentk.kernels`' `_IP` spelling."""
+
+
+# ── host-side pack+upload helpers ──────────────────────────────────────────────
+
+
+def _pack_transposed_f64_into_p3(
+    dst_packed: DeviceBuffer[DType.float32],
+    dst_scales: DeviceBuffer[DType.float32],
+    dst_zeros: DeviceBuffer[DType.float32],
+    src: List[Float64], k_in: Int, n_out: Int, row_off: Int,
+) raises -> Int:
+    """Narrow+TRANSPOSE `[k_in, n_out]` Float64 into `[n_out, k_in]` Float32 (the SAME
+    transpose-once packing `_narrow_transposed_into` performs for the f32 half), pack through
+    `residentk.kernels_packed3._pack_f32_to_packed3`, and upload the packed words + scales +
+    zeros into the three device buffers starting at row `row_off`. The checkpoint on disk is
+    `[in, out]`; the packed3 layout is per-row `[n, k]`, exactly as every residentk arm wants.
+
+    One-time upload cost, paid at session load — the per-token path never sees Float64, and the
+    Float32 values quantized here are EXACTLY the values the f32 session streams (same single
+    Float64 -> Float32 narrowing), so the packed3 arm's only added error vs the f32 arm is the
+    block-32 quantization itself.
+    """
+    if len(src) != k_in * n_out:
+        return RESIDENT_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    var w = List[Float32](capacity=n_out * k_in)
+    for j in range(n_out):
+        for i in range(k_in):
+            w.append(Float32(sp[i * n_out + j]))
+    var p = _pack_f32_to_packed3(w, k_in, n_out)
+    var pp = p.packed.unsafe_ptr()
+    with dst_packed.map_to_host() as h:
+        var off = row_off * p.words_per_row
+        for i in range(n_out * p.words_per_row):
+            h[off + i] = pp[i]
+    var scp = p.scales.unsafe_ptr()
+    with dst_scales.map_to_host() as h:
+        var soff = row_off * p.nblocks
+        for i in range(n_out * p.nblocks):
+            h[soff + i] = scp[i]
+    var zp = p.zeros.unsafe_ptr()
+    with dst_zeros.map_to_host() as h:
+        var zoff = row_off * p.nblocks
+        for i in range(n_out * p.nblocks):
+            h[zoff + i] = zp[i]
+    return RESIDENT_OK
+
+
+def _pack_f64_into_p3(
+    dst_packed: DeviceBuffer[DType.float32],
+    dst_scales: DeviceBuffer[DType.float32],
+    dst_zeros: DeviceBuffer[DType.float32],
+    src: List[Float64], k: Int, n: Int,
+) raises -> Int:
+    """The no-transpose twin: `src` is ALREADY `[n, k]` row-major Float64 (the tied
+    embedding/lm_head table's checkpoint layout), narrowed to Float32, packed, uploaded."""
+    if len(src) != n * k:
+        return RESIDENT_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    var w = List[Float32](capacity=n * k)
+    for i in range(n * k):
+        w.append(Float32(sp[i]))
+    var p = _pack_f32_to_packed3(w, k, n)
+    var pp = p.packed.unsafe_ptr()
+    with dst_packed.map_to_host() as h:
+        for i in range(n * p.words_per_row):
+            h[i] = pp[i]
+    var scp = p.scales.unsafe_ptr()
+    with dst_scales.map_to_host() as h:
+        for i in range(n * p.nblocks):
+            h[i] = scp[i]
+    var zp = p.zeros.unsafe_ptr()
+    with dst_zeros.map_to_host() as h:
+        for i in range(n * p.nblocks):
+            h[i] = zp[i]
+    return RESIDENT_OK
+
+
+# ── the session ────────────────────────────────────────────────────────────────
+
+
+@fieldwise_init
+struct _LayerP3(Copyable, Movable):
+    """One layer's packed3 decode twins — four roles x (packed words + block-32 scales +
+    block-32 zeros), all Float32-typed device buffers because the packed word stream IS Float32
+    words (bit-pattern containers, `residentk.kernels_packed3`'s Layout spec). The f32
+    projection matrices, the norm weights and the KV cache live in the INNER f32 session's
+    `_LayerGpu` — this struct holds ONLY what decode's packed3 dispatches read."""
+
+    var p3_qkv: DeviceBuffer[DType.float32]
+    var p3_qkv_s: DeviceBuffer[DType.float32]
+    var p3_qkv_z: DeviceBuffer[DType.float32]
+    var p3_o: DeviceBuffer[DType.float32]
+    var p3_o_s: DeviceBuffer[DType.float32]
+    var p3_o_z: DeviceBuffer[DType.float32]
+    var p3_gu: DeviceBuffer[DType.float32]
+    var p3_gu_s: DeviceBuffer[DType.float32]
+    var p3_gu_z: DeviceBuffer[DType.float32]
+    var p3_down: DeviceBuffer[DType.float32]
+    var p3_down_s: DeviceBuffer[DType.float32]
+    var p3_down_z: DeviceBuffer[DType.float32]
+
+
+@fieldwise_init
+struct _CudaResidentQwen3P3(Movable):
+    """The packed3 decode twin of `_CudaResidentQwen3`: the inner f32 session, held BY VALUE,
+    supplies everything the f32 chain needs — the prefill pass (delegated wholesale), the
+    decode embed gather, the norm weights, RoPE tables, the f32 KV cache, every scratch buffer,
+    and the f32 projection matrices the f32 prefill GEMMs read — and this struct adds ONLY the
+    packed3 weight twins the `step_p3` chain streams. Same residency discipline as the inner
+    session: everything allocated ONCE, alive for the session's life, in the same struct as its
+    context.
+
+    `Movable` is mandatory for the same reason the inner session's own docstring gives.
+    """
+
+    var f32: _CudaResidentQwen3
+    var layers_p3: List[_LayerP3]
+    var p3_lm: DeviceBuffer[DType.float32]
+    var p3_lm_s: DeviceBuffer[DType.float32]
+    var p3_lm_z: DeviceBuffer[DType.float32]
+
+    def __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        """Open the inner f32 session (context + every f32 buffer, ONCE) and allocate the
+        packed3 decode twins beside it. Called only from inside a `@parameter if
+        CUDA_SESSION_BUILD` branch — the constructor cannot carry the gate itself, the same
+        structural protection the inner session's constructor documents. The caller must have
+        validated the shape with `residentk_dims_check` first (via `_resident_preflight`)."""
+        self.f32 = _CudaResidentQwen3(
+            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+        )
+
+        var n_q = h_q * d_head
+        var n_kv = h_kv * d_head
+        var n_qkv = n_q + 2 * n_kv
+
+        # ── packed3 buffer sizes, per role (layout arithmetic carried by kernels_packed3's
+        #    helpers so this file never re-derives it): words/row = k_pack/3, blocks/row =
+        #    ceil(k_pack/32), both identical for qkv/gu (k = d_model) and for o/down's
+        #    distinct k's ──
+        var qkv_words = n_qkv * _p3_words_per_row(d_model)
+        var qkv_meta = n_qkv * _p3_blocks_per_row(d_model)
+        var o_words = d_model * _p3_words_per_row(n_q)
+        var o_meta = d_model * _p3_blocks_per_row(n_q)
+        var gu_words = 2 * d_ff * _p3_words_per_row(d_model)
+        var gu_meta = 2 * d_ff * _p3_blocks_per_row(d_model)
+        var down_words = d_model * _p3_words_per_row(d_ff)
+        var down_meta = d_model * _p3_blocks_per_row(d_ff)
+
+        self.layers_p3 = List[_LayerP3]()
+        for _ in range(n_layers):
+            self.layers_p3.append(
+                _LayerP3(
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](qkv_words),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](qkv_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](qkv_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](o_words),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](o_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](o_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](gu_words),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](gu_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](gu_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](down_words),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](down_meta),
+                    self.f32.ctx.enqueue_create_buffer[DType.float32](down_meta),
+                )
+            )
+
+        self.p3_lm = self.f32.ctx.enqueue_create_buffer[DType.float32](
+            vocab * _p3_words_per_row(d_model)
+        )
+        self.p3_lm_s = self.f32.ctx.enqueue_create_buffer[DType.float32](
+            vocab * _p3_blocks_per_row(d_model)
+        )
+        self.p3_lm_z = self.f32.ctx.enqueue_create_buffer[DType.float32](
+            vocab * _p3_blocks_per_row(d_model)
+        )
+
+    def device_name(self) raises -> String:
+        return self.f32.device_name()
+
+    def dispatch_budget(self) -> Int:
+        """The DECODE budget — `n_layers * 6 + 3`, UNCHANGED from the f32 session: `step_p3`
+        issues exactly the f32 chain's dispatch shape (module docstring, substitution table).
+        Prefill's budget is reported by the delegated `prefill` itself."""
+        return residentk_dispatch_budget(self.f32.n_layers)
+
+    def upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        """The tied embedding/lm_head table, the final norm gain, and the RoPE tables.
+
+        TWO uploads happen: the inner f32 session's own `upload_globals` (embed stays f32 —
+        the decode embed gather and the f32 prefill's embed/lm_head read it), then the packed3
+        twin of the SAME tied table as lm_head weights for `step_p3` (no transpose — the
+        checkpoint's `[vocab, d_model]` is already the packed layout's `[n, k]`)."""
+        var s = self.f32.upload_globals(embed, final_norm, cos_t, sin_t, n_pos)
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_f64_into_p3(
+            self.p3_lm, self.p3_lm_s, self.p3_lm_z,
+            embed, self.f32.d_model, self.f32.vocab,
+        )
+        if s != RESIDENT_OK:
+            return s
+        return RESIDENT_OK
+
+    def upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        """One layer's eleven checkpoint tensors — TWICE: the inner f32 session's own
+        `upload_layer` (the f32 matrices the prefill GEMMs read, unchanged), then the packed3
+        twins of the four projection roles, packed row-wise from the SAME Float64 wire tensors:
+
+        * qkv: q, k, v rows packed into ONE `[n_qkv, d_model]` buffer at row offsets
+          0 / n_q / n_q+n_kv — the layout is per-row, so concatenation is a row-offset
+          arithmetic, exactly the concatenation the f32 half performs;
+        * o_proj: `[d_model, n_q]` (k = n_q = h_q * d_head);
+        * gate/up: gate rows 0..d_ff, up rows d_ff..2*d_ff of ONE `[2*d_ff, d_model]` buffer;
+        * down_proj: `[d_model, d_ff]` (k = d_ff).
+
+        Norm weights (ln1/ln2/qn/kn) are tiny and stay f32 in the inner session only."""
+        if layer < 0 or layer >= self.f32.n_layers:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        var s = self.f32.upload_layer(
+            layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wgate, wup, wdown
+        )
+        if s != RESIDENT_OK:
+            return s
+
+        ref lp = self.layers_p3[layer]
+        var n_q = self.f32.h_q * self.f32.d_head
+        var n_kv = self.f32.h_kv * self.f32.d_head
+        var d_model = self.f32.d_model
+        var d_ff = self.f32.d_ff
+
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_qkv, lp.p3_qkv_s, lp.p3_qkv_z, wq, d_model, n_q, 0
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_qkv, lp.p3_qkv_s, lp.p3_qkv_z, wk, d_model, n_kv, n_q
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_qkv, lp.p3_qkv_s, lp.p3_qkv_z, wv, d_model, n_kv, n_q + n_kv
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_o, lp.p3_o_s, lp.p3_o_z, wo, n_q, d_model, 0
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_gu, lp.p3_gu_s, lp.p3_gu_z, wgate, d_model, d_ff, 0
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_gu, lp.p3_gu_s, lp.p3_gu_z, wup, d_model, d_ff, d_ff
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _pack_transposed_f64_into_p3(
+            lp.p3_down, lp.p3_down_s, lp.p3_down_z, wdown, d_ff, d_model, 0
+        )
+        if s != RESIDENT_OK:
+            return s
+        return RESIDENT_OK
+
+    def seal(mut self) raises -> Int:
+        """Drain every upload (f32 AND packed3) before the first dispatch. One synchronize for
+        the whole load — the inner session's context owns both halves."""
+        return self.f32.seal()
+
+    def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
+        """The whole prompt, DELEGATED WHOLESALE to the inner f32 session — the chunked
+        batched m_rows prefill through `residentk.kernels_prefill_f32_v2`'s tiled GEMMs, ending
+        in the f32 lm_head + argmax that yields the FIRST generated token. This is the
+        decode = packed3 / prefill = f32 split stated in the module docstring: the
+        compute-bound m_rows > 1 pass keeps f32 weights and f32 GEMMs; a packed prefill GEMM
+        is future work. `pos` bookkeeping is the caller's, exactly as the f32 session's own
+        `prefill` documents: every following `step_p3` starts at `pos = len(prompt_ids)`."""
+        return self.f32.prefill(prompt_ids)
+
+    def step_p3(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """ONE decode token through the packed3 chain — the f32 session's `step` dispatch plan
+        with ONLY the four projection roles and the lm_head swapped to their packed3 twins
+        (module docstring, substitution table): `_norm_gemv_kernel_p3` for the fused
+        norm+qkv, this file's `_packed3_gemv_accum_kernel` for o_proj/down_proj, this file's
+        `_norm_gemv2_swiglu_kernel_p3` for gate/up+SwiGLU, and this file's
+        `_lmhead_argmax_kernel_p3` for the final norm + lm_head + per-threadgroup argmax.
+        Embed gather, qk_norm+RoPE+KV write, attention, and the argmax reduce are dispatched
+        BYTE-UNMODIFIED from `residentk.kernels` — f32 KV cache, f32 activations, unchanged.
+
+        Same `_StepOut` contract as the f32 `step`, including the dispatch budget report:
+        `1 + 6 * n_layers + 2` = `residentk_dispatch_budget(n_layers)`, checked by the driver
+        every step."""
+
+        @parameter
+        if not CUDA_SESSION_BUILD:
+            # Removed before shader codegen; this is what a non-CUDA build compiles and runs.
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.f32.max_ctx:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.f32.vocab:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            var n_q = self.f32.h_q * self.f32.d_head
+            var n_kv = self.f32.h_kv * self.f32.d_head
+            var n_qkv = n_q + 2 * n_kv
+            var n_keys = pos + 1
+            var issued = 0
+
+            # ── the embedding row, gathered on-device from the resident f32 table ──
+            self.f32.ctx.enqueue_function[_embed_row_kernel](
+                self.f32.hidden.unsafe_ptr(), self.f32.embed.unsafe_ptr(),
+                Int64(token_id), Int64(self.f32.d_model),
+                grid_dim=_ceil_div(self.f32.d_model, _TG), block_dim=_TG,
+            )
+            issued += 1
+
+            for layer in range(self.f32.n_layers):
+                ref lw = self.f32.layers[layer]
+                ref lp = self.layers_p3[layer]
+
+                # 1 ── rmsnorm(input_layernorm) + fused Q/K/V projection — packed3
+                self.f32.ctx.enqueue_function[_norm_gemv_kernel_p3](
+                    self.f32.qkv.unsafe_ptr(), self.f32.hidden.unsafe_ptr(),
+                    lw.ln1.unsafe_ptr(),
+                    lp.p3_qkv.unsafe_ptr(), lp.p3_qkv_s.unsafe_ptr(),
+                    lp.p3_qkv_z.unsafe_ptr(),
+                    Int64(self.f32.d_model), Int64(n_qkv), self.f32.eps,
+                    grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
+                )
+                # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write (unchanged)
+                self.f32.ctx.enqueue_function[_qk_rope_write_kernel](
+                    self.f32.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                    self.f32.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                    self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                    Int64(self.f32.d_head), self.f32.eps,
+                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    grid_dim=self.f32.h_q + self.f32.h_kv, block_dim=self.f32.d_head,
+                )
+                # 3 ── attention over every cached key, online softmax (unchanged, f32 KV)
+                self.f32.ctx.enqueue_function[_sdpa_kernel](
+                    self.f32.attn_out.unsafe_ptr(), self.f32.q_rot.unsafe_ptr(),
+                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                    Int64(n_keys), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                    Int64(self.f32.d_head), self.f32.scale,
+                    grid_dim=self.f32.h_q, block_dim=self.f32.d_head,
+                )
+                # 4 ── o_proj + residual add — packed3 accum twin
+                self.f32.ctx.enqueue_function[_packed3_gemv_accum_kernel](
+                    self.f32.hidden.unsafe_ptr(), self.f32.attn_out.unsafe_ptr(),
+                    lp.p3_o.unsafe_ptr(), lp.p3_o_s.unsafe_ptr(), lp.p3_o_z.unsafe_ptr(),
+                    Int64(n_q), Int64(self.f32.d_model),
+                    grid_dim=_ceil_div(self.f32.d_model, _SUBS), block_dim=_TG,
+                )
+                # 5 ── rmsnorm(post_attention_layernorm) + gate/up + SwiGLU — packed3 twin
+                self.f32.ctx.enqueue_function[_norm_gemv2_swiglu_kernel_p3](
+                    self.f32.act.unsafe_ptr(), self.f32.hidden.unsafe_ptr(),
+                    lw.ln2.unsafe_ptr(),
+                    lp.p3_gu.unsafe_ptr(), lp.p3_gu_s.unsafe_ptr(), lp.p3_gu_z.unsafe_ptr(),
+                    Int64(self.f32.d_model), Int64(self.f32.d_ff), self.f32.eps,
+                    grid_dim=_ceil_div(self.f32.d_ff, _SUBS), block_dim=_TG,
+                )
+                # 6 ── down_proj + residual add — packed3 accum twin
+                self.f32.ctx.enqueue_function[_packed3_gemv_accum_kernel](
+                    self.f32.hidden.unsafe_ptr(), self.f32.act.unsafe_ptr(),
+                    lp.p3_down.unsafe_ptr(), lp.p3_down_s.unsafe_ptr(),
+                    lp.p3_down_z.unsafe_ptr(),
+                    Int64(self.f32.d_ff), Int64(self.f32.d_model),
+                    grid_dim=_ceil_div(self.f32.d_model, _SUBS), block_dim=_TG,
+                )
+                issued += 6
+
+            # ── final rmsnorm + packed3 lm_head + per-threadgroup argmax, then the reduce ──
+            var n_iters = _ceil_div(self.f32.vocab, _LM_BLOCKS * _SUBS)
+            self.f32.ctx.enqueue_function[_lmhead_argmax_kernel_p3](
+                self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                self.f32.hidden.unsafe_ptr(), self.f32.final_norm.unsafe_ptr(),
+                self.p3_lm.unsafe_ptr(), self.p3_lm_s.unsafe_ptr(), self.p3_lm_z.unsafe_ptr(),
+                Int64(self.f32.d_model), Int64(self.f32.vocab), self.f32.eps, Int64(n_iters),
+                grid_dim=_LM_BLOCKS, block_dim=_TG,
+            )
+            self.f32.ctx.enqueue_function[_argmax_reduce_kernel](
+                self.f32.out_val.unsafe_ptr(), self.f32.out_idx.unsafe_ptr(),
+                self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                Int64(_LM_BLOCKS),
+                grid_dim=1, block_dim=_TG,
+            )
+            issued += 2
+
+            # ── 8 bytes back, not 608 KB ──
+            self.f32.ctx.enqueue_copy(self.f32.host_val, self.f32.out_val)
+            self.f32.ctx.enqueue_copy(self.f32.host_idx, self.f32.out_idx)
+            self.f32.ctx.synchronize()
+            var tok = Int(self.f32.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.f32.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.f32.vocab:
+                return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(tok, lg, issued, RESIDENT_OK)
