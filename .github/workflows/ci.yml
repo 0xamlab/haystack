@@ -474,8 +474,8 @@ jobs:
           # already evicted before the next run (29.6 of 45.2 build-minutes = cache export;
           # only 10/117 stages CACHED). GHCR registry cache has its own storage budget and each
           # image gets its own ref.
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api,mode=max,compression=zstd
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api-v2
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api-v2,mode=max,compression=zstd
 
       - name: Extract metadata for Worker image
         id: meta-worker
@@ -496,8 +496,8 @@ jobs:
           tags: ${{ steps.meta-worker.outputs.tags }}
           labels: ${{ steps.meta-worker.outputs.labels }}
           # Per-image registry cache — see the rationale at the API image step.
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker,mode=max,compression=zstd
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker-v2
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker-v2,mode=max,compression=zstd
 
       # The published Algenta engine encapsulates the async worker, Mojo binary, and agent runtime.
       # Its internal base is private, so a missing read token must fail the release rather than
@@ -535,8 +535,8 @@ jobs:
           labels: ${{ steps.meta-engine.outputs.labels }}
           # Per-image registry cache — see the rationale at the API image step. Pushed with the
           # same credentials that already push the engine image itself (same GHCR namespace).
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine,mode=max,compression=zstd
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2,mode=max,compression=zstd
 
   # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
   # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into
