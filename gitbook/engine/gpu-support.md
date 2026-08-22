@@ -44,7 +44,8 @@ session layer.
 
 The CUDA-native resident session (v2 prefill GEMMs, CUDA-graph decode with split-K
 flash-decoding) is benchmarked against llama.cpp on A100 and L4: prefill 3,260 vs 2,527 tok/s
-(F16); decode 329.8 / 318.9 vs 356.9 / 366.6. Numbers and methodology:
+(F16); decode 427.1 / 408.7 vs 356.9 / 366.6 (F16) on the A100 with packed-int8 weights.
+Numbers and methodology:
 [NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md).
 
 ### Compile gate in CI
