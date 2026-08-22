@@ -108,6 +108,8 @@ The kernels
 |---|---|
 | `_packed3_gemv_kernel` | `y = W @ x`, ONE output row per block (grid = n), bare GEMV — the probe's correctness + bandwidth kernel |
 | `_norm_gemv_kernel_p3` | `y = W @ (rmsnorm(x) * gamma)`, fused norm + 8 rows per block — the structural mirror of `_norm_gemv_kernel_i8` a session integration dispatches |
+| `_packed3_gemv_kernel_v2` / `_norm_gemv_kernel_p3_v2` | the same two shapes with ONLY the unpack changed — `bitcast[DType.int32, 4]` word view + shift/AND byte extraction (4 words x 3 ops) instead of the u8x16 byte-view lane selection, and the block-32 crossing classification hoisted out of the chunk loop (loop-invariant: every stride here is a multiple of 32 elements). Same integer quants, same dequant expression, same accumulation order -> bit-identical output; the session's twin v2 kernels in `residentk.session_cuda_p3` follow the same rule |
+| `_packed3_gemv_kernel_v3` / `_norm_gemv_kernel_p3_v3` | the v2 bodies PLUS three interleaved accumulators: the chunk's 12 products split by element index mod 3 into three 4-deep chains, combined per lane at loop end as `(acc0 + acc1) + acc2` — the dependent-add chain per chunk is the measured latency wall (the probe battery: v1/v2 unpacks run within noise of each other at ~36% of HBM while the f32 twin's 4-deep chain streams at 75-105%). The reassociation CHANGES accumulation order -> ulp-different output; the session's twin v3 kernels follow the same rule |
 
 Both share one inner step, the phase-0-verified unpack: one `load[width=4]` = 4 packed
 words = 16 bytes = 12 quants; three aligned `load[width=4]`s of the activation at the SAME
@@ -290,6 +292,189 @@ def _packed3_gemv_kernel(
         y[row] = out
 
 
+def _packed3_gemv_kernel_v2(
+    y: _FP, x: _FP, wp: _FP, wscale: _FP, wzero: _FP, k_i64: Int64, n_i64: Int64,
+):
+    """`_packed3_gemv_kernel`'s v2 twin — same shape, same contract, same reduction; ONLY
+    the unpack changes: the loaded Float32 words are reinterpreted as `SIMD[DType.int32, 4]`
+    and each quant comes out of its word with an integer shift/AND (`w & 255`,
+    `(w >> 8) & 255`, `(w >> 16) & 255`) instead of a byte-view lane selection. The two
+    paths extract the SAME integer quant from the SAME bit pattern — the byte `4j + m` of
+    word `j` IS `(word >> 8m) & 255` on this little-endian target — so with the dequant
+    expression and the ascending accumulation order kept verbatim, v2 computes bit-identical
+    output. The chunk's block-32 crossing classification is hoisted out of the loop: the
+    lane's chunk offsets are `tid*12 + i*(256*12)` and `256*12 % 32 == 0`, so `t & 31` is
+    loop-invariant. The probe driver benches this against v1 at the real role shapes.
+    """
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var row = Int(block_idx.x)
+    if row >= n:
+        return
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var wbase = row * words_per_row
+    var sbase = row * nblocks
+    var acc = Float32(0.0)
+
+    # ── hoisted crossing classification (loop-invariant — see the docstring) ──
+    var r0 = (tid * _P3_CHUNK) & 31
+    var cross_hi = r0 == 24 or r0 == 28
+    var cross_lo = r0 == 28
+
+    var t = tid * _P3_CHUNK
+    while t < k_pack:
+        # ── the v2 unpack: 16 bytes as Float32 words, reinterpreted as FOUR Int32 words;
+        #    each quant is a shift/AND byte extraction, no second memory pass ──
+        var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+        var w = bitcast[DType.int32, 4](v)
+        var xv0 = x.load[width=4](t)
+        var xv1 = x.load[width=4](t + 4)
+        var xv2 = x.load[width=4](t + 8)
+
+        var blk = t >> 5
+        var s0 = wscale[sbase + blk]
+        var z0 = wzero[sbase + blk]
+        var s_lo = s0
+        var z_lo = z0
+        var s_hi = s0
+        var z_hi = z0
+        if cross_hi:
+            s_hi = wscale[sbase + blk + 1]
+            z_hi = wzero[sbase + blk + 1]
+            if cross_lo:
+                s_lo = s_hi
+                z_lo = z_hi
+
+        # ── 12 dequant+mac in ascending element order, `_packed3_gemv_kernel`'s lines
+        #    verbatim with the byte-view extraction swapped for word shift/AND ──
+        acc += xv0[0] * ((Float32(w[0] & 255) - z0) * s0)
+        acc += xv0[1] * ((Float32((w[0] >> 8) & 255) - z0) * s0)
+        acc += xv0[2] * ((Float32((w[0] >> 16) & 255) - z0) * s0)
+        acc += xv0[3] * ((Float32(w[1] & 255) - z0) * s0)
+        acc += xv1[0] * ((Float32((w[1] >> 8) & 255) - z_lo) * s_lo)
+        acc += xv1[1] * ((Float32((w[1] >> 16) & 255) - z_lo) * s_lo)
+        acc += xv1[2] * ((Float32(w[2] & 255) - z_lo) * s_lo)
+        acc += xv1[3] * ((Float32((w[2] >> 8) & 255) - z_lo) * s_lo)
+        acc += xv2[0] * ((Float32((w[2] >> 16) & 255) - z_hi) * s_hi)
+        acc += xv2[1] * ((Float32(w[3] & 255) - z_hi) * s_hi)
+        acc += xv2[2] * ((Float32((w[3] >> 8) & 255) - z_hi) * s_hi)
+        acc += xv2[3] * ((Float32((w[3] >> 16) & 255) - z_hi) * s_hi)
+        t += _TG * _P3_CHUNK
+
+    # ── two-level reduction, `_packed3_gemv_kernel`'s verbatim ──
+    var total = _warp_sum(acc)
+    if lane == 0:
+        grp[sub] = total
+    barrier()
+    var out = Float32(0.0)
+    for g in range(_SUBS):
+        out += grp[g]
+    if tid == 0:
+        y[row] = out
+
+
+def _packed3_gemv_kernel_v3(
+    y: _FP, x: _FP, wp: _FP, wscale: _FP, wzero: _FP, k_i64: Int64, n_i64: Int64,
+):
+    """`_packed3_gemv_kernel`'s v3 twin — v2's unpack PLUS three interleaved accumulators:
+    the chunk's 12 products split by element index mod 3 into `acc0`/`acc1`/`acc2` (4
+    sequential adds each instead of one 12-deep chain), combined per lane at loop end as
+    `(acc0 + acc1) + acc2`. The dependent-add chain per chunk is the latency wall the probe
+    battery measured (v1/v2 unpacks run within noise of each other at ~36% of HBM while the
+    f32 twin's 4-deep chain streams at 75-105%); splitting it is the only lever left inside
+    the chunk loop. The reassociation CHANGES accumulation order — v3 output is not
+    bit-identical to v1/v2 (ulp-level; G0 stays hard, the gate driver's G1 switches to the
+    vs-f32 flip-reporting form for this variant). Selected by
+    `residentk.session_cuda_p3_graph.P3_GRAPH_V3_KERNELS`."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var row = Int(block_idx.x)
+    if row >= n:
+        return
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var wbase = row * words_per_row
+    var sbase = row * nblocks
+    var acc0 = Float32(0.0)
+    var acc1 = Float32(0.0)
+    var acc2 = Float32(0.0)
+
+    # ── hoisted crossing classification (loop-invariant — see the v2 docstring) ──
+    var r0 = (tid * _P3_CHUNK) & 31
+    var cross_hi = r0 == 24 or r0 == 28
+    var cross_lo = r0 == 28
+
+    var t = tid * _P3_CHUNK
+    while t < k_pack:
+        var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+        var w = bitcast[DType.int32, 4](v)
+        var xv0 = x.load[width=4](t)
+        var xv1 = x.load[width=4](t + 4)
+        var xv2 = x.load[width=4](t + 8)
+
+        var blk = t >> 5
+        var s0 = wscale[sbase + blk]
+        var z0 = wzero[sbase + blk]
+        var s_lo = s0
+        var z_lo = z0
+        var s_hi = s0
+        var z_hi = z0
+        if cross_hi:
+            s_hi = wscale[sbase + blk + 1]
+            z_hi = wzero[sbase + blk + 1]
+            if cross_lo:
+                s_lo = s_hi
+                z_lo = z_hi
+
+        # ── the same 12 dequant+mac terms, regrouped into three 4-deep chains by
+        #    element index mod 3 (word m holds elements 3m..3m+2) ──
+        acc0 += xv0[0] * ((Float32(w[0] & 255) - z0) * s0)
+        acc1 += xv0[1] * ((Float32((w[0] >> 8) & 255) - z0) * s0)
+        acc2 += xv0[2] * ((Float32((w[0] >> 16) & 255) - z0) * s0)
+        acc0 += xv0[3] * ((Float32(w[1] & 255) - z0) * s0)
+        acc1 += xv1[0] * ((Float32((w[1] >> 8) & 255) - z_lo) * s_lo)
+        acc2 += xv1[1] * ((Float32((w[1] >> 16) & 255) - z_lo) * s_lo)
+        acc0 += xv1[2] * ((Float32(w[2] & 255) - z_lo) * s_lo)
+        acc1 += xv1[3] * ((Float32((w[2] >> 8) & 255) - z_lo) * s_lo)
+        acc2 += xv2[0] * ((Float32((w[2] >> 16) & 255) - z_hi) * s_hi)
+        acc0 += xv2[1] * ((Float32(w[3] & 255) - z_hi) * s_hi)
+        acc1 += xv2[2] * ((Float32((w[3] >> 8) & 255) - z_hi) * s_hi)
+        acc2 += xv2[3] * ((Float32((w[3] >> 16) & 255) - z_hi) * s_hi)
+        t += _TG * _P3_CHUNK
+
+    var acc = (acc0 + acc1) + acc2
+
+    # ── two-level reduction, `_packed3_gemv_kernel`'s verbatim ──
+    var total = _warp_sum(acc)
+    if lane == 0:
+        grp[sub] = total
+    barrier()
+    var out = Float32(0.0)
+    for g in range(_SUBS):
+        out += grp[g]
+    if tid == 0:
+        y[row] = out
+
+
 def _norm_gemv_kernel_p3(
     y: _FP, x: _FP, gamma: _FP, wp: _FP, wscale: _FP, wzero: _FP,
     k_i64: Int64, n_i64: Int64, eps: Float32,
@@ -400,6 +585,231 @@ def _norm_gemv_kernel_p3(
             acc += xv2[3] * ((Float32(Int32(b[14])) - z_hi) * s_hi)
             t += _LANES * _P3_CHUNK
     red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = red[sub * _LANES]
+
+
+def _norm_gemv_kernel_p3_v2(
+    y: _FP, x: _FP, gamma: _FP, wp: _FP, wscale: _FP, wzero: _FP,
+    k_i64: Int64, n_i64: Int64, eps: Float32,
+):
+    """`_norm_gemv_kernel_p3`'s v2 twin — the SAME fused rmsnorm + 8-rows-per-block GEMV with
+    ONLY the chunk loop's unpack changed: `bitcast[DType.int32, 4]` word view + shift/AND
+    byte extraction instead of the byte-view lane selection, plus the crossing classification
+    hoisted out of the loop (the lane's chunk offsets are `lane*12 + i*(32*12)` and
+    `384 % 32 == 0`, so `t & 31` is loop-invariant). Both paths extract the same integer
+    quant from the same bit pattern, and the dequant expression and ascending accumulation
+    order are kept verbatim, so v2 computes bit-identical output — the graph arm's gate
+    driver diffs it token-for-token against this kernel's v1. Selected by
+    `residentk.session_cuda_p3_graph.P3_GRAPH_V2_KERNELS`."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    # ── 1. sum of squares over the whole vector, tree-reduced across the group ──
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    # ── 2. stage the normalized, gamma-scaled vector; zero-fill the padded tail ──
+    var s = tid
+    while s < k_pack:
+        if s < k:
+            xs[s] = x[s] * inv * gamma[s]
+        else:
+            xs[s] = Float32(0.0)
+        s += _TG
+    barrier()
+
+    # ── 3. one SIMD group per output row, v2 chunk loop ──
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var wbase = j * words_per_row
+        var sbase = j * nblocks
+        # ── hoisted crossing classification (loop-invariant — see the docstring):
+        #    r == 24: elements 8-11 live in the next block; r == 28: elements 4-11 too ──
+        var r0 = (lane * _P3_CHUNK) & 31
+        var cross_hi = r0 == 24 or r0 == 28
+        var cross_lo = r0 == 28
+        var t = lane * _P3_CHUNK
+        while t < k_pack:
+            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var w = bitcast[DType.int32, 4](v)
+            var xv0 = xs.load[width=4](t)
+            var xv1 = xs.load[width=4](t + 4)
+            var xv2 = xs.load[width=4](t + 8)
+
+            var blk = t >> 5
+            var s0 = wscale[sbase + blk]
+            var z0 = wzero[sbase + blk]
+            var s_lo = s0
+            var z_lo = z0
+            var s_hi = s0
+            var z_hi = z0
+            if cross_hi:
+                s_hi = wscale[sbase + blk + 1]
+                z_hi = wzero[sbase + blk + 1]
+                if cross_lo:
+                    s_lo = s_hi
+                    z_lo = z_hi
+
+            # `_norm_gemv_kernel_p3`'s 12 dequant+mac lines verbatim with the byte-view
+            # extraction swapped for word shift/AND (word w[m] holds elements 3m..3m+2).
+            acc += xv0[0] * ((Float32(w[0] & 255) - z0) * s0)
+            acc += xv0[1] * ((Float32((w[0] >> 8) & 255) - z0) * s0)
+            acc += xv0[2] * ((Float32((w[0] >> 16) & 255) - z0) * s0)
+            acc += xv0[3] * ((Float32(w[1] & 255) - z0) * s0)
+            acc += xv1[0] * ((Float32((w[1] >> 8) & 255) - z_lo) * s_lo)
+            acc += xv1[1] * ((Float32((w[1] >> 16) & 255) - z_lo) * s_lo)
+            acc += xv1[2] * ((Float32(w[2] & 255) - z_lo) * s_lo)
+            acc += xv1[3] * ((Float32((w[2] >> 8) & 255) - z_lo) * s_lo)
+            acc += xv2[0] * ((Float32((w[2] >> 16) & 255) - z_hi) * s_hi)
+            acc += xv2[1] * ((Float32(w[3] & 255) - z_hi) * s_hi)
+            acc += xv2[2] * ((Float32((w[3] >> 8) & 255) - z_hi) * s_hi)
+            acc += xv2[3] * ((Float32((w[3] >> 16) & 255) - z_hi) * s_hi)
+            t += _LANES * _P3_CHUNK
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = red[sub * _LANES]
+
+
+def _norm_gemv_kernel_p3_v3(
+    y: _FP, x: _FP, gamma: _FP, wp: _FP, wscale: _FP, wzero: _FP,
+    k_i64: Int64, n_i64: Int64, eps: Float32,
+):
+    """`_norm_gemv_kernel_p3`'s v3 twin — v2's unpack PLUS three interleaved accumulators
+    (the chunk's 12 products split by element index mod 3 into 4-deep chains, combined at
+    loop end as `(acc0 + acc1) + acc2`); everything else — fused rmsnorm, staging, 8 rows
+    per block, the barrier-tree reduction — is verbatim. The reassociation CHANGES
+    accumulation order, so this variant is ulp-different from v1/v2 (the rule
+    `_packed3_gemv_kernel_v3`'s docstring states). Selected by
+    `residentk.session_cuda_p3_graph.P3_GRAPH_V3_KERNELS`."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    # ── 1. sum of squares over the whole vector, tree-reduced across the group ──
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    # ── 2. stage the normalized, gamma-scaled vector; zero-fill the padded tail ──
+    var s = tid
+    while s < k_pack:
+        if s < k:
+            xs[s] = x[s] * inv * gamma[s]
+        else:
+            xs[s] = Float32(0.0)
+        s += _TG
+    barrier()
+
+    # ── 3. one SIMD group per output row, v3 chunk loop ──
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc0 = Float32(0.0)
+    var acc1 = Float32(0.0)
+    var acc2 = Float32(0.0)
+    if j < n:
+        var wbase = j * words_per_row
+        var sbase = j * nblocks
+        var r0 = (lane * _P3_CHUNK) & 31
+        var cross_hi = r0 == 24 or r0 == 28
+        var cross_lo = r0 == 28
+        var t = lane * _P3_CHUNK
+        while t < k_pack:
+            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var w = bitcast[DType.int32, 4](v)
+            var xv0 = xs.load[width=4](t)
+            var xv1 = xs.load[width=4](t + 4)
+            var xv2 = xs.load[width=4](t + 8)
+
+            var blk = t >> 5
+            var s0 = wscale[sbase + blk]
+            var z0 = wzero[sbase + blk]
+            var s_lo = s0
+            var z_lo = z0
+            var s_hi = s0
+            var z_hi = z0
+            if cross_hi:
+                s_hi = wscale[sbase + blk + 1]
+                z_hi = wzero[sbase + blk + 1]
+                if cross_lo:
+                    s_lo = s_hi
+                    z_lo = z_hi
+
+            # The same 12 dequant+mac terms as v2, regrouped into three 4-deep chains.
+            acc0 += xv0[0] * ((Float32(w[0] & 255) - z0) * s0)
+            acc1 += xv0[1] * ((Float32((w[0] >> 8) & 255) - z0) * s0)
+            acc2 += xv0[2] * ((Float32((w[0] >> 16) & 255) - z0) * s0)
+            acc0 += xv0[3] * ((Float32(w[1] & 255) - z0) * s0)
+            acc1 += xv1[0] * ((Float32((w[1] >> 8) & 255) - z_lo) * s_lo)
+            acc2 += xv1[1] * ((Float32((w[1] >> 16) & 255) - z_lo) * s_lo)
+            acc0 += xv1[2] * ((Float32(w[2] & 255) - z_lo) * s_lo)
+            acc1 += xv1[3] * ((Float32((w[2] >> 8) & 255) - z_lo) * s_lo)
+            acc2 += xv2[0] * ((Float32((w[2] >> 16) & 255) - z_hi) * s_hi)
+            acc0 += xv2[1] * ((Float32(w[3] & 255) - z_hi) * s_hi)
+            acc1 += xv2[2] * ((Float32((w[3] >> 8) & 255) - z_hi) * s_hi)
+            acc2 += xv2[3] * ((Float32((w[3] >> 16) & 255) - z_hi) * s_hi)
+            t += _LANES * _P3_CHUNK
+    red[tid] = (acc0 + acc1) + acc2
     barrier()
     var st = _LANES // 2
     while st > 0:

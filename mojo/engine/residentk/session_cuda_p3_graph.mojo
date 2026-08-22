@@ -81,6 +81,13 @@ so they are captured as-is, no twins needed):
 per-dispatch plan's `residentk_dispatch_budget(n_layers)` = 1 + n_layers*6 + 2 = 171 enqueues
 per token (the deltas: sdpa -> split-K pair adds one node per layer, plus the advance kernel).
 
+THE packed3 ROLES dispatch through a kernel-generation switch, `P3_GRAPH_V2_KERNELS` (module
+top): the default build routes them through the `_v2` twins (Int32 word-view shift/AND
+unpack, bit-identical math — see `residentk.session_cuda_p3`'s "THE v2 TWINS"), and
+`-D ALGENTA_P3_V1` routes them through the #800/#801 byte-view bodies, so one source tree
+yields both A/B binaries. The per-dispatch arm stays on v1 either way, which is what makes
+the gate driver's G1 diff a graph-variant-vs-original token-identity check.
+
 THE PROVEN CAPTURE RULES (paid for by the f32 single-stream graph arm on the A100, restated
 because this module follows them to the letter):
   (a) KERNELS-ONLY capture via `builder.recording_context()`. NO memcpy nodes are recorded in
@@ -120,6 +127,7 @@ from max.gpu.host import (
 )
 from std.collections import Optional
 from std.origin import MutAnyOrigin
+from std.sys import is_defined
 from residentk.contract import (
     RESIDENT_ERR_CONTEXT_FULL,
     RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT,
@@ -133,7 +141,11 @@ from residentk.kernels import (
     _argmax_reduce_kernel,
     _splitk_merge_kernel_simd,
 )
-from residentk.kernels_packed3 import _norm_gemv_kernel_p3
+from residentk.kernels_packed3 import (
+    _norm_gemv_kernel_p3,
+    _norm_gemv_kernel_p3_v2,
+    _norm_gemv_kernel_p3_v3,
+)
 from residentk.kernels_cuda_graph import (
     _embed_row_kernel_g,
     _graph_advance_kernel,
@@ -152,9 +164,34 @@ from residentk.session_cuda import (
 from residentk.session_cuda_p3 import (
     _CudaResidentQwen3P3,
     _lmhead_argmax_kernel_p3,
+    _lmhead_argmax_kernel_p3_v2,
+    _lmhead_argmax_kernel_p3_v3,
     _norm_gemv2_swiglu_kernel_p3,
+    _norm_gemv2_swiglu_kernel_p3_v2,
+    _norm_gemv2_swiglu_kernel_p3_v3,
+    _norm_gemv2_swiglu_kernel_p3_v4,
     _packed3_gemv_accum_kernel,
+    _packed3_gemv_accum_kernel_v2,
+    _packed3_gemv_accum_kernel_v3,
 )
+
+comptime P3_GRAPH_V3_KERNELS: Bool = is_defined["ALGENTA_P3_V3"]()
+comptime P3_GRAPH_V4_KERNELS: Bool = (
+    not is_defined["ALGENTA_P3_V1"]() and not is_defined["ALGENTA_P3_V2"]()
+    and not P3_GRAPH_V3_KERNELS
+)
+comptime P3_GRAPH_V2_KERNELS: Bool = is_defined["ALGENTA_P3_V2"]() or P3_GRAPH_V4_KERNELS
+"""Which packed3 kernel generation the captured graph arm dispatches. Exactly one is live:
+`-D ALGENTA_P3_V1` -> the #800/#801 byte-view bodies; `-D ALGENTA_P3_V2` -> the v2 twins
+(Int32 word-view shift/AND unpack + hoisted crossing classification, bit-identical math);
+`-D ALGENTA_P3_V3` -> the v3 twins (v2 PLUS three interleaved accumulators — reassociated,
+ulp-different, so the gate driver's G1 becomes the vs-f32 flip-reporting form); default ->
+v4 = v2 everywhere PLUS the fused gate/up swiglu kernel (one shared-activation pass for
+both dot products, bit-identical math — the ncu-measured issue/L1 bottleneck attack). That
+is the campaign's A/B/C/D switch: four binaries from ONE source tree, measured back-to-back
+on the same GPU. The per-dispatch arm (`step_p3`) ALWAYS dispatches the v1 bodies regardless
+of these flags, so the gate driver's token diff compares the graph arm's kernel generation
+against the original packed3 kernels on one session."""
 
 
 @fieldwise_init
@@ -225,6 +262,20 @@ struct _CudaResidentQwen3P3Graph(Movable):
         one node replaced by the split-K pair (+1 per layer) and the device-side advance
         kernel appended (+1)."""
         return self.p3.dispatch_budget() + self.p3.f32.n_layers + 1
+
+    def graph_kernel_variant(self) -> String:
+        """The packed3 kernel generation this build's captured graph dispatches — the value
+        of the `P3_GRAPH_V{2,3,4}_KERNELS` switches as a printable label, so a run log always
+        names the kernel set that produced its numbers."""
+        @parameter
+        if P3_GRAPH_V4_KERNELS:
+            return "v4 (int32 unpack + fused gate/up swiglu)"
+        elif P3_GRAPH_V3_KERNELS:
+            return "v3 (int32 unpack + 3-way interleaved accumulators)"
+        elif P3_GRAPH_V2_KERNELS:
+            return "v2 (int32 word-view unpack)"
+        else:
+            return "v1 (u8 byte-view unpack)"
 
     def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
@@ -414,13 +465,30 @@ struct _CudaResidentQwen3P3Graph(Movable):
                 var dp_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=p3_down_ps[layer])
                 var ds_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=p3_down_ss[layer])
                 var dz_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=p3_down_zs[layer])
-                # 1 ── rmsnorm(input_layernorm) + fused Q/K/V projection — packed3, stateless
-                rec.enqueue_function[_norm_gemv_kernel_p3](
-                    qkv_p, hidden_p, ln1_p,
-                    qkvp_p, qkvs_p, qkvz_p,
-                    d_model_i, n_qkv_i, eps_c,
-                    grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
-                )
+                # 1 ── rmsnorm(input_layernorm) + fused Q/K/V projection — packed3, stateless;
+                #      kernel generation selected by P3_GRAPH_V{2,3}_KERNELS (module top)
+                @parameter
+                if P3_GRAPH_V3_KERNELS:
+                    rec.enqueue_function[_norm_gemv_kernel_p3_v3](
+                        qkv_p, hidden_p, ln1_p,
+                        qkvp_p, qkvs_p, qkvz_p,
+                        d_model_i, n_qkv_i, eps_c,
+                        grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
+                    )
+                elif P3_GRAPH_V2_KERNELS:
+                    rec.enqueue_function[_norm_gemv_kernel_p3_v2](
+                        qkv_p, hidden_p, ln1_p,
+                        qkvp_p, qkvs_p, qkvz_p,
+                        d_model_i, n_qkv_i, eps_c,
+                        grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
+                    )
+                else:
+                    rec.enqueue_function[_norm_gemv_kernel_p3](
+                        qkv_p, hidden_p, ln1_p,
+                        qkvp_p, qkvs_p, qkvz_p,
+                        d_model_i, n_qkv_i, eps_c,
+                        grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
+                    )
                 # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write (pos: state[1])
                 rec.enqueue_function[_qk_rope_write_kernel_g](
                     q_rot_p, ck_p, cv_p,
@@ -445,34 +513,106 @@ struct _CudaResidentQwen3P3Graph(Movable):
                     grid_dim=Int(h_q_i), block_dim=Int(d_head_i),
                 )
                 # 4 ── o_proj + residual add — packed3 accum twin, stateless
-                rec.enqueue_function[_packed3_gemv_accum_kernel](
-                    hidden_p, attn_out_p,
-                    op_p, os_p, oz_p,
-                    n_q_i, d_model_i,
-                    grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
-                )
-                # 5 ── rmsnorm(post_attention_layernorm) + gate/up + SwiGLU — packed3, stateless
-                rec.enqueue_function[_norm_gemv2_swiglu_kernel_p3](
-                    act_p, hidden_p, ln2_p,
-                    gup_p, gus_p, guz_p,
-                    d_model_i, d_ff_i, eps_c,
-                    grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
-                )
+                @parameter
+                if P3_GRAPH_V3_KERNELS:
+                    rec.enqueue_function[_packed3_gemv_accum_kernel_v3](
+                        hidden_p, attn_out_p,
+                        op_p, os_p, oz_p,
+                        n_q_i, d_model_i,
+                        grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                    )
+                elif P3_GRAPH_V2_KERNELS:
+                    rec.enqueue_function[_packed3_gemv_accum_kernel_v2](
+                        hidden_p, attn_out_p,
+                        op_p, os_p, oz_p,
+                        n_q_i, d_model_i,
+                        grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                    )
+                else:
+                    rec.enqueue_function[_packed3_gemv_accum_kernel](
+                        hidden_p, attn_out_p,
+                        op_p, os_p, oz_p,
+                        n_q_i, d_model_i,
+                        grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                    )
+                # 5 ── rmsnorm(post_attention_layernorm) + gate/up + SwiGLU — packed3, stateless;
+                #      v4 (default) dispatches the fused gate/up twin
+                @parameter
+                if P3_GRAPH_V4_KERNELS:
+                    rec.enqueue_function[_norm_gemv2_swiglu_kernel_p3_v4](
+                        act_p, hidden_p, ln2_p,
+                        gup_p, gus_p, guz_p,
+                        d_model_i, d_ff_i, eps_c,
+                        grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                    )
+                elif P3_GRAPH_V3_KERNELS:
+                    rec.enqueue_function[_norm_gemv2_swiglu_kernel_p3_v3](
+                        act_p, hidden_p, ln2_p,
+                        gup_p, gus_p, guz_p,
+                        d_model_i, d_ff_i, eps_c,
+                        grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                    )
+                elif P3_GRAPH_V2_KERNELS:
+                    rec.enqueue_function[_norm_gemv2_swiglu_kernel_p3_v2](
+                        act_p, hidden_p, ln2_p,
+                        gup_p, gus_p, guz_p,
+                        d_model_i, d_ff_i, eps_c,
+                        grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                    )
+                else:
+                    rec.enqueue_function[_norm_gemv2_swiglu_kernel_p3](
+                        act_p, hidden_p, ln2_p,
+                        gup_p, gus_p, guz_p,
+                        d_model_i, d_ff_i, eps_c,
+                        grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                    )
                 # 6 ── down_proj + residual add — packed3 accum twin, stateless
-                rec.enqueue_function[_packed3_gemv_accum_kernel](
-                    hidden_p, act_p,
-                    dp_p, ds_p, dz_p,
-                    d_ff_i, d_model_i,
-                    grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
-                )
+                @parameter
+                if P3_GRAPH_V3_KERNELS:
+                    rec.enqueue_function[_packed3_gemv_accum_kernel_v3](
+                        hidden_p, act_p,
+                        dp_p, ds_p, dz_p,
+                        d_ff_i, d_model_i,
+                        grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                    )
+                elif P3_GRAPH_V2_KERNELS:
+                    rec.enqueue_function[_packed3_gemv_accum_kernel_v2](
+                        hidden_p, act_p,
+                        dp_p, ds_p, dz_p,
+                        d_ff_i, d_model_i,
+                        grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                    )
+                else:
+                    rec.enqueue_function[_packed3_gemv_accum_kernel](
+                        hidden_p, act_p,
+                        dp_p, ds_p, dz_p,
+                        d_ff_i, d_model_i,
+                        grid_dim=_ceil_div(Int(d_model_i), _SUBS), block_dim=_TG,
+                    )
 
             # ── final rmsnorm + packed3 lm_head + per-threadgroup argmax, then the reduce ──
-            rec.enqueue_function[_lmhead_argmax_kernel_p3](
-                blk_val_p, blk_idx_p, hidden_p,
-                final_norm_p, lm_p, lm_s_p, lm_z_p,
-                d_model_i, vocab_i, eps_c, n_iters_i,
-                grid_dim=_LM_BLOCKS, block_dim=_TG,
-            )
+            @parameter
+            if P3_GRAPH_V3_KERNELS:
+                rec.enqueue_function[_lmhead_argmax_kernel_p3_v3](
+                    blk_val_p, blk_idx_p, hidden_p,
+                    final_norm_p, lm_p, lm_s_p, lm_z_p,
+                    d_model_i, vocab_i, eps_c, n_iters_i,
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
+            elif P3_GRAPH_V2_KERNELS:
+                rec.enqueue_function[_lmhead_argmax_kernel_p3_v2](
+                    blk_val_p, blk_idx_p, hidden_p,
+                    final_norm_p, lm_p, lm_s_p, lm_z_p,
+                    d_model_i, vocab_i, eps_c, n_iters_i,
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
+            else:
+                rec.enqueue_function[_lmhead_argmax_kernel_p3](
+                    blk_val_p, blk_idx_p, hidden_p,
+                    final_norm_p, lm_p, lm_s_p, lm_z_p,
+                    d_model_i, vocab_i, eps_c, n_iters_i,
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
             rec.enqueue_function[_argmax_reduce_kernel](
                 out_val_p, out_idx_p,
                 blk_val_p, blk_idx_p, Int64(_LM_BLOCKS),

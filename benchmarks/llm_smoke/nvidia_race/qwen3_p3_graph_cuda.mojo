@@ -23,7 +23,13 @@ Gate G1 — graph-p3 == per-dispatch-p3, token for token (hard gate): 3 seeds x 
      0/64/128 — this zero-Python driver carries no tokenizer; the fixture's ids are the only
      prompts the campaign standardizes on). Both arms run on the SAME composed session from
      the SAME prefill state; every one of the 128 tokens must match, else FAIL + exit 1.
-     Together with G0 this chains graph == per-dispatch == oracle.
+     Together with G0 this chains graph == per-dispatch == oracle. NOTE the graph arm's
+     packed3 kernel generation is a build-time switch (`residentk.session_cuda_p3_graph.
+     P3_GRAPH_V2_KERNELS` / `P3_GRAPH_V3_KERNELS`): the default build dispatches the v2
+     twins (bit-identical math), so there this gate is additionally the v2-vs-v1
+     token-identity diff; a `-D ALGENTA_P3_V3` build reassociates the chunk sums, so its G1
+     switches to the vs-f32 flip-REPORTING form (qwen3_p3_session_cuda.mojo's G1 shape —
+     G0 remains the hard gate).
 
 Gate G2 — ENGAGEMENT check (hard gate; the campaign's stale-binary lesson: a graph build
      that silently no-ops or under-performs must FAIL loudly, not just print a sad number):
@@ -55,6 +61,23 @@ recipe as fallback when the pinned toolchain does not auto-link the MAX CUDA run
     mojo build -D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_80 \\
         -I mojo/engine benchmarks/llm_smoke/nvidia_race/qwen3_p3_graph_cuda.mojo \\
         -o qwen3_p3_graph_cuda
+
+The default build dispatches the v4 packed3 kernels in the graph arm (v2's int32 word-view
+unpack everywhere PLUS the fused gate/up swiglu kernel; both bit-identical math). Add
+`-D ALGENTA_P3_V2` for v2-only, `-D ALGENTA_P3_V1` for the #800/#801 byte-view control, or
+`-D ALGENTA_P3_V3` for the v3 twins (int32 unpack PLUS three interleaved accumulators —
+reassociated sums, G1 in the flip-reporting form) — same source tree, same gates, one run
+per binary:
+
+    mojo build -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_P3_V1 --target-accelerator sm_80 \\
+        -I mojo/engine benchmarks/llm_smoke/nvidia_race/qwen3_p3_graph_cuda.mojo \\
+        -o qwen3_p3_graph_cuda_v1
+    mojo build -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_P3_V2 --target-accelerator sm_80 \\
+        -I mojo/engine benchmarks/llm_smoke/nvidia_race/qwen3_p3_graph_cuda.mojo \\
+        -o qwen3_p3_graph_cuda_v2
+    mojo build -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_P3_V3 --target-accelerator sm_80 \\
+        -I mojo/engine benchmarks/llm_smoke/nvidia_race/qwen3_p3_graph_cuda.mojo \\
+        -o qwen3_p3_graph_cuda_v3
 
     # if the pinned toolchain does not auto-link the MAX CUDA runtime:
     mojo build -D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_80 \\
@@ -95,7 +118,7 @@ from residentk.contract import (
 )
 from residentk.session import _resident_preflight
 from residentk.session_cuda import CUDA_SESSION_BUILD
-from residentk.session_cuda_p3_graph import _CudaResidentQwen3P3Graph
+from residentk.session_cuda_p3_graph import _CudaResidentQwen3P3Graph, P3_GRAPH_V3_KERNELS
 
 comptime DEFAULT_CHECKPOINT_DIR: String = "/tmp/qwen3smoke"
 
@@ -433,6 +456,7 @@ def main() raises:
         print("  one-time load (f32 half + packed3 twins + upload):", _ms(t1 - t0), "ms")
         print("  captured replay nodes per token:", sg.decode_graph_node_count(),
               "(vs", sg.dispatch_budget(), "per-dispatch enqueues per token)")
+        print("  graph-arm packed3 kernels:", sg.graph_kernel_variant())
 
         # ═══ G0 — 16/16 greedy-token oracle THROUGH THE GRAPH ARM ═══
         print("G0 — packed3 graph arm, 16 greedy tokens on the race fixture")
@@ -460,66 +484,130 @@ def main() raises:
         print("G0 RESULT: PASS —", G0_TOKENS,
               "greedy tokens match the campaign oracle through one async chain")
 
-        # ═══ G1 — graph-p3 == per-dispatch-p3, token for token, 3 seeds x 128 steps ═══
-        print("G1 — graph-p3 vs per-dispatch-p3,", G1_SEEDS, "seeds x", G1_STEPS, "steps")
-        var g1_offsets = List[Int]()
-        g1_offsets.append(0)
-        g1_offsets.append(64)
-        g1_offsets.append(128)
-        var g1_ok = True
-        for seed in range(G1_SEEDS):
-            var off = g1_offsets[seed]
+        # ═══ G1 — token identity, 3 seeds x 128 steps ═══
+        # v1/v2 builds: graph-p3 == per-dispatch-p3 token for token (HARD gate — the v2
+        # kernels are bit-identical-math by construction, and per-dispatch always runs v1).
+        # v3 builds: the 3-way accumulator reassociation makes the graph arm ulp-different,
+        # so G1 takes the qwen3_p3_session_cuda.mojo form — graph-p3(v3) vs the f32 session,
+        # flips REPORTED, not hard-failed (quantization + reassociation may flip a near-tie
+        # argmax; G0 remains the hard correctness gate).
+        @parameter
+        if P3_GRAPH_V3_KERNELS:
+            print("G1 — graph-p3(v3) vs f32 per-dispatch,", G1_SEEDS, "seeds x", G1_STEPS,
+                  "steps (flip-reporting: v3 reassociates the chunk sums)")
+            var g1_offsets = List[Int]()
+            g1_offsets.append(0)
+            g1_offsets.append(64)
+            g1_offsets.append(128)
+            var total_flips = 0
+            for seed in range(G1_SEEDS):
+                var off = g1_offsets[seed]
 
-            # ── the per-dispatch packed3 arm ──
-            var pf_d = sg.prefill(_prompt_slice(race_ids, off, G1_PROMPT_LEN))
-            _check_resident(pf_d.status, "G1 per-dispatch prefill")
-            var disp_tokens = List[Int](capacity=G1_STEPS)
-            var last = pf_d.token_id
-            for step in range(G1_STEPS):
-                var pos = G1_PROMPT_LEN + step
-                var r = sg.step_p3(last, pos)
-                _check_resident(r.status, "G1 step_p3(pos " + String(pos) + ")")
-                if r.dispatches != residentk_dispatch_budget(n_layers):
-                    raise Error("qwen3_p3_graph_cuda: p3 dispatch budget disagreement")
-                disp_tokens.append(r.token_id)
-                last = r.token_id
+                # ── the f32 session's per-dispatch arm ──
+                var pf_d = sg.prefill(_prompt_slice(race_ids, off, G1_PROMPT_LEN))
+                _check_resident(pf_d.status, "G1 f32 prefill")
+                var disp_tokens = List[Int](capacity=G1_STEPS)
+                var last = pf_d.token_id
+                for step in range(G1_STEPS):
+                    var pos = G1_PROMPT_LEN + step
+                    var r = sg.p3.f32.step(last, pos)
+                    _check_resident(r.status, "G1 f32 step(pos " + String(pos) + ")")
+                    disp_tokens.append(r.token_id)
+                    last = r.token_id
 
-            # ── the graph arm, from the SAME prefill state (fresh prefill) ──
-            var pf_g = sg.prefill(_prompt_slice(race_ids, off, G1_PROMPT_LEN))
-            _check_resident(pf_g.status, "G1 graph prefill")
-            if pf_g.token_id != pf_d.token_id:
-                # Identical f32 prefill code on identical f32 weights — disagreement here is
-                # a structural bug, not a quantization flip.
-                raise Error(
-                    "qwen3_p3_graph_cuda: G1 prefill first-token disagreement between arms"
+                # ── the graph arm, from the SAME prefill state (fresh prefill) ──
+                var pf_g = sg.prefill(_prompt_slice(race_ids, off, G1_PROMPT_LEN))
+                _check_resident(pf_g.status, "G1 graph prefill")
+                if pf_g.token_id != pf_d.token_id:
+                    # Identical f32 prefill code on identical f32 weights — disagreement
+                    # here is a structural bug, not a quantization flip.
+                    raise Error(
+                        "qwen3_p3_graph_cuda: G1 prefill first-token disagreement between arms"
+                    )
+                _check_resident(
+                    sg.seed_and_run_graph_p3(pf_g.token_id, G1_PROMPT_LEN, G1_STEPS),
+                    "G1 seed_and_run_graph_p3",
                 )
-            _check_resident(
-                sg.seed_and_run_graph_p3(pf_g.token_id, G1_PROMPT_LEN, G1_STEPS),
-                "G1 seed_and_run_graph_p3",
-            )
-            var flips = 0
-            var first_div = -1
-            for step in range(G1_STEPS):
-                # The per-dispatch loop's step `s` runs at pos = G1_PROMPT_LEN + s; the graph
-                # logs replay k's output at start_pos + k - 1 — the same slot.
-                var gt = sg.graph_token(G1_PROMPT_LEN + step)
-                if gt != disp_tokens[step]:
-                    flips += 1
-                    if first_div < 0:
-                        first_div = step
-            if flips == 0:
-                print("  seed", seed, "(offset", off, "):", G1_STEPS, "/", G1_STEPS,
-                      "tokens identical — graph == per-dispatch")
-            else:
-                print("  seed", seed, "(offset", off, "):", flips, "flip(s), first at step",
-                      first_div, ": per-dispatch =", disp_tokens[first_div],
-                      "graph =", sg.graph_token(G1_PROMPT_LEN + first_div))
-                g1_ok = False
-        if not g1_ok:
-            print("G1 RESULT: FAIL — graph-p3 disagrees with per-dispatch-p3")
-            exit(1)
-        print("G1 RESULT: PASS —", G1_SEEDS, "seeds x", G1_STEPS,
-              "steps token-for-token identical (graph == per-dispatch == oracle via G0)")
+                var flips = 0
+                var first_div = -1
+                for step in range(G1_STEPS):
+                    var gt = sg.graph_token(G1_PROMPT_LEN + step)
+                    if gt != disp_tokens[step]:
+                        flips += 1
+                        if first_div < 0:
+                            first_div = step
+                total_flips += flips
+                if flips == 0:
+                    print("  seed", seed, "(offset", off, "):", G1_STEPS, "/", G1_STEPS,
+                          "tokens identical to the f32 session")
+                else:
+                    print("  seed", seed, "(offset", off, "):", flips,
+                          "flip(s) vs f32, first at step", first_div, ": f32 =",
+                          disp_tokens[first_div], "graph =",
+                          sg.graph_token(G1_PROMPT_LEN + first_div))
+            print("G1 RESULT:", total_flips,
+                  "total flip(s) vs the f32 session across all seeds (reporting gate;",
+                  "G0 16/16 remains HARD)")
+        else:
+            print("G1 — graph-p3 vs per-dispatch-p3,", G1_SEEDS, "seeds x", G1_STEPS, "steps")
+            var g1_offsets = List[Int]()
+            g1_offsets.append(0)
+            g1_offsets.append(64)
+            g1_offsets.append(128)
+            var g1_ok = True
+            for seed in range(G1_SEEDS):
+                var off = g1_offsets[seed]
+
+                # ── the per-dispatch packed3 arm ──
+                var pf_d = sg.prefill(_prompt_slice(race_ids, off, G1_PROMPT_LEN))
+                _check_resident(pf_d.status, "G1 per-dispatch prefill")
+                var disp_tokens = List[Int](capacity=G1_STEPS)
+                var last = pf_d.token_id
+                for step in range(G1_STEPS):
+                    var pos = G1_PROMPT_LEN + step
+                    var r = sg.step_p3(last, pos)
+                    _check_resident(r.status, "G1 step_p3(pos " + String(pos) + ")")
+                    if r.dispatches != residentk_dispatch_budget(n_layers):
+                        raise Error("qwen3_p3_graph_cuda: p3 dispatch budget disagreement")
+                    disp_tokens.append(r.token_id)
+                    last = r.token_id
+
+                # ── the graph arm, from the SAME prefill state (fresh prefill) ──
+                var pf_g = sg.prefill(_prompt_slice(race_ids, off, G1_PROMPT_LEN))
+                _check_resident(pf_g.status, "G1 graph prefill")
+                if pf_g.token_id != pf_d.token_id:
+                    # Identical f32 prefill code on identical f32 weights — disagreement here is
+                    # a structural bug, not a quantization flip.
+                    raise Error(
+                        "qwen3_p3_graph_cuda: G1 prefill first-token disagreement between arms"
+                    )
+                _check_resident(
+                    sg.seed_and_run_graph_p3(pf_g.token_id, G1_PROMPT_LEN, G1_STEPS),
+                    "G1 seed_and_run_graph_p3",
+                )
+                var flips = 0
+                var first_div = -1
+                for step in range(G1_STEPS):
+                    # The per-dispatch loop's step `s` runs at pos = G1_PROMPT_LEN + s; the graph
+                    # logs replay k's output at start_pos + k - 1 — the same slot.
+                    var gt = sg.graph_token(G1_PROMPT_LEN + step)
+                    if gt != disp_tokens[step]:
+                        flips += 1
+                        if first_div < 0:
+                            first_div = step
+                if flips == 0:
+                    print("  seed", seed, "(offset", off, "):", G1_STEPS, "/", G1_STEPS,
+                          "tokens identical — graph == per-dispatch")
+                else:
+                    print("  seed", seed, "(offset", off, "):", flips, "flip(s), first at step",
+                          first_div, ": per-dispatch =", disp_tokens[first_div],
+                          "graph =", sg.graph_token(G1_PROMPT_LEN + first_div))
+                    g1_ok = False
+            if not g1_ok:
+                print("G1 RESULT: FAIL — graph-p3 disagrees with per-dispatch-p3")
+                exit(1)
+            print("G1 RESULT: PASS —", G1_SEEDS, "seeds x", G1_STEPS,
+                  "steps token-for-token identical (graph == per-dispatch == oracle via G0)")
 
         # ═══ G2 — engagement: flat per-step wall + strictly faster than per-dispatch ═══
         print("G2 — engagement: graph-p3 per-step wall at n_steps 32/64/128/256 vs",

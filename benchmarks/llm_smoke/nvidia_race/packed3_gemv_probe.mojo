@@ -23,7 +23,9 @@ PART 2 — `_packed3_gemv_kernel` on real 0.6B-shaped roles (K=1024,N=4096 and K
     correctness vs a host Float64 dequant oracle, tolerance = quantization error ONLY (the
     kernel-vs-dequantized-oracle gap is reported separately and must be sum-order noise, not
     an unpack/lane/reduction bug), then timed against the f32 `_gemv_accum_kernel` twin,
-    GB/s and % of HBM peak for each.
+    GB/s and % of HBM peak for each. The v2 twin (`_packed3_gemv_kernel_v2`, Int32 word-view
+    shift/AND unpack) is diffed EXACT against v1 (bit-identical math by construction) and
+    timed alongside both.
 
 PART 3 — the ledger traffic-model projection: REALRACE_RESULTS.md ("THE SECOND-GPU LANE")
     established f32 decode streams 2.62 GB/token against the A100's 1555 GB/s and the L4's
@@ -54,6 +56,8 @@ from std.time import perf_counter_ns
 from residentk.kernels import _TG, _SUBS, _gemv_accum_kernel
 from residentk.kernels_packed3 import (
     _packed3_gemv_kernel,
+    _packed3_gemv_kernel_v2,
+    _packed3_gemv_kernel_v3,
     _pack_f32_to_packed3, _p3_dequant_host,
     _p3_k_pack, _p3_words_per_row, _p3_blocks_per_row,
     _p3_pack_word, _p3_unpack_word,
@@ -359,9 +363,11 @@ def _run_shape(
     var max_rel_quant = Float64(0.0)
     var max_abs_code = Float64(0.0)
     var max_abs_quant = Float64(0.0)
+    var y_v1 = List[Float64](capacity=n)
     with y_buf.map_to_host() as h:
         for j in range(n):
             var yk = Float64(h[j])
+            y_v1.append(yk)
             var d_code = yk - y_deq[j]
             if d_code < 0.0:
                 d_code = -d_code
@@ -393,6 +399,49 @@ def _run_shape(
           max_rel_quant, "( max abs", max_abs_quant, ") ->",
           "PASS" if quant_ok else "FAIL")
 
+    # ── v2 (int32 word-view unpack): oracle check + EXACT-match diff against v1 — the
+    #    two unpacks read the same integer quants from the same bit patterns and the dequant
+    #    expression + accumulation order are verbatim, so every row must match bit for bit ──
+    ctx.enqueue_function[_packed3_gemv_kernel_v2](
+        y_buf.unsafe_ptr(), x_buf.unsafe_ptr(), wp_buf.unsafe_ptr(),
+        sc_buf.unsafe_ptr(), z_buf.unsafe_ptr(), Int64(k), Int64(n),
+        grid_dim=n, block_dim=_TG)
+    ctx.synchronize()
+    var v2_mismatch = 0
+    with y_buf.map_to_host() as h:
+        for j in range(n):
+            var yk = Float64(h[j])
+            if yk != y_v1[j]:
+                v2_mismatch += 1
+    var v2_ok = v2_mismatch == 0
+    print(shape_name, "v2-vs-v1: ", v2_mismatch, "row(s) of", n, "differ ->",
+          "PASS (bit-identical)" if v2_ok else "FAIL")
+
+    # ── v3 (3-way interleaved accumulators): reassociated sums — ulp-different from v1 by
+    #    construction, so this is a CENSUS + oracle check, not an exact-match gate ──
+    ctx.enqueue_function[_packed3_gemv_kernel_v3](
+        y_buf.unsafe_ptr(), x_buf.unsafe_ptr(), wp_buf.unsafe_ptr(),
+        sc_buf.unsafe_ptr(), z_buf.unsafe_ptr(), Int64(k), Int64(n),
+        grid_dim=n, block_dim=_TG)
+    ctx.synchronize()
+    var v3_mismatch = 0
+    var v3_max_rel_code = Float64(0.0)
+    with y_buf.map_to_host() as h:
+        for j in range(n):
+            var yk = Float64(h[j])
+            if yk != y_v1[j]:
+                v3_mismatch += 1
+            var d_code = yk - y_deq[j]
+            if d_code < 0.0:
+                d_code = -d_code
+            var r_code = d_code / abs_deq[j]
+            if r_code > v3_max_rel_code:
+                v3_max_rel_code = r_code
+    var v3_code_ok = v3_max_rel_code <= 1.0e-4
+    print(shape_name, "v3-vs-v1: ", v3_mismatch, "row(s) of", n,
+          "differ (reassociated sums, expected ulp-level) | v3-vs-dequant-oracle max rel diff",
+          v3_max_rel_code, "->", "PASS" if v3_code_ok else "FAIL")
+
     # ── timing: REPS back-to-back dispatches, one synchronize (device-bound windows) ──
     var t0 = perf_counter_ns()
     for _ in range(REPS_GEMV):
@@ -407,6 +456,24 @@ def _run_shape(
 
     t0 = perf_counter_ns()
     for _ in range(REPS_GEMV):
+        ctx.enqueue_function[_packed3_gemv_kernel_v2](
+            y_buf.unsafe_ptr(), x_buf.unsafe_ptr(), wp_buf.unsafe_ptr(),
+            sc_buf.unsafe_ptr(), z_buf.unsafe_ptr(), Int64(k), Int64(n),
+            grid_dim=n, block_dim=_TG)
+    ctx.synchronize()
+    var p3v2_us = Float64(perf_counter_ns() - t0) / 1.0e3 / Float64(REPS_GEMV)
+
+    t0 = perf_counter_ns()
+    for _ in range(REPS_GEMV):
+        ctx.enqueue_function[_packed3_gemv_kernel_v3](
+            y_buf.unsafe_ptr(), x_buf.unsafe_ptr(), wp_buf.unsafe_ptr(),
+            sc_buf.unsafe_ptr(), z_buf.unsafe_ptr(), Int64(k), Int64(n),
+            grid_dim=n, block_dim=_TG)
+    ctx.synchronize()
+    var p3v3_us = Float64(perf_counter_ns() - t0) / 1.0e3 / Float64(REPS_GEMV)
+
+    t0 = perf_counter_ns()
+    for _ in range(REPS_GEMV):
         ctx.enqueue_function[_gemv_accum_kernel](
             y_f32.unsafe_ptr(), x_buf.unsafe_ptr(), wf32_buf.unsafe_ptr(),
             Int64(k), Int64(n),
@@ -415,13 +482,21 @@ def _run_shape(
     var f32_us = Float64(perf_counter_ns() - t0) / 1.0e3 / Float64(REPS_GEMV)
     var f32_bytes = Float64(n) * Float64(k) * 4.0
 
-    print(shape_name, "packed3:", p3_us, "us ->",
+    print(shape_name, "packed3 v1 (u8 view): ", p3_us, "us ->",
           p3_bytes / (p3_us * 1.0e-6) / 1.0e9, "GB/s (",
           p3_bytes / (p3_us * 1.0e-6) / 1.0e9 / HBM_GB_S * 100.0, "% of HBM )")
+    print(shape_name, "packed3 v2 (i32 unpack):", p3v2_us, "us ->",
+          p3_bytes / (p3v2_us * 1.0e-6) / 1.0e9, "GB/s (",
+          p3_bytes / (p3v2_us * 1.0e-6) / 1.0e9 / HBM_GB_S * 100.0, "% of HBM )",
+          "| v2/v1:", p3_us / p3v2_us, "x")
+    print(shape_name, "packed3 v3 (3-way acc): ", p3v3_us, "us ->",
+          p3_bytes / (p3v3_us * 1.0e-6) / 1.0e9, "GB/s (",
+          p3_bytes / (p3v3_us * 1.0e-6) / 1.0e9 / HBM_GB_S * 100.0, "% of HBM )",
+          "| v3/v1:", p3_us / p3v3_us, "x")
     print(shape_name, "f32 twin:", f32_us, "us ->",
           f32_bytes / (f32_us * 1.0e-6) / 1.0e9, "GB/s (",
           f32_bytes / (f32_us * 1.0e-6) / 1.0e9 / HBM_GB_S * 100.0, "% of HBM )")
-    return code_ok and quant_ok
+    return code_ok and quant_ok and v2_ok and v3_code_ok
 
 
 def main() raises:
