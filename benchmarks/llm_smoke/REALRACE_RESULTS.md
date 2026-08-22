@@ -13588,3 +13588,31 @@ opponents' warm servers; rag C=32 driver row pending the known-issue fix above; 
 only via vLLM reference rows (our 7B lane not built); H100/FP8 datacenter lane not pursued
 (no tensor-core surface in the pinned toolchain). The two VM-side fixes (FIX 1 stdin reader,
 FIX 2 def-not-fn) still need their repo PR before any further serve-driver runs.
+
+ADDENDUM 2026-08-22 — RAG C=32 "DEADLOCK" ROOT-CAUSED AS A HARNESS LOCK CONVOY (PR #806),
+VERIFIED 3x 64/64; RAG C=32 DRIVER ROWS LAND
+------------------------------------------------------------------------------
+Root cause (not a driver/session bug): enterprise_bench.py's JsonlDriverAdapter held the
+response-condition lock across the blocking stdin write. Against the batch-1 driver (reads
+stdin only between requests) the chain closes into a four-way circular wait: writer blocked
+in stdin.write() holds the lock for the whole ~90s compute window -> _read_loop cannot store
+responses and no worker can reach its deadline check -> one response accumulates per window
+until the 64KB stdout pipe fills (~21 windows; stall onset measured 31.7/33.1 min on A100/L4,
+matching the arithmetic) -> driver parks in pipe_write (the observed sigsuspend / GPU 0%),
+never reads stdin again, lock held forever. Evidence: A/B replay on the A100 captured all
+four parties at once (driver wchan=pipe_write, stdout backlog 53,216 B, stdin backlog 57,653 B,
+32 workers stuck in send() with 22 unable to reach deadline checks); local pipe-faithful
+repro deadlocks pre-fix harness at C=32 in <1 min, fixed harness completes 32/32 in serial
+time. Session-layer hypotheses (KV exhaustion, MAX_CTX math, dispatch budget) refuted: the
+driver is strictly serial; the backlog lived in the OS pipes. The "~17 GB L4 working set"
+was the ~5 GB driver plus a co-resident foreign workload.
+
+FIX: writers serialize on a private _write_lock, never on the condition lock (one new lock +
+one with-target swap). Stacks on #802's stdin reader fix. No metric semantics change.
+
+VERIFICATION (A100, rebuilt driver incl. #802): split-line protocol test PASS; 3 consecutive
+rag C=32 runs 64/64 (wall 6066.7/6066.9/6066.0 s; TTFT p50 5117.6/5118.9/5117.4 ms; TPOT p50
+175.49/175.49/175.47 ms; agg 5.40 tok/s) + chat C=32 regression 64/64 (828.1 s; TTFT p50
+538.5; TPOT 48.63; agg 19.79). Rag C=32 driver rows published in
+gitbook/benchmarks/nvidia-enterprise-serving.md with the root-cause note; the Scope bullet
+updated (stall was a harness bug, fixed and re-verified).

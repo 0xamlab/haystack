@@ -75,7 +75,14 @@ vLLM reference rows for Qwen2.5-7B-Instruct (the driver 7B lane is not built):
 
 Driver rag rows carry p50 only. On a batch-1 driver the closed-loop queue waits exceed the
 harness default 600 s per-request deadline at C=8, so the rag cells ran with a 3600 s
-per-request deadline. The driver rag row at C=32 is pending a known-issue fix; see Scope.
+per-request deadline.
+
+Rag at C=32 (A100, after the harness pipe-convoy fix; three consecutive 64/64 runs):
+TTFT p50 5117.6 ms, TPOT p50 175.49 ms, aggregate 5.40 tok/s, wall ~6067 s per 64-request
+cell. The earlier "driver deadlock at rag C=32" was a harness bug, not a driver bug: the
+harness held its response lock across the blocking stdin write, freezing deadline checks and
+response draining until both OS pipes filled (four-way circular wait; fixed by a private
+write lock, verified 3x 64/64 plus chat C=32 64/64).
 
 ### Batched decode (bench arms)
 
@@ -168,8 +175,8 @@ vLLM reserves ~90% of the card by design (`--gpu-memory-utilization` defaults to
   concurrency, and the batched decode stack is bench-only today.
 * Aggregate throughput at C >= 8 loses to vLLM (tensor-core prefill and continuous batching).
 * TTFT loses to both opponents' warm servers.
-* The driver rag row at C=32 is pending a known-issue fix (reproducible deadlock of the
-  resident session under a 32-deep backlog).
+* Rag C=32 on the batch-1 driver is queueing-limited (wall ~6067 s per 64-request cell on
+  A100); the historical stall at that cell was a harness lock convoy, fixed and re-verified.
 * Qwen2.5-7B-Instruct is served only via the vLLM reference rows; the driver 7B lane is not
   built.
 * H100/FP8 datacenter lanes are not pursued; the pinned toolchain exposes no tensor-core
