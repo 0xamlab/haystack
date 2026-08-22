@@ -221,6 +221,7 @@
 * [Compute kernels](benchmarks/compute-kernels.md)
 * [NVIDIA kernel benchmarks](benchmarks/nvidia-kernel-benchmarks.md)
 * [NVIDIA LLM throughput](benchmarks/nvidia-llm-throughput.md)
+* [NVIDIA enterprise serving](benchmarks/nvidia-enterprise-serving.md)
 * [Attention](benchmarks/attention.md)
 * [Normalization](benchmarks/normalization.md)
 * [Feed-forward](benchmarks/feed-forward.md)

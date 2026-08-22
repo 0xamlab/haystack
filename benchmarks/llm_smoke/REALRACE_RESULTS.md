@@ -13329,3 +13329,262 @@ NVIDIA campaign spot spend ≈ $8.9. The VM is deleted after this entry lands: t
 at the definitive ceiling the owner authorized stopping at — fixture prefill WON (1.29x),
 decode at its f32 bandwidth floor (0.92x/0.87x, byte-reproduced), tensor cores measured
 unreachable from this toolchain.
+
+## THE ENTERPRISE SERVING RACE — A100 + L4 DATACENTER MATRIX: the serve driver vs llama-server vs vLLM, 64 req/cell closed-loop — aggregate conceded to continuous batching at C>=8, cold start 6.2x faster than vLLM, determinism 6/6, VRAM 2.3x leaner than llama-server; a Mojo 1.0.0 stdin landmine root-caused and fixed VM-side, the rag C=32 driver deadlock documented, spot preemption + external-actor interference survived (2026-08-21/22)
+
+The campaign's fixture race measured single-stream prefill/decode. This round measured the
+SERVING surface on the same two datacenter GPUs: the CUDA serve driver
+(qwen3_serve_cuda.mojo, batch-1 resident session, JSONL over stdin) against llama.cpp
+`llama-server` and vLLM, chat + rag mixes, concurrency 1/8/16/32, plus cold start, VRAM, and
+determinism — the matrix that `gitbook/benchmarks/nvidia-enterprise-serving.md` publishes in
+spec-sheet form.
+
+WHAT RAN
+--------
+* Code: origin/main a4363926 (#795 packed3 kernel + probe), Mojo 1.0.0 (ed45d567), MAX
+  26.5.0. VMs: algenta-ent-a100 (A100-SXM4-40GB, SPOT) and algenta-ent-l4 (L4 24 GB, SPOT),
+  us-central1-a, driver 595.71.05 on both.
+* Harness: `benchmarks/llm_smoke/nvidia_race/enterprise_bench.py` — greedy temperature 0 on
+  every arm, warmup excluded, closed-loop, 64 requests per matrix cell (smoke cells 40).
+* Opponents: llama.cpp build 10210 pin, f16 GGUF, `-ngl 99`, `--parallel 32`, `-c 163840`
+  (see the gotcha below), q8_0 KV, readiness = `/health` AND one real completion; vLLM
+  0.27.1 with `VLLM_USE_FLASHINFER_SAMPLER=0` (err% = 0 in every vLLM cell).
+* TTFT SEMANTICS (applies to every driver row): the harness consumes the driver-REPORTED
+  ttft_ms (stdin-read → first token: pure service time, queue wait excluded) while for HTTP
+  arms TTFT is harness-measured wall time (includes queue wait). Driver aggregate tok/s does
+  NOT scale with C (batch-1 serial); its concurrency columns show queueing latency, not
+  parallelism.
+
+### packed3 probe gates — BOTH GPUs PASS (REPORT §1, run before any serving number)
+
+| gate | metric | A100 sm_80 | L4 sm_89 | verdict |
+|---|---|---|---|---|
+| PART 0 byte round-trip | triples / mismatches | 200780 / 0 | 200780 / 0 | PASS |
+| PART 0 quant round-trip | max abs err vs bound | 0.003882 ≤ 0.003902 | 0.003882 ≤ 0.003902 | PASS |
+| PART 1 streaming parity | p3/f32 GB/s ratio (gate ≥0.85) | 1293.0 / 1304.8 = 0.9910 | 255.6 / 255.5 = 1.0004 | PASS |
+| PART 2 k=1024 n=4096 correctness | kernel-vs-dequant max rel | 1.736e-08 | 1.736e-08 | PASS (≤1e-4) |
+| PART 2 k=3072 n=1024 correctness | kernel-vs-dequant max rel | 8.164e-09 | 8.164e-09 | PASS (≤1e-4) |
+| PART 2 quantization gaps | dequant-vs-true max rel | 4.848e-04 / 3.045e-04 | same | PASS (≤1e-2) |
+
+GEMV GB/s (PART 2 timing, per shape):
+
+| shape | A100 packed3 | A100 f32 twin | L4 packed3 | L4 f32 twin |
+|---|---|---|---|---|
+| k=1024 n=4096 | 470.5 GB/s (30.3% HBM) | 246.3 GB/s | 451.3 GB/s (29.0% HBM) | 222.0 GB/s |
+| k=3072 n=1024 | 496.6 GB/s (31.9% HBM) | 977.2 GB/s | 581.8 GB/s (37.4% HBM) | 925.4 GB/s |
+
+PART 3 projections (ledger traffic model): bytes/weight 1.4583 brief / 1.5833 as-implemented;
+GB/token 1.1077 brief / 1.1821 impl vs 2.62 f32. Bandwidth-floor tok/s: A100 (1555 GB/s):
+f32 593.5 | packed3 brief 1403.8 | impl 1315.5. L4 (300 GB/s): f32 114.5 | packed3 brief
+270.8 | impl 253.8.
+
+### Driver smoke (chat, 40 req/cell) + the two VM-side fixes
+
+| GPU | C | ok | TTFT p50 ms | TPOT p50 ms | agg tok/s |
+|---|---|---|---|---|---|
+| A100 | 1 | 40/40 | 538.6 | 48.4 | 19.9 |
+| A100 | 8 | 40/40 | 538.7 | 48.4 | 19.9 |
+| L4 | 1 | 40/40 | 702.0 | 45.0 | 21.0 |
+| L4 | 8 | 40/40 | 702.7 | 44.9 | 21.0 |
+
+Pre-fix smoke C=8 was 33/40 on BOTH GPUs — the stdin bug below. Post-fix: every subsequent
+matrix cell 64/64.
+
+FIX 1 — qwen3_serve_cuda.mojo stdin reader (THE RACE-CRITICAL FIX; port to a repo PR).
+Root cause (measured on both VMs): Mojo 1.0.0 `input()` drops every buffered byte past the
+FIRST newline of each internal refill. Repro: two 4246-byte JSON request lines in ONE pipe
+write → input() returns line 1, then a 302-byte tail fragment, and loses the ~3.9KB middle.
+Three short lines in one write → only line 1 survives. At harness concurrency ≥8 several
+lines are always in flight in the stdin pipe, so input() silently loses requests, the driver
+idles in pipe_read, and the harness errors the orphans at its 600s deadline (observed: smoke
+C=8 ok=33/40 on BOTH GPUs; phase-1 C=8 cell same). Attempted fix v1 used
+FileHandle.read_bytes(4096) on /dev/stdin — it DEADLOCKS: read_bytes(n) waits for the full n
+bytes or EOF and stalls on a partial line's tail. Fix v2 (landed): read ONE byte per
+read_bytes(1) call (a 1-byte read(2) returns as soon as any byte arrives — nothing dropped,
+nothing stalls). Verbatim diff preserved as serve_stdin_fix.diff (54 lines; adds struct
+_StdinLines + swaps input() → stdin_lines.next_line() in _serve_loop). Validated:
+split-write + two-lines-one-write protocol tests PASS; smoke C=8 40/40; all phase-1 cells
+64/64.
+
+FIX 2 — build syntax for Mojo 1.0.0: struct methods must use `def` (`fn` was removed).
+
+No other compile fixes: packed3 probe and serve driver both built PLAIN (no object+link
+fallback needed) on sm_80 and sm_89.
+
+### The enterprise matrix (REPORT §3)
+
+Our CUDA driver (batch-1 resident session), chat mix, 64 req/cell:
+
+| GPU | C | ok | TTFT p50/p90/p99 ms | TPOT p50/p99 ms | agg tok/s | req/s | err% |
+|---|---|---|---|---|---|---|---|
+| A100 | 1 | 64/64 | 538.6 / 539.3 / 540.0 | 48.41 / 48.69 | 19.9 | 0.08 | 0 |
+| A100 | 8 | 64/64 | 538.9 / 539.3 / 539.6 | 48.44 / 48.75 | 19.9 | 0.08 | 0 |
+| A100 | 16 | 64/64 | 538.7 / 539.3 / 539.7 | 48.43 / 48.78 | 19.9 | 0.08 | 0 |
+| A100 | 32 | 64/64 | 538.9 / 539.4 / 539.9 | 48.45 / 48.72 | 19.9 | 0.08 | 0 |
+| L4 | 1 | 64/64 | 702.7 / 708.6 / 710.2 | 44.94 / 45.15 | 21.0 | 0.08 | 0 |
+| L4 | 8 | 64/64 | 702.9 / 707.1 / 708.9 | 44.96 / 45.20 | 21.0 | 0.08 | 0 |
+| L4 | 16 | 64/64 | 702.5 / 706.6 / 710.8 | 44.96 / 45.23 | 21.0 | 0.08 | 0 |
+| L4 | 32 | 64/64 | 681.0 / 692.5 / 699.3 | 44.93 / 45.14 | 21.1 | 0.08 | 0 |
+
+Our driver, rag mix (4096-in/512-out) — the long-context arm:
+
+| GPU | C | ok | TTFT p50 ms | TPOT p50 ms | agg tok/s | notes |
+|---|---|---|---|---|---|---|
+| A100 | 8 | 40/40 | 5118.0 | 175.4 | 5.4 | clean only with per-request deadline raised 600→3600s (queue waits >600s at C≥8 on a batch-1 driver) |
+| L4 | 8 | 40/40 | 7099.4 | 142.1 | 6.4 | same |
+| A100 | 32 | — | — | — | — | REPRODUCIBLE DRIVER DEADLOCK — 2/2 attempts stalled (main thread sigsuspend, GPU 0%, no NVRM XID); earlier 40-req attempts hit the 90-min budget, almost certainly already stalled. No data by construction |
+| L4 | 32 | — | — | — | — | same deadlock — 3/3 attempts (1 observed sigsuspend stall, 2 budget timeouts). Not a GPU fault: dmesg clean, retried after kill |
+
+llama-server (10210 pin, f16 GGUF, -ngl 99, --parallel 32, q8_0 KV). GOTCHA (cost the first
+full matrix run): llama.cpp 10210 divides -c across --parallel slots (8192/32 = 256/slot),
+so every request 500'd "exceeds the available context size (256 tokens)"; the re-run uses
+-c 163840 (32×5120; rag needs 4608+/slot). Greedy note: harness sends temperature 0 in the
+payload → greedy argmax.
+
+| GPU | mix | C | ok | TTFT p50/p90/p99 ms | TPOT p50/p99 ms | agg tok/s | req/s | err% |
+|---|---|---|---|---|---|---|---|---|
+| A100 | chat | 1 | 64/64 | 115.0 / 118.0 / 119.0 | 3.6 / 3.6 | 249.1 | 0.97 | 0 |
+| A100 | chat | 8 | 64/64 | 446.5 / 827.9 / 888.9 | 11.1 / 16.9 | 573.6 | 2.24 | 0 |
+| A100 | chat | 16 | 64/64 | 465.3 / 717.7 / 1203.3 | 22.1 / 27.5 | 634.6 | 2.48 | 0 |
+| A100 | chat | 32 | 64/64 | 689.2 / 1317.4 / 1544.1 | 39.9 / 45.2 | 752.9 | 2.94 | 0 |
+| A100 | rag | 8 | 64/64 | 816.6 / 1191.8 / 1564.4 | 15.4 / 16.4 | 476.6 | 0.93 | 0 |
+| A100 | rag | 32 | 64/64 | 1240.4 / 4601.6 / 5694.0 | 52.2 / 60.8 | 570.4 | 1.11 | 0 |
+| L4 | chat | 1 | 64/64 | 127.0 / 130.4 / 132.1 | 6.6 / 6.7 | 141.1 | 0.55 | 0 |
+| L4 | chat | 8 | 64/64 | 520.0 / 616.4 / 684.7 | 15.9 / 23.9 | 408.1 | 1.60 | 0 |
+| L4 | chat | 16 | 64/64 | 569.5 / 1005.7 / 1536.8 | 29.9 / 37.2 | 475.5 | 1.87 | 0 |
+| L4 | chat | 32 | 64/64 | 889.4 / 1950.2 / 2299.5 | 49.6 / 55.5 | 600.2 | 2.34 | 0 |
+| L4 | rag | 8 | 64/64 | 679.9 / 1552.1 / 2140.2 | 26.6 / 27.5 | 288.1 | 0.56 | 0 |
+| L4 | rag | 32 | 64/64 | 1666.0 / 7801.0 / 9680.9 | 82.0 / 92.1 | 363.8 | 0.71 | 0 |
+
+vLLM 0.27.1 (VLLM_USE_FLASHINFER_SAMPLER=0), 64 req/cell, err% = 0 everywhere:
+
+| GPU | model | mix | C | TTFT p50/p90/p99 ms | TPOT p50/p99 ms | agg tok/s | req/s |
+|---|---|---|---|---|---|---|---|
+| A100 | Qwen3-0.6B-Base | chat | 1 | 26.4 / 27.1 / 30.4 | 2.4 / 2.4 | 401.5 | 1.57 |
+| A100 | Qwen3-0.6B-Base | chat | 8 | 79.5 / 91.4 / 103.3 | 3.5 / 3.6 | 2114.2 | 8.26 |
+| A100 | Qwen3-0.6B-Base | chat | 16 | 94.0 / 137.1 / 153.1 | 4.4 / 4.6 | 3356.2 | 13.11 |
+| A100 | Qwen3-0.6B-Base | chat | 32 | 102.1 / 282.4 / 320.0 | 6.6 / 6.7 | 4542.4 | 17.74 |
+| A100 | Qwen3-0.6B-Base | rag | 8 | 123.0 / 155.3 / 210.2 | 5.5 / 5.6 | 1401.7 | 2.74 |
+| A100 | Qwen3-0.6B-Base | rag | 32 | 227.4 / 1075.1 / 1383.8 | 16.5 / 17.0 | 1855.9 | 3.62 |
+| A100 | Qwen2.5-7B-Instruct | chat | 1 | 77.4 / 78.2 / 78.6 | 12.4 / 12.4 | 78.7 | 0.41 |
+| A100 | Qwen2.5-7B-Instruct | chat | 8 | 89.1 / 151.3 / 359.9 | 14.2 / 14.7 | 528.5 | 2.73 |
+| A100 | Qwen2.5-7B-Instruct | chat | 16 | 92.1 / 520.0 / 781.3 | 16.6 / 18.3 | 821.5 | 4.35 |
+| A100 | Qwen2.5-7B-Instruct | chat | 32 | 249.5 / 1405.2 / 1679.1 | 20.2 / 25.9 | 1232.1 | 6.46 |
+| L4 | Qwen3-0.6B-Base | chat | 1 | 29.2 / 30.6 / 31.3 | 6.2 / 6.2 | 159.4 | 0.62 |
+| L4 | Qwen3-0.6B-Base | chat | 8 | 110.2 / 151.5 / 177.7 | 9.9 / 10.3 | 773.9 | 3.02 |
+| L4 | Qwen3-0.6B-Base | chat | 16 | 161.0 / 269.4 / 402.5 | 14.9 / 15.4 | 1031.8 | 4.03 |
+| L4 | Qwen3-0.6B-Base | chat | 32 | 275.4 / 735.9 / 887.4 | 23.9 / 24.4 | 1285.2 | 5.02 |
+| L4 | Qwen3-0.6B-Base | rag | 8 | 294.4 / 417.9 / 796.8 | 21.1 / 21.5 | 368.4 | 0.72 |
+| L4 | Qwen3-0.6B-Base | rag | 32 | 938.5 / 4316.3 / 5791.6 | 69.9 / 72.7 | 439.2 | 0.86 |
+
+Cold start (process launch → first completed token, median of 3):
+
+| engine | A100 median s (runs) | L4 median s |
+|---|---|---|
+| our driver | 6.34 (6.39/6.34/6.26) | 6.39 |
+| llama-server | 1.82 (1.82/1.82/1.82) | 1.84 |
+| vLLM 0.6B | 39.14 (38.89/51.67/39.14) | 39.16 |
+| vLLM 7B | 40.73 | n/a |
+
+VRAM peaks (nvidia-smi every 500ms during the C=32 chat run):
+
+| engine | A100 peak | L4 peak |
+|---|---|---|
+| our driver | 5038 MiB | 4804 MiB |
+| llama-server (fixed -c 163840, q8_0 KV) | 11858 MiB | 11596 MiB |
+| vLLM 0.6B | 37920 MiB | 21570 MiB |
+| vLLM 7B | 38336 MiB | n/a |
+
+(vLLM default --gpu-memory-utilization 0.9 → ~90% of the card reserved by design.)
+
+Determinism (identical prompts, two fresh processes/instances per round, greedy): our driver
+6/6 token-IDENTICAL on A100 and 6/6 on L4; llama-server 6/6 IDENTICAL on both GPUs at
+temperature 0 (llama.cpp IS deterministic at temperature 0 with sequential requests; the
+first attempt used non-streaming and hit llama.cpp 10210's "peg-native format" 500, so the
+landed check uses stream:true).
+
+### The bench-batch arms that contextualize the serving rows (same window, REPORT-sibling run)
+
+W1 (#796, per-dispatch batched decode) and W2 (#798, captured-graph batched decode) were
+validated on BOTH VMs the same window — every gate PASS (W1 G1 uniform + ragged; W2 G0/G1/G2),
+zero compile fixes, 20-run medians, rel-IQR ≤ 0.2% every cell. B=32 aggregate decode:
+
+| arm | A100 tok/s | L4 tok/s |
+|---|---|---|
+| W1 per-dispatch batched | 802.4 | 633.5 |
+| W2 captured-graph batched | 810.6 | 634.7 |
+| llama-server serving aggregate, chat, C=32 (for scale) | 752.9 | 600.2 |
+
+The bench-batch arms beat llama-server's C=32 serving aggregate on BOTH GPUs — with the
+stated asymmetry that the W1/W2 cells are bench-batch (decode-only window, synchronized
+batch, no request path) while the llama-server row is a real server at 32 slots. The batched
+stack is bench-only today; the serving driver remains batch-1.
+DVFS NOTE (recorded because it nearly published a false L4 number): the first L4 W1 run
+measured B=32 = 330.07 tok/s on a GPU that had been under race-agent load for hours — the
+fresh-boot fully-solo re-run was 2.1-2.4x faster at every B (633.46 at B=32). Same code, same
+gates; this is DVFS/power-state variance, not code variance (W2's per-dispatch arm reproduces
+the re-run's W1 numbers within 0.2%). All published L4 comparisons therefore use fresh-boot
+solo runs, gpuwatch-verified (exactly one PID on the GPU for every timed window). A100 clocks
+pinned at 1410 MHz for the published comparisons.
+
+AND THE PACKED3 CAPTURED-GRAPH SINGLE-STREAM ARM (feat/packed3-graph, landed on main as
+#800/#801), measured on the same two VMs with gates G0+G1+G2 PASS: gen64/gen256 =
+420.8/402.4 tok/s on the A100 (1.04x/0.96x of llama.cpp Q8_0, 1.18x/1.10x of F16) and
+191.1/184.8 on the L4 (1.12x/1.07x of F16; 0.73x/0.69x of Q8_0). Beats F16 on both GPUs; the
+residual Q8_0 gap is bandwidth-side.
+
+### Preemption events, external interference & recovery (REPORT §4)
+
+| event | detail | recovery |
+|---|---|---|
+| L4 SPOT preempted | `compute.instances.preempted` 2026-08-21 21:03:33 UTC (mid driver_chat_c32); instanceTerminationAction=STOP → TERMINATED, SSH died (IAP 4003) | `instances start` — first 3 attempts failed ("zone does not have enough resources" — spot capacity), succeeded 21:19:30 UTC. /tmp wiped → checkpoint regenerated + driver rebuilt sm_89; disk data intact; matrix resumed from c32 via PHASE1_START |
+| A100 hard reset by external actor | journal of previous boot ends abruptly 01:39:54 UTC (no shutdown records) → boot at 01:45:02; no GCP operation recorded (not an API reset); SSH sessions as `angel` via IAP at 01:38:58-01:39:34; /tmp/qwen3smoke regenerated 01:47:22 and ~/algenta sources on BOTH VMs reverted to pristine origin/main by something other than this run (an external actor — no local cron/service exists; they also later ran their own `~/batched_bins/qwen3_batched_graph_cuda` workload on L4, occupying 12.2 GB GPU) | rebuilt driver from hardened copy outside the repo (`~/serve_patched/`), re-verified protocol, relaunched chain |
+| Other disruptions | none (no reboots/maintenance besides above; A100 uptime otherwise unchanged since 16:04 UTC, L4 since 21:19 UTC) | — |
+
+### Anomalies & interventions (chronological, REPORT §5)
+
+1. Smoke C=8 33/40 both GPUs → root-caused to Mojo input() stdin buffering (FIX 1 above);
+   patched, rebuilt, all subsequent cells 100% complete.
+2. Matrix driver rag cells exceed 3300s harness budget (~70-90s per 4096-token rag request):
+   timed out in-matrix → re-run with 5400s budget + per-request timeout 3600 (closed-loop
+   queue waits exceed the 600s default at C≥8: first A100 rag_c8 re-run lost 12/40 to
+   deadline truncation → re-run with --timeout 3600 landed).
+3. llama-server -c divided across --parallel slots (256/slot) → all matrix llama cells
+   errored → re-run with -c 163840 landed.
+4. Killed in-flight doomed cells twice to reclaim wall time; second kill raced the GPU
+   context drain and voided the driver cold-start measurement → re-ran cold starts cleanly
+   (numbers above are the clean re-runs).
+5. Driver rag C=32 REPRODUCIBLE DEADLOCK (5/5 attempts, both GPUs): main thread sigsuspend,
+   GPU 0% busy-but-idle, no NVRM XID, dmesg clean. L4 deep-backlog working set was ~17 GB
+   GPU mem (vs 4.8 GB chat) before the stall. NOT RECOVERED — documented as a real driver
+   bug at rag C=32 (likely the resident-session KV/dispatch path under a 32-deep backlog),
+   left for the repo owner; llama/vLLM rag C=32 data landed fine. This is the known issue
+   the published page's Scope names; the driver rag C=32 row stays out of the page until
+   fixed.
+6. External actor on the shared VMs: A100 hard-reset ~01:45 UTC + both VMs' ~/algenta
+   reverted to pristine origin/main + /tmp/qwen3smoke regenerated by something other than
+   this run; a foreign workload (~/batched_bins/qwen3_batched_graph_cuda) later occupied
+   L4's GPU. Hardened by building the driver from ~/serve_patched (outside the repo) and
+   verifying the protocol (split-line test) after every rebuild.
+
+### Wall time
+
+First tool call 2026-08-21 17:48 UTC → last artifact collection 2026-08-22 04:00 UTC ≈
+10.2 h elapsed. Productive GPU time was far less: packed3 probe both GPUs ~minutes; step-2
+smoke + full driver/llama/vLLM matrices ~1.5 h per GPU; the remainder was consumed by (a)
+the input() stdin bug re-runs, (b) rag budget overruns + the C=32 deadlock retries, (c) the
+L4 SPOT preemption + spot-capacity restart waits, and (d) the external actor's A100 reset.
+VMs left RUNNING per instructions; L4 GPU was occupied by the foreign workload at hand-off,
+A100 idle.
+
+PUBLICATION + HONEST SCOPE
+--------------------------
+Published in spec-sheet form as `gitbook/benchmarks/nvidia-enterprise-serving.md` (+ SUMMARY
+entry; cross-linked from nvidia-llm-throughput.md and llm-inference-overview.md). The scope
+as published, restated for the ledger record: the serving driver is batch-1 resident
+(aggregate does not scale with C; the batched stack is bench-only today); aggregate at C>=8
+loses to vLLM (tensor-core prefill + continuous batching) — conceded; TTFT loses to both
+opponents' warm servers; rag C=32 driver row pending the known-issue fix above; 7B served
+only via vLLM reference rows (our 7B lane not built); H100/FP8 datacenter lane not pursued
+(no tensor-core surface in the pinned toolchain). The two VM-side fixes (FIX 1 stdin reader,
+FIX 2 def-not-fn) still need their repo PR before any further serve-driver runs.

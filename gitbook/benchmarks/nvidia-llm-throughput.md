@@ -75,6 +75,8 @@ Algenta decode on the L4 runs at 86% of the fp32 weight-bandwidth floor (2.62 GB
 
 ## Related
 
+* [NVIDIA enterprise serving](nvidia-enterprise-serving.md) — serving concurrency, cold start
+  and VRAM on A100/L4 against llama.cpp and vLLM.
 * [NVIDIA kernel benchmarks](nvidia-kernel-benchmarks.md) — the portable-kernel layer on
   T4/L4/A100.
 * [GPU support](../engine/gpu-support.md) — the verification matrix.

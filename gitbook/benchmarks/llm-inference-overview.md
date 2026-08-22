@@ -58,6 +58,8 @@ path sweeping the weights once per step for all B sequences.
 * [GPU support](../engine/gpu-support.md) — which GPU lanes are run-verified, and what that
   covers.
 * [NVIDIA LLM throughput](nvidia-llm-throughput.md) — CUDA-native session numbers on A100/L4.
+* [NVIDIA enterprise serving](nvidia-enterprise-serving.md) — serving concurrency on A100/L4
+  vs llama.cpp and vLLM.
 * [Run local LLM decode](../guides/run-qwen3-decode.md) — step-by-step guide.
 * [Model-agnostic LLM inference](../guides/run-qwen3-family-inference.md) — the model-agnostic
   SDK path (0.6B, 1.7B, and other supported shapes).
