@@ -184,6 +184,7 @@ from residentk.session_cuda_batched import (
     _CudaResidentQwen3Batched,
 )
 from residentk.session_cuda_batched_graph import _CudaResidentQwen3BatchedGraph
+from residentk.session_cuda_batched_p3_graph import _CudaResidentQwen3BatchedP3Graph
 from residentk.kernels import (
     _TG,
     _SUBS,
@@ -201,6 +202,24 @@ from residentk.kernels_prefill_f32_v2 import (
     _pf_gemm_assign_kernel_v2,
     _pf_gemm_accum_kernel_v2,
     _pf_gemm_swiglu_kernel_v2,
+)
+from residentk.kernels_prefill_f32_v2n import (
+    _G2N_BN,
+    _G2N_NTHREADS,
+    _pf_gemm_accum_kernel_v2n,
+)
+from residentk.kernels_prefill_attn_flash import (
+    _PF_FLASH_NTHREADS,
+    _PF_FLASH_ROWS_PER_BLOCK,
+    _pf_attn_flash_kernel,
+)
+from residentk.kernels_prefill_v2f16 import (
+    _F16G_BM,
+    _F16G_BN,
+    _F16G_NTHREADS,
+    _pf_gemm_assign_kernel_v2f16,
+    _pf_gemm_accum_kernel_v2f16,
+    _pf_gemm_swiglu_kernel_v2f16,
 )
 
 comptime DEFAULT_CHECKPOINT_DIR: String = "/tmp/qwen3smoke"
@@ -223,12 +242,80 @@ seed_and_run_batched_graph submission. The actual chunk K is the minimum remaini
 budget over the active set (capped here), so some sequence completes every chunk and new
 requests are admitted between chunks."""
 
+comptime CHUNK_MAX_QUEUED: Int = 8
+"""Chunk horizon while requests are WAITING (MEASURED TTFT lever): admissions only happen
+at chunk boundaries, so a 64-step chunk parks pending requests' TTFT for up to 64 x TPOT;
+cutting the horizon to 8 steps while the queue is non-empty trades a small seam-overhead for
+admission opportunities every ~8 decode steps. The cap lifts itself automatically once the
+pending queue drains (the full CHUNK_MAX applies to a saturated active set)."""
+
+comptime ADMIT_GROUP_MAX: Int = 2
+"""Admission group cap (MEASURED TTFT lever): admit at most this many pending requests per
+loop iteration, so serialized admission prefills interleave with decode chunks instead of
+one 8-way prefill batch stalling the whole device (all-active-set slots still fill — the
+loop simply re-admits on the next boundary)."""
+
 comptime POLLIN: Int = 1
 comptime POLLERR: Int = 8
 comptime POLLHUP: Int = 16
 comptime _POLL_READY_MASK: Int = POLLIN | POLLERR | POLLHUP
 """poll() revents bits treated as "stdin is readable": data, EOF (POLLIN|POLLHUP on a closed
 pipe), or an error to be surfaced by the read. Identical values on Linux and macOS."""
+
+comptime SERVE_PF_ONEPASS: Bool = is_defined["ALGENTA_PF_ONEPASS"]()
+"""LEVER L2 (the A100 autopsy's gap #1, "prefill GEMM grid scaling with M"): with
+`-D ALGENTA_PF_ONEPASS`, admission prefill runs the v2 M-parallel GEMM family in ONE pass at
+M = prompt_len instead of walking the prompt in `CUDA_PREFILL_TILE` (128-row) sequential
+passes on small grids — the nsys-measured loss of the pre-change driver (895-token prompts
+chunked into ~8 sequential passes per projection per layer; 297.5 ms prefill GEMM at 2.66
+TF/s, occupancy pinned 12.5%). At M = prompt_len the same v2 kernels' grids scale with M
+(ceil(M/64) row-tiles — the kernel family previously measured at up to 38% of the A100's
+19.5 TF SIMT peak), so one prompt = one grid per projection per layer. The pre-change 128-row
+chunked path stays compiled behind the flag for A/B. Prompts longer than `_PF_PASS_MAX` run
+as several `_PF_PASS_MAX`-row passes (rag shapes) — each pass still one M-parallel grid."""
+
+comptime _PF_PASS_MAX: Int = 1152
+"""Rows one admission-prefill pass covers under SERVE_PF_ONEPASS: the chat/rag harness
+shapes the driver serves. 1152 >= every chat prompt the harness synthesizes (nominal 1024 +
+the synth's <= ~16-token sentence overshoot), so the race's chat cells prefill in ONE pass;
+rag prompts (~4112) run ceil(len/1152) passes. Scratch VRAM at this cap: ~61 MB at
+Qwen3-0.6B's shapes — sized to stay clear of the 40 GB card's ceiling next to the 32-slot
+batched KV (~35 GB), not to maximize pass size."""
+
+comptime SERVE_PF_ATTN_FLASH: Bool = is_defined["ALGENTA_PF_ATTN_FLASH"]()
+"""LEVER L1 (the autopsy's gap #2, prefill attention 271.4 ms vs llama flash-attn 7.2 ms):
+with `-D ALGENTA_PF_ATTN_FLASH`, admission prefill dispatches the NEW flash-style
+M-parallel attention kernel `residentk.kernels_prefill_attn_flash._pf_attn_flash_kernel`
+(one warp per (row, head), warp-shuffle score reduction, online softmax per key, no
+barrier/shared) instead of `_pf_attn_tiled_kernel_simd` (one d_head-thread block per
+(row, head) with a two-barrier full-block reduction PER KEY). Additive module + comptime
+flag; the tiled kernel stays the fallback for any head dim the flash kernel's float4-lane
+contract does not cover (d_head != 128) and for flag-off builds. The flash kernel keeps the
+tiled kernel's QK-norm+RoPE contract exactly — it reads the same `q_rot`/slot-`ck`/`cv`
+buffers the unchanged `_pf_ropewrt_kernel` dispatch writes."""
+
+comptime SERVE_PF_F16GEMM: Bool = is_defined["ALGENTA_PF_F16GEMM"]()
+"""LEVER L3 (unlocked per the brief because L1+L2+L4 left C=8 below 570): f16-SIMD
+accumulation in the admission-prefill v2 GEMMs — A/B tiles narrow to f16 in shared memory,
+the 4x4 inner loop accumulates in f16 SIMD4 registers (the 60.5 TF/s f16 SIMD rate measured
+on this A100 by f16_simd_arith_probe.mojo, vs 17.6 TF/s f32), epilogue widens to f32.
+Storage stays f32 (the proven load path). ADOPTION IS GATED by the selftest exactly as the
+brief states — f16 accumulation over k=1024..3072 walks 10-bit mantissas, so token identity
+vs the pre-change driver is the deciding measurement, not an assumption in either
+direction."""
+
+comptime P3_SERVE: Bool = is_defined["ALGENTA_P3_SERVE"]()
+"""LEVER L4 (the autopsy's gaps #3/#4: decode streams 2.62 GB f32/token-step at 93 GB/s =
+6% of HBM peak, TPOT 28.9-33.3 ms at C=8, vs the packed3 probe gates ALL PASS on this exact
+A100 at 470-497 GB/s): with `-D ALGENTA_P3_SERVE` the driver composes
+`residentk.session_cuda_batched_p3_graph._CudaResidentQwen3BatchedP3Graph` — the SAME
+continuous-batching session with packed3 decode weights (block-32 zero-point int8, three
+quants per f32 word — the campaign's proven packed3 layout) streamed by the NEW M=B batched
+packed3 kernels (one weight sweep per step for all B tokens; graph-chunk stepping kept).
+Prefill stays f32 (levers L1/L2); decode = packed3 — the single-stream p3 arm's own split.
+VRAM: +~0.94 GB of packed twins beside the f32 residents (prefill weights unchanged).
+The f32 build stays the A/B control; the scheduler below is arm-agnostic (duck-typed over
+the two graph sessions)."""
 
 # ── ASCII byte constants for the request-line parser (json.parser's own spelling) ──
 comptime _QUOTE: UInt8 = 34        # "
@@ -686,6 +773,482 @@ def _prefill_slots(
         return first_tokens^
 
 
+# ── ADMISSION PREFILL, LEVER L2: ONE M-parallel pass per _PF_PASS_MAX-row window ──
+
+
+struct _AdmissionPrefill(Movable):
+    """The SERVE_PF_ONEPASS admission prefill: the SAME kernel chain `_prefill_slots` runs
+    (v2 GEMM family + the unchanged weightless prefill kernels, slot-offset KV pointers),
+    but against this struct's OWN scratch buffers — `_PF_PASS_MAX` rows deep instead of the
+    session's `CUDA_PREFILL_TILE` (128) — so one prompt's admission is ONE pass at
+    M = prompt_len (chat shapes), the v2 kernels' grids scaling with M. The session's 128-row
+    `pf_*` scratch is untouched and still serves the flag-off path.
+
+    `Movable` for the same reason the sessions are: it owns DeviceBuffers tied to the
+    session's context."""
+
+    var cap_m: Int
+    var pf_tokens: DeviceBuffer[DType.int32]
+    var pf_hidden: DeviceBuffer[DType.float32]
+    var pf_xn: DeviceBuffer[DType.float32]
+    var pf_qkv: DeviceBuffer[DType.float32]
+    var pf_q_rot: DeviceBuffer[DType.float32]
+    var pf_attn: DeviceBuffer[DType.float32]
+    var pf_act: DeviceBuffer[DType.float32]
+
+    def __init__(
+        out self, mut ctx: DeviceContext, d_model: Int, h_q: Int, h_kv: Int, d_head: Int,
+        d_ff: Int,
+    ) raises:
+        """Allocate the pass scratch on the session's context, ONCE. Under the flag the buffers
+        are `_PF_PASS_MAX` rows; flag-off builds allocate one row (the struct is still
+        constructed so every call site is flag-agnostic — the dispatch below never touches
+        the buffers there)."""
+        @parameter
+        if SERVE_PF_ONEPASS:
+            self.cap_m = _PF_PASS_MAX
+        else:
+            self.cap_m = 1
+        var t = self.cap_m
+        var n_qkv = (h_q + 2 * h_kv) * d_head
+        self.pf_tokens = ctx.enqueue_create_buffer[DType.int32](t)
+        self.pf_hidden = ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_xn = ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_qkv = ctx.enqueue_create_buffer[DType.float32](t * n_qkv)
+        self.pf_q_rot = ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_attn = ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_act = ctx.enqueue_create_buffer[DType.float32](t * d_ff)
+
+    def run(
+        mut self, mut s: _CudaResidentQwen3Batched, base_slot: Int,
+        ref prompts: List[List[Int]],
+    ) raises -> List[Int]:
+        """One-pass twin of `_prefill_slots`: prefill each prompt into slot `base_slot + b`,
+        return the greedy FIRST generated tokens in order. The ONLY differences from
+        `_prefill_slots`: the scratch buffers are this struct's `_PF_PASS_MAX`-row set, and
+        the pass window is `_PF_PASS_MAX` instead of `CUDA_PREFILL_TILE` — chat prompts run
+        as a single M-parallel pass; longer prompts run ceil(len/_PF_PASS_MAX) passes, each
+        pass still ONE M-parallel grid per projection (position bookkeeping for RoPE/KV is
+        the chunked path's own, unchanged)."""
+
+        @parameter
+        if not CUDA_SESSION_BUILD:
+            var empty = List[Int]()
+            return empty^
+        else:
+            var B = len(prompts)
+            if B < 1 or base_slot < 0 or base_slot + B > _CUDA_BATCH_DECODE_MAX_SEQS:
+                var empty = List[Int]()
+                return empty^
+            for b in range(B):
+                if len(prompts[b]) < 1 or len(prompts[b]) > s.max_ctx:
+                    var empty = List[Int]()
+                    return empty^
+                for i in range(len(prompts[b])):
+                    if prompts[b][i] < 0 or prompts[b][i] >= s.vocab:
+                        var empty = List[Int]()
+                        return empty^
+
+            var n_iters = _ceil_div(s.vocab, _LM_BLOCKS * _SUBS)
+            var first_tokens = List[Int](capacity=B)
+
+            for b in range(B):
+                ref prompt = prompts[b]
+                var n_prompt = len(prompt)
+                var kv_off = (base_slot + b) * s.kv_stride_elems
+                var pos = 0
+                var last_m = 0
+                while pos < n_prompt:
+                    var m = self.cap_m
+                    if n_prompt - pos < m:
+                        m = n_prompt - pos
+                    last_m = m
+
+                    # ── this pass's token ids, uploaded once ──
+                    with self.pf_tokens.map_to_host() as h:
+                        for i in range(m):
+                            h[i] = Int32(prompt[pos + i])
+                    s.ctx.synchronize()
+
+                    # ── the embedding rows, gathered on-device from the resident table ──
+                    s.ctx.enqueue_function[_pf_embed_rows_kernel](
+                        self.pf_hidden.unsafe_ptr(), s.embed.unsafe_ptr(),
+                        self.pf_tokens.unsafe_ptr(),
+                        Int64(s.d_model), Int64(m),
+                        grid_dim=_ceil_div(s.d_model, _TG) * m, block_dim=_TG,
+                    )
+
+                    for layer in range(s.n_layers):
+                        ref lw = s.layers[layer]
+                        # THIS sequence's KV slot: the unchanged kernels, slot-offset pointers.
+                        var ck_b = lw.ck.unsafe_ptr() + kv_off
+                        var cv_b = lw.cv.unsafe_ptr() + kv_off
+
+                        # 1 ── rmsnorm(input_layernorm) over every row
+                        s.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            lw.ln1.unsafe_ptr(),
+                            Int64(s.d_model), s.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                        # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN, v2) — the grid
+                        # scales with M: ceil(m/64) row-tiles, ONE pass for the whole window
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            s.ctx.enqueue_function[_pf_gemm_assign_kernel_v2f16](
+                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_qkv.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model),
+                                Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(
+                                    (s.h_q + 2 * s.h_kv) * s.d_head, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            s.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_qkv.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model),
+                                Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
+                                    (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
+                        # 3 ── q norm + k norm + RoPE + the KV-cache write, into the slot
+                        s.ctx.enqueue_function[_pf_ropewrt_kernel](
+                            self.pf_q_rot.unsafe_ptr(), ck_b, cv_b,
+                            self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                            s.cos_t.unsafe_ptr(), s.sin_t.unsafe_ptr(),
+                            Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                            s.eps, Int64(m),
+                            Int64(1),  # qk_norm: Qwen3-family only, always on
+                            grid_dim=(s.h_q + s.h_kv) * m, block_dim=s.d_head,
+                        )
+                        # 4 ── causal attention over the slot's cache — LEVER L1: the
+                        # flash-style warp-per-(row,head) kernel under the flag (same q_rot/
+                        # ck/cv contract the ropewrt dispatch above wrote), the tiled kernel
+                        # otherwise — and always for head dims outside the flash contract
+                        @parameter
+                        if SERVE_PF_ATTN_FLASH:
+                            if s.d_head == 128:
+                                s.ctx.enqueue_function[_pf_attn_flash_kernel](
+                                    self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                    ck_b, cv_b,
+                                    Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                                    s.scale, Int64(m),
+                                    grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK) * s.h_q,
+                                    block_dim=_PF_FLASH_NTHREADS,
+                                )
+                            else:
+                                s.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                                    self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                    ck_b, cv_b,
+                                    Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                                    s.scale, Int64(m),
+                                    grid_dim=s.h_q * m, block_dim=s.d_head,
+                                )
+                        else:
+                            s.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                                self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                ck_b, cv_b,
+                                Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                                s.scale, Int64(m),
+                                grid_dim=s.h_q * m, block_dim=s.d_head,
+                            )
+                        # 5 ── o_proj ACCUMULATED into the residual stream (v2)
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2f16](
+                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                                lw.w_o.unsafe_ptr(),
+                                Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                                lw.w_o.unsafe_ptr(),
+                                Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
+                        # 6 ── rmsnorm(post_attention_layernorm) over every row
+                        s.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            lw.ln2.unsafe_ptr(),
+                            Int64(s.d_model), s.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                        # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2)
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            s.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2f16](
+                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_gu.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_ff, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            s.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_gu.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
+                        # 8 ── down_proj ACCUMULATED into the residual stream (v2)
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2f16](
+                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                                lw.w_down.unsafe_ptr(),
+                                Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                                lw.w_down.unsafe_ptr(),
+                                Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
+                    pos += m
+
+                # ── final rmsnorm + lm_head + argmax on this sequence's LAST row ──
+                s.ctx.enqueue_function[_lmhead_argmax_kernel](
+                    s.pf_blk_val.unsafe_ptr(), s.pf_blk_idx.unsafe_ptr(),
+                    self.pf_hidden.unsafe_ptr() + (last_m - 1) * s.d_model,
+                    s.final_norm.unsafe_ptr(), s.embed.unsafe_ptr(),
+                    Int64(s.d_model), Int64(s.vocab), s.eps, Int64(n_iters),
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
+                s.ctx.enqueue_function[_argmax_reduce_kernel](
+                    s.pf_out_val.unsafe_ptr(), s.pf_out_idx.unsafe_ptr(),
+                    s.pf_blk_val.unsafe_ptr(), s.pf_blk_idx.unsafe_ptr(),
+                    Int64(_LM_BLOCKS),
+                    grid_dim=1, block_dim=_TG,
+                )
+                s.ctx.enqueue_copy(s.host_pf_val, s.pf_out_val)
+                s.ctx.enqueue_copy(s.host_pf_idx, s.pf_out_idx)
+                s.ctx.synchronize()
+                var tok = Int(s.host_pf_idx.unsafe_ptr()[0])
+                if tok < 0 or tok >= s.vocab:
+                    var empty = List[Int]()
+                    return empty^
+                first_tokens.append(tok)
+
+            return first_tokens^
+
+
+def _admission_prefill(
+    mut apf: _AdmissionPrefill, mut s: _CudaResidentQwen3Batched, base_slot: Int,
+    ref prompts: List[List[Int]],
+) raises -> List[Int]:
+    """The comptime admission-prefill select: L2's one-pass M-parallel arm under
+    `-D ALGENTA_PF_ONEPASS`, the pre-change 128-row chunked path otherwise (the A/B form —
+    both arms share the SAME kernel chain, the SAME slot-offset KV contract, and the SAME
+    16/16-oracle selftest gate)."""
+    @parameter
+    if SERVE_PF_ONEPASS:
+        return apf.run(s, base_slot, prompts)
+    else:
+        return _prefill_slots(s, base_slot, prompts)
+
+
+# ── the serve graph arm wrapper: ONE type over the two composed sessions ──
+
+
+struct _ServeGraph(Movable):
+    """The driver's single session handle over the TWO composed graph sessions: the f32
+    batched graph arm (pre-change) and the LEVER-L4 packed3 batched graph arm — selected
+    ONCE, at build time, by `P3_SERVE`. Mojo 1.0.0 carries no unconstrained generic type
+    parameters, so the scheduler below is written against THIS struct: every method
+    comptime-forwards to the one arm constructed (the other Optional stays empty; its branch
+    is eliminated before codegen). The wrapper adds no state of its own — no buffer, no
+    context, no VRAM."""
+
+    var f32g: Optional[_CudaResidentQwen3BatchedGraph]
+    var p3g: Optional[_CudaResidentQwen3BatchedP3Graph]
+
+    def __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        self.f32g = Optional[_CudaResidentQwen3BatchedGraph]()
+        self.p3g = Optional[_CudaResidentQwen3BatchedP3Graph]()
+        @parameter
+        if P3_SERVE:
+            self.p3g = _CudaResidentQwen3BatchedP3Graph(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+            )
+        else:
+            self.f32g = _CudaResidentQwen3BatchedGraph(
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+            )
+
+    def device_name(self) raises -> String:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().device_name()
+        else:
+            return self.f32g.value().device_name()
+
+    def upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().upload_globals(embed, final_norm, cos_t, sin_t, n_pos)
+        else:
+            return self.f32g.value().upload_globals(embed, final_norm, cos_t, sin_t, n_pos)
+
+    def upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().upload_layer(
+                layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wgate, wup, wdown
+            )
+        else:
+            return self.f32g.value().upload_layer(
+                layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wgate, wup, wdown
+            )
+
+    def seal(mut self) raises -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().seal()
+        else:
+            return self.f32g.value().seal()
+
+    def new_admission_prefill(
+        mut self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+    ) raises -> _AdmissionPrefill:
+        """Allocate the LEVER-L2 admission scratch against the arm's inner session context —
+        the one-time scratch must live on the SAME context as the weights it serves."""
+        @parameter
+        if P3_SERVE:
+            return _AdmissionPrefill(
+                self.p3g.value().inner.ctx, d_model, h_q, h_kv, d_head, d_ff
+            )
+        else:
+            return _AdmissionPrefill(
+                self.f32g.value().inner.ctx, d_model, h_q, h_kv, d_head, d_ff
+            )
+
+    def prefill_admission(
+        mut self, mut apf: _AdmissionPrefill, base_slot: Int, ref prompts: List[List[Int]],
+    ) raises -> List[Int]:
+        """The admission prefill against the arm's inner batched session (slot-offset KV
+        contract — both arms' inners ARE `_CudaResidentQwen3Batched`)."""
+        @parameter
+        if P3_SERVE:
+            return _admission_prefill(apf, self.p3g.value().inner, base_slot, prompts)
+        else:
+            return _admission_prefill(apf, self.f32g.value().inner, base_slot, prompts)
+
+    def kv_stride_elems(mut self) -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().inner.kv_stride_elems
+        else:
+            return self.f32g.value().inner.kv_stride_elems
+
+    def move_slot_kv(mut self, i: Int, j: Int) raises:
+        """Compaction's device-side half — `_ServeState.compact`'s per-layer slot KV copies,
+        run against the arm's inner session (slot j -> slot i, whole-slot windows)."""
+        @parameter
+        if P3_SERVE:
+            ref inner = self.p3g.value().inner
+            var n_elem = inner.kv_stride_elems
+            var grid = (n_elem + _COPY_TG - 1) // _COPY_TG
+            for layer in range(inner.n_layers):
+                ref lw = inner.layers[layer]
+                var ck_i = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + i * n_elem
+                )
+                var ck_j = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + j * n_elem
+                )
+                var cv_i = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + i * n_elem
+                )
+                var cv_j = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + j * n_elem
+                )
+                inner.ctx.enqueue_function[_slot_copy_kernel](
+                    ck_i, ck_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
+                )
+                inner.ctx.enqueue_function[_slot_copy_kernel](
+                    cv_i, cv_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
+                )
+        else:
+            ref inner = self.f32g.value().inner
+            var n_elem = inner.kv_stride_elems
+            var grid = (n_elem + _COPY_TG - 1) // _COPY_TG
+            for layer in range(inner.n_layers):
+                ref lw = inner.layers[layer]
+                var ck_i = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + i * n_elem
+                )
+                var ck_j = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + j * n_elem
+                )
+                var cv_i = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + i * n_elem
+                )
+                var cv_j = UnsafePointer[Float32, origin=MutAnyOrigin](
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + j * n_elem
+                )
+                inner.ctx.enqueue_function[_slot_copy_kernel](
+                    ck_i, ck_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
+                )
+                inner.ctx.enqueue_function[_slot_copy_kernel](
+                    cv_i, cv_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
+                )
+
+    def seed_and_run_batched_graph(
+        mut self, ref first_tokens: List[Int], ref start_poss: List[Int], n_steps: Int,
+    ) raises -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().seed_and_run_batched_graph(first_tokens, start_poss, n_steps)
+        else:
+            return self.f32g.value().seed_and_run_batched_graph(first_tokens, start_poss, n_steps)
+
+    def graph_batched_token(self, seq: Int, step: Int) -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().graph_batched_token(seq, step)
+        else:
+            return self.f32g.value().graph_batched_token(seq, step)
+
+    def step_batched_tokens(
+        mut self, ref token_ids: List[Int], ref poss: List[Int],
+    ) raises -> List[Int]:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().step_batched_tokens(token_ids, poss)
+        else:
+            return self.f32g.value().step_batched_tokens(token_ids, poss)
+
+    def max_ctx(mut self) -> Int:
+        @parameter
+        if P3_SERVE:
+            return self.p3g.value().inner.max_ctx
+        else:
+            return self.f32g.value().inner.max_ctx
+
+
 # ── the serve state: pending FIFO + per-slot active-sequence records ──
 
 
@@ -805,7 +1368,7 @@ struct _ServeState(Movable):
         self.slot_used[b] = False
         self.n_active -= 1
 
-    def compact(mut self, mut gs: _CudaResidentQwen3BatchedGraph) raises:
+    def compact(mut self, mut gs: _ServeGraph) raises:
         """Close every hole below the highest occupied slot by moving the highest sequence
         down into it: a device-side copy of its per-layer KV slot windows (K and V, all
         max_ctx positions of the slot) on the context stream + a host-side metadata swap.
@@ -823,34 +1386,10 @@ struct _ServeState(Movable):
                 j -= 1
             if j <= i:
                 break
-            # move sequence j down into hole i: both slots' KV windows live in the SAME
-            # concatenated per-layer buffer, so this is a sub-range device copy per K/V.
-            # The slot window pointers are rebuilt through their addresses (MutAnyOrigin):
-            # dst and src alias ONE buffer, and the borrow checker only accepts the pair
-            # once the common origin is erased — the graph arm's own pointer-hoisting trick.
-            ref inner = gs.inner
-            var n_elem = inner.kv_stride_elems
-            var grid = (n_elem + _COPY_TG - 1) // _COPY_TG
-            for layer in range(inner.n_layers):
-                ref lw = inner.layers[layer]
-                var ck_i = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + i * n_elem
-                )
-                var ck_j = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + j * n_elem
-                )
-                var cv_i = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + i * n_elem
-                )
-                var cv_j = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + j * n_elem
-                )
-                inner.ctx.enqueue_function[_slot_copy_kernel](
-                    ck_i, ck_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
-                )
-                inner.ctx.enqueue_function[_slot_copy_kernel](
-                    cv_i, cv_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
-                )
+            # move sequence j down into hole i: the arm's per-layer slot KV copies (the
+            # MutAnyOrigin sub-range-copy trick lives in the wrapper — both slots' windows
+            # alias ONE concatenated per-layer buffer).
+            gs.move_slot_kv(i, j)
             self.slot_used[i] = True
             self.slot_rid[i] = self.slot_rid[j]
             self.slot_t0[i] = self.slot_t0[j]
@@ -864,7 +1403,9 @@ struct _ServeState(Movable):
             i += 1
             j -= 1
 
-    def admit(mut self, mut gs: _CudaResidentQwen3BatchedGraph) raises:
+    def admit(
+        mut self, mut gs: _ServeGraph, mut apf: _AdmissionPrefill,
+    ) raises:
         """Admit as many pending requests as fit into the free tail [n_active, ...), in ONE
         grouped admission prefill. Sequences completed by the prefill itself (first token is
         EOS, or max_tokens == 1) emit immediately; the rest join the active set (the caller
@@ -877,11 +1418,13 @@ struct _ServeState(Movable):
         var k = self.pending_len()
         if k > free:
             k = free
+        if k > ADMIT_GROUP_MAX:
+            k = ADMIT_GROUP_MAX
         var base = self.n_active
         var prompts = List[List[Int]](capacity=k)
         for g in range(k):
             prompts.append(_copy_ids(self.pending_ids[self.pending_head + g]))
-        var firsts = _prefill_slots(gs.inner, base, prompts)
+        var firsts = gs.prefill_admission(apf, base, prompts)
         if len(firsts) != k:
             for g in range(k):
                 print(_error_line(self.pending_rid[self.pending_head + g], "prefill failed"))
@@ -921,7 +1464,7 @@ struct _ServeState(Movable):
             self.pending_max_tokens = List[Int]()
             self.pending_head = 0
 
-    def step_chunk(mut self, mut gs: _CudaResidentQwen3BatchedGraph) raises:
+    def step_chunk(mut self, mut gs: _ServeGraph) raises:
         """ONE graph chunk over all active sequences: K = the minimum remaining token budget
         (capped at CHUNK_MAX), seeded as one STATE upload + K replays + one sync; then a scan
         of the token log applies EOS masking and max_tokens truncation, emits completions,
@@ -930,9 +1473,10 @@ struct _ServeState(Movable):
         var B = self.n_active
         if B == 0:
             return
-        # the chunk horizon: someone completes every chunk; nobody overshoots
-        var K = CHUNK_MAX
-        var max_ctx = gs.inner.max_ctx
+        # the chunk horizon: someone completes every chunk; nobody overshoots; while
+        # requests wait in the queue the SHORT horizon keeps admission boundaries frequent
+        var K = CHUNK_MAX_QUEUED if self.pending_len() > 0 else CHUNK_MAX
+        var max_ctx = gs.max_ctx()
         for b in range(B):
             var rem_tok = self.slot_max_tokens[b] - len(self.slot_tokens[b])
             var rem_ctx = max_ctx - self.slot_n_prompt[b] \
@@ -987,7 +1531,7 @@ struct _ServeState(Movable):
                 self._emit_complete(b, t_now)
 
 
-def _serve_loop(mut gs: _CudaResidentQwen3BatchedGraph) raises:
+def _serve_loop(mut gs: _ServeGraph, mut apf: _AdmissionPrefill) raises:
     """drain stdin (non-blocking) -> compact -> admit the pending tail -> step one graph
     chunk -> emit completions -> repeat. EOF drains the remaining active sequences, then
     returns."""
@@ -1009,7 +1553,7 @@ def _serve_loop(mut gs: _CudaResidentQwen3BatchedGraph) raises:
             st.enqueue_line(line, t0)
         # 2. close holes left by the previous chunk's completions, then admit
         st.compact(gs)
-        st.admit(gs)
+        st.admit(gs, apf)
         st.compact(gs)  # an admission whose first token was EOS leaves a tail hole
         # 3. step one chunk, or idle-block when there is nothing in flight
         if st.n_active == 0:
@@ -1090,8 +1634,8 @@ def _single_stream_tokens(
 
 
 def _selftest(
-    mut gs: _CudaResidentQwen3BatchedGraph, mut ss: _CudaResidentQwen3,
-    ref race_prompt: List[Int],
+    mut gs: _ServeGraph, mut ss: _CudaResidentQwen3,
+    mut apf: _AdmissionPrefill, ref race_prompt: List[Int],
 ) raises:
     """GATE 1: 16/16 campaign oracle through the serving decode path (admission prefill +
     one graph chunk). GATE 2: 8 mixed prompts run CONCURRENTLY through this driver's actual
@@ -1101,7 +1645,7 @@ def _selftest(
     # ═══ GATE 1 — the campaign oracle through the serving decode path ═══
     var prompts = List[List[Int]]()
     prompts.append(_copy_ids(race_prompt))
-    var firsts = _prefill_slots(gs.inner, 0, prompts)
+    var firsts = gs.prefill_admission(apf, 0, prompts)
     if len(firsts) != 1:
         print("RESULT: FAIL — selftest admission prefill failed on the race prompt")
         exit(1)
@@ -1170,7 +1714,7 @@ def _selftest(
     var guard = 0
     while stt.n_active > 0 or stt.pending_len() > 0:
         stt.compact(gs)
-        stt.admit(gs)
+        stt.admit(gs, apf)
         stt.compact(gs)
         if stt.n_active > 0:
             stt.step_chunk(gs)
@@ -1202,6 +1746,318 @@ def _selftest(
     print("  gate 2: PASS — 8/8 mixed prompts, concurrent scheduler token-identical to the",
           "batch-1 compute path")
     print("RESULT: PASS — selftest (gate 1 oracle 16/16 + gate 2 token identity)")
+
+
+def _single_stream_tokens_p3(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill, ref ids: List[Int], max_tokens: Int,
+) raises -> List[Int]:
+    """LEVER-L4 selftest reference arm: the p3 per-dispatch chain run SEQUENTIALLY through
+    the SAME session the concurrent arm uses (admission prefill — f32, identical to the
+    concurrent path — then B=1 p3 decode steps). This is the same-compute reference the p3
+    build's gate 2 diffs the concurrent graph arm against (a second resident session would
+    exceed the 40 GB card beside the 32-slot KV; the graph-vs-per-dispatch diff over one
+    set of weights is the packed3 campaign's own G1 form)."""
+    var prompts = List[List[Int]]()
+    prompts.append(_copy_ids(ids))
+    var firsts = gs.prefill_admission(apf, 0, prompts)
+    if len(firsts) != 1:
+        raise Error("qwen3_serve_batched_cuda: selftest p3 single-stream prefill failed")
+    var n_prompt = len(ids)
+    var tokens = List[Int](capacity=max_tokens)
+    tokens.append(firsts[0])
+    var last = firsts[0]
+    if last != EOS_TOKEN_ID:
+        while len(tokens) < max_tokens:
+            var pos = n_prompt + len(tokens) - 1
+            var toks_in = List[Int](capacity=1)
+            toks_in.append(last)
+            var poss = List[Int](capacity=1)
+            poss.append(pos)
+            var toks1 = gs.step_batched_tokens(toks_in, poss)
+            if len(toks1) != 1:
+                raise Error(
+                    "qwen3_serve_batched_cuda: selftest p3 single-stream step failed at pos "
+                    + String(pos)
+                )
+            tokens.append(toks1[0])
+            last = toks1[0]
+            if toks1[0] == EOS_TOKEN_ID:
+                break
+    return tokens^
+
+
+def _selftest_p3(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill, ref race_prompt: List[Int],
+) raises:
+    """The LEVER-L4 build's selftest. GATE 1: 16/16 campaign oracle through the serving
+    decode path (f32 admission prefill + one p3 graph chunk) — the campaign's G0, hard.
+    GATE 2: 8 mixed prompts run CONCURRENTLY through this driver's actual scheduler,
+    token-identical to the SAME session's sequential per-dispatch p3 chain
+    (`_single_stream_tokens_p3` — graph-vs-per-dispatch over one set of weights). Any
+    mismatch: FAIL + exit 1."""
+
+    # ═══ GATE 1 — the campaign oracle through the serving decode path ═══
+    var prompts = List[List[Int]]()
+    prompts.append(_copy_ids(race_prompt))
+    var firsts = gs.prefill_admission(apf, 0, prompts)
+    if len(firsts) != 1:
+        print("RESULT: FAIL — selftest admission prefill failed on the race prompt")
+        exit(1)
+    var poss = List[Int](capacity=1)
+    poss.append(len(race_prompt))
+    var st = gs.seed_and_run_batched_graph(firsts, poss, 15)
+    if st != RESIDENT_OK:
+        print("RESULT: FAIL — selftest graph chunk failed, status=", st)
+        exit(1)
+    var oracle_bad = 0
+    if firsts[0] != _oracle_token(0):
+        oracle_bad += 1
+    for k in range(15):
+        if gs.graph_batched_token(0, k) != _oracle_token(k + 1):
+            oracle_bad += 1
+    if oracle_bad > 0:
+        print("RESULT: FAIL — serving decode path disagrees with the campaign oracle (",
+              oracle_bad, "of 16 tokens)")
+        exit(1)
+    print("  gate 1: PASS — 16/16 campaign oracle tokens through the serving decode path")
+
+    # ═══ GATE 2 — C=8 mixed prompts: concurrent scheduler vs sequential p3 chain ═══
+    var lens = List[Int]()
+    var max_toks = List[Int]()
+    lens.append(3)
+    lens.append(17)
+    lens.append(64)
+    lens.append(129)
+    lens.append(256)
+    lens.append(511)
+    lens.append(777)
+    lens.append(1000)
+    max_toks.append(64)
+    max_toks.append(33)
+    max_toks.append(17)
+    max_toks.append(8)
+    max_toks.append(5)
+    max_toks.append(3)
+    max_toks.append(2)
+    max_toks.append(1)
+
+    var prompts8 = List[List[Int]]()
+    for p in range(8):
+        var ids = List[Int](capacity=lens[p])
+        for i in range(lens[p]):
+            ids.append((lens[p] * 31 + i * 7 + p * 13 + 5) % 256)
+        prompts8.append(ids^)
+
+    # the reference arm: each prompt through the sequential per-dispatch p3 chain, in order
+    var expected = List[List[Int]]()
+    for p in range(8):
+        expected.append(_single_stream_tokens_p3(gs, apf, prompts8[p], max_toks[p]))
+
+    # the batched arm: all 8 through THIS driver's actual scheduler, concurrently
+    var stt = _ServeState(_CUDA_BATCH_DECODE_MAX_SEQS)
+    stt.capture_enabled = True
+    for _ in range(8):
+        stt.capture.append(List[Int]())
+    var t0 = perf_counter_ns()
+    for p in range(8):
+        var ids = _copy_ids(prompts8[p])
+        stt.pending_ids.append(ids^)
+        stt.pending_rid.append(p)
+        stt.pending_t0.append(t0)
+        stt.pending_max_tokens.append(max_toks[p])
+    var guard = 0
+    while stt.n_active > 0 or stt.pending_len() > 0:
+        stt.compact(gs)
+        stt.admit(gs, apf)
+        stt.compact(gs)
+        if stt.n_active > 0:
+            stt.step_chunk(gs)
+        guard += 1
+        if guard > 100000:
+            print("RESULT: FAIL — selftest scheduler did not converge")
+            exit(1)
+
+    # the token-identity diff: concurrent graph stream == sequential per-dispatch p3 chain
+    var mismatched_reqs = 0
+    var mismatched_tokens = 0
+    for p in range(8):
+        ref got = stt.capture[p]
+        ref want = expected[p]
+        if len(got) != len(want):
+            mismatched_reqs += 1
+            mismatched_tokens += 1
+            continue
+        for k in range(len(got)):
+            if got[k] != want[k]:
+                mismatched_tokens += 1
+                mismatched_reqs += 1
+                break
+    if mismatched_reqs > 0:
+        print("RESULT: FAIL — gate 2: concurrent p3 streams diverged from the sequential",
+              "p3 chain (", mismatched_reqs, "requests,", mismatched_tokens,
+              "first-divergence tokens)")
+        exit(1)
+    print("  gate 2: PASS — 8/8 mixed prompts, concurrent scheduler token-identical to the",
+          "sequential per-dispatch p3 chain")
+    print("RESULT: PASS — selftest (gate 1 oracle 16/16 + gate 2 token identity)")
+
+
+# ── arm-agnostic run helpers (the scheduler duck-types over the two graph sessions) ──
+
+
+def _load_race_prompt(manifest: String, config: String) raises -> List[Int]:
+    """The manifest's 256-token race prompt — the campaign oracle's input, loaded the same
+    way both selftest arms load it."""
+    var n_race = json_get_int(config, "n_tokens", -1)
+    if n_race < 1 or n_race + 16 > MAX_CTX:
+        raise Error("qwen3_serve_batched_cuda: race prompt length does not fit MAX_CTX")
+    var ids_arr = json_get_array(manifest, "input_ids")
+    var id_tokens = json_array_tokens(ids_arr)
+    var race_prompt = List[Int](capacity=n_race)
+    for k in range(len(id_tokens)):
+        race_prompt.append(parse_int(id_tokens[k]))
+    if len(race_prompt) != n_race:
+        raise Error("qwen3_serve_batched_cuda: input_ids length does not match config.n_tokens")
+    return race_prompt^
+
+
+def _run_selftest_f32(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill,
+    blob_path: String, tensors_obj: String, manifest: String, config: String,
+    d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int,
+    vocab_size: Int, theta: Float64, eps: Float64, scale: Float64,
+) raises:
+    """The f32 build's selftest entry: ALSO hold the single-stream session — the batch-1
+    driver's exact compute path — as the token-identity reference arm."""
+    var ss = _CudaResidentQwen3(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, MAX_CTX, eps, scale
+    )
+    var rt = rope_table(d_head, MAX_CTX, theta)
+    if rt.status != ATTN_OK:
+        raise Error("qwen3_serve_batched_cuda: rope_table failed")
+    var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+    var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+    _check_resident(
+        ss.upload_globals(embed_table, final_norm_w, rt.cos_table, rt.sin_table, MAX_CTX),
+        "single-stream upload_globals",
+    )
+    for layer in range(n_layers):
+        var prefix = "model.layers." + String(layer) + "."
+        var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+        var ln2 = _load_tensor(blob_path, tensors_obj, prefix + "post_attention_layernorm.weight")
+        var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+        var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+        var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+        var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+        var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+        var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+        var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+        var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+        var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+        _check_resident(
+            ss.upload_layer(layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd),
+            "single-stream upload_layer " + String(layer),
+        )
+    _check_resident(ss.seal(), "single-stream seal")
+    var race_prompt = _load_race_prompt(manifest, config)
+    _selftest(gs, ss, apf, race_prompt)
+
+
+def _run_selftest_p3(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill, manifest: String, config: String,
+) raises:
+    """The LEVER-L4 build's selftest entry: the reference arm is the SAME session's
+    sequential per-dispatch p3 chain (a second resident session would exceed the 40 GB card
+    beside the 32-slot batched KV)."""
+    var race_prompt = _load_race_prompt(manifest, config)
+    _selftest_p3(gs, apf, race_prompt)
+
+
+def _run_serve(
+    mut gs: _ServeGraph, blob_path: String, tensors_obj: String, manifest: String,
+    config: String,
+    d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int,
+    vocab_size: Int, theta: Float64, eps: Float64, scale: Float64, selftest: Bool,
+) raises:
+    """Load every weight resident, seal, then selftest-or-serve — arm-agnostic over the two
+    graph sessions (the f32 arm and the LEVER-L4 packed3 arm)."""
+    print("  device:", gs.device_name())
+    var rt = rope_table(d_head, MAX_CTX, theta)
+    if rt.status != ATTN_OK:
+        raise Error("qwen3_serve_batched_cuda: rope_table failed")
+    var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+    var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+    _check_resident(
+        gs.upload_globals(embed_table, final_norm_w, rt.cos_table, rt.sin_table, MAX_CTX),
+        "upload_globals",
+    )
+    for layer in range(n_layers):
+        var prefix = "model.layers." + String(layer) + "."
+        var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+        var ln2 = _load_tensor(blob_path, tensors_obj, prefix + "post_attention_layernorm.weight")
+        var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+        var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+        var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+        var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+        var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+        var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+        var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+        var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+        var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+        _check_resident(
+            gs.upload_layer(layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd),
+            "upload_layer " + String(layer),
+        )
+    _check_resident(gs.seal(), "seal")
+
+    # ═══ the admission-prefill arm (LEVER L2): the _PF_PASS_MAX-row one-pass scratch,
+    # allocated AFTER the weights are resident and sealed, ONCE ═══
+    var apf = gs.new_admission_prefill(d_model, h_q, h_kv, d_head, d_ff)
+
+    if selftest:
+        @parameter
+        if P3_SERVE:
+            _run_selftest_p3(gs, apf, manifest, config)
+        else:
+            _run_selftest_f32(
+                gs, apf, blob_path, tensors_obj, manifest, config,
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, theta, eps, scale,
+            )
+        exit(0)
+
+    # ═══ ONE-TIME warmup (untimed): every kernel path AND every graph arm captured
+    # before READY. Prefill one token into every slot (all 32 KV slots become valid at
+    # pos 0), then run ONE 1-step chunk at every B in 1..B_max — the capture of each B's
+    # DeviceGraph happens on first use, and it must not happen inside a timed cell. ═══
+    var warm_prompts = List[List[Int]]()
+    for _ in range(_CUDA_BATCH_DECODE_MAX_SEQS):
+        var w = List[Int](capacity=1)
+        w.append(1)
+        warm_prompts.append(w^)
+    var warm_firsts = gs.prefill_admission(apf, 0, warm_prompts)
+    if len(warm_firsts) != _CUDA_BATCH_DECODE_MAX_SEQS:
+        print("qwen3_serve_batched_cuda: warmup prefill failed")
+        exit(1)
+    for B in range(_CUDA_BATCH_DECODE_MAX_SEQS):
+        var toks = List[Int](capacity=B + 1)
+        var poss = List[Int](capacity=B + 1)
+        for b in range(B + 1):
+            toks.append(warm_firsts[b])
+            poss.append(1)
+        var wst = gs.seed_and_run_batched_graph(toks, poss, 1)
+        if wst != RESIDENT_OK:
+            print("qwen3_serve_batched_cuda: warmup graph chunk failed at B=", B + 1,
+                  "status=", wst)
+            exit(1)
+
+    print("qwen3_serve_batched_cuda: READY — one JSON request per stdin line, one",
+          "response per stdout line; up to", _CUDA_BATCH_DECODE_MAX_SEQS,
+          "requests decode together | admission_prefill =",
+          "onepass" if SERVE_PF_ONEPASS else "chunked-128",
+          "| decode_weights =", "packed3" if P3_SERVE else "f32")
+    _serve_loop(gs, apf)
+    print("qwen3_serve_batched_cuda: stdin EOF — exiting")
+    exit(0)
 
 
 def main() raises:
@@ -1273,113 +2129,14 @@ def main() raises:
         var blob_path = ckpt_dir + "/weights.blob"
         var tensors_obj = json_get_object(manifest, "tensors")
 
-        # ═══ ONE-TIME: open the composed graph session, load every weight resident, seal ═══
-        var gs = _CudaResidentQwen3BatchedGraph(
+        # ═══ ONE-TIME: open the composed graph session — `_ServeGraph` comptime-selects the
+        # LEVER-L4 packed3 arm under -D ALGENTA_P3_SERVE, the f32 arm otherwise — then load,
+        # seal, selftest-or-serve through the arm-agnostic runner ═══
+        var gs = _ServeGraph(
             d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, MAX_CTX, eps, scale
         )
-        print("  device:", gs.device_name())
-        var rt = rope_table(d_head, MAX_CTX, theta)
-        if rt.status != ATTN_OK:
-            raise Error("qwen3_serve_batched_cuda: rope_table failed")
-        var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
-        var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
-        _check_resident(
-            gs.upload_globals(embed_table, final_norm_w, rt.cos_table, rt.sin_table, MAX_CTX),
-            "upload_globals",
+        _run_serve(
+            gs, blob_path, tensors_obj, manifest, config,
+            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, theta, eps, scale,
+            selftest,
         )
-        for layer in range(n_layers):
-            var prefix = "model.layers." + String(layer) + "."
-            var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
-            var ln2 = _load_tensor(blob_path, tensors_obj, prefix + "post_attention_layernorm.weight")
-            var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
-            var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
-            var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
-            var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
-            var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
-            var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
-            var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
-            var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
-            var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
-            _check_resident(
-                gs.upload_layer(layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd),
-                "upload_layer " + String(layer),
-            )
-        _check_resident(gs.seal(), "seal")
-
-        if selftest:
-            # ═══ SELFTEST: also hold the single-stream session — the batch-1 driver's exact
-            # compute path — as the token-identity reference arm ═══
-            var ss = _CudaResidentQwen3(
-                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, MAX_CTX, eps, scale
-            )
-            _check_resident(
-                ss.upload_globals(embed_table, final_norm_w, rt.cos_table, rt.sin_table, MAX_CTX),
-                "single-stream upload_globals",
-            )
-            for layer in range(n_layers):
-                var prefix = "model.layers." + String(layer) + "."
-                var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
-                var ln2 = _load_tensor(blob_path, tensors_obj, prefix + "post_attention_layernorm.weight")
-                var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
-                var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
-                var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
-                var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
-                var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
-                var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
-                var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
-                var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
-                var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
-                _check_resident(
-                    ss.upload_layer(layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd),
-                    "single-stream upload_layer " + String(layer),
-                )
-            _check_resident(ss.seal(), "single-stream seal")
-
-            var n_race = json_get_int(config, "n_tokens", -1)
-            if n_race < 1 or n_race + 16 > MAX_CTX:
-                raise Error(
-                    "qwen3_serve_batched_cuda: race prompt length does not fit MAX_CTX"
-                )
-            var ids_arr = json_get_array(manifest, "input_ids")
-            var id_tokens = json_array_tokens(ids_arr)
-            var race_prompt = List[Int](capacity=n_race)
-            for k in range(len(id_tokens)):
-                race_prompt.append(parse_int(id_tokens[k]))
-            if len(race_prompt) != n_race:
-                raise Error(
-                    "qwen3_serve_batched_cuda: input_ids length does not match config.n_tokens"
-                )
-            _selftest(gs, ss, race_prompt)
-            exit(0)
-
-        # ═══ ONE-TIME warmup (untimed): every kernel path AND every graph arm captured
-        # before READY. Prefill one token into every slot (all 32 KV slots become valid at
-        # pos 0), then run ONE 1-step chunk at every B in 1..B_max — the capture of each B's
-        # DeviceGraph happens on first use, and it must not happen inside a timed cell. ═══
-        var warm_prompts = List[List[Int]]()
-        for _ in range(_CUDA_BATCH_DECODE_MAX_SEQS):
-            var w = List[Int](capacity=1)
-            w.append(1)
-            warm_prompts.append(w^)
-        var warm_firsts = _prefill_slots(gs.inner, 0, warm_prompts)
-        if len(warm_firsts) != _CUDA_BATCH_DECODE_MAX_SEQS:
-            print("qwen3_serve_batched_cuda: warmup prefill failed")
-            exit(1)
-        for B in range(_CUDA_BATCH_DECODE_MAX_SEQS):
-            var toks = List[Int](capacity=B + 1)
-            var poss = List[Int](capacity=B + 1)
-            for b in range(B + 1):
-                toks.append(warm_firsts[b])
-                poss.append(1)
-            var wst = gs.seed_and_run_batched_graph(toks, poss, 1)
-            if wst != RESIDENT_OK:
-                print("qwen3_serve_batched_cuda: warmup graph chunk failed at B=", B + 1,
-                      "status=", wst)
-                exit(1)
-
-        print("qwen3_serve_batched_cuda: READY — one JSON request per stdin line, one",
-              "response per stdout line; up to", _CUDA_BATCH_DECODE_MAX_SEQS,
-              "requests decode together")
-        _serve_loop(gs)
-        print("qwen3_serve_batched_cuda: stdin EOF — exiting")
-        exit(0)

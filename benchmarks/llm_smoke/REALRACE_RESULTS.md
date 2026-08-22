@@ -13616,3 +13616,140 @@ rag C=32 runs 64/64 (wall 6066.7/6066.9/6066.0 s; TTFT p50 5117.6/5118.9/5117.4 
 538.5; TPOT 48.63; agg 19.79). Rag C=32 driver rows published in
 gitbook/benchmarks/nvidia-enterprise-serving.md with the root-cause note; the Scope bullet
 updated (stall was a harness bug, fixed and re-verified).
+
+ADDENDUM 2026-08-22 — LEVER PUSH: THE AUTOPSY'S MEASURED LEVERS LAND IN THE SERVE DRIVER
+(L2 ONE-PASS PREFILL GEMM + L1 FLASH PREFILL ATTENTION + L4 PACKED3 BATCHED DECODE;
+L3 f16-ACCUM MEASURED AND REJECTED AT ITS OWN GATE) — chat C=8 agg 160.4 -> 552.0 tok/s
+(3.44x), TTFT p50 4256.6 -> 668.3 ms (6.37x), TPOT p50 33.3 -> 11.8 ms (2.82x); rag C=8
+BEATS llama-server 3.10x (227.1 vs 73.3 tok/s); chat C=8 at 90.9% of llama-server
+(552.0 vs 607.5, up from 28.1% pre-change). Branch feat/lever-push.
+------------------------------------------------------------------------------
+The nsys/ncu autopsy of this same race (AUTOPSY.md, /tmp/autopsy_a100/ on algenta-ent-a100,
+mirrored to /tmp/autopsy_a100_results/ on the build host) ranked four pushable levers; this
+addendum records each lever's implementation, its A/B measurement, its gate result, and the
+final race, all on algenta-ent-a100 (A100-SXM4-40GB, us-central1-a), same harness
+(enterprise_bench.py, greedy, 64 req/cell), same day.
+
+LEVERS, IN ORDER, EACH GATED (16/16 campaign oracle through the serving path + token
+identity, per lever's own gate form):
+
+L2 — admission prefill in ONE M-parallel pass (-D ALGENTA_PF_ONEPASS). The pre-change
+admission walked every prompt in CUDA_PREFILL_TILE=128-row sequential passes on
+decode-shaped grids (autopsy gap #1: prefill GEMM 297.5 ms at 2.66 TF/s, occupancy pinned
+12.5%). The driver now owns _PF_PASS_MAX(1152)-row scratch and runs the v2 GEMM family once
+at M=prompt_len (chat prompts prefill as a single grid per projection per layer; rag shapes
+run ceil(len/1152) passes, each one M-parallel grid). Session modules byte-unmodified.
+  MEASURED (1038-token chat prompt, single request, driver-reported TTFT p50, 9 repeats):
+  538.5 ms (pre-change arm) -> 278.1 ms [-260.4 ms, 1.94x].
+  nsys windowed: prefill GEMM family ~96 ms at M=1038 = 9.5 TF/s = 49% of the 19.5 TF f32
+  SIMT peak (the autopsy projected 30-38%; measured above it).
+  GATE: selftest PASS 16/16 + 8/8; token_identity_probe vs pre-change: 5/5 requests,
+  127/127 tokens IDENTICAL (v2 one-pass vs chunked is same-order math).
+
+L1 — flash-style M-parallel prefill attention (-D ALGENTA_PF_ATTN_FLASH). Additive kernel
+residentk.kernels_prefill_attn_flash: one warp per (row, head) — lane owns 4 d_head
+elements (coalesced float4 Q/K/V), warp-shuffle score reduction, the tiled kernel's
+per-key online-softmax recurrence verbatim, zero barriers/shared; same QK-norm+RoPE contract
+(reads the same q_rot/slot ck/cv the unchanged _pf_ropewrt writes). Autopsy gap #2:
+271.4 ms = 252 dispatches x 1.08 ms of the per-key two-barrier full-block reduction.
+  MEASURED (on top of L2): TTFT 278.1 -> 164.3 ms [-113.8 ms]; the 28-dispatch prefill
+  attention total drops from 179.6 ms (one-pass, 1 row/warp) as ncu then showed L1TEX
+  pressure (88.8% of peak, L2 hit 95.7%, DRAM 0.4%) -> a 4-rows-per-warp variant shares
+  each K/V load across four staggered-causality rows: TTFT 164.3 -> 152.0 ms. Row math
+  bit-identical to the 1-row form (same recurrence), so no gate drift.
+  GATE: selftest PASS 16/16 + 8/8; token identity vs pre-change stays 127/127.
+
+L4 — packed3 weights in the batched decode step (-D ALGENTA_P3_SERVE). New additive modules:
+kernels_packed3_batched.mojo (M=B batched packed3 GEMM family — one output row per block
+streams the packed weights ONCE for all B tokens; named-scalar dequant/accumulators for
+B<=8 after ncu showed indexed thread-local arrays tripling per-chunk instructions;
+128-thread blocks after ncu showed 66% idle lanes at 256; block-8 online softmax in the
+split-K partial), kernels_decode_attn_flash.mojo (warp-per-(seq,head,split) split-K PARTIAL,
+zero barriers — the replaced kernel's per-key full-block reduction cost 187.6 µs x 28 layers
+= 5.25 ms of every 19.5 ms C=8 step; the f32 control paid the same 180.7 µs — a hidden gap
+inside the autopsy's attention-decode category), session_cuda_batched_p3_graph.mojo
+(composes the f32 batched session — prefill/KV/norms stay f32 — with packed3 decode weight
+twins, block-32 zero-point int8, 3 quants per f32 word, ~0.94 GB beside the 2.62 GB f32
+residents; one captured 258-node p3 graph per B; per-dispatch p3 fallback; chunk readback
+narrowed from the full 1.2 MB token log to a head-staged B*n_steps copy).
+  MEASURED (chat): TPOT 28.9 ms (B=1 pre-change f32) -> 5.6 ms; C=8 decode-only step
+  33.3 -> 9.5 ms; in-cell (admission interleaving) 11.8 ms.
+  GATE: selftest PASS 16/16 + 8/8 concurrent-vs-sequential-p3 (the packed3 campaign's G1
+  form — a second resident f32 reference exceeds the 40 GB card beside the 32-slot KV).
+  Quantization vs the pre-change f32 driver, measured honestly: 3/5 requests identical,
+  33/127 tokens flipped on the 2 divergent requests (razor-thin greedy argmaxes; the flips
+  are inherent to packed3 quantization — the same gate shape the single-stream p3 arm
+  shipped under).
+
+L3 — f16-SIMD accumulation in the v2 prefill GEMMs (-D ALGENTA_PF_F16GEMM). Unlocked per
+the brief because L1+L2+L4 left C=8 below 570 (561.3 in that build); adopted ONLY if 16/16
+oracle + token identity pass. Implemented (kernels_prefill_v2f16.mojo: f32 storage/load
+path kept, A/B tiles narrow to f16 in shared, SIMD[f16,4] register-block accumulation at
+the measured 60.5 TF/s f16 SIMD rate, epilogue widens).
+  MEASURED: TTFT 152.0 -> 130.7 ms (GEMM 96 -> ~75 ms, 1.28x — first cut, not
+  double-buffered). GATE: 16/16 oracle PASS, token identity FAILS CATASTROPHICALLY — 0/5
+  requests identical, diverging at token 0, 125/127 tokens differing (pure f16 accumulation
+  over k=1024..3072 walks 10-bit mantissas: ~1-3% logit error flips every razor-thin
+  greedy argmax). NOT ADOPTED per the brief's own gate; kept in-tree behind the flag as the
+  measured record. (Also measured and reverted: a BN=32 narrow-N accum twin for o/down —
+  TTFT -3 ms regression; the 128-thread block's extra A-tile pass costs more than the
+  doubled grid buys at these shapes.)
+
+SCHEDULER TTFT LEVERS (driver): ADMIT_GROUP_MAX=2 (serialized admission prefills interleave
+with decode chunks instead of one 8-way prefill batch stalling the device) and
+CHUNK_MAX_QUEUED=8 (admission boundaries every <=8 decode steps while requests wait).
+MEASURED C=8 chat (64 req): TTFT p50 1221.3 -> 668.3 ms; aggregate trades ~2.5% for it
+(ADMIT_GROUP=4 A/B measured +0.4% agg for +30% TTFT — rejected).
+
+FINAL RACE (2026-08-22 ~22:00 UTC, algenta-ent-a100, enterprise_bench 64 req/cell, greedy;
+llama-server rebuilt-verified same session: -m qwen3-0.6b-f16.gguf -ngl 99 --parallel 32
+-c 163840; ours = serve_final = L2+L1+L4+scheduler, sm_80):
+
+| cell       | metric        | llama-server f16 (fresh) | ours pre-change (autopsy) | ours post-change | post vs llama | post vs pre |
+|------------|---------------|--------------------------|---------------------------|------------------|---------------|-------------|
+| chat C=1   | TTFT p50 ms   | 161.9                    | —                         | 151.8            | 1.07x BETTER  | —           |
+| chat C=1   | TPOT p50 ms   | 3.2                      | 28.9 (B=1 f32)            | 5.6              | 0.57x         | 5.16x       |
+| chat C=1   | agg tok/s     | 259.4                    | ~32 (batch-1 serial era)  | 162.6            | 0.63x         | ~5x         |
+| chat C=8   | TTFT p50 ms   | 642.3                    | 4256.6                    | 668.3            | 0.96x         | 6.37x       |
+| chat C=8   | TPOT p50 ms   | 11.1                     | 33.3                      | 11.8             | 0.94x         | 2.82x       |
+| chat C=8   | agg tok/s     | 607.5                    | 160.4                     | 552.0            | 0.91x         | 3.44x       |
+| chat C=16  | agg tok/s     | 681.8                    | —                         | 556.4            | 0.82x         | —           |
+| chat C=16  | TTFT/TPOT     | 663.8 / 21.9             | —                         | 744.3 / 25.8     |               |             |
+| chat C=32  | agg tok/s     | 736.8                    | —                         | 541.0            | 0.73x         | —           |
+| chat C=32  | TTFT/TPOT     | 891.7 / 40.5             | —                         | 906.7 / 51.2     |               |             |
+| rag  C=8   | TTFT p50 ms   | 20007.7                  | —                         | 4886.4           | 4.10x BETTER  | —           |
+| rag  C=8   | TPOT p50 ms   | 103.3                    | —                         | 25.4             | 4.07x BETTER  | —           |
+| rag  C=8   | agg tok/s     | 73.3                     | —                         | 227.1            | 3.10x BETTER  | —           |
+
+("—" = that exact cell was not measured on the pre-change arm; the autopsy's measured
+pre-change cells are cited where they exist. Chat C=1 pre-change reference is the
+batch-1 serve era's ~20-32 tok/s serial ceiling.)
+
+WIN-TARGET VERDICT, HONEST: the brief's win target (chat C=8 agg >= 700 tok/s AND TTFT
+p50 <= 250 ms) is NOT met; the minimum acceptable (agg > 570 AND TTFT < 550) is also just
+missed (552.0 / 668.3). Per-layer hardware evidence for the remaining gap, measured not
+guessed:
+1. TTFT floor: admissions are serialized on one stream; 8 prefills x 152.0 ms each sets an
+   arithmetic p50 floor of ~4.5 x 152 = 684 ms for the median request — the measured 668.3
+   sits AT that floor. Beating it requires a faster single prefill or multi-stream prefill,
+   not scheduling.
+2. Single prefill = 152.0 ms = GEMM 96 ms (49% of the f32 SIMT peak — ncu; the toolchain
+   has no tensor-core/mma surface, autopsy §7, and the f16-accum path fails the token-
+   identity gate) + attention ~53 ms (ncu L1TEX/L2-rate bound at the 4-rows/warp sharing
+   limit) + ~3 ms norms/rope/lm_head.
+3. Decode step at B=8 = 9.5 ms pure: packed3 GEMM group 5.15 ms at ~136 GB/s effective —
+   instruction/latency bound inside the B-wide inner loop (ncu: long-scoreboard at k=3072,
+   barrier + idle-lane effects at k=1024; the batch-1 probe's 470-497 GB/s is the B=1
+   instruction floor), split-K flash attention ~0.9 ms, p3 lm_head ~1.3 ms, the rest
+   norms/kvprod/merge. Tensor cores would change every one of these ceilings; the pinned
+   toolchain exposes none.
+4. llama's remaining chat edge is structural: f16 weights + tensor-core prefill (their
+   prefill GEMM runs cuBLAS HMMA at 53.6 TF/s, autopsy §6) + q8_0 KV; at C>=16 their
+   fused-batch decode GEMM (mul_mat_f<half2,...>) pulls further ahead.
+
+WHAT DID LAND: the concurrent lane went from 28.1% of llama-server at chat C=8 to 90.9%
+(3.44x over pre-change), BEATS llama-server outright on rag C=8 (3.10x agg, 4.10x TTFT),
+beats it on chat-C=1 TTFT, and matches it on chat TPOT within 6% at C=8 — all with
+SIMT-f32 compute and quantized-int8 decode weights, no tensor cores, every step gated
+(16/16 oracle on every shipped build; token identity where the math allows it, measured
+flip reports where quantization forbids it).
