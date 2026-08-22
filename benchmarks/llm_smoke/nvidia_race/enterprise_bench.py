@@ -463,6 +463,7 @@ class JsonlDriverAdapter:
         )
         self._lock = threading.Lock()
         self._cv = threading.Condition(self._lock)
+        self._write_lock = threading.Lock()
         self._pending: dict[int, dict] = {}
         self._next_id = 0
         self._dead: str | None = None
@@ -511,7 +512,19 @@ class JsonlDriverAdapter:
             "stream": True,
         }
         try:
-            with self._lock:
+            # Writers serialize on their OWN lock, never on the condition's lock. The
+            # write below blocks while the driver's stdin pipe is full — for a batch-1
+            # driver that is the whole duration of the request it is computing (minutes
+            # at rag shapes). Holding self._lock across that wait freezes every thread
+            # that needs it: _read_loop cannot store the responses it has already read,
+            # and no worker can reach its deadline check (the check lives inside
+            # `with self._cv`). Those two freezes chain into a permanent four-way wait
+            # once the driver's stdout pipe fills — the rag C=32 deadlock (reproduced:
+            # every worker parked in send(), the lock holder parked in stdin.write()).
+            # With a writer-private lock a blocked writer stalls only the other writers;
+            # responses keep flowing, deadlines keep running, and the driver's stdout
+            # pipe keeps draining, so the driver always returns to read its stdin.
+            with self._write_lock:
                 if self.proc.poll() is not None:
                     raise RuntimeError(f"driver exited rc={self.proc.returncode}")
                 assert self.proc.stdin is not None
