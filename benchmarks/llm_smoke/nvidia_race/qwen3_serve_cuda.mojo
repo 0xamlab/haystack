@@ -31,6 +31,21 @@ Response (one JSON object per stdout line, any order — the harness demuxes by 
   * on failure: {"id": int, "error": str}. Non-JSON diagnostic lines may also appear on
     stdout; the harness skips any line that fails json.loads.
 
+Mojo 1.0.0 stdin semantics — why this driver does NOT read requests with input()
+----------------------------------------------------------------------------------
+Measured on both race VMs (A100 sm_80, L4 sm_89, Mojo 1.0.0 ed45d567): `input()` drops
+every buffered byte past the FIRST newline of each internal refill. Repro: two 4246-byte
+JSON request lines in ONE pipe write → input() returns line 1, then a 302-byte tail
+fragment, losing the ~3.9 KB between them; three short lines in one write → only line 1
+survives. At harness concurrency ≥ 8 several request lines are always in flight in the
+stdin pipe, so input() silently loses requests, the driver idles waiting for input that was
+already delivered, and the harness errors the orphaned requests at its deadline (observed:
+smoke C=8 ok=33/40 on BOTH GPUs). `FileHandle.read_bytes(n > 1)` is not a fix either: it
+waits for the FULL n bytes or EOF and deadlocks on a partial line's tail (attempted on-VM
+with n=4096). The landed reader — `_StdinLines.next_line` below — reads ONE byte per
+read_bytes(1) call and accumulates to '\\n': a one-byte read(2) returns as soon as any byte
+arrives, so nothing is dropped and nothing blocks past the available data.
+
 Tokenizer contract (why `prompt` text becomes these ids)
 --------------------------------------------------------
 Neither the harness nor this zero-Python driver has a Qwen3 tokenizer, and the protocol ships
@@ -98,6 +113,18 @@ Standalone smoke (one request over the same protocol):
 
     echo '{"id": 0, "prompt": "The capital of France is", "prompt_tokens_approx": 6, \\
            "max_tokens": 16, "stream": true}' | ./qwen3_serve_cuda /tmp/qwen3smoke
+
+Protocol self-test (run after every rebuild — guards the input() regression above):
+
+    printf '%s\\n%s\\n' \\
+        '{"id":0,"prompt":"The capital of France is","prompt_tokens_approx":6,"max_tokens":8,"stream":true}' \\
+        '{"id":1,"prompt":"2 + 2 =","prompt_tokens_approx":2,"max_tokens":8,"stream":true}' \\
+        | ./qwen3_serve_cuda /tmp/qwen3smoke
+
+printf emits BOTH request lines in ONE write(2) — exactly the arrival shape that made Mojo
+1.0.0 input() drop line 2. PASS = two response lines on stdout, one for id 0 and one for
+id 1 (order is free, the harness demuxes by id); FAIL = a single response — the stdin
+reader regressed.
 
 Checkpoint: argv[1] is the directory holding `{manifest.json,weights.blob}` — the same dump
 prepare_smoke_checkpoint.py writes — or `--checkpoint <dir>`; default /tmp/qwen3smoke.
@@ -410,16 +437,48 @@ def _handle_request(
     print(_response_line(rid, _ms(t_first - t0), tpot_ms, tokens))
 
 
+# ── VM FIX (enterprise race, 2026-08-21): Mojo 1.0.0 input() drops the buffered bytes past
+# the FIRST newline of each internal refill: two 4246-byte request lines in one pipe write ->
+# input() returns line 1, then a 302-byte tail fragment, losing the ~3.9KB between; three
+# short lines in one write -> only line 1 survives. At harness concurrency >= 8 several lines
+# are always in flight in the stdin pipe, so input() silently loses requests, the driver idles
+# waiting for more input, and the harness errors the orphaned requests at its 600s deadline
+# (observed: smoke C=8 ok=33/40 on BOTH A100 and L4; reproduced standalone). The replacement
+# reads stdin ONE byte per read_bytes(1) call and accumulates to '\n': a one-byte read(2)
+# returns as soon as any byte arrives, so nothing is dropped and nothing blocks past the
+# available data. (FileHandle.read_bytes(n>1) was tried first and deadlocks: it waits for the
+# full n bytes or EOF, stalling on a partial line's tail.) ──
+struct _StdinLines:
+    var f: FileHandle
+
+    def __init__(out self) raises:
+        self.f = open("/dev/stdin", "r")
+
+    def next_line(mut self) raises -> String:
+        var bs = List[UInt8]()
+        while True:
+            var chunk = self.f.read_bytes(1)
+            if len(chunk) == 0:
+                if len(bs) == 0:
+                    raise Error("stdin EOF")
+                return String(from_utf8=bs^)
+            var b = chunk[0]
+            if b == UInt8(10):
+                return String(from_utf8=bs^)
+            bs.append(b)
+
+
 def _serve_loop(mut s: _CudaResidentQwen3, n_layers: Int) raises:
     """One request per stdin line, one response per stdout line, requests processed ONE AT A
     TIME in arrival order — the resident session is batch-1, and every KV slot a later
     request reads is rewritten by that request's own prefill/decode before it is read (the
     self-consistency property qwen3_bench_cuda.mojo's replay discipline relies on), so no
     session reset is needed between requests. EOF on stdin ends the loop."""
+    var stdin_lines = _StdinLines()
     while True:
         var line: String
         try:
-            line = input()
+            line = stdin_lines.next_line()
         except:
             return  # stdin closed — the harness is done
         if line.byte_length() == 0:
