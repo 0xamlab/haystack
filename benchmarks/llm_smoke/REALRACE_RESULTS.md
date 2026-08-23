@@ -15312,3 +15312,208 @@ identical between arms; vs llama: 0.90x F16 / 0.60x Q8_0 (unchanged — decode u
 STATUS: PR #829 (feat/tc-int -> feat/tc-probe; rebase onto main after #823/#824 merge).
 Flag default OFF; the ship decision per compute mode stays with the owner — mode 0
 (COMPUTE_32F, f32 C) is what every number above measures. No gitbook page in this round.
+
+## FRESH METAL-BEAT BASELINE (2026-08-23, branch feat/metal-beat): Qwen3 single-stream decode WINS at every N (the 0.81x N=4 loss is dead); TinyLlama decode trails Q8_0 ~5-7.5% (the last losing cell)
+
+CONTEXT: first Metal race session since 2026-08-16. The /tmp model artifacts were gone (machine
+restart), so everything was rebuilt from scratch and is recorded here for reproducibility:
+TinyLlama-1.1B-Chat-v1.0 re-downloaded from HF to /private/tmp/tinyllama (BF16 safetensors),
+F16 GGUF converted with the OPPONENT-MATCHED converter (llama.cpp b10210 = commit 000547513,
+the exact Homebrew build raced) + llama-quantize Q8_0; Qwen3-0.6B-Base F16 GGUF converted the
+same way from the cached HF snapshot. Workers rebuilt from c58f91f3 with the production recipe
+(scripts/build_metal_beat_workers.sh: MOJO_BUILD_METAL_GPU=1, 4-metaldispatch module filter,
+staged MOJO_SRC, all generated blobs EXCEPT the i8kv pair, ALGENTA_STAGE_6144 for the
+TinyLlama tier, DEVELOPER_DIR=full Xcode). CORRECTNESS in the same sitting: Qwen3
+test_inference_gpu_e2e.py 6 passed / 1 skipped (oracle 374 + continuation byte-identical);
+TinyLlama France oracle intact ([3900, 29889, 13, 29902, 626, 263, ...] short prompt;
+repetitive continuation at depth -- greedy deterministic across every race run).
+
+METHOD: interleaved same-session rounds (algenta blocks alternating with llama-bench blocks,
+rotating order), pooled 20 samples/cell for algenta, llama-bench -r 3-5 blocks. Honesty rule:
+median + rel IQR; the Qwen3 N=256 cell's rel IQR is flagged above the 5% band (sustained-
+generation DVFS drift inside each 256-token call -- llama.cpp's own +/- bands widen on the
+same blocks; the verdict is unaffected). NEW tracked harnesses: qwen3_decode_race.py (this
+directory) replaces the untracked realrace_decode_3way.py that was cleaned; tinyllama_deep_
+bench.py unchanged.
+
+QWEN3-0.6B single-stream decode, 256-token race prompt, greedy, warm steady-state (SDK path,
+worker-reported decode rate; warmup call + same-shape timed calls so the session-rebuild tax
+never touches a sample):
+
+| N gen | algenta (20-run median, rel IQR) | llama.cpp F16 (session medians) | ratio |
+|---|---|---|---|
+| 4   | 347.6 (0.86%; r1 336.5 + r2 band 344.1-351.0) | 264.4 (267.3/261.5) | 1.31x WIN |
+| 16  | 339.8 (0.91%; r1 339.0)                       | 266.3 (262.5/270.1) | 1.28x WIN |
+| 64  | 343.6 (2.57%; r1 335.6)                       | 265.2 (265.4/264.9) | 1.30x WIN |
+| 256 | 325.8 (6.20% FLAGGED, sustained-load drift)   | 261.5 (260.0/253.8/263.5/263.0) | 1.25x WIN |
+
+VERDICT: cell (b) from the campaign scoreboard (N=4 ~0.81x, N=256 ~tie) is CLOSED by fresh
+measurement -- the gemv-streaming rebuild (2026-08-13, 301->346 tok/s) had already killed the
+N=4 loss; this session is the first fresh same-session race to record it. llama-bench's tg is
+verified batch=1 sequential in this build (test_gen -> llama_batch_get_one(&token, 1)), so the
+win is against their single-stream best, no batching artifact.
+
+TINYLLAMA-1.1B single-stream decode (tinyllama_deep_bench.py, warmup + timed calls, 64 gen):
+
+| depth | algenta int8 (20-run median, rel IQR) | llama.cpp Q8_0 | llama.cpp F16 | vs Q8_0 | vs F16 |
+|---|---|---|---|---|---|
+| 256 prompt  | 280.1 (1.86%) | 294.8 (294.2/295.3/293.8/296.4) | 186.7 | 0.95x TRAILS ~5% | 1.50x WIN |
+| 1024 prompt | 270.3 (1.79%) | 293.0 (293.0/291.0/295.8)      | 185.3 | 0.92x TRAILS ~7.5% | 1.46x WIN |
+
+VERDICT: the quant-matched Q8_0 decode cell is the ONLY remaining loss on this machine (the
+Aug-16 0.99x @256 tie did not reproduce in this session's conditions; the bands are fully
+separated here: algenta max 287.2 < Q8_0 min 290.96 @1024). The f2s4-era profile verdicts
+stand as the lever map: per-token the non-GEMV remainder is kvprod 0.21ms + merge 0.12ms at
+their per-dispatch launch floors + lm_head 0.18ms at its weight-bandwidth floor, 157
+dispatches/token -- next commits in this branch implement the measured levers (structural
+dispatch-count reduction first, small-N GEMV second).
+
+ENVIRONMENT NOTES (paid this session, for the next race): HF-cache Qwen3 checkpoint symlinked
+to /private/tmp/qwen3-0.6b-base; gguf conversion venv /private/tmp/gguf-venv (torch 2.13 +
+transformers + gguf); llama.cpp source at /private/tmp/llama.cpp-src checked out at b10210;
+one transient test_sdk_decode_06b_matches_campaign_oracle failure on the first suite run
+passed on immediate rerun and on the full-suite rerun (worker-startup race, not reproducible).
+
+## LEVER (a) LANDED -- kvprod FUSED into the split-K partial (feat/metal-beat, 2026-08-23): 157 -> 135 dispatches/token, TinyLlama decode +2.5-3.0%, gap vs Q8_0 narrows to ~1.7% @256 / ~4.7% @1024
+
+THE LEVER: the feat/llama-q80gap profile verdict (kvprod 0.21ms/token and merge 0.12ms/token at
+their per-dispatch LAUNCH floors; wall <= GPU-sum so the floor is GPU-side dispatch latency,
+not host encoding) said the remaining non-GEMV gap was dispatch-count-bound. This change removes
+the per-layer kvprod dispatch entirely: NEW attention_forge kernel
+`_native_kv_decode_splitk_partial_kernel_f2s4k` (module `kvfuse_f2s4_decode_splitk`) = f2s4 with
+the producer's math folded into the prologue, race-free under Metal's no-cross-threadgroup-
+barrier rule by making every TG SELF-SUFFICIENT: each TG re-derives its head's roped Q from the
+F32 qkv scratch with the EXACT producer formula sequence (including the Float16 narrowing
+round-trip the kvprod->partial handoff physically performs); the last split (the only slice
+containing the new key pos == n_keys-1) re-derives its kv head's roped-K/V pair in registers
+and consumes the final key from those registers instead of the cache, while ONE designated TG
+per kv head writes the packed slot for future tokens (no same-dispatch TG reads that slot, so
+the concurrent write races nothing; dispatch boundaries make it visible to the next step). The
+q_rot write disappears with its read.
+
+WHAT LANDED: kernel + blob (generated/kvfuse_f2s4_decode_splitk_blob.c, forged on mma_forge
+nightly) + standalone driver (kvfuse_f2s4_decode_splitk_driver.mojo) + engine wiring
+(session_prefill.mojo: discovery `kvfuse_f2s4`, d64+qk0 PREFERRED eff slot gated behind
+`native_splitk_partial_kvfused`, table builder omits the kvprod descriptor + binds the 18-arg
+fused layout, per-step pos/n_splits patches follow the flag) + MB_MAX_ARGS 17 -> 18 (ffi.mojo +
+batch_shim.m + batch_shim_counters.m) + counter probe adapted to the fused table shape.
+
+STANDALONE GATES (all in one sitting): (m,l,o) partials BIT-IDENTICAL to the reference
+kvprod+f2s4 pair -- worst-abs-diff 0.0 at n_keys 32/33/47/64/288/1056 (aligned/ragged/edge);
+packed-cache append at pos byte-exact; Float64 oracle worst-ratio 0.0039 (<= 0.025 f16 bound);
+50-rep soak 0 mismatches; standalone interleaved wall 1.09x the pair @288 keys (189 -> 174 us)
+and 1.12x @1056 (213 -> 191 us). E2E GREEDY BYTE-IDENTICAL: baseline worker (same tree, no
+fused blob) vs fused worker, full 64-token sequences match at the 6-token France prompt AND the
+256/1024 deep prompts. QWEN3 REGRESSION: test_inference_gpu_e2e.py 6 passed / 1 skipped (oracle
+374 intact -- d128 never dispatches f2s4k; the blob links discovery-neutral there).
+
+MEASURED (fused worker vs same-session interleaved llama.cpp, 4 rounds x 5 samples pooled = 20,
+llama-bench -r 3 blocks; harness tinyllama_deep_bench.py, 64 gen):
+
+| depth | baseline (pre-fusion, 20-run) | fused f2s4k (20-run, rel IQR) | llama.cpp Q8_0 (session medians) | fused vs Q8_0 |
+|---|---|---|---|---|
+| 256 prompt  | 280.1 | 288.5 (2.85%) | 293.5 (294.7/294.8/292.3/285.0) | 0.98x -- gap ~5.3% -> ~1.7% |
+| 1024 prompt | 270.3 | 277.5 (1.70%) | 290.7 (293.2/291.5/289.9/282.9) | 0.95x -- gap ~7.5% -> ~4.7% |
+
+@256 the bands now overlap (algenta max 298.3 vs llama min 285.0) though the median still
+trails; @1024 remains a real ~4.7%. Fusion bought +3.0%/+2.5% e2e (the diluted image of
+removing 22 launch-floor dispatches: ~0.15-0.20 ms of the ~3.5 ms token).
+
+POST-FUSION PROFILE (counter probe, production-shape single-encoder wall, this build): @1056
+keys wall 3.52 ms = gemv 2.70 (qkv 0.494 @ ~233 GB/s, o 0.304 @ ~304, swiglu 1.247 @ ~407,
+down 0.657 @ ~386) + attention 0.67 (partial 0.55 + merge 0.12) + lmhead 0.18 (360 GB/s) +
+embed/argmax 0.01; kvprod 0.0 (fused); GPU-sum 3.57, gap -0.05 (fully overlapped). THE NEXT
+LEVER THE PROFILE NAMES: the two SHORT-dot GEMV roles (qkv, k=2048 -- and o_proj) stream at
+233/304 GB/s while the long-dot swiglu/down roles run 386-407 -- the qkv/o shortfall vs the
+~546 ceiling is worth up to ~0.27 ms/token if closed (that flips both remaining cells); merge
+(0.12, grid h_q=32 TGs = sub-core occupancy) is a smaller secondary target.
+
+## LEVER (b) LANDED -- small-N (2-8 row) int8 GEMV for batched decode (feat/metal-beat, 2026-08-23): TinyLlama batched B=2 3.5x / B=4 1.9x, capability-gated after an HONEST loss on Qwen3
+
+THE LEVER (parent-prescribed): the batched decode tier ran ALL four projection roles through the
+prefill GEMM kernels at every batch size -- 32-row MMA tiles 1/16..1/4 occupied at B=2..8 (and
+the MSL split-K variants additionally stream the F16 weight twins). NEW residentk family, the
+int8 analogue of llama.cpp's `mul_mv_ext_f16_f32_r1_N`: `_smalln_assign_kernel_simd_i8` (qkv),
+`_smalln_accum_kernel_simd_i8` (o_proj/down), `_smalln_swiglu_kernel_simd_i8` (gate/up+swiglu)
+-- one weight load amortized over all m_rows <= 8 batch rows in per-row PRIVATE register
+accumulators, single-stream decode GEMV grid shape (ceil(n/8) TGs x 256), same int8 dequant
+math. ORDER-PRESERVING by construction: per (row, column) the lane-stride element sequence,
+two-step unroll and `_warp_sum` collapse are byte-for-byte the single-stream GEMV kernels' --
+cross-row interleaving never reorders one row's additions. Wired into the batched table builder
+for 2 <= B <= 8 (B=1 stays delegated to serial; B>=9 keeps the MMA path byte-unmodified); when
+active the split-K qkv/swiglu zero/partial/apply extras vanish with the kernels they serve
+(TinyLlama: 269 -> 203 dispatches/token).
+
+THE HONEST LOSS THAT SHAPED THE GATE: first wiring switched B<=8 unconditionally. Same-session
+interleaved A/B on QWEN3-0.6B (complete MSL split-K tier: splitk8 qkv/o + splitk12 down +
+splitk4 swiglu) at B=4: MMA path 668.6/659.8/670.3 vs small-N 557.4/559.1/564.1 tok/s -- the
+small-N GEMV LOSES ~17% there (the simdgroup-matrix kernels out-stream it despite the F16
+twins). On TINYLLAMA (incomplete tier: d_ff % 384 != 0 kills splitk12, down_proj falls back to
+the slow single-pass Mojo accum kernel) the verdict flips decisively. FIX: capability gate
+`db_msl_tier_complete` -- small-N runs iff the MSL split-K tier is NOT complete for all four
+roles (derive-from-dims-plus-discovery, never a model lookup). Both directions recorded.
+
+BYTE-IDENTITY (the acceptance gate, both tiers, final gated build): tinyllama_batched_byteid.py
+PASS -- B=2 shallow+deep, B=2 twins, B=4 and B=8 mixed depths (prompts crossing the single-
+stream split-K threshold): every sequence byte-identical to its single-stream twin. Qwen3
+batched_decode_smoke.py PASS (B=4 x 32 tokens byte-identical to single-stream on the MMA path
+the gate restored).
+
+MEASURED (TinyLlama, interleaved A/B rounds, mb-llama-base [pre-smalln tree] vs mb-llama
+[gated smalln], system decode tok/s, medians of 3 alternating rounds):
+
+| B | MMA path (baseline) | small-N GEMV | ratio |
+|---|---|---|---|
+| 2 (shallow+deep) | 75.5 (79.0/74.6/75.5)  | 261.5 (278.7/261.5/260.8) | 3.46x WIN |
+| 2 (twins)        | 64.4 (64.4/56.0/66.4)  | 247.0 (259.9/247.0/238.5) | 3.84x WIN |
+| 4 (mixed depths) | 140.6 (140.6/110.4/141.9) | 271.1 (294.0/271.1/231.1) | 1.93x WIN |
+| 8 (mixed depths) | 265.0 (285.7/265.0/230.2) | 253.6 (293.5/253.6/222.2) | 0.96x tie-band |
+
+B=8 is within-band in the hot machine state (a cooler earlier sitting measured 329.0 vs 271.0 =
+1.21x); recorded as a tie, not a win. Qwen3 B=4 restored to 651.3-660.0 tok/s on the MMA path
+(= the pre-change band), byte-identical.
+
+REGRESSION GATES (final build, same sitting): test_inference_gpu_e2e.py 6 passed / 1 skipped
+(oracle 374); policy suite 53/53; session_prefill suite 1/1; qwen3_prefill_decode wrapper suite
+10/10 (incl. the batched entry point); make inventory-check green (no dispatch-surface change --
+the family is compile_function-discovered engine kernels, AIR truncations `smalln_assi` /
+`smalln_accu` / `smalln_swig`, all disjoint).
+
+## 2-COL qkv GEMV VARIANT -- REFUTED AND REVERTED (feat/metal-beat, 2026-08-23): role-level -5% only; e2e unmeasurable (machine saturated at load avg 50)
+
+HYPOTHESIS: the post-fusion profile put the qkv role at ~233 GB/s while `_norm_gemv2_swiglu_
+kernel_simd_i8` -- SAME k=2048, SAME two-step unroll, but TWO weight streams against the shared
+input -- runs ~407 GB/s. Built `_norm_gemv2c_kernel_simd_i8`: the rmsnorm stage byte-for-byte
+the parent's, then two output columns per SIMD group (two private accumulators, shared
+normalized-input loads, dual weight rows, grid halved to ceil(n_qkv/(2*_SUBS))). Per-column
+order preserved (each column still one SIMD group, same lane-stride sequence + `_warp_sum`),
+wired into the split-K decode table behind its own discovery slot (`norm_gemv2c`; the shared
+`_classify_pipeline` refuses the substring so it can never pollute the swiglu role slot).
+
+EVIDENCE: (1) byte-identity gate PASS -- greedy sequences hash-identical pre2c-vs-2c workers at
+the France prompt and the 1024-deep prompt. (2) counter probe @288 keys: qkv role 0.494 ->
+0.469 ms (-5%); even taken at face value that is ~0.6% of the token -- not a cell flipper.
+(3) the e2e interleaved A/B could not produce a verdict: the machine was saturated (load
+average ~50, sibling workloads; samples ranged 100-240 tok/s with 30-60% spreads -- far
+outside the frozen rel-IQR <= 5% acceptance band), so no pooled median from that sitting is
+recorded as a number. VERDICT: REFUTED as shipped (no demonstrated gain; the frozen production
+package does not carry unproven variants) and REVERTED from the tree -- the kernel, wiring and
+classifier refusal are all out; this section + the session memory keep the design (two-cols-per-
+SIMD-group, swiglu dual-stream structure, `norm_gemv2c` discovery) for a future retry on a
+quiet machine. NOT the same as the gemv-streaming `_TG=512` refutation (that was 16
+one-column SIMD groups per threadgroup; this was 8 two-column groups at the same 256 threads),
+but the outcome family matches: more columns per threadgroup did not buy bandwidth.
+
+CAMPAIGN STATE (end of feat/metal-beat session, 2026-08-23): LANDED this branch: lever (a)
+kvprod-fused partial (157 -> 135 dispatches/token; TinyLlama decode 280.1 -> 288.5 @256,
+270.3 -> 277.5 @1024; gap vs Q8_0 now ~1.7% @256 -- bands overlap -- and ~4.7% @1024) + lever
+(b) capability-gated small-N GEMV (TinyLlama batched B=2 3.46x / B=4 1.93x / B=8 tie-band;
+Qwen3 batched kept on its faster MMA path after the honest B=4 loss). REMAINING LOSING CELLS:
+TinyLlama decode vs Q8_0 @256 (0.98x, within-band) and @1024 (0.95x). Everything else on this
+machine WINS: Qwen3 decode all N (1.25-1.31x), TinyLlama prefill (leads/ties), TinyLlama vs
+F16 (1.46-1.50x), batched decode (the 2.1-3.2x @B=8/16/32 ledger stands; small-B extended).
+PROFILE-D LEVER MAP for the residual: qkv 0.49ms @233 GB/s and o_proj 0.30ms @304 GB/s vs
+swiglu/down 386-407 GB/s (short-dot streaming shortfall, up to ~0.27 ms/token if closed);
+merge 0.12ms at 32-TG underfill; lm_head 0.18ms at 360 GB/s. The tested 2-col variant did not
+close the qkv shortfall; no other untested idea sits inside the byte-identity + do-not-retry
+constraints as of this writing.

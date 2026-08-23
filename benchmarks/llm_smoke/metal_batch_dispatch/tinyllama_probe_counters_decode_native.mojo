@@ -104,7 +104,7 @@ def _mb_sample_gpu_timestamp() -> UInt64:
 def _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     var t_wall0 = perf_counter_ns()
     var gpu0 = _mb_sample_gpu_timestamp()
-    var deadline = t_wall0 + UInt(hold_ms) * 1_000_000
+    var deadline = t_wall0 + hold_ms * 1_000_000
     while perf_counter_ns() < deadline:
         pass
     var gpu1 = _mb_sample_gpu_timestamp()
@@ -121,15 +121,15 @@ def _mb_open_counters(max_samples: Int) -> Int:
 
 
 def _mb_run_token_counters(
-    descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin],
+    descriptors: UnsafePointer[UInt8, origin=MutUntrackedOrigin],
     n: Int,
-    out_ticks: UnsafePointer[UInt64, origin=MutAnyOrigin],
+    out_ticks: UnsafePointer[UInt64, origin=MutUntrackedOrigin],
 ) -> Int:
     return Int(
         external_call[
             "algenta_run_token_counters", Int64,
-            UnsafePointer[UInt8, origin=MutAnyOrigin], Int64,
-            UnsafePointer[UInt64, origin=MutAnyOrigin],
+            UnsafePointer[UInt8, origin=MutUntrackedOrigin], Int64,
+            UnsafePointer[UInt64, origin=MutUntrackedOrigin],
         ](descriptors, Int64(n), out_ticks)
     )
 
@@ -292,7 +292,12 @@ def main() raises:
     var out_ticks = alloc[UInt64](2 * n_desc)
 
     var last_n_splits = -1
-    var stride = 7
+    # feat/metal-beat (2026-08-23): the kvprod-FUSED f2s4k table has 6 per-layer roles (the
+    # kvprod dispatch is folded into the partial's prologue), the partial binds 18 args, and the
+    # per-step `pos` patch lands on the partial's own arg 16 -- mirror `_step_native_kv_impl`.
+    var stride = 6 if s.native_splitk_partial_kvfused else 7
+    var partial_args = 18 if s.native_splitk_partial_kvfused else 14
+    var pos_arg = 16 if s.native_splitk_partial_kvfused else 8
 
     for di in range(len(depths)):
         var n_keys = depths[di]
@@ -312,14 +317,14 @@ def main() raises:
                 var d_partial = s.nkeys_offsets_native_splitk[lyr]
                 _mb_set_header(
                     table, d_partial, s.native_splitk_partial_eff_idx,
-                    s.h_q * n_splits_adapt, s.native_splitk_partial_eff_threads, 14,
+                    s.h_q * n_splits_adapt, s.native_splitk_partial_eff_threads, partial_args,
                 )
                 _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
                 _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
             last_n_splits = n_splits_adapt
         _mb_set_arg_int(table, s.token_id_offset_native_splitk, 3, 0)
         for lyr in range(n_layers):
-            _mb_set_arg_int(table, s.pos_offsets_native_splitk[lyr], 8, pos)
+            _mb_set_arg_int(table, s.pos_offsets_native_splitk[lyr], pos_arg, pos)
             _mb_set_arg_int(table, s.nkeys_offsets_native_splitk[lyr], 6, n_keys)
 
         # Warm this exact table+depth untimed (production-shape single-encoder runs).
@@ -382,7 +387,19 @@ def main() raises:
                 role = 0
             elif d < 1 + n_layers * stride:
                 var p = (d - 1) % stride
-                role = 1 + p
+                if s.native_splitk_partial_kvfused:
+                    # per-layer positions: norm_gemv_qkv | splitk_partial(f2s4k) | merge |
+                    # o_proj | swiglu | down  -> map onto the classic role indices above.
+                    if p == 0:
+                        role = 1
+                    elif p == 1:
+                        role = 3
+                    elif p == 2:
+                        role = 4
+                    else:
+                        role = 2 + p  # 3->5 o_proj, 4->6 swiglu, 5->7 down
+                else:
+                    role = 1 + p
             elif d == n_desc - 2:
                 role = 8
             else:

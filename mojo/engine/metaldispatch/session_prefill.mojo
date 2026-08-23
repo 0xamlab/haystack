@@ -156,6 +156,9 @@ from residentk.kernels import (
     _gemv_accum_kernel_simd_i8,
     _norm_gemv2_swiglu_kernel_simd_i8,
     _norm_gemv_kernel_simd_i8,
+    _smalln_assign_kernel_simd_i8,
+    _smalln_accum_kernel_simd_i8,
+    _smalln_swiglu_kernel_simd_i8,
     _qk_rope_write_kernel,
     _sdpa_kernel_simd,
     _lmhead_argmax_kernel_simd_i8,
@@ -839,6 +842,27 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     irrelevant -- same discipline the `_bat`/`_f2` arms use).
     Non-fatal-miss (`-1`) exactly like every other optional pipeline field: without it a d_head=64
     session keeps the f2u2 partial (or the naive native decode when f2 is absent too)."""
+
+    var native_decode_splitk_partial_f2s4k_pipeline_idx: Int
+    """feat/metal-beat (2026-08-23): the d_head=64 KVPROD-FUSED split-K PARTIAL (module
+    `attention_forge/kvfuse_f2s4_decode_splitk`; codegen target
+    `_native_kv_decode_splitk_partial_kernel_f2s4k`). Structurally f2s4 with the per-layer
+    `_native_kv_producer_kernel` dispatch FOLDED into its prologue, race-free by per-TG
+    self-sufficiency (every TG re-derives its head's roped Q from the F32 qkv scratch; the last
+    split re-derives the new key's K/V in registers and one designated TG per kv head writes the
+    packed slot for future tokens -- no same-dispatch TG reads it). Standalone driver: (m, l, o)
+    partials BIT-IDENTICAL (worst-abs-diff 0.0) to the reference kvprod+f2s4 pair across
+    aligned/ragged/edge cells, cache append byte-exact, oracle <= 0.004, 50-rep soak clean;
+    standalone wall 1.09-1.12x the pair at the race depths. 18 args (arg 3 binds the qkv scratch
+    where f2s4 binds q_rot; trailing cos/sin/pos/qk_norm) -- the MB_MAX_ARGS 17 -> 18 raise this
+    kernel lands with. Discovered via the unique substring `"kvfuse_f2s4"` (the 25-char module
+    name survives AIR truncation intact; no other label can contain the prefix), checked in the
+    elif chain alongside the other splitk arms (disjoint substring, scan order irrelevant).
+    GATED to qk_norm == 0 (the d64 llama pairing the kernel implements; it early-returns if ever
+    dispatched with qk_norm != 0, so a miswire is loud, not silent). Non-fatal-miss (`-1`) exactly
+    like every other optional pipeline field: without it a d_head=64 session keeps f2s4 (then
+    f2u2), keeping the standalone kvprod dispatch."""
+
     var native_splitk_partial_eff_idx: Int
     var native_splitk_partial_eff_threads: Int
     """feat/llama-native-deep (2026-08-13): the split-K partial THIS session's own d_head can
@@ -850,6 +874,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     builds from these; `_step_native_kv_impl`/`step_logits` re-set the partial header from these
     SAME two values when they re-narrow n_splits, so the build-time and per-step wiring can never
     drift. Never a model lookup: both branches derive from dims + discovered pipelines."""
+
+    var native_splitk_partial_kvfused: Bool
+    """feat/metal-beat (2026-08-23): True when the effective split-K partial is the kvprod-FUSED
+    f2s4k kernel -- the split-K descriptor table then drops the per-layer kvprod dispatch
+    (157 -> 135 dispatches/token for a 22-layer model) and the per-step `pos` patch lands on the
+    fused partial's own arg slot instead of the (absent) kvprod descriptor's. Read by the table
+    builder + `_step_native_kv_impl`/`step_logits` patch paths; set by the eff resolution below,
+    never written anywhere else."""
 
     var native_decode_attn_i8kv_pipeline_idx: Int
     var kv_i8_quant_pipeline_idx: Int
@@ -936,6 +968,18 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
     """The B-row argmax reduce `_batched_argmax_reduce_kernel_simd` (residentk/kernels.mojo), compiled
     in the early `__init__` block. Discovered via `"batched_arg"`, its own 11-char truncation.
     Non-fatal-miss (`-1`)."""
+    var smalln_assign_pipeline_idx: Int
+    var smalln_accum_pipeline_idx: Int
+    var smalln_swiglu_pipeline_idx: Int
+    """feat/metal-beat (2026-08-23): the small-N (m_rows 2..8) batched-decode GEMV family
+    (residentk/kernels.mojo), compiled in the early `__init__` block. The batched table builder
+    substitutes these for the four prefill-GEMM projection roles when `2 <= B <= 8` -- int8
+    weight-streaming with per-row register accumulators beats the mostly-empty 32-row MMA tiles
+    (and their F16-twin split-K variants) at small B, order-preserving per-row so the batched
+    output stays byte-identical to B single-stream decodes. Discovered via `"smalln_assi"` /
+    `"smalln_accu"` / `"smalln_swi"` -- each its own distinct 11-char engine-kernel truncation,
+    colliding with no other classifier pattern (nothing else contains `"smalln"`). Non-fatal-miss
+    (`-1`): the batched table then keeps the prefill-GEMM roles at every B, byte-unmodified."""
     var lmhead_logits_pipeline_idx: Int
     """Parity gap 3 (sampling, 2026-08-10): the logits-emitting twin `_lmhead_logits_kernel_simd_i8`
     (residentk/kernels.mojo), compiled in the early `__init__` block. Discovered via `"lmhead_logi"`
@@ -1475,6 +1519,14 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # weight ONCE for all B rows. Compiled here (same early block, same discovery-time reason).
         _ = cctx.compile_function[_batched_lmhead_argmax_kernel_simd_i8]()
         _ = cctx.compile_function[_batched_argmax_reduce_kernel_simd]()
+        # ── feat/metal-beat (2026-08-23): the small-N (m_rows 2..8) batched-decode GEMV family --
+        # the four batched projection roles at small B stream int8 weights ONCE for all rows via
+        # per-row private register accumulators instead of the 32-row prefill MMA tiles (mostly
+        # empty at B<=8). Compiled here so their pipeline indices are discoverable in this same
+        # `__init__` (the batched table builder reads them for its B<=8 substitution).
+        _ = cctx.compile_function[_smalln_assign_kernel_simd_i8]()
+        _ = cctx.compile_function[_smalln_accum_kernel_simd_i8]()
+        _ = cctx.compile_function[_smalln_swiglu_kernel_simd_i8]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -1506,8 +1558,10 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # two effective-partial values resolved from it post-discovery (see their field docstrings).
         self.native_decode_splitk_partial_f2_pipeline_idx = -1
         self.native_decode_splitk_partial_f2s4_pipeline_idx = -1
+        self.native_decode_splitk_partial_f2s4k_pipeline_idx = -1
         self.native_splitk_partial_eff_idx = -1
         self.native_splitk_partial_eff_threads = 0
+        self.native_splitk_partial_kvfused = False
         # ── Beat-llama.cpp campaign (2026-08-12, int8-KV mirror): discovery slots, same pattern.
         self.native_decode_attn_i8kv_pipeline_idx = -1
         self.kv_i8_quant_pipeline_idx = -1
@@ -1523,6 +1577,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         self.batched_splitk_merge_pipeline_idx = -1
         self.batched_lmhead_pipeline_idx = -1
         self.batched_argmax_reduce_pipeline_idx = -1
+        self.smalln_assign_pipeline_idx = -1
+        self.smalln_accum_pipeline_idx = -1
+        self.smalln_swiglu_pipeline_idx = -1
         self.lmhead_logits_pipeline_idx = -1
         self.decode_batched_built = False
         # ── feat/batched-llama (2026-08-14): the d_head-resolved batched partial pair, same init
@@ -1616,6 +1673,13 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # `..._f2` + hex, never `..._f2s`, so this cannot cross-wire).
             elif name.find("native_kv_decode_attn_splitk_f2s") >= 0:
                 self.native_decode_splitk_partial_f2s4_pipeline_idx = i
+            # ── feat/metal-beat (2026-08-23): the kvprod-FUSED f2s4k partial's module name
+            # (`kvfuse_f2s4_decode_splitk`, 25 chars -- survives AIR truncation intact) carries a
+            # substring DISJOINT from every `native_kv_decode_attn_*` arm (no other label can
+            # contain `kvfuse_f2s4`), so this check is placement-independent; kept beside its
+            # family for readability.
+            elif name.find("kvfuse_f2s4") >= 0:
+                self.native_decode_splitk_partial_f2s4k_pipeline_idx = i
             elif name.find("native_kv_decode_attn_splitk_f2") >= 0:
                 self.native_decode_splitk_partial_f2_pipeline_idx = i
             elif name.find("native_kv_decode_attn_splitk") >= 0:
@@ -1665,6 +1729,15 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                 self.batched_lmhead_pipeline_idx = i
             if name.find("batched_arg") >= 0:
                 self.batched_argmax_reduce_pipeline_idx = i
+            # ── feat/metal-beat (2026-08-23): the small-N batched GEMV family's own three distinct
+            # 11-char engine-kernel truncations -- no other AIR label contains `smalln`, so these
+            # are placement-independent; kept beside the other batched-tier arms for readability.
+            if name.find("smalln_assi") >= 0:
+                self.smalln_assign_pipeline_idx = i
+            if name.find("smalln_accu") >= 0:
+                self.smalln_accum_pipeline_idx = i
+            if name.find("smalln_swig") >= 0:
+                self.smalln_swiglu_pipeline_idx = i
             # ── Parity gap 3 (sampling, 2026-08-10): the logits-emitting lm_head twin's own
             # 11-char truncation `lmhead_logi` -- `_classify_pipeline` refuses this substring
             # (returns -1), so only this field can ever hold it.
@@ -1750,6 +1823,23 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         if self.d_head == _AF_STRUCTURAL_D_HEAD and self.native_decode_splitk_partial_pipeline_idx >= 0:
             self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_pipeline_idx
             self.native_splitk_partial_eff_threads = self.d_head // 4
+        elif (
+            self.d_head == _AF_STRUCTURAL_D_HEAD_F2
+            and self.qk_norm == 0
+            and self.native_decode_splitk_partial_f2s4k_pipeline_idx >= 0
+        ):
+            # ── feat/metal-beat (2026-08-23): the kvprod-FUSED f2s4k partial is PREFERRED over
+            # f2s4 at d_head=64 / qk_norm=0 when linked -- bit-identical partials (standalone
+            # driver worst-abs-diff 0.0) with the per-layer kvprod dispatch removed from the
+            # table (157 -> 135 dispatches/token for TinyLlama). Same grid/block_dim=32/(m,l,o)
+            # contract, so the merge + n_splits patching stay byte-unmodified; the ONLY table
+            # deltas are the missing kvprod descriptor and the partial's own arg layout (qkv
+            # scratch at arg 3, trailing cos/sin/pos/qk_norm) -- both handled by the builder +
+            # step patch paths reading `native_splitk_partial_kvfused`. qk_norm != 0 keeps f2s4
+            # (the fused kernel implements the llama pairing only).
+            self.native_splitk_partial_eff_idx = self.native_decode_splitk_partial_f2s4k_pipeline_idx
+            self.native_splitk_partial_eff_threads = 32
+            self.native_splitk_partial_kvfused = True
         elif self.d_head == _AF_STRUCTURAL_D_HEAD_F2 and self.native_decode_splitk_partial_f2s4_pipeline_idx >= 0:
             # ── feat/llama-q80gap (2026-08-13): f2s4 (4-key staged SIMD-K reads) PREFERRED over
             # f2u2 at d_head=64 when linked -- 1.28-1.48x per dispatch at depth, bit-identical
@@ -2360,8 +2450,11 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
         # convention -- the count is `1 + n_layers*7 + 2` (the naive table's six per-layer roles,
         # with the single decode-attn dispatch replaced by the partial+merge PAIR), self-checked by
         # `_build_descriptors_decode_native_splitk`'s own tail; never actually allocated unless the
-        # four-pipeline guard below passes.
-        self.n_descriptors_decode_native_splitk = 1 + n_layers * 7 + 2
+        # four-pipeline guard below passes. feat/metal-beat (2026-08-23): when the effective
+        # partial is the kvprod-FUSED f2s4k kernel the per-layer kvprod dispatch is GONE (the
+        # fusion folds it into the partial's prologue), so the budget drops one descriptor per
+        # layer -- 1 + n_layers*6 + 2 (TinyLlama: 157 -> 135 dispatches/token).
+        self.n_descriptors_decode_native_splitk = 1 + n_layers * (6 if self.native_splitk_partial_kvfused else 7) + 2
         self.descriptors_decode_native_splitk = UnsafePointer[UInt8, origin=MutUntrackedOrigin](unsafe_from_address=1)
         self.native_decode_splitk_built = False
         self.token_id_offset_native_splitk = -1
@@ -4832,29 +4925,35 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # ── native-KV-producer at m_rows=1: byte-identical wiring to the naive table's own
             # (per-step cache append + F16 Q narrow), PLUS the trailing llama-family qk_norm flag
             # (feat/llama-native-decode: the kernel's own 17th arg).
-            _mb_set_header(
-                self.descriptors_decode_native_splitk, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
-                n_units_kvprod, self.d_head, 17,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.q_native_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, ck_native_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 2, cv_native_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 3, self.qkv_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, lw.qn_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, lw.kn_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 6, self.cos_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 7, self.sin_addr)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 8, 0)  # pos_base (== decode pos), patched per call
-            self.pos_offsets_native_splitk.append(d)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 9, self.h_q)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 10, self.h_kv)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 11, self.d_head)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 12, _AF_KEY_BLOCK_SIZE)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 13, self.af_n_blocks)
-            _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 14, self.eps)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 15, 1)  # m_rows, CONSTANT (decode = 1 row)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 16, self.qk_norm)
-            d += 1
+            # feat/metal-beat (2026-08-23): OMITTED when the effective partial is the kvprod-FUSED
+            # f2s4k kernel -- its prologue re-derives the roped Q in registers and appends the new
+            # key's packed K/V itself (bit-identical, standalone driver gates), so this dispatch
+            # no longer exists in the fused table. The per-step `pos` patch then lands on the
+            # fused partial's own arg slot (appended below).
+            if not self.native_splitk_partial_kvfused:
+                _mb_set_header(
+                    self.descriptors_decode_native_splitk, d, self.af_pipeline_idx[_AFROLE_NATIVE_KV_PRODUCER],
+                    n_units_kvprod, self.d_head, 17,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.q_native_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, ck_native_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 2, cv_native_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 3, self.qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, lw.qn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, lw.kn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 6, self.cos_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 7, self.sin_addr)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 8, 0)  # pos_base (== decode pos), patched per call
+                self.pos_offsets_native_splitk.append(d)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 9, self.h_q)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 10, self.h_kv)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 11, self.d_head)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 12, _AF_KEY_BLOCK_SIZE)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 13, self.af_n_blocks)
+                _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 14, self.eps)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 15, 1)  # m_rows, CONSTANT (decode = 1 row)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 16, self.qk_norm)
+                d += 1
 
             # ── THE substitution, dispatch 1/2: split-K PARTIAL over this step's full key range --
             # 14 args, the shared partial signature. feat/llama-native-deep (2026-08-13): the
@@ -4864,26 +4963,59 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # (one simdgroup, lane owns 2 elements, block 32) -- the SAME (m,l,o) partial contract
             # either way, so the merge below is untouched. Worker builds need DEVELOPER_DIR=full
             # Xcode or the Metal compiler falls back to CommandLineTools and fails.
-            _mb_set_header(
-                self.descriptors_decode_native_splitk, d, self.native_splitk_partial_eff_idx,
-                self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.native_splitk_partial_eff_threads, 14,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.splitk_m_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.splitk_l_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 2, self.splitk_o_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 3, self.q_native_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, ck_native_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, cv_native_addr)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 6, 0)  # n_keys, patched per call
-            self.nkeys_offsets_native_splitk.append(d)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 7, _NATIVE_DECODE_N_SPLITS)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 8, self.h_q)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 9, self.h_kv)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 10, self.d_head)
-            _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 11, self.scale)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 12, _AF_KEY_BLOCK_SIZE)
-            _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 13, self.af_n_blocks)
-            d += 1
+            if self.native_splitk_partial_kvfused:
+                # ── feat/metal-beat (2026-08-23): the kvprod-FUSED f2s4k partial, 18 args: the
+                # f2s4 layout with arg 3 binding the F32 qkv scratch (the fused prologue derives
+                # the roped Q itself; q_rot is never written nor read in this table) and the
+                # trailing cos/sin tables + per-step `pos` (the kvprod slot's patch target now
+                # lives HERE) + the qk_norm flag (always 0 -- the eff gate pairs this kernel to
+                # qk0 only; the kernel early-returns on any other value).
+                _mb_set_header(
+                    self.descriptors_decode_native_splitk, d, self.native_splitk_partial_eff_idx,
+                    self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.native_splitk_partial_eff_threads, 18,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.splitk_m_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.splitk_l_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 2, self.splitk_o_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 3, self.qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, ck_native_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, cv_native_addr)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 6, 0)  # n_keys, patched per call
+                self.nkeys_offsets_native_splitk.append(d)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 7, _NATIVE_DECODE_N_SPLITS)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 8, self.h_q)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 9, self.h_kv)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 10, self.d_head)
+                _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 11, self.scale)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 12, _AF_KEY_BLOCK_SIZE)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 13, self.af_n_blocks)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 14, self.cos_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 15, self.sin_addr)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 16, 0)  # pos, patched per call
+                self.pos_offsets_native_splitk.append(d)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 17, self.qk_norm)
+                d += 1
+            else:
+                _mb_set_header(
+                    self.descriptors_decode_native_splitk, d, self.native_splitk_partial_eff_idx,
+                    self.h_q * _NATIVE_DECODE_N_SPLITS_MAX, self.native_splitk_partial_eff_threads, 14,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 0, self.splitk_m_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 1, self.splitk_l_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 2, self.splitk_o_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 3, self.q_native_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 4, ck_native_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_native_splitk, d, 5, cv_native_addr)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 6, 0)  # n_keys, patched per call
+                self.nkeys_offsets_native_splitk.append(d)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 7, _NATIVE_DECODE_N_SPLITS)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 8, self.h_q)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 9, self.h_kv)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 10, self.d_head)
+                _mb_set_arg_f32(self.descriptors_decode_native_splitk, d, 11, self.scale)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 12, _AF_KEY_BLOCK_SIZE)
+                _mb_set_arg_int(self.descriptors_decode_native_splitk, d, 13, self.af_n_blocks)
+                d += 1
 
             # ── THE substitution, dispatch 2/2: the engine's EXISTING merge kernel collapses the
             # `_NATIVE_DECODE_N_SPLITS` partials per head into `self.attn_out_addr` row 0 -- the
@@ -5646,6 +5778,45 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             self.msl_lmhead_gemm_pipeline_idx >= 0
             and self.msl_logits_blockmax_pipeline_idx >= 0
         )
+        # ── feat/metal-beat (2026-08-23), lever (b): SMALL-N GEMV substitution. At 2 <= B <= 8
+        # the four projection roles switch from the 32-row prefill GEMM kernels (mostly empty
+        # M-tiles at small B; the MSL split-K variants additionally stream the F16 weight twins)
+        # to the int8 small-N GEMV family -- one weight load amortized over all B rows in
+        # private register accumulators, per-row order preserved (byte-identical to B single-
+        # stream decodes; the byteid harness is the gate). When active, the split-K qkv/swiglu
+        # extra dispatches (zero + partial [+ apply]) vanish with the kernels they serve, so the
+        # descriptor budget below stays 9/layer. B=1 never reaches this table (the SDK's #660
+        # guard delegates it to serial); B>=9 keeps the MMA path byte-unmodified.
+        #
+        # CAPABILITY GATE (measured both ways, same session, B=4 interleaved A/B): a session
+        # whose MSL split-K tier is COMPLETE for all four batched roles (Qwen3-0.6B: splitk8
+        # qkv/o + splitk12 down + splitk4 swiglu, all shape gates met) runs the MMA path
+        # FASTER at small B (668.6/659.8/670.3 vs 557.4/559.1/564.1 tok/s) -- the simdgroup-
+        # matrix kernels out-stream the GEMV there despite the F16 weight twins. A session with
+        # an INCOMPLETE tier (TinyLlama: d_ff % 384 != 0 kills splitk12, so down_proj falls
+        # back to the slow single-pass Mojo accum kernel) flips the verdict decisively
+        # (small-N 313.4 vs MMA 155.6 @B=4, 329.0 vs 271.0 @B=8, 279.9 vs 92.9 @B=2). The gate
+        # is derive-from-dims-plus-discovery (tier completeness), never a model lookup. The
+        # o/down availability formulas below MIRROR the per-layer loop's own `db_use_splitk_o`/
+        # `db_use_splitk_down` definitions exactly (they are layer-invariant; restated here only
+        # because those vars live inside the loop).
+        var db_splitk_o_avail = (
+            self.msl_splitk8_pipeline_idx >= 0 and (self.h_q * self.d_head) % 256 == 0
+        )
+        var db_splitk_down_avail = self.msl_splitk12_pipeline_idx >= 0 and self.d_ff % 384 == 0
+        var db_msl_tier_complete = (
+            db_use_splitk_qkv and db_splitk_o_avail and db_splitk_down_avail and db_use_splitk_swiglu
+        )
+        var db_use_smalln = (
+            B >= 2 and B <= 8
+            and self.smalln_assign_pipeline_idx >= 0
+            and self.smalln_accum_pipeline_idx >= 0
+            and self.smalln_swiglu_pipeline_idx >= 0
+            and not db_msl_tier_complete
+        )
+        if db_use_smalln:
+            db_use_splitk_qkv = False
+            db_use_splitk_swiglu = False
 
         self.n_descriptors_decode_batched = (
             1 + self.n_layers * 9 + 3
@@ -5707,7 +5878,23 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # kernel runs the GEMM at grid (M/32)x(n_qkv/64)x8 = 512 threadgroups instead of the
             # Mojo assign kernel's 128x256-thread underfilled dispatch (counter probe: 6.59 ms per
             # B=32 step). Weight arg swaps to the F16 twin exactly as the o/down blocks do.
-            if db_use_splitk_qkv:
+            # feat/metal-beat (2026-08-23): at 2<=B<=8 the small-N ASSIGN GEMV streams the int8
+            # weights once for all B rows (single-stream decode GEMV grid shape) -- no zeroing,
+            # no F16 twin, no MMA tile left mostly empty.
+            if db_use_smalln:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.smalln_assign_pipeline_idx,
+                    _ceil_div(n_qkv, _SUBS), _TG, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_qkv_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_qkv_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, n_qkv)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, B)
+                d += 1
+            elif db_use_splitk_qkv:
                 _mb_set_header(
                     self.descriptors_decode_batched, d, self.msl_zero_pipeline_idx,
                     _ceil_div(_ceil_div(B * n_qkv, 4), 256), 256, 2,
@@ -5820,39 +6007,54 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # The SAME split-K substitution `_apply_m_rows_af_nomirror` already applies to the
             # single-stream/nomirror path (S=8, atomic-float-add partials, "+=" residual-safe,
             # m_rows<=1024 gate trivially met here) multiplies the grid to 128 threadgroups.
-            _mb_set_header(
-                self.descriptors_decode_batched, d,
-                self.msl_splitk8_pipeline_idx if db_use_splitk_o
-                else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
-                # MSL tiles are 32 rows x 64 cols (`_ceil_div(..., 64)`, NOT `_GEMM_BN`=32 -- the
-                # Mojo kernel's tile constant would double the grid and let the MSL kernel's
-                # unguarded tiles run past N), times S=8 splits; threads 128 = the MSL kernels'
-                # max_total_threads_per_threadgroup, exactly `_apply_m_rows_af_nomirror`'s pattern.
-                # feat/batched-llama (2026-08-14): the tile width is KERNEL-FAMILY-CONDITIONAL --
-                # the fallback branch dispatches the Mojo `_pf_gemm_accum_kernel_i8`, whose tiles
-                # are `_GEMM_BN`=32 cols, so ITS grid must count 32-col tiles: sizing it by 64
-                # (the MSL width) launches only half the column tiles and the second half of the
-                # output is never accumulated (the d_head=64 llama models are the first to take
-                # this fallback -- d_ff % 384 != 0 kills the splitk12 arm -- and their batched
-                # tokens diverged from exactly this descriptor).
-                (n_rows_tile * _ceil_div(self.d_model, 64) * 8) if db_use_splitk_o
-                else (n_rows_tile * _ceil_div(self.d_model, _GEMM_BN)),
-                128 if db_use_splitk_o else _GEMM_NTHREADS, 7,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.attn_out_addr)
-            # The split-K kernels read the F16 weight twins, EXACTLY as `_apply_m_rows_af_nomirror`
-            # swaps arg 2 under `use_msl_accum` -- passing the Int8 originals corrupts the output
-            # (caught by the 2026-08-12 token-identity validation: degenerate 374-repeat stream).
-            _mb_set_arg_ptr(
-                self.descriptors_decode_batched, d, 2,
-                self.msl_w_o_f16_addr[layer] if db_use_splitk_o else lw.w_o_addr,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_o_scale_addr)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 5, n_q)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
-            d += 1
+            if db_use_smalln:
+                # feat/metal-beat (2026-08-23): small-N ACCUM GEMV o_proj at 2<=B<=8.
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.smalln_accum_pipeline_idx,
+                    _ceil_div(self.d_model, _SUBS), _TG, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.attn_out_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_o_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_o_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, n_q)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, B)
+                d += 1
+            else:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d,
+                    self.msl_splitk8_pipeline_idx if db_use_splitk_o
+                    else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                    # MSL tiles are 32 rows x 64 cols (`_ceil_div(..., 64)`, NOT `_GEMM_BN`=32 -- the
+                    # Mojo kernel's tile constant would double the grid and let the MSL kernel's
+                    # unguarded tiles run past N), times S=8 splits; threads 128 = the MSL kernels'
+                    # max_total_threads_per_threadgroup, exactly `_apply_m_rows_af_nomirror`'s pattern.
+                    # feat/batched-llama (2026-08-14): the tile width is KERNEL-FAMILY-CONDITIONAL --
+                    # the fallback branch dispatches the Mojo `_pf_gemm_accum_kernel_i8`, whose tiles
+                    # are `_GEMM_BN`=32 cols, so ITS grid must count 32-col tiles: sizing it by 64
+                    # (the MSL width) launches only half the column tiles and the second half of the
+                    # output is never accumulated (the d_head=64 llama models are the first to take
+                    # this fallback -- d_ff % 384 != 0 kills the splitk12 arm -- and their batched
+                    # tokens diverged from exactly this descriptor).
+                    (n_rows_tile * _ceil_div(self.d_model, 64) * 8) if db_use_splitk_o
+                    else (n_rows_tile * _ceil_div(self.d_model, _GEMM_BN)),
+                    128 if db_use_splitk_o else _GEMM_NTHREADS, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.attn_out_addr)
+                # The split-K kernels read the F16 weight twins, EXACTLY as `_apply_m_rows_af_nomirror`
+                # swaps arg 2 under `use_msl_accum` -- passing the Int8 originals corrupts the output
+                # (caught by the 2026-08-12 token-identity validation: degenerate 374-repeat stream).
+                _mb_set_arg_ptr(
+                    self.descriptors_decode_batched, d, 2,
+                    self.msl_w_o_f16_addr[layer] if db_use_splitk_o else lw.w_o_addr,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_o_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, n_q)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
+                d += 1
 
             # rmsnorm2 -> xn
             _mb_set_header(
@@ -5872,7 +6074,23 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # partial runs at (M/32)x(2*d_ff/64)x4 = 384 threadgroups instead of the shipped
             # kernel's 96 (counter probe: 9.30 ms per B=32 step); the apply pass does the
             # silu(g)*u combine the nonlinearity forbids inside the atomic accumulation.
-            if db_use_splitk_swiglu:
+            if db_use_smalln:
+                # feat/metal-beat (2026-08-23): small-N gate/up+SwiGLU GEMV at 2<=B<=8 -- the
+                # fused silu(g)*u combine stays inside the kernel (its two per-row accumulators
+                # hold gate and up), so no scratch/zero/apply dispatches exist on this branch.
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.smalln_swiglu_pipeline_idx,
+                    _ceil_div(self.d_ff, _SUBS), _TG, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.act_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.xn_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_gu_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_gu_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_ff)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, B)
+                d += 1
+            elif db_use_splitk_swiglu:
                 _mb_set_header(
                     self.descriptors_decode_batched, d, self.msl_zero_pipeline_idx,
                     _ceil_div(_ceil_div(B * 2 * self.d_ff, 4), 256), 256, 2,
@@ -5923,25 +6141,40 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
             # `_GEMM_BN`=32 cols, so its grid counts 32-col tiles (a 64-col-tile grid leaves the
             # second half of d_model un-accumulated; the d_ff % 384 != 0 llama models take this
             # fallback and were the first to expose it).
-            _mb_set_header(
-                self.descriptors_decode_batched, d,
-                self.msl_splitk12_pipeline_idx if db_use_splitk_down
-                else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
-                (n_rows_tile * _ceil_div(self.d_model, 64) * 12) if db_use_splitk_down
-                else (n_rows_tile * _ceil_div(self.d_model, _GEMM_BN)),
-                128 if db_use_splitk_down else _GEMM_NTHREADS, 7,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.act_addr)
-            _mb_set_arg_ptr(
-                self.descriptors_decode_batched, d, 2,
-                self.msl_w_down_f16_addr[layer] if db_use_splitk_down else lw.w_down_addr,
-            )
-            _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_down_scale_addr)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_ff)
-            _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
-            d += 1
+            if db_use_smalln:
+                # feat/metal-beat (2026-08-23): small-N ACCUM GEMV down_proj at 2<=B<=8.
+                _mb_set_header(
+                    self.descriptors_decode_batched, d, self.smalln_accum_pipeline_idx,
+                    _ceil_div(self.d_model, _SUBS), _TG, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.act_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 2, lw.w_down_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_down_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, self.d_ff)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_model)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, B)
+                d += 1
+            else:
+                _mb_set_header(
+                    self.descriptors_decode_batched, d,
+                    self.msl_splitk12_pipeline_idx if db_use_splitk_down
+                    else self.prefill_pipeline_idx[_PFROLE_GEMM_ACCUM],
+                    (n_rows_tile * _ceil_div(self.d_model, 64) * 12) if db_use_splitk_down
+                    else (n_rows_tile * _ceil_div(self.d_model, _GEMM_BN)),
+                    128 if db_use_splitk_down else _GEMM_NTHREADS, 7,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 0, self.hidden_addr)
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 1, self.act_addr)
+                _mb_set_arg_ptr(
+                    self.descriptors_decode_batched, d, 2,
+                    self.msl_w_down_f16_addr[layer] if db_use_splitk_down else lw.w_down_addr,
+                )
+                _mb_set_arg_ptr(self.descriptors_decode_batched, d, 3, lw.w_down_scale_addr)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 4, B)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 5, self.d_ff)
+                _mb_set_arg_int(self.descriptors_decode_batched, d, 6, self.d_model)
+                d += 1
 
         # tail: BATCHED lm_head (Slipstream Phase 3 Option B) -- 3 dispatches instead of 2*B, and the
         # lm_head/embed weight is swept ONCE for all B rows instead of once per sequence.
@@ -6317,7 +6550,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
                         _mb_set_header(
                             table, d_partial, self.native_splitk_partial_eff_idx,
-                            self.h_q * n_splits_adapt, self.native_splitk_partial_eff_threads, 14,
+                            self.h_q * n_splits_adapt, self.native_splitk_partial_eff_threads,
+                            18 if self.native_splitk_partial_kvfused else 14,
                         )
                         _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
                         _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
@@ -6328,7 +6562,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     _mb_set_arg_int(table, self.pos_offsets_native_splitk_i8[layer], 8, pos)
                     _mb_set_arg_int(table, self.nkeys_offsets_native_splitk_i8[layer], 8, n_keys)
                 elif use_splitk:
-                    _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
+                    # feat/metal-beat: the fused f2s4k partial carries `pos` at its own arg 16
+                    # (the table has no kvprod descriptor to patch); kvprod tables keep arg 8.
+                    _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 16 if self.native_splitk_partial_kvfused else 8, pos)
                     _mb_set_arg_int(table, self.nkeys_offsets_native_splitk[layer], 6, n_keys)
                 else:
                     _mb_set_arg_int(table, self.pos_offsets_native[layer], 8, pos)
@@ -6491,7 +6727,8 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                         var d_partial = self.nkeys_offsets_native_splitk[lyr]
                         _mb_set_header(
                             table, d_partial, self.native_splitk_partial_eff_idx,
-                            self.h_q * n_splits_adapt, self.native_splitk_partial_eff_threads, 14,
+                            self.h_q * n_splits_adapt, self.native_splitk_partial_eff_threads,
+                            18 if self.native_splitk_partial_kvfused else 14,
                         )
                         _mb_set_arg_int(table, d_partial, 7, n_splits_adapt)
                         _mb_set_arg_int(table, d_partial + 1, 4, n_splits_adapt)
@@ -6502,7 +6739,9 @@ struct _MBQwen3I8AllSimd7Prefill(Movable):
                     _mb_set_arg_int(table, self.pos_offsets_native_splitk_i8[layer], 8, pos)
                     _mb_set_arg_int(table, self.nkeys_offsets_native_splitk_i8[layer], 8, n_keys)
                 elif use_splitk:
-                    _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 8, pos)
+                    # feat/metal-beat: the fused f2s4k partial carries `pos` at its own arg 16
+                    # (the table has no kvprod descriptor to patch); kvprod tables keep arg 8.
+                    _mb_set_arg_int(table, self.pos_offsets_native_splitk[layer], 16 if self.native_splitk_partial_kvfused else 8, pos)
                     _mb_set_arg_int(table, self.nkeys_offsets_native_splitk[layer], 6, n_keys)
                 else:
                     _mb_set_arg_int(table, self.pos_offsets_native[layer], 8, pos)

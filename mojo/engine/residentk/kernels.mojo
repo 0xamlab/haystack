@@ -4979,3 +4979,220 @@ def _qkv_bias_add_rows_kernel(y: _FP, bias: _FP, m_rows_i64: Int64, n_i64: Int64
     var i = Int(block_idx.x) * Int(block_dim.x) + Int(thread_idx.x)
     if i < m_rows * n:
         y[i] = y[i] + bias[i % n]
+
+
+# ── feat/metal-beat (2026-08-23): the SMALL-N (2-8 rows) batched-decode GEMV family ──────────
+# The batched (continuous-batching) decode tier runs its four projection roles through the
+# prefill GEMM kernels (32-row MMA tiles or their MSL split-K twins) at EVERY batch size -- at
+# B = 2..8 those tiles are 1/16..1/4 occupied in M, and the MSL twins additionally stream the
+# F16 weight twins (2 bytes/weight). This family is the int8 GEMV analogue of llama.cpp's
+# `mul_mv_ext_f16_f32_r1_N` small-batch kernels: one weight load amortized over all m_rows <= 8
+# batch rows via per-row PRIVATE register accumulators, int8 weights (1 byte/weight), same
+# grid/TG shape as the single-stream decode GEMVs. ORDER-PRESERVING by construction: for each
+# (row b, column j) the dot's per-lane element sequence and its `_warp_sum` collapse are
+# byte-for-byte `_norm_gemv_kernel_simd_i8`'s (assign) / `_gemv_accum_kernel_simd_i8`'s (accum)
+# / `_norm_gemv2_swiglu_kernel_simd_i8`'s fused gate/up loop (swiglu) -- cross-row interleaving
+# never reorders one row's own additions -- so a B-sequence batch stays byte-identical to B
+# single-stream decodes (the campaign's acceptance gate).
+
+
+def _smalln_assign_kernel_simd_i8(
+    y: _FP, x: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64, m_rows_i64: Int64
+):
+    """Small-N ASSIGN GEMV: `y[b][j] = dot(x[b], w[j])` for `m_rows` in [2, 8] -- the batched
+    qkv projection at small B (the batched tier's rmsnorm dispatch has already produced the
+    normalized `x` rows this kernel reads, exactly the split the `_pf_gemm_assign_kernel_i8`
+    path uses). Per-column math is `_norm_gemv_kernel_simd_i8`'s dot loop with the norm factored
+    out (its input arrives pre-normalized): same lane-stride char4 element sequence, same
+    two-step unroll, same `_warp_sum` collapse -- replicated over `m_rows` private accumulators
+    with the weight row loaded ONCE per step. Grid `ceil(n / _SUBS)` threadgroups x `_TG`, one
+    SIMD group per output column, exactly the single-stream decode GEMV shape (the prefill
+    kernels' 32-row M-tiles are replaced by the row dimension living in registers)."""
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var m_rows = Int(m_rows_i64)
+    var accs = stack_allocation[8, DType.float32]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    for b in range(m_rows):
+        accs[b] = Float32(0.0)
+    var j = Int(block_idx.x) * _SUBS + sub
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t + _VEC_STRIDE_I8 < k_vec:
+            var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var t1 = t + _VEC_STRIDE_I8
+            var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+            for b in range(m_rows):
+                var xv0 = x.load[width=_VEC_I8](b * k + t)
+                var pv0 = xv0 * wv0
+                for lane_e in range(_VEC_I8):
+                    accs[b] += pv0[lane_e]
+            for b2 in range(m_rows):
+                var xv1 = x.load[width=_VEC_I8](b2 * k + t1)
+                var pv1 = xv1 * wv1
+                for lane_e2 in range(_VEC_I8):
+                    accs[b2] += pv1[lane_e2]
+            t += 2 * _VEC_STRIDE_I8
+        while t < k_vec:
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            for b in range(m_rows):
+                var xv = x.load[width=_VEC_I8](b * k + t)
+                var pv = xv * wv
+                for lane_e in range(_VEC_I8):
+                    accs[b] += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            var wt = Float32(w[base + tt]) * srow
+            for b in range(m_rows):
+                accs[b] += x[b * k + tt] * wt
+            tt += _LANES
+    for b in range(m_rows):
+        var total = _warp_sum(accs[b])
+        if lane == 0 and j < n:
+            y[b * n + j] = total
+
+
+def _smalln_accum_kernel_simd_i8(
+    y: _FP, x: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_i64: Int64, m_rows_i64: Int64
+):
+    """Small-N ACCUM GEMV: `y[b][j] += dot(x[b], w[j])` for `m_rows` in [2, 8] -- the batched
+    o_proj/down_proj residual accumulations at small B. `_gemv_accum_kernel_simd_i8`'s exact
+    per-column dot + residual-add math with per-row private accumulators; see
+    `_smalln_assign_kernel_simd_i8`'s docstring for the family's order-preservation argument."""
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var m_rows = Int(m_rows_i64)
+    var accs = stack_allocation[8, DType.float32]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    for b in range(m_rows):
+        accs[b] = Float32(0.0)
+    var j = Int(block_idx.x) * _SUBS + sub
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t + _VEC_STRIDE_I8 < k_vec:
+            var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var t1 = t + _VEC_STRIDE_I8
+            var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+            for b in range(m_rows):
+                var xv0 = x.load[width=_VEC_I8](b * k + t)
+                var pv0 = xv0 * wv0
+                for lane_e in range(_VEC_I8):
+                    accs[b] += pv0[lane_e]
+            for b2 in range(m_rows):
+                var xv1 = x.load[width=_VEC_I8](b2 * k + t1)
+                var pv1 = xv1 * wv1
+                for lane_e2 in range(_VEC_I8):
+                    accs[b2] += pv1[lane_e2]
+            t += 2 * _VEC_STRIDE_I8
+        while t < k_vec:
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            for b in range(m_rows):
+                var xv = x.load[width=_VEC_I8](b * k + t)
+                var pv = xv * wv
+                for lane_e in range(_VEC_I8):
+                    accs[b] += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            var wt = Float32(w[base + tt]) * srow
+            for b in range(m_rows):
+                accs[b] += x[b * k + tt] * wt
+            tt += _LANES
+    for b in range(m_rows):
+        var total = _warp_sum(accs[b])
+        if lane == 0 and j < n:
+            y[b * n + j] = y[b * n + j] + total
+
+
+def _smalln_swiglu_kernel_simd_i8(
+    act: _FP, x: _FP, w: _I8P, wscale: _FP, k_i64: Int64, n_ff_i64: Int64, m_rows_i64: Int64
+):
+    """Small-N GATE/UP+SwiGLU GEMV: `act[b][j] = silu(dot(x[b], w[j])) * dot(x[b], w[n_ff+j])`
+    for `m_rows` in [2, 8] -- the batched gate/up projection at small B. The fused one-pass
+    gate/up loop of `_norm_gemv2_swiglu_kernel_simd_i8` (two private accumulator pairs per row,
+    shared input loads, same two-step unroll, same per-accumulator element order, norm factored
+    out into the batched tier's rmsnorm dispatch) with the weight rows loaded ONCE per step for
+    ALL rows."""
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
+    var m_rows = Int(m_rows_i64)
+    var accsg = stack_allocation[8, DType.float32]()
+    var accsu = stack_allocation[8, DType.float32]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    for b in range(m_rows):
+        accsg[b] = Float32(0.0)
+        accsu[b] = Float32(0.0)
+    var j = Int(block_idx.x) * _SUBS + sub
+    if j < n_ff:
+        var base = j * k
+        var base2 = (n_ff + j) * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var srow2 = wscale[n_ff + j]
+        var srow2_v = SIMD[DType.float32, _VEC_I8](srow2)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t + _VEC_STRIDE_I8 < k_vec:
+            var wv0 = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var wv02 = w.load[width=_VEC_I8](base2 + t).cast[DType.float32]() * srow2_v
+            var t1 = t + _VEC_STRIDE_I8
+            var wv1 = w.load[width=_VEC_I8](base + t1).cast[DType.float32]() * srow_v
+            var wv12 = w.load[width=_VEC_I8](base2 + t1).cast[DType.float32]() * srow2_v
+            for b in range(m_rows):
+                var xv0 = x.load[width=_VEC_I8](b * k + t)
+                var pv0 = xv0 * wv0
+                var pv02 = xv0 * wv02
+                for lane_e in range(_VEC_I8):
+                    accsg[b] += pv0[lane_e]
+                for lane_e2 in range(_VEC_I8):
+                    accsu[b] += pv02[lane_e2]
+            for b2 in range(m_rows):
+                var xv1 = x.load[width=_VEC_I8](b2 * k + t1)
+                var pv1 = xv1 * wv1
+                var pv12 = xv1 * wv12
+                for lane_e3 in range(_VEC_I8):
+                    accsg[b2] += pv1[lane_e3]
+                for lane_e4 in range(_VEC_I8):
+                    accsu[b2] += pv12[lane_e4]
+            t += 2 * _VEC_STRIDE_I8
+        while t < k_vec:
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var wv2 = w.load[width=_VEC_I8](base2 + t).cast[DType.float32]() * srow2_v
+            for b in range(m_rows):
+                var xv = x.load[width=_VEC_I8](b * k + t)
+                var pv = xv * wv
+                var pv2 = xv * wv2
+                for lane_e in range(_VEC_I8):
+                    accsg[b] += pv[lane_e]
+                for lane_e2 in range(_VEC_I8):
+                    accsu[b] += pv2[lane_e2]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            var wt = Float32(w[base + tt]) * srow
+            var wt2 = Float32(w[base2 + tt]) * srow2
+            for b in range(m_rows):
+                var xt = x[b * k + tt]
+                accsg[b] += xt * wt
+                accsu[b] += xt * wt2
+            tt += _LANES
+    for b in range(m_rows):
+        var gate_total = _warp_sum(accsg[b])
+        var up_total = _warp_sum(accsu[b])
+        if lane == 0 and j < n_ff:
+            act[b * n_ff + j] = (gate_total / (1.0 + exp(-gate_total))) * up_total

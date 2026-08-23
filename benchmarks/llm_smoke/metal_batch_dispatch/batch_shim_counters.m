@@ -50,10 +50,11 @@
 #include <stdint.h>
 #include <string.h>
 
-/* feat/llama-native-deep (2026-08-13): raised 16 -> 17 -- the attention-forge
- * native-KV-producer kernel grew the trailing llama-family qk_norm flag, and its
- * decode/prefill dispatches bind 17 args; must match ffi.mojo's MB_MAX_ARGS. */
-#define ALGENTA_MAX_ARGS 17
+/* feat/metal-beat (2026-08-23): raised 17 -> 18 -- the kvprod-FUSED d64 split-K partial binds
+ * 18 args; must match ffi.mojo's MB_MAX_ARGS (and batch_shim.m's ALGENTA_MAX_ARGS), or this
+ * probe would parse the descriptor array with the wrong stride. (Prior raise: feat/llama-
+ * native-deep 2026-08-13, 16 -> 17, for the kvprod qk_norm flag.) */
+#define ALGENTA_MAX_ARGS 18
 /* Beat-llama.cpp campaign (2026-08-08 night): bumped 32 -> 64, mirroring `batch_shim.m`'s own
  * same-night bump and for the same measured reason -- the campaign's counter probes now link the
  * kvprod_v2 blob (two more metallibs) on top of the MSL/vecload4/AF set, ~36 MTLBs total, over

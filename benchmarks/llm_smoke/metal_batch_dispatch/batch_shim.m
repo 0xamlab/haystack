@@ -43,10 +43,11 @@
 #include <stdint.h>
 #include <string.h>
 
-/* feat/llama-native-deep (2026-08-13): raised 16 -> 17 -- the attention-forge
- * native-KV-producer kernel grew the trailing llama-family qk_norm flag, and its
- * decode/prefill dispatches bind 17 args; must match ffi.mojo's MB_MAX_ARGS. */
-#define ALGENTA_MAX_ARGS 17
+/* feat/metal-beat (2026-08-23): raised 17 -> 18 -- the kvprod-FUSED d64 split-K partial
+ * (_native_kv_decode_splitk_partial_kernel_f2s4k) binds 18 args (f2s4's 14 with the qkv
+ * scratch at arg 3 plus trailing cos/sin/pos/qk_norm); must match ffi.mojo's MB_MAX_ARGS.
+ * (Prior raise: feat/llama-native-deep 2026-08-13, 16 -> 17, for the kvprod qk_norm flag.) */
+#define ALGENTA_MAX_ARGS 18
 /* Beat-llama.cpp campaign (2026-08-08 night): bumped 32 -> 64. Real measured need, hit for real,
  * not a theoretical worry: the campaign's no-mirror+MSL race binary links NINE forged blob objects
  * (mm8, three vecload4, msl_parity's three metallibs, candidate_a, native_kv_producer, and the two
