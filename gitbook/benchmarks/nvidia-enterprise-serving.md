@@ -16,12 +16,13 @@ decode, against llama.cpp (build 10210 pin, GGML\_CUDA, F16) on the same machine
 
 | GPU | Decode tok/s (gen=64) | Decode tok/s (gen=256) | vs llama.cpp F16 |
 | --- | --- | --- | --- |
-| A100 | 427.1 | 408.7 | 1.20x / 1.11x |
+| A100 | 455.3 | 434.5 | 1.28x / 1.19x |
 | H100 | 656.1 | 622.3 | 1.40x / 1.19x |
 | L4 | 193.9 | 188.8 | 1.12x / 1.09x |
 
-Against llama.cpp Q8\_0 the packed3 session leads on the A100 at gen=64 (427.1 vs 404.2
-tok/s, 1.055x) and on the H100 at both lengths (557.4 / 593.2 tok/s, 1.18x / 1.05x).
+Against llama.cpp Q8\_0 the packed3 session leads on the A100 at both lengths (455.3 /
+434.5 tok/s vs 404.2 / 420.0, 1.13x / 1.03x) and on the H100 at both lengths (557.4 /
+593.2 tok/s, 1.18x / 1.05x).
 
 ## Batched decode aggregate
 
