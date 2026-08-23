@@ -132,6 +132,17 @@ from residentk.session_cuda import (
     CUDA_PREFILL_TILE,
     CUDA_SESSION_BUILD,
 )
+from residentk.tc_shim_bridge import (
+    TC_SHIM_BUILD,
+    TC_MIN_M,
+    TC_ACC_MODE,
+    _tc_init,
+    _tc_last_error,
+    _tc_stage_f32_to_f16,
+    _tc_gemm_dispatch,
+    _pf_swiglu_rows_kernel,
+)
+from std.time import perf_counter_ns
 
 comptime _CUDA_BATCH_DECODE_MAX_SEQS: Int = 32
 """The FIXED maximum number of sequences the batched decode path provisions per-sequence KV
@@ -225,6 +236,24 @@ struct _CudaResidentQwen3Batched(Movable):
     var pf_out_idx: DeviceBuffer[DType.int32]
     var host_pf_val: HostBuffer[DType.float32]
     var host_pf_idx: HostBuffer[DType.int32]
+
+    # ── TC escape-hatch admission prefill (feat/tc-int): the f16 dual-resident twins of the
+    #    four f32 projection tables (staged from those f32 weights ONCE, at first prefill —
+    #    this session keeps its f32 projections resident on the serve lane, so the staging is
+    #    a straight f32->f16 convert, no packed3 dequant), plus the per-tile scratch. Real
+    #    sizes ONLY under TC_SHIM_BUILD (the VRAM headroom check: +1.02 GB at 0.6B); every
+    #    other build holds 1-element placeholders and `tc_staged = -1` — the native chain.
+    #    `tc_staged`: 0 = allocated, staging pending; 1 = staged; -1 = absent (flag off, OR
+    #    headroom/staging failed — fallback recorded, never fatal). A skip_f32_projections
+    #    session has no resident f32 weights to convert and stays -1 by construction.
+    var w16_qkv: List[DeviceBuffer[DType.float16]]
+    var w16_o: List[DeviceBuffer[DType.float16]]
+    var w16_gu: List[DeviceBuffer[DType.float16]]
+    var w16_down: List[DeviceBuffer[DType.float16]]
+    var tc_a16: DeviceBuffer[DType.float16]
+    var tc_c16: DeviceBuffer[DType.float16]
+    var tc_gu: DeviceBuffer[DType.float32]
+    var tc_staged: Int
 
     # host-side generation log for seed_and_run_batched: [seq][step] -> token
     var token_log: List[List[Int]]
@@ -343,7 +372,119 @@ struct _CudaResidentQwen3Batched(Movable):
         self.host_pf_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_pf_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
+        # ── TC escape-hatch residency: the constructor allocates ONLY placeholders (every
+        #    build, cheap); `tc_staged = 0` under the build flag marks the lazy path in
+        #    `_tc_stage_weights`, which performs the REAL allocation inside its headroom
+        #    try/except on the first prefill (a constructor cannot borrow self inside a try
+        #    before every field is initialized — Mojo's definite-initialization refuses it).
+        self.w16_qkv = List[DeviceBuffer[DType.float16]]()
+        self.w16_o = List[DeviceBuffer[DType.float16]]()
+        self.w16_gu = List[DeviceBuffer[DType.float16]]()
+        self.w16_down = List[DeviceBuffer[DType.float16]]()
+        self.tc_a16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_c16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_gu = self.ctx.enqueue_create_buffer[DType.float32](1)
+        self.tc_staged = -1
+        @parameter
+        if TC_SHIM_BUILD:
+            self.tc_staged = 0
+
         self.token_log = List[List[Int]]()
+
+    def _tc_alloc(
+        mut self, n_layers: Int, n_qkv: Int, n_q: Int, d_model: Int, d_ff: Int,
+    ) raises:
+        """The REAL TC residency (constructor headroom try): dense f16 twins of the four
+        f32 projection tables per layer plus the tile scratch at `CUDA_PREFILL_TILE` rows —
+        the batched session's prefill tiles never exceed one `CUDA_PREFILL_TILE` (the pf_*
+        scratch sizing), so that is the scratch row cap here too."""
+        var rows = CUDA_PREFILL_TILE
+        var max_k = d_model
+        if n_q > max_k:
+            max_k = n_q
+        if d_ff > max_k:
+            max_k = d_ff
+        var max_n = n_qkv
+        if 2 * d_ff > max_n:
+            max_n = 2 * d_ff
+        for _ in range(n_layers):
+            self.w16_qkv.append(
+                self.ctx.enqueue_create_buffer[DType.float16](n_qkv * d_model))
+            self.w16_o.append(self.ctx.enqueue_create_buffer[DType.float16](d_model * n_q))
+            self.w16_gu.append(
+                self.ctx.enqueue_create_buffer[DType.float16](2 * d_ff * d_model))
+            self.w16_down.append(
+                self.ctx.enqueue_create_buffer[DType.float16](d_model * d_ff))
+        self.tc_a16 = self.ctx.enqueue_create_buffer[DType.float16](rows * max_k)
+        self.tc_c16 = self.ctx.enqueue_create_buffer[DType.float16](rows * max_n)
+        self.tc_gu = self.ctx.enqueue_create_buffer[DType.float32](rows * 2 * d_ff)
+
+    def _tc_stage_weights(mut self) raises:
+        """The ONE-TIME admission-prefill TC enablement, lazy on the first
+        `prefill_batched`: (1) the VRAM headroom check — allocate the REAL f16 residency
+        + scratch (the constructor holds placeholders only); failure demotes the session
+        to the native chain for life with a printed record, never fatal. (2) `tc_shim_init`
+        (cuBLAS handle on Mojo's context). (3) every layer's four RESIDENT F32 tables
+        converted to their f16 twins by `tc_shim_f32_to_f16` (this session's serve lane
+        keeps its f32 projections resident — no packed3 here, the convert IS the staging;
+        cost at 0.6B is the ~1 GB read+write once, noise against the load). The driver's
+        `seal` has drained the uploads by the time this runs."""
+        if self.tc_staged != 0:
+            return
+        if self.skip_f32_projections == 1:
+            # No resident f32 projections to convert (and this struct carries no packed3
+            # twins) — the TC lane is structurally unavailable in this mode.
+            self.tc_staged = -1
+            return
+        try:
+            self._tc_alloc(
+                self.n_layers, (self.h_q + 2 * self.h_kv) * self.d_head,
+                self.h_q * self.d_head, self.d_model, self.d_ff)
+        except e:
+            print("TC: VRAM headroom check FAILED — the f16 dual residency could not be",
+                  "allocated; admission prefill stays on the native chain. Recorded:", e)
+            self.tc_staged = -1
+            return
+        var t0 = perf_counter_ns()
+        var r = _tc_init()
+        if r != 0:
+            print("TC: tc_shim_init failed:", r, "last_error:", _tc_last_error(),
+                  "| admission prefill stays on the native chain")
+            self.tc_staged = -1
+            return
+        var n_q = self.h_q * self.d_head
+        var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            r = _tc_stage_f32_to_f16(
+                Int(lw.w_qkv.unsafe_ptr()), Int(self.w16_qkv[layer].unsafe_ptr()),
+                n_qkv * self.d_model)
+            if r == 0:
+                r = _tc_stage_f32_to_f16(
+                    Int(lw.w_o.unsafe_ptr()), Int(self.w16_o[layer].unsafe_ptr()),
+                    self.d_model * n_q)
+            if r == 0:
+                r = _tc_stage_f32_to_f16(
+                    Int(lw.w_gu.unsafe_ptr()), Int(self.w16_gu[layer].unsafe_ptr()),
+                    2 * self.d_ff * self.d_model)
+            if r == 0:
+                r = _tc_stage_f32_to_f16(
+                    Int(lw.w_down.unsafe_ptr()), Int(self.w16_down[layer].unsafe_ptr()),
+                    self.d_model * self.d_ff)
+            if r != 0:
+                print("TC: f32->f16 staging FAILED at layer", layer, "status", r,
+                      "last_error:", _tc_last_error(),
+                      "| admission prefill stays on the native chain")
+                self.tc_staged = -1
+                return
+        self.ctx.synchronize()
+        self.tc_staged = 1
+        var f16_bytes = Float64(self.n_layers) * Float64(
+            n_qkv * self.d_model + self.d_model * n_q + 2 * self.d_ff * self.d_model
+            + self.d_model * self.d_ff) * 2.0
+        print("TC: admission-prefill f16 residency STAGED |",
+              Float64(perf_counter_ns() - t0) / 1.0e6, "ms one-time | tables:",
+              f16_bytes / 1.0e9, "GB | compute mode:", TC_ACC_MODE)
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -490,6 +631,14 @@ struct _CudaResidentQwen3Batched(Movable):
         every KV write/read lands inside slot b, GEMMs/norms run exactly as the single-stream
         CUDA prefill, and the tail lm_head+argmax yields slot b's first generated token.
         Sequences run one at a time in stream order; the tile scratch is reused across them.
+
+        TC ESCAPE HATCH (`-D ALGENTA_TC_SHIM`, feat/tc-int): with the f16 residency staged
+        (`tc_staged == 1`), every tile of `TC_MIN_M` (128) rows or more dispatches its four
+        projection GEMMs through the cuBLAS f16 tensor-core seam (qkv ASSIGN, o_proj
+        ACCUMULATE, gate/up ASSIGN + native SwiGLU epilogue, down_proj ACCUMULATE — the
+        probe's per-call `ctx.synchronize()` seam brackets each shim call); sub-threshold
+        tiles keep the v2 chain. RoPE/attention/norms/lm_head stay native; `step_batched`
+        decode is untouched. Flag-off builds run the plan below byte-unmodified.
         """
 
         @parameter
@@ -498,6 +647,9 @@ struct _CudaResidentQwen3Batched(Movable):
             var empty = List[Int]()
             return empty^
         else:
+            @parameter
+            if TC_SHIM_BUILD:
+                self._tc_stage_weights()
             var B = len(prompts)
             if B < 1 or B > _CUDA_BATCH_DECODE_MAX_SEQS:
                 var empty = List[Int]()
@@ -526,6 +678,12 @@ struct _CudaResidentQwen3Batched(Movable):
                     if n_prompt - pos < m:
                         m = n_prompt - pos
                     last_m = m
+                    # Runtime TC admission for THIS tile (always False in flag-off builds —
+                    # `tc_staged` is -1 there): full CUDA_PREFILL_TILE tiles ride the seam.
+                    var use_tc = False
+                    @parameter
+                    if TC_SHIM_BUILD:
+                        use_tc = self.tc_staged == 1 and m >= TC_MIN_M
 
                     # ── this chunk's token ids, uploaded once ──
                     with self.pf_tokens.map_to_host() as h:
@@ -554,16 +712,30 @@ struct _CudaResidentQwen3Batched(Movable):
                             Int64(self.d_model), self.eps, Int64(m),
                             grid_dim=m, block_dim=_TG,
                         )
-                        # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN, v2)
-                        self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
-                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                            lw.w_qkv.unsafe_ptr(),
-                            Int64(m), Int64(self.d_model),
-                            Int64((self.h_q + 2 * self.h_kv) * self.d_head),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
-                                (self.h_q + 2 * self.h_kv) * self.d_head, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
+                        # 2 ── fused Q/K/V projection — TC seam (ASSIGN) or v2 tiled GEMM
+                        if use_tc:
+                            self.ctx.synchronize()
+                            var r = _tc_gemm_dispatch(
+                                Int(self.pf_xn.unsafe_ptr()),
+                                Int(self.w16_qkv[layer].unsafe_ptr()),
+                                Int(lw.w_qkv.unsafe_ptr()),
+                                m, self.d_model, (self.h_q + 2 * self.h_kv) * self.d_head,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_qkv.unsafe_ptr()), 0)
+                            if r != 0:
+                                var empty = List[Int]()
+                                return empty^
+                        else:
+                            self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_qkv.unsafe_ptr(),
+                                Int64(m), Int64(self.d_model),
+                                Int64((self.h_q + 2 * self.h_kv) * self.d_head),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
+                                    (self.h_q + 2 * self.h_kv) * self.d_head, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
                         # 3 ── q_norm + k_norm + RoPE + the KV-cache write, into slot b
                         self.ctx.enqueue_function[_pf_ropewrt_kernel](
                             self.pf_q_rot.unsafe_ptr(), ck_b, cv_b,
@@ -582,14 +754,29 @@ struct _CudaResidentQwen3Batched(Movable):
                             self.scale, Int64(m),
                             grid_dim=self.h_q * m, block_dim=self.d_head,
                         )
-                        # 5 ── o_proj ACCUMULATED into the residual stream (v2)
-                        self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                            self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
-                            lw.w_o.unsafe_ptr(),
-                            Int64(m), Int64(n_q), Int64(self.d_model),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
+                        # 5 ── o_proj ACCUMULATED into the residual — TC seam (beta 1) or v2
+                        if use_tc:
+                            self.ctx.synchronize()
+                            var r = _tc_gemm_dispatch(
+                                Int(self.pf_attn.unsafe_ptr()),
+                                Int(self.w16_o[layer].unsafe_ptr()),
+                                Int(lw.w_o.unsafe_ptr()),
+                                m, n_q, self.d_model,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_hidden.unsafe_ptr()), 1)
+                            if r != 0:
+                                var empty = List[Int]()
+                                return empty^
+                        else:
+                            self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                                lw.w_o.unsafe_ptr(),
+                                Int64(m), Int64(n_q), Int64(self.d_model),
+                                grid_dim=_ceil_div(m, _G2_BM)
+                                * _ceil_div(self.d_model, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
                         # 6 ── rmsnorm(post_attention_layernorm) over every row
                         self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
                             self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
@@ -597,22 +784,57 @@ struct _CudaResidentQwen3Batched(Movable):
                             Int64(self.d_model), self.eps, Int64(m),
                             grid_dim=m, block_dim=_TG,
                         )
-                        # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2)
-                        self.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
-                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                            lw.w_gu.unsafe_ptr(),
-                            Int64(m), Int64(self.d_model), Int64(self.d_ff),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
-                        # 8 ── down_proj ACCUMULATED into the residual stream (v2)
-                        self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                            self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
-                            lw.w_down.unsafe_ptr(),
-                            Int64(m), Int64(self.d_ff), Int64(self.d_model),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
+                        # 7 ── gate/up + SwiGLU — TC seam + native epilogue, or v2 fused
+                        if use_tc:
+                            self.ctx.synchronize()
+                            var r = _tc_gemm_dispatch(
+                                Int(self.pf_xn.unsafe_ptr()),
+                                Int(self.w16_gu[layer].unsafe_ptr()),
+                                Int(lw.w_gu.unsafe_ptr()),
+                                m, self.d_model, 2 * self.d_ff,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.tc_gu.unsafe_ptr()), 0)
+                            if r != 0:
+                                var empty = List[Int]()
+                                return empty^
+                            self.ctx.enqueue_function[_pf_swiglu_rows_kernel](
+                                self.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
+                                Int64(m * self.d_ff), Int64(self.d_ff),
+                                grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                            )
+                        else:
+                            self.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_gu.unsafe_ptr(),
+                                Int64(m), Int64(self.d_model), Int64(self.d_ff),
+                                grid_dim=_ceil_div(m, _G2_BM)
+                                * _ceil_div(self.d_ff, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
+                        # 8 ── down_proj ACCUMULATED into the residual — TC seam (beta 1) or v2
+                        if use_tc:
+                            self.ctx.synchronize()
+                            var r = _tc_gemm_dispatch(
+                                Int(self.pf_act.unsafe_ptr()),
+                                Int(self.w16_down[layer].unsafe_ptr()),
+                                Int(lw.w_down.unsafe_ptr()),
+                                m, self.d_ff, self.d_model,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_hidden.unsafe_ptr()), 1)
+                            if r != 0:
+                                var empty = List[Int]()
+                                return empty^
+                        else:
+                            self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                                lw.w_down.unsafe_ptr(),
+                                Int64(m), Int64(self.d_ff), Int64(self.d_model),
+                                grid_dim=_ceil_div(m, _G2_BM)
+                                * _ceil_div(self.d_model, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
                     pos += m
 
                 # ── final rmsnorm + lm_head + argmax on this sequence's LAST row ──

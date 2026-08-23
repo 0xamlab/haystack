@@ -228,6 +228,13 @@ from residentk.kernels_prefill_v2f16 import (
     _pf_gemm_accum_kernel_v2f16,
     _pf_gemm_swiglu_kernel_v2f16,
 )
+from residentk.tc_shim_bridge import (
+    TC_SHIM_BUILD,
+    TC_MIN_M,
+    TC_ACC_MODE,
+    _tc_gemm_dispatch,
+    _pf_swiglu_rows_kernel,
+)
 
 comptime DEFAULT_CHECKPOINT_DIR: String = "/tmp/qwen3smoke"
 """The same shared checkpoint dump every other CUDA arm reads; argv[1] (or --checkpoint)
@@ -796,6 +803,9 @@ def _prefill_slots(
 
         var n_iters = _ceil_div(s.vocab, _LM_BLOCKS * _SUBS)
         var first_tokens = List[Int](capacity=B)
+        @parameter
+        if TC_SHIM_BUILD:
+            s._tc_stage_weights()
 
         for b in range(B):
             ref prompt = prompts[b]
@@ -808,6 +818,12 @@ def _prefill_slots(
                 if n_prompt - pos < m:
                     m = n_prompt - pos
                 last_m = m
+                # Runtime TC admission (always False in flag-off builds — `tc_staged` is
+                # -1 there): full 128-row tiles ride the cuBLAS seam, tails stay native.
+                var use_tc = False
+                @parameter
+                if TC_SHIM_BUILD:
+                    use_tc = s.tc_staged == 1 and m >= TC_MIN_M
 
                 # ── this chunk's token ids, uploaded once ──
                 with s.pf_tokens.map_to_host() as h:
@@ -836,16 +852,29 @@ def _prefill_slots(
                         Int64(s.d_model), s.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN, v2)
-                    s.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
-                        s.pf_qkv.unsafe_ptr(), s.pf_xn.unsafe_ptr(),
-                        lw.w_qkv.unsafe_ptr(),
-                        Int64(m), Int64(s.d_model),
-                        Int64((s.h_q + 2 * s.h_kv) * s.d_head),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
-                            (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    # 2 ── fused Q/K/V projection — TC seam (ASSIGN) or v2 tiled GEMM
+                    if use_tc:
+                        s.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(s.pf_xn.unsafe_ptr()),
+                            Int(s.w16_qkv[layer].unsafe_ptr()),
+                            Int(lw.w_qkv.unsafe_ptr()),
+                            m, s.d_model, (s.h_q + 2 * s.h_kv) * s.d_head,
+                            Int(s.tc_a16.unsafe_ptr()), Int(s.tc_c16.unsafe_ptr()),
+                            Int(s.pf_qkv.unsafe_ptr()), 0)
+                        if r != 0:
+                            var empty = List[Int]()
+                            return empty^
+                    else:
+                        s.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                            s.pf_qkv.unsafe_ptr(), s.pf_xn.unsafe_ptr(),
+                            lw.w_qkv.unsafe_ptr(),
+                            Int64(m), Int64(s.d_model),
+                            Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
+                                (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                     # 3 ── q_norm + k_norm + RoPE + the KV-cache write, into the slot
                     s.ctx.enqueue_function[_pf_ropewrt_kernel](
                         s.pf_q_rot.unsafe_ptr(), ck_b, cv_b,
@@ -864,14 +893,27 @@ def _prefill_slots(
                         s.scale, Int64(m),
                         grid_dim=s.h_q * m, block_dim=s.d_head,
                     )
-                    # 5 ── o_proj ACCUMULATED into the residual stream (v2)
-                    s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                        s.pf_hidden.unsafe_ptr(), s.pf_attn.unsafe_ptr(),
-                        lw.w_o.unsafe_ptr(),
-                        Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    # 5 ── o_proj ACCUMULATED into the residual — TC seam (beta 1) or v2
+                    if use_tc:
+                        s.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(s.pf_attn.unsafe_ptr()),
+                            Int(s.w16_o[layer].unsafe_ptr()),
+                            Int(lw.w_o.unsafe_ptr()),
+                            m, s.h_q * s.d_head, s.d_model,
+                            Int(s.tc_a16.unsafe_ptr()), Int(s.tc_c16.unsafe_ptr()),
+                            Int(s.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            var empty = List[Int]()
+                            return empty^
+                    else:
+                        s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            s.pf_hidden.unsafe_ptr(), s.pf_attn.unsafe_ptr(),
+                            lw.w_o.unsafe_ptr(),
+                            Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                     # 6 ── rmsnorm(post_attention_layernorm) over every row
                     s.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
                         s.pf_xn.unsafe_ptr(), s.pf_hidden.unsafe_ptr(),
@@ -879,22 +921,53 @@ def _prefill_slots(
                         Int64(s.d_model), s.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2)
-                    s.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
-                        s.pf_act.unsafe_ptr(), s.pf_xn.unsafe_ptr(),
-                        lw.w_gu.unsafe_ptr(),
-                        Int64(m), Int64(s.d_model), Int64(s.d_ff),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
-                    # 8 ── down_proj ACCUMULATED into the residual stream (v2)
-                    s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                        s.pf_hidden.unsafe_ptr(), s.pf_act.unsafe_ptr(),
-                        lw.w_down.unsafe_ptr(),
-                        Int64(m), Int64(s.d_ff), Int64(s.d_model),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    # 7 ── gate/up + SwiGLU — TC seam + native epilogue, or v2 fused
+                    if use_tc:
+                        s.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(s.pf_xn.unsafe_ptr()),
+                            Int(s.w16_gu[layer].unsafe_ptr()),
+                            Int(lw.w_gu.unsafe_ptr()),
+                            m, s.d_model, 2 * s.d_ff,
+                            Int(s.tc_a16.unsafe_ptr()), Int(s.tc_c16.unsafe_ptr()),
+                            Int(s.tc_gu.unsafe_ptr()), 0)
+                        if r != 0:
+                            var empty = List[Int]()
+                            return empty^
+                        s.ctx.enqueue_function[_pf_swiglu_rows_kernel](
+                            s.pf_act.unsafe_ptr(), s.tc_gu.unsafe_ptr(),
+                            Int64(m * s.d_ff), Int64(s.d_ff),
+                            grid_dim=_ceil_div(m * s.d_ff, _TG), block_dim=_TG,
+                        )
+                    else:
+                        s.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                            s.pf_act.unsafe_ptr(), s.pf_xn.unsafe_ptr(),
+                            lw.w_gu.unsafe_ptr(),
+                            Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 8 ── down_proj ACCUMULATED into the residual — TC seam (beta 1) or v2
+                    if use_tc:
+                        s.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(s.pf_act.unsafe_ptr()),
+                            Int(s.w16_down[layer].unsafe_ptr()),
+                            Int(lw.w_down.unsafe_ptr()),
+                            m, s.d_ff, s.d_model,
+                            Int(s.tc_a16.unsafe_ptr()), Int(s.tc_c16.unsafe_ptr()),
+                            Int(s.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            var empty = List[Int]()
+                            return empty^
+                    else:
+                        s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            s.pf_hidden.unsafe_ptr(), s.pf_act.unsafe_ptr(),
+                            lw.w_down.unsafe_ptr(),
+                            Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                 pos += m
 
             # ── final rmsnorm + lm_head + argmax on this sequence's LAST row ──
@@ -965,6 +1038,14 @@ struct _AdmissionPrefill(Movable):
     var pf_out_idx: DeviceBuffer[DType.int32]
     var host_pf_val: HostBuffer[DType.float32]
     var host_pf_idx: HostBuffer[DType.int32]
+    # ── TC escape hatch (feat/tc-int): the lane's OWN GEMM scratch (the f16 weights live
+    #    in the session — `s.w16_*`, staged once by `s._tc_stage_weights`). Per-lane
+    #    scratch keeps LEVER-L5 lanes disjoint: no two lanes ever stage into the same a16
+    #    buffer mid-flight. Real sizes under TC_SHIM_BUILD at `cap_m` rows; placeholders
+    #    otherwise (a flag-off build pays nothing).
+    var tc_a16: DeviceBuffer[DType.float16]
+    var tc_c16: DeviceBuffer[DType.float16]
+    var tc_gu: DeviceBuffer[DType.float32]
 
     def __init__(
         out self, mut view: DeviceContext, vocab: Int,
@@ -998,6 +1079,27 @@ struct _AdmissionPrefill(Movable):
         self.pf_out_idx = view.enqueue_create_buffer[DType.int32](1)
         self.host_pf_val = view.enqueue_create_host_buffer[DType.float32](1)
         self.host_pf_idx = view.enqueue_create_host_buffer[DType.int32](1)
+        # TC lane scratch (the field docstring's contract): real sizes at `cap_m` rows
+        # under the build flag, 1-element placeholders in every other build.
+        var tc_max_k = d_model
+        if h_q * d_head > tc_max_k:
+            tc_max_k = h_q * d_head
+        if d_ff > tc_max_k:
+            tc_max_k = d_ff
+        var tc_max_n = (h_q + 2 * h_kv) * d_head
+        if 2 * d_ff > tc_max_n:
+            tc_max_n = 2 * d_ff
+        var tc_elems_a = 1
+        var tc_elems_c = 1
+        var tc_elems_g = 1
+        @parameter
+        if TC_SHIM_BUILD:
+            tc_elems_a = t * tc_max_k
+            tc_elems_c = t * tc_max_n
+            tc_elems_g = t * 2 * d_ff
+        self.tc_a16 = view.enqueue_create_buffer[DType.float16](tc_elems_a)
+        self.tc_c16 = view.enqueue_create_buffer[DType.float16](tc_elems_c)
+        self.tc_gu = view.enqueue_create_buffer[DType.float32](tc_elems_g)
 
     def run(
         mut self, mut s: _CudaResidentQwen3Batched, base_slot: Int,
@@ -1061,6 +1163,9 @@ struct _AdmissionPrefill(Movable):
                 if prompt[i] < 0 or prompt[i] >= s.vocab:
                     raise Error("qwen3_serve_batched_cuda: admission launch bad token id")
 
+            @parameter
+            if TC_SHIM_BUILD:
+                s._tc_stage_weights()
             var n_iters = _ceil_div(s.vocab, _LM_BLOCKS * _SUBS)
             var kv_off = slot * s.kv_stride_elems
             var pos = 0
@@ -1070,6 +1175,14 @@ struct _AdmissionPrefill(Movable):
                 if n_prompt - pos < m:
                     m = n_prompt - pos
                 last_m = m
+                # Runtime TC admission for THIS pass (always False in flag-off builds —
+                # `tc_staged` is -1 there). NOTE on the seam under LEVER L5: each TC GEMM
+                # brackets with a lane-stream drain + the shim's own stream sync, so lanes
+                # serialize at the GEMM boundary — measured, and still a win at these M.
+                var use_tc = False
+                @parameter
+                if TC_SHIM_BUILD:
+                    use_tc = s.tc_staged == 1 and m >= TC_MIN_M
 
                 # ── this pass's token ids, uploaded once (the mapping syncs on the LANE
                 #    stream — map_to_host routes through the buffer's own context view) ──
@@ -1098,29 +1211,43 @@ struct _AdmissionPrefill(Movable):
                         Int64(s.d_model), s.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN, v2) — the grid
-                    # scales with M: ceil(m/64) row-tiles, ONE pass for the whole window
-                    @parameter
-                    if SERVE_PF_F16GEMM:
-                        self.view.enqueue_function[_pf_gemm_assign_kernel_v2f16](
-                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                            lw.w_qkv.unsafe_ptr(),
-                            Int64(m), Int64(s.d_model),
-                            Int64((s.h_q + 2 * s.h_kv) * s.d_head),
-                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(
-                                (s.h_q + 2 * s.h_kv) * s.d_head, _F16G_BN),
-                            block_dim=_F16G_NTHREADS,
-                        )
+                    # 2 ── fused Q/K/V projection — TC seam (ASSIGN), or the v2/v2f16 grid
+                    # that scales with M: ceil(m/64) row-tiles, ONE pass for the whole window
+                    if use_tc:
+                        self.view.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_xn.unsafe_ptr()),
+                            Int(s.w16_qkv[layer].unsafe_ptr()),
+                            Int(lw.w_qkv.unsafe_ptr()),
+                            m, s.d_model, (s.h_q + 2 * s.h_kv) * s.d_head,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_qkv.unsafe_ptr()), 0)
+                        if r != 0:
+                            raise Error(
+                                "qwen3_serve_batched_cuda: TC qkv GEMM failed, status "
+                                + String(r))
                     else:
-                        self.view.enqueue_function[_pf_gemm_assign_kernel_v2](
-                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                            lw.w_qkv.unsafe_ptr(),
-                            Int64(m), Int64(s.d_model),
-                            Int64((s.h_q + 2 * s.h_kv) * s.d_head),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
-                                (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            self.view.enqueue_function[_pf_gemm_assign_kernel_v2f16](
+                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_qkv.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model),
+                                Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(
+                                    (s.h_q + 2 * s.h_kv) * s.d_head, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            self.view.enqueue_function[_pf_gemm_assign_kernel_v2](
+                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_qkv.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model),
+                                Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
+                                    (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
                     # 3 ── q_norm + k_norm + RoPE + the KV-cache write, into the slot
                     self.view.enqueue_function[_pf_ropewrt_kernel](
                         self.pf_q_rot.unsafe_ptr(), ck_b, cv_b,
@@ -1172,24 +1299,40 @@ struct _AdmissionPrefill(Movable):
                             s.scale, Int64(m),
                             grid_dim=s.h_q * m, block_dim=s.d_head,
                         )
-                    # 5 ── o_proj ACCUMULATED into the residual stream (v2)
-                    @parameter
-                    if SERVE_PF_F16GEMM:
-                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2f16](
-                            self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
-                            lw.w_o.unsafe_ptr(),
-                            Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
-                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
-                            block_dim=_F16G_NTHREADS,
-                        )
+                    # 5 ── o_proj ACCUMULATED into the residual — TC seam (beta 1) or v2
+                    if use_tc:
+                        self.view.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_attn.unsafe_ptr()),
+                            Int(s.w16_o[layer].unsafe_ptr()),
+                            Int(lw.w_o.unsafe_ptr()),
+                            m, s.h_q * s.d_head, s.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            raise Error(
+                                "qwen3_serve_batched_cuda: TC o_proj GEMM failed, status "
+                                + String(r))
                     else:
-                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2](
-                            self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
-                            lw.w_o.unsafe_ptr(),
-                            Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            self.view.enqueue_function[_pf_gemm_accum_kernel_v2f16](
+                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                                lw.w_o.unsafe_ptr(),
+                                Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _F16G_BM)
+                                * _ceil_div(s.d_model, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            self.view.enqueue_function[_pf_gemm_accum_kernel_v2](
+                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                                lw.w_o.unsafe_ptr(),
+                                Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _G2_BM)
+                                * _ceil_div(s.d_model, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
                     # 6 ── rmsnorm(post_attention_layernorm) over every row
                     self.view.enqueue_function[_pf_rmsnorm_rows_kernel](
                         self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
@@ -1197,42 +1340,78 @@ struct _AdmissionPrefill(Movable):
                         Int64(s.d_model), s.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2)
-                    @parameter
-                    if SERVE_PF_F16GEMM:
-                        self.view.enqueue_function[_pf_gemm_swiglu_kernel_v2f16](
-                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                            lw.w_gu.unsafe_ptr(),
-                            Int64(m), Int64(s.d_model), Int64(s.d_ff),
-                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_ff, _F16G_BN),
-                            block_dim=_F16G_NTHREADS,
+                    # 7 ── gate/up + SwiGLU — TC seam + native epilogue, or v2/v2f16 fused
+                    if use_tc:
+                        self.view.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_xn.unsafe_ptr()),
+                            Int(s.w16_gu[layer].unsafe_ptr()),
+                            Int(lw.w_gu.unsafe_ptr()),
+                            m, s.d_model, 2 * s.d_ff,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.tc_gu.unsafe_ptr()), 0)
+                        if r != 0:
+                            raise Error(
+                                "qwen3_serve_batched_cuda: TC gu GEMM failed, status "
+                                + String(r))
+                        self.view.enqueue_function[_pf_swiglu_rows_kernel](
+                            self.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
+                            Int64(m * s.d_ff), Int64(s.d_ff),
+                            grid_dim=_ceil_div(m * s.d_ff, _TG), block_dim=_TG,
                         )
                     else:
-                        self.view.enqueue_function[_pf_gemm_swiglu_kernel_v2](
-                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                            lw.w_gu.unsafe_ptr(),
-                            Int64(m), Int64(s.d_model), Int64(s.d_ff),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
-                    # 8 ── down_proj ACCUMULATED into the residual stream (v2)
-                    @parameter
-                    if SERVE_PF_F16GEMM:
-                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2f16](
-                            self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
-                            lw.w_down.unsafe_ptr(),
-                            Int64(m), Int64(s.d_ff), Int64(s.d_model),
-                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
-                            block_dim=_F16G_NTHREADS,
-                        )
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            self.view.enqueue_function[_pf_gemm_swiglu_kernel_v2f16](
+                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_gu.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                                grid_dim=_ceil_div(m, _F16G_BM)
+                                * _ceil_div(s.d_ff, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            self.view.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                lw.w_gu.unsafe_ptr(),
+                                Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
+                    # 8 ── down_proj ACCUMULATED into the residual — TC seam (beta 1) or v2
+                    if use_tc:
+                        self.view.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_act.unsafe_ptr()),
+                            Int(s.w16_down[layer].unsafe_ptr()),
+                            Int(lw.w_down.unsafe_ptr()),
+                            m, s.d_ff, s.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            raise Error(
+                                "qwen3_serve_batched_cuda: TC down GEMM failed, status "
+                                + String(r))
                     else:
-                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2](
-                            self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
-                            lw.w_down.unsafe_ptr(),
-                            Int64(m), Int64(s.d_ff), Int64(s.d_model),
-                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
-                            block_dim=_G2_NTHREADS,
-                        )
+                        @parameter
+                        if SERVE_PF_F16GEMM:
+                            self.view.enqueue_function[_pf_gemm_accum_kernel_v2f16](
+                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                                lw.w_down.unsafe_ptr(),
+                                Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _F16G_BM)
+                                * _ceil_div(s.d_model, _F16G_BN),
+                                block_dim=_F16G_NTHREADS,
+                            )
+                        else:
+                            self.view.enqueue_function[_pf_gemm_accum_kernel_v2](
+                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                                lw.w_down.unsafe_ptr(),
+                                Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                                grid_dim=_ceil_div(m, _G2_BM)
+                                * _ceil_div(s.d_model, _G2_BN),
+                                block_dim=_G2_NTHREADS,
+                            )
                 pos += m
 
             # ── final rmsnorm + lm_head + argmax on the sequence's LAST row, readback

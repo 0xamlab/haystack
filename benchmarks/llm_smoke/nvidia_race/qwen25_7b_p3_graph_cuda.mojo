@@ -510,6 +510,27 @@ def main() raises:
             report = report + "prefill" + String(n_prompt) + "_tok_s=" \
                 + String(pf_stats.median) + "\n"
 
+            # ── MEASURE: prefill1024 (the race prompt repeated x4 — prefill throughput is
+            #    content-agnostic; the MAX_CTX sizing covers 1024 + headroom) ──
+            var long_ids = List[Int](capacity=4 * n_prompt)
+            for rep in range(4):
+                for i in range(n_prompt):
+                    long_ids.append(race_ids[i])
+            var warmL = sg.prefill(_copy_ids(long_ids))
+            _check_resident(warmL.status, "warmup prefill1024")
+            var pf1024_samples = List[Float64]()
+            for r in range(runs):
+                var b0 = perf_counter_ns()
+                var pfL = sg.prefill(_copy_ids(long_ids))
+                _check_resident(pfL.status, "bench prefill1024")
+                var b1 = perf_counter_ns()
+                pf1024_samples.append(Float64(4 * n_prompt) / (_ms(b1 - b0) / 1000.0))
+            var pf1024_stats = _cell_stats(pf1024_samples)
+            print("prefill1024: median", pf1024_stats.median, "tok/s | IQR",
+                  pf1024_stats.rel_iqr * 100.0, "% | outliers", pf1024_stats.n_outliers,
+                  "|", "PASS" if pf1024_stats.passes else "FLAG")
+            report = report + "prefill1024_tok_s=" + String(pf1024_stats.median) + "\n"
+
             var depths = List[Int]()
             depths.append(64)
             depths.append(256)

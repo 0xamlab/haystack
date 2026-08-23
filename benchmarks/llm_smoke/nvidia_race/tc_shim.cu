@@ -283,6 +283,94 @@ extern "C" int64_t tc_shim_gemm_tf32(const void* a_f32, const void* w_f32,
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// INTEGRATION ENTRIES (feat/tc-int, 2026-08-23) — the seams the session integration
+// dispatches. Every probe entry above stays byte-unmodified.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+// THE integration workhorse: C[M,N](f32) = A[M,K](f32) @ W[N,K](f16)^T with W PRE-STAGED f16
+// at session open, A converted into a16_scratch per call, and C written DIRECTLY as f32 —
+// cublasGemmEx supports A/B = CUDA_R_16F with C = CUDA_R_32F under CUBLAS_COMPUTE_32F (still
+// HMMA on the tensor cores; accumulator AND output f32). vs the probe's tc_full seam this
+// drops the M*N f16->f32 C back-conversion entirely. `accum`: 0 = ASSIGN (beta 0), 1 =
+// ACCUMULATE into the existing f32 C (beta 1) — the o_proj/down_proj residual feed done by
+// cuBLAS itself at f32 precision (no f16 residual staging, unlike COMPUTE_16F). Syncs the
+// shim stream before returning: the integration seam.
+extern "C" int64_t tc_shim_gemm_f16_32c(const void* a_f32, const void* w_f16,
+                                        int64_t M, int64_t K, int64_t N,
+                                        void* a16_scratch, void* c_f32, int64_t accum) {
+    int64_t r = tc_shim_f32_to_f16(a_f32, a16_scratch, M * K);
+    if (r != 0) return r;
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f16, CUDA_R_16F, (int)K,
+        a16_scratch, CUDA_R_16F, (int)K,
+        &beta,
+        c_f32, CUDA_R_32F, (int)N,
+        CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    cudaError_t e = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// Fallback ladder rung 2 (only if the 32F-acc token gates ever fail): TF32 with a beta
+// select — f32 weights DIRECTLY (zero dual residency), ASSIGN (beta 0) or ACCUMULATE
+// (beta 1) into the f32 residual.
+extern "C" int64_t tc_shim_gemm_tf32_beta(const void* a_f32, const void* w_f32,
+                                          int64_t M, int64_t K, int64_t N,
+                                          void* c_f32, int64_t accum) {
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f32, CUDA_R_32F, (int)K,
+        a_f32, CUDA_R_32F, (int)K,
+        &beta,
+        c_f32, CUDA_R_32F, (int)N,
+        CUBLAS_COMPUTE_32F_FAST_TF32, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    cudaError_t e = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// Fallback ladder rung 3: f16-ACCUMULATE (COMPUTE_16F requires a 16F C): stage the existing
+// f32 residual into c16_scratch, GemmEx with beta 1 in 16F compute, convert back. Rounds the
+// residual through f16 at every call — last-resort numerics, documented.
+extern "C" int64_t tc_shim_gemm_f16_acc16(const void* a_f32, const void* w_f16,
+                                          int64_t M, int64_t K, int64_t N,
+                                          void* a16_scratch, void* c16_scratch,
+                                          void* c_f32) {
+    int64_t r = tc_shim_f32_to_f16(a_f32, a16_scratch, M * K);
+    if (r != 0) return r;
+    r = tc_shim_f32_to_f16(c_f32, c16_scratch, M * N);
+    if (r != 0) return r;
+    __half alpha_h = __float2half(1.0f), beta_h = __float2half(1.0f);
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha_h,
+        w_f16, CUDA_R_16F, (int)K,
+        a16_scratch, CUDA_R_16F, (int)K,
+        &beta_h,
+        c16_scratch, CUDA_R_16F, (int)N,
+        CUBLAS_COMPUTE_16F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    r = tc_shim_f16_to_f32(c16_scratch, c_f32, M * N);
+    if (r != 0) return r;
+    cudaError_t e = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
 // ── packed3 -> f16 weight dequant at session open ─────────────────────────────────────────
 // Layout is residentk/kernels_packed3.mojo's spec, byte for byte: per row (weights [n,k]
 // row-major), 3 unsigned int8 quants per 32-bit word little-endian (b0 lowest k), row stride
@@ -322,6 +410,51 @@ extern "C" int64_t tc_shim_dequant_packed3_f16(const void* words, const void* sc
     _packed3_to_f16_kernel<<<(unsigned)blocks, threads, 0, g_stream>>>(
         (const uint32_t*)words, (const float*)scales, (const float*)zeros,
         (__half*)out_f16, (long)n_rows, (long)k, (long)k_pad,
+        (long)words_per_row, (long)blocks_per_row);
+    cudaError_t e = cudaGetLastError();
+    if (e == cudaSuccess) e = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// INTEGRATION variant (feat/tc-int): DENSE f16 output — writes ONLY the k real elements of
+// each row at row stride k (the packed3 `k_pad - k` tail dropped), so the staged table is a
+// plain [n_rows, k] row-major f16 matrix the GEMM consumes at its NATURAL K (no padded
+// activation tails needed on the session side). The quant/scale/zero indexing is otherwise
+// byte-identical to `_packed3_to_f16_kernel` above (words are still read from the packed
+// layout's `words_per_row` rows; scales/zeros from `blocks_per_row`).
+__global__ void _packed3_to_f16_dense_kernel(const uint32_t* __restrict__ words,
+                                             const float* __restrict__ scales,
+                                             const float* __restrict__ zeros,
+                                             __half* __restrict__ out,
+                                             long n_rows, long k,
+                                             long words_per_row, long blocks_per_row) {
+    long idx = (long)blockIdx.x * blockDim.x + threadIdx.x;
+    long stride = (long)gridDim.x * blockDim.x;
+    long total = n_rows * k;
+    for (long t = idx; t < total; t += stride) {
+        long row = t / k;
+        long kk = t - row * k;
+        long word = words[row * words_per_row + kk / 3];
+        unsigned q = (word >> (8 * (kk % 3))) & 0xFFu;
+        long blk = row * blocks_per_row + kk / 32;
+        float v = ((float)q - zeros[blk]) * scales[blk];
+        out[t] = __float2half(v);
+    }
+}
+
+extern "C" int64_t tc_shim_dequant_packed3_f16_dense(const void* words, const void* scales,
+                                                     const void* zeros, void* out_f16,
+                                                     int64_t n_rows, int64_t k,
+                                                     int64_t words_per_row,
+                                                     int64_t blocks_per_row) {
+    long total = (long)n_rows * (long)k;
+    int threads = 256;
+    long blocks = (total + threads - 1) / threads;
+    if (blocks > 2147483647L) blocks = 2147483647L;
+    _packed3_to_f16_dense_kernel<<<(unsigned)blocks, threads, 0, g_stream>>>(
+        (const uint32_t*)words, (const float*)scales, (const float*)zeros,
+        (__half*)out_f16, (long)n_rows, (long)k,
         (long)words_per_row, (long)blocks_per_row);
     cudaError_t e = cudaGetLastError();
     if (e == cudaSuccess) e = cudaStreamSynchronize(g_stream);

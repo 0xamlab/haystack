@@ -184,6 +184,15 @@ from residentk.kernels import (
     _pf_ropewrt_kernel,
     _pf_attn_tiled_kernel_simd,
     _qkv_bias_add_rows_kernel,
+    _lmhead_argmax_kernel,
+)
+from residentk.kernels_prefill_attn_flash import (
+    _PF_FLASH_NTHREADS,
+    _PF_FLASH_ROWS_PER_BLOCK,
+    _pf_attn_flash_kernel,
+)
+from residentk.kernels_prefill_attn_flash2 import (
+    _pf_attn_flash2_kernel,
 )
 from residentk.kernels_prefill_f32 import (
     _pf_embed_rows_kernel,
@@ -204,9 +213,29 @@ from residentk.session import (
 from residentk.session_cuda import (
     CUDA_SESSION_BUILD,
     CUDA_PREFILL_TILE,
+    CUDA_PREFILL_ONEPASS_B1,
+    CUDA_PREFILL_FLASH_B1,
+    CUDA_PREFILL_FLASH2_B1,
+    _B1_PASS_MAX,
+    _B1_PF_ROWS,
     _CudaResidentQwen3,
 )
+<<<<<<< HEAD
 from residentk.loadvec import _ld4
+=======
+from residentk.tc_shim_bridge import (
+    TC_SHIM_BUILD,
+    TC_MIN_M,
+    TC_ACC_MODE,
+    _tc_init,
+    _tc_last_error,
+    _tc_stage_f32_to_f16,
+    _tc_gemm_dispatch,
+    _tc_dequant_packed3_f16_dense,
+    _pf_swiglu_rows_kernel,
+)
+from std.time import perf_counter_ns
+>>>>>>> 8218eae9 (feat(residentk): TC escape-hatch integration — cuBLAS HMMA prefill behind -D ALGENTA_TC_SHIM (default OFF))
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling, and the
@@ -1712,11 +1741,29 @@ struct _CudaResidentQwen3P3(Movable):
     var p3_lm: DeviceBuffer[DType.float32]
     var p3_lm_s: DeviceBuffer[DType.float32]
     var p3_lm_z: DeviceBuffer[DType.float32]
-    # JIT-dequant prefill staging (7B memory fit; allocated only with skip_f32_projections=1)
+    # JIT-dequant prefill staging (7B memory fit; allocated only with skip_f32_projections=1 —
+    # or ALWAYS under TC_SHIM_BUILD, where the sub-threshold prefill tiles fall back to the
+    # JIT-dequant plan in BOTH residency modes)
     var stg_qkv: DeviceBuffer[DType.float32]
     var stg_o: DeviceBuffer[DType.float32]
     var stg_gu: DeviceBuffer[DType.float32]
     var stg_down: DeviceBuffer[DType.float32]
+
+    # ── TC escape-hatch prefill (feat/tc-int): the packed3->f16 dual-resident weight tables
+    #    the cuBLAS HMMA GEMMs read, plus the per-tile staging scratch. Allocated at REAL size
+    #    ONLY under TC_SHIM_BUILD (the VRAM headroom check: the dual residency is +1.02 GB at
+    #    0.6B / +15.24 GB at 7B-scale, measured by the probe); every other build holds
+    #    1-element placeholders and `tc_staged = -1` — the native chain, byte-unmodified.
+    #    `tc_staged`: 0 = allocated, staging pending; 1 = staged and dispatching; -1 = absent
+    #    (build flag off OR the headroom allocation failed — fallback recorded, never fatal).
+    var w16_qkv: List[DeviceBuffer[DType.float16]]
+    var w16_o: List[DeviceBuffer[DType.float16]]
+    var w16_gu: List[DeviceBuffer[DType.float16]]
+    var w16_down: List[DeviceBuffer[DType.float16]]
+    var tc_a16: DeviceBuffer[DType.float16]
+    var tc_c16: DeviceBuffer[DType.float16]
+    var tc_gu: DeviceBuffer[DType.float32]
+    var tc_staged: Int
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -1786,7 +1833,13 @@ struct _CudaResidentQwen3P3(Movable):
             vocab * _p3_blocks_per_row(d_model)
         )
 
-        if skip_f32_projections == 1:
+        var stg_full = skip_f32_projections == 1
+        @parameter
+        if TC_SHIM_BUILD:
+            # Sub-threshold prefill tiles run the JIT-dequant plan as their fallback in BOTH
+            # residency modes, so the staging buffers must exist at full size either way.
+            stg_full = True
+        if stg_full:
             self.stg_qkv = self.f32.ctx.enqueue_create_buffer[DType.float32](n_qkv * d_model)
             self.stg_o = self.f32.ctx.enqueue_create_buffer[DType.float32](d_model * n_q)
             self.stg_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](2 * d_ff * d_model)
@@ -1796,6 +1849,55 @@ struct _CudaResidentQwen3P3(Movable):
             self.stg_o = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
             self.stg_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
             self.stg_down = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+
+        # ── TC escape-hatch residency: the constructor allocates ONLY placeholders (every
+        #    build, cheap); `tc_staged = 0` under the build flag marks the lazy path in
+        #    `_tc_stage_weights`, which performs the REAL allocation inside its headroom
+        #    try/except on the first prefill (a constructor cannot borrow self inside a try
+        #    before every field is initialized — Mojo's definite-initialization refuses it).
+        self.w16_qkv = List[DeviceBuffer[DType.float16]]()
+        self.w16_o = List[DeviceBuffer[DType.float16]]()
+        self.w16_gu = List[DeviceBuffer[DType.float16]]()
+        self.w16_down = List[DeviceBuffer[DType.float16]]()
+        self.tc_a16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_c16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+        self.tc_staged = -1
+        @parameter
+        if TC_SHIM_BUILD:
+            self.tc_staged = 0
+
+    def _tc_alloc(
+        mut self, n_layers: Int, n_qkv: Int, n_q: Int, d_model: Int, d_ff: Int,
+    ) raises:
+        """The REAL TC residency (called inside the constructor's headroom try): one dense
+        f16 `[rows, k]` table per role per layer (the probe's measured dual-residency delta:
+        +1.02 GB at 0.6B, +15.24 GB at 7B-scale) plus the tile scratch — `tc_a16` holds the
+        per-call A staging at the widest K, `tc_c16` the rung-2 f16-C staging at the widest
+        N, `tc_gu` the `[rows, 2*d_ff]` f32 gate/up result the swiglu epilogue reads. Rows
+        are capped at the inner session's prefill scratch rows (`_B1_PF_ROWS`), the largest
+        tile `prefill` can ever dispatch."""
+        var rows = _B1_PF_ROWS
+        var max_k = d_model
+        if n_q > max_k:
+            max_k = n_q
+        if d_ff > max_k:
+            max_k = d_ff
+        var max_n = n_qkv
+        if 2 * d_ff > max_n:
+            max_n = 2 * d_ff
+        for _ in range(n_layers):
+            self.w16_qkv.append(
+                self.f32.ctx.enqueue_create_buffer[DType.float16](n_qkv * d_model))
+            self.w16_o.append(
+                self.f32.ctx.enqueue_create_buffer[DType.float16](d_model * n_q))
+            self.w16_gu.append(
+                self.f32.ctx.enqueue_create_buffer[DType.float16](2 * d_ff * d_model))
+            self.w16_down.append(
+                self.f32.ctx.enqueue_create_buffer[DType.float16](d_model * d_ff))
+        self.tc_a16 = self.f32.ctx.enqueue_create_buffer[DType.float16](rows * max_k)
+        self.tc_c16 = self.f32.ctx.enqueue_create_buffer[DType.float16](rows * max_n)
+        self.tc_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](rows * 2 * d_ff)
 
     def device_name(self) raises -> String:
         return self.f32.device_name()
@@ -1935,6 +2037,414 @@ struct _CudaResidentQwen3P3(Movable):
         the whole load — the inner session's context owns both halves."""
         return self.f32.seal()
 
+    def _tc_stage_weights(mut self) raises:
+        """The ONE-TIME session-open TC enablement the prefill amortizes, lazy on the first
+        `prefill` (every packed3 byte is resident by then — the driver's `seal` has drained
+        the uploads): (1) the VRAM headroom check — allocate the REAL f16 dual residency +
+        scratch (the constructor holds placeholders only; probe-measured delta +1.02 GB at
+        0.6B / +15.24 GB at 7B-scale); failure demotes the session to the native chain for
+        life with a printed record, never fatal. (2) `tc_shim_init` (cuBLAS handle on Mojo's
+        context). (3) every layer's four packed3 tables dequantized to their dense f16
+        twins by `tc_shim_dequant_packed3_f16_dense` (probe-measured cost: 5.55 ms at 0.6B
+        / 55.4 ms at 7B-scale on A100 — repaid inside ~8 prefill waves at the per-call
+        GEMM savings). Any non-zero status demotes with a printed record; a staged session
+        prints its cost + the dual-residency delta."""
+        if self.tc_staged != 0:
+            return
+        var n_q = self.f32.h_q * self.f32.d_head
+        var n_kv = self.f32.h_kv * self.f32.d_head
+        var n_qkv = n_q + 2 * n_kv
+        var d_model = self.f32.d_model
+        var d_ff = self.f32.d_ff
+        try:
+            self._tc_alloc(self.f32.n_layers, n_qkv, n_q, d_model, d_ff)
+        except e:
+            print("TC: VRAM headroom check FAILED — the f16 dual residency could not be",
+                  "allocated; prefill stays on the native chain. Recorded:", e)
+            self.tc_staged = -1
+            return
+        var t0 = perf_counter_ns()
+        var r = _tc_init()
+        if r != 0:
+            print("TC: tc_shim_init failed:", r, "last_error:", _tc_last_error(),
+                  "| prefill stays on the native chain")
+            self.tc_staged = -1
+            return
+        for layer in range(self.f32.n_layers):
+            ref lp = self.layers_p3[layer]
+            r = _tc_dequant_packed3_f16_dense(
+                Int(lp.p3_qkv.unsafe_ptr()), Int(lp.p3_qkv_s.unsafe_ptr()),
+                Int(lp.p3_qkv_z.unsafe_ptr()), Int(self.w16_qkv[layer].unsafe_ptr()),
+                n_qkv, d_model, _p3_words_per_row(d_model), _p3_blocks_per_row(d_model))
+            if r == 0:
+                r = _tc_dequant_packed3_f16_dense(
+                    Int(lp.p3_o.unsafe_ptr()), Int(lp.p3_o_s.unsafe_ptr()),
+                    Int(lp.p3_o_z.unsafe_ptr()), Int(self.w16_o[layer].unsafe_ptr()),
+                    d_model, n_q, _p3_words_per_row(n_q), _p3_blocks_per_row(n_q))
+            if r == 0:
+                r = _tc_dequant_packed3_f16_dense(
+                    Int(lp.p3_gu.unsafe_ptr()), Int(lp.p3_gu_s.unsafe_ptr()),
+                    Int(lp.p3_gu_z.unsafe_ptr()), Int(self.w16_gu[layer].unsafe_ptr()),
+                    2 * d_ff, d_model, _p3_words_per_row(d_model),
+                    _p3_blocks_per_row(d_model))
+            if r == 0:
+                r = _tc_dequant_packed3_f16_dense(
+                    Int(lp.p3_down.unsafe_ptr()), Int(lp.p3_down_s.unsafe_ptr()),
+                    Int(lp.p3_down_z.unsafe_ptr()), Int(self.w16_down[layer].unsafe_ptr()),
+                    d_model, d_ff, _p3_words_per_row(d_ff), _p3_blocks_per_row(d_ff))
+            if r != 0:
+                print("TC: packed3->f16 staging FAILED at layer", layer, "status", r,
+                      "last_error:", _tc_last_error(), "| prefill stays on the native chain")
+                self.tc_staged = -1
+                return
+        self.f32.ctx.synchronize()
+        self.tc_staged = 1
+        var f16_bytes = Float64(self.f32.n_layers) * Float64(
+            n_qkv * d_model + d_model * n_q + 2 * d_ff * d_model + d_model * d_ff) * 2.0
+        print("TC: prefill f16 dual residency STAGED |",
+              Float64(perf_counter_ns() - t0) / 1.0e6, "ms one-time | dequant tables:",
+              f16_bytes / 1.0e9, "GB | compute mode:", TC_ACC_MODE)
+
+    def _prefill_tc(mut self, prompt_ids: List[Int]) raises -> _StepOut:
+        """The TC escape-hatch prefill — called ONLY with `tc_staged == 1` under
+        `TC_SHIM_BUILD` (both call sites above gate on it). Per tile of `m` rows:
+
+        * `m >= TC_MIN_M` (128, runtime — the FINAL tile carries whatever rows remain): the
+          four projection roles dispatch through `_tc_gemm_dispatch` (cuBLAS f16 HMMA,
+          COMPUTE_32F + f32 C by default) over the staged f16 tables — qkv ASSIGN, o_proj
+          ACCUMULATE (beta 1 into the f32 residual), gate/up ASSIGN into the `tc_gu` scratch
+          followed by the native `_pf_swiglu_rows_kernel` epilogue, down_proj ACCUMULATE.
+          Every shim call is bracketed by the probe's seam: `ctx.synchronize()` before, the
+          shim stream-syncs before returning. Attention, RoPE, norms, the qkv bias and the
+          lm_head tail stay the native kernels, byte-unmodified.
+        * `m < TC_MIN_M`: the JIT-dequant plan (the 7B path's layer plan, verbatim) — it
+          works in BOTH residency modes because `stg_*` exist at full size under this build.
+
+        The tail matches the residency mode the oracle gates: `skip_f32_projections=1` ends
+        on the packed3 lm_head + argmax (the 7B arm's convention); the f32-resident mode
+        ends on the f32 lm_head + argmax (the delegation path's convention, kept so the
+        0.6B oracle's first token is produced by the identical weights it always was)."""
+        @parameter
+        if not TC_SHIM_BUILD:
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            var n_prompt = len(prompt_ids)
+            var n_q = self.f32.h_q * self.f32.d_head
+            var n_kv = self.f32.h_kv * self.f32.d_head
+            var n_qkv = n_q + 2 * n_kv
+            var issued = 0
+            var pos = 0
+            var last_m = 0
+            while pos < n_prompt:
+                var m = CUDA_PREFILL_TILE
+                @parameter
+                if CUDA_PREFILL_ONEPASS_B1:
+                    m = _B1_PASS_MAX
+                if n_prompt - pos < m:
+                    m = n_prompt - pos
+                last_m = m
+                var use_tc = m >= TC_MIN_M
+
+                # ── this chunk's token ids, uploaded once ──
+                with self.f32.pf_tokens.map_to_host() as h:
+                    for i in range(m):
+                        h[i] = Int32(prompt_ids[pos + i])
+                self.f32.ctx.synchronize()
+
+                # ── the embedding rows, gathered on-device from the resident f32 table ──
+                self.f32.ctx.enqueue_function[_pf_embed_rows_kernel](
+                    self.f32.pf_hidden.unsafe_ptr(), self.f32.embed.unsafe_ptr(),
+                    self.f32.pf_tokens.unsafe_ptr(),
+                    Int64(self.f32.d_model), Int64(m),
+                    grid_dim=_ceil_div(self.f32.d_model, _TG) * m, block_dim=_TG,
+                )
+                issued += 1
+
+                for layer in range(self.f32.n_layers):
+                    ref lw = self.f32.layers[layer]
+                    ref lp = self.layers_p3[layer]
+
+                    if use_tc:
+                        # ══ TC LAYER PLAN ══
+                        # 1 ── rmsnorm(input_layernorm) over every row (native)
+                        self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                            lw.ln1.unsafe_ptr(),
+                            Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                        # 2 ── qkv ASSIGN through the TC seam (the ctx.synchronize() seam:
+                        #      drain Mojo's stream, the shim stream-syncs before returning)
+                        self.f32.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.f32.pf_xn.unsafe_ptr()),
+                            Int(self.w16_qkv[layer].unsafe_ptr()),
+                            Int(lw.w_qkv.unsafe_ptr())
+                            if self.f32.skip_f32_projections != 1 else 0,
+                            m, self.f32.d_model, n_qkv,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.f32.pf_qkv.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # 2b ── 7B-lane attention bias (native, before RoPE)
+                        if self.f32.has_qkv_bias == 1:
+                            self.f32.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                                self.f32.pf_qkv.unsafe_ptr(),
+                                self.f32.qkv_biases[layer].unsafe_ptr(),
+                                Int64(m), Int64(n_qkv),
+                                grid_dim=_ceil_div(m * n_qkv, _TG), block_dim=_TG,
+                            )
+                            issued += 1
+                        # 3 ── q_norm + k_norm + RoPE + the in-place KV-cache write
+                        self.f32.ctx.enqueue_function[_pf_ropewrt_kernel](
+                            self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
+                            lw.cv.unsafe_ptr(),
+                            self.f32.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(),
+                            lw.kn.unsafe_ptr(),
+                            self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                            Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                            Int64(self.f32.d_head), self.f32.eps, Int64(m),
+                            Int64(self.f32.qk_norm),
+                            grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
+                            block_dim=self.f32.d_head,
+                        )
+                        # 4 ── causal attention, the SAME native selection f32.prefill runs
+                        #      (flash2 under L-H4, flash under L-H3, tiled otherwise)
+                        @parameter
+                        if CUDA_PREFILL_FLASH_B1:
+                            if self.f32.d_head == 128 and CUDA_PREFILL_FLASH2_B1:
+                                self.f32.ctx.enqueue_function[_pf_attn_flash2_kernel](
+                                    self.f32.pf_attn.unsafe_ptr(),
+                                    self.f32.pf_q_rot.unsafe_ptr(),
+                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                    Int64(self.f32.d_head),
+                                    self.f32.scale, Int64(m),
+                                    grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK)
+                                    * self.f32.h_q,
+                                    block_dim=_PF_FLASH_NTHREADS,
+                                )
+                            elif self.f32.d_head == 128:
+                                self.f32.ctx.enqueue_function[_pf_attn_flash_kernel](
+                                    self.f32.pf_attn.unsafe_ptr(),
+                                    self.f32.pf_q_rot.unsafe_ptr(),
+                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                    Int64(self.f32.d_head),
+                                    self.f32.scale, Int64(m),
+                                    grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK)
+                                    * self.f32.h_q,
+                                    block_dim=_PF_FLASH_NTHREADS,
+                                )
+                            else:
+                                self.f32.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                                    self.f32.pf_attn.unsafe_ptr(),
+                                    self.f32.pf_q_rot.unsafe_ptr(),
+                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                    Int64(self.f32.d_head),
+                                    self.f32.scale, Int64(m),
+                                    grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
+                                )
+                        else:
+                            self.f32.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                                self.f32.pf_attn.unsafe_ptr(),
+                                self.f32.pf_q_rot.unsafe_ptr(),
+                                lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                Int64(self.f32.d_head), self.f32.scale, Int64(m),
+                                grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
+                            )
+                        # 5 ── o_proj ACCUMULATE into the residual through the TC seam
+                        self.f32.ctx.synchronize()
+                        r = _tc_gemm_dispatch(
+                            Int(self.f32.pf_attn.unsafe_ptr()),
+                            Int(self.w16_o[layer].unsafe_ptr()),
+                            Int(lw.w_o.unsafe_ptr())
+                            if self.f32.skip_f32_projections != 1 else 0,
+                            m, n_q, self.f32.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # 6 ── rmsnorm(post_attention_layernorm) (native)
+                        self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                            lw.ln2.unsafe_ptr(),
+                            Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                        # 7 ── gate/up ASSIGN through the TC seam + native SwiGLU epilogue
+                        self.f32.ctx.synchronize()
+                        r = _tc_gemm_dispatch(
+                            Int(self.f32.pf_xn.unsafe_ptr()),
+                            Int(self.w16_gu[layer].unsafe_ptr()),
+                            Int(lw.w_gu.unsafe_ptr())
+                            if self.f32.skip_f32_projections != 1 else 0,
+                            m, self.f32.d_model, 2 * self.f32.d_ff,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.tc_gu.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        self.f32.ctx.enqueue_function[_pf_swiglu_rows_kernel](
+                            self.f32.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
+                            Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
+                            grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
+                        )
+                        # 8 ── down_proj ACCUMULATE into the residual through the TC seam
+                        self.f32.ctx.synchronize()
+                        r = _tc_gemm_dispatch(
+                            Int(self.f32.pf_act.unsafe_ptr()),
+                            Int(self.w16_down[layer].unsafe_ptr()),
+                            Int(lw.w_down.unsafe_ptr())
+                            if self.f32.skip_f32_projections != 1 else 0,
+                            m, self.f32.d_ff, self.f32.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        issued += 8
+                    else:
+                        # ══ sub-threshold tile: the JIT-dequant plan, verbatim ══
+                        self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                            self.stg_qkv.unsafe_ptr(), lp.p3_qkv.unsafe_ptr(),
+                            lp.p3_qkv_s.unsafe_ptr(), lp.p3_qkv_z.unsafe_ptr(),
+                            Int64(self.f32.d_model), Int64(n_qkv),
+                            grid_dim=n_qkv, block_dim=_TG,
+                        )
+                        self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                            self.stg_o.unsafe_ptr(), lp.p3_o.unsafe_ptr(),
+                            lp.p3_o_s.unsafe_ptr(), lp.p3_o_z.unsafe_ptr(),
+                            Int64(n_q), Int64(self.f32.d_model),
+                            grid_dim=self.f32.d_model, block_dim=_TG,
+                        )
+                        self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                            self.stg_gu.unsafe_ptr(), lp.p3_gu.unsafe_ptr(),
+                            lp.p3_gu_s.unsafe_ptr(), lp.p3_gu_z.unsafe_ptr(),
+                            Int64(self.f32.d_model), Int64(2 * self.f32.d_ff),
+                            grid_dim=2 * self.f32.d_ff, block_dim=_TG,
+                        )
+                        self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                            self.stg_down.unsafe_ptr(), lp.p3_down.unsafe_ptr(),
+                            lp.p3_down_s.unsafe_ptr(), lp.p3_down_z.unsafe_ptr(),
+                            Int64(self.f32.d_ff), Int64(self.f32.d_model),
+                            grid_dim=self.f32.d_model, block_dim=_TG,
+                        )
+                        issued += 4
+                        self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                            lw.ln1.unsafe_ptr(),
+                            Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                        self.f32.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                            self.f32.pf_qkv.unsafe_ptr(), self.f32.pf_xn.unsafe_ptr(),
+                            self.stg_qkv.unsafe_ptr(),
+                            Int64(m), Int64(self.f32.d_model), Int64(n_qkv),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(n_qkv, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                        if self.f32.has_qkv_bias == 1:
+                            self.f32.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                                self.f32.pf_qkv.unsafe_ptr(),
+                                self.f32.qkv_biases[layer].unsafe_ptr(),
+                                Int64(m), Int64(n_qkv),
+                                grid_dim=_ceil_div(m * n_qkv, _TG), block_dim=_TG,
+                            )
+                            issued += 1
+                        self.f32.ctx.enqueue_function[_pf_ropewrt_kernel](
+                            self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
+                            lw.cv.unsafe_ptr(),
+                            self.f32.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(),
+                            lw.kn.unsafe_ptr(),
+                            self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                            Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                            Int64(self.f32.d_head), self.f32.eps, Int64(m),
+                            Int64(self.f32.qk_norm),
+                            grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
+                            block_dim=self.f32.d_head,
+                        )
+                        self.f32.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                            self.f32.pf_attn.unsafe_ptr(), self.f32.pf_q_rot.unsafe_ptr(),
+                            lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                            Int64(self.f32.d_head), self.f32.scale, Int64(m),
+                            grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
+                        )
+                        self.f32.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            self.f32.pf_hidden.unsafe_ptr(), self.f32.pf_attn.unsafe_ptr(),
+                            self.stg_o.unsafe_ptr(),
+                            Int64(m), Int64(n_q), Int64(self.f32.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM)
+                            * _ceil_div(self.f32.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                        self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                            lw.ln2.unsafe_ptr(),
+                            Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                        self.f32.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                            self.f32.pf_act.unsafe_ptr(), self.f32.pf_xn.unsafe_ptr(),
+                            self.stg_gu.unsafe_ptr(),
+                            Int64(m), Int64(self.f32.d_model), Int64(self.f32.d_ff),
+                            grid_dim=_ceil_div(m, _G2_BM)
+                            * _ceil_div(self.f32.d_ff, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                        self.f32.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            self.f32.pf_hidden.unsafe_ptr(), self.f32.pf_act.unsafe_ptr(),
+                            self.stg_down.unsafe_ptr(),
+                            Int64(m), Int64(self.f32.d_ff), Int64(self.f32.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM)
+                            * _ceil_div(self.f32.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                        issued += 8
+                pos += m
+
+            # ── final rmsnorm + lm_head + argmax on the LAST row — tail matches the
+            #    residency mode's oracle convention (docstring) ──
+            var n_iters = _ceil_div(self.f32.vocab, _LM_BLOCKS * _SUBS)
+            if self.f32.skip_f32_projections == 1:
+                self.f32.ctx.enqueue_function[_lmhead_argmax_kernel_p3](
+                    self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                    self.f32.pf_hidden.unsafe_ptr() + (last_m - 1) * self.f32.d_model,
+                    self.f32.final_norm.unsafe_ptr(),
+                    self.p3_lm.unsafe_ptr(), self.p3_lm_s.unsafe_ptr(),
+                    self.p3_lm_z.unsafe_ptr(),
+                    Int64(self.f32.d_model), Int64(self.f32.vocab), self.f32.eps,
+                    Int64(n_iters),
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
+            else:
+                var lm_w = self.f32.lm_head_w()
+                self.f32.ctx.enqueue_function[_lmhead_argmax_kernel](
+                    self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                    self.f32.pf_hidden.unsafe_ptr() + (last_m - 1) * self.f32.d_model,
+                    self.f32.final_norm.unsafe_ptr(), lm_w,
+                    Int64(self.f32.d_model), Int64(self.f32.vocab), self.f32.eps,
+                    Int64(n_iters),
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
+            self.f32.ctx.enqueue_function[_argmax_reduce_kernel](
+                self.f32.out_val.unsafe_ptr(), self.f32.out_idx.unsafe_ptr(),
+                self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                Int64(_LM_BLOCKS),
+                grid_dim=1, block_dim=_TG,
+            )
+            issued += 2
+
+            self.f32.ctx.enqueue_copy(self.f32.host_val, self.f32.out_val)
+            self.f32.ctx.enqueue_copy(self.f32.host_idx, self.f32.out_idx)
+            self.f32.ctx.synchronize()
+            var tok = Int(self.f32.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.f32.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.f32.vocab:
+                return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(tok, lg, issued, RESIDENT_OK)
+
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
         """The whole prompt.
 
@@ -1951,8 +2461,23 @@ struct _CudaResidentQwen3P3(Movable):
         therefore the packed3 decode arm's dequantized arithmetic; the tail is the packed3
         lm_head + argmax (not the f32 twin), so a 7B prefill+decode run streams packed3
         end-to-end. `pos` bookkeeping is the caller's, exactly as the f32 session's own
-        `prefill` documents."""
+        `prefill` documents.
+
+        TC ESCAPE HATCH (`-D ALGENTA_TC_SHIM`, feat/tc-int): with the shim staged
+        (`tc_staged == 1`), BOTH residency modes run `_prefill_tc` instead — every tile of
+        `TC_MIN_M` (128) rows or more dispatches its four projection GEMMs through the
+        cuBLAS f16 tensor-core seam over the session-open packed3->f16 dual residency
+        (attention, RoPE, norms, epilogues stay native; decode is untouched); sub-threshold
+        tiles fall back to the JIT-dequant plan. Flag-off builds never reach any of it —
+        the two legacy paths below are byte-unmodified."""
+        @parameter
+        if TC_SHIM_BUILD:
+            self._tc_stage_weights()
         if self.f32.skip_f32_projections != 1:
+            @parameter
+            if TC_SHIM_BUILD:
+                if self.tc_staged == 1:
+                    return self._prefill_tc(prompt_ids)
             return self.f32.prefill(prompt_ids)
 
         @parameter
@@ -1967,6 +2492,11 @@ struct _CudaResidentQwen3P3(Movable):
             for i in range(n_prompt):
                 if prompt_ids[i] < 0 or prompt_ids[i] >= self.f32.vocab:
                     return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            @parameter
+            if TC_SHIM_BUILD:
+                if self.tc_staged == 1:
+                    return self._prefill_tc(prompt_ids)
 
             var n_q = self.f32.h_q * self.f32.d_head
             var n_kv = self.f32.h_kv * self.f32.d_head

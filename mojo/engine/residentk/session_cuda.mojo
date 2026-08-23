@@ -143,6 +143,17 @@ from residentk.session import (
     _narrow_into,
     _narrow_transposed_into,
 )
+from residentk.tc_shim_bridge import (
+    TC_SHIM_BUILD,
+    TC_MIN_M,
+    TC_ACC_MODE,
+    _tc_init,
+    _tc_last_error,
+    _tc_stage_f32_to_f16,
+    _tc_gemm_dispatch,
+    _pf_swiglu_rows_kernel,
+)
+from std.time import perf_counter_ns
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling."""
@@ -269,6 +280,21 @@ struct _CudaResidentQwen3(Movable):
     var pf_q_rot: DeviceBuffer[DType.float32]
     var pf_attn: DeviceBuffer[DType.float32]
     var pf_act: DeviceBuffer[DType.float32]
+
+    # ── TC escape-hatch prefill (feat/tc-int): f16 twins of the four resident f32
+    #    projection tables (staged from those f32 weights ONCE, at first prefill) plus the
+    #    per-tile scratch. Real sizes ONLY under TC_SHIM_BUILD (VRAM headroom check: the
+    #    dual residency is +1.02 GB at 0.6B, measured by the probe); every other build
+    #    holds 1-element placeholders and `tc_staged = -1`. 0 = allocated/staging pending,
+    #    1 = staged, -1 = absent (flag off, no resident f32 weights, or headroom failed).
+    var w16_qkv: List[DeviceBuffer[DType.float16]]
+    var w16_o: List[DeviceBuffer[DType.float16]]
+    var w16_gu: List[DeviceBuffer[DType.float16]]
+    var w16_down: List[DeviceBuffer[DType.float16]]
+    var tc_a16: DeviceBuffer[DType.float16]
+    var tc_c16: DeviceBuffer[DType.float16]
+    var tc_gu: DeviceBuffer[DType.float32]
+    var tc_staged: Int
 
     # decode-graph arm — the captured per-token dispatch sequence and its dynamic-scalar feed.
     # `step_state` holds [token_id, pos, n_keys] on the device; `host_state` is the pinned twin
@@ -422,6 +448,23 @@ struct _CudaResidentQwen3(Movable):
         self.pf_q_rot = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
         self.pf_attn = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
         self.pf_act = self.ctx.enqueue_create_buffer[DType.float32](t * d_ff)
+
+        # ── TC escape-hatch residency: the constructor allocates ONLY placeholders (every
+        #    build, cheap); `tc_staged = 0` under the build flag marks the lazy path in
+        #    `_tc_stage_weights`, which performs the REAL allocation inside its headroom
+        #    try/except on the first prefill (a constructor cannot borrow self inside a try
+        #    before every field is initialized — Mojo's definite-initialization refuses it).
+        self.w16_qkv = List[DeviceBuffer[DType.float16]]()
+        self.w16_o = List[DeviceBuffer[DType.float16]]()
+        self.w16_gu = List[DeviceBuffer[DType.float16]]()
+        self.w16_down = List[DeviceBuffer[DType.float16]]()
+        self.tc_a16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_c16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_gu = self.ctx.enqueue_create_buffer[DType.float32](1)
+        self.tc_staged = -1
+        @parameter
+        if TC_SHIM_BUILD:
+            self.tc_staged = 0
 
         self.step_state = self.ctx.enqueue_create_buffer[DType.int64](3)
         self.host_state = self.ctx.enqueue_create_host_buffer[DType.int64](3)
@@ -596,6 +639,97 @@ struct _CudaResidentQwen3(Movable):
         self.ctx.synchronize()
         return RESIDENT_OK
 
+    def _tc_alloc(
+        mut self, n_layers: Int, n_qkv: Int, n_q: Int, d_model: Int, d_ff: Int,
+    ) raises:
+        """The REAL TC residency (constructor headroom try): dense f16 twins of the four
+        f32 projection tables per layer plus the tile scratch, capped at `_B1_PF_ROWS` rows
+        (the largest tile `prefill` dispatches — the pf_* scratch sizing)."""
+        var rows = _B1_PF_ROWS
+        var max_k = d_model
+        if n_q > max_k:
+            max_k = n_q
+        if d_ff > max_k:
+            max_k = d_ff
+        var max_n = n_qkv
+        if 2 * d_ff > max_n:
+            max_n = 2 * d_ff
+        for _ in range(n_layers):
+            self.w16_qkv.append(
+                self.ctx.enqueue_create_buffer[DType.float16](n_qkv * d_model))
+            self.w16_o.append(self.ctx.enqueue_create_buffer[DType.float16](d_model * n_q))
+            self.w16_gu.append(
+                self.ctx.enqueue_create_buffer[DType.float16](2 * d_ff * d_model))
+            self.w16_down.append(
+                self.ctx.enqueue_create_buffer[DType.float16](d_model * d_ff))
+        self.tc_a16 = self.ctx.enqueue_create_buffer[DType.float16](rows * max_k)
+        self.tc_c16 = self.ctx.enqueue_create_buffer[DType.float16](rows * max_n)
+        self.tc_gu = self.ctx.enqueue_create_buffer[DType.float32](rows * 2 * d_ff)
+
+    def _tc_stage_weights(mut self) raises:
+        """The ONE-TIME prefill TC enablement, lazy on the first `prefill`: (1) the VRAM
+        headroom check — allocate the REAL f16 dual residency + scratch (the constructor
+        holds placeholders only); an allocation failure demotes the session to the native
+        chain for life with a printed record, never fatal. (2) `tc_shim_init` (cuBLAS
+        handle on Mojo's context). (3) every layer's four RESIDENT F32 tables converted to
+        their f16 twins by `tc_shim_f32_to_f16` (this session keeps its f32 projections
+        resident for every arm that reaches this method — the skip_f32_projections mode
+        has none and is refused). Any failure demotes to native with a printed record."""
+        if self.tc_staged != 0:
+            return
+        if self.skip_f32_projections == 1:
+            self.tc_staged = -1
+            return
+        try:
+            self._tc_alloc(
+                self.n_layers, (self.h_q + 2 * self.h_kv) * self.d_head,
+                self.h_q * self.d_head, self.d_model, self.d_ff)
+        except e:
+            print("TC: VRAM headroom check FAILED — the f16 dual residency could not be",
+                  "allocated; prefill stays on the native chain. Recorded:", e)
+            self.tc_staged = -1
+            return
+        var t0 = perf_counter_ns()
+        var r = _tc_init()
+        if r != 0:
+            print("TC: tc_shim_init failed:", r, "last_error:", _tc_last_error(),
+                  "| prefill stays on the native chain")
+            self.tc_staged = -1
+            return
+        var n_q = self.h_q * self.d_head
+        var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+            r = _tc_stage_f32_to_f16(
+                Int(lw.w_qkv.unsafe_ptr()), Int(self.w16_qkv[layer].unsafe_ptr()),
+                n_qkv * self.d_model)
+            if r == 0:
+                r = _tc_stage_f32_to_f16(
+                    Int(lw.w_o.unsafe_ptr()), Int(self.w16_o[layer].unsafe_ptr()),
+                    self.d_model * n_q)
+            if r == 0:
+                r = _tc_stage_f32_to_f16(
+                    Int(lw.w_gu.unsafe_ptr()), Int(self.w16_gu[layer].unsafe_ptr()),
+                    2 * self.d_ff * self.d_model)
+            if r == 0:
+                r = _tc_stage_f32_to_f16(
+                    Int(lw.w_down.unsafe_ptr()), Int(self.w16_down[layer].unsafe_ptr()),
+                    self.d_model * self.d_ff)
+            if r != 0:
+                print("TC: f32->f16 staging FAILED at layer", layer, "status", r,
+                      "last_error:", _tc_last_error(),
+                      "| prefill stays on the native chain")
+                self.tc_staged = -1
+                return
+        self.ctx.synchronize()
+        self.tc_staged = 1
+        var f16_bytes = Float64(self.n_layers) * Float64(
+            n_qkv * self.d_model + self.d_model * n_q + 2 * self.d_ff * self.d_model
+            + self.d_model * self.d_ff) * 2.0
+        print("TC: prefill f16 residency STAGED |",
+              Float64(perf_counter_ns() - t0) / 1.0e6, "ms one-time | tables:",
+              f16_bytes / 1.0e9, "GB | compute mode:", TC_ACC_MODE)
+
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
         """The whole prompt: chunked m_rows tiles through every layer, then ONE lm_head + argmax
         on the final position. Returns the greedy FIRST generated token — the same `_StepOut`
@@ -624,6 +758,10 @@ struct _CudaResidentQwen3(Movable):
                 if prompt_ids[i] < 0 or prompt_ids[i] >= self.vocab:
                     return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
 
+            @parameter
+            if TC_SHIM_BUILD:
+                self._tc_stage_weights()
+
             var n_q = self.h_q * self.d_head
             var issued = 0
             var pos = 0
@@ -636,6 +774,12 @@ struct _CudaResidentQwen3(Movable):
                 if n_prompt - pos < m:
                     m = n_prompt - pos
                 last_m = m
+                # Runtime TC admission for THIS tile (always False in flag-off builds —
+                # `tc_staged` is -1 there): full tiles ride the seam, prompt tails keep v2.
+                var use_tc = False
+                @parameter
+                if TC_SHIM_BUILD:
+                    use_tc = self.tc_staged == 1 and m >= TC_MIN_M
 
                 # ── this chunk's token ids, uploaded once ──
                 with self.pf_tokens.map_to_host() as h:
@@ -713,15 +857,27 @@ struct _CudaResidentQwen3(Movable):
                             print("DUMP7B|" + String(layer) + "|xn1|" + String(dg_n) + "|"
                                   + String(dg_sum) + "|" + String(dg_max) + "|"
                                   + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
-                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN) — the v2
+                    # 2 ── fused Q/K/V projection — TC seam (ASSIGN) or the v2
                     # register-blocked / double-buffered kernel (kernels_prefill_f32_v2)
-                    self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
-                        self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                        lw.w_qkv.unsafe_ptr(),
-                        Int64(m), Int64(self.d_model), Int64((self.h_q + 2 * self.h_kv) * self.d_head),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div((self.h_q + 2 * self.h_kv) * self.d_head, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    if use_tc:
+                        self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_xn.unsafe_ptr()),
+                            Int(self.w16_qkv[layer].unsafe_ptr()),
+                            Int(lw.w_qkv.unsafe_ptr()),
+                            m, self.d_model, (self.h_q + 2 * self.h_kv) * self.d_head,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_qkv.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_qkv.unsafe_ptr(),
+                            Int64(m), Int64(self.d_model), Int64((self.h_q + 2 * self.h_kv) * self.d_head),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div((self.h_q + 2 * self.h_kv) * self.d_head, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                     # 2b ── 7B-lane attention bias: q/k/v biases onto the QKV output BEFORE RoPE
                     # (dispatched only when the session carries biases; a Qwen3 session never
                     # reaches this launch).
@@ -859,14 +1015,27 @@ struct _CudaResidentQwen3(Movable):
                             print("DUMP7B|" + String(layer) + "|attn|" + String(dg_n) + "|"
                                   + String(dg_sum) + "|" + String(dg_max) + "|"
                                   + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
-                    # 5 ── o_proj ACCUMULATED straight into the residual stream (v2 kernel)
-                    self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                        self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
-                        lw.w_o.unsafe_ptr(),
-                        Int64(m), Int64(n_q), Int64(self.d_model),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    # 5 ── o_proj ACCUMULATED straight into the residual — TC seam (beta 1)
+                    # or the v2 kernel
+                    if use_tc:
+                        self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_attn.unsafe_ptr()),
+                            Int(self.w16_o[layer].unsafe_ptr()),
+                            Int(lw.w_o.unsafe_ptr()),
+                            m, n_q, self.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                            lw.w_o.unsafe_ptr(),
+                            Int64(m), Int64(n_q), Int64(self.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                     # ── 7B-dump hook: post_attn (residual after o_proj) ──
                     @parameter
                     if ALGENTA_7B_DUMP:
@@ -925,13 +1094,31 @@ struct _CudaResidentQwen3(Movable):
                                   + String(dg_sum) + "|" + String(dg_max) + "|"
                                   + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2 kernel)
-                    self.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
-                        self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                        lw.w_gu.unsafe_ptr(),
-                        Int64(m), Int64(self.d_model), Int64(self.d_ff),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    if use_tc:
+                        # TC seam (ASSIGN into the tc_gu scratch) + native SwiGLU epilogue
+                        self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_xn.unsafe_ptr()),
+                            Int(self.w16_gu[layer].unsafe_ptr()),
+                            Int(lw.w_gu.unsafe_ptr()),
+                            m, self.d_model, 2 * self.d_ff,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.tc_gu.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        self.ctx.enqueue_function[_pf_swiglu_rows_kernel](
+                            self.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
+                            Int64(m * self.d_ff), Int64(self.d_ff),
+                            grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                        )
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_gu.unsafe_ptr(),
+                            Int64(m), Int64(self.d_model), Int64(self.d_ff),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                     # ── 7B-dump hook: act (post SwiGLU, pre down_proj) ──
                     @parameter
                     if ALGENTA_7B_DUMP:
@@ -957,14 +1144,27 @@ struct _CudaResidentQwen3(Movable):
                             print("DUMP7B|" + String(layer) + "|act|" + String(dg_n) + "|"
                                   + String(dg_sum) + "|" + String(dg_max) + "|"
                                   + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
-                    # 8 ── down_proj ACCUMULATED straight into the residual stream (v2 kernel)
-                    self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                        self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
-                        lw.w_down.unsafe_ptr(),
-                        Int64(m), Int64(self.d_ff), Int64(self.d_model),
-                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
-                        block_dim=_G2_NTHREADS,
-                    )
+                    # 8 ── down_proj ACCUMULATED straight into the residual — TC seam
+                    # (beta 1) or the v2 kernel
+                    if use_tc:
+                        self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch(
+                            Int(self.pf_act.unsafe_ptr()),
+                            Int(self.w16_down[layer].unsafe_ptr()),
+                            Int(lw.w_down.unsafe_ptr()),
+                            m, self.d_ff, self.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_hidden.unsafe_ptr()), 1)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                            lw.w_down.unsafe_ptr(),
+                            Int64(m), Int64(self.d_ff), Int64(self.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
                     # ── 7B-dump hook: post_mlp (residual after down_proj) ──
                     @parameter
                     if ALGENTA_7B_DUMP:

@@ -15150,3 +15150,165 @@ Headline findings, all evidence-backed:
    `benchmarks/llm_smoke/nvidia_race/azure_provision.sh` (sibling branch) is the quota-aware
    spot provisioner for when grants land.
 
+
+## THE TC INTEGRATION ROUND (2026-08-23, feat/tc-int -> PR #829): cuBLAS HMMA prefill landed behind -D ALGENTA_TC_SHIM (default OFF) — fixture prefill 3.2-3.35x over the native chain on BOTH GPUs, 7B prefill 11.1x, chat TTFT wins flip across the board; gates all green, decode byte-untouched
+
+The probe round's GO verdict, integrated: every resident CUDA session's PREFILL GEMMs (qkv
+ASSIGN / o_proj ACCUMULATE / gate+up ASSIGN + native SwiGLU epilogue / down_proj ACCUMULATE)
+dispatch through the nvcc shim when the tile carries >= TC_MIN_M (128) rows — sub-threshold
+tiles and prompt tails keep the v2 chain. Weights: packed3 -> DENSE f16 dequant at first
+prefill (p3 session, both residency modes) or f32 -> f16 convert (f32/batched sessions),
+inside a VRAM headroom try/except that demotes to native with a printed record, never fatal.
+The seam is the probe's per-call ctx.synchronize() (MAX 26.5 exposes no raw stream). Decode
+is untouched (packed3 GEMV / captured graph). Flag-off builds carry ZERO tc_shim symbols —
+measured on every flag-off binary; the link line is byte-unmodified.
+
+ARTIFACTS: `tc_shim.cu` integration entries (tc_shim_gemm_f16_32c = f16 A/W, f32 C DIRECT,
+COMPUTE_32F, beta 0/1 — the ship candidate; + TF32/16F ladder entries;
+tc_shim_dequant_packed3_f16_dense), `residentk/tc_shim_bridge.mojo` (private FFI wrappers +
+the swiglu epilogue kernel + TC_SHIM_BUILD gate), the three session modules, the serve
+driver's admission paths (per-lane scratch), `scripts/build_tc_drivers.sh` + `setup_vm.sh`
+shim-link support, `tc_seam_diag.mojo` (the seam-cost diagnostic).
+
+### 1. GATES — ALL GREEN, both VMs (algenta-ent-a100 sm_80, algenta-ent-h100 sm_90)
+
+* 16/16 greedy oracle on the campaign fixture: qwen3_generate_cuda_tc + qwen3_p3_session_cuda
+  G0, BOTH arms BOTH GPUs PASS.
+* Full-sequence token identity vs the f32 chain (the shipped oracle): G1 = 0 flips across
+  all 5 fixture prompts x 64 tokens, both GPUs, both arms.
+* f64 distances (probe re-run, both GPUs identical): tc f32-accum 1.01e-3, f16-accum
+  1.80e-3 (H100) / 2.32e-3 (A100), TF32 8.4e-4 — all under the 1e-2 gate; v2 control
+  8.05e-7; hand mma.sync 4.2-5.9e-7; WMMA 3.0-5.2e-8; dequant layout PASS.
+* serve --selftest: gate 1 (16/16 oracle through the serving decode path) + gate 2 (8/8
+  concurrent-vs-sequential token identity, multi-stream admission on TC GEMMs) — PASS,
+  TC serve build, BOTH GPUs.
+* 7B (A100): run_gates_7b token identity 6/6 prompts (fixture + 5 chat, 16/16 tokens each)
+  vs the transformers fp32 reference on the TC arm; G1 64/64 identical across repeat runs.
+* DECODE INVARIANT (the owner's never-regress line): decode is untouched by construction,
+  verified numerically — p3 decode tok/s arm-vs-arm: 74.43 vs 74.31 (A100 gen64), 97.83 vs
+  97.56 (H100); 7B gen64/gen256: 76.91/76.33 (TC) vs 76.90/76.31 (native). The packed3
+  single-stream decode lane and the concurrent wins below are reproduced by the NATIVE
+  control arm of this round (the flag-off binary IS the shipped config): A100 chat C=8
+  native = 618.4 agg / 505.9 TTFT vs the ship's 617.6/507.4; A100 rag C=8 native = 243.0
+  agg vs the ship's 242.8; H100 chat C=8 native = 972.5 agg vs the verification round's
+  1026.5 (same-session spread; the TC arm beats both).
+
+### 2. SEAM DIAGNOSTICS — the first-prefill anomaly, decomposed (tc_seam_diag, A100)
+
+The gen driver's FIRST TC prefill measured 252.6 ms vs 44.9 native — an anomaly, because
+the probe measured the seam 5-15x FASTER per GEMM. Decomposition: bare back-to-back TC
+calls 25.8 us/call; the sync+call seam adds ~2 us; an empty ctx.synchronize() floors at
+~2-44 us depending on device state; and a REAL warm prefill through the session runs
+20.2 ms TC vs 63.3 ms native (3.1x). Verdict: the gen-driver number was the ONE-TIME cold
+cost — f16 staging (24.1 ms) + cuBLAS algo-selection per shape — absorbed by every raced
+protocol's untimed warmup. The bench driver's warm cells confirm it (below).
+
+### 3. FIXTURE PREFILL 256 (warm, 20-run medians, qwen3_bench_cuda, clocks pinned A100
+1410 / H100 pinned 1980 — samples held 1830 under load)
+
+| arm                       | A100 tok/s (ms)     | H100 tok/s (ms)     |
+|---------------------------|---------------------|---------------------|
+| TC (-D ALGENTA_TC_SHIM)   | **19,519** (13.12)  | **27,968** (9.15)   |
+| native (flag-off control) | 5,836 (43.87)       | 8,742 (29.28)       |
+| TC / native               | **3.35x**           | **3.20x**           |
+
+IQR: TC 0.17% (A100) / 0.96% (H100); native 0.03% / 0.05% — all PASS the frozen 5%. Decode
+inside the same runs: identical between arms (70.65 vs 70.74 A100; 92.0 vs 92.2 H100).
+
+vs llama.cpp warm-warm (llama-bench pp256, same session, -r 12 + -r 20 re-validation):
+A100 F16 31,016 ± 5,379 -> reval 31,700 ± 4,189; Q8_0 20,081 ± 2,827 -> reval 20,364 ± 2,300.
+H100 F16 48,697 ± 11,167 -> reval (1980-pin) 49,984 ± 8,607; Q8_0 32,505 ± 4,869 -> reval
+33,329 ± 3,728. H100 FA check: -fa on 47,018 ± 13,586 vs -fa off 39,954 ± 11,506 (FA ~18%
+faster, NOT the variance source). INTEGRITY NOTES, stated plainly:
+  * These llama pp256 cells are FLAGGED (rel spread 11-29%, frozen gate 5%) — the variance
+    is inherent to ~5-8 ms bursts (per-rep DVFS ramp; persistence mode disabled), stable
+    neither at 1410 nor 1980 pin; the tg128 cells in the same runs are rock-stable
+    (0.3-0.4%), and llama pp1024 is stable (0.14%) — pp1024 is the trustworthy prefill
+    reference where available.
+  * BASELINE SHIFT vs prior rounds, root-caused: the VMs' llama.cpp binary was REBUILT
+    2026-08-23 03:00 UTC (build timestamp; no .git metadata), flash-attn default = auto(=on);
+    prior rounds' H100 F16 pp256 = 13,634 tok/s. All llama comparisons IN THIS SECTION are
+    same-build same-session; cross-round pp256 ratios are withheld.
+  * Fixture verdict with the flagged baseline stated as-is: TC 27,968 = 0.56-0.57x of the
+    H100 llama F16 pp256 median (LOSS at 256-token prefill vs llama's one-pass FA+cuBLAS),
+    while the native chain was 0.18x. TC closes ~60% of the remaining llama gap at this
+    shape; the rest is llama's fused one-pass attention vs our tiled flash2 (the next lever).
+
+### 4. CONCURRENT SERVE (enterprise_bench/1.0, 64 req/cell, greedy, fresh same-session
+opponents; TC arm vs native control vs llama-server f16-KV and q8_0-KV)
+
+H100 (the round's full matrix):
+
+| cell      | metric        | TC      | native  | llama f16-KV | llama q8_0-KV |
+|-----------|---------------|---------|---------|--------------|---------------|
+| chat C=8  | agg / TTFT p50 / TPOT p50 | 1112.0 / 191.3 / 6.4 | 972.5 / 316.3 / 6.7 | 1110.5 / 350.4 / 6.1 | 1037.8 / 272.1 / 6.8 |
+| chat C=16 | " | 1153.6 / 201.0 / 13.1 | 1007.0 / 346.7 / 14.1 | 1285.0 / 351.2 / 11.9 | 1200.5 / 280.3 / 12.8 |
+| chat C=32 | " | 1168.0 / 228.1 / 26.1 | 1019.7 / 445.1 / 29.2 | 1318.5 / 373.1 / 22.7 | 1253.5 / 342.1 / 24.0 |
+| rag C=1   | TTFT p50 / agg | 584.2 / 106.1 | 784.9 / 101.9 | 280.6 / 399.8 | 209.9 / 397.8 |
+| rag C=8   | agg / TTFT p50 / TPOT p50 | 407.8 / 2353.7 / 15.0 | 360.6 / 2860.4 / 16.3 | 156.6 / 5408.3 / 37.5 | 790.6 / 355.1 / 9.4 |
+
+A100:
+
+| cell      | metric        | TC      | native  | llama f16-KV | llama q8_0-KV |
+|-----------|---------------|---------|---------|--------------|---------------|
+| chat C=8  | agg / TTFT p50 / TPOT p50 | 716.8 / 279.2 / 10.1 | 618.4 / 505.9 / 10.6 | 628.2 / 612.3 / 10.7 | 601.4 / 496.1 / 11.8 |
+| chat C=16 | " | 726.1 / 298.9 / 20.9 | 625.2 / 530.7 / 23.1 | 706.0 / 639.0 / 21.2 | 682.4 / 499.6 / 22.4 |
+| chat C=32 | " | 689.1 / 345.9 / 44.4 | 597.1 / 645.3 / 50.4 | 740.7 / 725.7 / 40.3 | 706.6 / 613.6 / 42.3 |
+| rag C=1   | TTFT p50 / agg | 911.4 / 80.5 | 1228.5 / 76.7 | 502.9 / 229.6 | 384.1 / 240.6 |
+| rag C=8   | agg / TTFT p50 / TPOT p50 | 270.2 / 3550.7 / 22.5 | 243.0 / 4199.6 / 24.2 | 89.7 / 5126.1 / 74.0 | 447.3 / 663.3 / 16.6 |
+
+VERDICTS, honest:
+  * CHAT TTFT: flips to a WIN everywhere. vs q8_0-KV: H100 1.42x/1.40x/1.50x (C=8/16/32);
+    A100 1.78x/1.67x/1.77x. vs f16-KV: 1.83-2.19x. The prior H100 TTFT loss (0.89x vs q8_0
+    at C=8) is gone — TC prefill was the whole gap.
+  * CHAT AGG: WINS at C=8 (H100 1.07x vs q8_0, 1.001x vs f16; A100 1.19x / 1.14x), near-tie
+    at C=16 (H100 0.96x / 0.90x; A100 1.06x / 1.03x), small LOSS at C=32 on H100
+    (0.93x / 0.89x) — decode-bound at depth, and decode is (correctly) untouched by TC.
+  * RAG C=8: vs f16-KV the win HOLDS (H100 2.60x agg, A100 3.01x — the ship round's A100
+    ratio was 3.30x agg (line: "A100 was 3.30x / 4.74x"); it narrows because the
+    same-session llama f16-KV opponent ran 22% faster THIS round (89.7 vs the prior
+    ~73.6-class — the llama rebuild/FA effect seen in every pp cell); recorded as opponent
+    drift, not our regression — the native control reproduced the ship's 242.8 exactly).
+    vs q8_0-KV still a LOSS: H100 0.52x agg / 0.15x TTFT; A100 0.60x agg / 0.19x TTFT —
+    improved from 0.52-0.55x / 0.13-0.14x but honest losses stay withheld from victory
+    treatment.
+  * RAG C=1 TTFT: still a LOSS vs both llama KV configs (H100 584 vs 281/210; A100 911 vs
+    503/384) — rag TTFT at 4K tokens is attention-dominated (O(M^2) flash2 on f32-SIMT),
+    not GEMM-dominated: TC cuts it 1.34-1.35x but cannot flip it; that needs TC attention.
+
+### 5. QWEN2.5-7B LANE (A100, skip_f32_projections=1 — packed3 -> f16 dequant staging,
++13.05 GB dual residency, 71 ms one-time; VRAM headroom check PASS on the 40 GB device)
+
+| cell      | TC (p3 arm) | native JIT-dequant | llama F16        | llama Q8_0       |
+|-----------|-------------|--------------------|------------------|------------------|
+| pp256     | **4,146.5** (0.11%) | 374.2 (0.11%) | 7,977 ± 1,777 (FLAGGED) | 4,517 ± 385 (FLAGGED) |
+| pp1024    | **2,003.7** (0.06%) | 341.9 (0.02%) | 10,491.6 ± 14.5 (stable) | 5,047.9 ± 3.9 (stable) |
+| gen64     | 76.91       | 76.90              | 85.48            | 127.74           |
+| gen256    | 76.33       | 76.31              | 85.51            | 127.93           |
+
+TC = 11.1x (pp256) / 5.9x (pp1024) over the native JIT-dequant chain — the 0.03-0.08x era
+is over. vs llama on the STABLE reference (pp1024): 0.19x F16 / 0.40x Q8_0 — still a loss:
+7B tiles at 128 rows pay the tiled-attention O(tiles x keys) cost 8 times over a 1024-token
+prompt while llama runs one FA pass; the GEMMs are at parity, the seam + attention are the
+remaining gap (the one-pass lever + TC attention are the identified next steps). Decode
+identical between arms; vs llama: 0.90x F16 / 0.60x Q8_0 (unchanged — decode untouched).
+
+### 6. REFUTED / KNOWN-COST items this round (recorded so nobody re-pays)
+
+1. The integrated TC path being slow: the 252 ms first-prefill was the one-time staging +
+   cuBLAS algo-selection cold cost (section 2); warm it is 3.1-3.35x faster than native.
+2. tc_rt_ptx.h missing from the build scripts: tc_shim.cu's ANGLE-1 section #includes the
+   embedded-PTX header; the first on-VM build round died in nvcc until both build scripts
+   grew the generation step (fix committed).
+3. llamabench pp256 as a frozen-protocol cell at these burst sizes: 11-29% spread regardless
+   of pin or FA state — FLAGGED, and pp1024 (0.14% spread) is the stable prefill reference.
+4. The main race battery's llama-server cells self-censusing: the census gate rejects a cell
+   whose OWN llama-server is the tenant; the dedicated llama-baseline script (server up
+   first, no re-census) is the correct shape — used for every llama cell above.
+5. Per-lane TC scratch in the serve driver costs ~30 MB/lane at 0.6B (a16+c16+gu at
+   _PF_PASS_MAX rows) — negligible; it keeps L5 lanes disjoint, no measurable agg cost
+   (TC-vs-native agg deltas are all in the + direction).
+
+STATUS: PR #829 (feat/tc-int -> feat/tc-probe; rebase onto main after #823/#824 merge).
+Flag default OFF; the ship decision per compute mode stays with the owner — mode 0
+(COMPUTE_32F, f32 C) is what every number above measures. No gitbook page in this round.
