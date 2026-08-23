@@ -14477,3 +14477,166 @@ STATUS: these cells REPLACE the pre-fix H100 concurrent cells in their entirety;
 census-clean, replicates within 5%). Lane 1 (single-stream packed3 decode) and Lane 2
 (fixture) from #815 are untouched and stand as published. The q8_0-KV losses above remain
 withheld-from-victory treatment per the publish-wins-only rule, recorded here for the ledger.
+
+## THE L4 COST AXIS — tokens-per-spot-dollar on the $0.512/h L4 (2026-08-23, algenta-ent-l4b g2-standard-8 SPOT us-central1-a, tree f9bfda32 = #821, feat/l4-cost): single-stream decode BEATS llama.cpp F16 (1.12x/1.09x, $0.753 vs $0.823 per Mtok) — but the L4's fixed 72 W cap flips the concurrent serving verdict: chat C=8 loses to BOTH llama-server configs, and the cost ledger follows
+
+CONTEXT: the prior L4 lane (2026-08-21) raced the f32 graph arm and the batch-1 enterprise
+matrix. This lane races the CURRENT main — packed3 + L7 graph-under-lanes + L-H3/L-H4 — on a
+FRESH L4 VM (the old algenta-ent-l4 was TERMINATED; algenta-ent-l4b created 2026-08-23
+14:20 UTC), and adds the axis the segment was named for: delivered tokens per spot dollar.
+Same fixture, same harness (enterprise_bench/1.0, unchanged), greedy everywhere, 64 req/cell,
+medians, frozen rel-IQR <= 5% discipline.
+
+COST BASIS (recorded at provision time, 2026-08-23 ~14:20 UTC, Cloud Billing catalog API,
+Americas tier which carries us-central1): G2 core $0.014990/h x8 = $0.119920; G2 RAM
+$0.001756/GiB.h x32 = $0.056192; NVIDIA L4 GPU spot $0.335900/h; TOTAL $0.512012/h
+(on-demand SKUs sum $0.853608/h -> spot is 40.0% off). Every $/Mtok below = 0.512012 /
+(tok/s x 3600) x 1e6.
+
+BUILD (sm_89, plain builds, no object+link fallback needed):
+  p3 graph decode driver: -D ALGENTA_GPU -D ALGENTA_CUDA (default v4 packed3 kernels).
+  serve driver s2l7f2: -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_PF_ONEPASS
+    -D ALGENTA_PF_ATTN_FLASH -D ALGENTA_PF_ATTN_FLASH2 -D ALGENTA_P3_SERVE
+    -D ALGENTA_PF_STREAMS_2 -D ALGENTA_P3B_R2 -D ALGENTA_GRAPH_LANES -D ALGENTA_CTX_1536
+    — the shipped concurrent configuration (L1/L2/L-H4 prefill + packed3 serve decode +
+    2-stream admission + two-rows p3 GEMMs + #816's production switch) with the L4-24GB
+    chat-only context ceiling (32 slots x 1536; the rag mix does NOT fit this ceiling and
+    was out of scope for this lane by construction).
+
+GATES BEFORE NUMBERS (all on the L4, all PASS):
+  * qwen3_generate_cuda oracle: 16/16.
+  * p3 graph driver: G0 PASS — 16/16 greedy tokens through ONE async graph chain; G1 PASS —
+    3 seeds x 128 steps token-for-token identical (graph == per-dispatch == oracle via G0);
+    G2 PASS — per-step wall flat (spread 4.24% <= 10%) and strictly faster than
+    per-dispatch at all four depths (e.g. n_steps=64: 5.07 vs 13.43 ms/step).
+  * serve --selftest: "RESULT: PASS — selftest (gate 1 oracle 16/16 + gate 2 token
+    identity)" — gate 2 is the 8/8 concurrent-vs-sequential identity check that gates L7.
+
+DVFS / POWER DISCIPLINE (this is the L4 lane's defining measurement note): SM clocks were
+pinned min=max at 2040 MHz (nvidia-smi -lgc, verified accepted) and every window was a
+fresh-boot-era solo run with a 500 ms nvidia-smi sampler alongside. BUT the L4's power limit
+is FIXED at 72.00 W (default = min = max = 72 W; not raisable on this SKU), and the two
+engine families hit that cap differently under load — measured, per arm, from the samplers:
+  * algenta serve C=8: 73.0-73.8 W peak, 82 C -> clocks back off BELOW the 2040 lock under
+    the power cap (loaded samples median ~1590 MHz); algenta p3 single-stream: median 2025
+    with 51% of loaded samples below the lock (74.1 W / 81 C peaks).
+  * llama-server: 66.4-69.7 W, 59-76 C -> mostly sustains 2040 (median 2040 in both KV
+    configs, 16-40 of 82-90 loaded samples below the lock).
+This is workload power-physics, not measurement noise: every cell reproduces across its two
+clean runs within 0.75% (algenta 306.3/306.3 = 0.0%; llama f16-KV 358.8/361.5 = 0.75%;
+q8_0-KV 399.3/401.1 = 0.45%) — a stable thermal/power steady state, PASS at the frozen 5%
+gate with wide margin. The throttle asymmetry is disclosed because it is PART of the result:
+on a fixed-72W card, the SIMT-f32 engine spends its watts differently than the tensor-core
+engine, and the sustained token rate is what an enterprise actually buys. All numbers below
+are that sustained rate, at the card's only sustainable power limit.
+
+### 1. Single-stream decode — packed3 graph arm vs llama-bench (tg after 256-token prefill)
+
+llama.cpp build 10210 pin, -ngl 99, -d 256 -n 64 -n 256 -r 5 (decode window at the SAME
+context depth as the engine's decode-after-256-prefill); algenta = the p3 graph driver's
+20-run medians (1 untimed warmup each).
+
+| cell (tok/s)          | algenta p3-graph | llama.cpp F16 | llama.cpp Q8_0 | p3 vs F16 | p3 vs Q8_0 |
+|-----------------------|------------------|---------------|----------------|-----------|------------|
+| decode gen64 @256     | 193.93 (IQR 0.69%) | 173.35 +/- 0.78 | 267.51 +/- 2.71 | 1.12x WIN | 0.73x loss |
+| decode gen256 @256    | 188.81 (IQR 0.11%) | 172.84 +/- 0.17 | 267.02 +/- 0.48 | 1.09x WIN | 0.71x loss |
+
+Reproduction anchors: the f32-graph arm in the SAME process byte-reproduces the old L4 lane
+(97.76/96.84 vs 98.1/97.2) and llama F16 reproduces it too (173.35/172.84 vs 171.3/172.6) —
+the new binary and the new VM measure the old physics, then the packed3 arm clears F16.
+Bandwidth read (L4 = 300 GB/s): p3 streams ~1.18 GB/token -> 193.9 tok/s = 76% of the
+format's bandwidth floor; llama F16 at 173.3 = 76% of ITS floor (1.31 GB/token); Q8_0 at
+267.5 = 59% of a 0.66 GB/token floor. The Q8_0 loss is the same format-bytes wall the A100
+and H100 lanes recorded — on L4 it is ~0.71-0.73x, in line with the H100 gen256 1.05x->
+A100 0.97x family only in that the gap WIDENS as the card's bandwidth floor drops closer to
+the kernel's operating point.
+
+### 2. Chat C=8 concurrent serving — 64 req/cell, two clean runs per arm
+
+Opponents per the brief: llama-server -ngl 99 --parallel 32 -c 163840 (f16 GGUF; default
+f16 KV = the brief's literal config) + the q8_0-KV reference (--cache-type-k/-v q8_0).
+TTFT semantics note (unchanged campaign protocol): the driver row is driver-REPORTED service
+time (stdin-read -> first token, queue wait excluded); the HTTP rows are harness-measured
+wall (queue wait included) — the same asymmetry every prior concurrent lane stated.
+
+| arm                     | run 1 / run 2 agg tok/s | median agg | TTFT p50 ms | TPOT p50 ms |
+|-------------------------|-------------------------|------------|-------------|-------------|
+| llama f16-KV (brief)    | 358.8 / 361.5           | 360.2      | 693.1/702.7 -> 697.9 | 18.4/18.2 -> 18.3 |
+| llama q8_0-KV (ref)     | 399.3 / 401.1           | 400.2      | 517.3/517.7 -> 517.5 | 16.5/16.4 -> 16.5 |
+| algenta s2l7f2          | 306.3 / 306.3           | 306.3      | 965.9/967.7 -> 966.8 | 21.9/21.8 -> 21.9 |
+
+Verdict — chat C=8 on L4 is a LOSS on every metric against BOTH llama configs:
+vs f16-KV: agg 0.85x, TTFT 0.72x, TPOT 0.84x. vs q8_0-KV: agg 0.77x, TTFT 0.53x, TPOT 0.75x.
+This is the OPPOSITE of the A100/H100 lanes (1.14-1.16x agg wins there). The measured shape
+of the loss: the driver's decode duty cycle at C=8 is ~84% (TPOT-implied decode-only
+aggregate 8/0.0219 s = 366 tok/s vs delivered 306.3 — admission prefills on the 72 W-capped
+SIMT path (TTFT p50 966.8 ms) stop the decode chunks for ~16% of the wall), while llama's
+tensor-core prefill keeps its TTFT at 697.9/517.5 ms and its 8-slot decode sweeps amortize
+weight traffic at ~66 W without tripping the cap. The A100->L4 scaling splits the two
+engines: llama chat C=8 aggregate scales 902.4 (H100 f16-KV lane) -> 360.2 = 0.40x while
+algenta scales 1026.5 -> 306.3 = 0.30x — the SIMT-f32 ceiling family (prefill GEMM +
+attention) loses proportionally MORE of its rate on the low-bandwidth, power-capped part.
+Recorded plainly: the concurrent serving segment on single-GPU L4 belongs to llama.cpp at
+this tree; the lever path back is the same one every lane has named — a tensor-core surface
+in the toolchain.
+
+### 3. Cold start (process launch -> first completed token, median of 3) + VRAM peaks
+
+| engine                                   | runs (s)                | median s |
+|------------------------------------------|-------------------------|----------|
+| algenta batched driver (s2l7f2, CTX_1536)| 21.332/20.763/20.951    | 20.95    |
+| llama-server (brief config)              | 1.889/2.027/2.027       | 2.03     |
+| vLLM 0.27.1 (REUSED from the 2026-08-21/22 matrix, L4: 39.16 s; A100: 39.14 s — NOT re-measured, no reinstall this lane) | — | 39.16 (L4) |
+
+The batched driver's cold start is 3.3x WORSE than the old batch-1 driver's L4 number
+(6.39 s, prior matrix): the 32-slot CTX_1536 KV (~11 GB), the per-lane admission-kernel
+first-use compiles and the chunk-graph warmups all land before the first response. Stated as
+a real product cost of the continuous-batching rewrite, not hidden. Still 1.87x faster than
+the vLLM reference; 10.3x slower than llama-server.
+
+VRAM peaks (500 ms sampler max alongside each window; card = 22565 MiB usable):
+
+| arm                            | peak MiB |
+|--------------------------------|----------|
+| algenta serve C=8 (s2l7f2)     | 19326 (run-2 sampler; run-1 sampler started late, 14342 partial) |
+| llama-server f16-KV (-c 163840)| 19326 (VMM-committed full 32-slot KV pool + model) |
+| llama-server q8_0-KV           | 11554 |
+| algenta p3 single-stream       | 3782 |
+| llama-bench F16 / Q8_0         | 1754 / 1188 |
+
+### 4. TOKENS PER SPOT DOLLAR — $/Mtok = 142.226 / tok/s at $0.512012/h (sustained rates)
+
+| segment                     | algenta          | llama F16        | llama Q8_0       |
+|-----------------------------|------------------|------------------|------------------|
+| steady-state decode (gen256)| $0.753 (188.8 t/s)| $0.823 (172.8 t/s)| $0.533 (267.0 t/s)|
+| sustained chat C=8          | $0.464 (306.3 t/s)| $0.395 (360.2 t/s)| $0.355 (400.2 t/s)|
+
+Cold-start amortization: one cold start costs 1.42226e-4 $/s x 20.95 s = $0.00298 for the
+driver ($0.000289 for llama). Against a sustained 306.3 tok/s that is +$0.0097/Mtok for a
+10-minute-lived server, +$0.298/Mtok for a 10k-token ephemeral session — negligible for
+resident serving, the deciding cost for scale-to-zero shapes, where llama's 2.03 s start is
+14.7x cheaper to amortize. vLLM's 39.16 s adds +$0.0182/Mtok per 10-minute session.
+
+### 5. VERDICTS, PLAIN
+
+WINS (the only ones this lane found): single-stream decode vs llama.cpp F16 — 1.12x gen64 /
+1.09x gen256, gate-clean, reproducing both anchors; equivalently the ONLY $/Mtok win,
+$0.753 vs $0.823 (8.5% cheaper per delivered Mtok at steady state). Cold start vs vLLM
+(1.87x, on the reused reference).
+LOSSES, stated one by one: single-stream decode vs Q8_0 (0.73x/0.71x — the format-bytes
+wall, wider on L4's 300 GB/s than on A100/H100); chat C=8 aggregate/TTFT/TPOT vs BOTH
+llama-server configs (0.85x/0.72x/0.84x vs f16-KV; 0.77x/0.53x/0.75x vs q8_0-KV) — the
+opposite of the A100/H100 lanes, root-caused above to the fixed 72 W cap x SIMT-f32 power
+physics plus the tensor-core prefill gap; cold start vs llama-server (20.95 vs 2.03 s, 10.3x
+— and 3.3x worse than our own old batch-1 driver); rag/summar not raced (CTX_1536 ceiling,
+stated). Segment verdict for the cost axis: single-GPU L4 tokens-per-dollar is WON by
+llama.cpp Q8_0 ($0.355/Mtok sustained chat; $0.533 decode) except the narrow single-stream
+vs-F16 row; algenta's L4 story at this tree is the decode-vs-F16 win and the VRAM/footprint
+column only. Publication of any of it is the wins-only call; everything above stays in the
+ledger either way.
+
+CLOCK/COST LEDGER: L4 spot $0.512012/h (catalog at provision, stated above); lane wall
+~1.4 h incl. setup/gates/re-runs after the harness-readiness fix ≈ $0.72 spot. VM deleted
+when the lane landed (first-run harness bug: the readiness poll accepted 503-during-load as
+healthy — fixed to HTTP-200 + one real completion; the four llama cells re-ran clean, the
+two algenta cells from the first pass were unaffected and kept).
