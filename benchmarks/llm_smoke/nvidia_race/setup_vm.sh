@@ -214,13 +214,24 @@ stage7() {
     export MODULAR_HOME="$env_dir/share/max"
     local mojo="$env_dir/bin/mojo"
     mkdir -p "$ALGENTA_NV_DIR"
+    # LEVER L-H3 (H100 autopsy, 2026-08-23): the batch-1 prefill gets the serve driver's
+    # L1/L2 twins — flash-style M-parallel attention + one-pass M-parallel GEMM grids
+    # (session_cuda's CUDA_PREFILL_ONEPASS_B1/CUDA_PREFILL_FLASH_B1). Measured on H100:
+    # fixture prefill 50.96 -> 29.43 ms = 1.73x (5023 -> 8698 tok/s), 16/16 oracle PASS,
+    # full-sequence token identity PASS vs the flag-off path. LEVER L-H4 adds the
+    # latency-pipelined flash twin (bit-identical, 1.16-1.36x on the attention kernel).
+    # Flag-off builds stay the A/B control (the flags are comptime-removed when absent).
+    local B1_PF_FLAGS=(-D ALGENTA_PF_ONEPASS_B1 -D ALGENTA_PF_ATTN_FLASH_B1 \
+        -D ALGENTA_PF_ATTN_FLASH2_B1)
     build_one_driver "$mojo" "$ALGENTA_NV_DIR/qwen3_bench_cuda_gen64" \
-        "$REPO_ROOT/benchmarks/llm_smoke/qwen3_bench_cuda.mojo" -D ALGENTA_GPU -D ALGENTA_CUDA
+        "$REPO_ROOT/benchmarks/llm_smoke/qwen3_bench_cuda.mojo" -D ALGENTA_GPU -D ALGENTA_CUDA \
+        "${B1_PF_FLAGS[@]}"
     build_one_driver "$mojo" "$ALGENTA_NV_DIR/qwen3_bench_cuda_gen256" \
         "$REPO_ROOT/benchmarks/llm_smoke/qwen3_bench_cuda.mojo" \
-        -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_GEN_256
+        -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_GEN_256 "${B1_PF_FLAGS[@]}"
     build_one_driver "$mojo" "$ALGENTA_NV_DIR/qwen3_generate_cuda" \
-        "$REPO_ROOT/benchmarks/llm_smoke/qwen3_generate_cuda.mojo" -D ALGENTA_GPU -D ALGENTA_CUDA
+        "$REPO_ROOT/benchmarks/llm_smoke/qwen3_generate_cuda.mojo" -D ALGENTA_GPU -D ALGENTA_CUDA \
+        "${B1_PF_FLAGS[@]}"
     log "stage 7 done"
 }
 

@@ -14070,6 +14070,166 @@ gate-clean) is published in this round.
 
 SCALING READ: our stack scales ~1.5-1.7x A100 -> H100 (SIMT-f32 bound; fixture prefill
 1.54x vs the 3.4x f32-peak ratio — the named ceiling question persists on H100).
+(The H100 autopsy addendum immediately below root-causes that 1.54x — wave quantization +
+issue-mix ceiling — and lands the batch-1 levers that lift it to 2.85x.)
+
+## H100 NSYS/NCU AUTOPSY + LEVER PUSH (2026-08-23): the 1.54x scaling anomaly root-caused (wave quantization + issue-mix ceiling), the batch-1 fixture path gets the serve driver's L1/L2 twins — fixture prefill 5027 -> 9291 tok/s (1.85x), rag TTFT -23% — and three refuted levers recorded with evidence
+
+Host: algenta-ent-h100 (a3-highgpu-8g SPOT, us-central1-a), 8x H100 80GB HBM3, sm_90, driver
+595.71.05-server, CUDA 12.6, nsys 2024.5.1 (--cuda-graph-trace=node), ncu 2024.3.2 (sudo;
+ERR_NVGPUCTRPERM without it — paid on this VM). All work on GPU 0; solo-GPU census before
+every timed window; 500 ms clock sampling alongside every capture (SM 1980 MHz in every
+reported window); frozen discipline (20 runs/cell, median, rel-IQR <= 5%). Measured on tree
+c229340c (pre-#815/#816/#817); rebased for PR. Model Qwen3-0.6B-Base, greedy everywhere. Method = the A100
+autopsy's: windowed nsys around steady-state cells + ncu per kernel + per-layer gap tables,
+then levers ranked by measured us and gated by 16/16 oracle + token identity.
+
+REGIME NOTE (measurement integrity): the H100 oscillates between two same-clock (1980 MHz SM)
+performance regimes across process launches — a "healthy" regime and a degraded one that
+follows immediately-on-busy-GPU launches (measured same-binary spread: baseline fixture
+50.9 ms healthy vs 120.5 ms degraded; the spread is NOT DVFS — clocks sample 1980 in both).
+Every A/B below is therefore interleaved same-session (arms alternating inside one script,
+medians of >=3 rounds, per-round IQR reported); absolute cells are quoted only from
+clean-census starts.
+
+### 1. The scaling anomaly — root cause, measured
+
+Fixture prefill (256 tok, warm) scaled only 1.54x A100->H100 (3260 -> 5027 tok/s) while the
+f32 peak ratio is 3.43x (19.5 -> 66.9 TF/s). ncu on the fixture's v2 GEMMs (M=128 chunks):
+
+  kernel (role)          grid    dur(ncu)  occ%  dram%  issue%  fma_pipe%  regs  waves  L2hit%
+  cd8a (o/down accum)    32      293.9us   12.48 1.26   29.51   17.88      64    0.06   47.5
+  a0c2 (swiglu)          96      173.1us   12.50 4.72   40.12   24.89      90    0.36   44.1
+  6215 (qkv assign)      128     117.9us   12.50 4.40   29.94   18.05      64    0.24   49.4
+
+Two compounding ceilings, each quantified:
+(a) WAVE QUANTIZATION at small M. Occupancy pinned at 12.5% = exactly ONE 256-thread block/SM:
+    the narrow-N roles launch 32-96 blocks on 132 SMs (waves 0.06-0.36). At the serve shapes
+    (M=1152 one-pass) the SAME kernels run at occ 24-44%, issue 47-57%, fma_pipe 28-35% —
+    the fixture's M=128 chunking (CUDA_PREFILL_TILE=128, two sequential passes for 256 tokens)
+    is what keeps them in the quantized floor. The batch-1 fixture path also NEVER received the
+    round-1 serve levers (L1 flash attention, L2 one-pass grids) — its nsys window shows the
+    legacy tiled attention kernel at grid h_q*m and the 128-row GEMM walk.
+(b) ISSUE-MIX ceiling. Even at M=1152 the FMA pipe tops out at 28-35% with issue at 47-57%:
+    FMA is ~62% of issued instructions (16 FMAs per 8 shared loads + loop/address overhead in
+    the 4x4 register block). H100 doubled FP32 lanes/SM (64 -> 128) WITHOUT widening issue
+    (4 warp-inst/cycle/SM both generations), so an issue-mix-bound kernel can scale at most
+    SM-count x clock = 132x1.98/(108x1.41) = 1.715x — and the fixture measured 1.54x = 1.71x
+    GEMM scaling dragged by the (a) wave floor. The 3.4x peak ratio would need ~100% FMA
+    fraction of issue; no tile variant measured reaches it (section 3).
+
+### 2. Per-layer gap tables (warm, windowed nsys kernel sums; ours per generation/request)
+
+FIXTURE 256 (ours = 20 timed generations; llama = llama-bench F16 pp256 warm bursts, 12 reps):
+  role                    algenta (legacy b1 path)        llama.cpp F16 (cuBLAS TC + FA)
+  qkv GEMM                5.25 ms (128-blk v2, 11.5 TF/s) sm90_xmma/cutlass TC GEMMs: all four
+  o/down GEMMs            26.79 ms (32-blk v2, 2.3-4.4 TF/s) projections together 1.39 ms
+  swiglu GEMM             7.76 ms (96-blk v2, 11.6 TF/s)  (225 GFLOP @ ~160 TF/s TC-effective)
+  attention               9.88 ms (_pf_attn_til, 2048-blk) flash_attn_ext_f16 0.457 ms + fixup
+  norms/rope/embed/lmhead 1.0 ms                           ~0.9 ms (norms+rope+converts)
+  GPU total / prefill     50.6 ms = 5027 tok/s             ~2.8 ms GPU (llama wall 18.8 ms:
+                                                             host/launch-bound at this scale)
+  Ratio: GEMM 39.8 vs 1.4 ms (28x, tensor cores); attention 9.9 vs 0.46 ms (21x).
+
+RAG 4096 (ours = serve_s2 warm admission, 2 requests, 99.8% busy, zero gaps >50us; llama =
+llama-completion fresh-process prompt eval, 3609 BPE tokens, window = all compute kernels):
+  role                    algenta (one-pass, 4x 1152/640)  llama F16-KV        llama q8_0-KV
+  GEMM (qkv/o/gu/down)    240.1 ms (15-21 TF/s achieved)   13.9 ms (TC)        13.9 ms (TC)
+  attention               559.6 ms (_pf_attn_flash, 79%!)  12.8 ms (FA+fixup)  12.4 ms + 9.5 ms
+  rope/norm/lmhead        7.9 ms                           ~13.5 ms             quant/rope/etc
+  GPU total / wall        707 ms / 743 ms (95% busy)       56 ms / 430-446 ms wall (13% busy:
+                                                             llama is HOST/launch-bound here —
+                                                             327 ms of its wall is >5 ms gaps)
+  Ratios: GEMM 17x (TC ceiling), attention 44x — but llama's wall floor (~300-430 ms) is
+  host-bound; our wall is GPU-bound. Our rag prefill must get GPU-sum < ~400 ms to beat the
+  llama wall even with perfect host behavior.
+
+### 3. Lever battery — measured deltas (refuted levers recorded so nobody retries)
+
+ADOPTED — LEVER L-H3: batch-1 prefill gets the serve driver's L1/L2 twins
+(session_cuda: ALGENTA_PF_ONEPASS_B1 + ALGENTA_PF_ATTN_FLASH_B1). The 256-token prompt now
+prefills in ONE M-parallel pass (v2 grids scale with M) with flash attention. Fixture prefill
+256, interleaved 3-round A/B (every cell IQR <= 0.12%):
+  baseline (legacy path)      50.96 ms  5023 tok/s   1.00x
+  onepass only (tiled attn)   31.37 ms  8162 tok/s   1.63x   <- the wave-quantization fix
+  flash only (128-row chunks) 52.52 ms  4874 tok/s   0.97x   <- REFUTED standalone at 128
+  L-H3 = both                 29.43 ms  8698 tok/s   1.73x     chunks (64 blocks underfill;
+                                                                tiled's 2048 tiny blocks fill
+                                                                better there — recorded)
+Gates: 16/16 campaign oracle PASS; full 15-step generated sequence token-identical to the
+flag-off path (only the timing column differs). Post-lever fixture scaling vs the A100 legacy
+baseline: 3260 -> 8698 = 2.67x (was 1.54x) — the anomaly's wave half is closed; the issue-mix
+half remains (section 1b).
+
+ADOPTED — LEVER L-H4: latency-pipelined flash attention (kernels_prefill_attn_flash2).
+ncu on the rag flash kernel at M=1152: issue 40%, fma_pipe 21%, DRAM 0.26%, L2 5.8%, L1TEX
+41%, occ 26.6%, stalls long-scoreboard 3.75 vs wait 2.17 per issue-active cycle = load-LATENCY
+bound (NOT bandwidth — section 4's int8-KV angle dies here). The twin issues V_j before the
+score tree and prefetches K_{j+1} under key j's consume — same math order, no other change.
+Probe (h100_attn_probe): max_abs_diff vs the L1 kernel = 0.0 at every raced shape (bit-exact),
+speedups 1.36x (m=256), 1.16-1.22x (m=1152 passes), 1.01x (m=640 tail). In-cell:
+  fixture prefill: 29.43 -> 27.55 ms = 9291 tok/s (1.85x vs legacy baseline)
+  rag single-request TTFT wall (interleaved, same session): 879.5 -> 679.6 ms = 1.29x
+Gates: 16/16 oracle PASS (batch-1 arm); serve_s2 selftest gate 1 (16/16 oracle) + gate 2
+(8/8 concurrent-vs-sequential token identity) PASS. Wired behind ALGENTA_PF_ATTN_FLASH2 /
+ALGENTA_PF_ATTN_FLASH2_B1 (falls through to flash1/tiled when absent).
+
+REFUTED — v3 WIDE GEMM family (BM=128, TM=8x4, 32 accumulators): measured SLOWER everywhere
+— qkv 0.43-0.77x, o/down 0.48-0.68x of v2 at M=128/256/1152 (h100_gemm_probe). The larger tile
+halves the grid (worse wave quantization at small M) and the 2-pass A staging costs more than
+the 2:1 -> 2.67:1 FMA:LDS improvement buys. The issue-mix ceiling (1b) does NOT yield to
+register-block widening on this backend. Do not retry.
+
+REFUTED — flash attention at 128-row chunks standalone (above): 0.97x — the flash kernel's
+64-block grid at m=128 underfills vs the tiled kernel's 2048 per-(row,head) blocks. Flash
+wins only at M-parallel shapes (>= 256 one-pass). Do not wire flash into chunked paths.
+
+REFUTED — int8 KV cache for rag attention (brief angle d): the rag flash kernel is NOT
+bandwidth-bound (DRAM 0.26%, L2 5.8%, L1TEX 41%, long-scoreboard-dominated stalls) — halving
+KV bytes does not touch its limiter (load latency x occupancy). The probe evidence predates
+any int8-KV implementation attempt; the angle is recorded dead by the ncu numbers.
+
+MEASURED NEUTRAL — v2n/v3s narrow-N accum variants at small M: +1-6% in-probe at M<=256
+(v2n 1.05x, v3s 1.02x; both correctness-verified standalone, max_abs_diff 3e-8 vs v2 at real
+o_proj shapes K=2048 N=1024). Not worth a wiring slot against L-H3's grid fix, which removes
+the condition they addressed; kept as probe record (v2n_dbg_probe, h100_gemm_probe). A probe
+harness bug was found and fixed on the way: host-mapped buffer fills RACE the following kernel
+enqueue on this runtime (vacuous diffs) — probe fills must be device-side kernels.
+
+### 4. Final re-measurement (post-lever, this session)
+
+Fixture prefill 256 (warm, clean-census, 20 runs/cell, IQR <= 0.12%):
+  legacy baseline 5023-5032 tok/s -> L-H3+L-H4: 9291 tok/s (27.55 ms) = 1.85x.
+  warm-vs-warm vs llama-bench F16 pp256 13634: 0.37x -> 0.68x.
+  Raced-protocol (llama cold fresh-process 947): 5.31x -> 9.81x.
+  The remaining warm-warm gap is the tensor-core ceiling on GEMM (28x at this M) + llama's
+  FA — stated, not conceded: no SIMT-f32 kernel closes a TC GEMM ratio; the issue-mix ceiling
+  (section 1b) caps even perfect tiles at ~62% FMA fraction of issue on this toolchain.
+Rag single-stream TTFT wall: 879.5 -> 679.6 ms (1.29x in-session A/B); vs llama-completion
+q8_0-KV fresh prompt eval 300.5 ms the gap narrows from 2.9x to 2.3x. Remaining rag gap =
+TC GEMM (17x) + our f32-KV flash vs their f16-TC FA (44x kernel-level), same ceiling family.
+Enterprise C=8 cells (serve_s2_f2 vs fresh llama-server q8_0-KV --parallel 32 -c 163840,
+64 req/cell; the same-session serve_s2 control reproduces the verification report within
+0.1% — 379.3/2694.1 vs 379.2/2694.4):
+  cell                llama q8_0-KV   serve_s2 (control)   serve_s2_f2 (L-H4)
+  rag agg tok/s       724.8           379.3                399.4  (+5.3%)
+  rag TTFT p50 ms     317.2           2694.1               2423.4 (-10.0%)
+  rag TPOT p50 ms     10.2            15.5                 15.0
+  chat agg tok/s      898.9           1021.6 (verif sess)  1044.1 (1.16x llama)
+  chat TTFT p50 ms    255.0           298.7 (verif sess)   286.2  (0.89x llama)
+  chat TPOT p50 ms    7.2             6.35 (verif sess)    6.3    (1.14x llama)
+  rag vs q8_0-KV llama: agg 0.52x -> 0.55x, TTFT 0.14x -> 0.13x — improved, still a LOSS;
+  the admission-prefill GPU-sum (section 2) is the floor and it is TC-ceiling-bound.
+  chat vs q8_0-KV llama: agg + TPOT wins HOLD and widen slightly (1.13x -> 1.16x agg;
+  1.16x -> 1.14x TPOT); the TTFT loss narrows 0.81x -> 0.89x. (Chat control = the
+  verification-session arm; the same-session control was run for rag only.)
+
+WHAT DID LAND: L-H3 (batch-1 one-pass M-parallel grids + flash attention — the serve driver's
+round-1 levers ported to the fixture/oracle path) and L-H4 (latency-pipelined flash twin,
+bit-identical). Shipped builds pass 16/16 oracle + token identity + serve selftest gates;
+probes kept in-tree (h100_gemm_probe, h100_attn_probe, v2n_dbg_probe) as the measurement
+record; all new paths comptime-flag-gated with the pre-change paths byte-preserved as the
+A/B control.
 
 ## H100 CONCURRENT RE-MEASURE ON THE FIXED DRIVER (2026-08-23, algenta-ent-h100 a3-highgpu-8g SPOT, origin/main a08b1568 = #816 merged; REPLACES the pre-fix H100 concurrent cells)
 

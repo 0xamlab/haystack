@@ -117,6 +117,14 @@ from residentk.kernels_prefill_f32_v2 import (
     _pf_gemm_accum_kernel_v2,
     _pf_gemm_swiglu_kernel_v2,
 )
+from residentk.kernels_prefill_attn_flash import (
+    _PF_FLASH_NTHREADS,
+    _PF_FLASH_ROWS_PER_BLOCK,
+    _pf_attn_flash_kernel,
+)
+from residentk.kernels_prefill_attn_flash2 import (
+    _pf_attn_flash2_kernel,
+)
 from residentk.kernels_cuda_graph import (
     _embed_row_kernel_g,
     _graph_advance_kernel,
@@ -152,6 +160,43 @@ allocates under 1.6 MB at Qwen3-0.6B's dimensions (the QKV tile, the largest, is
 Float32) while amortizing the per-dispatch host cost over 128 positions; the tiled-GEMM kernels'
 own `_GEMM_BM = 32` divides it exactly, so no chunk but a prompt's FINAL one ever sees a partial
 M-tile."""
+
+comptime CUDA_PREFILL_ONEPASS_B1: Bool = is_defined["ALGENTA_PF_ONEPASS_B1"]()
+"""H100-autopsy lever L-H3 (the batch-1 twin of the serve driver's L2): with
+`-D ALGENTA_PF_ONEPASS_B1`, `prefill` walks the prompt in windows of up to `_B1_PASS_MAX` rows
+instead of `CUDA_PREFILL_TILE` (128-row) chunks — one M-parallel grid per projection per window,
+the v2 GEMM grids scaling with M (the H100 ncu evidence: M=128 chunks pin occupancy at 12.5%
+= one block/SM on 132 SMs, waves 0.06-0.36 for the narrow-N roles; the fixture's 1.54x
+A100->H100 scaling vs the 3.4x f32-peak ratio is this wave quantization, not a clock or
+bandwidth effect). Flag-off builds keep the 128-row walk byte-for-byte."""
+
+comptime _B1_PASS_MAX: Int = 1024
+"""Rows one batch-1 prefill pass covers under CUDA_PREFILL_ONEPASS_B1: >= the raced fixture
+prompt (256) and every chat shape, so those prefill in ONE pass; longer prompts run
+ceil(len/1024) passes. Scratch VRAM at this cap: ~55 MB at Qwen3-0.6B's shapes — sized for the
+fixture/chat cells this lever targets."""
+
+comptime _B1_PF_ROWS: Int = _B1_PASS_MAX if CUDA_PREFILL_ONEPASS_B1 else CUDA_PREFILL_TILE
+"""Prefill scratch rows: the pass cap under the onepass arm, the legacy 128 otherwise."""
+
+comptime CUDA_PREFILL_FLASH_B1: Bool = is_defined["ALGENTA_PF_ATTN_FLASH_B1"]()
+"""H100-autopsy lever L-H3's attention half (the batch-1 twin of the serve driver's L1): with
+`-D ALGENTA_PF_ATTN_FLASH_B1`, batch-1 prefill dispatches the flash-style M-parallel attention
+kernel (`residentk.kernels_prefill_attn_flash._pf_attn_flash_kernel`, one warp per four rows of
+one head, warp-shuffle score reduction, online softmax, no barrier/shared) instead of
+`_pf_attn_tiled_kernel_simd` (one block per (row, head), two-barrier full-block reduction PER
+KEY). The H100 fixture nsys window measured the tiled kernel at 19.5% of the 256-token prefill
+GPU (9.88 ms/gen at grid h_q*m). The tiled kernel stays the fallback for any head dim the flash
+kernel's float4-lane contract does not cover (d_head != 128) and for flag-off builds. Row math
+bit-identical to the tiled kernel's per-key online-softmax recurrence — the session's own
+oracle gate is the acceptance test, exactly as the serve driver's L1 was."""
+
+comptime CUDA_PREFILL_FLASH2_B1: Bool = is_defined["ALGENTA_PF_ATTN_FLASH2_B1"]()
+"""H100-autopsy lever L-H4's batch-1 twin: under `-D ALGENTA_PF_ATTN_FLASH2_B1` (with
+`ALGENTA_PF_ATTN_FLASH_B1`), the batch-1 flash dispatch uses the LATENCY-PIPELINED twin
+`_pf_attn_flash2_kernel` (bit-identical to the L1 kernel, 1.16-1.36x faster on H100 — see
+`residentk.kernels_prefill_attn_flash2`'s docstring for the ncu stall evidence). Falls
+through to the L1 kernel when absent."""
 
 
 @fieldwise_init
@@ -280,7 +325,7 @@ struct _CudaResidentQwen3(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
 
-        var t = CUDA_PREFILL_TILE
+        var t = _B1_PF_ROWS
         self.pf_tokens = self.ctx.enqueue_create_buffer[DType.int32](t)
         self.pf_hidden = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
         self.pf_xn = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
@@ -422,6 +467,9 @@ struct _CudaResidentQwen3(Movable):
             var last_m = 0
             while pos < n_prompt:
                 var m = CUDA_PREFILL_TILE
+                @parameter
+                if CUDA_PREFILL_ONEPASS_B1:
+                    m = _B1_PASS_MAX
                 if n_prompt - pos < m:
                     m = n_prompt - pos
                 last_m = m
@@ -470,14 +518,47 @@ struct _CudaResidentQwen3(Movable):
                         Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
                         grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
                     )
-                    # 4 ── causal attention, one threadgroup per (row, query head)
-                    self.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
-                        self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
-                        lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                        Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
-                        self.scale, Int64(m),
-                        grid_dim=self.h_q * m, block_dim=self.d_head,
-                    )
+                    # 4 ── causal attention — the flash-style M-parallel kernel under the
+                    # L-H3 flag, the tiled kernel otherwise (byte-unmodified)
+                    @parameter
+                    if CUDA_PREFILL_FLASH_B1:
+                        if self.d_head == 128 and CUDA_PREFILL_FLASH2_B1:
+                            self.ctx.enqueue_function[_pf_attn_flash2_kernel](
+                                self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                Int64(pos), Int64(self.h_q), Int64(self.h_kv),
+                                Int64(self.d_head),
+                                self.scale, Int64(m),
+                                grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK) * self.h_q,
+                                block_dim=_PF_FLASH_NTHREADS,
+                            )
+                        elif self.d_head == 128:
+                            self.ctx.enqueue_function[_pf_attn_flash_kernel](
+                                self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                Int64(pos), Int64(self.h_q), Int64(self.h_kv),
+                                Int64(self.d_head),
+                                self.scale, Int64(m),
+                                grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK) * self.h_q,
+                                block_dim=_PF_FLASH_NTHREADS,
+                            )
+                        else:
+                            self.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                                self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                Int64(pos), Int64(self.h_q), Int64(self.h_kv),
+                                Int64(self.d_head),
+                                self.scale, Int64(m),
+                                grid_dim=self.h_q * m, block_dim=self.d_head,
+                            )
+                    else:
+                        self.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                            self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                            lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                            self.scale, Int64(m),
+                            grid_dim=self.h_q * m, block_dim=self.d_head,
+                        )
                     # 5 ── o_proj ACCUMULATED straight into the residual stream (v2 kernel)
                     self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
                         self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),

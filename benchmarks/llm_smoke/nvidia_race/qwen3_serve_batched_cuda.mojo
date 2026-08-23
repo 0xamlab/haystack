@@ -217,6 +217,9 @@ from residentk.kernels_prefill_attn_flash import (
     _PF_FLASH_ROWS_PER_BLOCK,
     _pf_attn_flash_kernel,
 )
+from residentk.kernels_prefill_attn_flash2 import (
+    _pf_attn_flash2_kernel,
+)
 from residentk.kernels_prefill_v2f16 import (
     _F16G_BM,
     _F16G_BN,
@@ -324,6 +327,18 @@ flag; the tiled kernel stays the fallback for any head dim the flash kernel's fl
 contract does not cover (d_head != 128) and for flag-off builds. The flash kernel keeps the
 tiled kernel's QK-norm+RoPE contract exactly — it reads the same `q_rot`/slot-`ck`/`cv`
 buffers the unchanged `_pf_ropewrt_kernel` dispatch writes."""
+
+comptime SERVE_PF_ATTN_FLASH2: Bool = is_defined["ALGENTA_PF_ATTN_FLASH2"]()
+"""LEVER L-H4 (H100 autopsy, 2026-08-23): under `-D ALGENTA_PF_ATTN_FLASH2` the admission
+prefill's flash attention dispatches the LATENCY-PIPELINED twin
+`residentk.kernels_prefill_attn_flash2._pf_attn_flash2_kernel` instead of the L1 kernel.
+The H100 ncu evidence (rag admission, M=1152 pass): the flash kernel is load-LATENCY-bound,
+not bandwidth-bound — issue 40%, FMA pipe 21%, DRAM 0.26%, L2 5.8%, L1TEX 41%, occupancy
+26.6%, stall mix long-scoreboard 3.75 vs wait 2.17 (per issue-active cycle). The twin issues
+V_j before the score tree and prefetches K_{j+1} under key j's consume, hiding that latency
+without changing the math order. Probe (h100_attn_probe.mojo): bit-IDENTICAL to the L1 kernel
+(max_abs_diff 0.0 at m=256/1152 pos 0/1152/2304/640@3456) and 1.16-1.36x faster. Requires
+SERVE_PF_ATTN_FLASH and d_head==128; otherwise falls through to the L1 / tiled kernels."""
 
 comptime SERVE_PF_F16GEMM: Bool = is_defined["ALGENTA_PF_F16GEMM"]()
 """LEVER L3 (unlocked per the brief because L1+L2+L4 left C=8 below 570): f16-SIMD
@@ -1119,7 +1134,20 @@ struct _AdmissionPrefill(Movable):
                     # 4 ── causal attention over the slot's cache — LEVER L1 under the flag
                     @parameter
                     if SERVE_PF_ATTN_FLASH:
-                        if s.d_head == 128:
+                        if s.d_head == 128 and SERVE_PF_ATTN_FLASH2:
+                            # LEVER L-H4 (H100 autopsy): the latency-pipelined flash twin —
+                            # bit-identical to flash1 (probe max_abs_diff 0.0 at every raced
+                            # shape), 1.16-1.36x faster (long-scoreboard stalls cut by the
+                            # V-before-score + K-prefetch load reordering).
+                            self.view.enqueue_function[_pf_attn_flash2_kernel](
+                                self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                ck_b, cv_b,
+                                Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                                s.scale, Int64(m),
+                                grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK) * s.h_q,
+                                block_dim=_PF_FLASH_NTHREADS,
+                            )
+                        elif s.d_head == 128:
                             self.view.enqueue_function[_pf_attn_flash_kernel](
                                 self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
                                 ck_b, cv_b,
