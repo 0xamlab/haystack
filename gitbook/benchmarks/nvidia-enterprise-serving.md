@@ -67,14 +67,14 @@ Same protocol on the H100 (C=8, gate-2-clean round-3 driver, fresh same-session
 
 | Mix | Metric | Algenta | `llama-server` f16 | Lead |
 | --- | --- | --- | --- | --- |
-| Chat C=8 | Aggregate tok/s | 1,026.5 | 902.4 | 1.14x |
-| Chat C=8 | TTFT p50 ms | 297.9 | 345.1 | 1.16x faster |
-| Chat C=8 | TPOT p50 ms | 6.3 | 7.1 | 1.12x faster |
-| Rag C=8 | Aggregate tok/s | 379.9 | 143.8 | 2.64x |
-| Rag C=8 | TTFT p50 ms | 2,688.1 | 5,463.9 | 2.03x faster |
+| Chat C=8 | Aggregate tok/s | 1,044.1 | 902.4 | 1.16x |
+| Chat C=8 | TTFT p50 ms | 286.2 | 345.1 | 1.21x faster |
+| Chat C=8 | TPOT p50 ms | 6.3 | 7.1 | 1.13x faster |
+| Rag C=8 | Aggregate tok/s | 399.4 | 143.8 | 2.78x |
+| Rag C=8 | TTFT p50 ms | 2,423.4 | 5,463.9 | 2.25x faster |
 
-The 4-stream arm matches the aggregate (1,029.9 tok/s) and likewise leads on TTFT and
-TPOT.
+The shipped concurrent configuration is the 2-stream arm; the 4-stream arm matched it in
+the verification round.
 
 ## Prefill
 
