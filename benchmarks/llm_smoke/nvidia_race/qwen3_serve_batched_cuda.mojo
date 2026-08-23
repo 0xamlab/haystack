@@ -240,24 +240,51 @@ comptime MAX_CTX: Int = 1536 if CTX_1536 else 4736
 rag INCLUDING the harness's synth prompt overshoot (see the module docstring); ALGENTA_CTX_1536
 is the L4-24GB chat-only fallback. The batched KV scales linearly with it."""
 
-comptime CHUNK_MAX: Int = 64
+comptime CHUNK_MAX: Int = (
+    1 if is_defined["ALGENTA_DBG_CHUNK1"]() else (
+        2 if is_defined["ALGENTA_DBG_CHUNK2"]() else (
+            4 if is_defined["ALGENTA_DBG_CHUNK4"]() else 64
+        )
+    )
+)
 """The graph-chunk horizon cap: at most this many back-to-back replays per
 seed_and_run_batched_graph submission. The actual chunk K is the minimum remaining token
 budget over the active set (capped here), so some sequence completes every chunk and new
-requests are admitted between chunks."""
+requests are admitted between chunks. LEVER L7 scalpel: `-D ALGENTA_DBG_CHUNK1/2/4` forces
+the horizon (one/two/four replays per seed+sync) — the co-residency corruption reproduces
+at K>1 (measured this round: K=1 PASSES gate 2 with graph-under-lanes enabled, the shipped
+horizon fails 3/8), so these bisect the multi-replay axis without touching the fence
+design."""
 
-comptime CHUNK_MAX_QUEUED: Int = 8
+comptime CHUNK_MAX_QUEUED: Int = (
+    1 if is_defined["ALGENTA_DBG_CHUNK1"]() else (
+        2 if is_defined["ALGENTA_DBG_CHUNK2"]() else (
+            4 if is_defined["ALGENTA_DBG_CHUNK4"]() else (
+                16 if is_defined["ALGENTA_CMQ_16"]() else (
+                    4 if is_defined["ALGENTA_CMQ_4"]() else 8
+                )
+            )
+        )
+    )
+)
 """Chunk horizon while requests are WAITING (MEASURED TTFT lever): admissions only happen
 at chunk boundaries, so a 64-step chunk parks pending requests' TTFT for up to 64 x TPOT;
 cutting the horizon to 8 steps while the queue is non-empty trades a small seam-overhead for
 admission opportunities every ~8 decode steps. The cap lifts itself automatically once the
-pending queue drains (the full CHUNK_MAX applies to a saturated active set)."""
+pending queue drains (the full CHUNK_MAX applies to a saturated active set). LEVER L8:
+`-D ALGENTA_CMQ_4` / `-D ALGENTA_CMQ_16` sweep the horizon for the C=16/32 cells."""
 
-comptime ADMIT_GROUP_MAX: Int = 2
+comptime ADMIT_GROUP_MAX: Int = (
+    4 if is_defined["ALGENTA_ADMIT_GROUP_4"]() else (
+        8 if is_defined["ALGENTA_ADMIT_GROUP_8"]() else 2
+    )
+)
 """Admission group cap (MEASURED TTFT lever): admit at most this many pending requests per
 loop iteration, so serialized admission prefills interleave with decode chunks instead of
 one 8-way prefill batch stalling the whole device (all-active-set slots still fill — the
-loop simply re-admits on the next boundary)."""
+loop simply re-admits on the next boundary). LEVER L8: `-D ALGENTA_ADMIT_GROUP_4` /
+`-D ALGENTA_ADMIT_GROUP_8` sweep the group cap — with multi-stream lanes a bigger group is
+several WAVES, not one stalled batch (round-1's AG=4 rejection predates L5)."""
 
 comptime POLLIN: Int = 1
 comptime POLLERR: Int = 8
@@ -351,6 +378,79 @@ comptime DBG_NOOVERLAP: Bool = is_defined["ALGENTA_DBG_NOOVERLAP"]()
 collects every lane BEFORE the decode chunk and launches the next wave AFTER it — no lane
 kernel is ever resident on the GPU while a graph replays. Bisects co-residency vs
 everything else."""
+
+comptime DBG_GRAPH_LANES: Bool = is_defined["ALGENTA_DBG_GRAPH_LANES"]()
+"""LEVER L7 scalpel: with `-D ALGENTA_DBG_GRAPH_LANES`, `step_chunk` keeps the CAPTURED-GRAPH
+arm even while lanes are in flight — the pre-L5-fix regime (then shipped as hybrid decode).
+On the round-2 build this reproduces the gate-2 step-0 corruption; on the L7 build it is the
+gate the event-fenced co-residency must pass."""
+
+comptime DBG_NO_DRAIN: Bool = is_defined["ALGENTA_DBG_NO_DRAIN"]()
+"""LEVER L7 scalpel: with `-D ALGENTA_DBG_NO_DRAIN`, the multi-stream loop skips
+`drain_primary` between compaction and the next wave launch (undoes the round-2 fence to
+re-bisect the compaction-copy window)."""
+
+comptime DBG_SCHED: Bool = is_defined["ALGENTA_DBG_SCHED"]()
+"""LEVER L7 scalpel: with `-D ALGENTA_DBG_SCHED`, the multi-stream scheduler prints every
+slot-bookkeeping event (wave launch targets, integrations, compaction moves, chunk B/K with
+lanes-busy) — the audit that proves or refutes a slot-aliasing hole under co-residency."""
+
+comptime GRAPH_LANES: Bool = is_defined["ALGENTA_GRAPH_LANES"]()
+"""LEVER L7 (production switch): with `-D ALGENTA_GRAPH_LANES`, captured-graph decode runs
+CO-RESIDENT with in-flight admission lanes — the round-2 hybrid's per-dispatch windows are
+gone and the ~30-50 agg tok/s co-residency tax with them.
+
+ROOT CAUSE (round 3, measured chain on the A100): the round-2 "graph replay co-resident
+with side-stream lanes corrupts tokens" hazard was NOT a stream race. `move_slot_kv`
+(compaction's slot KV copy) computed its slot windows as `Int(ptr) + slot * n_elem` —
+BYTES address + ELEMENTS offset, a 4x under-offset on Float32: every compaction move
+copied from the wrong source window and into the wrong destination, leaving the moved
+sequence's true slot stale while shredding the lower slots' KV (dst slot i landed at i/4
+of the true stride). Corruption surfaced at the next chunk's step 0, memcheck-clean
+(offsets stay in-buffer), seed STATE intact — exactly the round-2 signature, and the
+co-residency correlation was incidental timing (moves land while waves churn). The fix is
+typed element-scaled pointer arithmetic in `move_slot_kv`; with it, gate 2 PASSES with the
+graph arm forced under lanes at the full K=8 horizon (measured, this branch).
+
+Supporting measurements kept in-tree: graphsync_probe (base-captured replay ordering,
+lane->graph visibility, base sync scope, cross-view waits all sound; side-stream CAPTURE
+is broken on MAX 26.5 — Q3/Q3b + a gate-1 fail), graphscale_probe (258-node synthetic
+chain clean under lane-shaped pressure), the K-bisect (K=1 passed only because its
+per-step boundaries changed move timing — K>=2 reproduced), and the per-step-sync arm
+(P3G_PSS) which changed nothing. Lane -> graph needs NO data fence: admission writes the
+FREE-TAIL slots, the chunk reads the active PREFIX — disjoint by the slot contract; the
+collect/compact host syncs cover the rest. The round-2 L5 seed-copy sync and the
+`drain_primary` fence STAY as defensive structure (the seed sync also drains the
+compaction copies before the replays under this flag)."""
+
+comptime L7_ACTIVE: Bool = GRAPH_LANES and P3_SERVE
+"""The wired L7 regime: GRAPH_LANES with the packed3 arm (the race arm). The f32 graph
+session keeps the round-2 hybrid under GRAPH_LANES (additive discipline: only the arm the
+race ships changes)."""
+
+comptime L7_BUSY_K: Int = (
+    2 if is_defined["ALGENTA_L7_BUSY_K2"]() else (
+        4 if is_defined["ALGENTA_L7_BUSY_K4"]() else 1
+    )
+)
+"""LEVER L7 busy-window chunk horizon (MEASURED, round 3): under `L7_ACTIVE` with lanes in
+flight the chunk runs `L7_BUSY_K` replays instead of CHUNK_MAX_QUEUED. The first L7 race
+cut measured WHY: K=8 busy-window chunks stretched the loop iteration to ~8 decode steps,
+so completed admission waves waited up to a whole chunk for their collect/integrate —
+TTFT p50 471.2 -> 565.0 at C=8 vs the hybrid control (whose lane-busy windows are ONE
+per-dispatch step, ~11 ms iterations). K=1 keeps the hybrid's iteration cadence with the
+graph arm's cheap submission (the K=1-under-lanes gate is the repro_chunk1 arm's PASS).
+The C=32 cut then measured the other side of the trade: the chunk seam (seed + syncs +
+log readback) costs ~4.8 ms/step-equivalent at B=32 — K=1 pays it every step there (TPOT
+50.2 = the hybrid's, vs the K=8 arm's 45.4) while C=32 TTFT headroom is large (643.8 vs
+llama 868.8) — `-D ALGENTA_L7_BUSY_K2` / `_K4` sweep the middle of the trade."""
+
+comptime LANE_PRIO_LOW: Bool = is_defined["ALGENTA_LANE_PRIO_LOW"]()
+"""LEVER L8 experiment: with `-D ALGENTA_LANE_PRIO_LOW`, the admission lane streams are
+created at the device's LEAST stream priority (stream_priority_range().least) so decode's
+base-stream graph chunks keep scheduling preference for the SMs while prefills fill the
+leftover capacity — a test of whether TTFT/TPOT balance improves at the high-C cells."""
+
 
 # ── ASCII byte constants for the request-line parser (json.parser's own spelling) ──
 comptime _QUOTE: UInt8 = 34        # "
@@ -1241,17 +1341,31 @@ struct _ServeGraph(Movable):
             var vocab = self.f32g.value().inner.vocab
             return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
 
-    def grow_stream_pool(mut self, n: Int) raises:
+    def grow_stream_pool(mut self, n: Int, priority: Int) raises:
         """LEVER L5: the AsyncRT context starts with ONE stream (the probe's num_streams
         finding); grow the pool by `n` so `select_stream(1..n)` is valid. Called ONCE
-        before any lane is constructed."""
+        before any lane is constructed. LEVER L8: the lane streams take `priority`
+        (0 = device default; LANE_PRIO_LOW builds pass the range's least priority)."""
         @parameter
         if P3_SERVE:
             for _ in range(n):
-                _ = self.p3g.value().inner.ctx.create_stream()
+                _ = self.p3g.value().inner.ctx.create_stream(priority=priority)
         else:
             for _ in range(n):
-                _ = self.f32g.value().inner.ctx.create_stream()
+                _ = self.f32g.value().inner.ctx.create_stream(priority=priority)
+
+    def lane_stream_priority(mut self) raises -> Int:
+        """LEVER L8: the priority the lane streams are created with — the device's least
+        priority under `LANE_PRIO_LOW`, the default 0 otherwise."""
+        @parameter
+        if LANE_PRIO_LOW:
+            @parameter
+            if P3_SERVE:
+                return self.p3g.value().inner.ctx.stream_priority_range().least
+            else:
+                return self.f32g.value().inner.ctx.stream_priority_range().least
+        else:
+            return 0
 
     def new_admission_lane(
         mut self, stream_id: Int, d_model: Int, h_q: Int, h_kv: Int, d_head: Int,
@@ -1283,12 +1397,11 @@ struct _ServeGraph(Movable):
 
     def drain_primary(mut self) raises:
         """LEVER L5 co-residency fence: drain the primary stream (per-stream scope — probe
-        Q5) so compaction's slot-KV copies can never execute co-resident with lane kernels.
-        The trace-instrumented bisect located the corruption the selftest caught: chunks
-        immediately after a compaction move read wrong KV at the moved slot (seed state
-        verified correct; memcheck clean) — the `_slot_copy_kernel` dispatches race lane
-        kernels started in the same window. One sync per iteration (~tens of µs) when the
-        multi-stream scheduler runs; the copies themselves only exist when a move happened."""
+        Q5). Round 2 read this as the fix for "chunks immediately after a compaction move
+        read wrong KV at the moved slot"; round 3 proved the real cause was `move_slot_kv`'s
+        4x address under-offset (fixed there). The drain STAYS as belt-and-braces: it
+        guarantees the compaction copies completed before the next wave's lanes launch and
+        before the chunk's seed sync, at ~tens of µs per iteration."""
         @parameter
         if P3_SERVE:
             self.p3g.value().inner.ctx.synchronize()
@@ -1315,7 +1428,21 @@ struct _ServeGraph(Movable):
 
     def move_slot_kv(mut self, i: Int, j: Int) raises:
         """Compaction's device-side half — `_ServeState.compact`'s per-layer slot KV copies,
-        run against the arm's inner session (slot j -> slot i, whole-slot windows)."""
+        run against the arm's inner session (slot j -> slot i, whole-slot windows).
+
+        LEVER L7 ROOT CAUSE FIX: the round-2 address arithmetic added `slot * n_elem` to a
+        BYTE address (`Int(ptr)` is bytes; `n_elem` is ELEMENTS of a Float32 slot window) —
+        a 4x under-offset. Every compaction move therefore copied from the wrong source
+        window AND into the wrong destination: dst slot-i's true window stayed stale while
+        the mis-addressed copy shredded the first slots' KV (slot i's computed offset is
+        i/4 of the true stride, so a move into slot 3 overwrote 3/4 of slot 0's window and
+        the first 3/4 of slot 1's, etc.). This — not a stream race — produced the round-2
+        "chunk after a compaction move reads wrong KV at the moved slot" signature (always
+        at a chunk's step 0, memcheck-clean: the offsets stay in-buffer, seed STATE intact)
+        and round 3's gate-2 divergences (victims = the moved sequence + every sequence
+        whose window the mis-addressed copy crossed). The round-2 bisect's co-residency
+        correlation was real but incidental: moves only land while waves churn. The fix is
+        typed pointer arithmetic (element-scaled) BEFORE the address round-trip."""
         @parameter
         if P3_SERVE:
             ref inner = self.p3g.value().inner
@@ -1324,16 +1451,16 @@ struct _ServeGraph(Movable):
             for layer in range(inner.n_layers):
                 ref lw = inner.layers[layer]
                 var ck_i = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + i * n_elem
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr() + i * n_elem)
                 )
                 var ck_j = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + j * n_elem
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr() + j * n_elem)
                 )
                 var cv_i = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + i * n_elem
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr() + i * n_elem)
                 )
                 var cv_j = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + j * n_elem
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr() + j * n_elem)
                 )
                 inner.ctx.enqueue_function[_slot_copy_kernel](
                     ck_i, ck_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
@@ -1348,16 +1475,16 @@ struct _ServeGraph(Movable):
             for layer in range(inner.n_layers):
                 ref lw = inner.layers[layer]
                 var ck_i = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + i * n_elem
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr() + i * n_elem)
                 )
                 var ck_j = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.ck.unsafe_ptr()) + j * n_elem
+                    unsafe_from_address=Int(lw.ck.unsafe_ptr() + j * n_elem)
                 )
                 var cv_i = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + i * n_elem
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr() + i * n_elem)
                 )
                 var cv_j = UnsafePointer[Float32, origin=MutAnyOrigin](
-                    unsafe_from_address=Int(lw.cv.unsafe_ptr()) + j * n_elem
+                    unsafe_from_address=Int(lw.cv.unsafe_ptr() + j * n_elem)
                 )
                 inner.ctx.enqueue_function[_slot_copy_kernel](
                     ck_i, ck_j, Int64(n_elem), grid_dim=grid, block_dim=_COPY_TG,
@@ -1540,6 +1667,10 @@ struct _ServeState(Movable):
             # MutAnyOrigin sub-range-copy trick lives in the wrapper — both slots' windows
             # alias ONE concatenated per-layer buffer).
             gs.move_slot_kv(i, j)
+            @parameter
+            if DBG_SCHED:
+                print("SCHED COMPACT slot", i, "<-", j,
+                      "| rid", self.slot_rid[j], "n_active", self.n_active)
             self.slot_used[i] = True
             self.slot_rid[i] = self.slot_rid[j]
             self.slot_t0[i] = self.slot_t0[j]
@@ -1644,13 +1775,24 @@ struct _ServeState(Movable):
         resident mis-reads lane-written state (step-0 token divergence, seed verified clean,
         memcheck clean), while per-dispatch decode under the same concurrency is token-exact
         (the NOGRAPH bisect). Decode therefore overlaps admission through the per-dispatch
-        arm and reverts to the fast captured-graph arm the moment no lane is in flight."""
+        arm and reverts to the fast captured-graph arm the moment no lane is in flight.
+        LEVER L7: under `L7_ACTIVE` the hybrid is OFF — the graph arm runs co-resident with
+        lanes (the round-2 tax recovered). Safe because the round-2 corruption was the
+        `move_slot_kv` 4x address under-offset (fixed there — see the GRAPH_LANES comptime's
+        root-cause record), not the co-residency itself."""
         var B = self.n_active
         if B == 0:
             return
         # the chunk horizon: someone completes every chunk; nobody overshoots; while
         # requests wait in the queue the SHORT horizon keeps admission boundaries frequent
         var K = CHUNK_MAX_QUEUED if (self.pending_len() > 0 or short_horizon) else CHUNK_MAX
+        @parameter
+        if L7_ACTIVE:
+            # LEVER L7: with lanes in flight the horizon shrinks to L7_BUSY_K — the
+            # iteration cadence (collect/integrate frequency) the hybrid's one-step
+            # busy windows provided; see the L7_BUSY_K comptime's measurement record.
+            if short_horizon:
+                K = L7_BUSY_K
         var max_ctx = gs.max_ctx()
         for b in range(B):
             var rem_tok = self.slot_max_tokens[b] - len(self.slot_tokens[b])
@@ -1668,7 +1810,14 @@ struct _ServeState(Movable):
             firsts.append(self.slot_last[b])
             poss.append(self.slot_n_prompt[b] + len(self.slot_tokens[b]) - 1)
 
-        var skip_graph = DBG_NOGRAPH or lanes_busy
+        var skip_graph = DBG_NOGRAPH or (
+            lanes_busy and not (L7_ACTIVE or DBG_GRAPH_LANES)
+        )
+        @parameter
+        if DBG_SCHED:
+            print("SCHED CHUNK B", B, "K", K, "| lanes_busy", lanes_busy,
+                  "| arm", "per-dispatch" if skip_graph else "graph",
+                  "| pending", self.pending_len())
         var st = RESIDENT_ERR_LAUNCH_FAILED if skip_graph else gs.seed_and_run_batched_graph(firsts, poss, K)
         if st != RESIDENT_OK:
             # FALLBACK: one per-dispatch step over the same prefix (K may shrink to 1)
@@ -1748,9 +1897,9 @@ struct _AdmissionLanes(Movable):
         d_head: Int, d_ff: Int,
     ) raises:
         """Grow the context's stream pool by n, then build lane i on select_stream(i+1) —
-        stream 0 stays the decode stream."""
+        stream 0 stays the admission-free stream the compaction copies run on."""
         self.n_lanes = n
-        gs.grow_stream_pool(n)
+        gs.grow_stream_pool(n, gs.lane_stream_priority())
         self.lanes = List[_AdmissionPrefill]()
         for i in range(n):
             self.lanes.append(
@@ -1800,6 +1949,7 @@ struct _AdmissionLanes(Movable):
             return False
         var h = st.pending_head
         var slot = st.n_active + self.n_busy()
+        var rid_dbg = st.pending_rid[h]
         gs.lane_launch(self.lanes[lane], slot, st.pending_ids[h])
         self.lane_busy[lane] = True
         self.lane_rid[lane] = st.pending_rid[h]
@@ -1809,6 +1959,10 @@ struct _AdmissionLanes(Movable):
         self.lane_slot[lane] = slot
         st.pending_head += 1
         st._release_pending_if_done()
+        @parameter
+        if DBG_SCHED:
+            print("SCHED LAUNCH lane", lane, "rid", rid_dbg, "-> slot", slot,
+                  "| n_active", st.n_active, "n_busy", self.n_busy())
         return True
 
     def collect_all(mut self, mut gs: _ServeGraph, mut st: _ServeState) raises:
@@ -1825,6 +1979,10 @@ struct _AdmissionLanes(Movable):
             if tok < 0:
                 print(_error_line(self.lane_rid[i], "prefill failed"))
                 continue
+            @parameter
+            if DBG_SCHED:
+                print("SCHED COLLECT lane", i, "rid", self.lane_rid[i], "-> slot",
+                      self.lane_slot[i], "first_tok", tok)
             st.integrate_admission(
                 self.lane_slot[i], self.lane_rid[i], self.lane_t0[i],
                 self.lane_max_tokens[i], self.lane_n_prompt[i], tok, t_first,
@@ -1881,10 +2039,19 @@ def _serve_loop_mstreams(mut gs: _ServeGraph, mut lanes: _AdmissionLanes) raises
                     st.enqueue_line(line, t0)
             continue
         else:
-            gs.drain_primary()
-            # 3. launch the next wave (async enqueues on the lane streams)
-            while lanes.launch_next(gs, st):
-                pass
+            @parameter
+            if not DBG_NO_DRAIN:
+                gs.drain_primary()
+            # 3. launch the next wave (async enqueues on the lane streams). LEVER L8: while
+            # decode is active, at most ADMIT_GROUP_MAX launches per iteration — with
+            # PF_STREAMS lanes this paces admissions into waves of the group size across
+            # chunk boundaries (the mstreams analog of the single-stream admit cap) instead
+            # of filling every lane at once; with NOTHING active (startup) every lane fills
+            # so the first wave is not artificially throttled.
+            var wave_cap = ADMIT_GROUP_MAX if st.n_active > 0 else lanes.n_lanes
+            var launched = 0
+            while launched < wave_cap and lanes.launch_next(gs, st):
+                launched += 1
             # 4. step one chunk, or idle-block when there is nothing in flight
             if st.n_active == 0:
                 if st.eof and not lanes.any_busy():

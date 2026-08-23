@@ -13890,6 +13890,139 @@ Every shipped build passes 16/16 oracle + 8/8 token identity; probes kept in-tre
 as the measurement record; debug bisect flags (ALGENTA_DBG_NOGRAPH / _DBG_NOOVERLAP /
 ALGENTA_P3G_TRACE) stay comptime-gated and off in every shipped configuration.
 
+ADDENDUM 2026-08-23 (ROUND 3) — LEVER L7: GRAPH CO-RESIDENCY RECOVERED — the round-2
+"runtime hazard" was a compaction address bug (bytes vs elements, 4x under-offset);
+captured-graph decode now runs UNDER in-flight admission lanes. LEVER L8: admission tuning
+for the C=16/32 cells. Branch feat/lever-push-2 (PR #813).
+------------------------------------------------------------------------------
+Same harness (enterprise_bench.py, greedy, 64 req/cell), same VM (algenta-ent-a100,
+A100-SXM4-40GB), llama-server rebuilt-verified fresh THIS session (-m qwen3-0.6b-f16.gguf
+-ngl 99 --parallel 32 -c 163840). Control (ctl3f = round-2 hybrid + the L7 move fix)
+reproduces round 2 within run-variance at every cell (chat C=8 615.5/471.2/10.7 vs
+round-2 616.0/506.8/10.6; C=16 626.9/538.5/23.0 vs 613.3/524.7/23.0; C=32 599.5/640.3/50.2
+vs 599.2/641.1/50.2; rag C=8 243.0/4202.6/24.2 vs 242.8/4204.2/24.2 — agg/TPOT
+[agg/tpot ordering: agg/ttft/tpot]).
+
+L7 — MAKE GRAPH REPLAY SAFE UNDER LANES (root cause FOUND — it was never a stream hazard)
+    THE ROUND-2 CONCLUSION, CORRECTED BY MEASUREMENT: the captured-graph replay
+    "co-residency corruption" (gate-2 divergences, always at a chunk's step 0,
+    memcheck-clean, seed STATE intact) was NOT a runtime graph-vs-stream hazard. It was
+    `move_slot_kv` — compaction's slot-KV copy — computing its slot windows as
+    `Int(ptr) + slot * n_elem`: a BYTE address plus an ELEMENTS offset, a 4x under-offset
+    for Float32. Every compaction move copied from the wrong source window AND into the
+    wrong destination: the moved sequence's true slot window stayed stale while the
+    mis-addressed copy shredded the lower slots' KV (dst slot i lands at i/4 of the true
+    stride — a move into slot 3 overwrote the last quarter of slot 0's window and the
+    first three quarters of slot 1's). The divergence then surfaced at the next chunk's
+    step 0 — exactly the round-2 signature — and the co-residency correlation was
+    incidental: moves only land while admission waves churn. The round-2 drain/seed-sync
+    fences masked nothing; the bisect arms (NOGRAPH/NOOVERLAP) passed because their loop
+    pacing changed WHICH moves lined up with WHICH reads, not because the fences held.
+
+    THE BISECT CHAIN (every step a build+run on this branch, A100):
+      * repro: race flags + graph-under-lanes forced (ALGENTA_DBG_GRAPH_LANES) -> gate 2
+        3/8 divergent (round-2 signature reproduced: victims at step 0 of the chunk after
+        a compaction move).
+      * K=1 horizon (ALGENTA_DBG_CHUNK1): PASS 8/8 — boundary pacing changes move/victim
+        geometry; K=2 (CHUNK2), K=4 (CHUNK4) and per-step host sync between replays
+        (ALGENTA_P3G_PSS) all FAIL identically -> multi-replay pacing NOT the mechanism.
+      * graphsync_probe (in-tree): base-captured replay ordering vs a preceding base-stream
+        copy under pressure — ORDERED (Q1, 0/200 wrong); lane->graph visibility after the
+        lane's host sync — VISIBLE (Q6, 0/200); base ctx.synchronize waits base-captured
+        replays but NOT user streams (Q4/Q5); cross-view enqueue_wait_for WAITS the other
+        stream (Q7). The stream machinery the round-2 story blamed is SOUND. Side-stream
+        graph CAPTURE is BROKEN on MAX 26.5: Q3/Q3b 200/200 rounds wrong with and without
+        event fences (single-node side-captured graphs work — multi-node dependency chains
+        tear), confirmed in-driver: the dedicated-replay-stream arm failed gate 1 13/16
+        with NO lanes involved. The replay stream is not relocatable on this toolchain.
+      * graphscale_probe (in-tree): a 258-node synthetic chain, K=8 back-to-back replays,
+        under spin + H2D/D2H-churn lane pressure — CLEAN in all six arms (quiet/spin/
+        lane-traffic/per-step-sync/K=1/2-node). Generic graph-scale co-residency is safe.
+      * ALGENTA_DBG_SCHED audit: every divergent request's first wrong token lands at the
+        chunk AFTER the compaction move that relocated it or shredded its window
+        (3 moves x 28 layers x 2 caches = 168 `_slot_copy_kernel` dispatches in the nsys
+        cuda_gpu_trace of the corrupted run — no anomalous overlap structure).
+      * THE FIX: typed element-scaled pointer arithmetic in `move_slot_kv` (both arms).
+        With the fix alone, gate 2 PASSES with the graph arm forced under lanes at the
+        full horizon (repro_fixed: 16/16 + 8/8).
+
+    THE SHIPPED L7 ARM (-D ALGENTA_GRAPH_LANES, wired with ALGENTA_P3_SERVE = the race
+    arm; the f32 arm keeps the hybrid): the captured graph runs under in-flight lanes —
+    the hybrid's per-dispatch busy windows are gone. One pacing knob stayed, MEASURED in
+    the first v1 race cut: with lanes in flight the chunk horizon shrinks to L7_BUSY_K=1.
+    The v1 cut shipped K=8 busy-window chunks and paid for it — the ~8-step iterations
+    delayed the completed waves' collect/integrate by up to a whole chunk: C=8 TTFT p50
+    471.2 -> 565.0 ms vs the hybrid control (whose lane-busy windows are ONE per-dispatch
+    step, ~11 ms iterations), C=32 TTFT 640.3 -> 1010.5/1452.7. K=1 restores the hybrid's
+    iteration cadence with the graph arm's cheap submission (the K=1-under-lanes gate is
+    the repro_chunk1 arm's PASS). Lane -> graph needs NO data fence: admission writes the
+    FREE-TAIL slots, the chunk reads the active PREFIX — disjoint by the slot contract;
+    the collect/compact host syncs cover the rest. The round-2 L5 seed-copy sync and
+    drain_primary stay as defensive structure (the no-drain variant passes the gates too —
+    recorded, kept off by default).
+
+    GATES (all on the A100 this session; 16/16 oracle + 8/8 token identity): l7s2, l7s4,
+    l7s2_nodrain, ctl3f (hybrid control with the move fix), repro_fixed — ALL PASS.
+    Round-2 probe battery re-run green (multistream Q1-Q5, syncscope T1-T5, graph_race
+    60 rounds x 50 replays, state PART1-3, launch_cal) plus graphsync/graphscale above.
+    KNOWN PRE-EXISTING (found this round, NOT introduced by it — reproduced byte-identical
+    from round-2 HEAD sources 475da001): the F32 multi-stream gate 2 diverges 8/8 at
+    token 0 — ATTRIBUTED this round: the f32 build WITHOUT ALGENTA_PF_ATTN_FLASH (tiled
+    admission attention) PASSES gate 2 token-identical to the batch-1 reference, so the
+    divergence is a flash-vs-tiled f32 attention NUMERICAL difference on the gate-2 byte
+    prompts (which implementation is the faithful rounding is open — the independent f64
+    tiebreak attempt matched neither), not a scheduler bug. The race arm (p3 + flash)
+    gates against its OWN chain and is unaffected; the f32 mstreams build is not a shipped
+    race arm.
+
+L8 — C=16/32 ADMISSION TUNING
+    Knobs swept: the busy-window horizon L7_BUSY_K (1/2 at S2; the v1 arms carried K=8),
+    PF_STREAMS (2 vs 4), ADMIT_GROUP wave cap (2/4), CHUNK_MAX_QUEUED (8/16), drain
+    on/off. MEASURED (chat, 64 req/cell, this session):
+      * PF_STREAMS_4 adds NOTHING at C>=8 and costs TTFT: l7s4v2 C=16 627.5 agg / 637.6
+        TTFT vs l7s2v2 627.3 / 531.8; C=32 599.8/919.9 vs 599.5/643.8 — 4 concurrent f32
+        prefills contend past the sweet spot exactly as round 2 measured; S2 stays the ship.
+      * L7_BUSY_K at C=8: K=1 617.6/507.4, K=2 618.5/514.2, K=8 610.1/565.0 — K in {1,2}
+        tie; K=1 keeps the strict collect cadence (shipped default).
+      * L7_BUSY_K at C=16: K=1 627.3/531.8, K=2 629.9/537.4, K=8 623.8/711.3 — K=2 edges
+        the aggregate (+0.4%) at TTFT parity; K=8's seam amortization is real in TPOT
+        (22.6-22.8 vs 23.0) but the collect delay costs TTFT.
+      * L7_BUSY_K at C=32: K=1 599.5/643.8/50.2 vs K=8 606.3/1010.5/45.4 — the seam costs
+        ~4.8 ms/step-equivalent at B=32 (TPOT 45.4 vs 50.2) but K=8's collect delay
+        destroys TTFT; K=1 keeps the TTFT win (643.8 vs llama 868.8). K=4 (bk4): C=16
+        627.8 agg / 593.6 TTFT (l7s2v2) and 628.5 / 594.5 (l7s4v2); C=32 603.1 / 758.0 and
+        603.7 / 1096.3 — the middle of the K=1/K=8 trade, never best on both axes; K=1 stays.
+      * drain_primary off (l7s2v2_nd): C=8 619.0/502.5 vs 617.6/507.4 with drain — the
+        drain is ~tens of us per iteration; kept ON as the defensive default, recorded.
+      * ADMIT_GROUP_4 / CMQ_16 wave-pacing sweep: on S2, AG4 626.9/531.0 (C=16) and
+        599.4/647.6 (C=32); CMQ16 627.0/531.8 and 599.2/645.3; AG4+CMQ16 627.1/530.9 and
+        599.3/645.7 — all within run-variance of AG2/CMQ8 (627.3/531.8, 599.5/643.8): no
+        effect. On S4, AG4 (+/-CMQ16) C=16 633.4/962.0 and C=32 604.3/1029.4 — +1% agg at
+        the cost of +60-80% TTFT vs S2; the trade does not pay. S2+AG2+K=1 stays the ship;
+        the C=16/32 aggregate gap to llama (675.6/736.3) is the tensor-core prefill
+        ceiling, not admission pacing.
+
+RACE TABLE (round 3, this session; agg tok/s / TTFT p50 ms / TPOT p50 ms; 64 req/cell;
+llama-server fresh THIS session):
+
+| cell     | metric    | llama f16 | ctl3f (hybrid+fix) | l7s2v2 (K=1) | l7s2v2_bk2 | l7s2v1 (K=8) | l7s4v1 (K=8) |
+|----------|-----------|-----------|--------------------|--------------|------------|--------------|--------------|
+| chat C=1 | TTFT/agg  | 162.0/259.6 | 151.8/162.8      | 151.8/162.9  | —          | 151.7/162.9  | 151.7/162.9  |
+| chat C=8 | agg       | 594.7     | 615.5              | 617.6        | 618.5      | 610.1        | 610.7        |
+| chat C=8 | TTFT/TPOT | 638.6/11.4| 471.2/10.7         | 507.4/10.6   | 514.2/10.7 | 565.0/10.8   | 576.2/10.8   |
+| chat C=16| agg       | 675.6     | 626.9              | 627.3        | 629.9      | 623.8        | 625.6        |
+| chat C=16| TTFT/TPOT | 672.0/21.5| 538.5/23.0         | 531.8/23.0   | 537.4/23.2 | 711.3/22.8   | 708.4/22.6   |
+| chat C=32| agg       | 736.3     | 599.5              | 599.5        | —          | 606.3        | 606.5        |
+| chat C=32| TTFT/TPOT | 868.8/40.4| 640.3/50.2         | 643.8/50.2   | —          | 1010.5/45.4  | 1452.7/44.4  |
+| rag  C=8 | agg       | 72.8      | 243.0              | 242.8        | —          | 244.4        | 245.0        |
+| rag  C=8 | TTFT/TPOT | 20013.2/103.9 | 4202.6/24.2    | 4201.9/24.2  | —          | 4370.7/23.8  | 4381.5/23.8  |
+
+WIN-TARGET VERDICT, HONEST: chat C=8 on the gate-2-clean fixed driver = 617.6-618.5 agg /
+507.4-514.2 TTFT / 10.6-10.7 TPOT vs fresh llama 594.7 / 638.6 / 11.4 — ALL-METRICS WIN
+(1.04x / 1.25x / 1.07x). The >=700 agg target is NOT met (ceiling unchanged: f32-SIMT
+prefill vs cuBLAS HMMA). C=16/32 keep the TTFT wins (531.8-537.4 vs 672.0; 643.8 vs 868.8)
+at 0.93x/0.81x agg — the L8 admission sweep is exhausted. rag C=8 242.8-245.0 vs 72.8 =
+3.33-3.37x agg, 4.76x TTFT, 4.29x TPOT.
 
 ## H100 VERIFICATION (2026-08-23, algenta-ent-h100 a3-highgpu-8g SPOT, 8x H100 80GB HBM3, sm_90 plain builds, origin/main c229340c = round-2 merged; artifacts /tmp/h100_verify + ~/h100_results)
 

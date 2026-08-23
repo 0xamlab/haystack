@@ -190,6 +190,13 @@ shipped kernels' verbatim — bit-identical tokens, the serve selftest's identit
 applies unmodified. The swiglu role keeps the shipped kernel (its block already streams two
 weight rows)."""
 
+comptime P3G_PSS: Bool = is_defined["ALGENTA_P3G_PSS"]()
+"""LEVER L7 scalpel (kept as the measurement record): with `-D ALGENTA_P3G_PSS`,
+`seed_and_run_batched_graph` synchronizes the context between CONSECUTIVE replays. Used in
+round 3 to test whether the graph-under-lanes corruption was multi-replay overlap: it
+changed NOTHING (gate 2 failed identically) — the corruption was the driver's
+`move_slot_kv` 4x address under-offset, not replay pacing. Not shipped in any race arm."""
+
 
 @fieldwise_init
 struct _CudaResidentQwen3BatchedP3Graph(Movable):
@@ -858,6 +865,13 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                 grid_dim=1, block_dim=B_c,
             )
 
+        # LEVER L7 record: capture STAYS on the base context. graphsync_probe Q3/Q3b
+        # (round 3, A100) measured a graph captured against a select_stream view computes
+        # garbage (200/200 rounds wrong, fence or no fence; a 1-node side-captured graph
+        # works — the multi-node dependency chain tears), and the l7s2 selftest confirmed
+        # it in-driver (gate 1 13/16 wrong with no lanes involved). The replay stream is
+        # therefore NOT relocatable on this toolchain; the co-residency fix lives in the
+        # chunk horizon / replay pacing, not the capture stream.
         self.arms_graph[idx] = DeviceGraph.create(self.inner.ctx, build)
 
     def seed_and_run_batched_graph(
@@ -898,18 +912,25 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                 sh[2 * B + b] = Int64(start_poss[b] + 1)
             sh[3 * B] = Int64(0)
 
-            # The feed: ONE eager H2D copy on the context stream, ordered before the replays.
+            # The feed: ONE eager H2D copy on the context stream, ordered before the
+            # replays (the round-2 shape — round 3 REVERTED a dedicated-replay-stream
+            # routing here: capture is not relocatable on this toolchain, and a seed copy
+            # on a stream the replay does not order against would re-open the stale-seed
+            # race the L5 sync closed).
             self.inner.ctx.enqueue_copy(self.arms_state[idx], self.arms_host_state[idx])
-            # LEVER L5: the copy MUST be drained before the replays launch. Same-stream
-            # ordering covers it in a quiet context, but graph launch + a busy copy engine
-            # is timing-dependent once side streams run concurrently (the multi-stream
-            # admission selftest caught replay #1 reading STALE state — every divergence at
-            # a chunk's step 0, memcheck-clean, per-dispatch and no-overlap arms pass):
-            # one context sync per CHUNK (not per step) makes the dependency structural.
+            # LEVER L5: drain the seed copy before the replays launch. One context sync
+            # per CHUNK (not per step) makes the dependency structural.
             self.inner.ctx.synchronize()
 
             for _ in range(n_steps):
                 self.arms_graph[idx].value().replay()
+                @parameter
+                if P3G_PSS:
+                    # LEVER L7 scalpel: serialize consecutive replays on the host. Round-3
+                    # measurement: changes nothing against the corruption (which was the
+                    # driver's move_slot_kv address bug, not replay pacing) — kept as the
+                    # per-step-sync cost reference.
+                    self.inner.ctx.synchronize()
 
             # One synchronize for the whole generation, then the NARROW log readback:
             # head-stage the first B*n_steps entries (the only ones the reader touches) and
