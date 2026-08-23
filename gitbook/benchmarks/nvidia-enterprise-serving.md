@@ -42,23 +42,23 @@ Chat mix (1024-in/256-out), C=8:
 
 | Metric | Algenta | `llama-server` f16 | Lead |
 | --- | --- | --- | --- |
-| Aggregate tok/s | 625.8 | 608.7 | 1.03x |
-| TTFT p50 ms | 506.8 | 642.8 | 1.27x faster |
-| TPOT p50 ms | 9.9 | 11.1 | 1.12x faster |
+| Aggregate tok/s | 617.6 | 594.7 | 1.04x |
+| TTFT p50 ms | 507.4 | 638.6 | 1.26x faster |
+| TPOT p50 ms | 10.6 | 11.4 | 1.08x faster |
 
 Rag mix (4096-in/512-out), C=8:
 
 | Metric | Algenta | `llama-server` f16 | Lead |
 | --- | --- | --- | --- |
-| Aggregate tok/s | 243.2 | 73.5 | 3.30x |
-| TTFT p50 ms | 4,204.2 | 19,912.7 | 4.74x faster |
+| Aggregate tok/s | 242.8 | 72.8 | 3.33x |
+| TTFT p50 ms | 4,201.9 | 20,013.2 | 4.76x faster |
 
 Chat TTFT p50 lead as concurrency scales:
 
 | C | Algenta ms | `llama-server` ms | Lead |
 | --- | --- | --- | --- |
-| 16 | 524.7 | 666.3 | 1.27x faster |
-| 32 | 641.1 | 879.8 | 1.37x faster |
+| 16 | 531.8 | 672.0 | 1.26x faster |
+| 32 | 643.8 | 868.8 | 1.35x faster |
 
 ## Prefill
 
@@ -93,10 +93,11 @@ on both GPUs.
   excluded, greedy (temperature 0) on every arm.
 * Bench cells: 20 runs per cell, median, rel-IQR <= 5%. Cold start: median of 3 launches.
 * Concurrent cells: 64 requests per cell, closed-loop, medians, rel-IQR <= 5%; gates
-  16/16 oracle + 8/8 token-identity on every shipped build; packed3 batched decode,
-  hybrid decode (per-dispatch under lane activity, captured graph otherwise), multi-stream
+  16/16 oracle + 8/8 concurrent token-identity on every shipped build; packed3 batched
+  decode, captured-graph decode running under in-flight admission lanes, multi-stream
   admission prefill (2 streams for the TTFT cells, 4 streams for the aggregate and TPOT
-  cells).
+  cells). All concurrent cells were re-measured on the round-3 driver after the KV
+  compaction addressing fix and re-gated 8/8.
 * Opponents: llama.cpp build 10210 pin, f16 GGUF, `-ngl 99`, `--parallel 32`, `-c 163840`,
   q8\_0 KV, readiness = `/health` plus one real completion; vLLM 0.27.1 with
   `VLLM_USE_FLASHINFER_SAMPLER=0`.
