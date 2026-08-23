@@ -449,6 +449,11 @@ jobs:
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
           driver: docker-container
+          # Per-run builder: a reused docker-container builder kept a stale buildkit auth state
+          # and pulled ghcr.io/thyn-ai/algenta/mojo ANONYMOUSLY mid-job (401) even though the
+          # login step had succeeded minutes earlier in the same job. A fresh buildkit per run
+          # always sees this run's docker config; the teardown step below removes it.
+          name: ci-${{ github.run_id }}
 
       - name: Extract metadata for API image
         id: meta-api
@@ -537,6 +542,12 @@ jobs:
           # same credentials that already push the engine image itself (same GHCR namespace).
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2,mode=max,compression=zstd
+
+      # The per-run docker-container builder (see setup step) must not survive the run: a reused
+      # buildkit kept stale registry-auth state and pulled mojo anonymously (401) mid-job.
+      - name: Remove per-run buildx builder
+        if: always()
+        run: docker buildx rm "ci-${{ github.run_id }}" 2>/dev/null || true
 
   # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
   # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into
