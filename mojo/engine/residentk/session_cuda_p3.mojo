@@ -206,6 +206,7 @@ from residentk.session_cuda import (
     CUDA_PREFILL_TILE,
     _CudaResidentQwen3,
 )
+from residentk.loadvec import _ld4
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling, and the
@@ -251,11 +252,11 @@ def _packed3_gemv_accum_kernel(
         var sbase = j * nblocks
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var b = bitcast[DType.uint8, 16](v)
-            var xv0 = x.load[width=4](t)
-            var xv1 = x.load[width=4](t + 4)
-            var xv2 = x.load[width=4](t + 8)
+            var xv0 = _ld4(x, t)
+            var xv1 = _ld4(x, t + 4)
+            var xv2 = _ld4(x, t + 8)
 
             var blk = t >> 5
             var s0 = wscale[sbase + blk]
@@ -345,11 +346,11 @@ def _packed3_gemv_accum_kernel_v2(
         var cross_lo = r0 == 28
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
-            var xv0 = x.load[width=4](t)
-            var xv1 = x.load[width=4](t + 4)
-            var xv2 = x.load[width=4](t + 8)
+            var xv0 = _ld4(x, t)
+            var xv1 = _ld4(x, t + 4)
+            var xv2 = _ld4(x, t + 8)
 
             var blk = t >> 5
             var s0 = wscale[sbase + blk]
@@ -429,11 +430,11 @@ def _packed3_gemv_accum_kernel_v3(
         var cross_lo = r0 == 28
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
-            var xv0 = x.load[width=4](t)
-            var xv1 = x.load[width=4](t + 4)
-            var xv2 = x.load[width=4](t + 8)
+            var xv0 = _ld4(x, t)
+            var xv1 = _ld4(x, t + 4)
+            var xv2 = _ld4(x, t + 8)
 
             var blk = t >> 5
             var s0 = wscale[sbase + blk]
@@ -543,7 +544,7 @@ def _norm_gemv2_swiglu_kernel_p3(
         var sbase = j * nblocks
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var b = bitcast[DType.uint8, 16](v)
             var xv0 = xs.load[width=4](t)
             var xv1 = xs.load[width=4](t + 4)
@@ -607,7 +608,7 @@ def _norm_gemv2_swiglu_kernel_p3(
         var sbase2 = (n_ff + j) * nblocks
         var t2 = lane * _P3_CHUNK
         while t2 < k_pack:
-            var v2 = wp.load[width=4](wbase2 + t2 // _P3_QUANTS_PER_WORD)
+            var v2 = _ld4(wp, wbase2 + t2 // _P3_QUANTS_PER_WORD)
             var b2 = bitcast[DType.uint8, 16](v2)
             var xv0 = xs.load[width=4](t2)
             var xv1 = xs.load[width=4](t2 + 4)
@@ -734,7 +735,7 @@ def _norm_gemv2_swiglu_kernel_p3_v2(
         var sbase = j * nblocks
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
             var xv0 = xs.load[width=4](t)
             var xv1 = xs.load[width=4](t + 4)
@@ -787,7 +788,7 @@ def _norm_gemv2_swiglu_kernel_p3_v2(
         var sbase2 = (n_ff + j) * nblocks
         var t2 = lane * _P3_CHUNK
         while t2 < k_pack:
-            var v2 = wp.load[width=4](wbase2 + t2 // _P3_QUANTS_PER_WORD)
+            var v2 = _ld4(wp, wbase2 + t2 // _P3_QUANTS_PER_WORD)
             var w2 = bitcast[DType.int32, 4](v2)
             var xv0 = xs.load[width=4](t2)
             var xv1 = xs.load[width=4](t2 + 4)
@@ -902,7 +903,7 @@ def _norm_gemv2_swiglu_kernel_p3_v3(
         var sbase = j * nblocks
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
             var xv0 = xs.load[width=4](t)
             var xv1 = xs.load[width=4](t + 4)
@@ -957,7 +958,7 @@ def _norm_gemv2_swiglu_kernel_p3_v3(
         var sbase2 = (n_ff + j) * nblocks
         var t2 = lane * _P3_CHUNK
         while t2 < k_pack:
-            var v2 = wp.load[width=4](wbase2 + t2 // _P3_QUANTS_PER_WORD)
+            var v2 = _ld4(wp, wbase2 + t2 // _P3_QUANTS_PER_WORD)
             var w2 = bitcast[DType.int32, 4](v2)
             var xv0 = xs.load[width=4](t2)
             var xv1 = xs.load[width=4](t2 + 4)
@@ -1076,8 +1077,8 @@ def _norm_gemv2_swiglu_kernel_p3_v4(
         var sbase_u = (n_ff + j) * nblocks
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var vg = wp.load[width=4](wbase_g + t // _P3_QUANTS_PER_WORD)
-            var vu = wp.load[width=4](wbase_u + t // _P3_QUANTS_PER_WORD)
+            var vg = _ld4(wp, wbase_g + t // _P3_QUANTS_PER_WORD)
+            var vu = _ld4(wp, wbase_u + t // _P3_QUANTS_PER_WORD)
             var wg = bitcast[DType.int32, 4](vg)
             var wu = bitcast[DType.int32, 4](vu)
             var xv0 = xs.load[width=4](t)
@@ -1241,7 +1242,7 @@ def _lmhead_argmax_kernel_p3(
             var sbase = j * nblocks
             var t = lane * _P3_CHUNK
             while t < k_pack:
-                var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+                var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
                 var b = bitcast[DType.uint8, 16](v)
                 var xv0 = xs.load[width=4](t)
                 var xv1 = xs.load[width=4](t + 4)
@@ -1388,7 +1389,7 @@ def _lmhead_argmax_kernel_p3_v2(
             var sbase = j * nblocks
             var t = lane * _P3_CHUNK
             while t < k_pack:
-                var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+                var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
                 var w = bitcast[DType.int32, 4](v)
                 var xv0 = xs.load[width=4](t)
                 var xv1 = xs.load[width=4](t + 4)
@@ -1525,7 +1526,7 @@ def _lmhead_argmax_kernel_p3_v3(
             var sbase = j * nblocks
             var t = lane * _P3_CHUNK
             while t < k_pack:
-                var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+                var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
                 var w = bitcast[DType.int32, 4](v)
                 var xv0 = xs.load[width=4](t)
                 var xv1 = xs.load[width=4](t + 4)

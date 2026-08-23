@@ -62,6 +62,7 @@ from residentk.kernels_prefill_attn_flash import (
     _PF_FLASH_ELEMS_PER_LANE,
 )
 
+from residentk.loadvec import _ld4
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 
 
@@ -107,7 +108,7 @@ def _pf_attn_flash2_kernel(
     var nk_max = nk3 if act3 else (nk2 if act2 else (nk1 if act1 else nk0))
 
     var qb = m0 * n_q + h * d_head + e0
-    var q04 = q_rot.load[width=4](qb)
+    var q04 = _ld4(q_rot, qb)
     var q00 = q04[0]
     var q01 = q04[1]
     var q02 = q04[2]
@@ -125,19 +126,19 @@ def _pf_attn_flash2_kernel(
     var q32 = Float32(0.0)
     var q33 = Float32(0.0)
     if act1:
-        var q14 = q_rot.load[width=4](m1 * n_q + h * d_head + e0)
+        var q14 = _ld4(q_rot, m1 * n_q + h * d_head + e0)
         q10 = q14[0]
         q11 = q14[1]
         q12 = q14[2]
         q13 = q14[3]
     if act2:
-        var q24 = q_rot.load[width=4](m2 * n_q + h * d_head + e0)
+        var q24 = _ld4(q_rot, m2 * n_q + h * d_head + e0)
         q20 = q24[0]
         q21 = q24[1]
         q22 = q24[2]
         q23 = q24[3]
     if act3:
-        var q34 = q_rot.load[width=4](m3 * n_q + h * d_head + e0)
+        var q34 = _ld4(q_rot, m3 * n_q + h * d_head + e0)
         q30 = q34[0]
         q31 = q34[1]
         q32 = q34[2]
@@ -170,16 +171,16 @@ def _pf_attn_flash2_kernel(
 
     # ── prologue: K_0 staged before the loop ──
     var kb0 = (0 * h_kv + hk) * d_head + e0
-    var k4 = ck.load[width=4](kb0)
+    var k4 = _ld4(ck, kb0)
 
     for j in range(nk_max):
         # (a) prefetch K_{j+1} under this key's consume — latency runs under arithmetic
         var k4n = k4
         if j + 1 < nk_max:
             var kbn = ((j + 1) * h_kv + hk) * d_head + e0
-            k4n = ck.load[width=4](kbn)
+            k4n = _ld4(ck, kbn)
         # (b) V_j issued BEFORE the score tree — overlaps shuffle+exp latency
-        var vv4 = cv.load[width=4](kb0)
+        var vv4 = _ld4(cv, kb0)
 
         var s0 = _PF_FLASH2_NEG_HUGE
         var s1 = _PF_FLASH2_NEG_HUGE

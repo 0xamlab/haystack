@@ -71,6 +71,7 @@ from std.math import exp
 from std.origin import MutAnyOrigin
 from residentk.kernels import _NEG_HUGE as _PF_FLASH_NEG_HUGE
 
+from residentk.loadvec import _ld4
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — the SAME spelling `residentk.kernels` uses."""
 
@@ -140,7 +141,7 @@ def _pf_attn_flash_kernel(
     var nk_max = nk3 if act3 else (nk2 if act2 else (nk1 if act1 else nk0))
 
     var qb = m0 * n_q + h * d_head + e0
-    var q04 = q_rot.load[width=4](qb)
+    var q04 = _ld4(q_rot, qb)
     var q00 = q04[0]
     var q01 = q04[1]
     var q02 = q04[2]
@@ -158,19 +159,19 @@ def _pf_attn_flash_kernel(
     var q32 = Float32(0.0)
     var q33 = Float32(0.0)
     if act1:
-        var q14 = q_rot.load[width=4](m1 * n_q + h * d_head + e0)
+        var q14 = _ld4(q_rot, m1 * n_q + h * d_head + e0)
         q10 = q14[0]
         q11 = q14[1]
         q12 = q14[2]
         q13 = q14[3]
     if act2:
-        var q24 = q_rot.load[width=4](m2 * n_q + h * d_head + e0)
+        var q24 = _ld4(q_rot, m2 * n_q + h * d_head + e0)
         q20 = q24[0]
         q21 = q24[1]
         q22 = q24[2]
         q23 = q24[3]
     if act3:
-        var q34 = q_rot.load[width=4](m3 * n_q + h * d_head + e0)
+        var q34 = _ld4(q_rot, m3 * n_q + h * d_head + e0)
         q30 = q34[0]
         q31 = q34[1]
         q32 = q34[2]
@@ -203,7 +204,7 @@ def _pf_attn_flash_kernel(
 
     for j in range(nk_max):
         var kb = (j * h_kv + hk) * d_head + e0
-        var kv4 = ck.load[width=4](kb)
+        var kv4 = _ld4(ck, kb)
         var s0 = _PF_FLASH_NEG_HUGE
         var s1 = _PF_FLASH_NEG_HUGE
         var s2 = _PF_FLASH_NEG_HUGE
@@ -215,7 +216,7 @@ def _pf_attn_flash_kernel(
             s2 = _warp_sum(q20 * kv4[0] + q21 * kv4[1] + q22 * kv4[2] + q23 * kv4[3]) * scale
         if j < nk3:
             s3 = _warp_sum(q30 * kv4[0] + q31 * kv4[1] + q32 * kv4[2] + q33 * kv4[3]) * scale
-        var vv4 = cv.load[width=4](kb)
+        var vv4 = _ld4(cv, kb)
 
         var nm0 = mx0 if mx0 > s0 else s0
         var corr0 = exp(mx0 - nm0)

@@ -163,6 +163,7 @@ from std.math import floor, sqrt
 from std.memory import bitcast, stack_allocation
 from residentk.contract import RESIDENT_MAX_D_MODEL
 from residentk.kernels import _TG, _LANES, _SUBS
+from residentk.loadvec import _ld4
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — the SAME spelling `residentk.kernels`
@@ -242,11 +243,11 @@ def _packed3_gemv_kernel(
     var t = tid * _P3_CHUNK
     while t < k_pack:
         # ── the phase-0-verified unpack: 16 bytes as Float32 words, reinterpreted AFTER ──
-        var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+        var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
         var b = bitcast[DType.uint8, 16](v)
-        var xv0 = x.load[width=4](t)
-        var xv1 = x.load[width=4](t + 4)
-        var xv2 = x.load[width=4](t + 8)
+        var xv0 = _ld4(x, t)
+        var xv1 = _ld4(x, t + 4)
+        var xv2 = _ld4(x, t + 8)
 
         # ── block-32 scale+zero for this chunk: at most TWO blocks (crossing residues
         #    t mod 32 in {24, 28} only — offsets are multiples of 12) ──
@@ -348,11 +349,11 @@ def _packed3_gemv_kernel_v2(
     while t < k_pack:
         # ── the v2 unpack: 16 bytes as Float32 words, reinterpreted as FOUR Int32 words;
         #    each quant is a shift/AND byte extraction, no second memory pass ──
-        var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+        var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
         var w = bitcast[DType.int32, 4](v)
-        var xv0 = x.load[width=4](t)
-        var xv1 = x.load[width=4](t + 4)
-        var xv2 = x.load[width=4](t + 8)
+        var xv0 = _ld4(x, t)
+        var xv1 = _ld4(x, t + 4)
+        var xv2 = _ld4(x, t + 8)
 
         var blk = t >> 5
         var s0 = wscale[sbase + blk]
@@ -438,11 +439,11 @@ def _packed3_gemv_kernel_v3(
 
     var t = tid * _P3_CHUNK
     while t < k_pack:
-        var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+        var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
         var w = bitcast[DType.int32, 4](v)
-        var xv0 = x.load[width=4](t)
-        var xv1 = x.load[width=4](t + 4)
-        var xv2 = x.load[width=4](t + 8)
+        var xv0 = _ld4(x, t)
+        var xv1 = _ld4(x, t + 4)
+        var xv2 = _ld4(x, t + 8)
 
         var blk = t >> 5
         var s0 = wscale[sbase + blk]
@@ -552,7 +553,7 @@ def _norm_gemv_kernel_p3(
         var sbase = j * nblocks
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var b = bitcast[DType.uint8, 16](v)
             var xv0 = xs.load[width=4](t)
             var xv1 = xs.load[width=4](t + 4)
@@ -676,7 +677,7 @@ def _norm_gemv_kernel_p3_v2(
         var cross_lo = r0 == 28
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
             var xv0 = xs.load[width=4](t)
             var xv1 = xs.load[width=4](t + 4)
@@ -788,7 +789,7 @@ def _norm_gemv_kernel_p3_v3(
         var cross_lo = r0 == 28
         var t = lane * _P3_CHUNK
         while t < k_pack:
-            var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
+            var v = _ld4(wp, wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
             var xv0 = xs.load[width=4](t)
             var xv1 = xs.load[width=4](t + 4)
@@ -1120,7 +1121,7 @@ def _p3_dequant_rows_kernel(
     var c = tid
     while c < n_chunks:
         var e0 = c * _P3_CHUNK
-        var v = wp.load[width=4](wbase + e0 // _P3_QUANTS_PER_WORD)
+        var v = _ld4(wp, wbase + e0 // _P3_QUANTS_PER_WORD)
         var b = bitcast[DType.uint8, 16](v)
         # The GEMV family's 12 quant byte indices inside the 16-byte word, verbatim.
         var q0 = Float32(Int32(b[0]))

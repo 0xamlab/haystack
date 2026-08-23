@@ -14478,6 +14478,193 @@ census-clean, replicates within 5%). Lane 1 (single-stream packed3 decode) and L
 (fixture) from #815 are untouched and stand as published. The q8_0-KV losses above remain
 withheld-from-victory treatment per the publish-wins-only rule, recorded here for the ledger.
 
+## MICRO-AUTOPSY (2026-08-23, algenta-ent-a100 a2-highgpu-1g, A100-SXM4-40GB, driver 595.71.05, SM clocks pinned 1410 MHz; worktree .qwen/worktrees/micro-autopsy, branch feat/micro-autopsy; artifacts ~/micro on the VM)
+
+Owner directive: "disect more, do autopsy on micro level, you missed something." The prior
+autopsies were per-LAYER (us gap tables). This one is per-KERNEL micro-architecture: PTX load
+instruction mix, ncu stall reasons / sector coalescing / L2 hit / occupancy / instruction mix.
+It found the missed something: a codegen defect present in EVERY hot kernel since the first
+CUDA lane, invisible to every layer-level table because it leaves the byte-count and the math
+untouched and only changes WHICH instructions the loads lower to.
+
+### LEVER #0 — the missed something: every `load[width=4]` was scalarizing to 4x `ld.global.b32`
+
+THE DEFECT (PTX evidence, not inferred). Every kernel-pointer parameter this backend lowers
+carries `.param .u64 .ptr .align 1` — NO alignment information survives from the DeviceBuffer
+to PTX. Disassembling the embedded PTX of the shipped binaries
+(`strings <binary> | grep ld.global`) shows the consequence: the campaign's `load[width=4]`
+idiom — documented everywhere as "the ONE 128-bit load path this toolchain streams at HBM
+speed" — actually lowers to FOUR scalar 4-byte loads, not one 16-byte vector load:
+
+    BEFORE (`_packed3_gemv_kernel` weight stream, shipped):   AFTER (`load[width=4, alignment=16]`):
+        ld.global.b32   %r2, [%rd53];                             ld.global.v4.b32 {%r2,%r3,%r4,%r5}, [%rd53];
+        ld.global.b32   %r3, [%rd53+4];
+        ld.global.b32   %r4, [%rd53+8];
+        ld.global.b32   %r5, [%rd53+12];
+
+Binary census: the shipped packed3 probe binary had 0 `ld.global.v4` and 75 scalar
+`ld.global.b32`. Four load instructions + four address computations per 16 bytes where the
+hardware takes one — issue-slot pressure on exactly the loops that are latency/issue-bound.
+The defect is format-agnostic: it hit the packed3 decode GEMVs, the f32 prefill v2 GEMMs, and
+the flash-attention Q/K/V streams identically. (The earlier "f32 streams at 75-105% of HBM"
+probe result survived despite the defect because 32 contiguous scalar 4-byte lanes still
+coalesce to full 128B lines — the scalarization costs ISSUE slots and, as ncu shows below,
+sector efficiency, which only bites once the loop is not pure streaming.)
+
+THE FIX. `UnsafePointer.load` takes an `alignment=` annotation; `load[width=4, alignment=16]`
+restores the single `ld.global.v4.b32`. The annotation is a PROMISE, so it is applied only where
+alignment is PROVABLE, and it was proved on this A100 (`align_check_probe.mojo`): every fresh
+DeviceBuffer base is 256-byte aligned (a superset of 16); the packed3 layout pads every row
+stride to a multiple of 4 words and every chunk offset is a multiple of 12 elements (48 B);
+the v2-GEMM cooperative-load column is `lc=(tid%4)*4` with BK=16; flash Q/K/V offsets are
+multiples of `d_head=128` + `lane*4`. Shared-memory staging loads (`xs`) are deliberately NOT
+annotated (different address space). Landed as a byte-preserved toggle: new
+`residentk/loadvec.mojo` exposes `_ld4(ptr, off)`; default is the shipped scalar
+`load[width=4]` verbatim, `-D ALGENTA_L0_ALIGN` switches on the vector path. Math is
+bit-identical (only the load instruction width changes, not the bytes, the dequant, or the
+accumulation order). Applied to: packed3 decode GEMVs (`kernels_packed3`, `session_cuda_p3`),
+prefill v2/v2n GEMMs, flash1/flash2 prefill attention, and decode flash attention.
+
+MICRO-AUTOPSY (ncu, packed3 GEMV v1, k=1024 n=4096, 1 launch in the timed loop; sudo ncu,
+sections SpeedOfLight/MemoryWorkloadAnalysis/Scheduler/WarpState/Occupancy/Launch/Instruction):
+
+| metric                              | control (scalar) | L0 (vector) | reading |
+|-------------------------------------|------------------|-------------|---------|
+| sector bytes utilized / 32 B (load) | **4.9**          | **18.9**    | scalarization induced a 16-B lane stride; ncu flags it ("Est. Speedup 50.7%") and the vector load restores 3.9x sector efficiency |
+| L1/TEX Cache Throughput             | **70.6 %**       | **39.1 %**  | the LSU/memory pipe, NOT DRAM, is the binding pipe — the kernel is load-issue-bound |
+| DRAM Throughput                     | 25.1 %           | 26.0 %      | HBM nowhere near saturated -> bandwidth is NOT the wall |
+| Mem Pipes Busy                      | 27.5 %           | 20.8 %      | |
+| Memory Throughput                   | 388 GB/s         | 404 GB/s    | ncu cold-replay window |
+| Compute (SM) Throughput             | 58.4 %           | 59.1 %      | |
+| Warp Cycles Per Issued Instruction  | 19.60            | 19.05       | latency-bound; top stall = 7.2 cyc/warp at the CTA barrier (36.5 % of the gap) from the two-level reduction |
+| Issued Warp Per Scheduler           | 0.69             | 0.70        | |
+| Achieved / Theoretical Occupancy    | 84.8 % / 100 %   | 83.6 % / 100 % | register-limited to 8 blocks/SM (32 reg/thread); not the wall |
+| FP32 fused vs non-fused             | 147 k / 721 k    | (same math)  | ncu est. +41.5 % if the dequant FMAs fused — a SEPARATE lever (changes accumulation order, needs its own gate), recorded not attempted here |
+
+Reading: the packed3 GEMV streams at only ~37-44% of HBM (below its own f32 twin) NOT because
+HBM is full (25%) but because four scalar loads per 16 bytes saturate the L1/TEX issue path
+(70.6%) with 15%-efficient sectors. One vector load per 16 bytes halves the L1/TEX pressure and
+restores 3.9x sector efficiency. That is the missed something.
+
+DECODE MEASUREMENT (B=1, `qwen3_p3_graph_cuda`, gates-first; control = same tree, flag OFF).
+Gates BOTH arms: G0 16/16 greedy-oracle PASS, G1 3 seeds x 128 steps graph==per-dispatch
+token-identical PASS, G2 engagement PASS — the alignment annotation is provably safe and the
+math bit-identical (no misaligned-address fault across the whole battery).
+
+| cell                        | control | L0_ALIGN | delta |
+|-----------------------------|---------|----------|-------|
+| gen64 graph-p3              | 431.3 tok/s (148.37 ms, IQR 0.026%) | 455.3 tok/s (140.58 ms, IQR 0.011%) | **+5.5 %** |
+| gen256 graph-p3             | 412.6 tok/s (620.40 ms, IQR 0.013%) | 434.5 tok/s (589.20 ms, IQR 0.001%) | **+5.3 %** |
+| G2 per-step wall (32/64/128/256) | 2.301/2.318/2.353/2.424 ms | 2.179/2.196/2.231/2.303 ms | -5.3/-5.3/-5.2/-5.0 % |
+| f32-graph (INTERNAL CONTROL, unannotated path) | 328.2 tok/s | 328.3 tok/s | flat (the win is specific to the annotated kernels) |
+| per-dispatch-p3 gen64/gen256 | 74.3 / 57.9 tok/s | 75.1 / 58.4 tok/s | +1.0/+0.8 % (launch-overhead-bound, kernel gain diluted) |
+
+KERNEL-LEVEL GB/s (`packed3_gemv_probe`, packed3 v1, 4 interleaved runs/arm, medians; clocks
+pinned; GPU-idle gate before each run):
+
+| role (k, n)      | control GB/s (%HBM) | L0 GB/s (%HBM) | delta |
+|------------------|---------------------|----------------|-------|
+| k=1024, n=4096   | 552.6 (35.5 %)      | 579.2 (37.3 %) | **+4.8 %** |
+| k=3072, n=1024   | 580.4 (37.3 %)      | 680.1 (44.0 %) | **+17.2 %** |
+
+The wide-k role (k=3072) wins most: it streams 3x the packed words per block, so the 4x
+load-issue reduction amortizes over more bytes. End-to-end TPOT (+5.3-5.5%) is the GEMV-role
+mix diluted by attention/norm/lmhead/graph overhead — consistent, not contradictory.
+
+REFUTED / NOT-ATTACKED this round (recorded so nobody retries blind): the barrier stall
+(36.5% of warp cycles) is structural to the two-level reduction and unchanged by L0; the FP32
+non-fused-FMA lever (+41.5% ncu est.) reassociates the dequant sum and is gated out of this
+bit-identical round; shared-memory staging loads were left scalar (address-space proof
+deferred).
+
+### LEVER #0 on the prefill v2 GEMMs (the admission-prefill / TTFT path)
+
+Same annotation applied to `kernels_prefill_f32_v2` (assign/accum/swiglu) and `_v2n`. Measured
+with `prefill_gemm_probe` at M=128 on the real Qwen3-0.6B resident weights, 4 interleaved
+runs/arm, clocks pinned, GPU-idle gate before each run. Gate FIRST: v2-vs-first-generation
+worst element-wise diff = max_abs 0.0 / n_diff 0 on every role INCLUDING ragged-M m=17 and
+m=127 — bit-identical in both arms.
+
+| role (M=128)        | control v2 GF/s (% peak) | L0 v2 GF/s (% peak) | delta |
+|---------------------|--------------------------|---------------------|-------|
+| assign (qkv)        | 5713 (29.3 %)            | 6688 (34.3 %)       | **+17.1 %** |
+| accum (o)           | 2419 (12.4 %)            | 2754 (14.1 %)       | **+13.8 %** |
+| swiglu (gate/up)    | 7300 (37.4 %)            | 8167 (41.9 %)       | **+11.9 %** |
+| accum (down)        | 2356 (12.1 %)            | 2698 (13.8 %)       | **+14.5 %** |
+| **LAYER GEMM SUM**  | **972.3 us**             | **851.2 us**        | **+14.2 % (1.142x)** |
+
+First-generation (unannotated, internal control) is flat across the arms at ~9148 us
+(2.39% peak), confirming the delta is the annotated v2 loads. At M=128 the v2 family runs
+12-37% of the 19.5 TF SIMT peak by role (the H100-autopsy 49% figure is the M=1038 shape;
+M=128 underfills the 64x64 tile); L0 lifts every role ~12-17% regardless. Projected per-layer
+saving 8.17 -> 8.30 ms x 28 layers = ~229 -> 232 ms per prefill chunk at M=128.
+
+### LEVER #0 on the flash prefill-attention twins (Q/K/V streams)
+
+Same annotation applied to the global Q/K/V loads of `kernels_prefill_attn_flash` (flash1) and
+`kernels_prefill_attn_flash2` (flash2, the production `-D ALGENTA_PF_ATTN_FLASH2` kernel from
+#818); decode flash attention got it too. Measured with `h100_attn_probe` at the Qwen3-0.6B rag
+admission shapes (h_q 16 / h_kv 8 / d_head 128), 4 interleaved runs/arm, REPS=30, clocks pinned.
+Gate FIRST: flash2-vs-flash1 max_abs_diff = 0.0 (bit-identical) in every arm, every shape.
+
+Wall us per kernel, control -> L0 (median-ish of 4 runs; representative rag shapes):
+
+| shape (m, pos_base) | flash1 ctl -> l0 | flash2 ctl -> l0 |
+|---------------------|------------------|------------------|
+| 256, 0              | 301.5 -> 301.2 (flat, launch-bound) | 239.7 -> 226.5 (**-5.5 %**) |
+| 1152, 0             | 2202.7 -> 2165.0 (-1.7 %) | 2285.3 -> 2135.1 (**-6.6 %**) |
+| 1152, 1152          | 6075.1 -> 5949.1 (-2.1 %) | 5929.7 -> 5535.0 (**-6.7 %**) |
+| 1152, 2304          | 10234.7 -> 10138.5 (-0.9 %) | 9649.7 -> ~9160 (**-5 %**) |
+| 640, 3456           | 7014.1 -> 6911.9 (-1.5 %) | 7715.9 -> 7061.1 (**-8.5 %**) |
+
+Reading: the production flash2 (V-before-score + K_{j+1} prefetch, the more load-pipelined twin)
+captures the bigger win (-5 to -8.5%); flash1 only -1 to -2% because its window is set by the
+score/warp-shuffle path rather than the K/V stream. This is the same scalarized-K/V-load defect,
+now on the attention side of admission prefill.
+
+WHY THE DECODE TPOT (+5%) IS SMALLER THAN THE KERNEL GB/s (+17%): a decode step is GEMV roles +
+attention + norms + lmhead + graph replay; the vector-load win lands only on the weight-streaming
+GEMV fraction, so the per-role kernel gain dilutes to ~+5% end-to-end. Prefill, where the v2 GEMMs
+dominate the chunk, captures +14.2% at the GEMM layer.
+
+### STATUS — what landed, how it is gated, what is deferred
+
+LANDED (flag-gated, additive, byte-preserved control): `residentk/loadvec.mojo` (`_ld4`), default
+OFF = the shipped scalar `load[width=4]` verbatim; `-D ALGENTA_L0_ALIGN` turns on the 16-B vector
+loads. Applied to the global weight/activation/Q/K/V loads of: `kernels_packed3` (bare + norm
+GEMVs), `session_cuda_p3` (accum/swiglu/lmhead decode twins), `kernels_prefill_f32_v2` and `_v2n`,
+`kernels_prefill_attn_flash` + `_flash2`, `kernels_decode_attn_flash`. Shared-staging (`xs`) loads
+deliberately untouched. Every measurement above is gated FIRST: 16/16 greedy-oracle + 3x128
+token-identity + engagement for decode; v2-vs-v1 bit-exact (n_diff 0, incl. ragged-m) for prefill;
+flash2-vs-flash1 max_abs 0.0 for attention. Internal unannotated controls (f32-graph decode arm,
+first-gen prefill GEMM) stayed flat across the arms, isolating the delta to the annotated loads.
+
+SERVE-PATH COMPILE + GATE (the wave-2 edits reach the serve driver through `kernels_prefill_f32_v2n`
+and `kernels_decode_attn_flash`, which only the serve driver compiles): `qwen3_serve_batched_cuda`
+built BOTH arms on the production race flag set (PF_ONEPASS + PF_ATTN_FLASH2 + P3_SERVE + P3B_R2 +
+GRAPH_LANES), then `--selftest` run on each — gate 1 16/16 oracle and gate 2 8/8 concurrent
+token-identity PASS in BOTH serve_ctl and serve_l0. The annotated admission-prefill kernels are
+therefore gate-2-clean; the batched DECODE packed3 kernels (not annotated) are untouched, so this
+round changes the serve path's prefill/attention only.
+
+DEFERRED / NEXT (not done this round, named so it is not lost): (1) the batched-decode packed3
+kernels (`kernels_packed3_batched`, the serve driver's C>=8 path) were NOT annotated — they are
+the next surface for this lever and sit behind gate-2 (concurrent token identity); (2) the
+graph-replay node-gap / host-seam nsys decode of the captured-graph step; (3) the ncu-estimated
++41.5% dequant-FMA fusion lever (reassociates the sum -> needs its own oracle gate); (4) the
+shared-memory staging-load vectorization (address-space proof). The prefill/admission CUDA-graph-
+per-M-bucket lever from the brief is feature work beyond this kernel-level round.
+
+ARTIFACTS: VM ~/micro (bin/ probe binaries ctl+l0, ncu/gemv_{ctl,l0}.txt, gemv_ab.log,
+prefill_ab.log, attn_ab.log, build logs, setup.out). Build probe: `strings <binary> | grep
+ld.global` shows the load mix; `align_check_probe` proves the alignment the annotation promises.
+
+SHIP DECISION (2026-08-23, parent close-out): default flipped ON in loadvec.mojo (opt-out
+`-D ALGENTA_L0_NOALIGN` keeps the byte-preserved control) — the l0 arm BECOMES the shipped
+config; its gates (G0 16/16 + G1 3x128 identity + G2 engagement; serve --selftest gate 1
+16/16 + gate 2 8/8) are the shipped gates. A100 decode cells refreshed on the public page
+to the l0 numbers (455.3/434.5 tok/s gen64/gen256).
+
 ## THE L4 COST AXIS — tokens-per-spot-dollar on the $0.512/h L4 (2026-08-23, algenta-ent-l4b g2-standard-8 SPOT us-central1-a, tree f9bfda32 = #821, feat/l4-cost): single-stream decode BEATS llama.cpp F16 (1.12x/1.09x, $0.753 vs $0.823 per Mtok) — but the L4's fixed 72 W cap flips the concurrent serving verdict: chat C=8 loses to BOTH llama-server configs, and the cost ledger follows
 
 CONTEXT: the prior L4 lane (2026-08-21) raced the f32 graph arm and the batch-1 enterprise

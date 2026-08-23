@@ -40,6 +40,7 @@ from max.gpu.memory import AddressSpace
 from std.memory import stack_allocation
 from std.origin import MutAnyOrigin
 
+from residentk.loadvec import _ld4
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — the SAME spelling `residentk.kernels` uses."""
 
@@ -111,7 +112,7 @@ def _pf_gemm_accum_kernel_v2n(
         var arow = lr + rpass * 32
         var gr0 = block_row + arow
         if gr0 < m_rows and lc + 3 < k:
-            var va = x.load[width=4](gr0 * k + lc)
+            var va = _ld4(x, gr0 * k + lc)
             a0[arow * APAD + lc + 0] = va[0]
             a0[arow * APAD + lc + 1] = va[1]
             a0[arow * APAD + lc + 2] = va[2]
@@ -125,7 +126,7 @@ def _pf_gemm_accum_kernel_v2n(
         rpass += 1
     var wr0 = block_col + lr
     if wr0 < n and lc + 3 < k:
-        var vb = w.load[width=4](wr0 * k + lc)
+        var vb = _ld4(w, wr0 * k + lc)
         b0[(lc + 0) * BPAD + lr] = vb[0]
         b0[(lc + 1) * BPAD + lr] = vb[1]
         b0[(lc + 2) * BPAD + lr] = vb[2]
@@ -149,7 +150,7 @@ def _pf_gemm_accum_kernel_v2n(
                     var arow = lr + rpass * 32
                     var agr = block_row + arow
                     if agr < m_rows and ngc + 3 < k:
-                        var va = x.load[width=4](agr * k + ngc)
+                        var va = _ld4(x, agr * k + ngc)
                         a1[arow * APAD + lc + 0] = va[0]
                         a1[arow * APAD + lc + 1] = va[1]
                         a1[arow * APAD + lc + 2] = va[2]
@@ -163,7 +164,7 @@ def _pf_gemm_accum_kernel_v2n(
                     rpass += 1
                 var wgr = block_col + lr
                 if wgr < n and ngc + 3 < k:
-                    var vb = w.load[width=4](wgr * k + ngc)
+                    var vb = _ld4(w, wgr * k + ngc)
                     b1[(lc + 0) * BPAD + lr] = vb[0]
                     b1[(lc + 1) * BPAD + lr] = vb[1]
                     b1[(lc + 2) * BPAD + lr] = vb[2]
@@ -180,7 +181,7 @@ def _pf_gemm_accum_kernel_v2n(
                     var arow = lr + rpass * 32
                     var agr = block_row + arow
                     if agr < m_rows and ngc + 3 < k:
-                        var va = x.load[width=4](agr * k + ngc)
+                        var va = _ld4(x, agr * k + ngc)
                         a0[arow * APAD + lc + 0] = va[0]
                         a0[arow * APAD + lc + 1] = va[1]
                         a0[arow * APAD + lc + 2] = va[2]
@@ -194,7 +195,7 @@ def _pf_gemm_accum_kernel_v2n(
                     rpass += 1
                 var wgr = block_col + lr
                 if wgr < n and ngc + 3 < k:
-                    var vb = w.load[width=4](wgr * k + ngc)
+                    var vb = _ld4(w, wgr * k + ngc)
                     b0[(lc + 0) * BPAD + lr] = vb[0]
                     b0[(lc + 1) * BPAD + lr] = vb[1]
                     b0[(lc + 2) * BPAD + lr] = vb[2]

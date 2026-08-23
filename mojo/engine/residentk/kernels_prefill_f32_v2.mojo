@@ -82,6 +82,7 @@ from max.gpu.memory import AddressSpace
 from std.memory import stack_allocation
 from std.math import exp
 
+from residentk.loadvec import _ld4
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — the SAME spelling `residentk.kernels` uses."""
 
@@ -187,7 +188,7 @@ def _pf_gemm_assign_kernel_v2(
     # ── prologue: stage step 0 into buffer 0 ──
     var gr0 = block_row + lr
     if gr0 < m_rows and lc + 3 < k:
-        var va = xn.load[width=4](gr0 * k + lc)
+        var va = _ld4(xn, gr0 * k + lc)
         a0[lr * APAD + lc + 0] = va[0]
         a0[lr * APAD + lc + 1] = va[1]
         a0[lr * APAD + lc + 2] = va[2]
@@ -200,7 +201,7 @@ def _pf_gemm_assign_kernel_v2(
             a0[lr * APAD + lc + e] = Float32(0.0)
     var wr0 = block_col + lr
     if wr0 < n and lc + 3 < k:
-        var vb = w.load[width=4](wr0 * k + lc)
+        var vb = _ld4(w, wr0 * k + lc)
         b0[(lc + 0) * BPAD + lr] = vb[0]
         b0[(lc + 1) * BPAD + lr] = vb[1]
         b0[(lc + 2) * BPAD + lr] = vb[2]
@@ -222,7 +223,7 @@ def _pf_gemm_assign_kernel_v2(
             var agr = block_row + lr
             if cur == 0:
                 if agr < m_rows and ngc + 3 < k:
-                    var va = xn.load[width=4](agr * k + ngc)
+                    var va = _ld4(xn, agr * k + ngc)
                     a1[lr * APAD + lc + 0] = va[0]
                     a1[lr * APAD + lc + 1] = va[1]
                     a1[lr * APAD + lc + 2] = va[2]
@@ -235,7 +236,7 @@ def _pf_gemm_assign_kernel_v2(
                         a1[lr * APAD + lc + e] = Float32(0.0)
                 var wgr = block_col + lr
                 if wgr < n and ngc + 3 < k:
-                    var vb = w.load[width=4](wgr * k + ngc)
+                    var vb = _ld4(w, wgr * k + ngc)
                     b1[(lc + 0) * BPAD + lr] = vb[0]
                     b1[(lc + 1) * BPAD + lr] = vb[1]
                     b1[(lc + 2) * BPAD + lr] = vb[2]
@@ -248,7 +249,7 @@ def _pf_gemm_assign_kernel_v2(
                         b1[(lc + e) * BPAD + lr] = Float32(0.0)
             else:
                 if agr < m_rows and ngc + 3 < k:
-                    var va = xn.load[width=4](agr * k + ngc)
+                    var va = _ld4(xn, agr * k + ngc)
                     a0[lr * APAD + lc + 0] = va[0]
                     a0[lr * APAD + lc + 1] = va[1]
                     a0[lr * APAD + lc + 2] = va[2]
@@ -261,7 +262,7 @@ def _pf_gemm_assign_kernel_v2(
                         a0[lr * APAD + lc + e] = Float32(0.0)
                 var wgr = block_col + lr
                 if wgr < n and ngc + 3 < k:
-                    var vb = w.load[width=4](wgr * k + ngc)
+                    var vb = _ld4(w, wgr * k + ngc)
                     b0[(lc + 0) * BPAD + lr] = vb[0]
                     b0[(lc + 1) * BPAD + lr] = vb[1]
                     b0[(lc + 2) * BPAD + lr] = vb[2]
@@ -406,7 +407,7 @@ def _pf_gemm_accum_kernel_v2(
 
     var gr0 = block_row + lr
     if gr0 < m_rows and lc + 3 < k:
-        var va = x.load[width=4](gr0 * k + lc)
+        var va = _ld4(x, gr0 * k + lc)
         a0[lr * APAD + lc + 0] = va[0]
         a0[lr * APAD + lc + 1] = va[1]
         a0[lr * APAD + lc + 2] = va[2]
@@ -419,7 +420,7 @@ def _pf_gemm_accum_kernel_v2(
             a0[lr * APAD + lc + e] = Float32(0.0)
     var wr0 = block_col + lr
     if wr0 < n and lc + 3 < k:
-        var vb = w.load[width=4](wr0 * k + lc)
+        var vb = _ld4(w, wr0 * k + lc)
         b0[(lc + 0) * BPAD + lr] = vb[0]
         b0[(lc + 1) * BPAD + lr] = vb[1]
         b0[(lc + 2) * BPAD + lr] = vb[2]
@@ -440,7 +441,7 @@ def _pf_gemm_accum_kernel_v2(
             var agr = block_row + lr
             if cur == 0:
                 if agr < m_rows and ngc + 3 < k:
-                    var va = x.load[width=4](agr * k + ngc)
+                    var va = _ld4(x, agr * k + ngc)
                     a1[lr * APAD + lc + 0] = va[0]
                     a1[lr * APAD + lc + 1] = va[1]
                     a1[lr * APAD + lc + 2] = va[2]
@@ -453,7 +454,7 @@ def _pf_gemm_accum_kernel_v2(
                         a1[lr * APAD + lc + e] = Float32(0.0)
                 var wgr = block_col + lr
                 if wgr < n and ngc + 3 < k:
-                    var vb = w.load[width=4](wgr * k + ngc)
+                    var vb = _ld4(w, wgr * k + ngc)
                     b1[(lc + 0) * BPAD + lr] = vb[0]
                     b1[(lc + 1) * BPAD + lr] = vb[1]
                     b1[(lc + 2) * BPAD + lr] = vb[2]
@@ -466,7 +467,7 @@ def _pf_gemm_accum_kernel_v2(
                         b1[(lc + e) * BPAD + lr] = Float32(0.0)
             else:
                 if agr < m_rows and ngc + 3 < k:
-                    var va = x.load[width=4](agr * k + ngc)
+                    var va = _ld4(x, agr * k + ngc)
                     a0[lr * APAD + lc + 0] = va[0]
                     a0[lr * APAD + lc + 1] = va[1]
                     a0[lr * APAD + lc + 2] = va[2]
@@ -479,7 +480,7 @@ def _pf_gemm_accum_kernel_v2(
                         a0[lr * APAD + lc + e] = Float32(0.0)
                 var wgr = block_col + lr
                 if wgr < n and ngc + 3 < k:
-                    var vb = w.load[width=4](wgr * k + ngc)
+                    var vb = _ld4(w, wgr * k + ngc)
                     b0[(lc + 0) * BPAD + lr] = vb[0]
                     b0[(lc + 1) * BPAD + lr] = vb[1]
                     b0[(lc + 2) * BPAD + lr] = vb[2]
@@ -643,7 +644,7 @@ def _pf_gemm_swiglu_kernel_v2(
     # ── prologue: stage step 0 into buffer 0 (one a tile + gate and up b tiles) ──
     var gr0 = block_row + lr
     if gr0 < m_rows and lc + 3 < k:
-        var va = xn.load[width=4](gr0 * k + lc)
+        var va = _ld4(xn, gr0 * k + lc)
         a0[lr * APAD + lc + 0] = va[0]
         a0[lr * APAD + lc + 1] = va[1]
         a0[lr * APAD + lc + 2] = va[2]
@@ -656,8 +657,8 @@ def _pf_gemm_swiglu_kernel_v2(
             a0[lr * APAD + lc + e] = Float32(0.0)
     var wr0 = block_col + lr
     if wr0 < n_ff and lc + 3 < k:
-        var vg = w.load[width=4](wr0 * k + lc)
-        var vu = w.load[width=4]((n_ff + wr0) * k + lc)
+        var vg = _ld4(w, wr0 * k + lc)
+        var vu = _ld4(w, (n_ff + wr0) * k + lc)
         bg0[(lc + 0) * BPAD + lr] = vg[0]
         bg0[(lc + 1) * BPAD + lr] = vg[1]
         bg0[(lc + 2) * BPAD + lr] = vg[2]
@@ -687,7 +688,7 @@ def _pf_gemm_swiglu_kernel_v2(
             var wgr = block_col + lr
             if cur == 0:
                 if agr < m_rows and ngc + 3 < k:
-                    var va = xn.load[width=4](agr * k + ngc)
+                    var va = _ld4(xn, agr * k + ngc)
                     a1[lr * APAD + lc + 0] = va[0]
                     a1[lr * APAD + lc + 1] = va[1]
                     a1[lr * APAD + lc + 2] = va[2]
@@ -699,8 +700,8 @@ def _pf_gemm_swiglu_kernel_v2(
                     for e in range(4):
                         a1[lr * APAD + lc + e] = Float32(0.0)
                 if wgr < n_ff and ngc + 3 < k:
-                    var vg = w.load[width=4](wgr * k + ngc)
-                    var vu = w.load[width=4]((n_ff + wgr) * k + ngc)
+                    var vg = _ld4(w, wgr * k + ngc)
+                    var vu = _ld4(w, (n_ff + wgr) * k + ngc)
                     bg1[(lc + 0) * BPAD + lr] = vg[0]
                     bg1[(lc + 1) * BPAD + lr] = vg[1]
                     bg1[(lc + 2) * BPAD + lr] = vg[2]
@@ -721,7 +722,7 @@ def _pf_gemm_swiglu_kernel_v2(
                         bu1[(lc + e) * BPAD + lr] = Float32(0.0)
             else:
                 if agr < m_rows and ngc + 3 < k:
-                    var va = xn.load[width=4](agr * k + ngc)
+                    var va = _ld4(xn, agr * k + ngc)
                     a0[lr * APAD + lc + 0] = va[0]
                     a0[lr * APAD + lc + 1] = va[1]
                     a0[lr * APAD + lc + 2] = va[2]
@@ -733,8 +734,8 @@ def _pf_gemm_swiglu_kernel_v2(
                     for e in range(4):
                         a0[lr * APAD + lc + e] = Float32(0.0)
                 if wgr < n_ff and ngc + 3 < k:
-                    var vg = w.load[width=4](wgr * k + ngc)
-                    var vu = w.load[width=4]((n_ff + wgr) * k + ngc)
+                    var vg = _ld4(w, wgr * k + ngc)
+                    var vu = _ld4(w, (n_ff + wgr) * k + ngc)
                     bg0[(lc + 0) * BPAD + lr] = vg[0]
                     bg0[(lc + 1) * BPAD + lr] = vg[1]
                     bg0[(lc + 2) * BPAD + lr] = vg[2]

@@ -77,6 +77,7 @@ from std.gpu.primitives.warp import sum as _warp_sum
 from std.math import exp
 from std.origin import MutAnyOrigin
 
+from residentk.loadvec import _ld4
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 alias _I64P = UnsafePointer[Int64, origin=MutAnyOrigin]
 
@@ -126,7 +127,7 @@ def _splitk_partial_batched_flash_kernel(
     var key_start = (n_keys * sidx) // n_splits
     var key_end = (n_keys * (sidx + 1)) // n_splits
 
-    var qv = q_rot.load[width=4]((b * h_q + h) * d_head + e0)
+    var qv = _ld4(q_rot, (b * h_q + h) * d_head + e0)
     var q0 = qv[0]
     var q1 = qv[1]
     var q2 = qv[2]
@@ -156,35 +157,35 @@ def _splitk_partial_batched_flash_kernel(
         var bs7 = _DECODE_FLASH_NEG_HUGE
         if nb >= 1:
             var kb = kv_off + (j0 * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs0 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 2:
             var kb = kv_off + ((j0 + 1) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs1 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 3:
             var kb = kv_off + ((j0 + 2) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs2 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 4:
             var kb = kv_off + ((j0 + 3) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs3 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 5:
             var kb = kv_off + ((j0 + 4) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs4 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 6:
             var kb = kv_off + ((j0 + 5) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs5 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 7:
             var kb = kv_off + ((j0 + 6) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs6 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 8:
             var kb = kv_off + ((j0 + 7) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs7 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
 
         # ONE rescale for the whole block
@@ -214,7 +215,7 @@ def _splitk_partial_batched_flash_kernel(
 
         if nb >= 1:
             var w = exp(bs0 - nm)
-            var vv4 = cv.load[width=4](kv_off + (j0 * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + (j0 * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -222,7 +223,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 2:
             var w = exp(bs1 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 1) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 1) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -230,7 +231,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 3:
             var w = exp(bs2 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 2) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 2) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -238,7 +239,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 4:
             var w = exp(bs3 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 3) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 3) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -246,7 +247,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 5:
             var w = exp(bs4 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 4) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 4) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -254,7 +255,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 6:
             var w = exp(bs5 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 5) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 5) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -262,7 +263,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 7:
             var w = exp(bs6 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 6) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 6) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -270,7 +271,7 @@ def _splitk_partial_batched_flash_kernel(
             denom += w
         if nb >= 8:
             var w = exp(bs7 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 7) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 7) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -325,7 +326,7 @@ def _splitk_partial_batched_flash_kernel_bg(
     var key_start = (n_keys * sidx) // n_splits
     var key_end = (n_keys * (sidx + 1)) // n_splits
 
-    var qv = q_rot.load[width=4]((b * h_q + h) * d_head + e0)
+    var qv = _ld4(q_rot, (b * h_q + h) * d_head + e0)
     var q0 = qv[0]
     var q1 = qv[1]
     var q2 = qv[2]
@@ -355,35 +356,35 @@ def _splitk_partial_batched_flash_kernel_bg(
         var bs7 = _DECODE_FLASH_NEG_HUGE
         if nb >= 1:
             var kb = kv_off + (j0 * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs0 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 2:
             var kb = kv_off + ((j0 + 1) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs1 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 3:
             var kb = kv_off + ((j0 + 2) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs2 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 4:
             var kb = kv_off + ((j0 + 3) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs3 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 5:
             var kb = kv_off + ((j0 + 4) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs4 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 6:
             var kb = kv_off + ((j0 + 5) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs5 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 7:
             var kb = kv_off + ((j0 + 6) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs6 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
         if nb >= 8:
             var kb = kv_off + ((j0 + 7) * h_kv + hk) * d_head + e0
-            var kv4 = ck.load[width=4](kb)
+            var kv4 = _ld4(ck, kb)
             bs7 = _warp_sum(q0 * kv4[0] + q1 * kv4[1] + q2 * kv4[2] + q3 * kv4[3]) * scale
 
         var bmax = bs0
@@ -412,7 +413,7 @@ def _splitk_partial_batched_flash_kernel_bg(
 
         if nb >= 1:
             var w = exp(bs0 - nm)
-            var vv4 = cv.load[width=4](kv_off + (j0 * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + (j0 * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -420,7 +421,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 2:
             var w = exp(bs1 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 1) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 1) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -428,7 +429,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 3:
             var w = exp(bs2 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 2) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 2) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -436,7 +437,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 4:
             var w = exp(bs3 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 3) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 3) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -444,7 +445,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 5:
             var w = exp(bs4 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 4) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 4) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -452,7 +453,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 6:
             var w = exp(bs5 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 5) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 5) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -460,7 +461,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 7:
             var w = exp(bs6 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 6) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 6) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
@@ -468,7 +469,7 @@ def _splitk_partial_batched_flash_kernel_bg(
             denom += w
         if nb >= 8:
             var w = exp(bs7 - nm)
-            var vv4 = cv.load[width=4](kv_off + ((j0 + 7) * h_kv + hk) * d_head + e0)
+            var vv4 = _ld4(cv, kv_off + ((j0 + 7) * h_kv + hk) * d_head + e0)
             o0 += w * vv4[0]
             o1 += w * vv4[1]
             o2 += w * vv4[2]
