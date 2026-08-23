@@ -14070,3 +14070,100 @@ gate-clean) is published in this round.
 
 SCALING READ: our stack scales ~1.5-1.7x A100 -> H100 (SIMT-f32 bound; fixture prefill
 1.54x vs the 3.4x f32-peak ratio — the named ceiling question persists on H100).
+
+## H100 CONCURRENT RE-MEASURE ON THE FIXED DRIVER (2026-08-23, algenta-ent-h100 a3-highgpu-8g SPOT, origin/main a08b1568 = #816 merged; REPLACES the pre-fix H100 concurrent cells)
+
+CONTEXT: the H100 verification round above (#815) measured its concurrent cells on the
+round-2 driver, whose concurrent admission path fails gate 2 (the move_slot_kv compaction
+address bug, root-caused and fixed in #816). Those cells were integrity-held. This is the
+re-measure of the SAME cells on the FIXED driver — the only change under test is the L7 fix
++ the production graph-under-lanes arm it unlocks. Same VM, same harness
+(enterprise_bench/1.0, unchanged between the two trees), same protocol: 64 req/cell,
+greedy, warmup excluded, fresh same-session llama-server baselines (-ngl 99 --parallel 32
+-c 163840, f16 GGUF), BOTH opponent KV configs stated per the #815 finding (default f16 KV
+= the brief's literal flags; q8_0 KV = the faster reference).
+
+ARMS (rebuilt from a08b1568 at sm_90, plain build):
+  s2l7 = -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_PF_ONEPASS -D ALGENTA_PF_ATTN_FLASH
+         -D ALGENTA_P3_SERVE -D ALGENTA_PF_STREAMS_2 -D ALGENTA_P3B_R2 -D ALGENTA_GRAPH_LANES
+  s4l7 = same with -D ALGENTA_PF_STREAMS_4
+  ALGENTA_GRAPH_LANES is the #816 production switch (captured-graph decode CO-RESIDENT with
+  in-flight admission lanes; move_slot_kv typed element-scaled arithmetic); L7_BUSY_K
+  defaults to 1 (the shipped pacing). The round-2 hybrid's per-dispatch busy windows are gone.
+
+GATES BEFORE NUMBERS (on the H100, both arms): 16/16 campaign oracle through the serving
+decode path + 8/8 mixed-prompt concurrent token identity vs the sequential per-dispatch p3
+chain — PASS x2 ("RESULT: PASS — selftest (gate 1 oracle 16/16 + gate 2 token identity)").
+Gate 2 is the exact control that failed on the pre-fix round-2 driver; it passes here with
+graph-under-lanes live, which is the whole point of the re-measure.
+
+INTEGRITY NOTES (stated plainly):
+  * VM CO-TENANCY: a second GPU campaign (ncu/nsys + prefill-GEMM-variant probes:
+    h100_gemm_probe, v2n_dbg, h100_attn_probe, bench_gen64_op/gen_op, gen_lh4/bench_gen64_lh4)
+    ran CONCURRENTLY on this same VM during parts of the session. Every timed cell carries
+    a 5 s census; ANY window with a foreign compute PID was QUARANTINED and re-run behind a
+    gate (cell only accepted on a fully solo census; GPU required quiet-confirmed before
+    each attempt). 8 attempts quarantined; every published window below is census-clean.
+  * CLOCKS: llama windows pinned 1980 MHz in-window (min=max, all samples); driver windows
+    reach 1980 under load (the 345 MHz samples are the driver's pre-timed load/warmup
+    phase, same documented class as prior rounds). 64/64 requests ok in every published
+    cell; zero errors.
+  * STABILITY (brief's rel-IQR <= 5% gate, evaluated across the clean replicate runs):
+    every cell has >= 2 census-clean runs except llama f16-KV rag (1 clean + 2 quarantined);
+    max aggregate spread across clean runs 2.6% (llama f16-KV chat 890.9/913.9), all others
+    <= 0.5% (q8_0-KV chat 901.1/900.3; q8_0-KV rag 730.0/729.5; s2l7 chat 1028.1/1024.9;
+    s2l7 rag 380.8/378.9; s4l7 chat 1032.2/1027.5; s4l7 rag 378.4/379.4). All PASS the 5%
+    gate. The quarantined llama f16-KV rag attempts (135.8, 137.0 — each with one 5 s
+    co-tenant sample) sit ~5% BELOW the census-clean run (143.8), consistent with mild
+    contention; the clean run is the published one and both quarantined values are recorded
+    here.
+
+TABLE — CHAT C=8 (agg tok/s / TTFT p50 ms / TPOT p50 ms; median of the clean runs):
+
+| arm                          | run 1            | run 2            | median            |
+|------------------------------|------------------|------------------|-------------------|
+| llama f16-KV (brief config)  | 890.9/347.1/7.20 | 913.9/343.0/7.05 | 902.4/345.1/7.1   |
+| llama q8_0-KV (reference)    | 901.1/237.8/7.38 | 900.3/238.7/7.35 | 900.7/238.3/7.4   |
+| s2l7 (fixed driver)          | 1028.1/293.9/6.33| 1024.9/301.8/6.34| 1026.5/297.9/6.3  |
+| s4l7 (fixed driver)          | 1032.2/297.8/6.31| 1027.5/300.0/6.34| 1029.9/298.9/6.3  |
+
+TABLE — RAG C=8 (same units; llama f16-KV = its single census-clean run):
+
+| arm                          | run 1              | run 2              | median             |
+|------------------------------|--------------------|--------------------|--------------------|
+| llama f16-KV (brief config)  | 143.8/5463.9/54.84 | (2 quarantined: 135.8, 137.0) | 143.8/5463.9/54.8 |
+| llama q8_0-KV (reference)    | 730.0/283.6/10.26  | 729.5/388.7/10.00  | 729.8/336.2/10.1   |
+| s2l7 (fixed driver)          | 380.8/2679.6/15.49 | 378.9/2696.5/15.56 | 379.9/2688.1/15.5  |
+| s4l7 (fixed driver)          | 378.4/2680.3/15.50 | 379.4/2694.5/15.55 | 378.9/2687.4/15.5  |
+
+VERDICTS — vs the brief-config opponent (llama-server, default f16 KV), same session:
+  * CHAT C=8 ALL-METRICS WIN HOLDS AND WIDENS: s2l7 1.14x agg / 1.16x TTFT / 1.12x TPOT
+    (pre-fix round: 1.10x / 1.15x / 1.09x). s4l7 now ALSO wins all three (1.14x / 1.15x /
+    1.13x) — its pre-fix TTFT loss (393.6 vs 344.9) FLIPS to a win: graph-under-lanes
+    removes the hybrid's per-dispatch busy windows that parked S4's admissions.
+  * RAG C=8 WIN HOLDS: s2l7 2.64x agg / 2.03x TTFT / 3.53x TPOT (pre-fix: 2.78x / 2.05x /
+    3.79x — the opponent ran 5% faster THIS session: 143.8 vs 136.6; the driver is
+    unchanged at 379.9 vs 379.2). s4l7 2.63x / 2.03x / 3.53x.
+
+VERDICTS — vs the faster q8_0-KV reference opponent, stated plainly (unchanged losses):
+  * CHAT C=8: agg + TPOT wins hold (1.14x / 1.16x both arms); TTFT is still a LOSS
+    (297.9-298.9 vs 238.3 = 0.80x; pre-fix 0.81x) — q8_0 KV keeps llama's tensor-core
+    prefill ahead of our f32-SIMT admission at this depth.
+  * RAG C=8: still a LOSS — 0.52x agg (379.9 / 378.9 vs 729.8), 0.13x TTFT, 0.65x TPOT.
+    Same as pre-fix (0.52x). The rag lane does not beat the fastest honest llama config
+    on H100; the #815 finding stands and is opponent-KV-config-dependent, not driver-bug-
+    dependent.
+
+FIX COST / SHAPE: the fix carries NO measurable cost — driver medians moved <= 0.5% vs the
+pre-fix round on the cells that were clean there (chat s2 1021.6 -> 1026.5, rag s2
+379.2 -> 379.9). The one shape change is S4 converging on S2 (chat agg 1071.0 -> 1029.9 at
+TTFT 393.6 -> 298.9; rag TTFT 4072 -> 2687 at TPOT 12.8 -> 15.5): under graph-under-lanes
+the 4-stream arm adds nothing at C=8 — the same A100 round-3 measurement, now reproduced
+on H100. S2 remains the ship. A100 -> H100 scaling on the fixed arms is the same class as
+pre-fix: chat 617.6 -> 1026.5 = 1.66x, rag 242.8 -> 379.9 = 1.56x (SIMT-f32 bound).
+
+STATUS: these cells REPLACE the pre-fix H100 concurrent cells in their entirety; the #815
+"INTEGRITY HOLD ON LANES 3/4 PUBLICATION" is cleared by this round (gates pass, windows
+census-clean, replicates within 5%). Lane 1 (single-stream packed3 decode) and Lane 2
+(fixture) from #815 are untouched and stand as published. The q8_0-KV losses above remain
+withheld-from-victory treatment per the publish-wins-only rule, recorded here for the ledger.
