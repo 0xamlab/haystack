@@ -17,6 +17,19 @@ benchmarks. AMD ROCm is not verified.
 | AMD ROCm | Not verified | Compile gate in progress |
 | V100 / Volta (sm\_70) | Not supported | Compile-time constraint of the pinned toolchain |
 
+## MAX hardware compatibility
+
+The engine runs on the Modular MAX runtime; MAX's hardware compatibility matrix (vendor
+documentation, max.modular.com/packages) lists, for NVIDIA, driver >= 580 with B200 tested
+for serving and B300, B100, DGX Spark, H200, H100, L4, L40, A100, A10, A1000, RTX 50XX,
+RTX 40XX, RTX 30XX, Jetson Orin/Thor, T4 and RTX 20XX known compatible for development;
+for AMD, ROCm >= 6.3.3 (MI355X requires ROCm >= 7.0) with MI355X, MI300X and MI325X tested
+for serving and MI250X plus the Radeon RX/RDNA families known compatible for development.
+
+Algenta's own verification within that matrix: LLM session benchmarked on A100, H100 and L4
+(this page); kernel layer bit-exact on T4, L4 and A100; B200 (sm\_100) and the AMD
+compile gate are being exercised and land here as they clear.
+
 ## Metal (Apple Silicon)
 
 Metal runs the full serving path: resident kernels, batched dispatch, prefill and decode.
