@@ -14827,3 +14827,181 @@ CLOCK/COST LEDGER: L4 spot $0.512012/h (catalog at provision, stated above); lan
 when the lane landed (first-run harness bug: the readiness poll accepted 503-during-load as
 healthy — fixed to HTTP-200 + one real completion; the four llama cells re-ran clean, the
 two algenta cells from the first pass were unaffected and kept).
+---
+
+## THE TENSOR-CORE ESCAPE HATCH (2026-08-23): nvcc-compiled CUDA linked into a Mojo CUDA binary — FEASIBILITY PROVEN, cuBLAS ARM AT LLAMA-CLASS GEMM SPEED, VERDICT GO
+
+**The one-line verdict:** the NVIDIA analog of the Metal escape hatch WORKS — an nvcc-compiled
+`tc_shim.cu` object links into a Mojo CUDA binary via the exact `-Xlinker` recipe the Metal
+lanes already ship, its cuBLAS HMMA GEMM runs CORRECT (rel <= 2.3e-3 vs an f64 CPU oracle,
+gate 1e-2) on Mojo-allocated device pointers behind a sync seam, and it measures up to 15.8x (A100) /
+17.0x (H100) faster than the in-tree v2 f32-SIMT prefill GEMM at the same shapes — putting the prefill
+GEMM layer at llama.cpp cuBLAS parity on A100 (14.5 ms modeled vs the autopsy's measured
+14.7 ms) for the first time. Additionally demonstrated end-to-end inside the same Mojo
+binary: (a) a runtime-loaded PTX module dispatched through the driver API with ZERO link-time
+coupling (vector-add bit-exact on Mojo buffers), and (b) a hand-written inline-PTX
+`mma.sync.m16n8k16` f16->f32 GEMM, correct vs the f64 oracle (rel 4.2-5.9e-7) at 23-39% of
+cuBLAS speed — below the 60% viability gate, so cuBLAS ships first and the hand kernel stays
+as the strategic no-vendor-dependency path. PROBE ONLY: nothing here is wired into the session.
+
+**Why this probe exists.** Every remaining race loss traces to one ceiling: the pinned Mojo
+1.0.0 / MAX 26.5.0 CUDA backend exposes no tensor-core surface (mma_surface_probe.sh: every
+std/max mma import compile-FAILS) and scalarizes sub-f32 loads, so the prefill GEMMs sit
+at f32-SIMT efficiency (A100 autopsy: our 297.5 ms f32 SIMT vs llama's 14.7 ms cuBLAS
+ampere_h16816gemm over the same 895-token prefill; H100 warm pp256 13.6-14.1k tok/s llama
+vs our 9291). The Metal serving path already runs the escape-hatch pattern (hand-written
+.metal shim linked as a blob over a discovery ABI); this is the measured NVIDIA analog.
+
+**Artifacts:** `benchmarks/llm_smoke/nvidia_race/tc_shim.cu` (the extern "C" shim: cuBLAS
+GemmEx arms + f16<->f32 staging + packed3->f16 dequant + driver-API PTX loader + hand mma
+dispatch), `tc_rt_kernels.cu` (runtime-loaded kernels: vadd + the hand mma.sync GEMM, shipped
+as embedded PTX), `tc_escape_probe.mojo` (the Mojo driver: external_call wrappers, f64 oracle,
+20-run median+IQR timing), `scripts/build_tc_probe.sh` (nvcc + PTX-embed + two link recipes).
+
+### 1. LINK FEASIBILITY — PASS on both GPUs
+
+* Recipe 1 worked on BOTH VMs: plain `mojo build -D ALGENTA_GPU -D ALGENTA_CUDA
+  --target-accelerator sm_NN -I mojo/engine probe.mojo -o bin -Xlinker tc_shim.o
+  -Xlinker -lcublas -Xlinker -lcudart -Xlinker -L/usr/local/cuda/lib64`. No object+clang
+  fallback needed (recipe 2 is scripted anyway, mirroring setup_vm.sh's build_one_driver).
+* The binary runs on Mojo's context: `tc_shim_init` = 0 on both GPUs; cuBLAS handle + a
+  dedicated non-blocking stream bind to the CURRENT (Mojo's) context without any context
+  juggling. SYNC SEAM: MAX 26.5 exposes no raw cudaStream_t accessor, so the probe brackets
+  every shim call with ctx.synchronize() and the shim stream-syncs before returning. Prefill
+  waves are synchronous admissions, so a per-wave device-sync seam is structurally acceptable
+  for the probe; the integration round decides seam granularity. `tc_shim_use_stream` is
+  already in the ABI for a future MAX release that exposes handles.
+* One diagnostic curiosity, recorded honestly: `cuPointerGetAttribute(CONTEXT)` on a
+  Mojo-allocated buffer returns status 0 with a NULL context handle (both GPUs), so the
+  pointer-level ownership query is non-diagnostic for Mojo's allocator (likely a VMM/pool
+  path). Interop was instead PROVEN empirically: cuBLAS GEMMs and a runtime-loaded kernel
+  consumed Mojo-allocated pointers with correct results. The recipe: pass
+  `Int(DeviceBuffer.unsafe_ptr())` across the FFI as a device address; no copies.
+
+### 2. CORRECTNESS — all arms PASS the rel < 1e-2 gate vs f64 CPU (64x256x128, identical fills)
+
+| arm | A100 max_rel | H100 max_rel | gate |
+|---|---|---|---|
+| cuBLAS f16-accum (COMPUTE_16F) | 2.32e-3 | 1.80e-3 | PASS |
+| cuBLAS f32-accum (COMPUTE_32F, still HMMA) | 1.01e-3 | 1.01e-3 | PASS |
+| TF32 direct (f32 in/out, no staging) | 8.38e-4 | 8.38e-4 | PASS |
+| in-tree v2 f32 SIMT (control) | 8.05e-7 | 8.05e-7 | PASS |
+| hand mma.sync m16n8k16 (runtime-loaded) | 5.87e-7 | 4.21e-7 | PASS |
+| WMMA 16x16x16 smoke (the Q@K^T tile) | 5.22e-8 | 2.98e-8 | PASS |
+| packed3->f16 dequant (layout 2x96) | max_abs 3.75e-3 | same | PASS |
+
+### 3. NUMBERS — 20-run median [IQR], us per GEMM, TF/s. Census-clean solo runs, warm.
+
+A100-SXM4-40GB (f16 peak 312 TF/s):
+
+| shape (M,K,N) | v2 f32 SIMT | tc_full 32acc | tc_pre 32acc | gemmex_only | tf32 | rt_mma_hand |
+|---|---|---|---|---|---|---|
+| qkv 1024,1024,4096 | 826.0 us / 10.4 TF/s | 90.5 / 94.9 | 85.4 / 100.6 | 60.2 / 142.8 | 114.5 / 75.0 | 262.6 / 32.7 |
+| o_proj 1024,4096,1024 | 1036.2 / 8.3 | 93.9 / 91.5 | 75.2 / 114.2 | 58.3 / 147.2 | 105.6 / 81.4 | — |
+| down/gate 1024,4096,3072 | 2625.2 / 9.8 | 166.4 / 154.9 | 145.7 / 176.8 | 122.7 / 210.0 | 218.7 / 117.8 | — |
+| qkv 256,1024,4096 | 272.9 / 7.9 | 49.1 / 43.8 | 45.1 / 47.6 | 31.5 / 68.2 | 46.2 / 46.5 | 80.1 / 26.8 |
+| o_proj 256,4096,1024 | 533.4 / 4.0 | 48.4 / 44.4 | 44.7 / 48.0 | 34.0 / 63.2 | 55.6 / 38.6 | — |
+| down/gate 256,4096,3072 | 738.2 / 8.7 | 69.6 / 92.5 | 65.3 / 98.6 | 52.0 / 123.8 | 82.3 / 78.3 | — |
+
+H100-SXM-80GB (f16 dense peak ~989 TF/s; v2 control scales 1.96-3.1x vs A100 = healthy regime):
+
+| shape (M,K,N) | v2 f32 SIMT | tc_full 32acc | tc_pre 32acc | gemmex_only | tf32 | rt_mma_hand |
+|---|---|---|---|---|---|---|
+| qkv 1024,1024,4096 | 421.2 us / 20.4 TF/s | 47.1 / 182.2 | 44.3 / 194.1 | 25.2 / 340.7 | 42.7 / 201.0 | 166.1 / 51.7 |
+| o_proj 1024,4096,1024 | 484.3 / 17.7 | 46.8 / 183.5 | 37.7 / 228.0 | 27.6 / 311.0 | 51.8 / 165.7 | — |
+| down/gate 1024,4096,3072 | 1260.9 / 20.4 | 74.1 / 347.8 | 61.5 / 418.9 | 45.9 / 561.4 | 97.0 / 265.8 | — |
+| qkv 256,1024,4096 | 121.6 / 17.7 | 30.6 / 70.1 | 28.5 / 75.2 | 17.8 / 120.8 | 25.1 / 85.6 | 57.4 / 37.4 |
+| o_proj 256,4096,1024 | 320.4 / 6.7 | 31.4 / 68.5 | 28.9 / 74.4 | 20.4 / 105.4 | 33.6 / 63.9 | — |
+| down/gate 256,4096,3072 | 473.0 / 13.6 | 37.8 / 170.4 | 34.9 / 184.5 | 25.0 / 258.0 | 44.5 / 144.7 | — |
+
+Arm key: `v2 f32 SIMT` = in-tree kernels_prefill_f32_v2 assign kernel (the current session
+path, f32 weights direct). `tc_full` = the integration-realistic seam: f32 A in, f32->f16
+convert, GemmEx (W pre-staged f16), f16->f32 C out, stream-sync. `tc_pre` = A pre-staged f16
+too (GEMM + C convert only). `gemmex_only` = pure GemmEx kernel speed, the arm comparable to
+the autopsy's ampere_h16816gemm totals. `tf32` = COMPUTE_32F_FAST_TF32, f32 in/out — zero
+staging, zero dual residency. `rt_mma_hand` = the runtime-loaded hand mma.sync kernel.
+
+Headlines:
+* vs in-tree v2 f32 SIMT, the tc_full seam is 5.6-15.8x faster on A100 and 4.0-17.0x on H100
+  at these shapes (narrow-N roles win biggest); gemmex_only is up to 21.4x (A100) / 27.5x (H100).
+* A100 down/gate gemmex_only = 210 TF/s = 67% of the 312 f16 peak; H100 = 561 TF/s = 57% of
+  dense peak. These are llama-grade cuBLAS numbers because they ARE cuBLAS.
+* Modeled full Qwen3-0.6B prefill GEMM layer (28 layers x {qkv, o, gate/up-pair as the
+  down/gate shape} at M=1024, tc_full 32acc medians): A100 = 28 x (90.5+93.9+2x166.4) us =
+  14.5 ms — vs the autopsy's MEASURED llama cuBLAS total of 14.7 ms over its 895-token
+  prefill. GEMM-layer parity with llama.cpp, from f32-SIMT exile, in one link step. H100:
+  28 x (47.1+46.8+2x74.1) us = 6.8 ms.
+* The hand mma.sync kernel clears the CORRECTNESS bar with room to spare (rel ~5e-7, f32
+  accum) but lands at 22.9%/39.3% of gemmex_only on A100 (M=1024/M=256 qkv) and
+  15.2%/31.0% on H100 — BELOW the 60% viability gate the brief set. Diagnosed, not
+  mysterious: single-stage shared tiles (no cp.async double buffering), 4 warps/block, no
+  ldmatrix, guarded scalar epilogue. It still beats v2 f32 SIMT 2.5-3.4x — the point of it
+  is strategic: tensor ops we emit ourselves, independent of any vendor library, on the same
+  runtime-load path (next-round work; int8 TC mma doubles the roof when we get there).
+* H100 two-regime note: the v2 control's 1.96-3.1x A100->H100 scaling and clean IQRs
+  (<= 1.3% on every arm) place this run in the healthy regime; no quarantine needed.
+
+### 4. WEIGHT FORMAT — packed3 -> f16 dequant at session open (measured, both GPUs)
+
+Layout-faithful to kernels_packed3.mojo (3 uint8 quants per 32-bit word, block-32 f32
+scale+zero, 12-element row stride). Dequant kernel = grid-stride word-unpack -> f16 write.
+
+| model | params | A100 one-time | A100 GB/s | H100 one-time | H100 GB/s | packed3 VRAM | f16 VRAM (delta) |
+|---|---|---|---|---|---|---|---|
+| Qwen3-0.6B | 0.508 B | 5.55 ms | 330 | 3.90 ms | 470 | 0.812 GB | 1.022 GB (+1.02 GB) |
+| Qwen2.5-7B-scale | 7.615 B | 55.4 ms | 493 | 37.0 ms | 739 | 12.08 GB | 15.24 GB (+15.2 GB) |
+
+The 7B-scale battery was ALLOCATED AND RUN for real on the A100 40GB (27.3 GB live footprint,
+it fit) — not just projected. The campaign brief's "~0.6GB->1.2GB / ~4.7GB->14GB" estimates
+are corrected by measurement: packed3 is 1.583 B/w, so 7B packs to ~12.1 GB, and the
+dual-residency cost of the TC lane is the FULL f16 copy (the packed3 original stays for
+decode). Both sizes fit the A100 40GB with headroom; the dequant cost is one-time per
+session open and trivially amortized by the per-wave GEMM wins above (at qkv M=1024 the seam
+saves ~735 us per call on A100 — the 0.6B one-time dequant pays back inside ~8 prefill waves).
+TF32 remains the zero-dual-residency alternative (f32 weights direct, 75-266 TF/s measured)
+if VRAM ever becomes the binding constraint.
+
+### 5. FOUNDER-LEVEL CHECK (angle 4) — no MLIR route in the pinned dist; the backend knows mma
+
+Ten-minute scan of `mojo_env/.pixi/envs/default` on the VM: NO `mlir-opt` / `mlir-translate`
+anywhere, no mllvm/libmojo* trees. BUT `strings` on the mojo compiler binary surfaces
+`nvvm.mma.sync`, `wmma.mma.sync` and even a full `mma.sync.aligned.m16n8k32...mxf8f6f4
+block_scale` PTX pattern — the NVPTX backend inside mojo-compiler ALREADY contains NVVM-level
+mma lowering machinery; what does not exist is any Mojo-language surface that reaches it
+(mma_surface_probe.sh remains the compile-level proof of absence). Strategic reading: the
+custom-MLIR-lowering route would mean building our own LLVM/MLIR stack against a closed
+codegen — not actionable on the pinned dist; the actionable hatches are exactly the ones
+this probe measured (native object link, runtime PTX load). If Modular ever exposes the mma
+surface, the integration seam designed here (f16 staging, sync seam, dequant at open) ports
+as-is.
+
+### 6. REFUTED / PAID-FOR paths (recorded so nobody re-pays)
+
+1. cublasGemmEx with OP_N on the [n,k] weight: fails arg validation (lda >= m with m=N) —
+   the row-major [N,K] weight is a column-major [K,N] and must be passed OP_T. First run's
+   INVALID_VALUE caught it before any number was published; the mapping is documented in
+   tc_shim.cu's header.
+2. mma.sync A-fragment register order a1<->a2: the PTX order is a0=(g,c), a1=(g+8,c),
+   a2=(g,c+8), a3=(g+8,c+8) — row-pair-first. The first iteration emitted col-pair-first and
+   rendered rows 8-15 transposed from rows 0-7's col+8 data; the standalone identity-B
+   harness (100m+k fills through a diagonal W) revealed the exact permutation in one run.
+3. cuPointerGetAttribute(CONTEXT) as the interop proof: returns NULL-context success on
+   Mojo buffers (both GPUs) — non-diagnostic; correctness-based proof used instead.
+4. Hand mma at >= 60% of cuBLAS in a first-cut kernel: REFUTED (23-39% A100, 15-31% H100);
+   the 60% gate needs cp.async-staged double buffering + ldmatrix + wider blocks — scoped
+   as next-round work, not a blocker: the cuBLAS arm already wins the round.
+
+### VERDICT — GO for the integration round
+
+Feasibility, correctness, and speed are all measured PASS on BOTH GPUs. Integration-round
+scope the probe supports (not done here — probe only, per the brief): (1) session-open
+packed3->f16 dequant into a dual-resident f16 weight set (5.5 ms / 37 ms one-time cost);
+(2) prefill-wave GEMMs through the tc_full seam under the existing synchronous admission
+(5.6-17.0x kernel-level over v2 f32 across the probed shapes); (3) decode stays on packed3 f32-SIMT GEMV (untouched —
+decode is bandwidth-bound and the packed3 lane already passed its gates). Risks, honestly:
+the per-wave sync seam is fine while prefill admission is synchronous and goes per-layer or
+per-wave-graph if admission ever pipelines; dual residency costs +1.0 GB (0.6B) / +15.2 GB
+(7B) VRAM; cuBLAS kernel selection is a vendor blob (the runtime-loaded hand-mma path is the
+documented fallback and the attention kernel's eventual home). No gitbook page; no session
+changes in this PR.
+
