@@ -1,13 +1,13 @@
 ---
 icon: server
-description: Measured enterprise characteristics of the CUDA-native engine on NVIDIA A100 and L4 — concurrent serving, single-stream decode, batched decode, prefill, cold start, VRAM, determinism.
+description: Measured enterprise characteristics of the CUDA-native engine on NVIDIA A100, L4 and H100 — concurrent serving, single-stream decode, batched decode, prefill, cold start, VRAM, determinism.
 ---
 
 # NVIDIA enterprise serving
 
 Measured enterprise characteristics of the CUDA-native engine (Qwen3-0.6B-Base, greedy) on
-NVIDIA A100-SXM4-40GB and L4, including concurrent-serving wins over `llama-server` (f16)
-on the A100.
+NVIDIA A100-SXM4-40GB, L4 and H100 80GB HBM3, including concurrent-serving wins over
+`llama-server` (f16) on the A100 and single-stream decode wins on all three GPUs.
 
 ## Single-stream decode
 
@@ -17,10 +17,11 @@ decode, against llama.cpp (build 10210 pin, GGML\_CUDA, F16) on the same machine
 | GPU | Decode tok/s (gen=64) | Decode tok/s (gen=256) | vs llama.cpp F16 |
 | --- | --- | --- | --- |
 | A100 | 427.1 | 408.7 | 1.20x / 1.11x |
+| H100 | 656.1 | 622.3 | 1.40x / 1.19x |
 | L4 | 191.1 | 184.8 | 1.12x / 1.07x |
 
-On the A100 at gen=64 the packed3 session also leads llama.cpp Q8\_0 (427.1 vs 404.2 tok/s,
-1.055x).
+Against llama.cpp Q8\_0 the packed3 session leads on the A100 at gen=64 (427.1 vs 404.2
+tok/s, 1.055x) and on the H100 at both lengths (557.4 / 593.2 tok/s, 1.18x / 1.05x).
 
 ## Batched decode aggregate
 
@@ -99,9 +100,11 @@ on both GPUs.
 * Opponents: llama.cpp build 10210 pin, f16 GGUF, `-ngl 99`, `--parallel 32`, `-c 163840`,
   q8\_0 KV, readiness = `/health` plus one real completion; vLLM 0.27.1 with
   `VLLM_USE_FLASHINFER_SAMPLER=0`.
-* Hardware: GCP `algenta-ent-a100` (A100-SXM4-40GB) and `algenta-ent-l4` (L4),
-  us-central1-a, driver 595.71.05, Ubuntu 22.04, mojo 1.0.0 / MAX 26.5.0; clocks pinned at
-  1410 MHz on the A100; L4 comparisons on fresh-boot solo runs.
+* Hardware: GCP `algenta-ent-a100` (A100-SXM4-40GB), `algenta-ent-l4` (L4) and
+  `algenta-ent-h100` (a3-highgpu-8g, H100 80GB HBM3, sm\_90), us-central1-a, driver
+  595.71.05, Ubuntu 22.04, mojo 1.0.0 / MAX 26.5.0; clocks pinned at 1410 MHz on the A100;
+  H100 at sustained 1980 MHz boost with a solo-GPU census per timed window; L4 comparisons
+  on fresh-boot solo runs.
 
 ## Related
 

@@ -13889,3 +13889,51 @@ Every shipped build passes 16/16 oracle + 8/8 token identity; probes kept in-tre
 (multistream_probe, syncscope_probe, graph_race_probe, launch_cal_probe, p3b_smallm_probe)
 as the measurement record; debug bisect flags (ALGENTA_DBG_NOGRAPH / _DBG_NOOVERLAP /
 ALGENTA_P3G_TRACE) stay comptime-gated and off in every shipped configuration.
+
+
+## H100 VERIFICATION (2026-08-23, algenta-ent-h100 a3-highgpu-8g SPOT, 8x H100 80GB HBM3, sm_90 plain builds, origin/main c229340c = round-2 merged; artifacts /tmp/h100_verify + ~/h100_results)
+
+GATES BEFORE NUMBERS: qwen3_generate_cuda oracle 16/16; qwen3_bench_cuda oracle True x2;
+p3-graph G0 16/16 + G1 384/384 tokens + G2 engagement (1.51 -> 1.61 ms/step flat, 6.4% <=
+10%); serve S2/S4 --selftest 16/16 + 8/8; every timed cell frozen rel-IQR <= 5% (worst
+2.15%); clocks sampled every window (1980 MHz boost reached in all, <= 52 C, <= 414 W of
+700 W — no throttling); solo-GPU census: exactly one PID in every timed window.
+
+LANE 1 — SINGLE-STREAM PACKED3 GRAPH DECODE: HOLDS + IMPROVES.
+  gen64:  656.06 tok/s vs llama F16 468.30 (1.40x) vs Q8_0 557.42 (1.18x)   [A100: 1.20x / 1.055x]
+  gen256: 622.26 tok/s vs llama F16 525.01 (1.19x) vs Q8_0 593.20 (1.05x)   [A100: 1.11x / 0.973x]
+  Both F16 wins widen; the gen256-vs-Q8_0 A100 loss FLIPS to a win on H100. PUBLISHED.
+
+LANE 2 — PREFILL FIXTURE 256: algenta warm 5027.3 vs llama F16 COLD 946.7 = 5.31x —
+  WITHHELD (warm-vs-cold apples-to-oranges). Warm-vs-warm: 0.37x = LOSS (llama warm pp256
+  13634 vs 14101 flat; A100 warm-warm 0.23x — improved, still a loss, tensor cores).
+  Anomaly dissected per integrity gate: llama F16 COLD prefill collapses 2.7x on H100 while
+  Q8_0 cold reproduces (12752) — a reproducible ~250 ms fixed first-use cost (cuBLASLt /
+  graph capture; 5/5 runs; clocks at 1980 — not DVFS). The 5.31x headline is exactly the
+  deceptive-arm class the owner banned; it never ships.
+
+LANE 3 — CHAT C=8 vs the brief's literal opponent (llama-server -ngl 99 --parallel 32
+  -c 163840, f16, default f16 KV): S2 1021.6 agg / 298.7 TTFT / 6.35 TPOT vs
+  928.6 / 344.9 / 6.9 = 1.10x / 1.15x / 1.09x ALL-METRICS WIN; S4 1071.0 agg (1.15x) /
+  5.90 TPOT (1.17x), S4 TTFT 393.6 a loss. vs q8_0-KV llama (900.4 / 241.3 / 7.36):
+  TTFT 0.81x LOSS (agg/TPOT hold).
+
+LANE 4 — RAG C=8 vs default f16 KV: S2 379.2 / 2694 / 15.6 vs 136.6 / 5518 / 58.9 =
+  2.78x agg / 2.05x TTFT / 3.79x TPOT (A100 was 3.30x / 4.74x — narrower, decisive).
+  vs q8_0-KV llama (728.2 / 373 / 10.0): 0.52x — A LOSS, stated plainly.
+
+ROOT CAUSE (explains an A100-ledger inconsistency): llama's rag C=8 changes 5.3x with KV
+type ALONE on H100 (f16 -> q8_0 KV: 136.6 -> 728.2). The A100 ledger's two contradictory
+llama rag baselines (matrix 476.6 with explicit q8_0 KV vs round-1/2 73.3/73.5 with default
+KV) are the same config effect; the published 3.3x was recorded against the slower
+default-KV opponent, which scales 73.5 -> 136.6 (1.86x) exactly as expected.
+
+INTEGRITY HOLD ON LANES 3/4 PUBLICATION: those H100 cells were measured on the round-2
+driver whose concurrent admission path fails the lever3-round gate-2 token-identity control
+on A100 (f32-from-round-2-HEAD control build: 8/8 requests diverge at token 0; lever3
+worktree fix passes gate 2 on every arm). H100 concurrent cells are RE-MEASURE-PENDING with
+the post-fix driver before any concurrent H100 number ships; only Lane 1 (single-stream,
+gate-clean) is published in this round.
+
+SCALING READ: our stack scales ~1.5-1.7x A100 -> H100 (SIMT-f32 bound; fixture prefill
+1.54x vs the 3.4x f32-peak ratio — the named ceiling question persists on H100).

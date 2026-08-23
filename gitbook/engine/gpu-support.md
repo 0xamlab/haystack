@@ -13,7 +13,7 @@ benchmarks. AMD ROCm is not verified.
 | Backend | Status | Verification |
 | --- | --- | --- |
 | Metal (Apple Silicon) | Supported. Production serving path | Full serving path on M-series hardware: resident kernels, batched dispatch, prefill, decode |
-| NVIDIA CUDA | Kernel layer supported. LLM session benchmarked | Kernels bit-exact on T4 (sm\_75), L4 (sm\_89), A100 (sm\_80); LLM session benchmarked on A100 and L4 |
+| NVIDIA CUDA | Kernel layer supported. LLM session benchmarked | Kernels bit-exact on T4 (sm\_75), L4 (sm\_89), A100 (sm\_80); LLM session benchmarked on A100, L4 and H100 (sm\_90) |
 | AMD ROCm | Not verified | Compile gate in progress |
 | V100 / Volta (sm\_70) | Not supported | Compile-time constraint of the pinned toolchain |
 
@@ -43,9 +43,9 @@ session layer.
 ### LLM session
 
 The CUDA-native resident session (v2 prefill GEMMs, CUDA-graph decode with split-K
-flash-decoding) is benchmarked against llama.cpp on A100 and L4: prefill 3,260 vs 2,527 tok/s
-(F16); decode 427.1 / 408.7 vs 356.9 / 366.6 (F16) on the A100 with packed-int8 weights.
-Numbers and methodology:
+flash-decoding) is benchmarked against llama.cpp on A100, L4 and H100: prefill 3,260 vs
+2,527 tok/s (F16); decode 427.1 / 408.7 vs 356.9 / 366.6 (F16) on the A100 and 656.1 /
+622.3 vs 468.3 / 525.0 (F16) on the H100 with packed-int8 weights. Numbers and methodology:
 [NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md).
 
 ### Compile gate in CI
@@ -58,6 +58,7 @@ toolkit or GPU on the builder. Default target is `sm_90`; override `MOJO_BUILD_C
 | T4 | `sm_75` |
 | A100 | `sm_80` |
 | L4 | `sm_89` |
+| H100 | `sm_90` |
 
 ### Requirements
 
