@@ -15005,3 +15005,148 @@ per-wave-graph if admission ever pipelines; dual residency costs +1.0 GB (0.6B) 
 documented fallback and the attention kernel's eventual home). No gitbook page; no session
 changes in this PR.
 
+## THE AMD ROCM COMPILE GATE — the portable GPU kernel layer cross-compiles for AMD CDNA on the PINNED toolchain (2026-08-23, macOS build host, Mojo 1.0.0 / MAX 26.5.0 stable + 1.1.0.dev nightly cross-check; worktree .qwen/worktrees/amd-gate, branch feat/amd-gate)
+
+MODULAR MAX CLAIMS AMD Instinct support (MI355X/MI300X/MI325X, ROCm >= 6.3.3, MI355X on
+ROCm 7). The fleet has NO AMD hardware anywhere, so this lane is the strongest AMD claim
+available without it: a COMPILE gate of the portable kernel layer for AMD targets, the exact
+mirror of the NVIDIA compile gate (build-runtime.yml's build-linux-cuda job, `-D ALGENTA_GPU
+-D ALGENTA_CUDA --target-accelerator sm_90`). Same honesty line as the CUDA lane:
+compile-verified, launch-UNVERIFIED — nowhere does algenta claim decode/GEMM RUNS on AMD.
+
+SCOPE — the PORTABLE layer only, sessions excluded by construction:
+`residentk.kernels` (f32 GEMV baseline), `residentk.kernels_packed3` (the packed-int8 arm,
+all six kernels), `residentk.kernels_decode_attn_flash` (split-K batched flash),
+`residentk.kernels_prefill_attn_flash` (M-parallel flash), `residentk.kernels_prefill_f32_v2`
+(the 6.75x register-blocked GEMM family). The resident session (`session_cuda*.mojo`) is the
+CUDA-specific layer and was deliberately NOT ported or gated.
+
+### 1. BACKEND FINDINGS — the AMDGPU backend EXISTS in the pinned toolchain (verbatim evidence)
+
+`mojo build --print-supported-accelerators` on the PINNED stable toolchain (Mojo 1.0.0,
+ed45d567 — the `mojo_env/pixi.toml` pin) prints a full AMD table:
+
+    AMD (ROCm/HIP):
+      gfx90a         - CDNA2 (MI250X)
+      gfx942         - CDNA3 (MI300X)
+      mi300a         - CDNA3 APU (MI300A)
+      mi300x         - (alias) -> gfx942
+      gfx950         - CDNA4 (MI355X)
+      mi355x         - (alias) -> gfx950
+      gfx1030 ... gfx1201   (RDNA2/RDNA3/RDNA3+/RDNA4 consumer)
+      amdgpu:<arch>  - (alias) e.g., amdgpu:gfx942
+
+`mojo build --print-supported-targets` registers the LLVM device backend: `amdgpu - AMDGPU
+gfx6+` (and `amdgcn - legacy name for amdgpu`), alongside `nvptx64` — i.e. the AMD backend
+ships inside the toolchain exactly the way NVPTX does for the CUDA gate. The flag help is
+explicit: `--target-accelerator <ACCELERATOR> — Sets the GPU or accelerator architecture for
+heterogeneous computing (e.g., sm_90 for NVIDIA H100, gfx942 for AMD MI300)`, and `--emit
+asm` documents the device sidecar format: "`.ptx` for NVIDIA, `.amdgcn` for AMD, `.ll` for
+Metal". The MAX dist's `lib/mojo` ships ROCm engine bindings on BOTH toolchains tested
+(`_miopen.mojoc`, `_rocblas.mojoc` present in the 26.5.0 stable and 26.6.0.dev nightly).
+The nightly (Mojo 1.1.0.dev2026082305 / MAX 26.6.0.dev) prints the identical table.
+
+### 2. THE GATE DRIVER + RESULTS
+
+`benchmarks/llm_smoke/amd_rocm_compile_gate.mojo` (this branch): one driver that
+`enqueue_function`s every kernel named in SCOPE — 12 kernels — so each is forced through
+device codegen (the packed_int8_phase0 rule: an unreachable kernel compiles vacuously and
+proves nothing). Defines mirror the two-tier scheme: `-D ALGENTA_GPU -D ALGENTA_ROCM`.
+
+Exact command (macOS build host, pinned env, `MODULAR_HOME=<env>/share/max`):
+
+    mojo build -D ALGENTA_GPU -D ALGENTA_ROCM --target-accelerator gfx942 \
+        -I mojo/engine benchmarks/llm_smoke/amd_rocm_compile_gate.mojo -o gate_gfx942
+
+| target | device | stable 1.0.0 | nightly 1.1.0.dev |
+|---|---|---|---|
+| gfx942 | MI300X (CDNA3) | PASS (warnings only, ~6 s, 216720 B binary) | PASS |
+| gfx950 | MI355X (CDNA4) | PASS | — |
+| gfx90a | MI250X (CDNA2) | PASS | — |
+| mi300x | alias -> gfx942 | PASS | — |
+
+Warnings are the same deprecation set the CUDA lane already compiles with (`alias` ->
+`comptime`, `load` -> `unsafe_load`, `@parameter if` -> `comptime if`). Zero errors.
+
+### 3. EVIDENCE THE AMD DEVICE CODE IS REAL (the PTX-equivalent)
+
+`--emit asm` emits one `.amdgcn` sidecar per instantiated kernel — 12 files. Header:
+
+    .amdgcn_target "amdgcn-amd-amdhsa-unknown-gfx942"
+    .amdhsa_code_object_version 6
+
+The micro-autopsy's lever #0 carries over: the `load[width=4, alignment=16]` annotation
+(`residentk.loadvec._ld4`) lowers to a single 128-bit vector load on AMD too — the exact
+equivalent of the PTX `ld.global.v4.b32` the autopsy demanded. `_packed3_gemv_kernel`'s
+weight stream:
+
+    v_lshl_add_u64 v[10:11], v[4:5], 2, v[2:3]
+    global_load_dwordx4 v[6:9], v[10:11], off
+    global_load_dwordx4 v[2:5], v[22:23], off offset:16
+    ...
+    global_load_dwordx4 v[14:17], v[22:23], off
+    global_load_dwordx4 v[10:13], v[22:23], off offset:-16   # the block-crossing reload
+
+Census across the 12 kernels: `global_load_dwordx4` present in ALL (packed3 GEMV x4 sites,
+decode flash x17, prefill flash x6, v2 GEMM x6-9, f32 GEMV x1, norm-GEMV x1); the
+`warp.sum` reduction lowers to `ds_bpermute_b32` cross-lane ops; `s_barrier` + LDS (`ds_*`)
+traffic present in all 10 shared-memory kernels. The linked executables embed the device
+image verbatim (`strings gate_gfx942`: `amdgcn-amd-amdhsa-unknown-gfx942`, `.AMDGPU.
+gpr_maximums`, per-kernel `.kd` descriptors; gfx950 binary carries `-gfx950`).
+
+Host run on macOS (compile-gate artifact, for the record): PART 0 host pack round-trip
+passes (20768 triples, 0 mismatches; lengths 5376/512/512 as expected; 0 elements above the
+quantization bound), then the device section aborts with the exact expected error —
+"Unhandled exception ... max/mojo/max/gpu/host/device_context.mojo:3825:17: Failed to open
+HIP library: hip is not supported on this operating system." The MAX host runtime routes the
+AMD target through HIP; launching therefore needs a Linux host with ROCm's libhip — the
+compile gate is decided at build time, not here.
+
+### 4. DELIVERABLES ON THIS BRANCH
+
+- `benchmarks/llm_smoke/amd_rocm_compile_gate.mojo` — the gate driver (this section's SCOPE).
+- `.github/workflows/amd-rocm-gate.yml` — DISABLED by design: `workflow_dispatch` only, in
+  no job's `needs`, same fleet-container pattern as build-linux-cuda; re-proves the compile
+  from CI the day launch hardware appears.
+- `.github/scripts/amd_rocm_compile_gate.sh` — the container leg: pixi env, then the gate
+  build for gfx942 + gfx950 + gfx90a, each binary asserted to embed its `amdgcn-amd-amdhsa`
+  target string.
+
+### 5. WHAT IT WOULD TAKE TO GO FURTHER (launch stage)
+
+Hardware: one MI300X (192 GB HBM3, 5.3 TB/s) is the natural first target — gfx942 is the
+campaign's anchor; MI355X (gfx950) needs ROCm 7. ROCm: >= 6.3.3 (Modular's stated floor).
+Cloud path: Azure ND96isr_MI300X_v5 (8x MI300X) — blocked today only by an owner support
+ticket (no AMD quota on the campaign's clouds otherwise). Before ANY correctness claim on
+AMD, the launch stage must re-verify the wavefront geometry: these kernels were written
+against the NVIDIA warp (`_LANES = 32` thread geometry, 32-lane `warp.sum` trees) and CDNA
+wavefronts are 64 — the compile gate deliberately makes no correctness or performance claim,
+it proves the portable layer survives AMD codegen end-to-end. That is the claim, and it is
+the strongest AMD claim this campaign can make without hardware: algenta's portable GPU
+kernel layer — packed3 GEMV (v1/v2/v3), fused norm-GEMV, decode + prefill flash attention,
+and the v2 prefill GEMM family — compiles and lowers to real CDNA machine code (128-bit
+vector loads included) on the pinned Mojo 1.0.0 / MAX 26.5.0 toolchain for MI300X, MI355X,
+and MI250X.
+
+### 6. LAUNCH-READINESS AUDIT (2026-08-23, feat/amd-launch) — the wavefront verdict + Azure quota discovery
+
+The launch-stage map lives in `benchmarks/llm_smoke/amd_launch_readiness.md` (this branch).
+Headline findings, all evidence-backed:
+
+1. WAVEFRONT AUDIT of the 12 gated kernels vs 64-lane CDNA: 7 PORTABLE, 5 wave64-LOCKED —
+   `_packed3_gemv_kernel{,_v2,_v3}` (warp.sum spans two logical groups -> silent EXACT 2x),
+   `_splitk_partial_batched_flash_kernel` and `_pf_attn_flash_kernel` (warp_id()/lane*4 maps
+   -> silent corruption). The fix lever is compile-time — `std.gpu.WARP_SIZE` resolves 64 on
+   gfx942 — but the fixes themselves are hardware-verification-gated and deferred to launch.
+   The gate now prints this as PART 0.5 on every run (re-verified: gfx942/950/90a compile
+   clean, PART 0.5 prints `WARP_SIZE = 64`).
+2. ROCm matrix: MI300X floor ROCm >= 6.3.3, MI355X ROCm 7 (Modular's stated floors; the
+   current max.modular.com docs no longer publish a numeric floor — boot re-verification rule
+   recorded). MAX v26.5 notes show Modular disabling their OWN v2 attention prefill kernel on
+   AMD over a NaN race — the launch bar must be numerical.
+3. AZURE: the five eastus quota requests ALL auto-failed (ContactSupport); catalog scan shows
+   eastus does not OFFER H200 v5 / GB300 v6 / MI300X v5 at all — MI300X v5 exists ONLY in
+   francecentral. Four support tickets open (eastus), zero granted quota in any region;
+   `benchmarks/llm_smoke/nvidia_race/azure_provision.sh` (sibling branch) is the quota-aware
+   spot provisioner for when grants land.
+
