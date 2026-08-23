@@ -15517,3 +15517,137 @@ swiglu/down 386-407 GB/s (short-dot streaming shortfall, up to ~0.27 ms/token if
 merge 0.12ms at 32-TG underfill; lm_head 0.18ms at 360 GB/s. The tested 2-col variant did not
 close the qkv shortfall; no other untested idea sits inside the byte-identity + do-not-retry
 constraints as of this writing.
+## MAX METHODOLOGY ADOPTION (2026-08-23): official `max benchmark` sonnet cells — MAX 26.5.0 from the repo pixi toolchain drives all four race engines; the thin OpenAI shim for the JSONL CUDA driver lands; first saturated sonnet cells measured (algenta beats llama-server 4.4x aggregate, trails vLLM under 500-deep saturation — the vLLM loss is queued for the autopsy/optimize loop, NOT a published win)
+
+**What this section is.** The owner mandated adopting Modular's official "Benchmark MAX on
+NVIDIA or AMD GPUs" methodology (max.modular.com/serve/benchmark) for the campaign race.
+Done: the official `max benchmark` sonnet workload now drives every race engine — MAX
+serve, llama-server, vLLM, and algenta — through OpenAI-compatible endpoints, including a
+new thin OpenAI shim that adapts algenta's JSONL CUDA serve driver. This section records
+the extracted methodology, the adoption's protocol deviations (each with its reason), and
+the first measured cells. Internal ledger per the standing publish-wins-only rule: every
+number is recorded here; only winning comparisons graduate to public pages.
+
+### Official methodology, extracted (MAX 26.5.0)
+
+Sources: max.modular.com/serve/benchmark (tutorial), github.com/modular/modular
+`max/python/max/benchmark` (README, `benchmark_serving.py`, `benchmark_shared/*`,
+`configs/gemma-3-27b-sonnet-decode-heavy-prefix200.yaml`).
+
+- **Official reference config** (the tutorial's Gemma cell): backend `modular`, endpoint
+  `/v1/chat/completions`, dataset `sonnet`, `num_prompts 500`, `sonnet_input_len 550`,
+  `output_lengths 256`, `sonnet_prefix_len 200`.
+- **Sonnet dataset** (`benchmark_shared/datasets/sonnet.py`): packaged `sonnet_4x.txt`
+  poem lines. Per-request prompt = chat-templated "Pick as many lines as you can from
+  these poem lines:\n" + the FIRST ~200 tokens of fixed poem lines (a shared prefix, to
+  exercise prefix caching) + ~350 randomly-sampled poem tokens. Sampling seed is pinned
+  (DEFAULT_BENCHMARK_SEED 0x5EED = 24301) so the workload is byte-identical across
+  engines and across runs.
+- **`output_lengths 256` sets `ignore_eos=True`** → exactly 256 generated tokens per
+  request; the workload shape is deterministic.
+- **Traffic**: `--request-rate` defaults to `[inf]` (saturated — all 500 in flight,
+  unbounded concurrency). Finite-rate variant = `--request-rate R[,R...]`: Poisson
+  arrivals (burstiness 1.0), and at finite rates skip_first/skip_last resolve to 0
+  ("steady drip", PERF-878). At inf rate with max-concurrency>1 the harness auto-skips
+  the first/last max-concurrency requests.
+- **Metric set**: successful/failed requests, duration, request throughput, total
+  input/output tokens, per-request input/output throughput (mean/std/median +
+  P90/P95/P99), TTFT, TPOT = (latency-TTFT)/(out-1), step-TPOT/ITL, E2E request latency
+  (mean/std/median + percentiles), client-side GPU stats (`max.profiler`
+  BackgroundRecorder, `--collect-gpu-stats`), CPU stats, and a server-side Prometheus
+  scrape auto-derived from host/port.
+- **MAX-26.5 behaviors** (not in the older vLLM fork): (1) post-run steady-state
+  auto-windowing (`steady_state.py`, rolling MAD on TTFT/TPOT) trims ramp-up/ramp-down
+  from the headline metrics — `Successful requests` counts the steady-state window, not
+  the number dispatched; (2) a default warmup-to-steady-state phase (8x oversample at
+  concurrency 128, aborted in flight).
+- **`--backend` semantics** (`backend_names.py`/`config.py`): choices
+  {modular, vllm, sglang, trtllm, ...} (+`-chat` variants) select the prefix-cache flush
+  endpoint (modular/vllm → `/reset_prefix_cache`, sglang → `/flush_cache`), pixel/video
+  endpoint auto-selection, and the metrics scrape target. Request drivers are keyed by
+  endpoint, so any OpenAI-compatible server is drivable.
+
+### Engines and how each is driven (Qwen3-0.6B-Base, one H100 each, algenta-ent-h100)
+
+- **MAX serve 26.5.0** — repo pixi env (`mojo_env/pixi.toml`, channels
+  conda.modular.com/max + conda-forge; mojo 1.0.0 + max 26.5.0 conda package;
+  `max[serve,benchmark]==26.5.0` pip extras into the SAME env). `max serve --model
+  ~/qwen3-0.6b-base --port 8081 --max-length 2048`, GPU1. First boot AOT-compiles the
+  pipeline (~90+ min cold — still compiling at this section's write time; the cell lands
+  in a follow-up commit; the compile cache makes later boots warm).
+- **llama-server** (campaign pin 000547513f): `qwen3-0.6b-f16.gguf -ngl 99 --parallel 32
+  -c 163840 --cache-type-k q8_0 --cache-type-v q8_0`, GPU2, port 8082, driven with
+  `--backend modular`.
+- **vLLM 0.27.1** (fresh `~/vllm-venv`, py3.10; VLLM_USE_FLASHINFER_SAMPLER=0), GPU3,
+  port 8083, driven with `--backend vllm`. One VM-side fix was required: flashinfer
+  0.6.16's `comm/fd_exchange.py` uses py3.11+ annotations (`array.array[int]` evaluated
+  at def time) and crashes py3.10 — a one-line `from __future__ import annotations` patch
+  (documented, not silently absorbed).
+- **algenta** — `serve_s4_l7` (round-2 flags + `-D ALGENTA_GRAPH_LANES`; gates PASS on
+  this VM: 16/16 oracle + 8/8 concurrent token identity) behind the NEW thin shim
+  `benchmarks/llm_smoke/nvidia_race/algenta_openai_shim.py` (stdlib-only, ~250 lines:
+  `/v1/chat/completions` + `/v1/completions` + `/health` + `/v1/models` + no-op
+  `/reset_prefix_cache` → the JSONL stdin/stdout driver protocol, demuxed by id, one
+  thread per request). GPU4, port 8084, driven with `--backend modular`. The driver
+  protocol is BATCHED (`stream` accepted but no incremental deltas), so HTTP-observed
+  TTFT == E2E for this engine; the driver's own `ttft_ms`/`tpot_ms` are recorded per
+  request in a sidecar JSONL (`--metrics-out`) and are algenta's latency source.
+
+### Protocol deviations (each with its reason)
+
+1. `--no-warmup-to-steady-state` on ALL engines: the default warmup aborts ~4000
+   oversampled requests mid-flight; against llama-server/algenta those aborts surface as
+   error chunks that count as failed benchmark requests (measured 1/20 failures; 0/20
+   with the flag). Uniformly disabled.
+2. Local model paths + explicit `--tokenizer ~/qwen3-0.6b-base` (hub lookups are not the
+   subject of this race; the pinned seed keeps sampling byte-identical).
+3. Gemma 3 27B (the tutorial model) is HF-gated and no HF_TOKEN exists on this VM —
+   that cell is **pending HF_TOKEN (owner TODO)**; the methodology is adopted on
+   Qwen3-0.6B-Base (public). Recorded honestly, not skipped silently.
+
+### Integrity handling of this batch (campaign rules applied)
+
+- Four probe runs used to debug the harness overlapped cell runs (llama #9/#11, algenta
+  #11/#12). Those four runs were **excluded and re-run sequentially** (census-quarantine
+  practice); all three cells below are N=20 with the re-runs included.
+- The pilot batch ran with llama/algenta/vLLM resident on separate GPUs (GPU2/3/4) plus
+  the MAX first-boot compile on CPU — a fully sequential clean battery is queued as a
+  follow-up; IQRs below carry that context.
+- Headline metrics are the official steady-state-windowed outputs of `max benchmark`
+  26.5 (that is what the tool reports; the full-run durations are listed too).
+
+### First official sonnet cells — saturated (`--request-rate inf`), Qwen3-0.6B-Base, N=20 each
+
+Medians across the 20 runs; relIQR = (p75-p25)/median on the per-run values. Frozen
+tolerance is <=5%; cells above it are flagged, not adjusted.
+
+| Engine | agg output tok/s (relIQR) | req thr (req/s) | steady-window completed | mean TTFT (ms) | mean TPOT (ms) | duration (s) |
+|---|---|---|---|---|---|---|
+| vLLM 0.27.1 | **14,839** (6.8%) | 58.2 | 500/500 | 1,757 | 23.2 | 8.6 |
+| algenta serve_s4_l7 (shim) | **2,852** (39.7% *) | 3.29 | 319/500 | 52,931 (HTTP=queue) | 23.6 (driver-side) | 97.0 |
+| llama-server (f16, q8_0 KV) | **644** (6.0%) | 2.51 | 454/500 | 99,195 | 44.0 | 179.7 |
+
+\* algenta's per-run variance is dominated by the steady-state window size under deep
+queuing (windowed completed ranges 174-500 across runs); the engine-side sidecar across
+all 500-concurrent requests (n=5953) shows driver TPOT median 23.6 ms.
+
+**Verdicts (internal ledger):** algenta BEATS llama-server 4.42x on aggregate saturated
+throughput (2,852 vs 644 tok/s). algenta LOSES to vLLM 5.20x (2,852 vs 14,839 tok/s)
+under this 500-deep open-loop saturation — vLLM's continuous batching absorbs the burst;
+algenta's fixed admission waves queue deeply (median driver TTFT 44 s at 500 concurrent).
+Per the standing owner directive: the vLLM loss is NOT published as a result — it is
+queued for the micro-autopsy -> optimize -> re-race loop (same technique as the NVIDIA
+lever rounds) until the cell wins; only then does it graduate.
+
+### Follow-ups (queued, in order)
+
+1. MAX serve cell (first-boot AOT compile in flight) + its N=20 saturated cell.
+2. Micro-autopsy of the algenta saturated-500 loss vs vLLM: per-layer counters,
+   admission-wave sizing vs continuous batching, prefill/decode overlap gaps; optimize
+   correctness-gated; re-race.
+3. Finite-rate latency cells (`--request-rate` sweep) for all engines.
+4. Clean sequential re-battery (one engine resident at a time) + IQR audit vs the 5% bar.
+5. Qwen3-1.7B-Base + Qwen2.5-7B-Instruct expansion (models already staged on the VM:
+   HF dirs + GGUFs: Qwen3-1.7B-Q8_0, qwen2.5-7b-instruct-q8_0 3-shard).
+6. Gemma 3 27B official cell — pending HF_TOKEN (owner TODO).
+
