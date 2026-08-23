@@ -63,7 +63,7 @@ Decode on g2-standard-8 (sm\_89), same protocol:
 
 ## Related
 
-* [NVIDIA enterprise serving](nvidia-enterprise-serving.md) — batched decode aggregate, cold
+* [NVIDIA LLM serving](nvidia-llm-serving.md) — batched decode aggregate, cold
   start, VRAM and determinism on A100/L4.
 * [NVIDIA kernel benchmarks](nvidia-kernel-benchmarks.md) — the portable-kernel layer on
   T4/L4/A100.

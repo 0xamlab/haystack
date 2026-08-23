@@ -1,11 +1,11 @@
 ---
 icon: server
-description: Measured enterprise characteristics of the CUDA-native engine on NVIDIA A100, L4 and H100 — concurrent serving, single-stream decode, batched decode, prefill, cold start, VRAM, determinism.
+description: Measured serving characteristics of the CUDA-native engine on NVIDIA A100, L4 and H100 — concurrent serving, single-stream decode, batched decode, prefill, cold start, VRAM, determinism.
 ---
 
-# NVIDIA enterprise serving
+# NVIDIA LLM serving
 
-Measured enterprise characteristics of the CUDA-native engine (Qwen3-0.6B-Base, greedy) on
+Measured serving characteristics of the CUDA-native engine (Qwen3-0.6B-Base, greedy) on
 NVIDIA A100-SXM4-40GB, L4 and H100 80GB HBM3, including concurrent-serving wins over
 `llama-server` (f16) on the A100 and H100 and single-stream decode wins on all three GPUs.
 
