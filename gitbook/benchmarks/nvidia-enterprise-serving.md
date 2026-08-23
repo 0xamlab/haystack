@@ -7,7 +7,7 @@ description: Measured enterprise characteristics of the CUDA-native engine on NV
 
 Measured enterprise characteristics of the CUDA-native engine (Qwen3-0.6B-Base, greedy) on
 NVIDIA A100-SXM4-40GB, L4 and H100 80GB HBM3, including concurrent-serving wins over
-`llama-server` (f16) on the A100 and single-stream decode wins on all three GPUs.
+`llama-server` (f16) on the A100 and H100 and single-stream decode wins on all three GPUs.
 
 ## Single-stream decode
 
@@ -59,6 +59,22 @@ Chat TTFT p50 lead as concurrency scales:
 | --- | --- | --- | --- |
 | 16 | 531.8 | 672.0 | 1.26x faster |
 | 32 | 643.8 | 868.8 | 1.35x faster |
+
+### H100 concurrent serving
+
+Same protocol on the H100 (C=8, gate-2-clean round-3 driver, fresh same-session
+`llama-server` f16 at `-ngl 99 --parallel 32 -c 163840`):
+
+| Mix | Metric | Algenta | `llama-server` f16 | Lead |
+| --- | --- | --- | --- | --- |
+| Chat C=8 | Aggregate tok/s | 1,026.5 | 902.4 | 1.14x |
+| Chat C=8 | TTFT p50 ms | 297.9 | 345.1 | 1.16x faster |
+| Chat C=8 | TPOT p50 ms | 6.3 | 7.1 | 1.12x faster |
+| Rag C=8 | Aggregate tok/s | 379.9 | 143.8 | 2.64x |
+| Rag C=8 | TTFT p50 ms | 2,688.1 | 5,463.9 | 2.03x faster |
+
+The 4-stream arm matches the aggregate (1,029.9 tok/s) and likewise leads on TTFT and
+TPOT.
 
 ## Prefill
 
