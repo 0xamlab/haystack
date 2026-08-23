@@ -1190,3 +1190,703 @@ def _batched_lmhead_argmax_kernel_p3(
                     bi = si[u * _BATCH_LMHEAD_MAX_ROWS + b]
             blk_val[b * Int(grid_dim.x) + Int(block_idx.x)] = bv
             blk_idx[b * Int(grid_dim.x) + Int(block_idx.x)] = bi
+
+
+# ── LEVER L6: TWO OUTPUT ROWS PER BLOCK (the p3b_smallm_probe battery's measured winner,
+#    ~1.27x effective weight GB/s over the shipped one-row form at B=8, all three serve
+#    roles) — the B activation float4 loads amortize over two rows' packed-weight streams,
+#    halving activation traffic per streamed weight byte and the grid size. Same dequant
+#    expression, same ascending-k accumulation order per row, same two-level reduction per
+#    row (row0 in the low group half of `grp`, row1 in the high half) — bit-identical
+#    per-row results vs the one-row kernels, so the serve selftest's token-identity gate
+#    applies without a quantization-flip asterisk. Grid is n/2 blocks: rows `row` and
+#    `row + n/2`. Requires even n (every serve role's n is even at Qwen3 shapes). ──
+
+
+def _batched_p3_gemv_assign_kernel_r2(
+    y: _FP, x: _FP, wp: _FP, wscale: _FP, wzero: _FP,
+    k_i64: Int64, n_i64: Int64, B_i64: Int64,
+):
+    """LEVER L6 ASSIGN: `_batched_p3_gemv_assign_kernel` with TWO output rows per block
+    (`grid_dim = n/2`): rows `row` and `row + n/2` stream their packed weights while the B
+    activation float4s load once per chunk. Per-row accumulators (a0..a7 / c0..c7 + the
+    two `acc_hi` halves for B>8), per-row warp-sum + shared combine. Bit-identical per-row
+    math to the one-row kernel."""
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var B = Int(B_i64)
+    var row0 = Int(block_idx.x)
+    var row1 = row0 + n // 2
+    if row0 >= n // 2:
+        return
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var grp = stack_allocation[
+        2 * _SUBS * _BATCH_LMHEAD_MAX_ROWS, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var acc_hi = stack_allocation[2 * (_BATCH_LMHEAD_MAX_ROWS - 8), DType.float32]()
+
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var a0 = Float32(0.0)
+    var a1 = Float32(0.0)
+    var a2 = Float32(0.0)
+    var a3 = Float32(0.0)
+    var a4 = Float32(0.0)
+    var a5 = Float32(0.0)
+    var a6 = Float32(0.0)
+    var a7 = Float32(0.0)
+    var c0 = Float32(0.0)
+    var c1 = Float32(0.0)
+    var c2 = Float32(0.0)
+    var c3 = Float32(0.0)
+    var c4 = Float32(0.0)
+    var c5 = Float32(0.0)
+    var c6 = Float32(0.0)
+    var c7 = Float32(0.0)
+    for b in range(8, B):
+        acc_hi[b - 8] = Float32(0.0)
+        acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8] = Float32(0.0)
+
+    var wbase0 = row0 * words_per_row
+    var sbase0 = row0 * nblocks
+    var wbase1 = row1 * words_per_row
+    var sbase1 = row1 * nblocks
+
+    var r0 = (tid * _P3_CHUNK) & 31
+    var cross_hi = r0 == 24 or r0 == 28
+    var cross_lo = r0 == 28
+
+    var t = tid * _P3_CHUNK
+    while t < k_pack:
+        # ── row0's chunk: weight word + block-32 scales, dequant ONCE across all B rows ──
+        var v = wp.load[width=4](wbase0 + t // _P3_QUANTS_PER_WORD)
+        var w = bitcast[DType.int32, 4](v)
+        var blk = t >> 5
+        var s0 = wscale[sbase0 + blk]
+        var z0 = wzero[sbase0 + blk]
+        var s_lo = s0
+        var z_lo = z0
+        var s_hi = s0
+        var z_hi = z0
+        if cross_hi:
+            s_hi = wscale[sbase0 + blk + 1]
+            z_hi = wzero[sbase0 + blk + 1]
+            if cross_lo:
+                s_lo = s_hi
+                z_lo = z_hi
+        var d0 = (Float32(w[0] & 255) - z0) * s0
+        var d1 = (Float32((w[0] >> 8) & 255) - z0) * s0
+        var d2 = (Float32((w[0] >> 16) & 255) - z0) * s0
+        var d3 = (Float32(w[1] & 255) - z0) * s0
+        var d4 = (Float32((w[1] >> 8) & 255) - z_lo) * s_lo
+        var d5 = (Float32((w[1] >> 16) & 255) - z_lo) * s_lo
+        var d6 = (Float32(w[2] & 255) - z_lo) * s_lo
+        var d7 = (Float32((w[2] >> 8) & 255) - z_lo) * s_lo
+        var d8 = (Float32((w[2] >> 16) & 255) - z_hi) * s_hi
+        var d9 = (Float32(w[3] & 255) - z_hi) * s_hi
+        var d10 = (Float32((w[3] >> 8) & 255) - z_hi) * s_hi
+        var d11 = (Float32((w[3] >> 16) & 255) - z_hi) * s_hi
+
+        # ── row1's chunk: the same structure, row1's weights/scales ──
+        var v1w = wp.load[width=4](wbase1 + t // _P3_QUANTS_PER_WORD)
+        var w1 = bitcast[DType.int32, 4](v1w)
+        var u0 = wscale[sbase1 + blk]
+        var y0 = wzero[sbase1 + blk]
+        var u_lo = u0
+        var y_lo = y0
+        var u_hi = u0
+        var y_hi = y0
+        if cross_hi:
+            u_hi = wscale[sbase1 + blk + 1]
+            y_hi = wzero[sbase1 + blk + 1]
+            if cross_lo:
+                u_lo = u_hi
+                y_lo = y_hi
+        var e0 = (Float32(w1[0] & 255) - y0) * u0
+        var e1 = (Float32((w1[0] >> 8) & 255) - y0) * u0
+        var e2 = (Float32((w1[0] >> 16) & 255) - y0) * u0
+        var e3 = (Float32(w1[1] & 255) - y0) * u0
+        var e4 = (Float32((w1[1] >> 8) & 255) - y_lo) * u_lo
+        var e5 = (Float32((w1[1] >> 16) & 255) - y_lo) * u_lo
+        var e6 = (Float32(w1[2] & 255) - y_lo) * u_lo
+        var e7 = (Float32((w1[2] >> 8) & 255) - y_lo) * u_lo
+        var e8 = (Float32((w1[2] >> 16) & 255) - y_hi) * u_hi
+        var e9 = (Float32(w1[3] & 255) - y_hi) * u_hi
+        var e10 = (Float32((w1[3] >> 8) & 255) - y_hi) * u_hi
+        var e11 = (Float32((w1[3] >> 16) & 255) - y_hi) * u_hi
+
+        if t + _P3_CHUNK <= k:
+            # ── the fast path: the B activation float4s load ONCE, feed BOTH rows ──
+            if B >= 1:
+                var xv0 = x.load[width=4](t)
+                var xv1 = x.load[width=4](t + 4)
+                var xv2 = x.load[width=4](t + 8)
+                a0 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a0 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a0 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c0 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c0 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c0 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 2:
+                var xv0 = x.load[width=4](k + t)
+                var xv1 = x.load[width=4](k + t + 4)
+                var xv2 = x.load[width=4](k + t + 8)
+                a1 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a1 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a1 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c1 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c1 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c1 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 3:
+                var xv0 = x.load[width=4](2 * k + t)
+                var xv1 = x.load[width=4](2 * k + t + 4)
+                var xv2 = x.load[width=4](2 * k + t + 8)
+                a2 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a2 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a2 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c2 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c2 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c2 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 4:
+                var xv0 = x.load[width=4](3 * k + t)
+                var xv1 = x.load[width=4](3 * k + t + 4)
+                var xv2 = x.load[width=4](3 * k + t + 8)
+                a3 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a3 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a3 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c3 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c3 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c3 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 5:
+                var xv0 = x.load[width=4](4 * k + t)
+                var xv1 = x.load[width=4](4 * k + t + 4)
+                var xv2 = x.load[width=4](4 * k + t + 8)
+                a4 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a4 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a4 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c4 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c4 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c4 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 6:
+                var xv0 = x.load[width=4](5 * k + t)
+                var xv1 = x.load[width=4](5 * k + t + 4)
+                var xv2 = x.load[width=4](5 * k + t + 8)
+                a5 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a5 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a5 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c5 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c5 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c5 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 7:
+                var xv0 = x.load[width=4](6 * k + t)
+                var xv1 = x.load[width=4](6 * k + t + 4)
+                var xv2 = x.load[width=4](6 * k + t + 8)
+                a6 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a6 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a6 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c6 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c6 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c6 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 8:
+                var xv0 = x.load[width=4](7 * k + t)
+                var xv1 = x.load[width=4](7 * k + t + 4)
+                var xv2 = x.load[width=4](7 * k + t + 8)
+                a7 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a7 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a7 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c7 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c7 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c7 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            for b in range(8, B):
+                var xb = b * k + t
+                var xv0 = x.load[width=4](xb)
+                var xv1 = x.load[width=4](xb + 4)
+                var xv2 = x.load[width=4](xb + 8)
+                var av = d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                av += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                av += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                acc_hi[b - 8] += av
+                var cv = e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                cv += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                cv += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+                acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8] += cv
+        else:
+            # ── boundary chunk: the k_pack - k padding slots have no activation element ──
+            var dq = stack_allocation[_P3_CHUNK, DType.float32]()
+            var eq = stack_allocation[_P3_CHUNK, DType.float32]()
+            dq[0] = d0
+            dq[1] = d1
+            dq[2] = d2
+            dq[3] = d3
+            dq[4] = d4
+            dq[5] = d5
+            dq[6] = d6
+            dq[7] = d7
+            dq[8] = d8
+            dq[9] = d9
+            dq[10] = d10
+            dq[11] = d11
+            eq[0] = e0
+            eq[1] = e1
+            eq[2] = e2
+            eq[3] = e3
+            eq[4] = e4
+            eq[5] = e5
+            eq[6] = e6
+            eq[7] = e7
+            eq[8] = e8
+            eq[9] = e9
+            eq[10] = e10
+            eq[11] = e11
+            for e in range(_P3_CHUNK):
+                if t + e < k:
+                    var de = dq[e]
+                    var ee = eq[e]
+                    if B >= 1:
+                        a0 += de * x[t + e]
+                        c0 += ee * x[t + e]
+                    if B >= 2:
+                        a1 += de * x[k + t + e]
+                        c1 += ee * x[k + t + e]
+                    if B >= 3:
+                        a2 += de * x[2 * k + t + e]
+                        c2 += ee * x[2 * k + t + e]
+                    if B >= 4:
+                        a3 += de * x[3 * k + t + e]
+                        c3 += ee * x[3 * k + t + e]
+                    if B >= 5:
+                        a4 += de * x[4 * k + t + e]
+                        c4 += ee * x[4 * k + t + e]
+                    if B >= 6:
+                        a5 += de * x[5 * k + t + e]
+                        c5 += ee * x[5 * k + t + e]
+                    if B >= 7:
+                        a6 += de * x[6 * k + t + e]
+                        c6 += ee * x[6 * k + t + e]
+                    if B >= 8:
+                        a7 += de * x[7 * k + t + e]
+                        c7 += ee * x[7 * k + t + e]
+                    for b in range(8, B):
+                        acc_hi[b - 8] += de * x[b * k + t + e]
+                        acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8] += ee * x[b * k + t + e]
+        t += _P3B_TG * _P3_CHUNK
+
+    # ── two-level reduction per sequence row, BOTH output rows — the one-row kernel's
+    #    exact merge order per row (row0 in the low group half, row1 in the high half) ──
+    if B >= 1:
+        var total = _warp_sum(a0)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 0] = total
+        total = _warp_sum(c0)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 0] = total
+    if B >= 2:
+        var total = _warp_sum(a1)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 1] = total
+        total = _warp_sum(c1)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 1] = total
+    if B >= 3:
+        var total = _warp_sum(a2)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 2] = total
+        total = _warp_sum(c2)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 2] = total
+    if B >= 4:
+        var total = _warp_sum(a3)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 3] = total
+        total = _warp_sum(c3)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 3] = total
+    if B >= 5:
+        var total = _warp_sum(a4)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 4] = total
+        total = _warp_sum(c4)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 4] = total
+    if B >= 6:
+        var total = _warp_sum(a5)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 5] = total
+        total = _warp_sum(c5)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 5] = total
+    if B >= 7:
+        var total = _warp_sum(a6)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 6] = total
+        total = _warp_sum(c6)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 6] = total
+    if B >= 8:
+        var total = _warp_sum(a7)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 7] = total
+        total = _warp_sum(c7)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 7] = total
+    for b in range(8, B):
+        var total = _warp_sum(acc_hi[b - 8])
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + b] = total
+        total = _warp_sum(acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8])
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + b] = total
+    barrier()
+    if tid < B:
+        var o0 = Float32(0.0)
+        var o1 = Float32(0.0)
+        for g in range(_P3B_GROUPS):
+            o0 += grp[g * _BATCH_LMHEAD_MAX_ROWS + tid]
+            o1 += grp[(_P3B_GROUPS + g) * _BATCH_LMHEAD_MAX_ROWS + tid]
+        y[tid * n + row0] = o0
+        y[tid * n + row1] = o1
+
+
+def _batched_p3_gemv_accum_kernel_r2(
+    y: _FP, x: _FP, wp: _FP, wscale: _FP, wzero: _FP,
+    k_i64: Int64, n_i64: Int64, B_i64: Int64,
+):
+    """LEVER L6 ACCUM: `_batched_p3_gemv_assign_kernel_r2` verbatim except the epilogue
+    ACCUMULATES into `y` (the o_proj / down_proj residual-add roles)."""
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var B = Int(B_i64)
+    var row0 = Int(block_idx.x)
+    var row1 = row0 + n // 2
+    if row0 >= n // 2:
+        return
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+
+    var grp = stack_allocation[
+        2 * _SUBS * _BATCH_LMHEAD_MAX_ROWS, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var acc_hi = stack_allocation[2 * (_BATCH_LMHEAD_MAX_ROWS - 8), DType.float32]()
+
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var a0 = Float32(0.0)
+    var a1 = Float32(0.0)
+    var a2 = Float32(0.0)
+    var a3 = Float32(0.0)
+    var a4 = Float32(0.0)
+    var a5 = Float32(0.0)
+    var a6 = Float32(0.0)
+    var a7 = Float32(0.0)
+    var c0 = Float32(0.0)
+    var c1 = Float32(0.0)
+    var c2 = Float32(0.0)
+    var c3 = Float32(0.0)
+    var c4 = Float32(0.0)
+    var c5 = Float32(0.0)
+    var c6 = Float32(0.0)
+    var c7 = Float32(0.0)
+    for b in range(8, B):
+        acc_hi[b - 8] = Float32(0.0)
+        acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8] = Float32(0.0)
+
+    var wbase0 = row0 * words_per_row
+    var sbase0 = row0 * nblocks
+    var wbase1 = row1 * words_per_row
+    var sbase1 = row1 * nblocks
+
+    var r0 = (tid * _P3_CHUNK) & 31
+    var cross_hi = r0 == 24 or r0 == 28
+    var cross_lo = r0 == 28
+
+    var t = tid * _P3_CHUNK
+    while t < k_pack:
+        var v = wp.load[width=4](wbase0 + t // _P3_QUANTS_PER_WORD)
+        var w = bitcast[DType.int32, 4](v)
+        var blk = t >> 5
+        var s0 = wscale[sbase0 + blk]
+        var z0 = wzero[sbase0 + blk]
+        var s_lo = s0
+        var z_lo = z0
+        var s_hi = s0
+        var z_hi = z0
+        if cross_hi:
+            s_hi = wscale[sbase0 + blk + 1]
+            z_hi = wzero[sbase0 + blk + 1]
+            if cross_lo:
+                s_lo = s_hi
+                z_lo = z_hi
+        var d0 = (Float32(w[0] & 255) - z0) * s0
+        var d1 = (Float32((w[0] >> 8) & 255) - z0) * s0
+        var d2 = (Float32((w[0] >> 16) & 255) - z0) * s0
+        var d3 = (Float32(w[1] & 255) - z0) * s0
+        var d4 = (Float32((w[1] >> 8) & 255) - z_lo) * s_lo
+        var d5 = (Float32((w[1] >> 16) & 255) - z_lo) * s_lo
+        var d6 = (Float32(w[2] & 255) - z_lo) * s_lo
+        var d7 = (Float32((w[2] >> 8) & 255) - z_lo) * s_lo
+        var d8 = (Float32((w[2] >> 16) & 255) - z_hi) * s_hi
+        var d9 = (Float32(w[3] & 255) - z_hi) * s_hi
+        var d10 = (Float32((w[3] >> 8) & 255) - z_hi) * s_hi
+        var d11 = (Float32((w[3] >> 16) & 255) - z_hi) * s_hi
+
+        var v1w = wp.load[width=4](wbase1 + t // _P3_QUANTS_PER_WORD)
+        var w1 = bitcast[DType.int32, 4](v1w)
+        var u0 = wscale[sbase1 + blk]
+        var y0 = wzero[sbase1 + blk]
+        var u_lo = u0
+        var y_lo = y0
+        var u_hi = u0
+        var y_hi = y0
+        if cross_hi:
+            u_hi = wscale[sbase1 + blk + 1]
+            y_hi = wzero[sbase1 + blk + 1]
+            if cross_lo:
+                u_lo = u_hi
+                y_lo = y_hi
+        var e0 = (Float32(w1[0] & 255) - y0) * u0
+        var e1 = (Float32((w1[0] >> 8) & 255) - y0) * u0
+        var e2 = (Float32((w1[0] >> 16) & 255) - y0) * u0
+        var e3 = (Float32(w1[1] & 255) - y0) * u0
+        var e4 = (Float32((w1[1] >> 8) & 255) - y_lo) * u_lo
+        var e5 = (Float32((w1[1] >> 16) & 255) - y_lo) * u_lo
+        var e6 = (Float32(w1[2] & 255) - y_lo) * u_lo
+        var e7 = (Float32((w1[2] >> 8) & 255) - y_lo) * u_lo
+        var e8 = (Float32((w1[2] >> 16) & 255) - y_hi) * u_hi
+        var e9 = (Float32(w1[3] & 255) - y_hi) * u_hi
+        var e10 = (Float32((w1[3] >> 8) & 255) - y_hi) * u_hi
+        var e11 = (Float32((w1[3] >> 16) & 255) - y_hi) * u_hi
+
+        if t + _P3_CHUNK <= k:
+            if B >= 1:
+                var xv0 = x.load[width=4](t)
+                var xv1 = x.load[width=4](t + 4)
+                var xv2 = x.load[width=4](t + 8)
+                a0 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a0 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a0 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c0 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c0 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c0 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 2:
+                var xv0 = x.load[width=4](k + t)
+                var xv1 = x.load[width=4](k + t + 4)
+                var xv2 = x.load[width=4](k + t + 8)
+                a1 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a1 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a1 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c1 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c1 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c1 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 3:
+                var xv0 = x.load[width=4](2 * k + t)
+                var xv1 = x.load[width=4](2 * k + t + 4)
+                var xv2 = x.load[width=4](2 * k + t + 8)
+                a2 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a2 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a2 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c2 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c2 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c2 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 4:
+                var xv0 = x.load[width=4](3 * k + t)
+                var xv1 = x.load[width=4](3 * k + t + 4)
+                var xv2 = x.load[width=4](3 * k + t + 8)
+                a3 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a3 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a3 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c3 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c3 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c3 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 5:
+                var xv0 = x.load[width=4](4 * k + t)
+                var xv1 = x.load[width=4](4 * k + t + 4)
+                var xv2 = x.load[width=4](4 * k + t + 8)
+                a4 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a4 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a4 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c4 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c4 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c4 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 6:
+                var xv0 = x.load[width=4](5 * k + t)
+                var xv1 = x.load[width=4](5 * k + t + 4)
+                var xv2 = x.load[width=4](5 * k + t + 8)
+                a5 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a5 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a5 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c5 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c5 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c5 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 7:
+                var xv0 = x.load[width=4](6 * k + t)
+                var xv1 = x.load[width=4](6 * k + t + 4)
+                var xv2 = x.load[width=4](6 * k + t + 8)
+                a6 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a6 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a6 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c6 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c6 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c6 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            if B >= 8:
+                var xv0 = x.load[width=4](7 * k + t)
+                var xv1 = x.load[width=4](7 * k + t + 4)
+                var xv2 = x.load[width=4](7 * k + t + 8)
+                a7 += d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                a7 += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                a7 += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                c7 += e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                c7 += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                c7 += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+            for b in range(8, B):
+                var xb = b * k + t
+                var xv0 = x.load[width=4](xb)
+                var xv1 = x.load[width=4](xb + 4)
+                var xv2 = x.load[width=4](xb + 8)
+                var av = d0 * xv0[0] + d1 * xv0[1] + d2 * xv0[2] + d3 * xv0[3]
+                av += d4 * xv1[0] + d5 * xv1[1] + d6 * xv1[2] + d7 * xv1[3]
+                av += d8 * xv2[0] + d9 * xv2[1] + d10 * xv2[2] + d11 * xv2[3]
+                acc_hi[b - 8] += av
+                var cv = e0 * xv0[0] + e1 * xv0[1] + e2 * xv0[2] + e3 * xv0[3]
+                cv += e4 * xv1[0] + e5 * xv1[1] + e6 * xv1[2] + e7 * xv1[3]
+                cv += e8 * xv2[0] + e9 * xv2[1] + e10 * xv2[2] + e11 * xv2[3]
+                acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8] += cv
+        else:
+            var dq = stack_allocation[_P3_CHUNK, DType.float32]()
+            var eq = stack_allocation[_P3_CHUNK, DType.float32]()
+            dq[0] = d0
+            dq[1] = d1
+            dq[2] = d2
+            dq[3] = d3
+            dq[4] = d4
+            dq[5] = d5
+            dq[6] = d6
+            dq[7] = d7
+            dq[8] = d8
+            dq[9] = d9
+            dq[10] = d10
+            dq[11] = d11
+            eq[0] = e0
+            eq[1] = e1
+            eq[2] = e2
+            eq[3] = e3
+            eq[4] = e4
+            eq[5] = e5
+            eq[6] = e6
+            eq[7] = e7
+            eq[8] = e8
+            eq[9] = e9
+            eq[10] = e10
+            eq[11] = e11
+            for e in range(_P3_CHUNK):
+                if t + e < k:
+                    var de = dq[e]
+                    var ee = eq[e]
+                    if B >= 1:
+                        a0 += de * x[t + e]
+                        c0 += ee * x[t + e]
+                    if B >= 2:
+                        a1 += de * x[k + t + e]
+                        c1 += ee * x[k + t + e]
+                    if B >= 3:
+                        a2 += de * x[2 * k + t + e]
+                        c2 += ee * x[2 * k + t + e]
+                    if B >= 4:
+                        a3 += de * x[3 * k + t + e]
+                        c3 += ee * x[3 * k + t + e]
+                    if B >= 5:
+                        a4 += de * x[4 * k + t + e]
+                        c4 += ee * x[4 * k + t + e]
+                    if B >= 6:
+                        a5 += de * x[5 * k + t + e]
+                        c5 += ee * x[5 * k + t + e]
+                    if B >= 7:
+                        a6 += de * x[6 * k + t + e]
+                        c6 += ee * x[6 * k + t + e]
+                    if B >= 8:
+                        a7 += de * x[7 * k + t + e]
+                        c7 += ee * x[7 * k + t + e]
+                    for b in range(8, B):
+                        acc_hi[b - 8] += de * x[b * k + t + e]
+                        acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8] += ee * x[b * k + t + e]
+        t += _P3B_TG * _P3_CHUNK
+
+    if B >= 1:
+        var total = _warp_sum(a0)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 0] = total
+        total = _warp_sum(c0)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 0] = total
+    if B >= 2:
+        var total = _warp_sum(a1)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 1] = total
+        total = _warp_sum(c1)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 1] = total
+    if B >= 3:
+        var total = _warp_sum(a2)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 2] = total
+        total = _warp_sum(c2)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 2] = total
+    if B >= 4:
+        var total = _warp_sum(a3)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 3] = total
+        total = _warp_sum(c3)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 3] = total
+    if B >= 5:
+        var total = _warp_sum(a4)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 4] = total
+        total = _warp_sum(c4)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 4] = total
+    if B >= 6:
+        var total = _warp_sum(a5)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 5] = total
+        total = _warp_sum(c5)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 5] = total
+    if B >= 7:
+        var total = _warp_sum(a6)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 6] = total
+        total = _warp_sum(c6)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 6] = total
+    if B >= 8:
+        var total = _warp_sum(a7)
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + 7] = total
+        total = _warp_sum(c7)
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + 7] = total
+    for b in range(8, B):
+        var total = _warp_sum(acc_hi[b - 8])
+        if lane == 0:
+            grp[sub * _BATCH_LMHEAD_MAX_ROWS + b] = total
+        total = _warp_sum(acc_hi[_BATCH_LMHEAD_MAX_ROWS - 8 + b - 8])
+        if lane == 0:
+            grp[(_P3B_GROUPS + sub) * _BATCH_LMHEAD_MAX_ROWS + b] = total
+    barrier()
+    if tid < B:
+        var o0 = Float32(0.0)
+        var o1 = Float32(0.0)
+        for g in range(_P3B_GROUPS):
+            o0 += grp[g * _BATCH_LMHEAD_MAX_ROWS + tid]
+            o1 += grp[(_P3B_GROUPS + g) * _BATCH_LMHEAD_MAX_ROWS + tid]
+        y[tid * n + row0] = y[tid * n + row0] + o0
+        y[tid * n + row1] = y[tid * n + row1] + o1

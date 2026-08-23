@@ -13753,3 +13753,139 @@ beats it on chat-C=1 TTFT, and matches it on chat TPOT within 6% at C=8 — all 
 SIMT-f32 compute and quantized-int8 decode weights, no tensor cores, every step gated
 (16/16 oracle on every shipped build; token identity where the math allows it, measured
 flip reports where quantization forbids it).
+
+ADDENDUM 2026-08-23 — LEVER ROUND 2: L5 MULTI-STREAM ADMISSION PREFILL + L6 SMALL-M
+PACKED3 GEMM (TWO OUTPUT ROWS PER BLOCK) — chat C=8 BEATS llama-server ON ALL THREE
+METRICS FOR THE FIRST TIME (agg 616.0 vs 608.7, TTFT p50 506.8 vs 642.8, TPOT 10.6 vs
+11.1); rag C=8 win extended to 3.30x (242.8 vs 73.5). The brief's absolute win target
+(agg >= 700 AND TTFT <= 550) is NOT met on aggregate — the ceiling analysis at the end
+states why, with the measured inputs. Branch feat/lever-push.
+------------------------------------------------------------------------------
+Same harness (enterprise_bench.py, greedy, 64 req/cell), same VM (algenta-ent-a100,
+A100-SXM4-40GB), llama-server rebuilt-verified fresh THIS session (-m qwen3-0.6b-f16.gguf
+-ngl 99 --parallel 32 -c 163840).
+
+L5 — MULTI-STREAM ADMISSION PREFILL (-D ALGENTA_PF_STREAMS_2 / _4)
+    The round-1 TTFT floor: 8 serialized admission prefills on ONE stream, p50 = 668.3 ms
+    against the arithmetic floor 4.5 x 152 ms = 684 ms. L5 runs admission prefills
+    CONCURRENTLY on side CUDA streams: PF_STREAMS independent `_AdmissionPrefill` lanes,
+    lane i on `ctx.select_stream(i+1)` (the AsyncRT stream pool starts at ONE stream and
+    grows via `create_stream()` — multistream_probe.mojo paid for that and for the 2x/4x
+    overlap proof), each lane with its OWN `_PF_PASS_MAX`-row scratch set AND its own
+    lm_head/argmax tail buffers allocated against the lane's stream view (the round-1
+    agent's named "separated scratch" requirement — syncscope_probe.mojo verified the view
+    sync scopes are per-stream and completed side-stream writes are visible cross-stream).
+    Decode chunks keep running on the primary stream; the scheduler loop is
+    collect-wave -> compact -> launch-wave -> step-chunk.
+
+    THE CORRECTNESS FINDING (measured, bisected, instrumented — NOT assumed): captured
+    graph replay co-resident with side-stream lane kernels corrupts tokens. Gate 2 caught
+    it (4/8 requests divergent, deterministic per configuration, ALWAYS at a chunk's step
+    0). The bisect chain, each arm a build+run:
+      * seed-state tearing hypothesis: REFUTED — instrumented post-chunk STATE dumps show
+        tokens/poss/step exactly as seeded+advanced while divergence persists;
+        a seed-copy sync added anyway (both graph arms) changed nothing.
+      * compute-sanitizer memcheck on the failing arm: 0 errors (no OOB — a visibility/
+        ordering phenomenon, not a bounds bug).
+      * graph_race_probe (trivial captured chains, 3000 replays under side-stream kernel +
+        copy concurrency, incl. inter-replay device-side feedback): PASS — the runtime's
+        graph machinery is sound for chains that don't touch the session state.
+      * DBG_NOGRAPH (per-dispatch decode + concurrent lanes): PASS.
+      * DBG_NOOVERLAP (graph decode, lanes never co-resident): PASS.
+    Conclusion: the driver's captured decode chain replayed while lane kernels are resident
+    mis-reads session state; per-dispatch decode under the same concurrency is token-exact.
+    SHIPPED FIX — HYBRID DECODE: while any lane is in flight, `step_chunk` steps the
+    per-dispatch arm (proven safe); the moment no lane is busy it reverts to the fast
+    captured-graph arm. The runtime-level graph-vs-concurrent-kernel hazard stays
+    documented, unfixed underneath (it is a toolchain finding, not a scheduler choice).
+    GATES: selftest 16/16 oracle + 8/8 token identity PASS on S2 and S4 builds.
+
+    MEASURED (chat, 64 req/cell; ctl = same sources with PF_STREAMS off, reproduces the
+    round-1 final within 0.1%):
+      C=8   ctl: agg 552.0 / TTFT 668.6 / TPOT 11.8
+            S2:  agg 592.8 / TTFT 507.6 / TPOT 11.1   (TTFT -24.1%, agg +7.4%)
+            S4:  agg 604.1 / TTFT 713.8 / TPOT 10.4   (agg +9.4%; TTFT WORSE than S2 —
+                 4 concurrent f32 prefills contend past the compute-bound sweet spot)
+    S2 is the TTFT-optimal arm (target cell), S4 the aggregate-optimal one.
+
+L6 — SMALL-M PACKED3 BATCHED GEMM: TWO OUTPUT ROWS PER BLOCK (-D ALGENTA_P3B_R2)
+    The autopsy's lever: batched p3 GEMMs at M=8 stream weights at ~136 GB/s (ncu) vs the
+    B=1 GEMV probe's 470-497 GB/s — instruction/latency bound inside the B-wide inner
+    loop (activation float4 loads: 24 per 16-byte weight chunk at B=8). Battery
+    (p3b_smallm_probe.mojo, B=8, the three serve roles qkv-assign k=1024 n=2560 / o-accum
+    k=2048 n=1024 / down-accum k=3072 n=1024, 4 consistent runs; relative values — the
+    battery's absolute calibration carries a host-side pathology located to the probe
+    harness itself via launch_cal_probe.mojo (same kernel+shape measures 46.6 us there),
+    so adoption evidence is the in-cell delta below + the consistent relative battery):
+      software-pipelined weight loads (1 row):  0.89x / 0.92x / 0.98x — REGRESSION (the
+          extra in-flight state costs more than the hidden latency at these chunk counts)
+      two output rows per block (+ hoisted z*s): 1.27x / 1.18x / 1.29x — WINNER
+    SHIPPED: `_r2` assign/accum kernels (qkv/o/down roles; swiglu already streams two
+    weight rows per block) — per-row dequant expression, ascending-k accumulation order and
+    two-level reduction order are the shipped kernels' VERBATIM (row0 merges the low group
+    half, row1 the high half, both ascending) → bit-identical per-row results; the
+    token-identity gate applies without a flip asterisk. Grid halves (n/2 blocks, rows
+    `row` and `row + n/2` per block). Dispatch behind `-D ALGENTA_P3B_R2` in both the
+    graph-captured chain and the per-dispatch fallback.
+    GATES: selftest 16/16 oracle + 8/8 token identity PASS (bit-identical as designed).
+    MEASURED (chat C=8, 64 req):
+      S2: TPOT 11.1 -> 10.6 ms, agg 592.8 -> 616.0 (+3.9%)
+      S4: TPOT 10.4 -> 9.9 ms,  agg 604.1 -> 625.8 (+3.6%)
+
+FINAL RACE TABLE (2026-08-23, ~01:30-02:00 UTC, algenta-ent-a100, 64 req/cell, greedy;
+llama-server fresh this session; ours = L5+L6 arms):
+
+| cell      | metric      | llama f16 (fresh) | round-1 final | ours L5+L6 S2 | ours L5+L6 S4 | S2 vs llama |
+|-----------|-------------|-------------------|---------------|---------------|---------------|-------------|
+| chat C=1  | TTFT p50 ms | 161.1             | 151.8         | 151.8         | —             | 1.06x BETTER|
+| chat C=1  | agg tok/s   | 261.1             | 162.6         | 162.9         | —             | 0.62x       |
+| chat C=8  | TTFT p50 ms | 642.8             | 668.3         | 506.8         | 714.7         | 1.27x BETTER|
+| chat C=8  | TPOT p50 ms | 11.1              | 11.8          | 10.6          | 9.9           | 1.05x BETTER|
+| chat C=8  | agg tok/s   | 608.7             | 552.0         | 616.0         | 625.8         | 1.01x BETTER|
+| chat C=16 | TTFT p50 ms | 666.3             | 744.3         | 524.7         | 966.1         | 1.27x BETTER|
+| chat C=16 | TPOT p50 ms | 22.0              | 25.8          | 23.0          | 21.5          | 0.95x       |
+| chat C=16 | agg tok/s   | 673.5             | 556.4         | 613.3         | 631.4         | 0.91x       |
+| chat C=32 | TTFT p50 ms | 879.8             | 906.7         | 641.1         | 1035.3        | 1.37x BETTER|
+| chat C=32 | TPOT p50 ms | 40.6              | 51.2          | 50.2          | 48.8          | 0.81x       |
+| chat C=32 | agg tok/s   | 737.9             | 541.0         | 599.2         | 601.5         | 0.81x       |
+| rag  C=8  | TTFT p50 ms | 19912.7           | 4886.4        | 4204.2        | 6256.3        | 4.74x BETTER|
+| rag  C=8  | TPOT p50 ms | 103.0             | 25.4          | 24.2          | 20.4          | 4.26x BETTER|
+| rag  C=8  | agg tok/s   | 73.5              | 227.1         | 242.8         | 243.2         | 3.30x BETTER|
+
+WIN-TARGET VERDICT, HONEST: the brief's target (chat C=8 agg >= 700 AND TTFT p50 <= 550)
+is HALF MET: TTFT 506.8 <= 550 with the S2 arm, aggregate peaks at 625.8 (S4) — +13.4%
+over round-1 but short of 700. WHAT THE RACE SAYS: chat C=8 now BEATS llama-server on
+aggregate, TTFT AND TPOT simultaneously — the first cell in this campaign where all three
+flip ours (round-1: 90.9% of llama's aggregate). rag C=8 win extends to 3.30x aggregate /
+4.74x TTFT. C=16 aggregate closes to 0.91-0.94x of llama with the TTFT win kept (S2);
+C=32 stays 0.81x — llama's fused-batch f16 decode scales harder than the p3 batched chain.
+
+CEILING ANALYSIS (measured inputs, no guessing):
+1. Decode-only wall floor at C=8: 1024 batch-steps x ~9.2 ms (the R2 graph step, from the
+   9.9 ms in-cell TPOT minus admission seams) = 9.4 s -> 872 agg with ZERO admission
+   overhead. The 626-vs-872 gap is admission: 64 prefills x 152 ms = 9.7 s of f32 SIMT
+   prefill work sharing the SMs with decode (waves run ~85% packed — S2/S4 wave walls
+   measured via the TTFT p50 deltas), plus the hybrid's per-dispatch windows while lanes
+   are in flight (~1 ms/step penalty) and wave seams.
+2. Prefill is the binding constraint and stays f32-SIMT: 49% of the 19.5 TF peak at
+   M=1038 (round-1 ncu), the f16-accum arm fails token identity (0/5, round-1 L3), and the
+   pinned toolchain exposes no mma/tensor-core surface (autopsy §7). llama's prefill runs
+   cuBLAS HMMA at 53.6 TF/s — 2.7x our f32 rate — which is exactly the aggregate headroom
+   the C>=16 cells show.
+3. Decode is HBM/instruction-bound p3 streaming: the R2 battery lifted the three GEMM roles
+   1.18-1.29x (136 -> ~165 GB/s effective); the B=1 GEMV ceiling (470-497 GB/s) is not
+   reachable at B=8 — the instruction floor of the B-wide inner loop (round-1 ncu: long-
+   scoreboard / barrier stalls), so decode-side headroom left is incremental, not 12%.
+4. The graph-replay-vs-side-stream hazard (L5 finding) taxes overlap: decode steps inside
+   admission windows run per-dispatch (~+1 ms/step). A runtime fix for captured-graph
+   co-residency would recover it — estimated worth ~30-50 agg at C=8 — and is the named
+   next lever if the toolchain exposes one.
+
+WHAT DID LAND: L5 multi-stream admission (2/4 lanes, separated scratch, hybrid decode
+correctness fix + the full bisect record) and L6 two-rows-per-block p3 GEMMs (bit-identical
+math, gated) — chat C=8 552.0 -> 616.0/625.8 (+11.6/+13.4%), TTFT 668.3 -> 506.8 (S2,
+-24.1%), rag C=8 227.1 -> 242.8/243.2, C=16 556.4 -> 613.3/631.4, C=32 541.0 -> 599.2/601.5.
+Every shipped build passes 16/16 oracle + 8/8 token identity; probes kept in-tree
+(multistream_probe, syncscope_probe, graph_race_probe, launch_cal_probe, p3b_smallm_probe)
+as the measurement record; debug bisect flags (ALGENTA_DBG_NOGRAPH / _DBG_NOOVERLAP /
+ALGENTA_P3G_TRACE) stay comptime-gated and off in every shipped configuration.

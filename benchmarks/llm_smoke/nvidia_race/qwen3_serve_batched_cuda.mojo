@@ -172,7 +172,11 @@ from json.parser import (
 from conv import parse_int
 from attnk.rope import rope_table
 from attnk.contract import ATTN_OK
-from residentk.contract import RESIDENT_OK, residentk_status_name
+from residentk.contract import (
+    RESIDENT_ERR_LAUNCH_FAILED,
+    RESIDENT_OK,
+    residentk_status_name,
+)
 from residentk.session import _LM_BLOCKS, _ceil_div, _resident_preflight
 from residentk.session_cuda import (
     CUDA_PREFILL_TILE,
@@ -316,6 +320,37 @@ Prefill stays f32 (levers L1/L2); decode = packed3 — the single-stream p3 arm'
 VRAM: +~0.94 GB of packed twins beside the f32 residents (prefill weights unchanged).
 The f32 build stays the A/B control; the scheduler below is arm-agnostic (duck-typed over
 the two graph sessions)."""
+
+comptime PF_STREAMS: Int = 4 if is_defined["ALGENTA_PF_STREAMS_4"]() else (
+    2 if is_defined["ALGENTA_PF_STREAMS_2"]() else 1
+)
+"""LEVER L5 (the ledger's named TTFT floor: at C=8 the median request sits at the
+arithmetic floor of 8 SERIALIZED admission prefills on ONE stream — 4.5 x 152 ms = 684 ms,
+measured 668.3): with `-D ALGENTA_PF_STREAMS_2` / `-D ALGENTA_PF_STREAMS_4` admission
+prefills run CONCURRENTLY on side CUDA streams — one lane per stream, each lane with its
+OWN `_PF_PASS_MAX`-row scratch set and its OWN lm_head/argmax tail buffers (the round-1
+agent's named requirement: "separated scratch"), allocated against the lane's
+`ctx.select_stream(i)` view so every lane copy/mapping orders on the lane's stream.
+Decode chunks keep running on the primary stream while admissions prefill (the runtime's
+sync scopes are per-stream — multistream_probe.mojo Q2/Q3/Q5 measured, not assumed — so a
+chunk's `ctx.synchronize()` never waits an in-flight lane). Waves: at most PF_STREAMS
+admissions launch together and are collected at the next chunk boundary; the flag-off
+build (PF_STREAMS == 1) is the shipped L1/L2/L4 path byte-for-byte, the A/B control.
+Stream-pool facts the probe paid for: the AsyncRT context starts with ONE stream;
+`create_stream()` grows the pool, `select_stream(id)` needs id < pool size; a FIRST-USE
+`enqueue_function[kernel]` on a view compiles host-side (~350 ms) — every lane warms every
+admission kernel before READY."""
+
+comptime DBG_NOGRAPH: Bool = is_defined["ALGENTA_DBG_NOGRAPH"]()
+"""Debug scalpel (never adopted): with `-D ALGENTA_DBG_NOGRAPH`, `step_chunk` skips the
+captured-graph arm and steps per-dispatch — bisects a gate-2 divergence between
+graph-replay-vs-lane-concurrency and the lane KV writes themselves."""
+
+comptime DBG_NOOVERLAP: Bool = is_defined["ALGENTA_DBG_NOOVERLAP"]()
+"""Debug scalpel (never adopted): with `-D ALGENTA_DBG_NOOVERLAP`, the multi-stream loop
+collects every lane BEFORE the decode chunk and launches the next wave AFTER it — no lane
+kernel is ever resident on the GPU while a graph replays. Bisects co-residency vs
+everything else."""
 
 # ── ASCII byte constants for the request-line parser (json.parser's own spelling) ──
 comptime _QUOTE: UInt8 = 34        # "
@@ -784,10 +819,23 @@ struct _AdmissionPrefill(Movable):
     M = prompt_len (chat shapes), the v2 kernels' grids scaling with M. The session's 128-row
     `pf_*` scratch is untouched and still serves the flag-off path.
 
+    LEVER L5: every buffer here — the pass scratch AND the lm_head/argmax tail set that the
+    session used to own shared — is allocated against `view`, the stream-bound context view
+    this lane runs on (`ctx.select_stream(i)` under `-D ALGENTA_PF_STREAMS_*`, the base
+    context otherwise), so every kernel, token-upload mapping and argmax readback this lane
+    enqueues orders on the lane's OWN stream — lanes never touch each other's scratch, and
+    the primary stream's decode chunks never wait them (multistream_probe.mojo Q2/Q3/Q5).
+    `launch` enqueues one prompt WITHOUT a trailing sync; `collect` drains the lane stream
+    and returns the first token — the asynchronous admission pair the multi-stream scheduler
+    interleaves with decode chunks.
+
     `Movable` for the same reason the sessions are: it owns DeviceBuffers tied to the
     session's context."""
 
     var cap_m: Int
+    var vocab: Int
+    var busy: Bool
+    var view: DeviceContext
     var pf_tokens: DeviceBuffer[DType.int32]
     var pf_hidden: DeviceBuffer[DType.float32]
     var pf_xn: DeviceBuffer[DType.float32]
@@ -795,29 +843,46 @@ struct _AdmissionPrefill(Movable):
     var pf_q_rot: DeviceBuffer[DType.float32]
     var pf_attn: DeviceBuffer[DType.float32]
     var pf_act: DeviceBuffer[DType.float32]
+    # per-lane lm_head/argmax tail (the session's shared set serves the flag-off path only)
+    var pf_blk_val: DeviceBuffer[DType.float32]
+    var pf_blk_idx: DeviceBuffer[DType.int32]
+    var pf_out_val: DeviceBuffer[DType.float32]
+    var pf_out_idx: DeviceBuffer[DType.int32]
+    var host_pf_val: HostBuffer[DType.float32]
+    var host_pf_idx: HostBuffer[DType.int32]
 
     def __init__(
-        out self, mut ctx: DeviceContext, d_model: Int, h_q: Int, h_kv: Int, d_head: Int,
-        d_ff: Int,
+        out self, mut view: DeviceContext, vocab: Int,
+        d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
     ) raises:
-        """Allocate the pass scratch on the session's context, ONCE. Under the flag the buffers
-        are `_PF_PASS_MAX` rows; flag-off builds allocate one row (the struct is still
-        constructed so every call site is flag-agnostic — the dispatch below never touches
-        the buffers there)."""
+        """Allocate the pass scratch + the tail set ONCE, against `view` (the lane's stream —
+        the base context itself for the synchronous arm, a `select_stream` view for a LEVER-L5
+        lane). Under the one-pass flag the buffers are `_PF_PASS_MAX` rows; flag-off builds
+        allocate one row (the struct is still constructed so every call site is flag-agnostic —
+        the dispatch below never touches the buffers there)."""
         @parameter
         if SERVE_PF_ONEPASS:
             self.cap_m = _PF_PASS_MAX
         else:
             self.cap_m = 1
+        self.vocab = vocab
+        self.busy = False
+        self.view = view
         var t = self.cap_m
         var n_qkv = (h_q + 2 * h_kv) * d_head
-        self.pf_tokens = ctx.enqueue_create_buffer[DType.int32](t)
-        self.pf_hidden = ctx.enqueue_create_buffer[DType.float32](t * d_model)
-        self.pf_xn = ctx.enqueue_create_buffer[DType.float32](t * d_model)
-        self.pf_qkv = ctx.enqueue_create_buffer[DType.float32](t * n_qkv)
-        self.pf_q_rot = ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
-        self.pf_attn = ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
-        self.pf_act = ctx.enqueue_create_buffer[DType.float32](t * d_ff)
+        self.pf_tokens = view.enqueue_create_buffer[DType.int32](t)
+        self.pf_hidden = view.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_xn = view.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_qkv = view.enqueue_create_buffer[DType.float32](t * n_qkv)
+        self.pf_q_rot = view.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_attn = view.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_act = view.enqueue_create_buffer[DType.float32](t * d_ff)
+        self.pf_blk_val = view.enqueue_create_buffer[DType.float32](_LM_BLOCKS)
+        self.pf_blk_idx = view.enqueue_create_buffer[DType.int32](_LM_BLOCKS)
+        self.pf_out_val = view.enqueue_create_buffer[DType.float32](1)
+        self.pf_out_idx = view.enqueue_create_buffer[DType.int32](1)
+        self.host_pf_val = view.enqueue_create_host_buffer[DType.float32](1)
+        self.host_pf_idx = view.enqueue_create_host_buffer[DType.int32](1)
 
     def run(
         mut self, mut s: _CudaResidentQwen3Batched, base_slot: Int,
@@ -829,7 +894,8 @@ struct _AdmissionPrefill(Movable):
         the pass window is `_PF_PASS_MAX` instead of `CUDA_PREFILL_TILE` — chat prompts run
         as a single M-parallel pass; longer prompts run ceil(len/_PF_PASS_MAX) passes, each
         pass still ONE M-parallel grid per projection (position bookkeeping for RoPE/KV is
-        the chunked path's own, unchanged)."""
+        the chunked path's own, unchanged). SEQUENTIAL: one `launch` + `collect` per prompt —
+        the synchronous arm the flag-off scheduler, the warmup and the selftest gate 1 use."""
 
         @parameter
         if not CUDA_SESSION_BUILD:
@@ -849,199 +915,227 @@ struct _AdmissionPrefill(Movable):
                         var empty = List[Int]()
                         return empty^
 
-            var n_iters = _ceil_div(s.vocab, _LM_BLOCKS * _SUBS)
             var first_tokens = List[Int](capacity=B)
-
             for b in range(B):
-                ref prompt = prompts[b]
-                var n_prompt = len(prompt)
-                var kv_off = (base_slot + b) * s.kv_stride_elems
-                var pos = 0
-                var last_m = 0
-                while pos < n_prompt:
-                    var m = self.cap_m
-                    if n_prompt - pos < m:
-                        m = n_prompt - pos
-                    last_m = m
+                self.launch(s, base_slot + b, prompts[b])
+                var tok = self.collect()
+                if tok < 0:
+                    var empty = List[Int]()
+                    return empty^
+                first_tokens.append(tok)
+            return first_tokens^
 
-                    # ── this pass's token ids, uploaded once ──
-                    with self.pf_tokens.map_to_host() as h:
-                        for i in range(m):
-                            h[i] = Int32(prompt[pos + i])
-                    s.ctx.synchronize()
+    def launch(
+        mut self, mut s: _CudaResidentQwen3Batched, slot: Int, ref prompt: List[Int],
+    ) raises:
+        """LEVER L5's asynchronous half: enqueue ONE prompt's full admission prefill into
+        `slot` on this lane's stream — pass scratch, tail buffers, token upload and the
+        argmax D2H readback all order on the lane view — and RETURN WITHOUT SYNC. The
+        kernel chain is `run`'s (== `_prefill_slots`'s) verbatim; only the stream the work
+        is enqueued on and the tail buffers differ. `collect` drains and reads the token."""
 
-                    # ── the embedding rows, gathered on-device from the resident table ──
-                    s.ctx.enqueue_function[_pf_embed_rows_kernel](
-                        self.pf_hidden.unsafe_ptr(), s.embed.unsafe_ptr(),
-                        self.pf_tokens.unsafe_ptr(),
-                        Int64(s.d_model), Int64(m),
-                        grid_dim=_ceil_div(s.d_model, _TG) * m, block_dim=_TG,
+        @parameter
+        if not CUDA_SESSION_BUILD:
+            return
+        else:
+            var n_prompt = len(prompt)
+            if slot < 0 or slot >= _CUDA_BATCH_DECODE_MAX_SEQS or n_prompt < 1 \
+               or n_prompt > s.max_ctx:
+                raise Error("qwen3_serve_batched_cuda: admission launch out of range")
+            for i in range(n_prompt):
+                if prompt[i] < 0 or prompt[i] >= s.vocab:
+                    raise Error("qwen3_serve_batched_cuda: admission launch bad token id")
+
+            var n_iters = _ceil_div(s.vocab, _LM_BLOCKS * _SUBS)
+            var kv_off = slot * s.kv_stride_elems
+            var pos = 0
+            var last_m = 0
+            while pos < n_prompt:
+                var m = self.cap_m
+                if n_prompt - pos < m:
+                    m = n_prompt - pos
+                last_m = m
+
+                # ── this pass's token ids, uploaded once (the mapping syncs on the LANE
+                #    stream — map_to_host routes through the buffer's own context view) ──
+                with self.pf_tokens.map_to_host() as h:
+                    for i in range(m):
+                        h[i] = Int32(prompt[pos + i])
+
+                # ── the embedding rows, gathered on-device from the resident table ──
+                self.view.enqueue_function[_pf_embed_rows_kernel](
+                    self.pf_hidden.unsafe_ptr(), s.embed.unsafe_ptr(),
+                    self.pf_tokens.unsafe_ptr(),
+                    Int64(s.d_model), Int64(m),
+                    grid_dim=_ceil_div(s.d_model, _TG) * m, block_dim=_TG,
+                )
+
+                for layer in range(s.n_layers):
+                    ref lw = s.layers[layer]
+                    # THIS sequence's KV slot: the unchanged kernels, slot-offset pointers.
+                    var ck_b = lw.ck.unsafe_ptr() + kv_off
+                    var cv_b = lw.cv.unsafe_ptr() + kv_off
+
+                    # 1 ── rmsnorm(input_layernorm) over every row
+                    self.view.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                        lw.ln1.unsafe_ptr(),
+                        Int64(s.d_model), s.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
                     )
-
-                    for layer in range(s.n_layers):
-                        ref lw = s.layers[layer]
-                        # THIS sequence's KV slot: the unchanged kernels, slot-offset pointers.
-                        var ck_b = lw.ck.unsafe_ptr() + kv_off
-                        var cv_b = lw.cv.unsafe_ptr() + kv_off
-
-                        # 1 ── rmsnorm(input_layernorm) over every row
-                        s.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
-                            self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
-                            lw.ln1.unsafe_ptr(),
-                            Int64(s.d_model), s.eps, Int64(m),
-                            grid_dim=m, block_dim=_TG,
+                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN, v2) — the grid
+                    # scales with M: ceil(m/64) row-tiles, ONE pass for the whole window
+                    @parameter
+                    if SERVE_PF_F16GEMM:
+                        self.view.enqueue_function[_pf_gemm_assign_kernel_v2f16](
+                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_qkv.unsafe_ptr(),
+                            Int64(m), Int64(s.d_model),
+                            Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(
+                                (s.h_q + 2 * s.h_kv) * s.d_head, _F16G_BN),
+                            block_dim=_F16G_NTHREADS,
                         )
-                        # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN, v2) — the grid
-                        # scales with M: ceil(m/64) row-tiles, ONE pass for the whole window
-                        @parameter
-                        if SERVE_PF_F16GEMM:
-                            s.ctx.enqueue_function[_pf_gemm_assign_kernel_v2f16](
-                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                                lw.w_qkv.unsafe_ptr(),
-                                Int64(m), Int64(s.d_model),
-                                Int64((s.h_q + 2 * s.h_kv) * s.d_head),
-                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(
-                                    (s.h_q + 2 * s.h_kv) * s.d_head, _F16G_BN),
-                                block_dim=_F16G_NTHREADS,
+                    else:
+                        self.view.enqueue_function[_pf_gemm_assign_kernel_v2](
+                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_qkv.unsafe_ptr(),
+                            Int64(m), Int64(s.d_model),
+                            Int64((s.h_q + 2 * s.h_kv) * s.d_head),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
+                                (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 3 ── q_norm + k_norm + RoPE + the KV-cache write, into the slot
+                    self.view.enqueue_function[_pf_ropewrt_kernel](
+                        self.pf_q_rot.unsafe_ptr(), ck_b, cv_b,
+                        self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                        s.cos_t.unsafe_ptr(), s.sin_t.unsafe_ptr(),
+                        Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                        s.eps, Int64(m),
+                        Int64(1),  # qk_norm: Qwen3-family only, always on
+                        grid_dim=(s.h_q + s.h_kv) * m, block_dim=s.d_head,
+                    )
+                    # 4 ── causal attention over the slot's cache — LEVER L1 under the flag
+                    @parameter
+                    if SERVE_PF_ATTN_FLASH:
+                        if s.d_head == 128:
+                            self.view.enqueue_function[_pf_attn_flash_kernel](
+                                self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                ck_b, cv_b,
+                                Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                                s.scale, Int64(m),
+                                grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK) * s.h_q,
+                                block_dim=_PF_FLASH_NTHREADS,
                             )
                         else:
-                            s.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
-                                self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                                lw.w_qkv.unsafe_ptr(),
-                                Int64(m), Int64(s.d_model),
-                                Int64((s.h_q + 2 * s.h_kv) * s.d_head),
-                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(
-                                    (s.h_q + 2 * s.h_kv) * s.d_head, _G2_BN),
-                                block_dim=_G2_NTHREADS,
-                            )
-                        # 3 ── q norm + k norm + RoPE + the KV-cache write, into the slot
-                        s.ctx.enqueue_function[_pf_ropewrt_kernel](
-                            self.pf_q_rot.unsafe_ptr(), ck_b, cv_b,
-                            self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
-                            s.cos_t.unsafe_ptr(), s.sin_t.unsafe_ptr(),
-                            Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
-                            s.eps, Int64(m),
-                            Int64(1),  # qk_norm: Qwen3-family only, always on
-                            grid_dim=(s.h_q + s.h_kv) * m, block_dim=s.d_head,
-                        )
-                        # 4 ── causal attention over the slot's cache — LEVER L1: the
-                        # flash-style warp-per-(row,head) kernel under the flag (same q_rot/
-                        # ck/cv contract the ropewrt dispatch above wrote), the tiled kernel
-                        # otherwise — and always for head dims outside the flash contract
-                        @parameter
-                        if SERVE_PF_ATTN_FLASH:
-                            if s.d_head == 128:
-                                s.ctx.enqueue_function[_pf_attn_flash_kernel](
-                                    self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
-                                    ck_b, cv_b,
-                                    Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
-                                    s.scale, Int64(m),
-                                    grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK) * s.h_q,
-                                    block_dim=_PF_FLASH_NTHREADS,
-                                )
-                            else:
-                                s.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
-                                    self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
-                                    ck_b, cv_b,
-                                    Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
-                                    s.scale, Int64(m),
-                                    grid_dim=s.h_q * m, block_dim=s.d_head,
-                                )
-                        else:
-                            s.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                            self.view.enqueue_function[_pf_attn_tiled_kernel_simd](
                                 self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
                                 ck_b, cv_b,
                                 Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
                                 s.scale, Int64(m),
                                 grid_dim=s.h_q * m, block_dim=s.d_head,
                             )
-                        # 5 ── o_proj ACCUMULATED into the residual stream (v2)
-                        @parameter
-                        if SERVE_PF_F16GEMM:
-                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2f16](
-                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
-                                lw.w_o.unsafe_ptr(),
-                                Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
-                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
-                                block_dim=_F16G_NTHREADS,
-                            )
-                        else:
-                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                                self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
-                                lw.w_o.unsafe_ptr(),
-                                Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
-                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
-                                block_dim=_G2_NTHREADS,
-                            )
-                        # 6 ── rmsnorm(post_attention_layernorm) over every row
-                        s.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
-                            self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
-                            lw.ln2.unsafe_ptr(),
-                            Int64(s.d_model), s.eps, Int64(m),
-                            grid_dim=m, block_dim=_TG,
+                    else:
+                        self.view.enqueue_function[_pf_attn_tiled_kernel_simd](
+                            self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                            ck_b, cv_b,
+                            Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
+                            s.scale, Int64(m),
+                            grid_dim=s.h_q * m, block_dim=s.d_head,
                         )
-                        # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2)
-                        @parameter
-                        if SERVE_PF_F16GEMM:
-                            s.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2f16](
-                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                                lw.w_gu.unsafe_ptr(),
-                                Int64(m), Int64(s.d_model), Int64(s.d_ff),
-                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_ff, _F16G_BN),
-                                block_dim=_F16G_NTHREADS,
-                            )
-                        else:
-                            s.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
-                                self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
-                                lw.w_gu.unsafe_ptr(),
-                                Int64(m), Int64(s.d_model), Int64(s.d_ff),
-                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
-                                block_dim=_G2_NTHREADS,
-                            )
-                        # 8 ── down_proj ACCUMULATED into the residual stream (v2)
-                        @parameter
-                        if SERVE_PF_F16GEMM:
-                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2f16](
-                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
-                                lw.w_down.unsafe_ptr(),
-                                Int64(m), Int64(s.d_ff), Int64(s.d_model),
-                                grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
-                                block_dim=_F16G_NTHREADS,
-                            )
-                        else:
-                            s.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
-                                self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
-                                lw.w_down.unsafe_ptr(),
-                                Int64(m), Int64(s.d_ff), Int64(s.d_model),
-                                grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
-                                block_dim=_G2_NTHREADS,
-                            )
-                    pos += m
+                    # 5 ── o_proj ACCUMULATED into the residual stream (v2)
+                    @parameter
+                    if SERVE_PF_F16GEMM:
+                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2f16](
+                            self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                            lw.w_o.unsafe_ptr(),
+                            Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
+                            block_dim=_F16G_NTHREADS,
+                        )
+                    else:
+                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                            lw.w_o.unsafe_ptr(),
+                            Int64(m), Int64(s.h_q * s.d_head), Int64(s.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 6 ── rmsnorm(post_attention_layernorm) over every row
+                    self.view.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                        lw.ln2.unsafe_ptr(),
+                        Int64(s.d_model), s.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2)
+                    @parameter
+                    if SERVE_PF_F16GEMM:
+                        self.view.enqueue_function[_pf_gemm_swiglu_kernel_v2f16](
+                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_gu.unsafe_ptr(),
+                            Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_ff, _F16G_BN),
+                            block_dim=_F16G_NTHREADS,
+                        )
+                    else:
+                        self.view.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_gu.unsafe_ptr(),
+                            Int64(m), Int64(s.d_model), Int64(s.d_ff),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_ff, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 8 ── down_proj ACCUMULATED into the residual stream (v2)
+                    @parameter
+                    if SERVE_PF_F16GEMM:
+                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2f16](
+                            self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                            lw.w_down.unsafe_ptr(),
+                            Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                            grid_dim=_ceil_div(m, _F16G_BM) * _ceil_div(s.d_model, _F16G_BN),
+                            block_dim=_F16G_NTHREADS,
+                        )
+                    else:
+                        self.view.enqueue_function[_pf_gemm_accum_kernel_v2](
+                            self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                            lw.w_down.unsafe_ptr(),
+                            Int64(m), Int64(s.d_ff), Int64(s.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(s.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                pos += m
 
-                # ── final rmsnorm + lm_head + argmax on this sequence's LAST row ──
-                s.ctx.enqueue_function[_lmhead_argmax_kernel](
-                    s.pf_blk_val.unsafe_ptr(), s.pf_blk_idx.unsafe_ptr(),
-                    self.pf_hidden.unsafe_ptr() + (last_m - 1) * s.d_model,
-                    s.final_norm.unsafe_ptr(), s.embed.unsafe_ptr(),
-                    Int64(s.d_model), Int64(s.vocab), s.eps, Int64(n_iters),
-                    grid_dim=_LM_BLOCKS, block_dim=_TG,
-                )
-                s.ctx.enqueue_function[_argmax_reduce_kernel](
-                    s.pf_out_val.unsafe_ptr(), s.pf_out_idx.unsafe_ptr(),
-                    s.pf_blk_val.unsafe_ptr(), s.pf_blk_idx.unsafe_ptr(),
-                    Int64(_LM_BLOCKS),
-                    grid_dim=1, block_dim=_TG,
-                )
-                s.ctx.enqueue_copy(s.host_pf_val, s.pf_out_val)
-                s.ctx.enqueue_copy(s.host_pf_idx, s.pf_out_idx)
-                s.ctx.synchronize()
-                var tok = Int(s.host_pf_idx.unsafe_ptr()[0])
-                if tok < 0 or tok >= s.vocab:
-                    var empty = List[Int]()
-                    return empty^
-                first_tokens.append(tok)
+            # ── final rmsnorm + lm_head + argmax on the sequence's LAST row, readback
+            #    enqueued on the lane stream — collect() owns the sync ──
+            self.view.enqueue_function[_lmhead_argmax_kernel](
+                self.pf_blk_val.unsafe_ptr(), self.pf_blk_idx.unsafe_ptr(),
+                self.pf_hidden.unsafe_ptr() + (last_m - 1) * s.d_model,
+                s.final_norm.unsafe_ptr(), s.embed.unsafe_ptr(),
+                Int64(s.d_model), Int64(s.vocab), s.eps, Int64(n_iters),
+                grid_dim=_LM_BLOCKS, block_dim=_TG,
+            )
+            self.view.enqueue_function[_argmax_reduce_kernel](
+                self.pf_out_val.unsafe_ptr(), self.pf_out_idx.unsafe_ptr(),
+                self.pf_blk_val.unsafe_ptr(), self.pf_blk_idx.unsafe_ptr(),
+                Int64(_LM_BLOCKS),
+                grid_dim=1, block_dim=_TG,
+            )
+            self.view.enqueue_copy(self.host_pf_val, self.pf_out_val)
+            self.view.enqueue_copy(self.host_pf_idx, self.pf_out_idx)
+            self.busy = True
 
-            return first_tokens^
+    def collect(mut self) raises -> Int:
+        """LEVER L5's synchronous half: drain THIS lane's stream only (the probe's Q2 —
+        a view synchronize() never waits the primary stream), then read the argmax token.
+        Returns -1 on an out-of-range token (the caller emits the error response)."""
+        self.view.synchronize()
+        self.busy = False
+        var tok = Int(self.host_pf_idx.unsafe_ptr()[0])
+        if tok < 0 or tok >= self.vocab:
+            return -1
+        return tok
 
 
 def _admission_prefill(
@@ -1134,16 +1228,72 @@ struct _ServeGraph(Movable):
         mut self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
     ) raises -> _AdmissionPrefill:
         """Allocate the LEVER-L2 admission scratch against the arm's inner session context —
-        the one-time scratch must live on the SAME context as the weights it serves."""
+        the one-time scratch must live on the SAME context as the weights it serves. The
+        synchronous arm (view == the base context): single-stream builds, the warmup and the
+        selftest gate 1 run through it on EVERY build."""
         @parameter
         if P3_SERVE:
-            return _AdmissionPrefill(
-                self.p3g.value().inner.ctx, d_model, h_q, h_kv, d_head, d_ff
-            )
+            var v = self.p3g.value().inner.ctx
+            var vocab = self.p3g.value().inner.vocab
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
         else:
-            return _AdmissionPrefill(
-                self.f32g.value().inner.ctx, d_model, h_q, h_kv, d_head, d_ff
-            )
+            var v = self.f32g.value().inner.ctx
+            var vocab = self.f32g.value().inner.vocab
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+
+    def grow_stream_pool(mut self, n: Int) raises:
+        """LEVER L5: the AsyncRT context starts with ONE stream (the probe's num_streams
+        finding); grow the pool by `n` so `select_stream(1..n)` is valid. Called ONCE
+        before any lane is constructed."""
+        @parameter
+        if P3_SERVE:
+            for _ in range(n):
+                _ = self.p3g.value().inner.ctx.create_stream()
+        else:
+            for _ in range(n):
+                _ = self.f32g.value().inner.ctx.create_stream()
+
+    def new_admission_lane(
+        mut self, stream_id: Int, d_model: Int, h_q: Int, h_kv: Int, d_head: Int,
+        d_ff: Int,
+    ) raises -> _AdmissionPrefill:
+        """LEVER L5: one admission lane on side stream `stream_id` — the `_AdmissionPrefill`
+        scratch + tail allocated against the `select_stream(stream_id)` view, so the lane's
+        whole prefill chain orders on its own stream (the probe's Q3)."""
+        @parameter
+        if P3_SERVE:
+            var v = self.p3g.value().inner.ctx.select_stream(stream_id)
+            var vocab = self.p3g.value().inner.vocab
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+        else:
+            var v = self.f32g.value().inner.ctx.select_stream(stream_id)
+            var vocab = self.f32g.value().inner.vocab
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+
+    def lane_launch(
+        mut self, mut lane: _AdmissionPrefill, slot: Int, ref prompt: List[Int],
+    ) raises:
+        """LEVER L5: enqueue ONE lane's admission prefill against the arm's inner session,
+        NO sync — the lane's `collect` owns the drain."""
+        @parameter
+        if P3_SERVE:
+            lane.launch(self.p3g.value().inner, slot, prompt)
+        else:
+            lane.launch(self.f32g.value().inner, slot, prompt)
+
+    def drain_primary(mut self) raises:
+        """LEVER L5 co-residency fence: drain the primary stream (per-stream scope — probe
+        Q5) so compaction's slot-KV copies can never execute co-resident with lane kernels.
+        The trace-instrumented bisect located the corruption the selftest caught: chunks
+        immediately after a compaction move read wrong KV at the moved slot (seed state
+        verified correct; memcheck clean) — the `_slot_copy_kernel` dispatches race lane
+        kernels started in the same window. One sync per iteration (~tens of µs) when the
+        multi-stream scheduler runs; the copies themselves only exist when a move happened."""
+        @parameter
+        if P3_SERVE:
+            self.p3g.value().inner.ctx.synchronize()
+        else:
+            self.f32g.value().inner.ctx.synchronize()
 
     def prefill_admission(
         mut self, mut apf: _AdmissionPrefill, base_slot: Int, ref prompts: List[List[Int]],
@@ -1433,49 +1583,74 @@ struct _ServeState(Movable):
         var t_first = perf_counter_ns()
         for g in range(k):
             var h = self.pending_head + g
-            var rid = self.pending_rid[h]
-            var t0 = self.pending_t0[h]
-            var max_tokens = self.pending_max_tokens[h]
             var n_prompt = len(self.pending_ids[h])
-            var slot = base + g
-            if firsts[g] == EOS_TOKEN_ID or max_tokens == 1:
-                var toks = List[Int](capacity=1)
-                toks.append(firsts[g])
-                print(_response_line(rid, _ms(t_first - t0), 0.0, toks))
-                if self.capture_enabled:
-                    self.capture[rid] = _copy_ids(toks)
-                continue
-            self.slot_used[slot] = True
-            self.slot_rid[slot] = rid
-            self.slot_t0[slot] = t0
-            self.slot_t_first[slot] = t_first
-            self.slot_n_prompt[slot] = n_prompt
-            self.slot_max_tokens[slot] = max_tokens
-            self.slot_last[slot] = firsts[g]
-            self.slot_tokens[slot] = List[Int](capacity=max_tokens)
-            self.slot_tokens[slot].append(firsts[g])
-            self.n_active += 1
+            self.integrate_admission(
+                base + g, self.pending_rid[h], self.pending_t0[h],
+                self.pending_max_tokens[h], n_prompt, firsts[g], t_first,
+            )
         self.pending_head += k
+        self._release_pending_if_done()
+
+    def _release_pending_if_done(mut self):
+        """Once the FIFO is fully consumed, release the consumed storage (the lists grow
+        with every request line; a closed-loop cell's queue lives only until its last line
+        is admitted)."""
         if self.pending_head == len(self.pending_ids):
-            # queue fully consumed — release the consumed storage
             self.pending_ids = List[List[Int]]()
             self.pending_rid = List[Int]()
             self.pending_t0 = List[Int]()
             self.pending_max_tokens = List[Int]()
             self.pending_head = 0
 
-    def step_chunk(mut self, mut gs: _ServeGraph) raises:
+    def integrate_admission(
+        mut self, slot: Int, rid: Int, t0: Int, max_tokens: Int, n_prompt: Int,
+        first_tok: Int, t_first: Int,
+    ) raises:
+        """One completed admission prefill joins the serving state — shared by the
+        single-stream `admit` group path and the LEVER-L5 lane path, byte-for-byte the same
+        semantics: a prefill that already finished the request (EOS first token, or
+        max_tokens == 1) emits immediately and never occupies its slot; anything else
+        becomes the slot's active sequence."""
+        if first_tok == EOS_TOKEN_ID or max_tokens == 1:
+            var toks = List[Int](capacity=1)
+            toks.append(first_tok)
+            print(_response_line(rid, _ms(t_first - t0), 0.0, toks))
+            if self.capture_enabled:
+                self.capture[rid] = _copy_ids(toks)
+            return
+        self.slot_used[slot] = True
+        self.slot_rid[slot] = rid
+        self.slot_t0[slot] = t0
+        self.slot_t_first[slot] = t_first
+        self.slot_n_prompt[slot] = n_prompt
+        self.slot_max_tokens[slot] = max_tokens
+        self.slot_last[slot] = first_tok
+        self.slot_tokens[slot] = List[Int](capacity=max_tokens)
+        self.slot_tokens[slot].append(first_tok)
+        self.n_active += 1
+
+    def step_chunk(
+        mut self, mut gs: _ServeGraph, short_horizon: Bool, lanes_busy: Bool,
+    ) raises:
         """ONE graph chunk over all active sequences: K = the minimum remaining token budget
         (capped at CHUNK_MAX), seeded as one STATE upload + K replays + one sync; then a scan
         of the token log applies EOS masking and max_tokens truncation, emits completions,
         and advances the survivors. Falls back to ONE per-dispatch step if the graph
-        submission fails."""
+        submission fails. `short_horizon` (LEVER L5: admission pending) forces the short
+        queued horizon so completed waves integrate within ~CHUNK_MAX_QUEUED steps.
+
+        LEVER L5 correctness: `lanes_busy` forces the PER-DISPATCH arm for this chunk. The
+        trace-bisect proved a captured graph replayed WHILE side-stream lane kernels are
+        resident mis-reads lane-written state (step-0 token divergence, seed verified clean,
+        memcheck clean), while per-dispatch decode under the same concurrency is token-exact
+        (the NOGRAPH bisect). Decode therefore overlaps admission through the per-dispatch
+        arm and reverts to the fast captured-graph arm the moment no lane is in flight."""
         var B = self.n_active
         if B == 0:
             return
         # the chunk horizon: someone completes every chunk; nobody overshoots; while
         # requests wait in the queue the SHORT horizon keeps admission boundaries frequent
-        var K = CHUNK_MAX_QUEUED if self.pending_len() > 0 else CHUNK_MAX
+        var K = CHUNK_MAX_QUEUED if (self.pending_len() > 0 or short_horizon) else CHUNK_MAX
         var max_ctx = gs.max_ctx()
         for b in range(B):
             var rem_tok = self.slot_max_tokens[b] - len(self.slot_tokens[b])
@@ -1493,7 +1668,8 @@ struct _ServeState(Movable):
             firsts.append(self.slot_last[b])
             poss.append(self.slot_n_prompt[b] + len(self.slot_tokens[b]) - 1)
 
-        var st = gs.seed_and_run_batched_graph(firsts, poss, K)
+        var skip_graph = DBG_NOGRAPH or lanes_busy
+        var st = RESIDENT_ERR_LAUNCH_FAILED if skip_graph else gs.seed_and_run_batched_graph(firsts, poss, K)
         if st != RESIDENT_OK:
             # FALLBACK: one per-dispatch step over the same prefix (K may shrink to 1)
             var toks1 = gs.step_batched_tokens(firsts, poss)
@@ -1529,6 +1705,204 @@ struct _ServeState(Movable):
                 # replays consumed masked compute on this slot — its KV is freed by
                 # compaction and overwritten by the next admission prefill
                 self._emit_complete(b, t_now)
+
+
+# ── LEVER L5: the MULTI-STREAM ADMISSION POOL — one lane per side CUDA stream ──
+
+
+struct _AdmissionLanes(Movable):
+    """The `-D ALGENTA_PF_STREAMS_*` admission pool: PF_STREAMS independent
+    `_AdmissionPrefill` lanes, lane i on side stream i+1 (its own scratch set, its own
+    lm_head/argmax tail — the round-1 agent's named "separated scratch" requirement), plus
+    the in-flight per-lane request metadata.
+
+    Scheduler contract (the wave-overlap loop `_serve_loop_mstreams` runs):
+      launch_next() fills every free lane from the pending FIFO — each launch enqueues one
+      full admission prefill on the lane's stream and RETURNS WITHOUT SYNC; a decode chunk
+      then runs on the primary stream while the wave prefills; the NEXT iteration's
+      collect_all() drains the lanes and integrates the completed admissions. The overlap
+      window is one chunk; the chunk horizon stays short while lanes are busy so completed
+      admissions integrate promptly (TTFT), and the runtime's per-stream sync scopes (probe
+      Q2/Q3/Q5) guarantee a collect never waits the primary stream's decode or vice versa.
+
+    Slot arithmetic: a wave's lanes take the contiguous free tail [n_active, n_active+k) —
+    n_busy() counts the already-launched lanes of the current wave, so lane slots ascend in
+    lane order and collect_all's lane-order integration preserves the prefix invariant. A
+    lane whose prefill completes the request (EOS first token / max_tokens == 1) or fails
+    leaves a hole; the loop's post-collect compact closes it before the next chunk seeds.
+
+    `Movable` for the same reason the sessions are: it owns DeviceBuffers (through its
+    lanes) tied to the session's context."""
+
+    var n_lanes: Int
+    var lanes: List[_AdmissionPrefill]
+    var lane_busy: List[Bool]
+    var lane_rid: List[Int]
+    var lane_t0: List[Int]
+    var lane_max_tokens: List[Int]
+    var lane_n_prompt: List[Int]
+    var lane_slot: List[Int]
+
+    def __init__(
+        out self, mut gs: _ServeGraph, n: Int, d_model: Int, h_q: Int, h_kv: Int,
+        d_head: Int, d_ff: Int,
+    ) raises:
+        """Grow the context's stream pool by n, then build lane i on select_stream(i+1) —
+        stream 0 stays the decode stream."""
+        self.n_lanes = n
+        gs.grow_stream_pool(n)
+        self.lanes = List[_AdmissionPrefill]()
+        for i in range(n):
+            self.lanes.append(
+                gs.new_admission_lane(i + 1, d_model, h_q, h_kv, d_head, d_ff)
+            )
+        self.lane_busy = List[Bool]()
+        self.lane_rid = List[Int]()
+        self.lane_t0 = List[Int]()
+        self.lane_max_tokens = List[Int]()
+        self.lane_n_prompt = List[Int]()
+        self.lane_slot = List[Int]()
+        for _ in range(n):
+            self.lane_busy.append(False)
+            self.lane_rid.append(-1)
+            self.lane_t0.append(0)
+            self.lane_max_tokens.append(0)
+            self.lane_n_prompt.append(0)
+            self.lane_slot.append(0)
+
+    def any_busy(self) -> Bool:
+        for i in range(self.n_lanes):
+            if self.lane_busy[i]:
+                return True
+        return False
+
+    def n_busy(self) -> Int:
+        var c = 0
+        for i in range(self.n_lanes):
+            if self.lane_busy[i]:
+                c += 1
+        return c
+
+    def launch_next(mut self, mut gs: _ServeGraph, mut st: _ServeState) raises -> Bool:
+        """Launch ONE pending request on the first free lane, if a lane, a pending line and
+        a free slot all exist. Returns True when something launched (the caller loops)."""
+        var lane = -1
+        for i in range(self.n_lanes):
+            if not self.lane_busy[i]:
+                lane = i
+                break
+        if lane < 0:
+            return False
+        if st.pending_len() < 1:
+            return False
+        var free = st.n_slots - st.n_active - self.n_busy()
+        if free < 1:
+            return False
+        var h = st.pending_head
+        var slot = st.n_active + self.n_busy()
+        gs.lane_launch(self.lanes[lane], slot, st.pending_ids[h])
+        self.lane_busy[lane] = True
+        self.lane_rid[lane] = st.pending_rid[h]
+        self.lane_t0[lane] = st.pending_t0[h]
+        self.lane_max_tokens[lane] = st.pending_max_tokens[h]
+        self.lane_n_prompt[lane] = len(st.pending_ids[h])
+        self.lane_slot[lane] = slot
+        st.pending_head += 1
+        st._release_pending_if_done()
+        return True
+
+    def collect_all(mut self, mut gs: _ServeGraph, mut st: _ServeState) raises:
+        """Drain every busy lane (per-lane stream sync) and integrate the completed
+        admissions in lane order. Blocking — by design the loop calls this AFTER a decode
+        chunk ran concurrently with the wave, so the wait is only the prefill's remaining
+        tail beyond the chunk."""
+        for i in range(self.n_lanes):
+            if not self.lane_busy[i]:
+                continue
+            var tok = self.lanes[i].collect()
+            self.lane_busy[i] = False
+            var t_first = perf_counter_ns()
+            if tok < 0:
+                print(_error_line(self.lane_rid[i], "prefill failed"))
+                continue
+            st.integrate_admission(
+                self.lane_slot[i], self.lane_rid[i], self.lane_t0[i],
+                self.lane_max_tokens[i], self.lane_n_prompt[i], tok, t_first,
+            )
+
+
+def _serve_loop_mstreams(mut gs: _ServeGraph, mut lanes: _AdmissionLanes) raises:
+    """LEVER L5's main loop — the single-stream loop with admission replaced by the
+    launch-wave / step-chunk / collect-wave pipeline: drain stdin -> compact -> collect the
+    previous wave (integrates completed admissions) -> compact -> launch the next wave
+    (enqueues only, no sync) -> step one decode chunk ON THE PRIMARY STREAM while the wave
+    prefills on the side streams -> repeat. EOF drains the remaining waves + sequences.
+    DBG_NOOVERLAP reorders to collect -> chunk -> launch (no lane kernel resident during a
+    replay) for the co-residency bisect."""
+    var st = _ServeState(_CUDA_BATCH_DECODE_MAX_SEQS)
+    var stdin_lines = _StdinLines()
+    var pfd = _pollfd_new()
+    while True:
+        # 1. non-blocking drain of every request line currently in the pipe
+        while not st.eof and _stdin_ready(pfd):
+            var line: String
+            try:
+                line = stdin_lines.next_line()
+            except:
+                st.eof = True
+                break
+            if line.byte_length() == 0:
+                continue
+            var t0 = perf_counter_ns()
+            st.enqueue_line(line, t0)
+        # 2. collect the previous admission wave (after this, NO lane kernel is in flight),
+        # THEN compact — the compaction slot-KV copies must never execute co-resident with
+        # lane kernels (the trace-bisected corruption), so the copy window is lane-free;
+        # drain the copies before launching the next wave for the same reason.
+        lanes.collect_all(gs, st)
+        st.compact(gs)
+        @parameter
+        if DBG_NOOVERLAP:
+            # 3-NOOVERLAP. chunk first (no lane resident), then launch the next wave
+            if st.n_active > 0:
+                st.step_chunk(gs, False, False)
+            while lanes.launch_next(gs, st):
+                pass
+            if st.n_active == 0 and not lanes.any_busy() and st.pending_len() == 0:
+                if st.eof:
+                    return
+                var line: String
+                try:
+                    line = stdin_lines.next_line()
+                except:
+                    return
+                if line.byte_length() > 0:
+                    var t0 = perf_counter_ns()
+                    st.enqueue_line(line, t0)
+            continue
+        else:
+            gs.drain_primary()
+            # 3. launch the next wave (async enqueues on the lane streams)
+            while lanes.launch_next(gs, st):
+                pass
+            # 4. step one chunk, or idle-block when there is nothing in flight
+            if st.n_active == 0:
+                if st.eof and not lanes.any_busy():
+                    return
+                if lanes.any_busy():
+                    continue  # startup: the wave collect on the next iteration admits it
+                if st.pending_len() > 0:
+                    continue
+                var line: String
+                try:
+                    line = stdin_lines.next_line()
+                except:
+                    return  # stdin closed with nothing in flight — the harness is done
+                if line.byte_length() > 0:
+                    var t0 = perf_counter_ns()
+                    st.enqueue_line(line, t0)
+                continue
+            st.step_chunk(gs, lanes.any_busy(), lanes.any_busy())
 
 
 def _serve_loop(mut gs: _ServeGraph, mut apf: _AdmissionPrefill) raises:
@@ -1570,7 +1944,7 @@ def _serve_loop(mut gs: _ServeGraph, mut apf: _AdmissionPrefill) raises:
                 var t0 = perf_counter_ns()
                 st.enqueue_line(line, t0)
             continue
-        st.step_chunk(gs)
+        st.step_chunk(gs, False, False)
 
 
 # ── VM FIX (copied VERBATIM from qwen3_serve_cuda.mojo, PR #802): Mojo 1.0.0 input() drops
@@ -1717,7 +2091,7 @@ def _selftest(
         stt.admit(gs, apf)
         stt.compact(gs)
         if stt.n_active > 0:
-            stt.step_chunk(gs)
+            stt.step_chunk(gs, False, False)
         guard += 1
         if guard > 100000:
             print("RESULT: FAIL — selftest scheduler did not converge")
@@ -1871,7 +2245,7 @@ def _selftest_p3(
         stt.admit(gs, apf)
         stt.compact(gs)
         if stt.n_active > 0:
-            stt.step_chunk(gs)
+            stt.step_chunk(gs, False, False)
         guard += 1
         if guard > 100000:
             print("RESULT: FAIL — selftest scheduler did not converge")
@@ -1919,6 +2293,375 @@ def _load_race_prompt(manifest: String, config: String) raises -> List[Int]:
     if len(race_prompt) != n_race:
         raise Error("qwen3_serve_batched_cuda: input_ids length does not match config.n_tokens")
     return race_prompt^
+
+
+# ── LEVER L5 selftest arms: the SAME two gates, admission through the lane pool ──
+
+
+struct _Gate2Set(Movable):
+    """The gate-2 mixed-prompt set, returned owned (Mojo `ref` parameters are read-only
+    aliases, so the builder hands the lists back instead of filling caller lists)."""
+
+    var lens: List[Int]
+    var max_toks: List[Int]
+    var prompts8: List[List[Int]]
+
+    def __init__(out self) raises:
+        self.lens = List[Int]()
+        self.max_toks = List[Int]()
+        self.prompts8 = List[List[Int]]()
+        self.lens.append(3)
+        self.lens.append(17)
+        self.lens.append(64)
+        self.lens.append(129)
+        self.lens.append(256)
+        self.lens.append(511)
+        self.lens.append(777)
+        self.lens.append(1000)
+        self.max_toks.append(64)
+        self.max_toks.append(33)
+        self.max_toks.append(17)
+        self.max_toks.append(8)
+        self.max_toks.append(5)
+        self.max_toks.append(3)
+        self.max_toks.append(2)
+        self.max_toks.append(1)
+        for p in range(8):
+            var ids = List[Int](capacity=self.lens[p])
+            for i in range(self.lens[p]):
+                ids.append((self.lens[p] * 31 + i * 7 + p * 13 + 5) % 256)
+            self.prompts8.append(ids^)
+
+
+def _gate2_prompts() raises -> _Gate2Set:
+    """The gate-2 mixed-prompt set, shared by every selftest variant: 8 prompts, lengths
+    3..1000, max_tokens 64..1 (the max_tokens=1 edge and staggered completions that
+    exercise compaction)."""
+    return _Gate2Set()
+
+
+def _gate2_diff(
+    ref capture: List[List[Int]], ref expected: List[List[Int]], what: String,
+) raises:
+    """The gate-2 token-identity diff, shared by every selftest variant: FAIL + exit 1 on
+    any divergence. On failure prints each divergent request's first-divergence index and
+    both sequences (truncated) — the diagnostic that located the L5 capture-vs-lane race."""
+    var mismatched_reqs = 0
+    var mismatched_tokens = 0
+    for p in range(8):
+        ref got = capture[p]
+        ref want = expected[p]
+        var div = -1
+        if len(got) != len(want):
+            div = len(got) if len(got) < len(want) else len(want)
+        else:
+            for k in range(len(got)):
+                if got[k] != want[k]:
+                    div = k
+                    break
+        if div >= 0:
+            mismatched_reqs += 1
+            mismatched_tokens += 1
+            var line = String("  DIVERGE req ") + String(p) + " at token " + String(div)
+            line += " | got ["
+            for k in range(len(got)):
+                if k > 0:
+                    line += ","
+                line += String(got[k])
+                if k >= 23:
+                    line += ",..."
+                    break
+            line += "] want ["
+            for k in range(len(want)):
+                if k > 0:
+                    line += ","
+                line += String(want[k])
+                if k >= 23:
+                    line += ",..."
+                    break
+            line += "]"
+            print(line)
+    if mismatched_reqs > 0:
+        print("RESULT: FAIL — gate 2:", what, "diverged (", mismatched_reqs,
+              "requests,", mismatched_tokens, "first-divergence tokens)")
+        exit(1)
+
+
+def _selftest_ms(
+    mut gs: _ServeGraph, mut ss: _CudaResidentQwen3, mut lanes: _AdmissionLanes,
+    ref race_prompt: List[Int],
+) raises:
+    """The LEVER-L5 f32 build's selftest. GATE 1: the campaign oracle through the serving
+    decode path with the admission prefilled THROUGH LANE 0 (the shipped multi-stream
+    admission chain). GATE 2: 8 mixed prompts through THIS driver's multi-stream scheduler,
+    token-identical to the single-stream (batch-1) compute path. The FULL serve-mode warmup
+    runs FIRST — the gates exercise the shipped path, which never serves a request before
+    its graphs are captured (capture while lanes are in flight corrupts; see
+    `_warmup_full_mstreams`)."""
+
+    _warmup_full_mstreams(gs, lanes)
+
+    # ═══ GATE 1 — the campaign oracle through the serving decode path ═══
+    gs.lane_launch(lanes.lanes[0], 0, race_prompt)
+    var first0 = lanes.lanes[0].collect()
+    if first0 < 0:
+        print("RESULT: FAIL — selftest lane admission prefill failed on the race prompt")
+        exit(1)
+    var firsts = List[Int](capacity=1)
+    firsts.append(first0)
+    var poss = List[Int](capacity=1)
+    poss.append(len(race_prompt))
+    var st = gs.seed_and_run_batched_graph(firsts, poss, 15)
+    if st != RESIDENT_OK:
+        print("RESULT: FAIL — selftest graph chunk failed, status=", st)
+        exit(1)
+    var oracle_bad = 0
+    if firsts[0] != _oracle_token(0):
+        oracle_bad += 1
+    for k in range(15):
+        if gs.graph_batched_token(0, k) != _oracle_token(k + 1):
+            oracle_bad += 1
+    if oracle_bad > 0:
+        print("RESULT: FAIL — serving decode path disagrees with the campaign oracle (",
+              oracle_bad, "of 16 tokens)")
+        exit(1)
+    print("  gate 1: PASS — 16/16 campaign oracle tokens through the serving decode path",
+          "(multi-stream admission)")
+
+    # ═══ GATE 2 — C=8 mixed prompts: multi-stream scheduler vs batch-1 compute ═══
+    var g2 = _gate2_prompts()
+
+    var expected = List[List[Int]]()
+    for p in range(8):
+        expected.append(_single_stream_tokens(ss, g2.prompts8[p], g2.max_toks[p]))
+
+    var stt = _ServeState(_CUDA_BATCH_DECODE_MAX_SEQS)
+    stt.capture_enabled = True
+    for _ in range(8):
+        stt.capture.append(List[Int]())
+    var t0 = perf_counter_ns()
+    for p in range(8):
+        var ids = _copy_ids(g2.prompts8[p])
+        stt.pending_ids.append(ids^)
+        stt.pending_rid.append(p)
+        stt.pending_t0.append(t0)
+        stt.pending_max_tokens.append(g2.max_toks[p])
+    var guard = 0
+    while stt.n_active > 0 or stt.pending_len() > 0 or lanes.any_busy():
+        lanes.collect_all(gs, stt)
+        stt.compact(gs)
+        @parameter
+        if DBG_NOOVERLAP:
+            if stt.n_active > 0:
+                stt.step_chunk(gs, False, False)
+            while lanes.launch_next(gs, stt):
+                pass
+        else:
+            gs.drain_primary()
+            while lanes.launch_next(gs, stt):
+                pass
+            if stt.n_active > 0:
+                stt.step_chunk(gs, lanes.any_busy(), lanes.any_busy())
+        guard += 1
+        if guard > 100000:
+            print("RESULT: FAIL — selftest multi-stream scheduler did not converge")
+            exit(1)
+
+    _gate2_diff(stt.capture, expected, "concurrent multi-stream streams ")
+    print("  gate 2: PASS — 8/8 mixed prompts, multi-stream scheduler token-identical to",
+          "the batch-1 compute path")
+    print("RESULT: PASS — selftest (gate 1 oracle 16/16 + gate 2 token identity)")
+
+
+def _selftest_p3_ms(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill, mut lanes: _AdmissionLanes,
+    ref race_prompt: List[Int],
+) raises:
+    """The LEVER-L5 + LEVER-L4 build's selftest. GATE 1: the campaign oracle through the
+    serving decode path (lane admission + one p3 graph chunk). GATE 2: 8 mixed prompts
+    through the multi-stream scheduler, token-identical to the SAME session's sequential
+    per-dispatch p3 chain (the packed3 campaign's G1 form — the reference arm's admission
+    rides the synchronous apf path, the compute the concurrent lanes duplicate). The FULL
+    serve-mode warmup runs FIRST (graph capture before any lane is in flight — see
+    `_warmup_full_mstreams`)."""
+
+    _warmup_full_mstreams(gs, lanes)
+
+    # ═══ GATE 1 — the campaign oracle through the serving decode path ═══
+    gs.lane_launch(lanes.lanes[0], 0, race_prompt)
+    var first0 = lanes.lanes[0].collect()
+    if first0 < 0:
+        print("RESULT: FAIL — selftest lane admission prefill failed on the race prompt")
+        exit(1)
+    var firsts = List[Int](capacity=1)
+    firsts.append(first0)
+    var poss = List[Int](capacity=1)
+    poss.append(len(race_prompt))
+    var st = gs.seed_and_run_batched_graph(firsts, poss, 15)
+    if st != RESIDENT_OK:
+        print("RESULT: FAIL — selftest graph chunk failed, status=", st)
+        exit(1)
+    var oracle_bad = 0
+    if firsts[0] != _oracle_token(0):
+        oracle_bad += 1
+    for k in range(15):
+        if gs.graph_batched_token(0, k) != _oracle_token(k + 1):
+            oracle_bad += 1
+    if oracle_bad > 0:
+        print("RESULT: FAIL — serving decode path disagrees with the campaign oracle (",
+              oracle_bad, "of 16 tokens)")
+        exit(1)
+    print("  gate 1: PASS — 16/16 campaign oracle tokens through the serving decode path",
+          "(multi-stream admission)")
+
+    # ═══ GATE 2 — C=8 mixed prompts: multi-stream scheduler vs sequential p3 chain ═══
+    var g2 = _gate2_prompts()
+
+    var expected = List[List[Int]]()
+    for p in range(8):
+        expected.append(_single_stream_tokens_p3(gs, apf, g2.prompts8[p], g2.max_toks[p]))
+
+    var stt = _ServeState(_CUDA_BATCH_DECODE_MAX_SEQS)
+    stt.capture_enabled = True
+    for _ in range(8):
+        stt.capture.append(List[Int]())
+    var t0 = perf_counter_ns()
+    for p in range(8):
+        var ids = _copy_ids(g2.prompts8[p])
+        stt.pending_ids.append(ids^)
+        stt.pending_rid.append(p)
+        stt.pending_t0.append(t0)
+        stt.pending_max_tokens.append(g2.max_toks[p])
+    var guard = 0
+    while stt.n_active > 0 or stt.pending_len() > 0 or lanes.any_busy():
+        lanes.collect_all(gs, stt)
+        stt.compact(gs)
+        @parameter
+        if DBG_NOOVERLAP:
+            if stt.n_active > 0:
+                stt.step_chunk(gs, False, False)
+            while lanes.launch_next(gs, stt):
+                pass
+        else:
+            gs.drain_primary()
+            while lanes.launch_next(gs, stt):
+                pass
+            if stt.n_active > 0:
+                stt.step_chunk(gs, lanes.any_busy(), lanes.any_busy())
+        guard += 1
+        if guard > 100000:
+            print("RESULT: FAIL — selftest multi-stream scheduler did not converge")
+            exit(1)
+
+    _gate2_diff(stt.capture, expected, "concurrent multi-stream p3 streams ")
+    print("  gate 2: PASS — 8/8 mixed prompts, multi-stream scheduler token-identical to",
+          "the sequential per-dispatch p3 chain")
+    print("RESULT: PASS — selftest (gate 1 oracle 16/16 + gate 2 token identity)")
+
+
+def _warmup_slots_mstreams(
+    mut gs: _ServeGraph, mut lanes: _AdmissionLanes,
+) raises -> List[Int]:
+    """LEVER L5 warmup's admission half: prefill ONE token into every slot THROUGH THE
+    LANES, wave by wave — every lane's view compiles every admission kernel on first
+    enqueue (the probe's host-side JIT), and the cost lands here, outside any timed cell.
+    Returns the per-slot first tokens in slot order (the graph warmup's seed)."""
+    var firsts = List[Int](capacity=_CUDA_BATCH_DECODE_MAX_SEQS)
+    var warm_prompt = List[Int](capacity=1)
+    warm_prompt.append(1)
+    var filled = 0
+    while filled < _CUDA_BATCH_DECODE_MAX_SEQS:
+        var k = 0
+        while k < lanes.n_lanes and filled + k < _CUDA_BATCH_DECODE_MAX_SEQS:
+            gs.lane_launch(lanes.lanes[k], filled + k, warm_prompt)
+            k += 1
+        for i in range(k):
+            var tok = lanes.lanes[i].collect()
+            if tok < 0:
+                var empty = List[Int]()
+                return empty^
+            firsts.append(tok)
+        filled += k
+    return firsts^
+
+
+def _warmup_full_mstreams(mut gs: _ServeGraph, mut lanes: _AdmissionLanes) raises:
+    """LEVER L5 one-time warmup — the serve-mode warmup, shared VERBATIM with the
+    multi-stream selftests (the gates must run the shipped path, and the shipped path
+    never captures a graph while lanes are in flight): (1) prefill one token into every
+    slot through the lanes (all lane views compile every admission kernel; all 32 KV slots
+    become valid at pos 0), then (2) one 1-step chunk at every B in 1..B_max — each B's
+    DeviceGraph capture happens HERE, with no lane work in flight, because CUDA graph
+    capture while side-stream kernels execute is exactly the corruption the selftests
+    caught (gate 2 first cut: 4/8 divergent)."""
+    var warm_firsts = _warmup_slots_mstreams(gs, lanes)
+    if len(warm_firsts) != _CUDA_BATCH_DECODE_MAX_SEQS:
+        print("qwen3_serve_batched_cuda: warmup prefill failed")
+        exit(1)
+    for B in range(_CUDA_BATCH_DECODE_MAX_SEQS):
+        var toks = List[Int](capacity=B + 1)
+        var poss = List[Int](capacity=B + 1)
+        for b in range(B + 1):
+            toks.append(warm_firsts[b])
+            poss.append(1)
+        var wst = gs.seed_and_run_batched_graph(toks, poss, 1)
+        if wst != RESIDENT_OK:
+            print("qwen3_serve_batched_cuda: warmup graph chunk failed at B=", B + 1,
+                  "status=", wst)
+            exit(1)
+
+
+def _run_selftest_f32_ms(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill, mut lanes: _AdmissionLanes,
+    blob_path: String, tensors_obj: String, manifest: String, config: String,
+    d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int,
+    vocab_size: Int, theta: Float64, eps: Float64, scale: Float64,
+) raises:
+    """The LEVER-L5 f32 build's selftest entry: the single-stream batch-1 session as the
+    token-identity reference (same weight load as `_run_selftest_f32`), the gates through
+    `_selftest_ms`."""
+    var ss = _CudaResidentQwen3(
+        d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, MAX_CTX, eps, scale
+    )
+    var rt = rope_table(d_head, MAX_CTX, theta)
+    if rt.status != ATTN_OK:
+        raise Error("qwen3_serve_batched_cuda: rope_table failed")
+    var embed_table = _load_tensor(blob_path, tensors_obj, "model.embed_tokens.weight")
+    var final_norm_w = _load_tensor(blob_path, tensors_obj, "model.norm.weight")
+    _check_resident(
+        ss.upload_globals(embed_table, final_norm_w, rt.cos_table, rt.sin_table, MAX_CTX),
+        "single-stream upload_globals",
+    )
+    for layer in range(n_layers):
+        var prefix = "model.layers." + String(layer) + "."
+        var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
+        var ln2 = _load_tensor(blob_path, tensors_obj, prefix + "post_attention_layernorm.weight")
+        var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+        var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+        var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
+        var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
+        var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
+        var wo = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.o_proj.weight")
+        var wg = _load_tensor(blob_path, tensors_obj, prefix + "mlp.gate_proj.weight")
+        var wu = _load_tensor(blob_path, tensors_obj, prefix + "mlp.up_proj.weight")
+        var wd = _load_tensor(blob_path, tensors_obj, prefix + "mlp.down_proj.weight")
+        _check_resident(
+            ss.upload_layer(layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd),
+            "single-stream upload_layer " + String(layer),
+        )
+    _check_resident(ss.seal(), "single-stream seal")
+    var race_prompt = _load_race_prompt(manifest, config)
+    _selftest_ms(gs, ss, lanes, race_prompt)
+
+
+def _run_selftest_p3_ms(
+    mut gs: _ServeGraph, mut apf: _AdmissionPrefill, mut lanes: _AdmissionLanes,
+    manifest: String, config: String,
+) raises:
+    """The LEVER-L5 + LEVER-L4 build's selftest entry — `_selftest_p3_ms` with the race
+    prompt loaded."""
+    var race_prompt = _load_race_prompt(manifest, config)
+    _selftest_p3_ms(gs, apf, lanes, race_prompt)
 
 
 def _run_selftest_f32(
@@ -2011,53 +2754,90 @@ def _run_serve(
     _check_resident(gs.seal(), "seal")
 
     # ═══ the admission-prefill arm (LEVER L2): the _PF_PASS_MAX-row one-pass scratch,
-    # allocated AFTER the weights are resident and sealed, ONCE ═══
+    # allocated AFTER the weights are resident and sealed, ONCE — the synchronous arm,
+    # serving the flag-off scheduler, the p3 selftest reference and the warmups ═══
     var apf = gs.new_admission_prefill(d_model, h_q, h_kv, d_head, d_ff)
 
     if selftest:
         @parameter
-        if P3_SERVE:
-            _run_selftest_p3(gs, apf, manifest, config)
-        else:
-            _run_selftest_f32(
-                gs, apf, blob_path, tensors_obj, manifest, config,
-                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, theta, eps, scale,
+        if PF_STREAMS > 1:
+            var lanes = _AdmissionLanes(
+                gs, PF_STREAMS, d_model, h_q, h_kv, d_head, d_ff
             )
+            @parameter
+            if P3_SERVE:
+                _run_selftest_p3_ms(gs, apf, lanes, manifest, config)
+            else:
+                _run_selftest_f32_ms(
+                    gs, apf, lanes, blob_path, tensors_obj, manifest, config,
+                    d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size,
+                    theta, eps, scale,
+                )
+        else:
+            @parameter
+            if P3_SERVE:
+                _run_selftest_p3(gs, apf, manifest, config)
+            else:
+                _run_selftest_f32(
+                    gs, apf, blob_path, tensors_obj, manifest, config,
+                    d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size,
+                    theta, eps, scale,
+                )
         exit(0)
 
     # ═══ ONE-TIME warmup (untimed): every kernel path AND every graph arm captured
     # before READY. Prefill one token into every slot (all 32 KV slots become valid at
     # pos 0), then run ONE 1-step chunk at every B in 1..B_max — the capture of each B's
-    # DeviceGraph happens on first use, and it must not happen inside a timed cell. ═══
-    var warm_prompts = List[List[Int]]()
-    for _ in range(_CUDA_BATCH_DECODE_MAX_SEQS):
-        var w = List[Int](capacity=1)
-        w.append(1)
-        warm_prompts.append(w^)
-    var warm_firsts = gs.prefill_admission(apf, 0, warm_prompts)
-    if len(warm_firsts) != _CUDA_BATCH_DECODE_MAX_SEQS:
-        print("qwen3_serve_batched_cuda: warmup prefill failed")
-        exit(1)
-    for B in range(_CUDA_BATCH_DECODE_MAX_SEQS):
-        var toks = List[Int](capacity=B + 1)
-        var poss = List[Int](capacity=B + 1)
-        for b in range(B + 1):
-            toks.append(warm_firsts[b])
-            poss.append(1)
-        var wst = gs.seed_and_run_batched_graph(toks, poss, 1)
-        if wst != RESIDENT_OK:
-            print("qwen3_serve_batched_cuda: warmup graph chunk failed at B=", B + 1,
-                  "status=", wst)
+    # DeviceGraph happens on first use, and it must not happen inside a timed cell.
+    # Under LEVER L5 the warmup runs THROUGH THE LANES (`_warmup_full_mstreams`) — every
+    # lane's view compiles every admission kernel host-side on its first enqueue (the
+    # probe's ~350 ms JIT), and graph capture never races an in-flight lane; both costs
+    # land here, not in a timed cell. ═══
+    @parameter
+    if PF_STREAMS > 1:
+        var lanes = _AdmissionLanes(
+            gs, PF_STREAMS, d_model, h_q, h_kv, d_head, d_ff
+        )
+        _warmup_full_mstreams(gs, lanes)
+        print("qwen3_serve_batched_cuda: READY — one JSON request per stdin line, one",
+              "response per stdout line; up to", _CUDA_BATCH_DECODE_MAX_SEQS,
+              "requests decode together | admission_prefill =",
+              "onepass" if SERVE_PF_ONEPASS else "chunked-128",
+              "| admission_streams =", PF_STREAMS,
+              "| decode_weights =", "packed3" if P3_SERVE else "f32")
+        _serve_loop_mstreams(gs, lanes)
+        print("qwen3_serve_batched_cuda: stdin EOF — exiting")
+        exit(0)
+    else:
+        var warm_prompts = List[List[Int]]()
+        for _ in range(_CUDA_BATCH_DECODE_MAX_SEQS):
+            var w = List[Int](capacity=1)
+            w.append(1)
+            warm_prompts.append(w^)
+        var warm_firsts = gs.prefill_admission(apf, 0, warm_prompts)
+        if len(warm_firsts) != _CUDA_BATCH_DECODE_MAX_SEQS:
+            print("qwen3_serve_batched_cuda: warmup prefill failed")
             exit(1)
+        for B in range(_CUDA_BATCH_DECODE_MAX_SEQS):
+            var toks = List[Int](capacity=B + 1)
+            var poss = List[Int](capacity=B + 1)
+            for b in range(B + 1):
+                toks.append(warm_firsts[b])
+                poss.append(1)
+            var wst = gs.seed_and_run_batched_graph(toks, poss, 1)
+            if wst != RESIDENT_OK:
+                print("qwen3_serve_batched_cuda: warmup graph chunk failed at B=", B + 1,
+                      "status=", wst)
+                exit(1)
 
-    print("qwen3_serve_batched_cuda: READY — one JSON request per stdin line, one",
-          "response per stdout line; up to", _CUDA_BATCH_DECODE_MAX_SEQS,
-          "requests decode together | admission_prefill =",
-          "onepass" if SERVE_PF_ONEPASS else "chunked-128",
-          "| decode_weights =", "packed3" if P3_SERVE else "f32")
-    _serve_loop(gs, apf)
-    print("qwen3_serve_batched_cuda: stdin EOF — exiting")
-    exit(0)
+        print("qwen3_serve_batched_cuda: READY — one JSON request per stdin line, one",
+              "response per stdout line; up to", _CUDA_BATCH_DECODE_MAX_SEQS,
+              "requests decode together | admission_prefill =",
+              "onepass" if SERVE_PF_ONEPASS else "chunked-128",
+              "| decode_weights =", "packed3" if P3_SERVE else "f32")
+        _serve_loop(gs, apf)
+        print("qwen3_serve_batched_cuda: stdin EOF — exiting")
+        exit(0)
 
 
 def main() raises:

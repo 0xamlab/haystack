@@ -134,6 +134,8 @@ from residentk.kernels_packed3_batched import (
     _P3B_GROUPS,
     _batched_p3_gemv_assign_kernel,
     _batched_p3_gemv_accum_kernel,
+    _batched_p3_gemv_assign_kernel_r2,
+    _batched_p3_gemv_accum_kernel_r2,
     _batched_p3_swiglu_kernel,
     _batched_lmhead_argmax_kernel_p3,
 )
@@ -171,6 +173,22 @@ from residentk.session_cuda_p3 import (
     _pack_transposed_f64_into_p3,
     _pack_f64_into_p3,
 )
+from std.sys import is_defined
+
+comptime P3G_DBG_TRACE: Bool = is_defined["ALGENTA_P3G_TRACE"]()
+"""Debug scalpel (never adopted): with `-D ALGENTA_P3G_TRACE`, every chunk prints its seed
+(tokens/poss) and its logged tokens — the instrumentation that bisected the L5 gate-2
+divergence between seed-state corruption and in-graph compute corruption."""
+
+comptime P3B_R2: Bool = is_defined["ALGENTA_P3B_R2"]()
+"""LEVER L6: with `-D ALGENTA_P3B_R2`, the three packed3 batched decode GEMM roles
+(qkv ASSIGN, o ACCUM, down ACCUM) dispatch the TWO-OUTPUT-ROWS-PER-BLOCK kernels —
+`kernels_packed3_batched`'s `_r2` family, the p3b_smallm_probe battery's measured winner
+(~1.27x effective weight GB/s at B=8, all three roles): the B activation float4 loads
+amortize over two rows' packed-weight streams. Per-row math and accumulation order are the
+shipped kernels' verbatim — bit-identical tokens, the serve selftest's identity gate
+applies unmodified. The swiglu role keeps the shipped kernel (its block already streams two
+weight rows)."""
 
 
 @fieldwise_init
@@ -423,13 +441,24 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                     grid_dim=B, block_dim=_TG,
                 )
                 # 2 ── qkv_proj: packed3 batched ASSIGN, weights swept ONCE for all B rows
-                self.inner.ctx.enqueue_function[_batched_p3_gemv_assign_kernel](
-                    self.inner.b_qkv.unsafe_ptr(), self.inner.b_xn.unsafe_ptr(),
-                    lp.p3_qkv.unsafe_ptr(), lp.p3_qkv_s.unsafe_ptr(),
-                    lp.p3_qkv_z.unsafe_ptr(),
-                    Int64(self.inner.d_model), Int64(n_qkv), Int64(B),
-                    grid_dim=n_qkv, block_dim=_P3B_TG,
-                )
+                # (LEVER L6: the two-rows-per-block `_r2` kernel under `-D ALGENTA_P3B_R2`)
+                @parameter
+                if P3B_R2:
+                    self.inner.ctx.enqueue_function[_batched_p3_gemv_assign_kernel_r2](
+                        self.inner.b_qkv.unsafe_ptr(), self.inner.b_xn.unsafe_ptr(),
+                        lp.p3_qkv.unsafe_ptr(), lp.p3_qkv_s.unsafe_ptr(),
+                        lp.p3_qkv_z.unsafe_ptr(),
+                        Int64(self.inner.d_model), Int64(n_qkv), Int64(B),
+                        grid_dim=n_qkv // 2, block_dim=_P3B_TG,
+                    )
+                else:
+                    self.inner.ctx.enqueue_function[_batched_p3_gemv_assign_kernel](
+                        self.inner.b_qkv.unsafe_ptr(), self.inner.b_xn.unsafe_ptr(),
+                        lp.p3_qkv.unsafe_ptr(), lp.p3_qkv_s.unsafe_ptr(),
+                        lp.p3_qkv_z.unsafe_ptr(),
+                        Int64(self.inner.d_model), Int64(n_qkv), Int64(B),
+                        grid_dim=n_qkv, block_dim=_P3B_TG,
+                    )
                 # 3 ── batched KV producer (f32 arm's kernel, unchanged)
                 self.inner.ctx.enqueue_function[_native_kv_producer_batched_f32_kernel](
                     self.inner.b_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
@@ -466,13 +495,22 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                     Int64(CUDA_BATCH_N_SPLITS), Int64(self.inner.h_q), Int64(self.inner.d_head),
                     grid_dim=B * self.inner.h_q, block_dim=self.inner.d_head,
                 )
-                # 6 ── o_proj + residual — packed3 batched ACCUM
-                self.inner.ctx.enqueue_function[_batched_p3_gemv_accum_kernel](
-                    self.inner.b_hidden.unsafe_ptr(), self.inner.b_attn.unsafe_ptr(),
-                    lp.p3_o.unsafe_ptr(), lp.p3_o_s.unsafe_ptr(), lp.p3_o_z.unsafe_ptr(),
-                    Int64(n_q), Int64(self.inner.d_model), Int64(B),
-                    grid_dim=self.inner.d_model, block_dim=_P3B_TG,
-                )
+                # 6 ── o_proj + residual — packed3 batched ACCUM (LEVER L6 `_r2` under flag)
+                @parameter
+                if P3B_R2:
+                    self.inner.ctx.enqueue_function[_batched_p3_gemv_accum_kernel_r2](
+                        self.inner.b_hidden.unsafe_ptr(), self.inner.b_attn.unsafe_ptr(),
+                        lp.p3_o.unsafe_ptr(), lp.p3_o_s.unsafe_ptr(), lp.p3_o_z.unsafe_ptr(),
+                        Int64(n_q), Int64(self.inner.d_model), Int64(B),
+                        grid_dim=self.inner.d_model // 2, block_dim=_P3B_TG,
+                    )
+                else:
+                    self.inner.ctx.enqueue_function[_batched_p3_gemv_accum_kernel](
+                        self.inner.b_hidden.unsafe_ptr(), self.inner.b_attn.unsafe_ptr(),
+                        lp.p3_o.unsafe_ptr(), lp.p3_o_s.unsafe_ptr(), lp.p3_o_z.unsafe_ptr(),
+                        Int64(n_q), Int64(self.inner.d_model), Int64(B),
+                        grid_dim=self.inner.d_model, block_dim=_P3B_TG,
+                    )
                 # 7 ── rmsnorm(post_attention_layernorm) over all B rows
                 self.inner.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
                     self.inner.b_xn.unsafe_ptr(), self.inner.b_hidden.unsafe_ptr(),
@@ -487,14 +525,24 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                     Int64(self.inner.d_model), Int64(self.inner.d_ff), Int64(B),
                     grid_dim=self.inner.d_ff, block_dim=_P3B_TG,
                 )
-                # 9 ── down_proj + residual — packed3 batched ACCUM
-                self.inner.ctx.enqueue_function[_batched_p3_gemv_accum_kernel](
-                    self.inner.b_hidden.unsafe_ptr(), self.inner.b_act.unsafe_ptr(),
-                    lp.p3_down.unsafe_ptr(), lp.p3_down_s.unsafe_ptr(),
-                    lp.p3_down_z.unsafe_ptr(),
-                    Int64(self.inner.d_ff), Int64(self.inner.d_model), Int64(B),
-                    grid_dim=self.inner.d_model, block_dim=_P3B_TG,
-                )
+                # 9 ── down_proj + residual — packed3 batched ACCUM (LEVER L6 `_r2`)
+                @parameter
+                if P3B_R2:
+                    self.inner.ctx.enqueue_function[_batched_p3_gemv_accum_kernel_r2](
+                        self.inner.b_hidden.unsafe_ptr(), self.inner.b_act.unsafe_ptr(),
+                        lp.p3_down.unsafe_ptr(), lp.p3_down_s.unsafe_ptr(),
+                        lp.p3_down_z.unsafe_ptr(),
+                        Int64(self.inner.d_ff), Int64(self.inner.d_model), Int64(B),
+                        grid_dim=self.inner.d_model // 2, block_dim=_P3B_TG,
+                    )
+                else:
+                    self.inner.ctx.enqueue_function[_batched_p3_gemv_accum_kernel](
+                        self.inner.b_hidden.unsafe_ptr(), self.inner.b_act.unsafe_ptr(),
+                        lp.p3_down.unsafe_ptr(), lp.p3_down_s.unsafe_ptr(),
+                        lp.p3_down_z.unsafe_ptr(),
+                        Int64(self.inner.d_ff), Int64(self.inner.d_model), Int64(B),
+                        grid_dim=self.inner.d_model, block_dim=_P3B_TG,
+                    )
 
             # ── tail: final rmsnorm (B rows) + packed3 batched lm_head + B-row reduce ──
             self.inner.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
@@ -701,12 +749,21 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                     d_model_i, eps_c, B_i,
                     grid_dim=B_c, block_dim=_TG,
                 )
-                # 2 ── qkv_proj — packed3 batched ASSIGN (grid n_qkv, B baked)
-                rec.enqueue_function[_batched_p3_gemv_assign_kernel](
-                    qkv_p, xn_p, qkv_w_p, qkv_s_p, qkv_z_p,
-                    d_model_i, n_qkv_i, B_i,
-                    grid_dim=Int(n_qkv_i), block_dim=_P3B_TG,
-                )
+                # 2 ── qkv_proj — packed3 batched ASSIGN (grid n_qkv, B baked; LEVER L6
+                # `_r2` two-rows-per-block under `-D ALGENTA_P3B_R2`, grid n_qkv/2)
+                @parameter
+                if P3B_R2:
+                    rec.enqueue_function[_batched_p3_gemv_assign_kernel_r2](
+                        qkv_p, xn_p, qkv_w_p, qkv_s_p, qkv_z_p,
+                        d_model_i, n_qkv_i, B_i,
+                        grid_dim=Int(n_qkv_i) // 2, block_dim=_P3B_TG,
+                    )
+                else:
+                    rec.enqueue_function[_batched_p3_gemv_assign_kernel](
+                        qkv_p, xn_p, qkv_w_p, qkv_s_p, qkv_z_p,
+                        d_model_i, n_qkv_i, B_i,
+                        grid_dim=Int(n_qkv_i), block_dim=_P3B_TG,
+                    )
                 # 3 ── batched KV producer: poss from STATE[B+seq]
                 rec.enqueue_function[_native_kv_producer_batched_f32_kernel_bg](
                     q_rot_p, ck_p, cv_p,
@@ -736,12 +793,20 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                     Int64(CUDA_BATCH_N_SPLITS), h_q_i, d_head_i,
                     grid_dim=B_c * Int(h_q_i), block_dim=Int(d_head_i),
                 )
-                # 6 ── o_proj ACCUM into the residual stream — packed3 batched
-                rec.enqueue_function[_batched_p3_gemv_accum_kernel](
-                    hidden_p, attn_p, o_w_p, o_s_p, o_z_p,
-                    Int64(n_q), d_model_i, B_i,
-                    grid_dim=Int(d_model_i), block_dim=_P3B_TG,
-                )
+                # 6 ── o_proj ACCUM into the residual stream — packed3 batched (LEVER L6)
+                @parameter
+                if P3B_R2:
+                    rec.enqueue_function[_batched_p3_gemv_accum_kernel_r2](
+                        hidden_p, attn_p, o_w_p, o_s_p, o_z_p,
+                        Int64(n_q), d_model_i, B_i,
+                        grid_dim=Int(d_model_i) // 2, block_dim=_P3B_TG,
+                    )
+                else:
+                    rec.enqueue_function[_batched_p3_gemv_accum_kernel](
+                        hidden_p, attn_p, o_w_p, o_s_p, o_z_p,
+                        Int64(n_q), d_model_i, B_i,
+                        grid_dim=Int(d_model_i), block_dim=_P3B_TG,
+                    )
                 # 7 ── rmsnorm(post_attention_layernorm) over all B rows
                 rec.enqueue_function[_pf_rmsnorm_rows_kernel](
                     xn_p, hidden_p, ln2_p,
@@ -754,12 +819,20 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
                     d_model_i, d_ff_i, B_i,
                     grid_dim=Int(d_ff_i), block_dim=_P3B_TG,
                 )
-                # 9 ── down_proj ACCUM into the residual stream — packed3 batched
-                rec.enqueue_function[_batched_p3_gemv_accum_kernel](
-                    hidden_p, act_p, dn_w_p, dn_s_p, dn_z_p,
-                    d_ff_i, d_model_i, B_i,
-                    grid_dim=Int(d_model_i), block_dim=_P3B_TG,
-                )
+                # 9 ── down_proj ACCUM into the residual stream — packed3 batched (LEVER L6)
+                @parameter
+                if P3B_R2:
+                    rec.enqueue_function[_batched_p3_gemv_accum_kernel_r2](
+                        hidden_p, act_p, dn_w_p, dn_s_p, dn_z_p,
+                        d_ff_i, d_model_i, B_i,
+                        grid_dim=Int(d_model_i) // 2, block_dim=_P3B_TG,
+                    )
+                else:
+                    rec.enqueue_function[_batched_p3_gemv_accum_kernel](
+                        hidden_p, act_p, dn_w_p, dn_s_p, dn_z_p,
+                        d_ff_i, d_model_i, B_i,
+                        grid_dim=Int(d_model_i), block_dim=_P3B_TG,
+                    )
 
             # ── tail: final rmsnorm + packed3 batched lm_head + B-row argmax reduce ──
             rec.enqueue_function[_pf_rmsnorm_rows_kernel](
@@ -827,6 +900,13 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
 
             # The feed: ONE eager H2D copy on the context stream, ordered before the replays.
             self.inner.ctx.enqueue_copy(self.arms_state[idx], self.arms_host_state[idx])
+            # LEVER L5: the copy MUST be drained before the replays launch. Same-stream
+            # ordering covers it in a quiet context, but graph launch + a busy copy engine
+            # is timing-dependent once side streams run concurrently (the multi-stream
+            # admission selftest caught replay #1 reading STALE state — every divergence at
+            # a chunk's step 0, memcheck-clean, per-dispatch and no-overlap arms pass):
+            # one context sync per CHUNK (not per step) makes the dependency structural.
+            self.inner.ctx.synchronize()
 
             for _ in range(n_steps):
                 self.arms_graph[idx].value().replay()
@@ -843,6 +923,46 @@ struct _CudaResidentQwen3BatchedP3Graph(Movable):
             self.inner.ctx.synchronize()
             self.inner.ctx.enqueue_copy(self.host_log_head, self.log_head)
             self.inner.ctx.synchronize()
+            @parameter
+            if P3G_DBG_TRACE:
+                var line = String("CHUNK B=") + String(B) + " K=" + String(n_steps)
+                line += " | seed tokens=["
+                for b in range(B):
+                    if b > 0:
+                        line += ","
+                    line += String(first_tokens[b])
+                line += "] poss=["
+                for b in range(B):
+                    if b > 0:
+                        line += ","
+                    line += String(start_poss[b])
+                line += "] | logged=["
+                for s in range(n_steps):
+                    if s > 0:
+                        line += ";"
+                    for b in range(B):
+                        if b > 0:
+                            line += ","
+                        line += String(self.graph_batched_token(b, s))
+                line += "]"
+                # device-side STATE verification: after the chunk, the region must hold
+                # tokens = last logged step, poss = seed + K, nkeys = poss + 1, step = K —
+                # any mismatch proves the seed copy or the advance kernel tore
+                var hchk = self.inner.ctx.enqueue_create_host_buffer[DType.int64](3 * B + 1)
+                self.inner.ctx.enqueue_copy(hchk, self.arms_state[idx])
+                self.inner.ctx.synchronize()
+                line += " | post-state tokens=["
+                for b in range(B):
+                    if b > 0:
+                        line += ","
+                    line += String(hchk[b])
+                line += "] poss=["
+                for b in range(B):
+                    if b > 0:
+                        line += ","
+                    line += String(hchk[B + b])
+                line += "] step=" + String(hchk[3 * B])
+                print(line)
             return RESIDENT_OK
 
     def graph_batched_token(self, seq: Int, step: Int) -> Int:

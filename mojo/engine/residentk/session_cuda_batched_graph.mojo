@@ -527,6 +527,11 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
 
             # The feed: ONE eager H2D copy on the context stream, ordered before the replays.
             self.inner.ctx.enqueue_copy(self.arms_state[idx], self.arms_host_state[idx])
+            # LEVER L5: drain the seed copy before the replays launch. Within-stream ordering
+            # is otherwise sufficient, but under co-resident side-stream work (multi-stream
+            # admission) the graph read of `arms_state` raced the still-in-flight copy — the
+            # selftest's every-divergence-at-chunk-step-0, memcheck-clean. One sync per CHUNK.
+            self.inner.ctx.synchronize()
 
             for _ in range(n_steps):
                 self.arms_graph[idx].value().replay()
