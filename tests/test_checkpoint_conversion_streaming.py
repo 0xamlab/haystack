@@ -203,6 +203,7 @@ def test_streaming_output_is_byte_identical_to_the_legacy_algorithm(tmp_path: Pa
         "n_tokens": len(_PROMPT_TOKEN_IDS),
         "has_qk_norm": 1,
         "tie_word_embeddings": 1,
+        "attention_bias": 0,
     }
 
 

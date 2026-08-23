@@ -13890,6 +13890,156 @@ Every shipped build passes 16/16 oracle + 8/8 token identity; probes kept in-tre
 as the measurement record; debug bisect flags (ALGENTA_DBG_NOGRAPH / _DBG_NOOVERLAP /
 ALGENTA_P3G_TRACE) stay comptime-gated and off in every shipped configuration.
 
+================================================================================
+QWEN2.5-7B-INSTRUCT — SINGLE-STREAM CUDA LANE: CORRECTNESS ROOT CAUSE + FIRST
+HONEST MEASUREMENT (2026-08-23, ~10:00-11:00 UTC, algenta-ent-a100, branch
+feat/7b-lane)
+================================================================================
+
+THE LANE: Qwen2.5-7B-Instruct through the resident CUDA sessions with the 7B
+enablement switched ON (qk_norm=0, untied lm_head, GQA 28:4 group-7, d_ff=18944,
+ALGENTA_STAGE_18944). Two arms: f32 (full Float32 projections resident, 29.9 GB)
+and p3 (packed3 projections + JIT-dequant prefill + packed3 graph decode, 16.6 GB).
+Opponent: the campaign-pinned llama.cpp build (ALGENTA_RACE_PIN 000547513f) with
+Qwen2.5-7B-Instruct F16 and Q8_0 GGUFs, SAME A100, solo-GPU census throughout.
+
+CORRECTNESS ROOT CAUSE — THE MISSING q/k/v ATTENTION BIASES (bisected, proven)
+-------------------------------------------------------------------------------
+Symptom: greedy stream diverged from the transformers fp32 reference at token 0
+on every prompt (engine [9754,13,13,16,...] degenerate vs reference); both arms
+agreed with EACH OTHER, isolating the bug to the common forward path.
+
+Bisection (layer-dump hook, comptime-gated `-D ALGENTA_7B_DUMP`: per-stage f64
+checksums of embed/xn1/qkv/qrot/attn/post_attn/xn2/act/post_mlp on the final
+prompt row, diffed against identical checksums from a hooked transformers fp32
+forward — tooling kept in-tree: dump_transformers_cpu.py / diff_dump7b.py):
+    embed    EXACT (0.0 rel)          -> ids + embedding table correct
+    xn1      1.2e-7 rel (f32 noise)   -> rmsnorm correct
+    qkv      DIVERGED: engine sum -114.87 vs transformers +953.75 (layer 0)
+Every later stage diverged downstream of it. First divergence: the fused QKV
+projection output.
+
+Disambiguation (check_blob_qkv.py, numpy f64 on the blob's own weights):
+  * the blob's layer-0 q/k/v weights are BIT-EXACT hf.T (element-wise vs the
+    safetensors) — the converter's data is CORRECT;
+  * numpy math on those exact weights reproduces the ENGINE value (-114.87),
+    not the transformers value -> the engine faithfully computes a MISSING TERM.
+The missing term: Qwen2/Qwen2.5 carry q/k/v PROJECTION BIASES, and neither the
+converter nor the engine had them. Arithmetic proof, layer 0:
+    sum(bias_q) + sum(bias_k) + sum(bias_v) = 370.64 + 697.61 + 0.37 = 1068.62
+    953.75 - (-114.87) = 1068.62                                    (exact)
+Why it slipped through: the converter's refusal gate checked
+`config.get("attention_bias") not in (False, None)` — and Qwen2.5-7B-Instruct's
+config.json OMITS the key entirely (the model defaults it TRUE), so the gate
+never fired and the 84 bias tensors were silently dropped. (None of the three
+ranked suspects — qk_norm=0 handling, untied lm_head binding, GQA group-7
+indexing — was at fault; each verified clean during the bisection.)
+
+THE FIX (all gated; Qwen3 lanes byte-unmodified, regression-compiled):
+  * converter (packages/algenta/algenta/inference.py): `_detect_attention_bias`
+    probes the SAFETENSORS for `model.layers.0.self_attn.q_proj.bias`
+    (tensors-are-the-truth, the `_detect_has_qk_norm` convention); the three
+    biases per layer are converted (1-D, untransposed) and the manifest carries
+    `attention_bias` 0/1; the config-key refusal removed.
+  * engine: `_qkv_bias_add_rows_kernel` (residentk/kernels.mojo) adds the
+    resident [Q|K|V] bias vector to the fused QKV output BEFORE RoPE; dispatched
+    after every QKV-producing op in ALL five 7B-relevant paths — f32 prefill,
+    f32 decode step, f32 decode graph, p3 JIT-dequant prefill, p3 per-dispatch
+    decode AND the p3 captured graph — only when the session is opened with
+    `has_qkv_bias=1` (`upload_qkv_bias` per layer). Zero buffers/launches when 0.
+  * checkpoint re-converted with the biases (blob +1,032,192 bytes = exactly
+    28 layers x (3584+512+512) f64 values).
+Post-fix re-dump: ALL 225 compared stages AGREE with transformers fp32 within
+rel tol 5e-3 (measured drift 1e-7..3e-5 — pure f32 accumulation noise).
+
+ORACLE INTEGRITY FINDING (fixed before any gate counted)
+-------------------------------------------------------------------------------
+The first ref_tokens.json was itself WRONG: Qwen2.5-7B-Instruct ships a
+generation_config.json with repetition_penalty=1.05, and `model.generate()`
+silently applies any generation-config value the call does not override — the
+reference had been produced with the penalty active. It flipped chat_1's step-6
+near-tie (raw-logit argmax 323 @ 27.202 vs 374 @ 26.163; penalized 27.202/1.05 =
+25.907 < 26.163) and disagreed with the model's OWN plain-forward argmax —
+proven bit-for-bit: generate()'s step-6 lm_head-input hidden is EXACTLY equal
+(max abs diff 0.0) to a manual cached forward's, and its RAW logits top-1 is 323
+(= the engine's pick); only the post-processor scores differ (39 tokens, all
+in-context, max 1.295 = the penalty). ref_transformers_cpu.py now pins
+repetition_penalty=1.0 (pure greedy) and the oracle was regenerated.
+
+GATES (passed BEFORE any number below was recorded)
+-------------------------------------------------------------------------------
+(a) Token identity vs the transformers fp32 pure-greedy reference, 16 tokens on
+    ALL six prompts (256-token fixture + 5 chat prompts), BOTH arms:
+        f32: fixture 16/16, chat_0 16/16, chat_1 16/16, chat_2 16/16,
+             chat_3 16/16, chat_4 16/16
+        p3:  fixture 16/16, chat_0 16/16, chat_1 16/16, chat_2 16/16,
+             chat_3 16/16, chat_4 16/16
+        GATE (a) RESULT: PASS — 12/12 cells, zero flips (packed3 quantization
+        flipped NOTHING at 16-token depth on this prompt set).
+(b) Cross-engine sanity (f32 arm vs llama.cpp F16, llama-server /completion,
+    greedy, penalty-free, 64 generated tokens, same rendered prompts):
+        prompts 0-4: MATCH — 5/5 text-identical over the full 64 tokens.
+    Self-consistency: G1 64/64 identical across two runs in every measurement
+    invocation.
+
+MEASUREMENT (frozen discipline: medians, rel-IQR, solo GPU, 500 ms nvidia-smi
+sampler alongside every timed window; engine = 20 in-process runs per cell;
+llama = llama-bench -r 5 warm; tg cells at -d 256 so llama's decode window sits
+at the SAME context depth as the engine's decode-after-256-prefill)
+-------------------------------------------------------------------------------
+Single-stream decode + prefill, Qwen2.5-7B-Instruct, A100-SXM4-40GB:
+
+| cell (tok/s)        | algenta f32 | algenta p3 | llama F16 | llama Q8_0 | p3 vs F16 | p3 vs Q8_0 |
+|---------------------|-------------|------------|-----------|------------|-----------|------------|
+| prefill 256         | 545.0       | 375.0      | 7361.7    | 4693.7     | 0.051x    | 0.080x     |
+| prefill 1024        | 478.3       | 342.5      | 10388.9   | 5086.1     | 0.033x    | 0.067x     |
+| decode gen64 @256   | 42.0        | 76.9       | 85.3      | 127.5      | 0.90x     | 0.60x      |
+| decode gen256 @256  | 41.9        | 76.2       | 85.2      | 127.4      | 0.89x     | 0.60x      |
+| decode gen64 @1024  | 40.6        | 72.4       | —         | —          | —         | —          |
+| decode gen256 @1024 | 40.5        | 71.9       | —         | —          | —         | —          |
+
+Distribution discipline (rel-IQR, outliers): engine f32 prefill256 0.049%/0,
+gen64 0.010%/0; engine p3 prefill256 IQR <= 0.06%/0 outliers across all cells;
+llama F16 pp256 0.38% (first-sample cold, median unaffected), all other cells
+<= 0.17%. SM clocks 1410 MHz sustained on every timed engine window (median),
+max temp/power within the A100's normal envelope.
+
+VRAM PEAK (sampler max, steady state):
+| config                          | peak MiB |
+|---------------------------------|----------|
+| algenta f32 arm (all cells)     | 29874    |
+| algenta p3 arm (all cells)      | 16562    |
+| llama.cpp F16 (pp1024 cell)     | 14360    |
+| llama.cpp Q8_0 (pp1024 cell)    | 8022     |
+
+WIN/LOSS VERDICT, STATED PLAINLY
+-------------------------------------------------------------------------------
+LOSSES (all of the race cells at 7B): prefill is a heavy loss — 0.033-0.080x of
+llama.cpp — the same binding constraint the Qwen3 lanes documented: the resident
+prefill runs f32 SIMT tiled GEMMs at ~5% of the A100's F16 tensor-core rate
+(llama's prefill is cuBLAS HMMA), and the pinned toolchain exposes no mma
+surface. Decode loses too: derived per-token projection traffic at 7B is ~26.1 GB
+(f32) and ~10.4 GB (p3, packed3 + scales/zeros), so the f32 arm's 42.0 tok/s runs
+at ~1.10 TB/s (71% of the A100's HBM peak) and the p3 arm's 76.9 tok/s at
+~0.80 TB/s (52%) — while llama's F16 arm moves its 14.2 GB/token at 85.3 tok/s
+(~1.21 TB/s, 78%) and Q8_0 its ~7.6 GB/token at 127.5 tok/s (~0.97 TB/s, 62%):
+llama streams every format harder than we do, on top of the format handicap.
+WINS: correctness (the lane now gates clean against transformers AND llama.cpp
+simultaneously), decode stability (gen256 within 1% of gen64 on both arms — the
+captured graph holds the rate flat as depth grows, 42.0->41.9 f32, 76.9->76.2
+p3), and VRAM: the p3 arm runs the whole 7B in 16.6 GB (29.9 GB f32).
+NOT RUN: the batched chat C=8 cell — the batched serve sessions predate the 7B
+enablement (no JIT-dequant prefill path, no bias support); porting is a separate
+work item, explicitly the optional deliverable. Recorded as not-run, not skipped
+silently.
+
+WHAT LANDED (feat/7b-lane): the attention-bias converter support + engine
+dispatches (all five paths, flag-gated), the comptime-gated layer-dump bisection
+tooling (kept, debug-only), the pure-greedy oracle discipline in
+ref_transformers_cpu.py, the /health-based llama-server readiness fix in
+gate_cross_engine.py (first run 503'd on a model still loading), run_gates_7b.py
+(the 12-cell gate runner), and MAX_CTX 640->1600 for the pp1024 cell.
+
 ADDENDUM 2026-08-23 (ROUND 3) — LEVER L7: GRAPH CO-RESIDENCY RECOVERED — the round-2
 "runtime hazard" was a compaction address bug (bytes vs elements, 4x under-offset);
 captured-graph decode now runs UNDER in-flight admission lanes. LEVER L8: admission tuning

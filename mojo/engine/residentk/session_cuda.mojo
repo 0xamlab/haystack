@@ -102,6 +102,8 @@ from residentk.kernels import (
     _pf_ropewrt_kernel,
     _pf_attn_tiled_kernel_simd,
     _splitk_merge_kernel_simd,
+    _dump7b_copy_row_kernel,
+    _qkv_bias_add_rows_kernel,
 )
 from residentk.kernels_prefill_f32 import (
     _pf_embed_rows_kernel,
@@ -142,12 +144,25 @@ from residentk.session import (
     _narrow_transposed_into,
 )
 
+alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
+"""A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling."""
+
 comptime CUDA_SESSION_BUILD: Bool = RESIDENT_GPU_BUILD and is_defined["ALGENTA_CUDA"]()
 """Whether this binary was built with `-D ALGENTA_GPU -D ALGENTA_CUDA` — the portable-kernel tier
 conjoined with the CUDA backend selector, the two-tier split `metaldispatch.session.MB_GPU_BUILD`
 mirrors on the Metal side (with `ALGENTA_METAL`). A Metal build sets `ALGENTA_GPU` but NOT
 `ALGENTA_CUDA`, so every launch in this file is removed before shader codegen there — the Metal
 lane is untouched by this module's existence."""
+
+comptime ALGENTA_7B_DUMP: Bool = is_defined["ALGENTA_7B_DUMP"]()
+"""DEBUG-ONLY layer-by-layer activation-dump hook for the 7B-lane correctness bisection
+(2026-08-23): with `-D ALGENTA_7B_DUMP`, `prefill` prints one checksum line per dumped stage
+(embed / xn1 / qkv / qrot / attn / post_attn / xn2 / act / post_mlp, per layer, LAST prompt row
+only) as `DUMP7B|<layer>|<stage>|<n>|<f64 sum>|<f64 max|x|>|<v0>|<v1>`, to be diffed against the
+identical checksums a transformers fp32 CPU forward prints (`dump_transformers_cpu.py`). Without
+the define every dump site is removed at comptime — shipped builds carry NONE of it (the copy
+kernel, `residentk.kernels._dump7b_copy_row_kernel`, is lowered only at these gated enqueue
+sites, so it costs nothing there either)."""
 
 comptime CUDA_GRAPH_N_SPLITS: Int = 32
 """The split-K attention fan-out of the graph decode arm: h_q x N_SPLITS = 128 blocks on the
@@ -220,9 +235,15 @@ struct _CudaResidentQwen3(Movable):
     var max_ctx: Int
     var eps: Float32
     var scale: Float32
+    var qk_norm: Int
+    var has_lm_head: Int
+    var skip_f32_projections: Int
+    var has_qkv_bias: Int
 
     var layers: List[_LayerGpu]
+    var qkv_biases: List[DeviceBuffer[DType.float32]]
     var embed: DeviceBuffer[DType.float32]
+    var lm_head: DeviceBuffer[DType.float32]
     var final_norm: DeviceBuffer[DType.float32]
     var cos_t: DeviceBuffer[DType.float32]
     var sin_t: DeviceBuffer[DType.float32]
@@ -268,6 +289,8 @@ struct _CudaResidentQwen3(Movable):
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+        qk_norm: Int = 1, has_lm_head: Int = 0, skip_f32_projections: Int = 0,
+        has_qkv_bias: Int = 0,
     ) raises:
         """Open the context and allocate every resident + scratch buffer. ONCE.
 
@@ -275,6 +298,24 @@ struct _CudaResidentQwen3(Movable):
         docstring for why a constructor cannot carry the gate itself. The caller must have
         validated the shape with `residentk_dims_check` first, exactly as `_ResidentQwen3`'s own
         constructor requires.
+
+        7B-lane flags (2026-08-22, all default to the pre-7B behaviour):
+        * `qk_norm` — 1 keeps the Qwen3 per-head QK-norm on every ropewrt dispatch; 0 runs the
+          llama-family branch (rotate the raw projections; `qn`/`kn` are never read — Qwen2.5
+          has NO QK-norm tensors).
+        * `has_lm_head` — 1 allocates a SEPARATE resident `lm_head` table (`vocab * d_model`)
+          and every lm_head+argmax dispatch binds it instead of the embedding table
+          (Qwen2.5-7B's untied head); 0 keeps the tied convention (embed IS lm_head).
+        * `skip_f32_projections` — 1 allocates ONLY 1-element placeholders for the four f32
+          projection matrices per layer (a 7B's f32+packed3 dual residency exceeds a 40 GB
+          device): the session then refuses `prefill`/`step`/graph decode — a composed packed3
+          session runs prefill through the JIT-dequant seam instead (`residentk.
+          kernels_packed3._p3_dequant_rows_kernel`) and decode through the packed3 chain.
+        * `has_qkv_bias` — 1 allocates one resident `[Q|K|V]` bias vector per layer
+          (`(h_q + 2*h_kv) * d_head` Float32) and every QKV-producing dispatch follows the
+          projection with a `_qkv_bias_add_rows_kernel` add before RoPE (Qwen2/Qwen2.5 carry
+          q/k/v projection biases — the 2026-08-23 7B correctness root cause); 0 keeps the
+          bias-less convention byte-identical (no buffer, no launch).
         """
         self.ctx = DeviceContext()
         self.d_model = d_model
@@ -287,9 +328,27 @@ struct _CudaResidentQwen3(Movable):
         self.max_ctx = max_ctx
         self.eps = Float32(eps)
         self.scale = Float32(scale)
+        self.qk_norm = qk_norm
+        self.has_lm_head = has_lm_head
+        self.skip_f32_projections = skip_f32_projections
+        self.has_qkv_bias = has_qkv_bias
 
         var n_qkv = (h_q + 2 * h_kv) * d_head
         var n_pairs = d_head // 2
+
+        # 7B memory fit: the f32 projections are the dominant resident (~26 GB at 7B); a
+        # p3-composed session that prefills through the JIT-dequant seam allocates 1-element
+        # placeholders here and never dispatches a kernel that reads them (guarded above in
+        # `prefill`/`step`/the graph arm, and in `upload_layer`'s narrowing skip).
+        var w_qkv_elems = n_qkv * d_model
+        var w_o_elems = d_model * h_q * d_head
+        var w_gu_elems = 2 * d_ff * d_model
+        var w_down_elems = d_model * d_ff
+        if skip_f32_projections == 1:
+            w_qkv_elems = 1
+            w_o_elems = 1
+            w_gu_elems = 1
+            w_down_elems = 1
 
         self.layers = List[_LayerGpu]()
         for _ in range(n_layers):
@@ -299,16 +358,31 @@ struct _CudaResidentQwen3(Movable):
                     self.ctx.enqueue_create_buffer[DType.float32](d_model),
                     self.ctx.enqueue_create_buffer[DType.float32](d_head),
                     self.ctx.enqueue_create_buffer[DType.float32](d_head),
-                    self.ctx.enqueue_create_buffer[DType.float32](n_qkv * d_model),
-                    self.ctx.enqueue_create_buffer[DType.float32](d_model * h_q * d_head),
-                    self.ctx.enqueue_create_buffer[DType.float32](2 * d_ff * d_model),
-                    self.ctx.enqueue_create_buffer[DType.float32](d_model * d_ff),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_qkv_elems),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_o_elems),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_gu_elems),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_down_elems),
                     self.ctx.enqueue_create_buffer[DType.float32](max_ctx * h_kv * d_head),
                     self.ctx.enqueue_create_buffer[DType.float32](max_ctx * h_kv * d_head),
                 )
             )
 
+        # 7B-lane attention bias (2026-08-23): one resident `[Q|K|V]` bias vector per layer when
+        # the session was opened with `has_qkv_bias=1` (Qwen2/Qwen2.5); a 1-element placeholder
+        # otherwise, so a bias-less session allocates nothing meaningful and never dispatches the
+        # add. Same Float32 residency as every other weight here.
+        self.qkv_biases = List[DeviceBuffer[DType.float32]]()
+        var qkv_bias_elems = n_qkv if has_qkv_bias == 1 else 1
+        for _ in range(n_layers):
+            self.qkv_biases.append(
+                self.ctx.enqueue_create_buffer[DType.float32](qkv_bias_elems)
+            )
+
         self.embed = self.ctx.enqueue_create_buffer[DType.float32](vocab * d_model)
+        var lm_elems = vocab * d_model
+        if has_lm_head != 1:
+            lm_elems = 1
+        self.lm_head = self.ctx.enqueue_create_buffer[DType.float32](lm_elems)
         self.final_norm = self.ctx.enqueue_create_buffer[DType.float32](d_model)
         self.cos_t = self.ctx.enqueue_create_buffer[DType.float32](max_ctx * n_pairs)
         self.sin_t = self.ctx.enqueue_create_buffer[DType.float32](max_ctx * n_pairs)
@@ -316,8 +390,23 @@ struct _CudaResidentQwen3(Movable):
         self.hidden = self.ctx.enqueue_create_buffer[DType.float32](d_model)
         self.qkv = self.ctx.enqueue_create_buffer[DType.float32](n_qkv)
         self.q_rot = self.ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
-        self.attn_out = self.ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
-        self.act = self.ctx.enqueue_create_buffer[DType.float32](d_ff)
+        # 7B-lane (large tier): the o_proj / down_proj GEMVs read these activations from
+        # GLOBAL memory across their full padded width `k_pack = ceil(k/12)*12` (the shared
+        # staging would exceed the per-block budget), so the `k_pack - k` tail must exist and
+        # stay zero. Allocate the padded size; producers write only `[0, k)` and the buffers
+        # are zeroed here once, so the tail stays zero for the session's life.
+        var attn_out_elems = ((h_q * d_head + 11) // 12) * 12
+        var act_elems = ((d_ff + 11) // 12) * 12
+        self.attn_out = self.ctx.enqueue_create_buffer[DType.float32](attn_out_elems)
+        self.act = self.ctx.enqueue_create_buffer[DType.float32](act_elems)
+        # Zero the `k_pack - k` tails once (producers only write `[0, k)` each step, so the
+        # tails stay zero for the session's life). Flushed by the driver's `seal()` sync.
+        with self.attn_out.map_to_host() as h_attn:
+            for i in range(h_q * d_head, attn_out_elems):
+                h_attn[i] = Float32(0.0)
+        with self.act.map_to_host() as h_act:
+            for i in range(d_ff, act_elems):
+                h_act[i] = Float32(0.0)
         self.blk_val = self.ctx.enqueue_create_buffer[DType.float32](_LM_BLOCKS)
         self.blk_idx = self.ctx.enqueue_create_buffer[DType.int32](_LM_BLOCKS)
         self.out_val = self.ctx.enqueue_create_buffer[DType.float32](1)
@@ -381,6 +470,51 @@ struct _CudaResidentQwen3(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
+    def upload_lm_head(mut self, lm: List[Float64]) raises -> Int:
+        """The SEPARATE lm_head table (7B-lane enablement, 2026-08-22): the untied
+        `lm_head.weight` of a checkpoint with `tie_word_embeddings=false` (Qwen2.5-7B),
+        narrowed into the session's own `lm_head` buffer — every lm_head+argmax dispatch
+        binds it instead of the embedding table when `has_lm_head=1`. Refused unless the
+        session was opened with `has_lm_head=1`."""
+        if self.has_lm_head != 1:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        return _narrow_into(self.lm_head, lm, self.vocab * self.d_model, 0)
+
+    def upload_qkv_bias(
+        mut self, layer: Int, q_bias: List[Float64], k_bias: List[Float64],
+        v_bias: List[Float64],
+    ) raises -> Int:
+        """One layer's q/k/v projection biases (7B-lane, 2026-08-23), narrowed and packed into
+        the layer's resident `[Q | K | V]` bias vector at offsets 0 / n_q / n_q + n_kv — the SAME
+        concatenation order the fused QKV projection writes its output in, so the
+        `_qkv_bias_add_rows_kernel` per-column add lands each bias on its own section with no
+        head arithmetic. Refused unless the session was opened with `has_qkv_bias=1`."""
+        if self.has_qkv_bias != 1:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        if layer < 0 or layer >= self.n_layers:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        ref bias = self.qkv_biases[layer]
+        var s = _narrow_into(bias, q_bias, n_q, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _narrow_into(bias, k_bias, n_kv, n_q)
+        if s != RESIDENT_OK:
+            return s
+        return _narrow_into(bias, v_bias, n_kv, n_q + n_kv)
+
+    def lm_head_w(mut self) -> _FP:
+        """The matrix pointer every lm_head+argmax dispatch binds: the SEPARATE `lm_head`
+        table when the session was opened with `has_lm_head=1` (Qwen2.5-7B's untied head),
+        the embedding table otherwise (the tied Qwen3 convention, byte-identical behaviour).
+        Returned with the origin erased to `MutAnyOrigin` (the kernel-parameter spelling) via
+        the address round-trip the graph captures use."""
+        var a = Int(self.lm_head.unsafe_ptr())
+        if self.has_lm_head != 1:
+            a = Int(self.embed.unsafe_ptr())
+        return UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=a)
+
     def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
@@ -400,15 +534,40 @@ struct _CudaResidentQwen3(Movable):
         s = _narrow_into(lw.ln2, ln2, self.d_model, 0)
         if s != RESIDENT_OK:
             return s
-        s = _narrow_into(lw.qn, qn, self.d_head, 0)
-        if s != RESIDENT_OK:
-            return s
-        s = _narrow_into(lw.kn, kn, self.d_head, 0)
-        if s != RESIDENT_OK:
-            return s
+        # 7B-lane: a no-QK-norm checkpoint (Qwen2.5) delivers NO q_norm/k_norm tensors — the
+        # driver passes empty lists, and the gains are filled with the identity 1.0 (the
+        # ropewrt kernels with `qk_norm=0` never read them; a qk_norm=1 dispatch on a
+        # norm-less model would be a caller bug the prefill/step flags rule out).
+        if len(qn) == 0:
+            with lw.qn.map_to_host() as h:
+                for i in range(self.d_head):
+                    h[i] = Float32(1.0)
+        else:
+            s = _narrow_into(lw.qn, qn, self.d_head, 0)
+            if s != RESIDENT_OK:
+                return s
+        if len(kn) == 0:
+            with lw.kn.map_to_host() as h:
+                for i in range(self.d_head):
+                    h[i] = Float32(1.0)
+        else:
+            s = _narrow_into(lw.kn, kn, self.d_head, 0)
+            if s != RESIDENT_OK:
+                return s
 
         var n_q = self.h_q * self.d_head
         var n_kv = self.h_kv * self.d_head
+        if self.skip_f32_projections == 1:
+            # The projection buffers are 1-element placeholders (7B memory fit): validate the
+            # wire lengths so a bad tensor still fails here with the honest status, narrow
+            # nothing.
+            if len(wq) != self.d_model * n_q or len(wk) != self.d_model * n_kv \
+               or len(wv) != self.d_model * n_kv or len(wo) != n_q * self.d_model \
+               or len(wgate) != self.d_model * self.d_ff \
+               or len(wup) != self.d_model * self.d_ff \
+               or len(wdown) != self.d_ff * self.d_model:
+                return RESIDENT_ERR_UPLOAD_LENGTH
+            return RESIDENT_OK
         s = _narrow_transposed_into(lw.w_qkv, wq, self.d_model, n_q, 0)
         if s != RESIDENT_OK:
             return s
@@ -457,6 +616,10 @@ struct _CudaResidentQwen3(Movable):
                 return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
             if n_prompt > self.max_ctx:
                 return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            if self.skip_f32_projections == 1:
+                # 7B memory fit: the f32 projections are not resident; a composed packed3
+                # session prefills through the JIT-dequant seam, never this path.
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
             for i in range(n_prompt):
                 if prompt_ids[i] < 0 or prompt_ids[i] >= self.vocab:
                     return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
@@ -489,6 +652,32 @@ struct _CudaResidentQwen3(Movable):
                 )
                 issued += 1
 
+                # ── 7B-dump hook: embed rows (LAST tile's final row) ──
+                @parameter
+                if ALGENTA_7B_DUMP:
+                    if pos + m == n_prompt:
+                        var dg_n = self.d_model
+                        var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                        var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                        self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                            dg_stg.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            Int64(m - 1), Int64(dg_n),
+                            grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                        )
+                        self.ctx.enqueue_copy(dg_hb, dg_stg)
+                        self.ctx.synchronize()
+                        var dp = dg_hb.unsafe_ptr()
+                        var dg_sum = Float64(0.0)
+                        var dg_max = Float64(0.0)
+                        for di in range(dg_n):
+                            var dv = Float64(dp[di])
+                            dg_sum += dv
+                            if abs(dv) > dg_max:
+                                dg_max = abs(dv)
+                        print("DUMP7B|-1|embed|" + String(dg_n) + "|" + String(dg_sum) + "|"
+                              + String(dg_max) + "|" + String(Float64(dp[0])) + "|"
+                              + String(Float64(dp[1])))
+
                 for layer in range(self.n_layers):
                     ref lw = self.layers[layer]
 
@@ -499,6 +688,31 @@ struct _CudaResidentQwen3(Movable):
                         Int64(self.d_model), self.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
+                    # ── 7B-dump hook: xn1 (post input_layernorm) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.d_model
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|xn1|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN) — the v2
                     # register-blocked / double-buffered kernel (kernels_prefill_f32_v2)
                     self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
@@ -508,6 +722,42 @@ struct _CudaResidentQwen3(Movable):
                         grid_dim=_ceil_div(m, _G2_BM) * _ceil_div((self.h_q + 2 * self.h_kv) * self.d_head, _G2_BN),
                         block_dim=_G2_NTHREADS,
                     )
+                    # 2b ── 7B-lane attention bias: q/k/v biases onto the QKV output BEFORE RoPE
+                    # (dispatched only when the session carries biases; a Qwen3 session never
+                    # reaches this launch).
+                    if self.has_qkv_bias == 1:
+                        self.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                            self.pf_qkv.unsafe_ptr(), self.qkv_biases[layer].unsafe_ptr(),
+                            Int64(m), Int64((self.h_q + 2 * self.h_kv) * self.d_head),
+                            grid_dim=_ceil_div(m * (self.h_q + 2 * self.h_kv) * self.d_head, _TG),
+                            block_dim=_TG,
+                        )
+                        issued += 1
+                    # ── 7B-dump hook: qkv (fused projection output) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = (self.h_q + 2 * self.h_kv) * self.d_head
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_qkv.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|qkv|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 3 ── q_norm + k_norm + RoPE + the in-place KV-cache write, every row
                     self.ctx.enqueue_function[_pf_ropewrt_kernel](
                         self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
@@ -515,9 +765,34 @@ struct _CudaResidentQwen3(Movable):
                         self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                         Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
                         self.eps, Int64(m),
-                        Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                        Int64(self.qk_norm),  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                         grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
                     )
+                    # ── 7B-dump hook: qrot (rope'd Q heads of the final row) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.h_q * self.d_head
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|qrot|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 4 ── causal attention — the flash-style M-parallel kernel under the
                     # L-H3 flag, the tiled kernel otherwise (byte-unmodified)
                     @parameter
@@ -559,6 +834,31 @@ struct _CudaResidentQwen3(Movable):
                             self.scale, Int64(m),
                             grid_dim=self.h_q * m, block_dim=self.d_head,
                         )
+                    # ── 7B-dump hook: attn (attention output, pre o_proj) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.h_q * self.d_head
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|attn|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 5 ── o_proj ACCUMULATED straight into the residual stream (v2 kernel)
                     self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
                         self.pf_hidden.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
@@ -567,6 +867,31 @@ struct _CudaResidentQwen3(Movable):
                         grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
                         block_dim=_G2_NTHREADS,
                     )
+                    # ── 7B-dump hook: post_attn (residual after o_proj) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.d_model
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|post_attn|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 6 ── rmsnorm(post_attention_layernorm) over every row
                     self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
                         self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
@@ -574,6 +899,31 @@ struct _CudaResidentQwen3(Movable):
                         Int64(self.d_model), self.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
+                    # ── 7B-dump hook: xn2 (post post_attention_layernorm) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.d_model
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|xn2|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 7 ── gate/up + SwiGLU, one tiled GEMM pair (v2 kernel)
                     self.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
                         self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
@@ -582,6 +932,31 @@ struct _CudaResidentQwen3(Movable):
                         grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
                         block_dim=_G2_NTHREADS,
                     )
+                    # ── 7B-dump hook: act (post SwiGLU, pre down_proj) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.d_ff
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|act|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     # 8 ── down_proj ACCUMULATED straight into the residual stream (v2 kernel)
                     self.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
                         self.pf_hidden.unsafe_ptr(), self.pf_act.unsafe_ptr(),
@@ -590,15 +965,41 @@ struct _CudaResidentQwen3(Movable):
                         grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
                         block_dim=_G2_NTHREADS,
                     )
+                    # ── 7B-dump hook: post_mlp (residual after down_proj) ──
+                    @parameter
+                    if ALGENTA_7B_DUMP:
+                        if pos + m == n_prompt:
+                            var dg_n = self.d_model
+                            var dg_stg = self.ctx.enqueue_create_buffer[DType.float32](dg_n)
+                            var dg_hb = self.ctx.enqueue_create_host_buffer[DType.float32](dg_n)
+                            self.ctx.enqueue_function[_dump7b_copy_row_kernel](
+                                dg_stg.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                                Int64(m - 1), Int64(dg_n),
+                                grid_dim=_ceil_div(dg_n, _TG), block_dim=_TG,
+                            )
+                            self.ctx.enqueue_copy(dg_hb, dg_stg)
+                            self.ctx.synchronize()
+                            var dp = dg_hb.unsafe_ptr()
+                            var dg_sum = Float64(0.0)
+                            var dg_max = Float64(0.0)
+                            for di in range(dg_n):
+                                var dv = Float64(dp[di])
+                                dg_sum += dv
+                                if abs(dv) > dg_max:
+                                    dg_max = abs(dv)
+                            print("DUMP7B|" + String(layer) + "|post_mlp|" + String(dg_n) + "|"
+                                  + String(dg_sum) + "|" + String(dg_max) + "|"
+                                  + String(Float64(dp[0])) + "|" + String(Float64(dp[1])))
                     issued += 8
                 pos += m
 
             # ── final rmsnorm + lm_head + per-threadgroup argmax on the LAST row only ──
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+            var lm_w = self.lm_head_w()
             self.ctx.enqueue_function[_lmhead_argmax_kernel](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(),
                 self.pf_hidden.unsafe_ptr() + (last_m - 1) * self.d_model,
-                self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
+                self.final_norm.unsafe_ptr(), lm_w,
                 Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
@@ -633,6 +1034,9 @@ struct _CudaResidentQwen3(Movable):
                 return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
             if token_id < 0 or token_id >= self.vocab:
                 return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+            if self.skip_f32_projections == 1:
+                # 7B memory fit: decode runs through the composed packed3 session's chain.
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
 
             var n_q = self.h_q * self.d_head
             var n_kv = self.h_kv * self.d_head
@@ -657,13 +1061,23 @@ struct _CudaResidentQwen3(Movable):
                     lw.w_qkv.unsafe_ptr(), Int64(self.d_model), Int64(n_qkv), self.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
+                # 1b ── 7B-lane attention bias: q/k/v biases onto the QKV output BEFORE RoPE
+                # (dispatched only when the session carries biases; a Qwen3 session never
+                # reaches this launch).
+                if self.has_qkv_bias == 1:
+                    self.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                        self.qkv.unsafe_ptr(), self.qkv_biases[layer].unsafe_ptr(),
+                        Int64(1), Int64(n_qkv),
+                        grid_dim=_ceil_div(n_qkv, _TG), block_dim=_TG,
+                    )
+                    issued += 1
                 # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write
                 self.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                     self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
                     self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                     Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head), self.eps,
-                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    Int64(self.qk_norm),  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                     grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
                 )
                 # 3 ── attention over every cached key, online softmax
@@ -696,9 +1110,10 @@ struct _CudaResidentQwen3(Movable):
 
             # ── final rmsnorm + lm_head + per-threadgroup argmax, then the reduce ──
             var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+            var lm_w = self.lm_head_w()
             self.ctx.enqueue_function[_lmhead_argmax_kernel](
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
-                self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
+                self.final_norm.unsafe_ptr(), lm_w,
                 Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
@@ -775,6 +1190,7 @@ struct _CudaResidentQwen3(Movable):
         var w_downs = List[Int]()
         var cks = List[Int]()
         var cvs = List[Int]()
+        var qkv_bias_as = List[Int]()
         for layer in range(self.n_layers):
             ref lw = self.layers[layer]
             ln1s.append(Int(lw.ln1.unsafe_ptr()))
@@ -787,6 +1203,7 @@ struct _CudaResidentQwen3(Movable):
             w_downs.append(Int(lw.w_down.unsafe_ptr()))
             cks.append(Int(lw.ck.unsafe_ptr()))
             cvs.append(Int(lw.cv.unsafe_ptr()))
+            qkv_bias_as.append(Int(self.qkv_biases[layer].unsafe_ptr()))
 
         var n_layers_c = self.n_layers
         var d_model_i = Int64(self.d_model)
@@ -802,6 +1219,11 @@ struct _CudaResidentQwen3(Movable):
         var eps_c = self.eps
         var scale_c = self.scale
         var n_iters_i = Int64(_ceil_div(self.vocab, _LM_BLOCKS * _SUBS))
+        # 7B-lane: the lm_head the captured tail binds (separate table vs tied embed) and the
+        # qk_norm flag the ropewrt twin reads — both hoisted like every other capture scalar.
+        var lm_w_a = Int(self.lm_head_w())
+        var qk_norm_c = Int64(self.qk_norm)
+        var has_qkv_bias_c = self.has_qkv_bias
 
         def build(mut builder: DeviceGraphBuilder) raises {imm}:
             # ── rebuild the mutable MutAnyOrigin pointers from the hoisted addresses ──
@@ -819,6 +1241,7 @@ struct _CudaResidentQwen3(Movable):
             var cos_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=cos_a)
             var sin_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=sin_a)
             var state_p = UnsafePointer[Int64, origin=MutAnyOrigin](unsafe_from_address=state_a)
+            var lm_w_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=lm_w_a)
 
             var rec = builder.recording_context()
 
@@ -853,13 +1276,22 @@ struct _CudaResidentQwen3(Movable):
                     wqkv_p, d_model_i, n_qkv_i, eps_c,
                     grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
                 )
+                # 1b ── 7B-lane attention bias (captured only when the session carries biases)
+                if has_qkv_bias_c == 1:
+                    var qkv_bias_p = UnsafePointer[Float32, origin=MutAnyOrigin](
+                        unsafe_from_address=qkv_bias_as[layer]
+                    )
+                    rec.enqueue_function[_qkv_bias_add_rows_kernel](
+                        qkv_p, qkv_bias_p, Int64(1), n_qkv_i,
+                        grid_dim=_ceil_div(Int(n_qkv_i), _TG), block_dim=_TG,
+                    )
                 # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write (pos: state[1])
                 rec.enqueue_function[_qk_rope_write_kernel_g](
                     q_rot_p, ck_p, cv_p,
                     qkv_p, qn_p, kn_p,
                     cos_p, sin_p,
                     state_p, h_q_i, h_kv_i, d_head_i, eps_c,
-                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    qk_norm_c,  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                     grid_dim=Int(h_q_i) + Int(h_kv_i), block_dim=Int(d_head_i),
                 )
                 # 3 ── attention over every cached key (n_keys: state[2]) — the SPLIT-K
@@ -905,7 +1337,7 @@ struct _CudaResidentQwen3(Movable):
             # ── final rmsnorm + lm_head + per-threadgroup argmax, then the reduce ──
             rec.enqueue_function[_lmhead_argmax_kernel](
                 blk_val_p, blk_idx_p, hidden_p,
-                final_norm_p, embed_p,
+                final_norm_p, lm_w_p,
                 d_model_i, vocab_i, eps_c, n_iters_i,
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )
@@ -944,6 +1376,9 @@ struct _CudaResidentQwen3(Movable):
             if pos < 0 or pos >= self.max_ctx:
                 return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
             if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+            if self.skip_f32_projections == 1:
+                # 7B memory fit: the f32 graph arm needs the f32 projections resident.
                 return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
 
             if not self.decode_graph_built:

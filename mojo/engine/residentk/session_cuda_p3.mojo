@@ -174,8 +174,27 @@ from residentk.kernels_packed3 import (
     _P3_STAGE,
     _norm_gemv_kernel_p3,
     _pack_f32_to_packed3,
+    _p3_pack_from_f64,
+    _p3_dequant_rows_kernel,
     _p3_words_per_row,
     _p3_blocks_per_row,
+)
+from residentk.kernels import (
+    _pf_rmsnorm_rows_kernel,
+    _pf_ropewrt_kernel,
+    _pf_attn_tiled_kernel_simd,
+    _qkv_bias_add_rows_kernel,
+)
+from residentk.kernels_prefill_f32 import (
+    _pf_embed_rows_kernel,
+)
+from residentk.kernels_prefill_f32_v2 import (
+    _G2_BM,
+    _G2_BN,
+    _G2_NTHREADS,
+    _pf_gemm_assign_kernel_v2,
+    _pf_gemm_accum_kernel_v2,
+    _pf_gemm_swiglu_kernel_v2,
 )
 from residentk.session import (
     _LM_BLOCKS,
@@ -184,6 +203,7 @@ from residentk.session import (
 )
 from residentk.session_cuda import (
     CUDA_SESSION_BUILD,
+    CUDA_PREFILL_TILE,
     _CudaResidentQwen3,
 )
 
@@ -217,19 +237,9 @@ def _packed3_gemv_accum_kernel(
     var words_per_row = k_pack // _P3_QUANTS_PER_WORD
     var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
 
-    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
 
-    # ── stage x, zero-filling the padded tail (the activation-side half of the tail contract) ──
-    var s = tid
-    while s < k_pack:
-        if s < k:
-            xs[s] = x[s]
-        else:
-            xs[s] = Float32(0.0)
-        s += _TG
-    barrier()
 
     # ── one SIMD group per output row, packed3 chunk loop ──
     var lane = tid % _LANES
@@ -243,9 +253,9 @@ def _packed3_gemv_accum_kernel(
         while t < k_pack:
             var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
             var b = bitcast[DType.uint8, 16](v)
-            var xv0 = xs.load[width=4](t)
-            var xv1 = xs.load[width=4](t + 4)
-            var xv2 = xs.load[width=4](t + 8)
+            var xv0 = x.load[width=4](t)
+            var xv1 = x.load[width=4](t + 4)
+            var xv2 = x.load[width=4](t + 8)
 
             var blk = t >> 5
             var s0 = wscale[sbase + blk]
@@ -318,19 +328,9 @@ def _packed3_gemv_accum_kernel_v2(
     var words_per_row = k_pack // _P3_QUANTS_PER_WORD
     var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
 
-    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
 
-    # ── stage x, zero-filling the padded tail (the activation-side half of the tail contract) ──
-    var s = tid
-    while s < k_pack:
-        if s < k:
-            xs[s] = x[s]
-        else:
-            xs[s] = Float32(0.0)
-        s += _TG
-    barrier()
 
     # ── one SIMD group per output row, v2 chunk loop ──
     var lane = tid % _LANES
@@ -347,9 +347,9 @@ def _packed3_gemv_accum_kernel_v2(
         while t < k_pack:
             var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
-            var xv0 = xs.load[width=4](t)
-            var xv1 = xs.load[width=4](t + 4)
-            var xv2 = xs.load[width=4](t + 8)
+            var xv0 = x.load[width=4](t)
+            var xv1 = x.load[width=4](t + 4)
+            var xv2 = x.load[width=4](t + 8)
 
             var blk = t >> 5
             var s0 = wscale[sbase + blk]
@@ -410,19 +410,9 @@ def _packed3_gemv_accum_kernel_v3(
     var words_per_row = k_pack // _P3_QUANTS_PER_WORD
     var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
 
-    var xs = stack_allocation[_P3_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
 
-    # ── stage x, zero-filling the padded tail (the activation-side half of the tail contract) ──
-    var s = tid
-    while s < k_pack:
-        if s < k:
-            xs[s] = x[s]
-        else:
-            xs[s] = Float32(0.0)
-        s += _TG
-    barrier()
 
     # ── one SIMD group per output row, v3 chunk loop ──
     var lane = tid % _LANES
@@ -441,9 +431,9 @@ def _packed3_gemv_accum_kernel_v3(
         while t < k_pack:
             var v = wp.load[width=4](wbase + t // _P3_QUANTS_PER_WORD)
             var w = bitcast[DType.int32, 4](v)
-            var xv0 = xs.load[width=4](t)
-            var xv1 = xs.load[width=4](t + 4)
-            var xv2 = xs.load[width=4](t + 8)
+            var xv0 = x.load[width=4](t)
+            var xv1 = x.load[width=4](t + 4)
+            var xv2 = x.load[width=4](t + 8)
 
             var blk = t >> 5
             var s0 = wscale[sbase + blk]
@@ -1626,12 +1616,11 @@ def _pack_transposed_f64_into_p3(
     """
     if len(src) != k_in * n_out:
         return RESIDENT_ERR_UPLOAD_LENGTH
-    var sp = src.unsafe_ptr()
-    var w = List[Float32](capacity=n_out * k_in)
-    for j in range(n_out):
-        for i in range(k_in):
-            w.append(Float32(sp[i * n_out + j]))
-    var p = _pack_f32_to_packed3(w, k_in, n_out)
+    # 7B-lane (enablement #5): pack STREAMING from the Float64 wire tensor — the transient
+    # host footprint is one `k_in`-wide row buffer, not a whole-matrix Float32 copy. A 7B
+    # gate/up matrix is 18944 x 3584 (67.9 M elements); the pre-streaming form held that
+    # whole matrix as a second Float32 list on top of the Float64 source.
+    var p = _p3_pack_from_f64(src, k_in, n_out, True)
     var pp = p.packed.unsafe_ptr()
     with dst_packed.map_to_host() as h:
         var off = row_off * p.words_per_row
@@ -1657,14 +1646,13 @@ def _pack_f64_into_p3(
     src: List[Float64], k: Int, n: Int,
 ) raises -> Int:
     """The no-transpose twin: `src` is ALREADY `[n, k]` row-major Float64 (the tied
-    embedding/lm_head table's checkpoint layout), narrowed to Float32, packed, uploaded."""
+    embedding/lm_head table's checkpoint layout), narrowed to Float32, packed, uploaded.
+    7B-lane (enablement #5): packs STREAMING — peak transient host memory is one `k`-wide
+    row buffer, so the 7B lm_head (152064 x 3584 = 545 M elements) never materializes a
+    whole-table Float32 copy."""
     if len(src) != n * k:
         return RESIDENT_ERR_UPLOAD_LENGTH
-    var sp = src.unsafe_ptr()
-    var w = List[Float32](capacity=n * k)
-    for i in range(n * k):
-        w.append(Float32(sp[i]))
-    var p = _pack_f32_to_packed3(w, k, n)
+    var p = _p3_pack_from_f64(src, k, n, False)
     var pp = p.packed.unsafe_ptr()
     with dst_packed.map_to_host() as h:
         for i in range(n * p.words_per_row):
@@ -1723,18 +1711,32 @@ struct _CudaResidentQwen3P3(Movable):
     var p3_lm: DeviceBuffer[DType.float32]
     var p3_lm_s: DeviceBuffer[DType.float32]
     var p3_lm_z: DeviceBuffer[DType.float32]
+    # JIT-dequant prefill staging (7B memory fit; allocated only with skip_f32_projections=1)
+    var stg_qkv: DeviceBuffer[DType.float32]
+    var stg_o: DeviceBuffer[DType.float32]
+    var stg_gu: DeviceBuffer[DType.float32]
+    var stg_down: DeviceBuffer[DType.float32]
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+        qk_norm: Int = 1, has_lm_head: Int = 0, skip_f32_projections: Int = 0,
+        has_qkv_bias: Int = 0,
     ) raises:
         """Open the inner f32 session (context + every f32 buffer, ONCE) and allocate the
         packed3 decode twins beside it. Called only from inside a `@parameter if
         CUDA_SESSION_BUILD` branch — the constructor cannot carry the gate itself, the same
         structural protection the inner session's constructor documents. The caller must have
-        validated the shape with `residentk_dims_check` first (via `_resident_preflight`)."""
+        validated the shape with `residentk_dims_check` first (via `_resident_preflight`).
+
+        The 7B-lane flags (`qk_norm`, `has_lm_head`, `skip_f32_projections`, `has_qkv_bias`)
+        forward verbatim to the inner f32 session's constructor; with `skip_f32_projections=1`
+        this struct additionally allocates the four JIT-dequant staging buffers `prefill`
+        dequantizes each layer's packed3 matrices into (the inner session's f32 projections
+        stay 1-element placeholders — a 7B's dual residency exceeds a 40 GB device)."""
         self.f32 = _CudaResidentQwen3(
-            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale,
+            qk_norm, has_lm_head, skip_f32_projections, has_qkv_bias,
         )
 
         var n_q = h_q * d_head
@@ -1783,6 +1785,17 @@ struct _CudaResidentQwen3P3(Movable):
             vocab * _p3_blocks_per_row(d_model)
         )
 
+        if skip_f32_projections == 1:
+            self.stg_qkv = self.f32.ctx.enqueue_create_buffer[DType.float32](n_qkv * d_model)
+            self.stg_o = self.f32.ctx.enqueue_create_buffer[DType.float32](d_model * n_q)
+            self.stg_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](2 * d_ff * d_model)
+            self.stg_down = self.f32.ctx.enqueue_create_buffer[DType.float32](d_model * d_ff)
+        else:
+            self.stg_qkv = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+            self.stg_o = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+            self.stg_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+            self.stg_down = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+
     def device_name(self) raises -> String:
         return self.f32.device_name()
 
@@ -1796,15 +1809,22 @@ struct _CudaResidentQwen3P3(Movable):
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
-        """The tied embedding/lm_head table, the final norm gain, and the RoPE tables.
+        """The embedding table, the final norm gain, and the RoPE tables.
 
-        TWO uploads happen: the inner f32 session's own `upload_globals` (embed stays f32 —
-        the decode embed gather and the f32 prefill's embed/lm_head read it), then the packed3
-        twin of the SAME tied table as lm_head weights for `step_p3` (no transpose — the
-        checkpoint's `[vocab, d_model]` is already the packed layout's `[n, k]`)."""
+        TWO uploads happen for a TIED checkpoint (Qwen3): the inner f32 session's own
+        `upload_globals` (embed stays f32 — the decode embed gather and the f32 prefill's
+        embed read it), then the packed3 twin of the SAME tied table as lm_head weights for
+        `step_p3` (no transpose — the checkpoint's `[vocab, d_model]` is already the packed
+        layout's `[n, k]`).
+
+        For an UNTIED checkpoint (`has_lm_head=1`, Qwen2.5-7B) the embed table is NOT the
+        lm_head — this method uploads embed as embed only, and the caller follows with
+        `upload_lm_head`, which fills BOTH the inner f32 lm_head table and its packed3 twin."""
         var s = self.f32.upload_globals(embed, final_norm, cos_t, sin_t, n_pos)
         if s != RESIDENT_OK:
             return s
+        if self.f32.has_lm_head == 1:
+            return RESIDENT_OK
         s = _pack_f64_into_p3(
             self.p3_lm, self.p3_lm_s, self.p3_lm_z,
             embed, self.f32.d_model, self.f32.vocab,
@@ -1812,6 +1832,33 @@ struct _CudaResidentQwen3P3(Movable):
         if s != RESIDENT_OK:
             return s
         return RESIDENT_OK
+
+    def upload_lm_head(mut self, lm: List[Float64]) raises -> Int:
+        """The SEPARATE lm_head table (7B-lane enablement, 2026-08-22): the untied
+        `lm_head.weight`, uploaded TWICE — narrowed into the inner f32 session's `lm_head`
+        buffer (the f32 arm's lm_head+argmax binds it) and packed into this session's
+        `p3_lm` twin (the packed3 decode arm's `_lmhead_argmax_kernel_p3` binds it). Refused
+        unless the session was opened with `has_lm_head=1`."""
+        if self.f32.has_lm_head != 1:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        var s = self.f32.upload_lm_head(lm)
+        if s != RESIDENT_OK:
+            return s
+        return _pack_f64_into_p3(
+            self.p3_lm, self.p3_lm_s, self.p3_lm_z,
+            lm, self.f32.d_model, self.f32.vocab,
+        )
+
+    def upload_qkv_bias(
+        mut self, layer: Int, q_bias: List[Float64], k_bias: List[Float64],
+        v_bias: List[Float64],
+    ) raises -> Int:
+        """One layer's q/k/v projection biases (7B-lane, 2026-08-23) — delegated to the inner
+        f32 session's `upload_qkv_bias` (the bias vector is small, stays f32 there, and is read
+        by the SAME `_qkv_bias_add_rows_kernel` dispatch both the JIT-dequant prefill and the
+        packed3 decode chain insert after their QKV projection). Refused unless the session was
+        opened with `has_qkv_bias=1`."""
+        return self.f32.upload_qkv_bias(layer, q_bias, k_bias, v_bias)
 
     def upload_layer(
         mut self, layer: Int,
@@ -1888,14 +1935,201 @@ struct _CudaResidentQwen3P3(Movable):
         return self.f32.seal()
 
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
-        """The whole prompt, DELEGATED WHOLESALE to the inner f32 session — the chunked
-        batched m_rows prefill through `residentk.kernels_prefill_f32_v2`'s tiled GEMMs, ending
-        in the f32 lm_head + argmax that yields the FIRST generated token. This is the
-        decode = packed3 / prefill = f32 split stated in the module docstring: the
-        compute-bound m_rows > 1 pass keeps f32 weights and f32 GEMMs; a packed prefill GEMM
-        is future work. `pos` bookkeeping is the caller's, exactly as the f32 session's own
-        `prefill` documents: every following `step_p3` starts at `pos = len(prompt_ids)`."""
-        return self.f32.prefill(prompt_ids)
+        """The whole prompt.
+
+        DEFAULT (f32 projections resident): DELEGATED WHOLESALE to the inner f32 session —
+        the chunked batched m_rows prefill through `residentk.kernels_prefill_f32_v2`'s tiled
+        GEMMs reading the resident f32 weights, ending in the f32 lm_head + argmax.
+
+        7B MEMORY-FIT (skip_f32_projections=1): the f32 projections are NOT resident (a 7B's
+        f32+packed3 dual residency exceeds a 40 GB device), so this runs the SAME chunked f32
+        prefill plan with each layer's four projection matrices JIT-dequantized from their
+        packed3 twins into the staging buffers immediately before that layer's GEMMs
+        (`residentk.kernels_packed3._p3_dequant_rows_kernel`, one dequant dispatch per role —
+        the kernel's docstring states the seam). Every arithmetic op the GEMMs run is
+        therefore the packed3 decode arm's dequantized arithmetic; the tail is the packed3
+        lm_head + argmax (not the f32 twin), so a 7B prefill+decode run streams packed3
+        end-to-end. `pos` bookkeeping is the caller's, exactly as the f32 session's own
+        `prefill` documents."""
+        if self.f32.skip_f32_projections != 1:
+            return self.f32.prefill(prompt_ids)
+
+        @parameter
+        if not CUDA_SESSION_BUILD:
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            var n_prompt = len(prompt_ids)
+            if n_prompt < 1:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+            if n_prompt > self.f32.max_ctx:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            for i in range(n_prompt):
+                if prompt_ids[i] < 0 or prompt_ids[i] >= self.f32.vocab:
+                    return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            var n_q = self.f32.h_q * self.f32.d_head
+            var n_kv = self.f32.h_kv * self.f32.d_head
+            var n_qkv = n_q + 2 * n_kv
+            var issued = 0
+            var pos = 0
+            var last_m = 0
+            while pos < n_prompt:
+                var m = CUDA_PREFILL_TILE
+                if n_prompt - pos < m:
+                    m = n_prompt - pos
+                last_m = m
+
+                # ── this chunk's token ids, uploaded once ──
+                with self.f32.pf_tokens.map_to_host() as h:
+                    for i in range(m):
+                        h[i] = Int32(prompt_ids[pos + i])
+                self.f32.ctx.synchronize()
+
+                # ── the embedding rows, gathered on-device from the resident f32 table ──
+                self.f32.ctx.enqueue_function[_pf_embed_rows_kernel](
+                    self.f32.pf_hidden.unsafe_ptr(), self.f32.embed.unsafe_ptr(),
+                    self.f32.pf_tokens.unsafe_ptr(),
+                    Int64(self.f32.d_model), Int64(m),
+                    grid_dim=_ceil_div(self.f32.d_model, _TG) * m, block_dim=_TG,
+                )
+                issued += 1
+
+                for layer in range(self.f32.n_layers):
+                    ref lw = self.f32.layers[layer]
+                    ref lp = self.layers_p3[layer]
+
+                    # 0 ── JIT-dequant this layer's four packed3 matrices into staging ──
+                    self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                        self.stg_qkv.unsafe_ptr(), lp.p3_qkv.unsafe_ptr(),
+                        lp.p3_qkv_s.unsafe_ptr(), lp.p3_qkv_z.unsafe_ptr(),
+                        Int64(self.f32.d_model), Int64(n_qkv),
+                        grid_dim=n_qkv, block_dim=_TG,
+                    )
+                    self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                        self.stg_o.unsafe_ptr(), lp.p3_o.unsafe_ptr(),
+                        lp.p3_o_s.unsafe_ptr(), lp.p3_o_z.unsafe_ptr(),
+                        Int64(n_q), Int64(self.f32.d_model),
+                        grid_dim=self.f32.d_model, block_dim=_TG,
+                    )
+                    self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                        self.stg_gu.unsafe_ptr(), lp.p3_gu.unsafe_ptr(),
+                        lp.p3_gu_s.unsafe_ptr(), lp.p3_gu_z.unsafe_ptr(),
+                        Int64(self.f32.d_model), Int64(2 * self.f32.d_ff),
+                        grid_dim=2 * self.f32.d_ff, block_dim=_TG,
+                    )
+                    self.f32.ctx.enqueue_function[_p3_dequant_rows_kernel](
+                        self.stg_down.unsafe_ptr(), lp.p3_down.unsafe_ptr(),
+                        lp.p3_down_s.unsafe_ptr(), lp.p3_down_z.unsafe_ptr(),
+                        Int64(self.f32.d_ff), Int64(self.f32.d_model),
+                        grid_dim=self.f32.d_model, block_dim=_TG,
+                    )
+                    issued += 4
+
+                    # 1 ── rmsnorm(input_layernorm) over every row
+                    self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                        lw.ln1.unsafe_ptr(),
+                        Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 2 ── fused Q/K/V projection, one tiled GEMM (ASSIGN) — staged weights
+                    self.f32.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                        self.f32.pf_qkv.unsafe_ptr(), self.f32.pf_xn.unsafe_ptr(),
+                        self.stg_qkv.unsafe_ptr(),
+                        Int64(m), Int64(self.f32.d_model), Int64(n_qkv),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(n_qkv, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 2b ── 7B-lane attention bias: q/k/v biases onto the QKV output BEFORE RoPE
+                    # (dispatched only when the session carries biases; a Qwen3 session never
+                    # reaches this launch).
+                    if self.f32.has_qkv_bias == 1:
+                        self.f32.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                            self.f32.pf_qkv.unsafe_ptr(),
+                            self.f32.qkv_biases[layer].unsafe_ptr(),
+                            Int64(m), Int64(n_qkv),
+                            grid_dim=_ceil_div(m * n_qkv, _TG), block_dim=_TG,
+                        )
+                        issued += 1
+                    # 3 ── q_norm + k_norm + RoPE + the in-place KV-cache write, every row
+                    self.f32.ctx.enqueue_function[_pf_ropewrt_kernel](
+                        self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                        self.f32.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                        self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                        Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                        Int64(self.f32.d_head), self.f32.eps, Int64(m),
+                        Int64(self.f32.qk_norm),  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
+                        grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
+                        block_dim=self.f32.d_head,
+                    )
+                    # 4 ── causal attention, one threadgroup per (row, query head)
+                    self.f32.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
+                        self.f32.pf_attn.unsafe_ptr(), self.f32.pf_q_rot.unsafe_ptr(),
+                        lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                        Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                        Int64(self.f32.d_head), self.f32.scale, Int64(m),
+                        grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
+                    )
+                    # 5 ── o_proj ACCUMULATED into the residual stream — staged weights
+                    self.f32.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                        self.f32.pf_hidden.unsafe_ptr(), self.f32.pf_attn.unsafe_ptr(),
+                        self.stg_o.unsafe_ptr(),
+                        Int64(m), Int64(n_q), Int64(self.f32.d_model),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.f32.d_model, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 6 ── rmsnorm(post_attention_layernorm) over every row
+                    self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                        lw.ln2.unsafe_ptr(),
+                        Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 7 ── gate/up + SwiGLU, one tiled GEMM pair — staged weights
+                    self.f32.ctx.enqueue_function[_pf_gemm_swiglu_kernel_v2](
+                        self.f32.pf_act.unsafe_ptr(), self.f32.pf_xn.unsafe_ptr(),
+                        self.stg_gu.unsafe_ptr(),
+                        Int64(m), Int64(self.f32.d_model), Int64(self.f32.d_ff),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.f32.d_ff, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 8 ── down_proj ACCUMULATED into the residual stream — staged weights
+                    self.f32.ctx.enqueue_function[_pf_gemm_accum_kernel_v2](
+                        self.f32.pf_hidden.unsafe_ptr(), self.f32.pf_act.unsafe_ptr(),
+                        self.stg_down.unsafe_ptr(),
+                        Int64(m), Int64(self.f32.d_ff), Int64(self.f32.d_model),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.f32.d_model, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    issued += 8
+                pos += m
+
+            # ── final rmsnorm + packed3 lm_head + per-threadgroup argmax on the LAST row ──
+            var n_iters = _ceil_div(self.f32.vocab, _LM_BLOCKS * _SUBS)
+            self.f32.ctx.enqueue_function[_lmhead_argmax_kernel_p3](
+                self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                self.f32.pf_hidden.unsafe_ptr() + (last_m - 1) * self.f32.d_model,
+                self.f32.final_norm.unsafe_ptr(),
+                self.p3_lm.unsafe_ptr(), self.p3_lm_s.unsafe_ptr(), self.p3_lm_z.unsafe_ptr(),
+                Int64(self.f32.d_model), Int64(self.f32.vocab), self.f32.eps, Int64(n_iters),
+                grid_dim=_LM_BLOCKS, block_dim=_TG,
+            )
+            self.f32.ctx.enqueue_function[_argmax_reduce_kernel](
+                self.f32.out_val.unsafe_ptr(), self.f32.out_idx.unsafe_ptr(),
+                self.f32.blk_val.unsafe_ptr(), self.f32.blk_idx.unsafe_ptr(),
+                Int64(_LM_BLOCKS),
+                grid_dim=1, block_dim=_TG,
+            )
+            issued += 2
+
+            self.f32.ctx.enqueue_copy(self.f32.host_val, self.f32.out_val)
+            self.f32.ctx.enqueue_copy(self.f32.host_idx, self.f32.out_idx)
+            self.f32.ctx.synchronize()
+            var tok = Int(self.f32.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.f32.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.f32.vocab:
+                return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(tok, lg, issued, RESIDENT_OK)
 
     def step_p3(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE decode token through the packed3 chain — the f32 session's `step` dispatch plan
@@ -1948,6 +2182,17 @@ struct _CudaResidentQwen3P3(Movable):
                     Int64(self.f32.d_model), Int64(n_qkv), self.f32.eps,
                     grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
                 )
+                # 1b ── 7B-lane attention bias: q/k/v biases onto the QKV output BEFORE RoPE
+                # (dispatched only when the session carries biases; a Qwen3 session never
+                # reaches this launch).
+                if self.f32.has_qkv_bias == 1:
+                    self.f32.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                        self.f32.qkv.unsafe_ptr(),
+                        self.f32.qkv_biases[layer].unsafe_ptr(),
+                        Int64(1), Int64(n_qkv),
+                        grid_dim=_ceil_div(n_qkv, _TG), block_dim=_TG,
+                    )
+                    issued += 1
                 # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write (unchanged)
                 self.f32.ctx.enqueue_function[_qk_rope_write_kernel](
                     self.f32.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
@@ -1955,7 +2200,7 @@ struct _CudaResidentQwen3P3(Movable):
                     self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
                     Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
                     Int64(self.f32.d_head), self.f32.eps,
-                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    Int64(self.f32.qk_norm),  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                     grid_dim=self.f32.h_q + self.f32.h_kv, block_dim=self.f32.d_head,
                 )
                 # 3 ── attention over every cached key, online softmax (unchanged, f32 KV)

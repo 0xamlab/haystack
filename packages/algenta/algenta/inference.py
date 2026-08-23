@@ -226,8 +226,12 @@ def _validate_architecture(
     # Absent means tied (the transformers default). The engine half of this gate (a dedicated
     # lm_head buffer pair in the session) landed in the same change; the manifest carries
     # `tie_word_embeddings` so the kernel side knows which branch it is running.
-    if config.get("attention_bias") not in (False, None):
-        problems.append("the kernels expect no attention bias (attention_bias=false)")
+    #
+    # Attention bias (7B-lane, 2026-08-23): q/k/v projection biases are now CONVERTED and applied
+    # (Qwen2/Qwen2.5 convention), so they are no longer refused here. The branch is detected from
+    # the SAFETENSORS tensors (`_detect_attention_bias`), never from this config key -- Qwen2.5's
+    # config.json omits `attention_bias` entirely while the model defaults it TRUE, which is
+    # exactly how the pre-bias-support converter silently dropped the biases.
     if problems:
         raise UnsupportedArchitectureError(
             f"unsupported model architecture: {checkpoint_dir} is not a supported model. "
@@ -464,6 +468,39 @@ def _detect_has_qk_norm(checkpoint_dir: Path, index: dict[str, Any] | None) -> b
     return _QK_NORM_PROBE_TENSOR in header
 
 
+_ATTENTION_BIAS_PROBE_TENSOR = "model.layers.0.self_attn.q_proj.bias"
+
+
+def _detect_attention_bias(checkpoint_dir: Path, index: dict[str, Any] | None) -> bool:
+    """7B-lane support (2026-08-23): whether the checkpoint carries q/k/v projection BIAS tensors,
+    detected by the presence of layer 0's `self_attn.q_proj.bias` in the safetensors -- the same
+    tensors-are-the-truth convention `_detect_has_qk_norm` uses, for the same reason: Qwen2.5's
+    config.json OMITS `attention_bias` entirely while the model defaults it TRUE (its q/k/v
+    projections carry biases), so a config-key check silently let a bias-carrying checkpoint
+    through unconverted -- the 7B lane's layer-0 qkv divergence root cause. Qwen3 has no biases;
+    Qwen2/Qwen2.5 do. The engine gets the answer as the manifest's `attention_bias`."""
+    if index is None:
+        single = checkpoint_dir / "model.safetensors"
+        if not single.is_file():
+            raise InferenceError(
+                "checkpoint_not_found",
+                f"{checkpoint_dir} has no model.safetensors and no model.safetensors.index.json.",
+            )
+        header, _ = _read_safetensors_header(single)
+        return _ATTENTION_BIAS_PROBE_TENSOR in header
+    weight_map = index.get("weight_map") or {}
+    if _ATTENTION_BIAS_PROBE_TENSOR not in weight_map:
+        return False
+    shard_path = checkpoint_dir / weight_map[_ATTENTION_BIAS_PROBE_TENSOR]
+    if not shard_path.is_file():
+        raise InferenceError(
+            "checkpoint_not_found",
+            f"{shard_path} (shard for {_ATTENTION_BIAS_PROBE_TENSOR!r}) is missing.",
+        )
+    header, _ = _read_safetensors_header(shard_path)
+    return _ATTENTION_BIAS_PROBE_TENSOR in header
+
+
 def _validate_prompt_token_ids(prompt_token_ids: Any) -> None:
     """The prompt-id contract every converter shares: a non-empty list of non-negative ints."""
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
@@ -478,7 +515,8 @@ def _validate_prompt_token_ids(prompt_token_ids: Any) -> None:
 
 
 def _required_hf_tensor_names(
-    n_layers: int, tied_embeddings: bool, has_qk_norm: bool
+    n_layers: int, tied_embeddings: bool, has_qk_norm: bool,
+    attention_bias: bool = False,
 ) -> list[str]:
     """The HF tensor names a supported-family checkpoint must deliver to the manifest, in the same
     convention both converters (safetensors and GGUF) agree on."""
@@ -507,6 +545,14 @@ def _required_hf_tensor_names(
             "mlp.up_proj.weight",
             "mlp.down_proj.weight",
         ]
+        if attention_bias:
+            # Qwen2/Qwen2.5 convention (7B-lane, 2026-08-23): the q/k/v projections carry BIAS
+            # vectors the engine adds to the fused QKV output before RoPE. 1-D, never transposed.
+            suffixes += [
+                "self_attn.q_proj.bias",
+                "self_attn.k_proj.bias",
+                "self_attn.v_proj.bias",
+            ]
         required += [prefix + suffix for suffix in suffixes]
     return required
 
@@ -520,6 +566,7 @@ def _write_converted_checkpoint(
     has_qk_norm: bool,
     tied_embeddings: bool,
     rope_freq_factors: list[float] | None = None,
+    attention_bias: bool = False,
 ) -> Path:
     """The shared converter tail: STREAM the per-tensor Float64 values (already widened and,
     where the kernels want it, pre-transposed) into `weights.blob` one tensor at a time, and
@@ -582,9 +629,12 @@ def _write_converted_checkpoint(
         # has_qk_norm=1 applies the Qwen3 per-head QK RMSNorm before RoPE, 0 rotates the raw
         # projections (llama-family, whose checkpoints carry no q_norm/k_norm tensors);
         # tie_word_embeddings=1 reuses the embedding table as lm_head, 0 binds the separately
-        # converted lm_head.weight. Ints (0/1) because the Mojo side reads them with json_get_int.
+        # converted lm_head.weight; attention_bias=1 adds the converted q/k/v projection biases
+        # to the fused QKV output before RoPE (Qwen2/Qwen2.5), 0 leaves the pre-bias convention.
+        # Ints (0/1) because the Mojo side reads them with json_get_int.
         "has_qk_norm": 1 if has_qk_norm else 0,
         "tie_word_embeddings": 1 if tied_embeddings else 0,
+        "attention_bias": 1 if attention_bias else 0,
     }
     # End-of-sequence id(s) the engine should stop on, carried from the checkpoint's own config
     # instead of a hardcoded constant. Absent on some configs -- only written when present, so an
@@ -1311,7 +1361,10 @@ def prepare_model_checkpoint(
 
     tied_embeddings = config.get("tie_word_embeddings", True) is True
     has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
-    required = _required_hf_tensor_names(config["num_hidden_layers"], tied_embeddings, has_qk_norm)
+    attention_bias = _detect_attention_bias(checkpoint_dir, index)
+    required = _required_hf_tensor_names(
+        config["num_hidden_layers"], tied_embeddings, has_qk_norm, attention_bias
+    )
 
     resolved_out_dir = (
         Path(out_dir) if out_dir is not None else Path(tempfile.mkdtemp(prefix="algenta-model-ckpt-"))
@@ -1356,6 +1409,7 @@ def prepare_model_checkpoint(
         prompt_token_ids=prompt_token_ids,
         has_qk_norm=has_qk_norm,
         tied_embeddings=tied_embeddings,
+        attention_bias=attention_bias,
     )
 
 

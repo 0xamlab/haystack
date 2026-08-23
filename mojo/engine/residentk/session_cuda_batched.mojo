@@ -178,9 +178,13 @@ struct _CudaResidentQwen3Batched(Movable):
     var eps: Float32
     var scale: Float32
     var kv_stride_elems: Int
+    var qk_norm: Int
+    var has_lm_head: Int
+    var skip_f32_projections: Int
 
     var layers: List[_LayerGpu]
     var embed: DeviceBuffer[DType.float32]
+    var lm_head: DeviceBuffer[DType.float32]
     var final_norm: DeviceBuffer[DType.float32]
     var cos_t: DeviceBuffer[DType.float32]
     var sin_t: DeviceBuffer[DType.float32]
@@ -228,14 +232,18 @@ struct _CudaResidentQwen3Batched(Movable):
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+        qk_norm: Int = 1, has_lm_head: Int = 0, skip_f32_projections: Int = 0,
     ) raises:
         """Open the context and allocate every resident + scratch buffer. ONCE.
 
         Called only from inside a `@parameter if CUDA_SESSION_BUILD` branch — see the module
         docstring for why a constructor cannot carry the gate itself. The caller must have
         validated the shape with `residentk_dims_check` first, exactly as `_CudaResidentQwen3`'s
-        own constructor requires.
-        """
+        own constructor requires. The 7B-lane flags (`qk_norm`, `has_lm_head`,
+        `skip_f32_projections`) mirror `_CudaResidentQwen3.__init__`'s; with
+        `skip_f32_projections=1` the four f32 projection matrices per layer become 1-element
+        placeholders (a 7B's dual residency exceeds a 40 GB device) and the driver prefills
+        through the JIT-dequant seam."""
         self.ctx = DeviceContext()
         self.d_model = d_model
         self.h_q = h_q
@@ -248,11 +256,26 @@ struct _CudaResidentQwen3Batched(Movable):
         self.eps = Float32(eps)
         self.scale = Float32(scale)
         self.kv_stride_elems = max_ctx * h_kv * d_head
+        self.qk_norm = qk_norm
+        self.has_lm_head = has_lm_head
+        self.skip_f32_projections = skip_f32_projections
 
         var n_qkv = (h_q + 2 * h_kv) * d_head
         var n_pairs = d_head // 2
         var B = _CUDA_BATCH_DECODE_MAX_SEQS
         var kv_elems = B * max_ctx * h_kv * d_head
+
+        # 7B memory fit: the f32 projections are the dominant resident; a p3-composed serve
+        # session that prefills through the JIT-dequant seam allocates 1-element placeholders.
+        var w_qkv_elems = n_qkv * d_model
+        var w_o_elems = d_model * h_q * d_head
+        var w_gu_elems = 2 * d_ff * d_model
+        var w_down_elems = d_model * d_ff
+        if skip_f32_projections == 1:
+            w_qkv_elems = 1
+            w_o_elems = 1
+            w_gu_elems = 1
+            w_down_elems = 1
 
         self.layers = List[_LayerGpu]()
         for _ in range(n_layers):
@@ -262,16 +285,20 @@ struct _CudaResidentQwen3Batched(Movable):
                     self.ctx.enqueue_create_buffer[DType.float32](d_model),
                     self.ctx.enqueue_create_buffer[DType.float32](d_head),
                     self.ctx.enqueue_create_buffer[DType.float32](d_head),
-                    self.ctx.enqueue_create_buffer[DType.float32](n_qkv * d_model),
-                    self.ctx.enqueue_create_buffer[DType.float32](d_model * h_q * d_head),
-                    self.ctx.enqueue_create_buffer[DType.float32](2 * d_ff * d_model),
-                    self.ctx.enqueue_create_buffer[DType.float32](d_model * d_ff),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_qkv_elems),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_o_elems),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_gu_elems),
+                    self.ctx.enqueue_create_buffer[DType.float32](w_down_elems),
                     self.ctx.enqueue_create_buffer[DType.float32](kv_elems),
                     self.ctx.enqueue_create_buffer[DType.float32](kv_elems),
                 )
             )
 
         self.embed = self.ctx.enqueue_create_buffer[DType.float32](vocab * d_model)
+        var lm_elems = vocab * d_model
+        if has_lm_head != 1:
+            lm_elems = 1
+        self.lm_head = self.ctx.enqueue_create_buffer[DType.float32](lm_elems)
         self.final_norm = self.ctx.enqueue_create_buffer[DType.float32](d_model)
         self.cos_t = self.ctx.enqueue_create_buffer[DType.float32](max_ctx * n_pairs)
         self.sin_t = self.ctx.enqueue_create_buffer[DType.float32](max_ctx * n_pairs)
@@ -356,6 +383,23 @@ struct _CudaResidentQwen3Batched(Movable):
                 h[i] = Float32(sin_t[i])
         return RESIDENT_OK
 
+    def upload_lm_head(mut self, lm: List[Float64]) raises -> Int:
+        """The SEPARATE lm_head table (7B-lane) — narrowed into the session's own `lm_head`
+        buffer, bound by every lm_head+argmax dispatch when `has_lm_head=1`. Refused unless the
+        session was opened with `has_lm_head=1`."""
+        if self.has_lm_head != 1:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        return _narrow_into(self.lm_head, lm, self.vocab * self.d_model, 0)
+
+    def lm_head_w(mut self) -> _FP:
+        """The matrix pointer every lm_head+argmax dispatch binds: the SEPARATE `lm_head`
+        table when `has_lm_head=1`, the embedding table otherwise (tied convention). Origin
+        erased to `MutAnyOrigin` via the address round-trip."""
+        var a = Int(self.lm_head.unsafe_ptr())
+        if self.has_lm_head != 1:
+            a = Int(self.embed.unsafe_ptr())
+        return UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=a)
+
     def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
@@ -374,15 +418,36 @@ struct _CudaResidentQwen3Batched(Movable):
         s = _narrow_into(lw.ln2, ln2, self.d_model, 0)
         if s != RESIDENT_OK:
             return s
-        s = _narrow_into(lw.qn, qn, self.d_head, 0)
-        if s != RESIDENT_OK:
-            return s
-        s = _narrow_into(lw.kn, kn, self.d_head, 0)
-        if s != RESIDENT_OK:
-            return s
+        # 7B-lane: a no-QK-norm checkpoint passes empty qn/kn — fill the identity 1.0 gain
+        # (the ropewrt kernels with `qk_norm=0` never read them).
+        if len(qn) == 0:
+            with lw.qn.map_to_host() as h:
+                for i in range(self.d_head):
+                    h[i] = Float32(1.0)
+        else:
+            s = _narrow_into(lw.qn, qn, self.d_head, 0)
+            if s != RESIDENT_OK:
+                return s
+        if len(kn) == 0:
+            with lw.kn.map_to_host() as h:
+                for i in range(self.d_head):
+                    h[i] = Float32(1.0)
+        else:
+            s = _narrow_into(lw.kn, kn, self.d_head, 0)
+            if s != RESIDENT_OK:
+                return s
 
         var n_q = self.h_q * self.d_head
         var n_kv = self.h_kv * self.d_head
+        if self.skip_f32_projections == 1:
+            # 1-element placeholders (7B memory fit): validate wire lengths, narrow nothing.
+            if len(wq) != self.d_model * n_q or len(wk) != self.d_model * n_kv \
+               or len(wv) != self.d_model * n_kv or len(wo) != n_q * self.d_model \
+               or len(wgate) != self.d_model * self.d_ff \
+               or len(wup) != self.d_model * self.d_ff \
+               or len(wdown) != self.d_ff * self.d_model:
+                return RESIDENT_ERR_UPLOAD_LENGTH
+            return RESIDENT_OK
         s = _narrow_transposed_into(lw.w_qkv, wq, self.d_model, n_q, 0)
         if s != RESIDENT_OK:
             return s
@@ -506,7 +571,7 @@ struct _CudaResidentQwen3Batched(Movable):
                             self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
                             Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
                             self.eps, Int64(m),
-                            Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                            Int64(self.qk_norm),  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                             grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
                         )
                         # 4 ── causal attention over slot b's cache
@@ -551,10 +616,11 @@ struct _CudaResidentQwen3Batched(Movable):
                     pos += m
 
                 # ── final rmsnorm + lm_head + argmax on this sequence's LAST row ──
+                var lm_w = self.lm_head_w()
                 self.ctx.enqueue_function[_lmhead_argmax_kernel](
                     self.pf_blk_val.unsafe_ptr(), self.pf_blk_idx.unsafe_ptr(),
                     self.pf_hidden.unsafe_ptr() + (last_m - 1) * self.d_model,
-                    self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
+                    self.final_norm.unsafe_ptr(), lm_w,
                     Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
                     grid_dim=_LM_BLOCKS, block_dim=_TG,
                 )
@@ -670,7 +736,7 @@ struct _CudaResidentQwen3Batched(Movable):
                     self.b_poss.unsafe_ptr(), kv_stride,
                     Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
                     self.eps,
-                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    Int64(self.qk_norm),  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                     grid_dim=(self.h_q + self.h_kv) * B, block_dim=self.d_head,
                 )
                 # 4 ── batched attention PARTIAL: per-seq flash-decoding over [0, nkeys[b])

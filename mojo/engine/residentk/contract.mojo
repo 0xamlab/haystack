@@ -129,7 +129,17 @@ comptime _RESIDENT_STAGE_6144_BUILT: Bool = is_defined["ALGENTA_STAGE_6144"]()
 for `-D ALGENTA_GPU` (and for the same reason: the pinned compiler has no value-carrying defines,
 only presence flags, so each supported staging tier is its own named build)."""
 
-comptime RESIDENT_MAX_D_MODEL: Int = 6144 if _RESIDENT_STAGE_6144_BUILT else 3072
+comptime _RESIDENT_STAGE_18944_BUILT: Bool = is_defined["ALGENTA_STAGE_18944"]()
+"""True when this binary was compiled with `-D ALGENTA_STAGE_18944` -- the Qwen2.5-7B staging tier
+(7B-lane enablement, 2026-08-22): `stage_needed` = max(3584, 28*128, 18944) = d_ff = 18944, so the
+shared staging is 18944 Float32 = 74.0 KiB per block, inside the A100's 163 KiB opt-in shared
+budget per block (164 KiB per SM minus the runtime's own carve-out). Same presence-flag shape as
+the 6144 tier; one binary per tier by design."""
+
+comptime RESIDENT_MAX_D_MODEL: Int = (
+    18944 if _RESIDENT_STAGE_18944_BUILT
+    else (6144 if _RESIDENT_STAGE_6144_BUILT else 3072)
+)
 """The decode kernels' shared-memory STAGING CEILING -- the single value every `_STAGE` allocation
 in `residentk/kernels.mojo` sizes to. It is NOT an arbitrary constant: it must equal the LARGEST
 vector any fused decode kernel stages for the target model, which is determined BY SIMULATION from
@@ -156,9 +166,11 @@ the size is fixed per pipeline-state object, so per-model staging is a build-tim
 
 THE SPECIALIZATION KNOB (beat-llama.cpp parity cheap wins, 2026-08-09): a default build compiles
 the 3072 tier (Qwen3-0.6B-Base-optimal); building with `-D ALGENTA_STAGE_6144` compiles the 6144
-tier instead (Qwen3-1.7B: `stage_needed` = max(2048, 2048, 6144) = d_ff = 6144). A deployment that
-serves both model sizes ships one worker binary per tier (the SDK GPU-worker build passes the flag
-through `scripts/build_mojo_binary.sh`'s `MOJO_BUILD_EXTRA_DEFINES`)."""
+tier instead (Qwen3-1.7B: `stage_needed` = max(2048, 2048, 6144) = d_ff = 6144), and
+`-D ALGENTA_STAGE_18944` compiles the 18944 tier (Qwen2.5-7B: `stage_needed` =
+max(3584, 3584, 18944) = d_ff = 18944). A deployment that serves multiple model sizes ships one
+worker binary per tier (the SDK GPU-worker build passes the flag through
+`scripts/build_mojo_binary.sh`'s `MOJO_BUILD_EXTRA_DEFINES`)."""
 
 comptime RESIDENT_MAX_HEAD_DIM: Int = 256
 """Largest attention head dimension. The RoPE and SDPA kernels run ONE threadgroup per head with one

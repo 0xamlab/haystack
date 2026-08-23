@@ -155,6 +155,7 @@ to the object+link recipe — `--emit object` then clang against the MAX runtime
 
 from std.origin import MutAnyOrigin
 from std.gpu import block_idx, thread_idx
+from std.sys import is_defined
 from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
 from max.gpu.memory import AddressSpace
 from std.gpu.primitives.warp import sum as _warp_sum
@@ -183,11 +184,23 @@ comptime _P3_BLOCK: Int = 32
 """Quants sharing one scale+zero pair — the Q8_0-style block size the layout math prices at
 8/32 B/w for the pair."""
 
-comptime _P3_STAGE: Int = RESIDENT_MAX_D_MODEL
-"""Compile-time size of `_norm_gemv_kernel_p3`'s shared staging array — `residentk.kernels`'
-`_STAGE` verbatim (this constant IS `RESIDENT_MAX_D_MODEL`; the ceiling exists because of
-this allocation). `k_pack <= k + 11 <= 3072` for every contract-legal `k`, so the staged
-vector plus its zero-filled tail always fits."""
+comptime P3_STAGE_LARGE: Bool = is_defined["ALGENTA_STAGE_18944"]()
+"""True for the 7B-lane build. Its `d_ff = 18944` would need a 74 KiB shared staging, but
+this backend's per-block shared budget tops out just under 48 KiB (measured: a 12000-float
+static-shared kernel JITs, a 16384-float one fails with CUDA_ERROR_INVALID_PTX). So on this
+tier the wide-`k` o_proj/down_proj GEMVs read the activation from GLOBAL memory instead of
+staging it (the `_packed3_gemv_accum_kernel*` bodies branch on this flag), and the shared
+staging the remaining kernels use is CAPPED at `_P3_STAGE_CAP`."""
+
+comptime _P3_STAGE_CAP: Int = 6144
+"""Shared-staging ceiling (floats) for the large tier — fits the sub-48 KiB per-block budget
+with headroom for the reduction scratch, and covers every non-accum staged vector on the 7B
+shape (those stage `d_model` = 3584 -> k_pack 3588)."""
+
+comptime _P3_STAGE: Int = _P3_STAGE_CAP if P3_STAGE_LARGE else RESIDENT_MAX_D_MODEL
+"""Compile-time size of `_norm_gemv_kernel_p3`'s shared staging array. On the default /
+6144 tiers it IS `RESIDENT_MAX_D_MODEL` (the staged vector plus its zero-filled tail always
+fits); on the 7B tier it is capped (see `P3_STAGE_LARGE`)."""
 
 
 def _packed3_gemv_kernel(
@@ -898,8 +911,8 @@ struct _P3Packed:
         for r in range(n):
             var base = r * k
             var blk_base = r * self.nblocks
-            # ── per-block scale+zero over the REAL elements; a block that holds only
-            #    padding slots gets min/max = 0/0 (scale 1.0, zero 0.0) ──
+            # -- per-block scale+zero over the REAL elements; a block that holds only
+            #    padding slots gets min/max = 0/0 (scale 1.0, zero 0.0) --
             for blk in range(self.nblocks):
                 var lo = blk * _P3_BLOCK
                 var hi = lo + _P3_BLOCK
@@ -923,13 +936,89 @@ struct _P3Packed:
                 var zero = -mn * (Float32(1.0) / scale)
                 self.scales.append(scale)
                 self.zeros.append(zero)
-            # ── pack the row's quant stream word by word (global word index -> block) ──
+            # -- pack the row's quant stream word by word (global word index -> block) --
             for wd in range(self.words_per_row):
                 var e0 = wd * _P3_QUANTS_PER_WORD
                 var q0 = _p3_quant_elem(weights, base, k, blk_base, self.scales, self.zeros, e0)
                 var q1 = _p3_quant_elem(weights, base, k, blk_base, self.scales, self.zeros, e0 + 1)
                 var q2 = _p3_quant_elem(weights, base, k, blk_base, self.scales, self.zeros, e0 + 2)
                 self.packed.append(_p3_pack_word(q0, q1, q2))
+
+    def __init__(out self, src: List[Float64], k: Int, n: Int, transposed: Bool):
+        """STREAMING pack straight from a Float64 wire tensor into the packed3 layout (7B-lane
+        enablement, 2026-08-22): the SAME quantization convention as the Float32 `__init__`
+        above (bit-identical quants), but the peak transient host memory is ONE `k`-wide
+        Float32 row buffer instead of a whole-matrix Float32 materialization — the 7B gate/up
+        matrices are 18944 x 3584 (67.9 M elements), and the whole-matrix form held that as a
+        second Float32 list on top of the Float64 source.
+
+        Two source layouts, selected by `transposed`:
+          * `transposed=False` — `src` is ALREADY `[n, k]` row-major Float64 (the embedding /
+            lm_head table's blob layout): element (r, e) = `src[r * k + e]`;
+          * `transposed=True` — `src` is the blob's `[k, n]` pre-transpose order for a GEMM
+            weight (the converter writes `[in, out]` row-major for the projection roles), so
+            the packed row `r` (the matrix's output row) reads element (r, e) =
+            `src[e * n + r]` — the SAME transpose the Float32 pack's callers perform.
+
+        Each source value is narrowed Float64 -> Float32 EXACTLY once, before the block
+        min/max and the quant, so the quants are bit-identical to packing the narrowed
+        Float32 matrix the earlier sessions uploaded."""
+        self.k_pack = _p3_k_pack(k)
+        self.words_per_row = self.k_pack // _P3_QUANTS_PER_WORD
+        self.nblocks = (self.k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+        self.packed = List[Float32](capacity=n * self.words_per_row)
+        self.scales = List[Float32](capacity=n * self.nblocks)
+        self.zeros = List[Float32](capacity=n * self.nblocks)
+        var row = List[Float32]()
+        for _ in range(k):
+            row.append(Float32(0.0))
+        var sp = src.unsafe_ptr()
+        for r in range(n):
+            if transposed:
+                for e in range(k):
+                    row[e] = Float32(sp[e * n + r])
+            else:
+                var rbase = r * k
+                for e in range(k):
+                    row[e] = Float32(sp[rbase + e])
+            var blk_base = r * self.nblocks
+            # -- per-block scale+zero over the REAL elements of this row --
+            for blk in range(self.nblocks):
+                var lo = blk * _P3_BLOCK
+                var hi = lo + _P3_BLOCK
+                if hi > k:
+                    hi = k
+                var mn = Float32(0.0)
+                var mx = Float32(0.0)
+                if lo < k:
+                    mn = row[lo]
+                    mx = row[lo]
+                    for e in range(lo + 1, hi):
+                        var w = row[e]
+                        if w < mn:
+                            mn = w
+                        if w > mx:
+                            mx = w
+                var rng = mx - mn
+                var scale = Float32(1.0)
+                if rng > Float32(0.0):
+                    scale = rng / Float32(255.0)
+                var zero = -mn * (Float32(1.0) / scale)
+                self.scales.append(scale)
+                self.zeros.append(zero)
+            # -- pack the row's quant stream word by word --
+            for wd in range(self.words_per_row):
+                var e0 = wd * _P3_QUANTS_PER_WORD
+                var q0 = _p3_quant_elem(row, 0, k, blk_base, self.scales, self.zeros, e0)
+                var q1 = _p3_quant_elem(row, 0, k, blk_base, self.scales, self.zeros, e0 + 1)
+                var q2 = _p3_quant_elem(row, 0, k, blk_base, self.scales, self.zeros, e0 + 2)
+                self.packed.append(_p3_pack_word(q0, q1, q2))
+
+
+def _p3_pack_from_f64(src: List[Float64], k: Int, n: Int, transposed: Bool) -> _P3Packed:
+    """Host-side streaming pack entry point — the `_P3Packed` Float64 constructor (its
+    docstring states the layout and the bit-identity claim)."""
+    return _P3Packed(src, k, n, transposed)
 
 
 def _p3_quant_elem(
@@ -989,3 +1078,96 @@ def _p3_dequant_host(
             var ze2 = zeros[sbase + ((e0 + 2) >> 5)]
             out.append((Float32(Int32(b2)) - ze2) * sc2)
     return out^
+
+
+# ── device dequant: packed3 -> Float32, the JIT-prefill seam ──────────────────
+
+
+def _p3_dequant_rows_kernel(
+    dst: _FP, wp: _FP, ws: _FP, wz: _FP, k_i64: Int64, n_i64: Int64,
+):
+    """`dst[n, k] = dequant(packed3 W)` — reconstruct ONE matrix's Float32 values from its
+    packed3 twin, row-major, writing ONLY the real `k` columns per row (the padding quants
+    are never emitted). 7B-lane enablement (2026-08-22): the JIT-dequant prefill seam — a
+    7B model's f32 + packed3 dual residency exceeds a 40 GB device, so the 7B sessions
+    resident ONLY the packed3 projections and dequantize each layer's four matrices into a
+    staging buffer at prefill time; the unchanged f32 prefill GEMMs then read the staging.
+
+    Per-element value is `(Float32(Int32(q)) - zero_b) * scale_b` — the SAME expression and
+    dtype the packed3 GEMV family evaluates on the fly (`_p3_dequant_host`'s device twin),
+    so a JIT-dequant prefill computes exactly the arithmetic the packed3 decode path does,
+    modulo GEMM accumulation order.
+
+    Launch: `grid_dim = n`, `block_dim = _TG`. Each block owns one output row; threads walk
+    the row's 12-element chunks grid-stride (one `load[width=4]` per chunk — the packed word
+    offset `chunk*4` is 4-word aligned by `_p3_k_pack`'s construction), the GEMV family's
+    unpack indices verbatim."""
+    var k = Int(k_i64)
+    var n = Int(n_i64)
+    var row = Int(block_idx.x)
+    if row >= n:
+        return
+    var k_pack = ((k + _P3_CHUNK - 1) // _P3_CHUNK) * _P3_CHUNK
+    var words_per_row = k_pack // _P3_QUANTS_PER_WORD
+    var nblocks = (k_pack + _P3_BLOCK - 1) // _P3_BLOCK
+    var n_chunks = k_pack // _P3_CHUNK
+
+    var wbase = row * words_per_row
+    var sbase = row * nblocks
+    var dbase = row * k
+    var tid = Int(thread_idx.x)
+
+    var c = tid
+    while c < n_chunks:
+        var e0 = c * _P3_CHUNK
+        var v = wp.load[width=4](wbase + e0 // _P3_QUANTS_PER_WORD)
+        var b = bitcast[DType.uint8, 16](v)
+        # The GEMV family's 12 quant byte indices inside the 16-byte word, verbatim.
+        var q0 = Float32(Int32(b[0]))
+        var q1 = Float32(Int32(b[1]))
+        var q2 = Float32(Int32(b[2]))
+        var q3 = Float32(Int32(b[4]))
+        var q4 = Float32(Int32(b[5]))
+        var q5 = Float32(Int32(b[6]))
+        var q6 = Float32(Int32(b[8]))
+        var q7 = Float32(Int32(b[9]))
+        var q8 = Float32(Int32(b[10]))
+        var q9 = Float32(Int32(b[12]))
+        var q10 = Float32(Int32(b[13]))
+        var q11 = Float32(Int32(b[14]))
+        # Per-element block-32 scale/zero (a chunk may straddle one block boundary, the
+        # same crossing the GEMV loops classify).
+        var blk0 = e0 >> 5
+        var s0 = ws[sbase + blk0]
+        var z0 = wz[sbase + blk0]
+        var blk1 = (e0 + 4) >> 5
+        var s1 = ws[sbase + blk1]
+        var z1 = wz[sbase + blk1]
+        var blk2 = (e0 + 8) >> 5
+        var s2 = ws[sbase + blk2]
+        var z2 = wz[sbase + blk2]
+        if e0 + 0 < k:
+            dst[dbase + e0 + 0] = (q0 - z0) * s0
+        if e0 + 1 < k:
+            dst[dbase + e0 + 1] = (q1 - z0) * s0
+        if e0 + 2 < k:
+            dst[dbase + e0 + 2] = (q2 - z0) * s0
+        if e0 + 3 < k:
+            dst[dbase + e0 + 3] = (q3 - z0) * s0
+        if e0 + 4 < k:
+            dst[dbase + e0 + 4] = (q4 - z1) * s1
+        if e0 + 5 < k:
+            dst[dbase + e0 + 5] = (q5 - z1) * s1
+        if e0 + 6 < k:
+            dst[dbase + e0 + 6] = (q6 - z1) * s1
+        if e0 + 7 < k:
+            dst[dbase + e0 + 7] = (q7 - z1) * s1
+        if e0 + 8 < k:
+            dst[dbase + e0 + 8] = (q8 - z2) * s2
+        if e0 + 9 < k:
+            dst[dbase + e0 + 9] = (q9 - z2) * s2
+        if e0 + 10 < k:
+            dst[dbase + e0 + 10] = (q10 - z2) * s2
+        if e0 + 11 < k:
+            dst[dbase + e0 + 11] = (q11 - z2) * s2
+        c += _TG

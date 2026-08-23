@@ -140,6 +140,7 @@ from residentk.kernels import (
     _SUBS,
     _argmax_reduce_kernel,
     _splitk_merge_kernel_simd,
+    _qkv_bias_add_rows_kernel,
 )
 from residentk.kernels_packed3 import (
     _norm_gemv_kernel_p3,
@@ -222,15 +223,19 @@ struct _CudaResidentQwen3P3Graph(Movable):
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+        qk_norm: Int = 1, has_lm_head: Int = 0, skip_f32_projections: Int = 0,
+        has_qkv_bias: Int = 0,
     ) raises:
         """Open the packed3 session (the ONLY `DeviceContext` in this struct — the inner f32
         session's) and allocate the graph-arm additions ONCE. Called only from inside a
         `@parameter if CUDA_SESSION_BUILD` branch — the constructor cannot carry the gate
         itself, the same structural protection the packed3 session's constructor documents.
         The caller must have validated the shape with `residentk_dims_check` first (via
-        `_resident_preflight`)."""
+        `_resident_preflight`). The 7B-lane flags forward verbatim to the composed packed3
+        session (and through it the inner f32 session)."""
         self.p3 = _CudaResidentQwen3P3(
-            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale,
+            qk_norm, has_lm_head, skip_f32_projections, has_qkv_bias,
         )
         self.step_state = self.p3.f32.ctx.enqueue_create_buffer[DType.int64](3)
         self.host_state = self.p3.f32.ctx.enqueue_create_host_buffer[DType.int64](3)
@@ -293,12 +298,29 @@ struct _CudaResidentQwen3P3Graph(Movable):
             layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wgate, wup, wdown
         )
 
+    def upload_lm_head(mut self, lm: List[Float64]) raises -> Int:
+        """The SEPARATE lm_head table (7B-lane) — delegated to the composed packed3 session,
+        which fills both the inner f32 lm_head and its packed3 twin `p3_lm`."""
+        return self.p3.upload_lm_head(lm)
+
+    def upload_qkv_bias(
+        mut self, layer: Int, q_bias: List[Float64], k_bias: List[Float64],
+        v_bias: List[Float64],
+    ) raises -> Int:
+        """One layer's q/k/v projection biases (7B-lane) — delegated to the composed packed3
+        session (and through it the inner f32 session), whose `_qkv_bias_add_rows_kernel`
+        dispatches — the JIT-dequant prefill, the per-dispatch packed3 chain AND the captured
+        graph — all read the same resident vector."""
+        return self.p3.upload_qkv_bias(layer, q_bias, k_bias, v_bias)
+
     def seal(mut self) raises -> Int:
         return self.p3.seal()
 
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
-        """The whole prompt, delegated through the packed3 session to its inner f32 session —
-        the decode = packed3 / prefill = f32 split, unchanged by the graph arm's existence."""
+        """The whole prompt, delegated to the composed packed3 session — the inner f32
+        prefill when the f32 projections are resident, or the JIT-dequant prefill (7B memory
+        fit) when they are not; the decode = packed3 / prefill split is unchanged by the
+        graph arm's existence."""
         return self.p3.prefill(prompt_ids)
 
     def step_p3(mut self, token_id: Int, pos: Int) raises -> _StepOut:
@@ -371,6 +393,7 @@ struct _CudaResidentQwen3P3Graph(Movable):
         var p3_down_ps = List[Int]()
         var p3_down_ss = List[Int]()
         var p3_down_zs = List[Int]()
+        var qkv_bias_as = List[Int]()
         for layer in range(self.p3.f32.n_layers):
             ref lw = self.p3.f32.layers[layer]
             ref lp = self.p3.layers_p3[layer]
@@ -392,6 +415,7 @@ struct _CudaResidentQwen3P3Graph(Movable):
             p3_down_ps.append(Int(lp.p3_down.unsafe_ptr()))
             p3_down_ss.append(Int(lp.p3_down_s.unsafe_ptr()))
             p3_down_zs.append(Int(lp.p3_down_z.unsafe_ptr()))
+            qkv_bias_as.append(Int(self.p3.f32.qkv_biases[layer].unsafe_ptr()))
 
         var n_layers_c = self.p3.f32.n_layers
         var d_model_i = Int64(self.p3.f32.d_model)
@@ -407,6 +431,9 @@ struct _CudaResidentQwen3P3Graph(Movable):
         var eps_c = self.p3.f32.eps
         var scale_c = self.p3.f32.scale
         var n_iters_i = Int64(_ceil_div(self.p3.f32.vocab, _LM_BLOCKS * _SUBS))
+        # 7B-lane: the qk_norm flag the captured ropewrt twin reads (Qwen3=1; Qwen2.5/llama=0).
+        var qk_norm_c = Int64(self.p3.f32.qk_norm)
+        var has_qkv_bias_c = self.p3.f32.has_qkv_bias
 
         def build(mut builder: DeviceGraphBuilder) raises {imm}:
             # ── rebuild the mutable MutAnyOrigin pointers from the hoisted addresses ──
@@ -489,13 +516,22 @@ struct _CudaResidentQwen3P3Graph(Movable):
                         d_model_i, n_qkv_i, eps_c,
                         grid_dim=_ceil_div(Int(n_qkv_i), _SUBS), block_dim=_TG,
                     )
+                # 1b ── 7B-lane attention bias (captured only when the session carries biases)
+                if has_qkv_bias_c == 1:
+                    var qkv_bias_p = UnsafePointer[Float32, origin=MutAnyOrigin](
+                        unsafe_from_address=qkv_bias_as[layer]
+                    )
+                    rec.enqueue_function[_qkv_bias_add_rows_kernel](
+                        qkv_p, qkv_bias_p, Int64(1), n_qkv_i,
+                        grid_dim=_ceil_div(Int(n_qkv_i), _TG), block_dim=_TG,
+                    )
                 # 2 ── q_norm + k_norm + RoPE + the in-place KV-cache slot write (pos: state[1])
                 rec.enqueue_function[_qk_rope_write_kernel_g](
                     q_rot_p, ck_p, cv_p,
                     qkv_p, qn_p, kn_p,
                     cos_p, sin_p,
                     state_p, h_q_i, h_kv_i, d_head_i, eps_c,
-                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    qk_norm_c,  # qk_norm: runtime flag (Qwen3=1; Qwen2.5/llama=0)
                     grid_dim=Int(h_q_i) + Int(h_kv_i), block_dim=Int(d_head_i),
                 )
                 # 3 ── attention (n_keys: state[2]) — the SPLIT-K flash-decoding pair

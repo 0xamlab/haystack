@@ -178,12 +178,13 @@ session re-checks the one dimension that changes per step (`pos < max_ctx`) at e
 """
 
 from std.origin import MutAnyOrigin  # Mojo 1.0.0: origins left std.builtin.type_aliases
-from std.gpu import block_idx, grid_dim, lane_id, thread_idx, warp_id, WARP_SIZE
+from std.gpu import block_dim, block_idx, grid_dim, lane_id, thread_idx, warp_id, WARP_SIZE
 from max.gpu import barrier  # Mojo 1.0.0: moved out of std.gpu
 from max.gpu.memory import AddressSpace
 from std.gpu.primitives.warp import shuffle_xor as _shuffle_xor, sum as _warp_sum
 from std.math import exp, sqrt
 from std.memory import stack_allocation
+from std.sys import is_defined
 from residentk.contract import RESIDENT_MAX_D_MODEL, RESIDENT_MAX_HEAD_DIM
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
@@ -353,10 +354,22 @@ comptime _VEC_BYTE_STRIDE_I4: Int = _LANES * _VEC_I4B
 the quantity the packed-byte pointer arithmetic below actually steps by; `_VEC_STRIDE_I4` (256) is
 the same distance measured in elements, at half the bytes."""
 
-comptime _STAGE: Int = RESIDENT_MAX_D_MODEL
-"""Compile-time size of the shared staging array. This constant IS `RESIDENT_MAX_D_MODEL`; the
-ceiling in the contract exists because of this allocation, not the other way round. 3072 Float32 is
-12 KiB of Apple silicon's 32 KiB threadgroup budget."""
+comptime STAGE_LARGE: Bool = is_defined["ALGENTA_STAGE_18944"]()
+"""True for the 7B-lane build. A 7B's `d_ff = 18944` would need a 74 KiB shared staging, but
+this CUDA backend's per-block shared budget tops out just under 48 KiB (measured on the A100:
+a 12000-float static-shared kernel JITs, a 16384-float one fails CUDA_ERROR_INVALID_PTX). So
+on this tier the shared staging is CAPPED at `_STAGE_CAP`, and the wide-`k` o_proj/down_proj
+GEMV (`_gemv_accum_kernel`) reads the activation from GLOBAL memory instead of staging it."""
+
+comptime _STAGE_CAP: Int = 6144
+"""Shared-staging ceiling (floats) for the large tier — under the ~48 KiB per-block budget with
+headroom for the reduction scratch, and covering every staged vector on the 7B shape except the
+down_proj activation (`d_ff` = 18944), which `_gemv_accum_kernel` global-reads instead."""
+
+comptime _STAGE: Int = _STAGE_CAP if STAGE_LARGE else RESIDENT_MAX_D_MODEL
+"""Compile-time size of the shared staging array. On the default / 6144 tiers it IS
+`RESIDENT_MAX_D_MODEL` (the ceiling in the contract exists because of this allocation); on the
+7B tier it is capped (see `STAGE_LARGE`)."""
 
 comptime _NEG_HUGE: Float32 = -3.0e38
 """Softmax and argmax initial maximum. Finite rather than `-inf` so that `exp(m - new_max)` on the
@@ -880,39 +893,62 @@ def _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k_i64: Int64, n_i64: Int64):
     connection, and each output element `j` is owned by exactly one SIMD group in exactly one
     threadgroup, so the read-modify-write has no race and needs no barrier. Splitting the add into
     its own elementwise dispatch would cost ~180 us of blocked host time for ~1 us of arithmetic.
+
+    On the 7B tier (`STAGE_LARGE`) the activation is read from GLOBAL memory instead of staged in
+    shared — the down_proj activation (`d_ff` = 18944) exceeds the capped shared budget. This path
+    reads `x[0..k)` exactly (no padded tail needed) and the activation stays L2-resident across the
+    block's output rows.
     """
     # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
     # back to Int once at entry, where all the arithmetic lives (accel/launch.mojo's pattern).
     var k = Int(k_i64)
     var n = Int(n_i64)
-    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
     var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
     var tid = Int(thread_idx.x)
-
-    var s = tid
-    while s < k:
-        xs[s] = x[s]
-        s += _TG
-    barrier()
 
     var lane = tid % _LANES
     var sub = tid // _LANES
     var j = Int(block_idx.x) * _SUBS + sub
     var acc = Float32(0.0)
-    if j < n:
-        var base = j * k
-        var k_vec = (k // _VEC_STRIDE) * _VEC_STRIDE
-        var t = lane * _VEC
-        while t < k_vec:
-            var xv = xs.load[width=_VEC](t)
-            var wv = w.load[width=_VEC](base + t)
-            var pv = xv * wv
-            acc += pv[0] + pv[1] + pv[2] + pv[3]
-            t += _VEC_STRIDE
-        var tt = k_vec + lane
-        while tt < k:
-            acc += xs[tt] * w[base + tt]
-            tt += _LANES
+
+    @parameter
+    if STAGE_LARGE:
+        if j < n:
+            var base = j * k
+            var k_vec = (k // _VEC_STRIDE) * _VEC_STRIDE
+            var t = lane * _VEC
+            while t < k_vec:
+                var xv = x.load[width=_VEC](t)
+                var wv = w.load[width=_VEC](base + t)
+                var pv = xv * wv
+                acc += pv[0] + pv[1] + pv[2] + pv[3]
+                t += _VEC_STRIDE
+            var tt = k_vec + lane
+            while tt < k:
+                acc += x[tt] * w[base + tt]
+                tt += _LANES
+    else:
+        var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+        var s = tid
+        while s < k:
+            xs[s] = x[s]
+            s += _TG
+        barrier()
+        if j < n:
+            var base = j * k
+            var k_vec = (k // _VEC_STRIDE) * _VEC_STRIDE
+            var t = lane * _VEC
+            while t < k_vec:
+                var xv = xs.load[width=_VEC](t)
+                var wv = w.load[width=_VEC](base + t)
+                var pv = xv * wv
+                acc += pv[0] + pv[1] + pv[2] + pv[3]
+                t += _VEC_STRIDE
+            var tt = k_vec + lane
+            while tt < k:
+                acc += xs[tt] * w[base + tt]
+                tt += _LANES
+
     red[tid] = acc
     barrier()
     var st = _LANES // 2
@@ -4916,3 +4952,30 @@ def _pf_gnrw_swiglu_kernel_i8(
                 var g = acc_g[i2 * TN + j2]
                 var u = acc_u[i2 * TN + j2]
                 act[r * n_ff + c] = (g / (1.0 + exp(-g))) * u
+
+
+def _dump7b_copy_row_kernel(dst: _FP, src: _FP, row_i64: Int64, k_i64: Int64):
+    """The 7B-dump hook's one-row gather: `dst[0, k) = src[row, 0, k)` so the session's ordinary
+    `enqueue_copy` can pull one activation row to the host. DEBUG-ONLY: dispatched exclusively
+    from `residentk.session_cuda`'s `ALGENTA_7B_DUMP`-gated prefill sites (a kernel is lowered
+    at its enqueue sites, so a shipped build without `-D ALGENTA_7B_DUMP` never compiles it)."""
+    var k = Int(k_i64)
+    var row = Int(row_i64)
+    var i = Int(block_idx.x) * Int(block_dim.x) + Int(thread_idx.x)
+    if i < k:
+        dst[i] = src[row * k + i]
+
+
+def _qkv_bias_add_rows_kernel(y: _FP, bias: _FP, m_rows_i64: Int64, n_i64: Int64):
+    """The 7B-lane q/k/v attention-bias add (2026-08-23): `y[row, col] += bias[col]` over
+    `m_rows` rows of the fused QKV output, in place, immediately AFTER the QKV projection and
+    BEFORE the ropewrt dispatch that reads it (Qwen2/Qwen2.5 carry q/k/v projection biases;
+    Qwen3 does not — the session dispatches this kernel only when opened with
+    `has_qkv_bias=1`, so a bias-less model never pays the launch). The bias vector is the
+    checkpoint's q/k/v biases concatenated in the SAME `[Q | K | V]` order the fused projection
+    writes, so the per-column add lands on the right section with no head arithmetic."""
+    var n = Int(n_i64)
+    var m_rows = Int(m_rows_i64)
+    var i = Int(block_idx.x) * Int(block_dim.x) + Int(thread_idx.x)
+    if i < m_rows * n:
+        y[i] = y[i] + bias[i % n]
