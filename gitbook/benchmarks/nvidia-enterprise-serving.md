@@ -18,7 +18,7 @@ decode, against llama.cpp (build 10210 pin, GGML\_CUDA, F16) on the same machine
 | --- | --- | --- | --- |
 | A100 | 427.1 | 408.7 | 1.20x / 1.11x |
 | H100 | 656.1 | 622.3 | 1.40x / 1.19x |
-| L4 | 191.1 | 184.8 | 1.12x / 1.07x |
+| L4 | 193.9 | 188.8 | 1.12x / 1.09x |
 
 Against llama.cpp Q8\_0 the packed3 session leads on the A100 at gen=64 (427.1 vs 404.2
 tok/s, 1.055x) and on the H100 at both lengths (557.4 / 593.2 tok/s, 1.18x / 1.05x).
@@ -97,6 +97,13 @@ The single-binary driver cold-starts 6.2x faster than vLLM on both GPUs.
 | Algenta driver | 5,038 | 4,804 |
 | `llama-server` (`-c 163840`, q8\_0 KV) | 11,858 | 11,596 |
 | vLLM 0.27.1 (0.6B) | 37,920 | 21,570 |
+
+## Cost (tokens per dollar)
+
+On the L4 at the measured spot price ($0.512/h, g2-standard-8, us-central1-a), steady-state
+single-stream decode costs $0.753 per million tokens with the packed3 session vs $0.823 with
+llama.cpp F16 — 8.5% cheaper per token at equal or better throughput ($/Mtok = 142.226 /
+tok/s at that price).
 
 ## Determinism
 
