@@ -173,6 +173,9 @@ async def test_execute_repository_job_binds_per_org_keys(monkeypatch):
     for the duration of the run, and resets it afterwards so a pooled worker can't bleed keys."""
     monkeypatch.setenv("ALGENTA_CONFIG_ENCRYPTION_KEY", _KEK)
     monkeypatch.setenv("ALGENTA_ENGINE_API_KEY", "pooled-engine")
+    # Hermetic against host env: a deployment exporting the fail-closed multi-tenant
+    # flag (as the fleet host did on 2026-08-24) must not change this test's contract.
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
     job = _repo_job()
     connector = SimpleNamespace(id=uuid.uuid4())
     db = _FakeSession([job, connector])  # the JOB session (separate from the key-store session)
