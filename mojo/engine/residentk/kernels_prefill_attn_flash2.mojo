@@ -186,7 +186,12 @@ def _pf_attn_flash2_kernel(
         var s1 = _PF_FLASH2_NEG_HUGE
         var s2 = _PF_FLASH2_NEG_HUGE
         var s3 = _PF_FLASH2_NEG_HUGE
-        s0 = _warp_sum(q00 * k4[0] + q01 * k4[1] + q02 * k4[2] + q03 * k4[3]) * scale
+        # row 0 carries the SAME causal guard rows 1-3 have: keys j >= nk0 belong to the
+        # warp's own future rows (m0+1..m3) — without the guard row 0 attends them (found
+        # by the 7B B1 gate bisection 2026-08-24; the NEG_HUGE score makes the update a
+        # no-op exactly the way rows 1-3 mask, so this touches nothing but the leak).
+        if j < nk0:
+            s0 = _warp_sum(q00 * k4[0] + q01 * k4[1] + q02 * k4[2] + q03 * k4[3]) * scale
         if j < nk1:
             s1 = _warp_sum(q10 * k4[0] + q11 * k4[1] + q12 * k4[2] + q13 * k4[3]) * scale
         if j < nk2:

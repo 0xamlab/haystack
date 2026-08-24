@@ -225,7 +225,9 @@ from residentk.tc_shim_bridge import (
     TC_SHIM_BUILD,
     TC_MIN_M,
     TC_ACC_MODE,
+    TC_NOSEAM,
     _tc_init,
+    _tc_noseam,
     _tc_last_error,
     _tc_stage_f32_to_f16,
     _tc_gemm_dispatch,
@@ -2067,6 +2069,15 @@ struct _CudaResidentQwen3P3(Movable):
                   "| prefill stays on the native chain")
             self.tc_staged = -1
             return
+        @parameter
+        if TC_NOSEAM:
+            r = _tc_noseam(1)
+            if r != 0:
+                print("TC: tc_shim_noseam failed:", r, "last_error:", _tc_last_error(),
+                      "| prefill stays on the native chain (NOSEAM is all-or-nothing —",
+                      "the seam-skip and the legacy-stream switch must both hold)")
+                self.tc_staged = -1
+                return
         for layer in range(self.f32.n_layers):
             ref lp = self.layers_p3[layer]
             r = _tc_dequant_packed3_f16_dense(
@@ -2171,8 +2182,11 @@ struct _CudaResidentQwen3P3(Movable):
                             grid_dim=m, block_dim=_TG,
                         )
                         # 2 ── qkv ASSIGN through the TC seam (the ctx.synchronize() seam:
-                        #      drain Mojo's stream, the shim stream-syncs before returning)
-                        self.f32.ctx.synchronize()
+                        #      drain Mojo's stream, the shim stream-syncs before returning;
+                        #      NOSEAM drops both halves — legacy-stream ordering instead)
+                        @parameter
+                        if not TC_NOSEAM:
+                            self.f32.ctx.synchronize()
                         var r = _tc_gemm_dispatch(
                             Int(self.f32.pf_xn.unsafe_ptr()),
                             Int(self.w16_qkv[layer].unsafe_ptr()),
@@ -2253,7 +2267,9 @@ struct _CudaResidentQwen3P3(Movable):
                                 grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
                             )
                         # 5 ── o_proj ACCUMULATE into the residual through the TC seam
-                        self.f32.ctx.synchronize()
+                        @parameter
+                        if not TC_NOSEAM:
+                            self.f32.ctx.synchronize()
                         r = _tc_gemm_dispatch(
                             Int(self.f32.pf_attn.unsafe_ptr()),
                             Int(self.w16_o[layer].unsafe_ptr()),
@@ -2272,7 +2288,9 @@ struct _CudaResidentQwen3P3(Movable):
                             grid_dim=m, block_dim=_TG,
                         )
                         # 7 ── gate/up ASSIGN through the TC seam + native SwiGLU epilogue
-                        self.f32.ctx.synchronize()
+                        @parameter
+                        if not TC_NOSEAM:
+                            self.f32.ctx.synchronize()
                         r = _tc_gemm_dispatch(
                             Int(self.f32.pf_xn.unsafe_ptr()),
                             Int(self.w16_gu[layer].unsafe_ptr()),
@@ -2289,7 +2307,9 @@ struct _CudaResidentQwen3P3(Movable):
                             grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
                         )
                         # 8 ── down_proj ACCUMULATE into the residual through the TC seam
-                        self.f32.ctx.synchronize()
+                        @parameter
+                        if not TC_NOSEAM:
+                            self.f32.ctx.synchronize()
                         r = _tc_gemm_dispatch(
                             Int(self.f32.pf_act.unsafe_ptr()),
                             Int(self.w16_down[layer].unsafe_ptr()),

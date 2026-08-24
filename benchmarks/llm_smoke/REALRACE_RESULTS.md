@@ -15861,3 +15861,112 @@ STATUS: branch feat/gemma3 (draft PR). The race is NOT won and no win is publish
 the internal baseline per the publish-wins-only rule. Real-weights gate used the 4B sibling (a
 CPU-fp32 27B reference is impractically slow); 27B f32 does not fit one 80 GB GPU — f16 is the
 race arm. Next session: levers 1-4 above, then measure the sonnet cell.
+
+## 7B TC AUTOPSY ROUND (2026-08-24, feat/7b-tc-autopsy, A100): main-break fix (#839), flash/flash2 row-0 causal leak FOUND+FIXED (the tc_b1 gate skip-one), one-pass+flash2+NOSEAM = pp256 2.05x / pp1024 3.48x over the TC baseline — WINS vs llama Q8_0 on both prefill cells (1.82x / 1.37x, stable refs); F16 pp1024 stays an honest 0.67x loss (autopsied: flash2 f32 attention is 55% of the wall — the named next lever is tensor-core attention)
+
+CONTEXT: the 7B TC-seam round (#829) shipped pp256 4,146 / pp1024 2,004 tok/s = 0.56x/0.19x of
+llama F16 — losses. This round's brief: micro-autopsy the TC prefill, optimize every layer,
+wire the batched axis. What it found first was worse than a gap:
+
+1. **MAIN WAS BROKEN FOR ALL CUDA BUILDS (2026-08-23..24).** #829's squash merge committed
+   unresolved rebase conflict markers into `session_cuda_p3.mojo:223` (the feat/tc-int rebase
+   over #823's `loadvec` import). Every build importing `residentk.session_cuda_p3` failed to
+   parse — the 7B driver, the p3 gate battery, the batched serve drivers. The CUDA lane
+   compiles on the VMs (not CI), which is how it shipped. Fix = keep BOTH imports (each
+   load-bearing: 24x _ld4, 16x TC symbols). Hotfix PR #839 MERGED same day. Lesson recorded:
+   CUDA-lane PRs need a VM compile+gate attestation in the PR body.
+
+2. **BASELINE REPRO EXACT (integrity anchor).** From the fixed tree, the TC arm reproduced
+   the #829 ledger numbers within 0.03% UNPINNED (pp256 4,145.2 vs 4,146.5; pp1024 2,004.0
+   vs 2,003.7; IQR <= 0.15%), G0 16/16 + G1 64/64 PASS. TC staging one-time 71-85 ms,
+   13.05 GB f16 twins. All race cells below are PINNED 1410 MHz (`-lgc`), interleaved A/B,
+   20 runs, median, IQR <= 0.22%.
+
+3. **THE B1 GATE FAILURE + ROOT CAUSE (the round's central finding).** Building the 7B driver
+   with the never-before-applied B1 flags (one-pass + flash2) FAILED the token-identity gate
+   with an ALIGNED SKIP: got [14374, 19479, 304, ...] vs want [14374, 84648, 19479, ...] —
+   the oracle stream minus token 1, 5-6 tokens aligned, then diverging. A 9-probe bisect
+   battery nailed it:
+     * skip reproduces at a SINGLE 128-row tile (m=128) → not the multi-tile walk;
+     * sub-threshold m=64 (tiled fallback) is IDENTICAL → needs the flash path;
+     * the f32 arm skips IDENTICALLY → shared attention infra, not the TC seam;
+     * NOSEAM-alone (no B1) is token-IDENTICAL → the stream-ordering gamble is sound.
+   ROOT CAUSE: `_pf_attn_flash_kernel` AND `_pf_attn_flash2_kernel` compute row 0 of each
+   4-row warp WITHOUT the causal guard rows 1-3 carry (`if j < nkN`) — row 0 attends the
+   warp's own FUTURE keys (m0+1..m3). Rows 0,4,8,... are corrupted at layer 0, and the KV
+   cache those rows feed carries the corruption through EVERY layer. The corruption is
+   systematic, not noise: leaking future keys biases the affected representations toward the
+   NEXT token's distribution — which is precisely why the failure mimicked a clean skip-one
+   (the flipped token was consistently the oracle's k+1). The leak never surfaced in a
+   shipped number because (a) 0.6B d_head=64 selects the tiled kernel — flash/flash2 only
+   dispatch at d_head=128 and no d_head=128 CUDA lane had been oracle-gated with them (their
+   acceptance was kernel-vs-kernel bit identity — both kernels leaked identically, the probe
+   shapes with single-row warps cannot see the leak); (b) in single-sequence prefill the
+   corrupted rows never reach the last-row argmax — decode sees them only through the KV
+   cache, where the bias shows up as a next-token flip, not garbage. FIX: guard s0 with
+   `if j < nk0` in both kernels (a strict no-op elsewhere — rows 1-3 already mask this way).
+   Post-fix: b1 streams byte-identical to the tiled baseline at 256 AND 128; full 6-prompt
+   gate battery PASS (16/16 x 6) on tc_b1 and tc_b1_ns.
+
+4. **NOSEAM (the sync-seam eliminator) — gated SOUND, worth +6%/+1% on top of one-pass.**
+   `-D ALGENTA_TC_NOSEAM`: `tc_shim_noseam(1)` repoints the shim's cuBLAS handle AND its
+   f32->f16 A-conversion launches onto the LEGACY DEFAULT stream and skips the per-call
+   cudaStreamSynchronize; the session skips the bracketing ctx.synchronize(). Ordering rides
+   the CUDA legacy-stream contract — the token gates are the proof (MAX 26.5 exposes no
+   stream handle to check a priori): ns_256 probe byte-identical, full battery PASS on
+   tc_b1_ns. Ablation: NOSEAM ALONE (128-row tiles + tiled attn) = 0.0% measurable (the
+   probe-round's "seam is noise" holds at those shapes); under one-pass it is +6.3% pp256 /
+   +1.2% pp1024 (fewer, fatter GEMMs put each seam on the critical path).
+
+5. **NUMBERS (A100-SXM4-40GB, pinned 1410, interleaved, 20 runs, median; decode invariant):**
+
+   | arm                          | pp256 tok/s | pp1024 tok/s | gen64 tok/s |
+   |------------------------------|-------------|--------------|-------------|
+   | TC baseline (shipped #829)   | 4,145       | 2,003        | 83.3        |
+   | + L1 one-pass+flash2 (seams) | 7,998 (1.93x) | 6,883 (3.44x) | 83.3      |
+   | + L1 + L2 NOSEAM             | **8,504 (2.05x)** | **6,968 (3.48x)** | 83.3 |
+   | L2 NOSEAM alone              | 4,147 (1.00x) | 2,004 (1.00x) | 83.2      |
+
+   Fresh same-day llama controls (llama-bench -r 5, solo GPU): F16 pp1024 10,448.2 +/- 9.5
+   (stable), Q8_0 pp1024 5,089.1 +/- 1.6 (stable), F16 pp256 7,958.8 avg FLAGGED (samples
+   4,777/8,725/8,732/8,769/8,790 — bursty per the frozen protocol; fast regime ~8,750),
+   Q8_0 pp256 4,524.4 avg FLAGGED (fast regime ~4,680).
+
+   RACE VERDICTS vs the stable references: pp1024 vs Q8_0 = **1.37x WIN** (6,968 vs
+   5,089.1); pp256 vs Q8_0 fast regime = **1.82x WIN** (8,494 vs ~4,680). LOSSES (internal):
+   pp1024 vs F16 0.67x (6,968 vs 10,448.2); pp256 vs F16 fast regime 0.97x (8,494 vs
+   ~8,750 — not publishable either way under the flag). Decode single-stream unchanged
+   (0.65x Q8_0, 0.97x F16) — the batched axis at 7B remains NEVER RUN (see follow-ups).
+
+6. **NSYS AUTOPSY (why 0.67x vs F16 remains — the decomposition, one pp1024 pass):** the
+   one-pass prefill runs at 98-99% GPU busy (window 151 ms busy 150 ms; no bubbles left —
+   NOSEAM + one-pass removed the seams AND the tile overhead). Per-pass kernel mix: flash2
+   f32 attention ~81 ms = **55% of the wall** at only ~2.6 TF/s effective (per-key global
+   load latency exposure over 1024 keys, the L-H4 stall mix at 4x the key count); gu GEMM
+   (cuBLAS HMMA, M=1024) ~29 ms at ~270 TF/s = 86% of f16 peak — the GEMMs are at the wall;
+   qkv/o/down GEMMs ~22 ms; swiglu ~5 ms; f32->f16 A-converts ~4.5 ms; rope/norms/bias ~4 ms.
+   llama's F16 edge lives in TENSOR-CORE flash-attention (f16 HMMA scores) — our f32 SIMT
+   flash2 is the entire remaining gap. NEXT LEVER (named): TC attention — f16 flash through
+   the shim (scores = Q@K^T and O = S@V are GemmEx-shaped; online-softmax between), or an
+   f16-arithmetic SIMT flash if the gate prefers; projected pp1024 -> ~70-90 ms = 11-14k
+   tok/s, which beats llama F16's 10,448. The f16 twin residency already exists; the KV
+   cache would need an f16 twin for the TC path (VRAM fits at 7B: +0.45 GB at max_ctx 1600).
+
+7. **REFUTED / KNOWN-COST this round:** TF32 rung for 7B p3 (needs f32 weights ~30 GB +
+   p3 12 GB > 40 GB — VRAM-refuted before building); one-pass WITHOUT the flash fix (leaks,
+   gate catches it — the gate battery is the reason this round found a real bug instead of
+   shipping one); NOSEAM as a standalone lever at 128-row tiles (0.0%); pkill -f pattern
+   kills over ssh (matches its own command line — kill by PID).
+
+STATUS: campaign branch feat/7b-tc-autopsy (PR open, owner merges per protocol). Ship
+config for the 7B TC arm = B1 flags + ALGENTA_TC_NOSEAM (build_tc_drivers.sh updated).
+Gates: 16/16 oracle x 6 prompts BOTH experimental arms; G0/G1 inside every measurement;
+cross-engine 5x64 vs llama F16: f32 ship arm PASS 5/5 (the #821 invariant holds under
+one-pass + the fixed flash kernels); the p3 arm is 4/5 with a prompt-2 divergence at char
+175 that the UNCHANGED #829-numerics baseline reproduces IDENTICALLY — inherent
+p3-vs-F16 quant/reduction-order rounding, not this round. PUBLISHED (wins-only):
+the Q8_0 prefill wins on gitbook/benchmarks/nvidia-llm-throughput.md. QUEUED: (1) TC
+attention (the named pp1024-F16 killer); (2) batched 7B serve (driver gaps scoped:
+has_qkv_bias in _CudaResidentQwen3Batched, flag forwarding through _ServeGraph/
+_CudaResidentQwen3BatchedP3Graph, q_norm/k_norm-conditional load, ALGENTA_STAGE_18944
+build, admission-prefill TC via p3->f16 twins); (3) f32+p3 full battery on the ship binary.

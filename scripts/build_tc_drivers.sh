@@ -150,10 +150,25 @@ for arm in $ARMS; do
     build_driver "$OUT_DIR/qwen3_serve_batched_cuda$suffix" \
         "$NV/qwen3_serve_batched_cuda.mojo" \
         -D ALGENTA_GPU -D ALGENTA_CUDA "${SERVE_FLAGS[@]}" ${tc_flag[@]+"${tc_flag[@]}"}
-    build_driver "$OUT_DIR/qwen25_7b_p3_graph_cuda$suffix" \
-        "$NV/qwen25_7b_p3_graph_cuda.mojo" \
-        -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_STAGE_18944 \
-        ${tc_flag[@]+"${tc_flag[@]}"}
+    # The 7B lane's SHIP config (the 2026-08-24 autopsy round, REALRACE_RESULTS.md
+    # "7B TC AUTOPSY ROUND"): one-pass + flash2 (B1_FLAGS — gated clean ONLY since the
+    # flash/flash2 row-0 causal-guard fix of the same round; before that fix the flag
+    # FAILED the token-identity gate with an aligned skip-one) and, on the TC arm,
+    # ALGENTA_TC_NOSEAM (+6.3% pp256 / +1.2% pp1024 on top of one-pass, gate-proven).
+    # pp256 8,504 / pp1024 6,968 tok/s = 2.05x / 3.48x the pre-round TC baseline. The
+    # native control arm keeps the shipped byte-identical config (no B1) — its B1 battery
+    # is queued, and the A/B convention wants the control unchanged anyway.
+    if [[ "$arm" == "tc" ]]; then
+        build_driver "$OUT_DIR/qwen25_7b_p3_graph_cuda$suffix" \
+            "$NV/qwen25_7b_p3_graph_cuda.mojo" \
+            -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_STAGE_18944 \
+            "${B1_FLAGS[@]}" -D ALGENTA_TC_NOSEAM ${tc_flag[@]+"${tc_flag[@]}"}
+    else
+        build_driver "$OUT_DIR/qwen25_7b_p3_graph_cuda$suffix" \
+            "$NV/qwen25_7b_p3_graph_cuda.mojo" \
+            -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_STAGE_18944 \
+            ${tc_flag[@]+"${tc_flag[@]}"}
+    fi
 done
 
 chmod +x "$OUT_DIR"/qwen3_bench_cuda_gen64* "$OUT_DIR"/qwen3_generate_cuda* \

@@ -73,7 +73,17 @@ using namespace nvcuda;
 // ── shim-owned state: the cuBLAS handle + its stream. No device memory. ──────────────────
 static cublasHandle_t g_handle = nullptr;
 static cudaStream_t g_stream = nullptr;   // dedicated non-blocking stream, lazily created
+static cudaStream_t g_stream_own = nullptr;  // the init-time own stream (noseam restores it)
 static int g_stream_created = 0;
+static int g_noseam = 0;
+// NOSEAM mode (-D ALGENTA_TC_NOSEAM on the Mojo side, tc_shim_noseam(1) at session open):
+// every integration entry enqueues on the LEGACY DEFAULT stream (cudaStreamLegacy = 0) and
+// SKIPS its cudaStreamSynchronize, and the session skips its bracketing ctx.synchronize().
+// Ordering then rides the CUDA legacy-stream contract: legacy-stream work serializes with
+// every blocking stream of the same context (after all prior blocking-stream work, before
+// all subsequent blocking-stream work). If the MAX runtime's enqueue stream turns out to be
+// cudaStreamNonBlocking the token-identity gates catch the race; if it is blocking (or the
+// legacy stream itself) the per-GEMM sync-seam bubble disappears entirely.
 static int64_t g_last_error = 0;
 
 static void record_error(int64_t code) {
@@ -92,6 +102,7 @@ extern "C" int64_t tc_shim_init(void) {
     if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
     e = cudaStreamCreateWithFlags(&g_stream, cudaStreamNonBlocking);
     if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    g_stream_own = g_stream;
     g_stream_created = 1;
     s = cublasSetStream(g_handle, g_stream);
     if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
@@ -109,6 +120,19 @@ extern "C" int64_t tc_shim_use_stream(void* stream_ptr) {
     if (st != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)st); return -(int64_t)st; }
     g_stream = s;
     g_stream_created = 0;
+    return 0;
+}
+
+// NOSEAM switch (see the g_noseam note above). on=1: move the handle AND every shim kernel
+// launch onto the legacy default stream (g_stream itself is repointed so the in-entry
+// f32->f16 A conversion stays ordered with its GemmEx) and skip the per-call syncs; on=0:
+// restore the init-time non-blocking stream + the syncs. Returns -1 if never initialized.
+extern "C" int64_t tc_shim_noseam(int64_t on) {
+    if (g_handle == nullptr) { record_error(-1); return -1; }
+    g_noseam = (on != 0) ? 1 : 0;
+    g_stream = g_noseam ? (cudaStream_t)0 /* cudaStreamLegacy */ : g_stream_own;
+    cublasStatus_t st = cublasSetStream(g_handle, g_stream);
+    if (st != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)st); return -(int64_t)st; }
     return 0;
 }
 
@@ -313,6 +337,7 @@ extern "C" int64_t tc_shim_gemm_f16_32c(const void* a_f32, const void* w_f16,
         c_f32, CUDA_R_32F, (int)N,
         CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
     if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    if (g_noseam) return 0;  // the NOSEAM seam: ordering rides the legacy-stream contract
     cudaError_t e = cudaStreamSynchronize(g_stream);
     record_error((int64_t)e);
     return (int64_t)e;
@@ -336,6 +361,7 @@ extern "C" int64_t tc_shim_gemm_tf32_beta(const void* a_f32, const void* w_f32,
         c_f32, CUDA_R_32F, (int)N,
         CUBLAS_COMPUTE_32F_FAST_TF32, CUBLAS_GEMM_DEFAULT);
     if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    if (g_noseam) return 0;  // the NOSEAM seam: ordering rides the legacy-stream contract
     cudaError_t e = cudaStreamSynchronize(g_stream);
     record_error((int64_t)e);
     return (int64_t)e;
@@ -366,6 +392,7 @@ extern "C" int64_t tc_shim_gemm_f16_acc16(const void* a_f32, const void* w_f16,
     if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
     r = tc_shim_f16_to_f32(c16_scratch, c_f32, M * N);
     if (r != 0) return r;
+    if (g_noseam) return 0;  // the NOSEAM seam: ordering rides the legacy-stream contract
     cudaError_t e = cudaStreamSynchronize(g_stream);
     record_error((int64_t)e);
     return (int64_t)e;

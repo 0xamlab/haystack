@@ -110,6 +110,29 @@ requires the f32 projections resident), 2 = f16 with COMPUTE_16F accumulation (f
 staging). The gate battery's token identity decides; if mode 0 fails on any gate prompt the
 round re-runs the ladder in order and ships the FIRST mode that passes — or nothing."""
 
+comptime TC_NOSEAM: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_TC_NOSEAM"]()
+"""The sync-seam eliminator (-D ALGENTA_TC_NOSEAM, DEFAULT OFF, meaningful only under
+TC_SHIM_BUILD): at session open the session calls `_tc_noseam(1)`, which repoints the shim's
+cuBLAS handle AND its conversion-kernel launches onto the LEGACY DEFAULT stream and skips
+every per-call cudaStreamSynchronize; the session in turn skips the bracketing
+ctx.synchronize() around each TC GEMM. Ordering then rides the CUDA legacy-stream contract
+(legacy-stream work serializes with every blocking stream of the context). The probe's seam
+stayed the ship default because MAX 26.5 exposes no stream handle to prove the runtime's
+stream type a priori — the token-identity gates are the proof instead: if the runtime stream
+is non-blocking the gates catch the race; if it is blocking/legacy the per-GEMM sync bubble
+(2 full device drains per GEMM role per layer) disappears."""
+
+
+def _tc_noseam(on: Int) -> Int:
+    """Switch the shim's integration entries into (on=1) or out of (on=0) NOSEAM mode —
+    the legacy default stream + no per-call sync (see TC_NOSEAM). Call ONCE at session open
+    after `_tc_init`; 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_noseam", Int64](Int64(on)))
+    else:
+        return -1
+
 
 def _tc_init() -> Int:
     """Create the shim's cuBLAS handle + dedicated non-blocking stream on the CURRENT
