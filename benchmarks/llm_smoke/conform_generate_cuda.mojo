@@ -98,15 +98,23 @@ def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises ->
 def main() raises:
     var args = argv()
     if len(args) < 2:
-        print("usage: conform_generate_cuda <ckpt_dir> [--max-new N]")
+        print("usage: conform_generate_cuda <ckpt_dir> [--max-new N] [--prompt-len N]")
         exit(2)
     var ckpt_dir = String(args[1])
     var max_new = 8
+    var prompt_len_override = 0
     var i = 2
     while i < len(args):
         var a = String(args[i])
         if a == "--max-new" and i + 1 < len(args):
             max_new = parse_int(String(args[i + 1]))
+            i += 2
+        elif a == "--prompt-len" and i + 1 < len(args):
+            # Bench override: ignore the manifest's baked prompt and run a
+            # deterministic cycle prompt of exactly this length, so ONE
+            # converted checkpoint serves every prefill shape (the blob is
+            # prompt-independent; only the manifest input_ids differ).
+            prompt_len_override = parse_int(String(args[i + 1]))
             i += 2
         else:
             i += 1
@@ -142,6 +150,8 @@ def main() raises:
         raise Error("conform_generate_cuda: a convention flag is neither 0 nor 1")
 
     var scale = 1.0 / sqrt(Float64(d_head))
+    if prompt_len_override > 0:
+        n_prompt = prompt_len_override
     var needed_ctx = n_prompt + max_new
     var max_ctx = 512
     while max_ctx < needed_ctx:
@@ -170,13 +180,30 @@ def main() raises:
             print("conform_generate_cuda: no accelerator on this host")
             exit(4)
 
-        var ids_arr = json_get_array(manifest, "input_ids")
-        var id_tokens = json_array_tokens(ids_arr)
         var prompt_ids = List[Int]()
-        for t in id_tokens:
-            prompt_ids.append(parse_int(String(t)))
-        if len(prompt_ids) != n_prompt:
-            raise Error("conform_generate_cuda: input_ids length does not match config.n_tokens")
+        if prompt_len_override > 0:
+            # Deterministic cycle prompt of exactly the overridden length (the
+            # bench's controlled prefill variable); ids kept in-vocab by mod.
+            var base = List[Int]()
+            base.append(785)
+            base.append(6722)
+            base.append(315)
+            base.append(9625)
+            base.append(374)
+            base.append(12095)
+            base.append(13)
+            base.append(576)
+            for j in range(prompt_len_override):
+                prompt_ids.append(base[j % 8] % vocab_size)
+        else:
+            var ids_arr = json_get_array(manifest, "input_ids")
+            var id_tokens = json_array_tokens(ids_arr)
+            for t in id_tokens:
+                prompt_ids.append(parse_int(String(t)))
+            if len(prompt_ids) != n_prompt:
+                raise Error(
+                    "conform_generate_cuda: input_ids length does not match config.n_tokens"
+                )
 
         var tensors_obj = json_get_object(manifest, "tensors")
 
@@ -279,13 +306,17 @@ def main() raises:
 
         _check_resident(s.seal(), "seal")
 
-        # ── prefill + greedy decode ───────────────────────────────────────────
+        # ── prefill + greedy decode, timed so this driver doubles as the
+        # fact-driven single-stream CUDA bench (TTFT + decode rate) ──────────
+        var t_pf0 = perf_counter_ns()
         var pf = s.prefill(prompt_ids)
         _check_resident(pf.status, "prefill")
+        var t_pf1 = perf_counter_ns()
 
         var generated = List[Int]()
         generated.append(pf.token_id)
         var stopped = eos_token_id >= 0 and pf.token_id == eos_token_id
+        var t_dec0 = perf_counter_ns()
         if not stopped:
             for step in range(1, max_new):
                 var pos = n_prompt + step - 1
@@ -295,10 +326,21 @@ def main() raises:
                 if eos_token_id >= 0 and r.token_id == eos_token_id:
                     stopped = True
                     break
+        var t_dec1 = perf_counter_ns()
 
         var line = String("CONFORM_TOKENS:")
         for tok in generated:
             line = line + " " + String(tok)
         print(line)
+        # Machine-readable timing: prefill TTFT in ms, decode tok/s over the
+        # generated tail (the single-stream rate, the conform battery's coords).
+        var prefill_ms = Float64(t_pf1 - t_pf0) / 1.0e6
+        var n_gen_tail = len(generated) - 1
+        var decode_ms = Float64(t_dec1 - t_dec0) / 1.0e6
+        var decode_tok_s = 0.0
+        if n_gen_tail > 0 and decode_ms > 0.0:
+            decode_tok_s = Float64(n_gen_tail) / (decode_ms / 1000.0)
+        print("CONFORM_TIMING: n_prompt=", n_prompt, " n_gen=", len(generated),
+              " prefill_ms=", prefill_ms, " decode_tok_s=", decode_tok_s)
         print("conform_generate_cuda: done. stopped_on_eos=", stopped,
               "expected_decode_budget=", residentk_dispatch_budget(n_layers))

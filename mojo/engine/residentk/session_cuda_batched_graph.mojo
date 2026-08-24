@@ -175,14 +175,21 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+        qk_norm: Int = 1, has_lm_head: Int = 0,
     ) raises:
         """Open the W1 session (the ONLY `DeviceContext` in this struct) and allocate the
         graph-arm additions ONCE. Called only from inside a `@parameter if CUDA_SESSION_BUILD`
         branch — see the module docstring for why a constructor cannot carry the gate itself.
         The caller must have validated the shape with `residentk_dims_check` first, exactly as
-        the W1 session's own constructor requires."""
+        the W1 session's own constructor requires.
+
+        Model-agnostic conformance (2026-08-24): `qk_norm` / `has_lm_head` are FACTS read from
+        the converted manifest and forwarded to the W1 inner session (they were previously
+        hardcoded to the Qwen3 convention qk_norm=1 / tied). The captured decode graph bakes the
+        qk_norm flag at capture time, which is correct because it is fixed per model/session."""
         self.inner = _CudaResidentQwen3Batched(
-            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale,
+            qk_norm, has_lm_head,
         )
         var log_elems = _CUDA_BATCH_DECODE_MAX_SEQS * max_ctx
         self.graph_token_log = self.inner.ctx.enqueue_create_buffer[DType.int64](log_elems)
@@ -228,6 +235,11 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
         return self.inner.upload_layer(
             layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wgate, wup, wdown
         )
+
+    def upload_lm_head(mut self, lm: List[Float64]) raises -> Int:
+        """Model-agnostic conformance (2026-08-24): the untied lm_head table, forwarded to the
+        W1 inner session (refused unless the session was opened with has_lm_head=1)."""
+        return self.inner.upload_lm_head(lm)
 
     def seal(mut self) raises -> Int:
         return self.inner.seal()
@@ -294,6 +306,12 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
         var out_val_a = Int(self.inner.b_out_val.unsafe_ptr())
         var out_idx_a = Int(self.inner.b_out_idx.unsafe_ptr())
         var embed_a = Int(self.inner.embed.unsafe_ptr())
+        # Model-agnostic conformance (2026-08-24): the lm_head+argmax tail binds the SEPARATE
+        # lm_head table when the model is untied (has_lm_head=1), the embedding table when tied.
+        # The input-embedding lookup below ALWAYS binds the embedding table.
+        var lm_head_a = embed_a
+        if self.inner.has_lm_head == 1:
+            lm_head_a = Int(self.inner.lm_head.unsafe_ptr())
         var final_norm_a = Int(self.inner.final_norm.unsafe_ptr())
         var cos_a = Int(self.inner.cos_t.unsafe_ptr())
         var sin_a = Int(self.inner.sin_t.unsafe_ptr())
@@ -357,6 +375,7 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
             var out_val_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=out_val_a)
             var out_idx_p = UnsafePointer[Int32, origin=MutAnyOrigin](unsafe_from_address=out_idx_a)
             var embed_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=embed_a)
+            var lm_head_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=lm_head_a)
             var final_norm_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=final_norm_a)
             var cos_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=cos_a)
             var sin_p = UnsafePointer[Float32, origin=MutAnyOrigin](unsafe_from_address=sin_a)
@@ -408,7 +427,7 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
                     cos_p, sin_p,
                     state_p, B_i, kv_stride_i,
                     h_q_i, h_kv_i, d_head_i, eps_c,
-                    Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                    Int64(self.inner.qk_norm),  # qk_norm: fact from the manifest (Qwen3=1; llama/qwen2.5=0)
                     grid_dim=(Int(h_q_i) + Int(h_kv_i)) * B_c, block_dim=Int(d_head_i),
                 )
                 # 4 ── batched attention PARTIAL: nkeys from STATE[2B+b]
@@ -460,7 +479,7 @@ struct _CudaResidentQwen3BatchedGraph(Movable):
                 grid_dim=B_c, block_dim=_TG,
             )
             rec.enqueue_function[_batched_lmhead_argmax_kernel_f32](
-                blk_val_p, blk_idx_p, xn_p, embed_p,
+                blk_val_p, blk_idx_p, xn_p, lm_head_p,
                 B_i, d_model_i, vocab_i, n_iters_i,
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )

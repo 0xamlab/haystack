@@ -124,6 +124,71 @@ verdict: refused
 REFUSED: head_dim=96 is not supported (supported: {32, 64, 128, 256} — a multiple of 32, a power of two, and <= 256).
 ```
 
+## Onboarding a model
+
+`onboard` is the one command that turns a checkpoint into a support-matrix row. It extracts the
+facts, runs the capability-table decision for every backend, names the staging tier that would
+flip a pure-staging refusal, and emits the row plus a JSON ledger line — no per-model code:
+
+```bash
+python3 scripts/algenta_conform.py onboard org/model-name      # fetches config (+weights with the repo HF key)
+python3 scripts/algenta_conform.py onboard /path/to/model-dir --gate --ledger ledger.jsonl
+```
+
+Onboarded models (verdict per backend, plan in parentheses):
+
+| Model | Facts of note | metal | cuda |
+| --- | --- | --- | --- |
+| Qwen3-1.7B | d128, qk_norm, tied, stage 6144 | supported (grouped_fa_steel) | supported (grouped_fa_steel) |
+| TinyLlama-1.1B | d64, untied, GQA 8, stage 5632 | supported (parametric_native_decode) | supported (parametric_native_decode) |
+| SmolLM2-360M-Instruct | d64, tied, GQA 3, 15 heads | supported (parametric_native_decode) | supported (parametric_native_decode) |
+| Llama-3.2-1B-Instruct | d64, tied, GQA 4, llama3 rope, stage 8192 | refused: staging above Metal ceiling | supported (CUDA STAGE_8192) |
+| Llama-3.2-3B-Instruct | d128, tied, GQA 3, llama3 rope, stage 8192 | refused: staging above Metal ceiling | supported (CUDA STAGE_8192) |
+| Qwen2.5-7B-Instruct | d128, qkv bias, untied, stage 18944 | refused: staging above Metal ceiling | supported (CUDA STAGE_18944) |
+| Mistral-7B-Instruct-v0.3 | d128, untied, stage 14336 | refused: staging above Metal ceiling | supported (CUDA STAGE_18944) |
+| Phi-3.5-mini-instruct | head_dim 96, longrope | refused: head_dim 96 | refused: head_dim 96 |
+| Gemma-2-2B-it | gelu_pytorch_tanh, window, softcaps | refused: activation/window/softcap | refused: activation/window/softcap |
+
+## Throughput battery (model-agnostic)
+
+One fact-driven entry point benches any onboarded model through the existing resident doors —
+no per-model harness, no forked drivers. The Metal arm drives the production SDK path
+(`decode` single-stream TTFT+decode, `decode_batched` concurrent aggregate); the CUDA arm drives
+the fact-driven `conform_generate_cuda` resident binary across the canonical prefill shapes:
+
+```bash
+python3 scripts/algenta_bench.py metal /path/to/model --shapes 160,256,550 --concurrency 1,8
+python3 scripts/algenta_bench.py cuda  /path/to/model --driver "./conform_generate_cuda_<tier>"
+```
+
+Representative measurements on hardware (the battery withstands models it was never developed
+against — each below was onboarded and benched by facts alone):
+
+| Model | Backend | TTFT @160/256/550 (ms) | decode @160/256/550 (tok/s) |
+| --- | --- | --- | --- |
+| SmolLM2-360M-Instruct | Metal | 35.7 / 40.6 / 84.5 | 413 / 205 / 331 |
+| TinyLlama-1.1B | Metal | 59.1 / 108.2 / 137.9 | 245 / 140 / 263 |
+| Llama-3.2-1B-Instruct | CUDA (H100, STAGE_8192) | 50.8 / 55.7 / 149.5 | 176 / 136 / 81 |
+| Llama-3.2-3B-Instruct | CUDA (H100, STAGE_8192) | 110.7 / 127.1 / 343.6 | 84.5 / 67.1 / 41.2 |
+| Qwen2.5-7B-Instruct | CUDA (H100, STAGE_18944) | 248.2 / 274.0 / 693.9 | 57.9 / 50.4 / 34.3 |
+
+Concurrent serving runs the same fact-generalized batched resident session (chat mix,
+in 1024 / out 256, greedy, warmup excluded). Aggregate decode throughput scales with
+concurrency; qk_norm=0 and qk_norm=1 models both run the same driver with no per-model code:
+
+| Model | Facts | agg tok/s @C=1 | agg tok/s @C=8 | scaling |
+| --- | --- | --- | --- | --- |
+| Qwen3-1.7B-Base | qk_norm=1, tied | 28.7 | 145.5 | 5.07x |
+| Llama-3.2-1B-Instruct | qk_norm=0, tied | 44.6 | 230.3 | 5.16x |
+
+Qwen2.5-family checkpoints (q/k/v projection biases) are served by the single-stream CUDA lane
+(the bias add is not yet wired into the batched chain); their single-stream measurements are
+tabled above and the batched driver returns a typed refusal.
+
+Throughput is reported here as conformance evidence (the battery runs on every onboarded model),
+not as a race claim; race comparisons against named external baselines live in
+[Benchmarks](../benchmarks/) where they beat the baseline.
+
 ## Conformance evidence
 
 **Synthetic fact-space battery.** A parametric generator builds small checkpoints spanning the full

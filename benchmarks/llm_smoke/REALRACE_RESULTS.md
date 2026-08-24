@@ -15973,6 +15973,120 @@ build, admission-prefill TC via p3->f16 twins); (3) f32+p3 full battery on the s
 
 ---
 
+## Model-agnostic onboarding + fact-driven bench battery (2026-08-24, branch feat/model-agnostic-conformance, PR #847)
+
+OWNER MANDATE: "any LLM model should work on this hardware; test and optimize
+once on hardware, then it works for any model whose facts fall in the proven
+envelope" + "our benchmarks must withstand any of new models." This round makes
+both the SUPPORT decision and the THROUGHPUT battery pure functions of the
+normalized fact manifest — zero per-model code, zero forked drivers.
+
+1. **ONBOARDING LOOP** (`algenta_conform.py onboard <hf-repo-or-local-config>`,
+   logic in `packages/algenta/algenta/onboarding.py`): resolve config ->
+   extract facts -> per-backend capability verdict -> staging-tier-gap analysis
+   -> support-matrix row + JSON ledger line. A pure-staging refusal names the
+   exact `ALGENTA_STAGE_<n>` tier that flips the model supported, and
+   `backend_staging_ceiling` distinguishes a missing build from a hardware
+   limit (Metal's 32 KiB threadgroup caps it at the 6144 tier; NVIDIA's
+   163 KiB opt-in budget builds the big tiers). 12 unit tests fix the decision
+   layer (`tests/test_onboarding.py`).
+
+2. **ONBOARDING BATTERY (verdicts, facts-not-names):** 10 diverse models, both
+   backends. Supported on CUDA + Metal: Qwen3-1.7B (grouped_fa_steel),
+   TinyLlama-1.1B + SmolLM2-360M (parametric_native_decode). CUDA-only
+   (staging above Metal's ceiling): Qwen2.5-7B (stage 18944), Llama-3.2-3B
+   (stage 8192), Mistral-7B-v0.3 (stage 14336). Refused both backends (typed,
+   honest): Phi-3.5-mini (head_dim 96 not a power of two + longrope),
+   gemma-2-2b (gelu_pytorch_tanh + window 4096 + softcaps 50/30). gemma-3-27b
+   runs its own CUDA lane (separate kernel set), not this qwen3_llama path.
+
+3. **FACT-DRIVEN BENCH** (`scripts/algenta_bench.py`): one entry point,
+   shapes x concurrency, driven purely by the converter output, REUSING the
+   existing doors (no per-model harness): the Metal arm drives the production
+   SDK path (`decode` single-stream TTFT+decode, `decode_batched` concurrent
+   agg); the CUDA arm drives `conform_generate_cuda` (gained `CONFORM_TIMING`
+   + a `--prompt-len` override so ONE converted checkpoint serves every
+   prefill shape — the blob is prompt-independent).
+
+4. **BENCH WITHSTANDS NEW MODELS (the proof):**
+   * Metal, SmolLM2-360M-Instruct (NEW): TTFT 35.7/40.6/84.5 ms @160/256/550,
+     single-stream decode 413/205/331 tok/s, agg@8 720/333/310 tok/s.
+   * Metal, TinyLlama-1.1B-Chat (NEW): TTFT 59.1/108.2/137.9 ms @160/256/550,
+     single-stream decode 245/140/263 tok/s, agg@8 142/185/177 tok/s.
+   * CUDA (H100 GPU0), Llama-3.2-1B-Instruct (NEW), STAGE_8192 build:
+     TTFT 50.8/55.7/149.5 ms @160/256/550, single-stream decode
+     176/136/81 tok/s (decode falls with longer prompts — attention over the
+     larger KV at each step, measured not modeled).
+   All three ran fact-driven end-to-end with no per-model harness code.
+
+5. **HONEST GAPS this round (named, not hidden):**
+   * Qwen2.5-7B + Llama-3.2-3B CUDA bench BLOCKED by VM disk, not capability:
+     the converter's Float64 blob is 4x the BF16 checkpoint (7B -> ~56 GB),
+     and the H100 root volume had 6.5 GB free at run time. The fact verdicts
+     (supported on CUDA) stand; the timed run needs disk.
+   * Concurrent CUDA agg sweep needs the BATCHED serve driver fact-generalized
+     (it hardcodes qk_norm=1 / Qwen3-only today); scoped follow-up, same shape
+     as the already-scoped 7B batched-serve driver gaps above.
+   * gemma-3-27b race-regression (TTFT ~272 ms @550, agg ~760s) belongs to the
+     gemma3 CUDA lane's own tuned battery, not this qwen3_llama bench; not
+     re-run here to avoid cross-lane config drift.
+
+STATUS: PR #847 (feat/model-agnostic-conformance). Gates: onboarding decision
+layer 12/12 (`tests/test_onboarding.py`); capability + conform suites green;
+Metal bench 2 new models, CUDA bench 1 new model, all fact-driven. PUBLISHED
+(wins-only, spec-sheet): onboarded-models + refusal + bench tables in
+gitbook/engine/model-support-matrix.md. QUEUED: (1) CUDA concurrent-agg bench
+once the batched serve driver reads facts; (2) Qwen2.5-7B / Llama-3.2-3B CUDA
+timed runs once VM disk allows; (3) grow the battery's proven envelope as new
+families land.
+
+---
+
+## CUDA battery + fact-generalized concurrent serve (2026-08-24, H100 GPU0, branch feat/onboard-agnostic-bench)
+
+OWNER MANDATE round 3: complete the two logged gaps — (1) the CUDA timed
+batteries previously blocked on VM disk (converter f64 blobs now fit after the
+500 GB resize); (2) fact-generalize the batched serve driver (remove the
+qk_norm=1/Qwen3-only hardcoding) so the concurrent agg sweep runs for any
+onboarded model. Both done. All runs on GPU 0 only (parity agent owns 1-7).
+
+1. **CUDA TIMED BATTERIES (fact-driven `conform_generate_cuda`, single-stream,
+   TTFT + decode, shapes 160/256/550, median of 2):**
+   * **Qwen2.5-7B-Instruct** (qk_norm=0, untied, qkv bias=1 — STAGE_18944):
+     TTFT 248.2 / 274.0 / 693.9 ms @160/256/550; decode 57.9 / 50.4 / 34.3 tok/s.
+     First run of a bias-carrying checkpoint through the fact-driven CUDA driver
+     (the converter's backend-aware gate accepts bias on cuda, refuses on metal).
+   * **Llama-3.2-3B-Instruct** (qk_norm=0, tied, llama3 rope — STAGE_8192):
+     TTFT 110.7 / 127.1 / 343.6 ms @160/256/550; decode 84.5 / 67.1 / 41.2 tok/s.
+
+2. **FACT-GENERALIZED BATCHED SERVE DRIVER.** Removed the Qwen3-only hardcoding
+   from `qwen3_serve_batched_cuda.mojo` + `session_cuda_batched_graph.mojo`:
+   qk_norm / tie_word_embeddings / attention_bias are now FACTS read from the
+   converted manifest and threaded through the composed graph session, the
+   admission-prefill chain, and the captured decode graph (the graph's
+   lm_head+argmax tail binds the separate lm_head table when untied, the
+   embedding table when tied; the batched kvprod bakes the qk_norm flag). A
+   bias-carrying checkpoint is TYPED-REFUSED by the batched driver (the batched
+   kernel chain does not wire the bias add) — the single-stream lane serves those.
+
+3. **CONCURRENT AGG SWEEP (enterprise_bench, chat mix in1024/out256, greedy,
+   warmup excluded, 16 requests/point, 0% errors across the board):**
+   * **Qwen3-1.7B-Base** (qk_norm=1, tied, STAGE_6144): C=1 agg 28.7 tok/s
+     (TTFT p50 509.7 ms) -> C=8 agg 145.5 tok/s (TTFT p50 2257.8 ms) = 5.07x.
+   * **Llama-3.2-1B-Instruct** (qk_norm=0, tied, STAGE_8192): C=1 agg 44.6 tok/s
+     (TTFT p50 303.2 ms) -> C=8 agg 230.3 tok/s (TTFT p50 1363.8 ms) = 5.16x.
+     The qk_norm=0 model runs the fact-generalized batched path cleanly; a
+     direct byte-window request yields 16 valid tokens (not degenerate).
+   * **Qwen2.5-7B-Instruct**: TYPED REFUSAL — attention_bias=1 not supported by
+     the batched serve driver (batched kernel chain lacks the bias add). Its
+     single-stream CUDA battery is item 1 above; concurrent agg for bias-carrying
+     checkpoints is a scoped follow-up (wire the bias add into the batched chain).
+
+STATUS: branch feat/onboard-agnostic-bench (PR #852). Gates: onboarding +
+capability suites green (54 passed); Qwen3-1.7B/Llama-3.2-1B concurrent agg
+both 0% errors with ~5x scaling at C=8. PUBLISHED (wins-only, spec-sheet): the
+onboarded-models bench table in gitbook/engine/model-support-matrix.md. QUEUED:
+batched-serve bias support (unblocks Qwen2.5-family concurrent agg).
 ## 4-WAY ENGINE RACE — Qwen2.5-7B-Instruct on A100: algenta CUDA vs llama.cpp vs vLLM vs SGLang (2026-08-24, algenta-ent-a100, branch race/7b-4way-realrace)
 
 CONTEXT: owner directive — every benchmark is us vs llama.cpp vs vLLM vs other reputable

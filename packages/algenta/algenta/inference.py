@@ -1717,6 +1717,7 @@ def prepare_model_checkpoint(
     *,
     out_dir: str | Path | None = None,
     weights_dtype: str = "f64",
+    backend: str = "metal",
 ) -> Path:
     """Validate `checkpoint_dir`'s architecture, then convert it into the `manifest.json` +
     `weights.blob` pair the model-agnostic kernel entry point reads. Handles any supported-family
@@ -1728,9 +1729,13 @@ def prepare_model_checkpoint(
     `checkpoint_dir` is a local HuggingFace snapshot directory (`config.json` + one or more
     `model*.safetensors`). `weights_dtype` selects the blob element width: "f64" (default -- the
     historical format) or "f32" (exact for BF16-origin checkpoints, half the disk -- a 27B-class
-    f64 blob exceeds a race VM's disk). Raises `UnsupportedArchitectureError` for an unsupported
-    architecture and `InferenceError("checkpoint_not_found", ...)` for missing files. Returns the
-    directory the manifest + blob were written to.
+    f64 blob exceeds a race VM's disk). `backend` selects the backend-specific fact gates the
+    tensor probe applies ("metal", the SDK door's default, or "cuda"): the q/k/v projection-bias
+    fact is refused where the backend does not apply it and accepted where it does (the CUDA
+    lane's five 7B paths apply biases; the Metal descriptor tables do not). Raises
+    `UnsupportedArchitectureError` for an unsupported architecture and
+    `InferenceError("checkpoint_not_found", ...)` for missing files. Returns the directory the
+    manifest + blob were written to.
     """
     try:
         import numpy as np  # noqa: F401
@@ -1812,12 +1817,13 @@ def prepare_model_checkpoint(
         if attention_bias:
             from algenta.model_capabilities import BACKEND_FACT_RANGES
 
-            if 1 not in BACKEND_FACT_RANGES["metal"]["attention_bias"]:
+            backend_ranges = BACKEND_FACT_RANGES.get(backend)
+            if backend_ranges is None or 1 not in backend_ranges["attention_bias"]:
                 raise UnsupportedArchitectureError(
                     f"unsupported model architecture: {checkpoint_dir} carries q/k/v projection "
-                    "biases (attention_bias=1), which the Metal dispatch path does not apply -- "
-                    "the bias kernels are wired into the CUDA lane's 7B paths only. Refusing "
-                    "rather than running with the biases silently dropped."
+                    f"biases (attention_bias=1), which the {backend} dispatch path does not "
+                    "apply -- the bias kernels are wired into the CUDA lane's 7B paths only. "
+                    "Refusing rather than running with the biases silently dropped."
                 )
     required = _required_hf_tensor_names(
         config["num_hidden_layers"], tied_embeddings, has_qk_norm, attention_bias,

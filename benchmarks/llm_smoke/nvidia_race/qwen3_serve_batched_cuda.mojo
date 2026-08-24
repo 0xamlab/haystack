@@ -174,6 +174,7 @@ from attnk.rope import rope_table
 from attnk.contract import ATTN_OK
 from residentk.contract import (
     RESIDENT_ERR_LAUNCH_FAILED,
+    RESIDENT_ERR_UPLOAD_LENGTH,
     RESIDENT_OK,
     residentk_status_name,
 )
@@ -892,7 +893,7 @@ def _prefill_slots(
                         s.cos_t.unsafe_ptr(), s.sin_t.unsafe_ptr(),
                         Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
                         s.eps, Int64(m),
-                        Int64(1),  # qk_norm: Qwen3-family only, per-head QK-norm always on
+                        Int64(s.qk_norm),  # qk_norm: fact from the manifest (Qwen3=1; llama/qwen2.5=0)
                         grid_dim=(s.h_q + s.h_kv) * m, block_dim=s.d_head,
                     )
                     # 4 ── causal attention over the slot's cache
@@ -1033,6 +1034,7 @@ struct _AdmissionPrefill(Movable):
     var cap_m: Int
     var vocab: Int
     var busy: Bool
+    var qk_norm: Int
     var view: DeviceContext
     var pf_tokens: DeviceBuffer[DType.int32]
     var pf_hidden: DeviceBuffer[DType.float32]
@@ -1060,12 +1062,17 @@ struct _AdmissionPrefill(Movable):
     def __init__(
         out self, mut view: DeviceContext, vocab: Int,
         d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        qk_norm: Int = 1,
     ) raises:
         """Allocate the pass scratch + the tail set ONCE, against `view` (the lane's stream —
         the base context itself for the synchronous arm, a `select_stream` view for a LEVER-L5
         lane). Under the one-pass flag the buffers are `_PF_PASS_MAX` rows; flag-off builds
         allocate one row (the struct is still constructed so every call site is flag-agnostic —
-        the dispatch below never touches the buffers there)."""
+        the dispatch below never touches the buffers there).
+
+        Model-agnostic conformance (2026-08-24): `qk_norm` is a FACT read from the converted
+        manifest (Qwen3=1; llama/qwen2.5=0), forwarded to the admission-prefill ropewrt dispatch
+        (previously hardcoded to the Qwen3 convention)."""
         @parameter
         if SERVE_PF_ONEPASS:
             self.cap_m = _PF_PASS_MAX
@@ -1073,6 +1080,7 @@ struct _AdmissionPrefill(Movable):
             self.cap_m = 1
         self.vocab = vocab
         self.busy = False
+        self.qk_norm = qk_norm
         self.view = view
         var t = self.cap_m
         var n_qkv = (h_q + 2 * h_kv) * d_head
@@ -1265,7 +1273,7 @@ struct _AdmissionPrefill(Movable):
                         s.cos_t.unsafe_ptr(), s.sin_t.unsafe_ptr(),
                         Int64(pos), Int64(s.h_q), Int64(s.h_kv), Int64(s.d_head),
                         s.eps, Int64(m),
-                        Int64(1),  # qk_norm: Qwen3-family only, always on
+                        Int64(self.qk_norm),  # qk_norm: fact from the manifest (Qwen3=1; llama/qwen2.5=0)
                         grid_dim=(s.h_q + s.h_kv) * m, block_dim=s.d_head,
                     )
                     # 4 ── causal attention over the slot's cache — LEVER L1 under the flag
@@ -1484,21 +1492,32 @@ struct _ServeGraph(Movable):
 
     var f32g: Optional[_CudaResidentQwen3BatchedGraph]
     var p3g: Optional[_CudaResidentQwen3BatchedP3Graph]
+    var qk_norm: Int
+    var has_lm_head: Int
 
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+        qk_norm: Int = 1, has_lm_head: Int = 0,
     ) raises:
         self.f32g = Optional[_CudaResidentQwen3BatchedGraph]()
         self.p3g = Optional[_CudaResidentQwen3BatchedP3Graph]()
+        self.qk_norm = qk_norm
+        self.has_lm_head = has_lm_head
         @parameter
         if P3_SERVE:
+            # The packed3 arm stays on the Qwen3 convention (qk_norm=1 / tied) for now; its
+            # fact generalization is a separate follow-up. The f32 arm below is fact-driven.
             self.p3g = _CudaResidentQwen3BatchedP3Graph(
                 d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
             )
         else:
+            # Model-agnostic conformance (2026-08-24): qk_norm / has_lm_head are FACTS read from
+            # the converted manifest, forwarded into the batched-graph session (previously the
+            # Qwen3 convention was hardcoded).
             self.f32g = _CudaResidentQwen3BatchedGraph(
-                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale
+                d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx, eps, scale,
+                qk_norm, has_lm_head,
             )
 
     def device_name(self) raises -> String:
@@ -1534,6 +1553,15 @@ struct _ServeGraph(Movable):
                 layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wgate, wup, wdown
             )
 
+    def upload_lm_head(mut self, lm: List[Float64]) raises -> Int:
+        """Model-agnostic conformance (2026-08-24): the untied lm_head table. The f32 arm is
+        fact-driven; the p3 arm stays tied (returns an error if asked for an untied head)."""
+        @parameter
+        if P3_SERVE:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        else:
+            return self.f32g.value().upload_lm_head(lm)
+
     def seal(mut self) raises -> Int:
         @parameter
         if P3_SERVE:
@@ -1552,11 +1580,11 @@ struct _ServeGraph(Movable):
         if P3_SERVE:
             var v = self.p3g.value().inner.ctx
             var vocab = self.p3g.value().inner.vocab
-            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff, self.qk_norm)
         else:
             var v = self.f32g.value().inner.ctx
             var vocab = self.f32g.value().inner.vocab
-            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff, self.qk_norm)
 
     def grow_stream_pool(mut self, n: Int, priority: Int) raises:
         """LEVER L5: the AsyncRT context starts with ONE stream (the probe's num_streams
@@ -1595,11 +1623,11 @@ struct _ServeGraph(Movable):
         if P3_SERVE:
             var v = self.p3g.value().inner.ctx.select_stream(stream_id)
             var vocab = self.p3g.value().inner.vocab
-            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff, self.qk_norm)
         else:
             var v = self.f32g.value().inner.ctx.select_stream(stream_id)
             var vocab = self.f32g.value().inner.vocab
-            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff)
+            return _AdmissionPrefill(v, vocab, d_model, h_q, h_kv, d_head, d_ff, self.qk_norm)
 
     def lane_launch(
         mut self, mut lane: _AdmissionPrefill, slot: Int, ref prompt: List[Int],
@@ -3123,12 +3151,26 @@ def _run_serve(
         gs.upload_globals(embed_table, final_norm_w, rt.cos_table, rt.sin_table, MAX_CTX),
         "upload_globals",
     )
+    # Model-agnostic conformance (2026-08-24): the untied lm_head table (a manifest FACT) is
+    # uploaded once, after the globals; a tied model reuses the embedding table (nothing to do).
+    if gs.has_lm_head == 1:
+        var lm_head_table = _load_tensor(blob_path, tensors_obj, "lm_head.weight")
+        _check_resident(gs.upload_lm_head(lm_head_table), "upload_lm_head")
     for layer in range(n_layers):
         var prefix = "model.layers." + String(layer) + "."
         var ln1 = _load_tensor(blob_path, tensors_obj, prefix + "input_layernorm.weight")
         var ln2 = _load_tensor(blob_path, tensors_obj, prefix + "post_attention_layernorm.weight")
-        var qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
-        var kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+        # qk_norm=0 checkpoints (llama / qwen2.5) carry no q_norm/k_norm tensors: fill ones so
+        # the upload slot is valid; the ropewrt kernels skip the norm on the qk_norm=0 flag.
+        var qn = List[Float64]()
+        var kn = List[Float64]()
+        if gs.qk_norm == 1:
+            qn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_norm.weight")
+            kn = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_norm.weight")
+        else:
+            for _j in range(d_head):
+                qn.append(1.0)
+                kn.append(1.0)
         var wq = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.q_proj.weight")
         var wk = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.k_proj.weight")
         var wv = _load_tensor(blob_path, tensors_obj, prefix + "self_attn.v_proj.weight")
@@ -3257,6 +3299,13 @@ def main() raises:
     var vocab_size = json_get_int(config, "vocab_size", -1)
     var theta = json_get_float(config, "rope_theta", -1.0)
     var eps = json_get_float(config, "rms_norm_eps", -1.0)
+    # Model-agnostic conformance (2026-08-24): the family-convention FACTS, read from the
+    # manifest (the converter's tensors-are-the-truth probes wrote them). Absent keys default
+    # to the Qwen3 convention, so a pre-convention manifest runs unchanged.
+    var has_qk_norm = json_get_int(config, "has_qk_norm", 1)
+    var tied = json_get_int(config, "tie_word_embeddings", 1)
+    var has_qkv_bias = json_get_int(config, "attention_bias", 0)
+    var has_lm_head = 1 if tied == 0 else 0
 
     if d_model < 1 or n_layers < 1 or h_q < 1 or h_kv < 1 or d_head < 1 or d_ff < 1 \
        or vocab_size < 1:
@@ -3266,11 +3315,24 @@ def main() raises:
             "qwen3_serve_batched_cuda: vocab_size < 256 — the byte-window tokenizer needs"
             + " every byte id valid"
         )
+    if (has_qk_norm != 0 and has_qk_norm != 1) or (tied != 0 and tied != 1) \
+       or (has_qkv_bias != 0 and has_qkv_bias != 1):
+        raise Error("qwen3_serve_batched_cuda: a convention flag is neither 0 nor 1")
+    if has_qkv_bias == 1:
+        # Typed refusal, never a silent drop: the batched session does not yet apply q/k/v
+        # projection biases (the single-stream CUDA lane does; the batched kernel chain does not
+        # wire the bias add). Running would drop the biases -- fluent-but-wrong math.
+        raise Error(
+            "qwen3_serve_batched_cuda: attention_bias=1 is not supported by the batched serve"
+            + " driver (the batched kernel chain does not apply q/k/v projection biases). Use the"
+            + " single-stream CUDA lane for bias-carrying checkpoints."
+        )
 
     var scale = 1.0 / sqrt(Float64(d_head))
     print("qwen3_serve_batched_cuda: checkpoint =", ckpt_dir, "| d_model =", d_model,
           "| n_layers =", n_layers, "| h_q =", h_q, "| h_kv =", h_kv,
           "| d_head =", d_head, "| d_ff =", d_ff, "| vocab =", vocab_size,
+          "| qk_norm =", has_qk_norm, "| tied =", tied, "| lm_head =", has_lm_head,
           "| max_ctx =", MAX_CTX, "| B_max =", _CUDA_BATCH_DECODE_MAX_SEQS,
           "| chunk_max =", CHUNK_MAX, "| prefill_tile =", CUDA_PREFILL_TILE)
 
@@ -3300,9 +3362,11 @@ def main() raises:
 
         # ═══ ONE-TIME: open the composed graph session — `_ServeGraph` comptime-selects the
         # LEVER-L4 packed3 arm under -D ALGENTA_P3_SERVE, the f32 arm otherwise — then load,
-        # seal, selftest-or-serve through the arm-agnostic runner ═══
+        # seal, selftest-or-serve through the arm-agnostic runner. Model-agnostic conformance
+        # (2026-08-24): the qk_norm / lm_head facts are forwarded into the f32 arm. ═══
         var gs = _ServeGraph(
-            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, MAX_CTX, eps, scale
+            d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab_size, MAX_CTX, eps, scale,
+            has_qk_norm, has_lm_head,
         )
         _run_serve(
             gs, blob_path, tensors_obj, manifest, config,

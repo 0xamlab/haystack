@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -101,7 +102,125 @@ def _verdict_for_config_file(config_path: Path, backend: str) -> dict:
     return result
 
 
+def _run_onboard(rest: list[str]) -> int:
+    """The onboarding loop: `algenta_conform.py onboard <hf-repo-or-local-config>`.
+
+    (a) extract facts via the converter gate, (b) capability-table decision per
+    backend, (c) name the staging tier that would flip a pure-staging refusal,
+    (d) emit a support-matrix row + a JSON ledger line. Zero per-model
+    hardcoding: everything is a function of the normalized fact manifest. With
+    `--gate` and an available backend, also run the identity gate (engine greedy
+    vs transformers fp32 reference) and fold the result into the ledger."""
+    from algenta.onboarding import (
+        backend_staging_ceiling,
+        backend_verdicts,
+        emit_ledger,
+        emit_support_row,
+        onboard_facts,
+        resolve_config,
+        staging_tier_gap,
+    )
+
+    parser = argparse.ArgumentParser(
+        prog="algenta_conform onboard",
+        description="Fact-driven model onboarding: facts -> capability verdict -> ledger row.",
+    )
+    parser.add_argument("source", help="an HF repo id (org/name) or a local checkpoint dir / config.json")
+    parser.add_argument("--name", help="display name for the ledger row (defaults to the source)")
+    parser.add_argument("--gate", action="store_true", help="also run the identity gate where a backend is available")
+    parser.add_argument("--ledger", metavar="FILE", help="append the JSON ledger line to FILE")
+    args = parser.parse_args(rest)
+
+    config, source_desc, weights_dir = resolve_config(args.source)
+    facts = onboard_facts(config)
+    verdicts = backend_verdicts(facts)
+    name = args.name or source_desc
+
+    print(f"onboard: {name}  (source: {source_desc}, weights: {'present' if weights_dir else 'absent'})")
+    for backend in sorted(verdicts):
+        v = verdicts[backend]
+        if v.supported:
+            line = f"  [{backend}] {v.status}" + (f" plan={v.plan}" if v.plan else "")
+            if v.pending_probe:
+                line += f" (pending probe: {', '.join(v.pending_probe)})"
+            print(line)
+        else:
+            for refusal in v.refusals:
+                print(f"  [{backend}] REFUSED: {refusal.message()}")
+        gap = staging_tier_gap(facts, backend)
+        if gap is not None:
+            ceiling = backend_staging_ceiling(backend)
+            if gap <= ceiling:
+                print(
+                    f"  [{backend}] staging-tier gap ONLY: add ALGENTA_STAGE_{gap} "
+                    f"(stage_needed={gap}) to flip this model to supported on {backend}"
+                )
+            else:
+                print(
+                    f"  [{backend}] stage_needed={gap} exceeds {backend}'s buildable staging "
+                    f"ceiling ({ceiling}, set by its shared-memory budget) — a hardware limit, "
+                    "not a missing build; this backend cannot run the model at any tier"
+                )
+
+    gates: dict = {}
+    if args.gate:
+        gates = _run_onboard_gates(name, facts, verdicts, weights_dir)
+
+    print("support-matrix row:")
+    print(emit_support_row(name, facts, verdicts))
+    ledger = emit_ledger(name, facts, verdicts, gates)
+    if args.ledger:
+        with open(args.ledger, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(ledger) + "\n")
+        print(f"ledger appended: {args.ledger}")
+    print("ledger json:")
+    print(json.dumps(ledger, indent=2))
+
+    # Exit code reflects whether ANY backend supports the model.
+    return EXIT_SUPPORTED if any(v.supported for v in verdicts.values()) else EXIT_REFUSED
+
+
+def _run_onboard_gates(name, facts, verdicts, weights_dir) -> dict:
+    """Identity gate per supported backend whose engine is available on this
+    host. Reuses the existing doors (Metal SDK decode; CUDA conform driver);
+    never forks a per-model harness. Returns {backend: gate-record}."""
+    gates: dict = {}
+    prompt = "The capital of France is"
+    max_new = 16
+
+    # Metal arm: production SDK path, when a Metal worker is configured.
+    metal = verdicts.get("metal")
+    worker = os.environ.get("ALGENTA_NATIVE_WORKER")
+    if metal and metal.supported and weights_dir and worker and Path(worker).is_file():
+        try:
+            from algenta.onboarding_gate import gate_metal
+
+            gates["metal"] = gate_metal(str(weights_dir), prompt, max_new)
+        except Exception as exc:  # noqa: BLE001 - a gate failure is recorded, not fatal
+            gates["metal"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
+    # CUDA arm: fact-driven conform driver, when one is on PATH/override.
+    cuda = verdicts.get("cuda")
+    cuda_driver = os.environ.get("ALGENTA_CONFORM_CUDA_DRIVER")
+    if cuda and cuda.supported and weights_dir and cuda_driver and Path(cuda_driver).is_file():
+        try:
+            from algenta.onboarding_gate import gate_cuda
+
+            gates["cuda"] = gate_cuda(str(weights_dir), cuda_driver, prompt, max_new, facts)
+        except Exception as exc:  # noqa: BLE001
+            gates["cuda"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
+    for backend, record in gates.items():
+        print(f"  gate[{backend}]: {record.get('status')} {record.get('detail', '')}")
+    return gates
+
+
 def main(argv: list[str] | None = None) -> int:
+    # Subcommand dispatch: `onboard` runs the onboarding loop; anything else is
+    # the existing single-checkpoint verdict path (unchanged).
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "onboard":
+        return _run_onboard(argv[1:])
     parser = argparse.ArgumentParser(
         prog="algenta_conform",
         description="The algenta model support verdict, computed from declared facts.",
