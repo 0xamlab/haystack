@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from apps.mcp_server import config
 from apps.mcp_server.client import api_with_status, resolve_base_url
 from apps.platform_contract import PlatformContractResponse
 from apps.platform_contract_fallback import (
@@ -126,6 +127,13 @@ async def get_contract_handler(arguments: dict[str, Any]) -> str:
         "mcp_endpoint": payload.mcp_endpoint,
         "mcp_transport": payload.mcp_transport,
         "mcp_protocol_version": payload.mcp_protocol_version,
+        # The generated contract's singular `mcp_protocol_version` field documents only the legacy
+        # `initialize` handshake version (unchanged — it feeds the cross-SDK generated surface, see
+        # apps/platform_contract_constants.py). This server also serves the modern 2026-07-28
+        # per-request era with zero extra registration (mcp>=2.0.0's built-in dual-era dispatch —
+        # see apps/mcp_server/transports/{http_sse,stdio}.py), so an agent asking THIS tool what
+        # this MCP endpoint really supports gets the honest, complete list here.
+        "mcp_protocol_versions_supported": list(config.MCP_PROTOCOL_VERSIONS_SUPPORTED),
         "mcp_legacy_sse_endpoint": payload.mcp_legacy_sse_endpoint,
         "mcp_tools_endpoint": payload.mcp_tools_endpoint,
         "auth_scheme": payload.auth_scheme,

@@ -6,9 +6,28 @@ import os
 from typing import Final
 
 from apps.platform_contract_constants import API_BASE_URL
+from apps.platform_contract_constants import MCP_PROTOCOL_VERSION as _MCP_PROTOCOL_VERSION_LEGACY
 from apps.privacy_policy import policy_from_environment
 
 VERSION: Final[str] = "1.0.4"
+
+# The legacy Streamable HTTP handshake version this server negotiates for an `initialize`-opened
+# connection (unchanged; re-exported from the generated platform contract so there is one source
+# of truth — see apps/platform_contract_constants.py).
+MCP_PROTOCOL_VERSION_LEGACY: Final[str] = _MCP_PROTOCOL_VERSION_LEGACY
+# The modern per-request protocol era this server ALSO serves — with zero extra registration, via
+# mcp>=2.0.0's built-in dual-era dispatch (MCP-Protocol-Version header / `_meta` envelope; see
+# apps/mcp_server/transports/{http_sse,stdio}.py). Real and reachable today, not aspirational.
+MCP_PROTOCOL_VERSION_MODERN: Final[str] = "2026-07-28"
+# Both eras this deployment actually serves — this is the truthful list `get_contract` advertises
+# (apps/mcp_server/tools/meta.py). MCP_PROTOCOL_VERSION_LEGACY stays first/default: it's still what
+# a plain `initialize` handshake negotiates, and what the generated platform contract's singular
+# `mcp_protocol_version` field (a much larger, cross-SDK generated surface — see
+# apps/platform_contract_constants.py) continues to document unchanged.
+MCP_PROTOCOL_VERSIONS_SUPPORTED: Final[tuple[str, ...]] = (
+    MCP_PROTOCOL_VERSION_LEGACY,
+    MCP_PROTOCOL_VERSION_MODERN,
+)
 
 for _legacy_dynamic_name in (
     "BASE_URL",
@@ -79,6 +98,9 @@ __all__ = [
     "BASE_URL",
     "CONNECT_TIMEOUT",
     "HOST",
+    "MCP_PROTOCOL_VERSION_LEGACY",
+    "MCP_PROTOCOL_VERSION_MODERN",
+    "MCP_PROTOCOL_VERSIONS_SUPPORTED",
     "PORT",
     "TIMEOUT",
     "VERSION",

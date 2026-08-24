@@ -24,7 +24,8 @@ uvicorn[standard]==0.51.0
 # <1.3.0 (url.hostname poisoning), <1.3.1 (urlencoded form() DoS). fastapi 0.133+ also
 # requires pydantic>=2.7, satisfied by the pydantic 2.10.x bump below.
 starlette==1.3.1
-mcp==1.28.1                              # latest MCP 2025-11-25 Streamable HTTP server/client
+mcp==2.0.0                                # dual-era: 2025-11-25 handshake + 2026-07-28 per-request
+httpx2>=2.5.0                             # mcp==2.0.0's own new dependency (distinct from httpx below)
 
 # Validation
 pydantic[email]==2.12.0
