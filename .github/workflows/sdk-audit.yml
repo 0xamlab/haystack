@@ -30,7 +30,8 @@ concurrency:
   # instead of every open PR's sweep interleaving on the fleet and wedging (this also
   # guarantees the fixed postgres-ci-sdkaudit container never has two PRs at once).
   # Non-PR events keep a per-ref group with supersede-cancel.
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-sdkaudit' || format('sdk-audit-{0}-{1}', github.workflow, github.ref) }}
+  # Shared serial slot (see ci.yml): whole fleet finishes one PR run at a time.
+  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('sdk-audit-{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 jobs:

@@ -36,7 +36,11 @@ concurrency:
   # leg FINISHES instead of every open PR's matrix interleaving across the 5 runners
   # and all of them wedging at once. Non-PR events keep a per-ref group so a superseded
   # main run is still cancelled by its successor.
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-ci' || format('ci-{0}-{1}', github.workflow, github.ref) }}
+  # ONE serial slot shared by ALL heavy workflows on PR events: the fleet finishes
+  # one run at a time with every free worker instead of splitting workers across
+  # open PRs (jobs inside the active run still fan out to all idle runners, so the
+  # whole fleet converges on the head of the queue, then moves to the next).
+  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('ci-{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 env:

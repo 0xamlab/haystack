@@ -43,7 +43,8 @@ permissions:
 concurrency:
   # PRs share ONE fleet-wide group: runs queue FIFO and each PR's bundle finishes
   # instead of every PR's emulation build interleaving on the fleet and wedging.
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-bundle' || format('runtime-bundle-{0}', github.ref) }}
+  # Shared serial slot (see ci.yml): whole fleet finishes one PR run at a time.
+  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('runtime-bundle-{0}', github.ref) }}
   cancel-in-progress: false
 
 env:

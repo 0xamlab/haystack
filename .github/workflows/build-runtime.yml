@@ -47,7 +47,8 @@ concurrency:
   # PR's wheel FINISHES instead of every open PR's container build interleaving on
   # the single Colima VM and wedging it. Non-PR events (main tags/releases) keep a
   # per-ref group; a superseded release cut is covered by its successor.
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-buildrt' || format('runtime-{0}', github.ref) }}
+  # Shared serial slot (see ci.yml): whole fleet finishes one PR run at a time.
+  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('runtime-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 jobs:

@@ -13,8 +13,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: codeql-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PR legs join the shared serial slot (see ci.yml): whole fleet finishes one PR
+  # run at a time. Non-PR scans keep a per-ref group with supersede-cancel.
+  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('codeql-{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 # Adaptive scanning: on pull requests each language leg first asks
 # scripts/adaptive_codeql_scope.py for a decision (Codna repo-intelligence blast radius over
