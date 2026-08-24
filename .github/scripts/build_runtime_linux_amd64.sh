@@ -43,6 +43,9 @@ export PIXI_HOME=/work/.pixi
 export RATTLER_CACHE_DIR=/work/.cache/rattler/cache
 curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$PIXI_HOME" PIXI_BIN_DIR="$PIXI_HOME/bin" PIXI_NO_PATH_UPDATE=1 bash
 export PATH="$PIXI_HOME/bin:$PATH"
+# A leftover .pixi SYMLINK (fleet env-sharing hack) mounted from the runner workspace
+# makes pixi fail with EEXIST; real cached env dirs are kept.
+find mojo_env -maxdepth 1 -name .pixi -type l -delete
 pixi install --manifest-path mojo_env/pixi.toml
 
 # ── Compile bounded runtime worker shards ────────────────────────────────────────────────────

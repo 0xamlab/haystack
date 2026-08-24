@@ -97,6 +97,12 @@ _SKIP_RUNTIME_IMPORT_PATHS = {
     "output",
     "python_bridge",
     "request_parser",
+    # CUDA engine session (gemma-3 lane): public JSON-frameable helpers such as
+    # gemma3_dims_ok() are engine-internal entry points, not callable commercial
+    # libraries — and no libs suite on the macOS fleet could ever execute them,
+    # so listing the module in the contract trips the test_coverage gate for no
+    # shipped surface. Same class as vector_kernels.test_table.
+    "residentk.session_cuda_gemma3",
     "runtime_library_dispatch_generated",
     "sha256",
     "time_series",

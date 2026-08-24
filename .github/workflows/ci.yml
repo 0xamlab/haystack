@@ -208,7 +208,11 @@ jobs:
           echo "$GITHUB_WORKSPACE/.pixi/bin" >> "$GITHUB_PATH"
 
       - name: Install Mojo/Pixi environment
-        run: PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
+        run: |
+          # A leftover .pixi SYMLINK (fleet env-sharing hack) makes pixi fail with
+          # EEXIST; real cached env dirs are kept.
+          find mojo_env -maxdepth 1 -name .pixi -type l -delete
+          PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
 
       - name: Build compiled Mojo simulation runtime
         env:

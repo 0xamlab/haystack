@@ -47,3 +47,8 @@ build/*
 !build/llm_rollout_parity_benchmark.json
 !build/llm_compiled_runtime_benchmark.json
 build/artifacts
+
+# mojo_env/ is re-included for the COPY stage, but stray host pixi envs/symlinks
+# must still never enter the image: a leftover .pixi breaks `pixi install` (EEXIST).
+**/.pixi
+**/.pixi/

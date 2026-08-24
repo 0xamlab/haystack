@@ -26,9 +26,13 @@ RUN curl -fsSL https://pixi.sh/install.sh | bash
 
 WORKDIR /build
 # Build inputs only (keeps the cache tight). pixi.lock pins the toolchain for reproducibility.
-COPY mojo_env/ /build/mojo_env/
+# Copy the pixi manifests BY NAME: a wholesale `COPY mojo_env/` re-includes the ignored dir
+# without re-applying the **/.pixi filter, which leaked a host .pixi symlink into the image
+# and broke `pixi install` with EEXIST.
+COPY mojo_env/pixi.toml mojo_env/pixi.lock /build/mojo_env/
 COPY mojo/ /build/mojo/
-COPY scripts/build_mojo_binary.sh scripts/generate_runtime_library_dispatch.py /build/scripts/
+COPY scripts/build_mojo_binary.sh scripts/generate_runtime_library_dispatch.py \
+     scripts/shadow_max_pkg_name_collisions.sh /build/scripts/
 # The dispatch generator imports apps.runtime.mojo_inventory (stdlib-only) to enumerate the
 # runtime-library modules; PYTHONPATH=/build makes it importable.
 COPY apps/__init__.py /build/apps/__init__.py
