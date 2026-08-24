@@ -53,9 +53,116 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/api-keys" method="post" %}
 {% endopenapi-operation %}
 
+### `POST /v1/products/{product}/onboard`
+
+{% openapi-operation spec="algenta-api" path="/v1/products/{product}/onboard" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/telys/onboard`
+
+{% openapi-operation spec="algenta-api" path="/v1/telys/onboard" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/products/{product}/whoami`
+
+{% openapi-operation spec="algenta-api" path="/v1/products/{product}/whoami" method="get" %}
+{% endopenapi-operation %}
+
 ### `DELETE /v1/api-keys/{key_id}`
 
 {% openapi-operation spec="algenta-api" path="/v1/api-keys/{key_id}" method="delete" %}
+{% endopenapi-operation %}
+
+### `GET /v1/provider-keys`
+
+{% openapi-operation spec="algenta-api" path="/v1/provider-keys" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/provider-keys`
+
+{% openapi-operation spec="algenta-api" path="/v1/provider-keys" method="post" %}
+{% endopenapi-operation %}
+
+### `DELETE /v1/provider-keys/{backend}`
+
+{% openapi-operation spec="algenta-api" path="/v1/provider-keys/{backend}" method="delete" %}
+{% endopenapi-operation %}
+
+## Agent Runtime
+
+### `POST /v1/agent/runs`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/checkpoints`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/checkpoints" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/mission-events`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/mission-events" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/telemetry`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/telemetry" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/{run_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/{run_id}/events`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/events" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/{run_id}/mission-events`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/mission-events" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/{run_id}/checkpoints`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/checkpoints" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/agent/runs/{run_id}/telemetry`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/telemetry" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/agent/runs/{run_id}/replay`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/replay" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/agent/runs/{run_id}/fork`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/fork" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/agent/runs/{run_id}/resume`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/resume" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/agent/runs/{run_id}/cancel`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/cancel" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/agent/runs/{run_id}/approve`
+
+{% openapi-operation spec="algenta-api" path="/v1/agent/runs/{run_id}/approve" method="post" %}
 {% endopenapi-operation %}
 
 ## Async Jobs
@@ -117,7 +224,29 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/auth/reset-password" method="post" %}
 {% endopenapi-operation %}
 
+## BYOK
+
+### `GET /byok`
+
+{% openapi-operation spec="algenta-api" path="/byok" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /byok`
+
+{% openapi-operation spec="algenta-api" path="/byok" method="post" %}
+{% endopenapi-operation %}
+
+### `DELETE /byok`
+
+{% openapi-operation spec="algenta-api" path="/byok" method="delete" %}
+{% endopenapi-operation %}
+
 ## Billing
+
+### `GET /billing/plans`
+
+{% openapi-operation spec="algenta-api" path="/billing/plans" method="get" %}
+{% endopenapi-operation %}
 
 ### `POST /v1/billing/checkout`
 
@@ -139,6 +268,98 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `GET /v1/calibration`
 
 {% openapi-operation spec="algenta-api" path="/v1/calibration" method="get" %}
+{% endopenapi-operation %}
+
+## Capability Plane
+
+### `GET /v1/capability-providers`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-providers" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/capability-providers/{provider_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-providers/{provider_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/capability-bindings`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/capability-bindings/{binding_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `PATCH /v1/capability-bindings/{binding_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}" method="patch" %}
+{% endopenapi-operation %}
+
+### `DELETE /v1/capability-bindings/{binding_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}" method="delete" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings/test`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/test" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings/{binding_id}/test`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}/test" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings/discover`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/discover" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings/{binding_id}/discover`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}/discover" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings/{binding_id}/authorize/start`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}/authorize/start" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capability-bindings/{binding_id}/authorize/complete`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}/authorize/complete" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/capabilities`
+
+{% openapi-operation spec="algenta-api" path="/v1/capabilities" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/capabilities/{capability_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/capabilities/{capability_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capabilities/route`
+
+{% openapi-operation spec="algenta-api" path="/v1/capabilities/route" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capabilities/execute`
+
+{% openapi-operation spec="algenta-api" path="/v1/capabilities/execute" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/capabilities/outcomes`
+
+{% openapi-operation spec="algenta-api" path="/v1/capabilities/outcomes" method="post" %}
 {% endopenapi-operation %}
 
 ## Data
@@ -288,6 +509,11 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 
 ## Decision Memory
 
+### `POST /v1/decisions/plan`
+
+{% openapi-operation spec="algenta-api" path="/v1/decisions/plan" method="post" %}
+{% endopenapi-operation %}
+
 ### `POST /v1/decisions`
 
 {% openapi-operation spec="algenta-api" path="/v1/decisions" method="post" %}
@@ -316,6 +542,68 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `POST /v1/decisions/{decision_id}/execute`
 
 {% openapi-operation spec="algenta-api" path="/v1/decisions/{decision_id}/execute" method="post" %}
+{% endopenapi-operation %}
+
+## Decision Workflow
+
+### `POST /v1/decision-cases`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-cases" method="post" %}
+{% endopenapi-operation %}
+
+### `PUT /v1/decision-cases/{case_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-cases/{case_id}" method="put" %}
+{% endopenapi-operation %}
+
+### `GET /v1/decision-cases/{case_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-cases/{case_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/decision-cases/{case_id}/analysis-runs`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-cases/{case_id}/analysis-runs" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/decision-cases/{case_id}/refresh`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-cases/{case_id}/refresh" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/analysis-runs/{run_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/analysis-runs/{run_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/analysis-runs/{run_id}/result`
+
+{% openapi-operation spec="algenta-api" path="/v1/analysis-runs/{run_id}/result" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/analysis-runs/{run_id}/evidence`
+
+{% openapi-operation spec="algenta-api" path="/v1/analysis-runs/{run_id}/evidence" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/analysis-runs/{run_id}/action-plans`
+
+{% openapi-operation spec="algenta-api" path="/v1/analysis-runs/{run_id}/action-plans" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/decision-plans/{plan_id}/approve`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-plans/{plan_id}/approve" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/decision-plans/{plan_id}/execute`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-plans/{plan_id}/execute" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/decision-cases/{case_id}/outcomes`
+
+{% openapi-operation spec="algenta-api" path="/v1/decision-cases/{case_id}/outcomes" method="post" %}
 {% endopenapi-operation %}
 
 ## Deployments
@@ -374,11 +662,38 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/execution/policy" method="patch" %}
 {% endopenapi-operation %}
 
+### `GET /v1/execution/policy/snapshots`
+
+{% openapi-operation spec="algenta-api" path="/v1/execution/policy/snapshots" method="get" %}
+{% endopenapi-operation %}
+
 ## Export
 
 ### `GET /v1/runs/{run_id}/export.{fmt}`
 
 {% openapi-operation spec="algenta-api" path="/v1/runs/{run_id}/export.{fmt}" method="get" %}
+{% endopenapi-operation %}
+
+## GitHub App
+
+### `POST /webhooks/github`
+
+{% openapi-operation spec="algenta-api" path="/webhooks/github" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /github/app/install/start`
+
+{% openapi-operation spec="algenta-api" path="/github/app/install/start" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /github/app/install/callback`
+
+{% openapi-operation spec="algenta-api" path="/github/app/install/callback" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /github/app/setup`
+
+{% openapi-operation spec="algenta-api" path="/github/app/setup" method="get" %}
 {% endopenapi-operation %}
 
 ## Infrastructure
@@ -408,6 +723,53 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `POST /v1/ingest`
 
 {% openapi-operation spec="algenta-api" path="/v1/ingest" method="post" %}
+{% endopenapi-operation %}
+
+## LLM API
+
+### `GET /v1/models`
+
+{% openapi-operation spec="algenta-api" path="/v1/models" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/artifacts/resolve`
+
+{% openapi-operation spec="algenta-api" path="/v1/artifacts/resolve" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/chat/completions`
+
+{% openapi-operation spec="algenta-api" path="/v1/chat/completions" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/tokenize`
+
+{% openapi-operation spec="algenta-api" path="/v1/tokenize" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/count_tokens`
+
+{% openapi-operation spec="algenta-api" path="/v1/count_tokens" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/responses`
+
+{% openapi-operation spec="algenta-api" path="/v1/responses" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/embeddings`
+
+{% openapi-operation spec="algenta-api" path="/v1/embeddings" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/embeddings/similarity`
+
+{% openapi-operation spec="algenta-api" path="/v1/embeddings/similarity" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/rerank`
+
+{% openapi-operation spec="algenta-api" path="/v1/rerank" method="post" %}
 {% endopenapi-operation %}
 
 ## Logs
@@ -451,6 +813,75 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/forecast" method="post" %}
 {% endopenapi-operation %}
 
+## Registry
+
+### `POST /v1/registry/credentials`
+
+{% openapi-operation spec="algenta-api" path="/v1/registry/credentials" method="post" %}
+{% endopenapi-operation %}
+
+## Repository Intelligence
+
+### `GET /v1/repositories/capabilities`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/capabilities" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/snapshots`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/snapshots" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/repositories/{repository_id}/snapshots/{snapshot_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/snapshots/{snapshot_id}" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/triage`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/triage" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/graph-query`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/graph-query" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/security-analyses`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/security-analyses" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/security-analyses/closure`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/security-analyses/closure" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/decision-plans`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/decision-plans" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/simulate`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/simulate" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/simulate-patch`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/simulate-patch" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/pipeline`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/pipeline" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/repositories/{repository_id}/apply`
+
+{% openapi-operation spec="algenta-api" path="/v1/repositories/{repository_id}/apply" method="post" %}
+{% endopenapi-operation %}
+
 ## Runs
 
 ### `GET /v1/runs`
@@ -466,6 +897,23 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `GET /v1/analytics`
 
 {% openapi-operation spec="algenta-api" path="/v1/analytics" method="get" %}
+{% endopenapi-operation %}
+
+## Runtime Libraries
+
+### `GET /v1/libraries`
+
+{% openapi-operation spec="algenta-api" path="/v1/libraries" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/libraries/health`
+
+{% openapi-operation spec="algenta-api" path="/v1/libraries/health" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/libraries/execute`
+
+{% openapi-operation spec="algenta-api" path="/v1/libraries/execute" method="post" %}
 {% endopenapi-operation %}
 
 ## Semantic Query
@@ -573,6 +1021,46 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/meta/contract" method="get" %}
 {% endopenapi-operation %}
 
+### `GET /v1/runtime/manifest`
+
+{% openapi-operation spec="algenta-api" path="/v1/runtime/manifest" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/runtime/library-stats`
+
+{% openapi-operation spec="algenta-api" path="/v1/runtime/library-stats" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/admin/runtime/modules`
+
+{% openapi-operation spec="algenta-api" path="/v1/admin/runtime/modules" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/admin/runtime/benchmarks`
+
+{% openapi-operation spec="algenta-api" path="/v1/admin/runtime/benchmarks" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/admin/runtime/validation`
+
+{% openapi-operation spec="algenta-api" path="/v1/admin/runtime/validation" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/admin/egress-policy`
+
+{% openapi-operation spec="algenta-api" path="/v1/admin/egress-policy" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/admin/egress-log`
+
+{% openapi-operation spec="algenta-api" path="/v1/admin/egress-log" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/admin/privacy-report`
+
+{% openapi-operation spec="algenta-api" path="/v1/admin/privacy-report" method="get" %}
+{% endopenapi-operation %}
+
 ## Team
 
 ### `GET /v1/team`
@@ -583,6 +1071,11 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `POST /v1/team/invite`
 
 {% openapi-operation spec="algenta-api" path="/v1/team/invite" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/team/accept`
+
+{% openapi-operation spec="algenta-api" path="/v1/team/accept" method="post" %}
 {% endopenapi-operation %}
 
 ### `PATCH /v1/team/{user_id}/role`
@@ -598,6 +1091,11 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `GET /v1/audit-logs`
 
 {% openapi-operation spec="algenta-api" path="/v1/audit-logs" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/audit-logs/artifacts`
+
+{% openapi-operation spec="algenta-api" path="/v1/audit-logs/artifacts" method="get" %}
 {% endopenapi-operation %}
 
 ## Triggers
@@ -634,11 +1132,95 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/simulate/what-if" method="post" %}
 {% endopenapi-operation %}
 
+## account
+
+### `GET /account/devices`
+
+{% openapi-operation spec="algenta-api" path="/account/devices" method="get" %}
+{% endopenapi-operation %}
+
+### `DELETE /account/devices/{registration_id}`
+
+{% openapi-operation spec="algenta-api" path="/account/devices/{registration_id}" method="delete" %}
+{% endopenapi-operation %}
+
+### `GET /account/usage`
+
+{% openapi-operation spec="algenta-api" path="/account/usage" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /account/billing`
+
+{% openapi-operation spec="algenta-api" path="/account/billing" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /account/billing/checkout`
+
+{% openapi-operation spec="algenta-api" path="/account/billing/checkout" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /account/billing/portal`
+
+{% openapi-operation spec="algenta-api" path="/account/billing/portal" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /account/orgs`
+
+{% openapi-operation spec="algenta-api" path="/account/orgs" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /account/team`
+
+{% openapi-operation spec="algenta-api" path="/account/team" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /account/team/invite`
+
+{% openapi-operation spec="algenta-api" path="/account/team/invite" method="post" %}
+{% endopenapi-operation %}
+
+### `PATCH /account/team/{user_id}/role`
+
+{% openapi-operation spec="algenta-api" path="/account/team/{user_id}/role" method="patch" %}
+{% endopenapi-operation %}
+
+### `DELETE /account/team/{user_id}`
+
+{% openapi-operation spec="algenta-api" path="/account/team/{user_id}" method="delete" %}
+{% endopenapi-operation %}
+
+### `GET /account/settings`
+
+{% openapi-operation spec="algenta-api" path="/account/settings" method="get" %}
+{% endopenapi-operation %}
+
+### `PATCH /account/settings`
+
+{% openapi-operation spec="algenta-api" path="/account/settings" method="patch" %}
+{% endopenapi-operation %}
+
 ## credits
 
 ### `POST /v1/credits/refresh`
 
 {% openapi-operation spec="algenta-api" path="/v1/credits/refresh" method="post" %}
+{% endopenapi-operation %}
+
+## deployment
+
+### `POST /v1/deployment/activate`
+
+{% openapi-operation spec="algenta-api" path="/v1/deployment/activate" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/deployment/node/challenge`
+
+{% openapi-operation spec="algenta-api" path="/v1/deployment/node/challenge" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/deployment/node/heartbeat`
+
+{% openapi-operation spec="algenta-api" path="/v1/deployment/node/heartbeat" method="post" %}
 {% endopenapi-operation %}
 
 ## devices
@@ -663,9 +1245,48 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/device/{registration_id}" method="delete" %}
 {% endopenapi-operation %}
 
+### `GET /v1/runtime/authorize`
+
+{% openapi-operation spec="algenta-api" path="/v1/runtime/authorize" method="get" %}
+{% endopenapi-operation %}
+
+## license
+
+### `POST /v1/license/challenge`
+
+{% openapi-operation spec="algenta-api" path="/v1/license/challenge" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/license/renew`
+
+{% openapi-operation spec="algenta-api" path="/v1/license/renew" method="post" %}
+{% endopenapi-operation %}
+
 ## metering
 
 ### `POST /v1/metering`
 
 {% openapi-operation spec="algenta-api" path="/v1/metering" method="post" %}
+{% endopenapi-operation %}
+
+## oauth-device
+
+### `POST /oauth/device/code`
+
+{% openapi-operation spec="algenta-api" path="/oauth/device/code" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /oauth/device/token`
+
+{% openapi-operation spec="algenta-api" path="/oauth/device/token" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /oauth/device/grant`
+
+{% openapi-operation spec="algenta-api" path="/oauth/device/grant" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /oauth/device/approve`
+
+{% openapi-operation spec="algenta-api" path="/oauth/device/approve" method="post" %}
 {% endopenapi-operation %}
