@@ -96,12 +96,48 @@ PROMPT_FACTS = (
     "The human heart pumps blood through the circulatory system.",
 )
 
-# Request shapes (approximate prompt tokens / max output tokens) per mix.
+# Request shapes (approximate prompt tokens / max output tokens) per mix. `sonnet` mirrors the
+# MAX (Modular) published Gemma 3 27B benchmark methodology: 550-token sonnet prompts sharing a
+# 200-token prefix, 256-token outputs (`max benchmark --dataset-name sonnet --num-prompts 500
+# --sonnet-input-len 550 --output-lengths 256 --sonnet-prefix-len 200`).
 MIX_SPECS = {
     "chat": {"in_tokens": 1024, "out_tokens": 256},
     "rag": {"in_tokens": 4096, "out_tokens": 512},
     "summar": {"in_tokens": 8192, "out_tokens": 1024},
+    "sonnet": {"in_tokens": 550, "out_tokens": 256, "prefix_tokens": 200},
 }
+
+# Embedded Shakespeare sonnet lines for the sonnet mix (public domain). Every request shares the
+# SAME `prefix_tokens`-long opening (the prefix-caching axis of the MAX methodology) and carries a
+# deterministic per-index suffix drawn from these lines.
+SONNET_LINES = (
+    "Shall I compare thee to a summer's day?",
+    "Thou art more lovely and more temperate.",
+    "Rough winds do shake the darling buds of May,",
+    "And summer's lease hath all too short a date.",
+    "Sometime too hot the eye of heaven shines,",
+    "And often is his gold complexion dimmed.",
+    "And every fair from fair sometime declines,",
+    "By chance, or nature's changing course, untrimmed.",
+    "But thy eternal summer shall not fade,",
+    "Nor lose possession of that fair thou ow'st.",
+    "Nor shall death brag thou wand'rest in his shade,",
+    "When in eternal lines to time thou grow'st.",
+    "So long as men can breathe or eyes can see,",
+    "So long lives this, and this gives life to thee.",
+    "When forty winters shall besiege thy brow,",
+    "And dig deep trenches in thy beauty's field,",
+    "Thy youth's proud livery, so gazed on now,",
+    "Will be a tottered weed of small worth held.",
+    "Look in thy glass, and tell the face thou viewest,",
+    "Now is the time that face should form another.",
+    "Whose fresh repair if now thou not renewest,",
+    "Thou dost beguile the world, unbless some mother.",
+    "Unthrifty loveliness, why dost thou spend",
+    "Upon thyself thy beauty's legacy?",
+    "Nature's bequest gives nothing but doth lend,",
+    "And being frank she lends to those are free.",
+)
 
 # SYNTHETIC ShareGPT-style shape distribution (not the ShareGPT dataset):
 # (prompt tokens, completion tokens, weight).
@@ -157,6 +193,29 @@ def synthesize_prompt(index: int, target_tokens: int, seed: int) -> str:
     while approx_tokens(text) < target_tokens:
         parts.append(rng.choice(PROMPT_FACTS))
         text = " ".join(parts)
+    return text
+
+
+def synthesize_sonnet_prompt(index: int, target_tokens: int, prefix_tokens: int) -> str:
+    """The MAX-methodology sonnet prompt: a SHARED `prefix_tokens`-long opening (identical for
+    every request — the prefix-caching axis) plus a deterministic per-index suffix up to
+    `target_tokens`. Same shape `max benchmark --dataset-name sonnet` uses."""
+    # Shared prefix: the same opening lines for ALL requests.
+    prefix_parts: list[str] = []
+    prefix_text = ""
+    cursor = 0
+    while approx_tokens(prefix_text) < prefix_tokens:
+        prefix_parts.append(SONNET_LINES[cursor % len(SONNET_LINES)])
+        prefix_text = " ".join(prefix_parts)
+        cursor += 1
+    # Per-index suffix: a rotation offset makes each request's tail distinct but deterministic.
+    suffix_parts: list[str] = []
+    text = prefix_text
+    k = index
+    while approx_tokens(text) < target_tokens:
+        suffix_parts.append(SONNET_LINES[(cursor + k) % len(SONNET_LINES)])
+        k += 1
+        text = prefix_text + " " + " ".join(suffix_parts)
     return text
 
 
@@ -218,9 +277,13 @@ def build_request_specs(mix: str, prompts_file: str | None, n: int, seed: int) -
                 }
             )
         return specs
+    prefix_tokens = MIX_SPECS.get(mix, {}).get("prefix_tokens", 0)
     for i in range(n):
         n_in, n_out = mix_shape(mix, i, seed)
-        prompt = synthesize_prompt(i, n_in, seed)
+        if mix == "sonnet":
+            prompt = synthesize_sonnet_prompt(i, n_in, prefix_tokens)
+        else:
+            prompt = synthesize_prompt(i, n_in, seed)
         specs.append(
             {
                 "prompt": prompt,
@@ -296,6 +359,8 @@ def make_sample(
     n_tokens: int = 0,
     text: str = "",
     out_tok_s: float | None = None,
+    input_tokens: int = 0,
+    e2e_ms: float | None = None,
 ) -> dict:
     return {
         "error": error,
@@ -305,6 +370,10 @@ def make_sample(
         "n_tokens": n_tokens,
         "text": text,
         "out_tok_s": out_tok_s,
+        # MAX-metric-set additions: prompt tokens (for input throughput) and the end-to-end
+        # request latency (request write -> final token).
+        "input_tokens": input_tokens,
+        "e2e_ms": e2e_ms,
     }
 
 
@@ -388,17 +457,18 @@ class HttpAdapter:
         headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        input_tokens = spec.get("prompt_tokens_approx", 0)
         try:
-            return self._stream(self._conn(), body, headers)
+            return self._stream(self._conn(), body, headers, input_tokens)
         except (http.client.HTTPException, OSError):
             # Keep-alive may have been closed server-side: reconnect once, then give up.
             self._drop_conn()
             try:
-                return self._stream(self._conn(), body, headers)
+                return self._stream(self._conn(), body, headers, input_tokens)
             except (http.client.HTTPException, OSError) as exc:
                 return make_sample(error=f"http: {exc.__class__.__name__}: {exc}")
 
-    def _stream(self, conn, body: bytes, headers: dict) -> dict:
+    def _stream(self, conn, body: bytes, headers: dict, input_tokens: int = 0) -> dict:
         t0 = time.perf_counter()
         conn.request("POST", self.path, body=body, headers=headers)
         resp = conn.getresponse()
@@ -443,6 +513,8 @@ class HttpAdapter:
             n_tokens=n_tokens,
             text="".join(parts),
             out_tok_s=out_tok_s,
+            input_tokens=input_tokens,
+            e2e_ms=(end - t0) * 1000.0,
         )
 
 
@@ -561,6 +633,8 @@ class JsonlDriverAdapter:
             n_tokens=n_tokens,
             text=text,
             out_tok_s=out_tok_s,
+            input_tokens=spec.get("prompt_tokens_approx", 0),
+            e2e_ms=total_ms,
         )
 
     def close(self) -> None:
@@ -658,30 +732,54 @@ def cell_metrics(samples: list[dict], wall_s: float) -> dict:
     tpot = [s["tpot_ms"] for s in ok if s["tpot_ms"] is not None]
     itl = [gap for s in ok for gap in s["itl_ms"]]
     tps = [s["out_tok_s"] for s in ok if s["out_tok_s"] is not None]
+    e2e = [s["e2e_ms"] for s in ok if s.get("e2e_ms") is not None]
     tokens = sum(s["n_tokens"] for s in ok)
+    input_tokens = sum(s.get("input_tokens", 0) for s in ok)
 
     def pct(vals: list[float], p: float) -> float | None:
         return percentile(vals, p) if vals else None
 
+    def mean(vals: list[float]) -> float | None:
+        return statistics.fmean(vals) if vals else None
+
+    # The MAX (Modular) benchmark metric set, added for the Gemma 3 race: means alongside the
+    # percentiles, p95, input/output token throughput, and end-to-end request latency.
     return {
         "requests": total,
         "completed": len(ok),
         "errors": errors,
         "error_rate": errors / total if total else 0.0,
         "wall_s": wall_s,
+        "ttft_ms_mean": mean(ttft),
         "ttft_ms_p50": pct(ttft, 50),
         "ttft_ms_p90": pct(ttft, 90),
+        "ttft_ms_p95": pct(ttft, 95),
         "ttft_ms_p99": pct(ttft, 99),
+        "tpot_ms_mean": mean(tpot),
         "tpot_ms_p50": pct(tpot, 50),
         "tpot_ms_p90": pct(tpot, 90),
+        "tpot_ms_p95": pct(tpot, 95),
         "tpot_ms_p99": pct(tpot, 99),
+        "itl_ms_mean": mean(itl),
         "itl_ms_p50": pct(itl, 50),
         "itl_ms_p90": pct(itl, 90),
+        "itl_ms_p95": pct(itl, 95),
         "itl_ms_p99": pct(itl, 99),
         "out_tok_s_p50": pct(tps, 50),
+        "out_tok_s_mean": mean(tps),
         "total_tokens": tokens,
+        "total_input_tokens": input_tokens,
+        # Input/output token throughput (MAX's "input/output token throughput"): completed
+        # tokens over the cell wall. Output aggregate = total_tokens/wall; input = input_tokens/wall.
         "agg_tok_s": tokens / wall_s if wall_s > 0 else 0.0,
+        "input_tok_s": input_tokens / wall_s if wall_s > 0 else 0.0,
+        "output_tok_s": tokens / wall_s if wall_s > 0 else 0.0,
         "req_per_s": len(ok) / wall_s if wall_s > 0 else 0.0,
+        "e2e_ms_mean": mean(e2e),
+        "e2e_ms_p50": pct(e2e, 50),
+        "e2e_ms_p90": pct(e2e, 90),
+        "e2e_ms_p95": pct(e2e, 95),
+        "e2e_ms_p99": pct(e2e, 99),
     }
 
 
@@ -883,7 +981,12 @@ def main() -> int:
     ap.add_argument(
         "--jsonl-driver", default=None, help="JSON-lines driver command (see module docstring)"
     )
-    ap.add_argument("--mix", choices=("chat", "rag", "summar", "sharegpt"), default="chat")
+    ap.add_argument(
+        "--mix",
+        choices=("chat", "rag", "summar", "sharegpt", "sonnet"),
+        default="chat",
+        help="sonnet = the MAX-methodology 550-in/256-out prefix-200 cell",
+    )
     ap.add_argument("--prompts", default=None, help="JSONL prompt file overriding synthesis")
     ap.add_argument("--concurrency", default="1,8,16,32,64", help="closed-loop levels")
     ap.add_argument("--rate-sweep", default="", help="open-loop Poisson rates, req/s")

@@ -15770,3 +15770,94 @@ requires cheaper KV bytes first.
 **Loop state:** round 1 closed — best gated arm serve_s4_l7_seqs64 = 4,012 tok/s = 0.27x
 of vLLM's 14,839. The vLLM loss remains unpublished per the standing directive; round 2
 opens on lever 5.1 (KV traffic).
+---
+
+## GEMMA 3 LANE OPENED — algenta RUNS google/gemma-3-27b-it on ONE 80 GB H100: the family port is correctness-gated two ways and the f16 arm fits 27B; this is the starting baseline, NOT a race win (2026-08-24, algenta-ent-h100 a3-highgpu-8g SPOT, 8x H100 80GB HBM3, sm_90, branch feat/gemma3 / worktree .qwen/worktrees/gemma3; artifacts /tmp/g3conv27b + ~/gemma3_bin on the VM)
+
+The owner's front: beat Modular MAX's published `google/gemma-3-27b-it` numbers
+(max.modular.com/serve/benchmark/, `max benchmark` sonnet methodology — 500 prompts,
+550-in/256-out, prefix-200, MAX metric set). This entry records the lane OPENING: the whole
+Gemma 3 family ported from zero and correctness-gated, and 27B running on a single GPU. It is a
+baseline, not a win — the win path is named at the bottom.
+
+### 1. The family port, and why it is a real port, not a shape-swap
+
+Gemma 3 differs from the Qwen3/llama family the kernels grew up on in SIX structural ways, all
+verified against the shipped config.json + transformers 5.15.1 (configuration_gemma3.py /
+modeling_gemma3.py) + the 4B safetensors before a kernel was written:
+
+1. FOUR RMSNorms per layer in gemma2-style wiring: input_layernorm pre-attn;
+   post_attention_layernorm applied to the o_proj OUTPUT before the residual add;
+   pre_feedforward_layernorm pre-MLP; post_feedforward_layernorm on the down_proj OUTPUT before
+   its add. (llama adds the branch raw then norms the stream.) Two extra norm dispatches/layer.
+2. Every RMSNorm uses Gemma's `(1.0 + weight)` gain convention. The converter rebases every norm
+   tensor to (1+w) BEFORE the blob, so the existing gain-multiply kernels compute it exactly with
+   zero kernel branches (manifest `norm_weight_plus_one=1` records it).
+3. Dual RoPE: full-attention layers theta_global 1e6 WITH the config's linear factor (8.0)
+   dividing the inverse frequencies; sliding layers theta_local 1e4 unscaled. Two rope tables,
+   selected per layer at dispatch. Layer mix: full iff (i+1)%6==0 (27B: 10 full / 52 sliding).
+4. Sliding-window attention: local layers attend only the last 1024 keys (a key lower bound in the
+   decode attention kernel; full layers pass 0).
+5. GeGLU with gelu_pytorch_tanh — NOT the SiLU the kernels fuse. New kernel epilogue.
+6. sqrt(hidden_size) input-embedding scale (27B: x73.3); tied lm_head stays the RAW table. Plus
+   head_dim independent of hidden//heads (27B: hidden 5376, h_q 32, h_kv 16, head_dim 128; the
+   1B/4B omit the head fields and use the Gemma3TextConfig class defaults 8/4/256 — verified
+   against the 4B q_proj [2048,2560]=8x256).
+
+Built: SDK converter (wrapper-config lift + class defaults + (1+w) rebase + f32 blob option);
+residentk/kernels_gemma3.mojo (the six family kernels + f16 twins); session_cuda_gemma3.mojo (f32)
+and session_cuda_gemma3_f16.mojo (f16); driver gemma3_correctness_cuda.mojo (--f16, --dump-logits,
+TTFT + decode tok/s); harness sonnet mix + MAX metric set.
+
+### 2. Correctness, gated two ways before any number
+
+* Synthetic identity gate (CUDA f32, on the H100): a gemma3-shaped random checkpoint (dual rope,
+  mixed full/sliding layers, GQA, tied) run through the converted engine matches the independent
+  fp64 torch reference logits to <2e-6, greedy tokens identical, at 1x/2x/3x-window and
+  single-token prompts. The f16 kernels are bit-exact on it (dyadic weights).
+* Real-weights gate (the 4B sibling, CUDA f32 AND f16, vs HF-transformers CPU fp32): 444 tensors
+  load clean, final-position logits agree to 2.5e-4 (fp32-vs-fp32 rounding), top-5 identical, and
+  the greedy tokens match across engine-f32 / engine-f16 / transformers:
+  [236761, 108, 1018, 236778] for prompt [2,1756,3402,762].
+
+The 27B itself runs the identical code path (62 layers) and emits valid tokens; a 27B-specific
+token diff vs a reference is not yet run because the only same-size reference would be a CPU-fp32
+27B forward (impractically slow) — the sibling + synthetic gates carry the correctness claim.
+
+### 3. The fit: why f16, and the baseline
+
+Float32 gemma3-27B is ~109 GB — it does not fit one 80 GB H100. The f16-weight arm (weights
+f16, everything else f32 — same mixed-precision discipline as session_cuda_f16) is 54 GB and fits.
+On CUDA_VISIBLE_DEVICES=6, 27B, prompt [2,1756,3402,762], --max-new 32:
+
+    ttft_ms 859.9 (sequential 4-token ingest — decode-only arm, NOT a parallel prefill)
+    decode  4.63 tok/s single-stream (32 tokens, f16)
+
+### 4. VERDICT — this is a STARTING BASELINE, and it is a loss, named precisely
+
+MAX's published 27B cell (concurrency 50): ~27.3 mean / 30.6 median output tok/s per request,
+TPOT mean 46.7 ms, TTFT mean 860 ms, request throughput 1.98 req/s. algenta's current
+single-stream decode is 4.63 tok/s — roughly a 6x gap, and there is NO concurrent arm yet. The
+diagnosis is the same one the Qwen3 CUDA lane proved on day one: ~500 dispatches/token
+(62 layers x 8 + 3) of host submission, no CUDA graph, no split-K attention, f16 GEMV not yet
+bandwidth-tuned for HBM3. The TTFT is serial ingest, not a real prefill. NONE of this is a
+kernel-math problem — the math is gated exact above; it is the serving/launch/bandwidth problem
+the campaign has solved before on Qwen3/llama and re-solves here for Gemma 3.
+
+### 5. The win path (named, in order)
+
+1. CUDA-graph decode arm for gemma3 (the session_cuda _build_decode_graph pattern) — removes the
+   ~500-dispatch/token host overhead; historically the single biggest decode lever (the Qwen3
+   lane's 71 -> 330 tok/s was this + split-K).
+2. Split-K / flash-decoding attention for the gemma3 windowed kernel (deep-context decode).
+3. A real tiled prefill for gemma3 (parallel, not serial ingest) — flips TTFT.
+4. A concurrent gemma3 serving driver (the qwen3_serve_batched_cuda.mojo pattern) so the sonnet
+   500-prompt / C=50 cell can actually be raced.
+5. Then the MAX-methodology cell: enterprise_bench.py already has the sonnet mix (550-in/256-out/
+   prefix-200) and the MAX metric set (TTFT/TPOT/ITL mean+p50/p90/p95/p99, in/out tok/s, req/s,
+   E2E). Opponents: max serve, vLLM, llama-server.
+
+STATUS: branch feat/gemma3 (draft PR). The race is NOT won and no win is published; this entry is
+the internal baseline per the publish-wins-only rule. Real-weights gate used the 4B sibling (a
+CPU-fp32 27B reference is impractically slow); 27B f32 does not fit one 80 GB GPU — f16 is the
+race arm. Next session: levers 1-4 above, then measure the sonnet cell.

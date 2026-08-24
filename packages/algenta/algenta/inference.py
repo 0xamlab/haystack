@@ -178,12 +178,233 @@ def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     config. Llama-family checkpoints omit `head_dim` (it is implicit `hidden_size //
     num_attention_heads`); Qwen3 carries it explicitly -- and note the two are NOT the same formula
     for Qwen3 (its q/k/v project to `h_q * head_dim`, which differs from `hidden_size`), so an
-    already-present `head_dim` is always trusted, never re-derived. Returns a new dict; the caller's
-    config is not mutated."""
-    if "head_dim" not in config and "hidden_size" in config and "num_attention_heads" in config:
+    already-present `head_dim` is always trusted, never re-derived. Gemma 3 checkpoints ship a
+    MULTIMODAL wrapper config (`model_type=gemma3`) whose text shape lives in the nested
+    `text_config`; this lifts that nested config (tagged `model_type=gemma3_text`) and carries the
+    wrapper's `eos_token_id` list with it. Returns a new dict; the caller's config is not
+    mutated."""
+    if config.get("model_type") == "gemma3" and isinstance(config.get("text_config"), dict):
+        text = dict(config["text_config"])
+        text["model_type"] = "gemma3_text"
+        if "eos_token_id" in config and config["eos_token_id"] is not None:
+            text.setdefault("_gemma3_eos_token_ids", config["eos_token_id"])
+        config = text
+    # Gemma 3's head_dim is INDEPENDENT of hidden_size // heads (q/k/v project to h_q*head_dim,
+    # a different number), exactly like Qwen3 -- so the implicit-head_dim derivation below must not
+    # run for it; _gemma3_prepare_config supplies the Gemma3TextConfig class default instead.
+    if (
+        "head_dim" not in config
+        and config.get("model_type") != "gemma3_text"
+        and "hidden_size" in config
+        and "num_attention_heads" in config
+    ):
         h_q = config["num_attention_heads"]
         if isinstance(h_q, int) and h_q > 0:
             return {**config, "head_dim": config["hidden_size"] // h_q}
+    return config
+
+
+# Gemma 3 (Gemma 3 lane, 2026-08-23): architecture facts VERIFIED against the shipped
+# google/gemma-3-27b-it config.json + transformers 5.15.1's configuration_gemma3.py /
+# modeling_gemma3.py (the checkpoint's own config.json omits them; transformers' Gemma3TextConfig
+# class defaults supply exactly these values when the file loads):
+#   * rms_norm_eps 1e-6; EVERY RMSNorm (layer norms, q/k norm, final norm) uses Gemma's
+#     `(1.0 + weight)` gain convention -- weights ship zero-centered, so (1+w) is the gain.
+#   * rope theta: GLOBAL (full-attention) layers 1_000_000.0, LOCAL (sliding-window) layers
+#     10_000.0 (`default_theta = {"global": 1_000_000.0, "local": 10_000.0}`).
+#   * the config's rope_scaling {rope_type: linear, factor: 8.0} applies to the GLOBAL layers ONLY
+#     (transformers' convert_rope_params_to_dict updates `full_attention` with it): the global
+#     inverse frequencies are divided by the factor. Local layers stay unscaled.
+#   * layer types derive from sliding_window_pattern=6 when the config omits `layer_types`:
+#     layer i is full-attention iff (i + 1) % 6 == 0.
+#   * attention score scale is `query_pre_attn_scalar ** -0.5` (27B ships 168), NOT head_dim-based.
+#   * input embeddings are scaled by sqrt(hidden_size); the lm_head is the TIED embedding table
+#     WITHOUT that scale; MLP activation is GeGLU with the tanh-approx GELU (gelu_pytorch_tanh).
+#   * eos: the wrapper config ships [1, 106] (<eos>, <end_of_turn>).
+_GEMMA3_DEFAULT_RMS_NORM_EPS = 1e-6
+_GEMMA3_DEFAULT_ROPE_THETA_GLOBAL = 1_000_000.0
+_GEMMA3_DEFAULT_ROPE_THETA_LOCAL = 10_000.0
+_GEMMA3_DEFAULT_SLIDING_WINDOW_PATTERN = 6
+_GEMMA3_DEFAULT_QUERY_PRE_ATTN_SCALAR = 256
+_GEMMA3_DEFAULT_VOCAB_SIZE = 262_208  # Gemma3TextConfig class default; the 27B file omits it
+_GEMMA3_ACTIVATION_CODE_GELU_TANH = 1  # manifest int: 0 = silu (Qwen3/llama), 1 = gelu_pytorch_tanh
+
+
+def _gemma3_layer_types(config: dict[str, Any], checkpoint_dir: Path) -> list[str]:
+    """The per-layer attention class list, exactly as transformers derives it: the config's own
+    `layer_types` when present (values validated), else the sliding_window_pattern=6 rule --
+    layer i is `full_attention` iff (i + 1) % pattern == 0."""
+    n_layers = config["num_hidden_layers"]
+    layer_types = config.get("layer_types")
+    if layer_types is not None:
+        if (
+            not isinstance(layer_types, list)
+            or len(layer_types) != n_layers
+            or any(value not in ("sliding_attention", "full_attention") for value in layer_types)
+        ):
+            raise UnsupportedArchitectureError(
+                f"unsupported model architecture: {checkpoint_dir} gemma3 config declares "
+                f"layer_types={layer_types!r}; expected {n_layers} entries, each "
+                "'sliding_attention' or 'full_attention'."
+            )
+        return list(layer_types)
+    pattern = config.get("sliding_window_pattern", _GEMMA3_DEFAULT_SLIDING_WINDOW_PATTERN)
+    if isinstance(pattern, bool) or not isinstance(pattern, int) or pattern < 1:
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: {checkpoint_dir} gemma3 config declares "
+            f"sliding_window_pattern={pattern!r}; expected a positive int."
+        )
+    return [
+        "full_attention" if (i + 1) % pattern == 0 else "sliding_attention"
+        for i in range(n_layers)
+    ]
+
+
+def _gemma3_prepare_config(config: dict[str, Any], checkpoint_dir: Path) -> dict[str, Any]:
+    """Complete + validate a lifted gemma3_text config, returning the manifest's gemma3-specific
+    entries. Refuses (never silently adapts) any Gemma 3 feature the kernels do not implement:
+    logit softcapping of either kind, bidirectional attention, q/k/v projection biases, any
+    rope_scaling other than the shipped linear scheme, and any activation other than
+    gelu_pytorch_tanh -- each would otherwise run with silently-wrong math."""
+    if config.get("attn_logit_softcapping") is not None or config.get("final_logit_softcapping") is not None:
+        raise UnsupportedArchitectureError(
+            "unsupported model architecture: this gemma3 checkpoint enables logit softcapping "
+            "(attn_logit_softcapping / final_logit_softcapping); the kernels do not implement it."
+        )
+    if config.get("use_bidirectional_attention"):
+        raise UnsupportedArchitectureError(
+            "unsupported model architecture: gemma3 use_bidirectional_attention=true is not "
+            "supported (causal generation only)."
+        )
+    if config.get("attention_bias"):
+        raise UnsupportedArchitectureError(
+            "unsupported model architecture: gemma3 attention_bias=true (q/k/v projection "
+            "biases) is not supported."
+        )
+    hidden_activation = config.get("hidden_activation", "gelu_pytorch_tanh")
+    if hidden_activation != "gelu_pytorch_tanh":
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: gemma3 hidden_activation={hidden_activation!r}; "
+            "only 'gelu_pytorch_tanh' (the shipped Gemma 3 activation) is implemented."
+        )
+
+    # Shape fields transformers' Gemma3TextConfig defaults supply when the file omits them.
+    config = {**config}
+    if "rms_norm_eps" not in config:
+        config["rms_norm_eps"] = _GEMMA3_DEFAULT_RMS_NORM_EPS
+    if "vocab_size" not in config:
+        config["vocab_size"] = _GEMMA3_DEFAULT_VOCAB_SIZE
+    # The head fields are OMITTED by the smaller shipped checkpoints (1B/4B set none of them;
+    # 12B/27B set them explicitly), and transformers supplies these exact class defaults at load
+    # -- verified for the 4B against its safetensors (q_proj [2048, 2560] = 8 heads x head_dim
+    # 256). Reproduce that here rather than deriving head_dim from hidden_size // heads, which is
+    # wrong for Gemma 3 (its q/k/v project to h_q * head_dim != hidden_size).
+    config.setdefault("num_attention_heads", 8)
+    config.setdefault("num_key_value_heads", 4)
+    config.setdefault("head_dim", 256)
+    sliding_window = config.get("sliding_window")
+    if isinstance(sliding_window, bool) or not isinstance(sliding_window, int) or sliding_window < 1:
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: gemma3 sliding_window={sliding_window!r}; expected "
+            "a positive int."
+        )
+
+    layer_types = _gemma3_layer_types(config, checkpoint_dir)
+
+    # Rope: global theta (+ the config's linear rope_scaling, global layers ONLY), local theta.
+    rope_theta_global = _GEMMA3_DEFAULT_ROPE_THETA_GLOBAL
+    rope_theta_local = _GEMMA3_DEFAULT_ROPE_THETA_LOCAL
+    rope_global_scaling_factor = 1.0
+    rope_scaling = config.get("rope_scaling")
+    if isinstance(rope_scaling, dict):
+        rope_type = str(rope_scaling.get("rope_type", rope_scaling.get("type", ""))).lower()
+        factor = rope_scaling.get("factor")
+        if rope_type not in ("none", "") or factor is not None:
+            if rope_type != "linear":
+                raise UnsupportedArchitectureError(
+                    f"unsupported model architecture: gemma3 rope_scaling type {rope_type!r}; "
+                    "only the shipped linear scheme (or none) is implemented."
+                )
+            if (
+                isinstance(factor, bool)
+                or not isinstance(factor, int | float)
+                or factor <= 0
+            ):
+                raise UnsupportedArchitectureError(
+                    f"unsupported model architecture: gemma3 rope_scaling.factor={factor!r}; "
+                    "expected a positive number."
+                )
+            rope_global_scaling_factor = float(factor)
+    elif rope_scaling is not None:
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: gemma3 rope_scaling={rope_scaling!r}; expected a "
+            "dict or null."
+        )
+    if isinstance(config.get("rope_theta"), int | float) and not isinstance(
+        config.get("rope_theta"), bool
+    ):
+        rope_theta_global = float(config["rope_theta"])
+    if isinstance(config.get("rope_local_theta"), int | float) and not isinstance(
+        config.get("rope_local_theta"), bool
+    ):
+        rope_theta_local = float(config["rope_local_theta"])
+
+    query_pre_attn_scalar = config.get(
+        "query_pre_attn_scalar", _GEMMA3_DEFAULT_QUERY_PRE_ATTN_SCALAR
+    )
+    if (
+        isinstance(query_pre_attn_scalar, bool)
+        or not isinstance(query_pre_attn_scalar, int | float)
+        or query_pre_attn_scalar <= 0
+    ):
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: gemma3 query_pre_attn_scalar="
+            f"{query_pre_attn_scalar!r}; expected a positive number."
+        )
+
+    eos = config.get("_gemma3_eos_token_ids", config.get("eos_token_id"))
+    eos_ids: list[int] = []
+    if isinstance(eos, int) and not isinstance(eos, bool):
+        eos_ids = [eos]
+    elif isinstance(eos, list) and all(
+        isinstance(value, int) and not isinstance(value, bool) for value in eos
+    ):
+        eos_ids = list(eos)
+    if not eos_ids:
+        raise UnsupportedArchitectureError(
+            f"unsupported model architecture: gemma3 config carries no usable eos_token_id "
+            f"({eos!r})."
+        )
+
+    import math
+
+    manifest_entries: dict[str, Any] = {
+        "model_family": "gemma3",
+        # Family-convention flags the gemma3 session branches on (ints, json_get_int pattern):
+        # activation 1 = GeGLU with gelu_pytorch_tanh; norm_weight_plus_one 1 = every RMSNorm
+        # applies (1.0 + weight) as its gain (the converter rebases the shipped weights so the
+        # engine's gain-multiply kernels compute exactly Gemma's math); embed_scale = the
+        # sqrt(hidden_size) input-embedding factor (NOT applied on the tied lm_head side).
+        "activation_code": _GEMMA3_ACTIVATION_CODE_GELU_TANH,
+        "norm_weight_plus_one": 1,
+        "embed_scale": math.sqrt(config["hidden_size"]),
+        "query_pre_attn_scalar": float(query_pre_attn_scalar),
+        "sliding_window": int(sliding_window),
+        # 1 = full-attention layer, 0 = sliding-window (local) layer -- the engine's per-layer
+        # window + rope-table selection reads this verbatim.
+        "layer_types": [1 if layer == "full_attention" else 0 for layer in layer_types],
+        "rope_theta": rope_theta_global,
+        "rope_local_theta": rope_theta_local,
+        "rope_global_scaling_factor": rope_global_scaling_factor,
+        "eos_token_ids": eos_ids,
+    }
+    config["_gemma3_manifest_entries"] = manifest_entries
+    # rope_theta now present for _validate_architecture's structural-field gate.
+    config["rope_theta"] = rope_theta_global
+    # Single-id compat key for readers that predate the eos_token_ids list: prefer <end_of_turn>
+    # (the stop token gemma3-it actually emits at turn end), else the first declared id. The
+    # gemma3 engine reads the FULL list from eos_token_ids and stops on any of them.
+    config["eos_token_id"] = 106 if 106 in eos_ids else eos_ids[0]
     return config
 
 
@@ -308,6 +529,16 @@ def _write_f64_streamed(handle: Any, values: Any) -> None:
     copy=False)` is a no-op view on a little-endian float64 array -- the bytes written are exactly
     what the pre-streaming path's `values.astype("<f8").tobytes()` wrote."""
     arr = values.astype("<f8", copy=False)
+    for start in range(0, arr.size, _STREAM_TILE_ELEMENTS):
+        handle.write(arr[start : start + _STREAM_TILE_ELEMENTS].tobytes())
+
+
+def _write_f32_streamed(handle: Any, values: Any) -> None:
+    """The Float32-blob twin (Gemma 3 lane): the same streamed write narrowed to little-endian f4.
+    Used ONLY when the converter is asked for a `weights_dtype="f32"` blob (a 27B-class model's
+    f64 blob exceeds a race VM's disk; every value written originates as BF16, which Float32
+    represents EXACTLY, so the narrowed blob is bit-exact the session's own f32 weights)."""
+    arr = values.astype("<f4")
     for start in range(0, arr.size, _STREAM_TILE_ELEMENTS):
         handle.write(arr[start : start + _STREAM_TILE_ELEMENTS].tobytes())
 
@@ -501,6 +732,53 @@ def _detect_attention_bias(checkpoint_dir: Path, index: dict[str, Any] | None) -
     return _ATTENTION_BIAS_PROBE_TENSOR in header
 
 
+# Gemma 3 safetensors tensor naming (Gemma 3 lane, 2026-08-23): the shipped
+# google/gemma-3-27b-it snapshot is a MULTIMODAL export -- its text tensors live under the
+# `language_model.` wrapper (transformers v5 convention: `language_model.model.embed_tokens.weight`);
+# older exports nest one level deeper (`model.language_model.model.*`). The converter probes these
+# prefixes and remaps onto the canonical `model.*` names the manifest contract uses, skipping the
+# vision tower entirely (text-only engine).
+_GEMMA3_TEXT_PREFIX_CANDIDATES = ("language_model.", "model.language_model.", "")
+
+# RMSNorm gain tensors the gemma3 converter REBASES to (1.0 + w) before writing the blob: Gemma's
+# convention is out = norm(x) * (1.0 + weight) and the engine's norm kernels multiply by the
+# stored gain -- storing the rebased gain makes those kernels compute Gemma's math EXACTLY with
+# zero kernel changes. The manifest's norm_weight_plus_one=1 records the blob convention.
+_GEMMA3_NORM_GAIN_SUFFIXES = (
+    "input_layernorm.weight",
+    "post_attention_layernorm.weight",
+    "pre_feedforward_layernorm.weight",
+    "post_feedforward_layernorm.weight",
+    "self_attn.q_norm.weight",
+    "self_attn.k_norm.weight",
+)
+
+
+def _safetensors_has_tensor(checkpoint_dir: Path, index: dict[str, Any] | None, name: str) -> bool:
+    """Whether `name` exists in the checkpoint's safetensors (single-shard header or the index's
+    weight_map), used for prefix/tie probes where absence is an answer, not an error."""
+    if index is None:
+        single = checkpoint_dir / "model.safetensors"
+        if not single.is_file():
+            return False
+        header, _ = _read_safetensors_header(single)
+        return name in header
+    return name in (index.get("weight_map") or {})
+
+
+def _gemma3_probe_prefix(checkpoint_dir: Path, index: dict[str, Any] | None) -> str:
+    """The text-tensor prefix of a gemma3 snapshot (probed by embed_tokens presence); raises when
+    no candidate matches (corrupt/partial snapshot)."""
+    for prefix in _GEMMA3_TEXT_PREFIX_CANDIDATES:
+        if _safetensors_has_tensor(checkpoint_dir, index, f"{prefix}model.embed_tokens.weight"):
+            return prefix
+    raise InferenceError(
+        "checkpoint_not_found",
+        f"{checkpoint_dir} is a gemma3 checkpoint with no recognizable text-tensor prefix "
+        f"(probed for model.embed_tokens.weight under {_GEMMA3_TEXT_PREFIX_CANDIDATES}).",
+    )
+
+
 def _validate_prompt_token_ids(prompt_token_ids: Any) -> None:
     """The prompt-id contract every converter shares: a non-empty list of non-negative ints."""
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
@@ -517,6 +795,7 @@ def _validate_prompt_token_ids(prompt_token_ids: Any) -> None:
 def _required_hf_tensor_names(
     n_layers: int, tied_embeddings: bool, has_qk_norm: bool,
     attention_bias: bool = False,
+    gemma3: bool = False,
 ) -> list[str]:
     """The HF tensor names a supported-family checkpoint must deliver to the manifest, in the same
     convention both converters (safetensors and GGUF) agree on."""
@@ -532,6 +811,14 @@ def _required_hf_tensor_names(
             "input_layernorm.weight",
             "post_attention_layernorm.weight",
         ]
+        if gemma3:
+            # Gemma 3 keeps gemma2's four-norm layer: post_attention_layernorm normalizes the
+            # attention output BEFORE its residual add, and the MLP path carries its own
+            # pre/post_feedforward pair around the GeGLU block.
+            suffixes += [
+                "pre_feedforward_layernorm.weight",
+                "post_feedforward_layernorm.weight",
+            ]
         if has_qk_norm:
             # Qwen3 convention. Llama-family checkpoints have no q_norm/k_norm tensors; the engine
             # runs the ropewrt kernels with the norm block skipped (manifest `has_qk_norm`=0).
@@ -567,6 +854,9 @@ def _write_converted_checkpoint(
     tied_embeddings: bool,
     rope_freq_factors: list[float] | None = None,
     attention_bias: bool = False,
+    extra_manifest_config: dict[str, Any] | None = None,
+    weights_dtype: str = "f64",
+    llama_rope_scaling: bool = True,
 ) -> Path:
     """The shared converter tail: STREAM the per-tensor Float64 values (already widened and,
     where the kernels want it, pre-transposed) into `weights.blob` one tensor at a time, and
@@ -574,12 +864,24 @@ def _write_converted_checkpoint(
     (safetensors) and `prepare_model_checkpoint_from_gguf()` (GGUF) end here, so the pair they
     produce is the SAME format, written by the SAME code.
 
+    `weights_dtype` selects the blob element width: "f64" (default -- byte-for-byte the
+    pre-Gemma-3 format; the manifest carries no `weights_dtype` key, so an older reader sees no
+    difference) or "f32" (half the disk, exact for BF16-origin weights; the manifest carries
+    `weights_dtype: "f32"` so readers size their slices correctly). `extra_manifest_config`
+    merges family-specific keys (e.g. the gemma3 convention set) into the manifest's config
+    object after the shared keys.
+
     `entries` is an iterable of `(hf_name, f64 value chunks, shape, transposed)` -- a GENERATOR
     keeps host memory at O(one tensor): the blob grows by sequential append and no whole-model
     buffer ever exists. (The pre-streaming tail held every tensor's Float64 values in an entries
     list and then ran the whole model through np.concatenate, astype and tobytes -- four
     whole-model buffers at once.) Each tensor's chunks concatenate to exactly its flat values, so
     the bytes written are exactly the pre-streaming tail's. """
+    if weights_dtype not in ("f64", "f32"):
+        raise InferenceError(
+            "invalid_arguments", f"weights_dtype must be 'f64' or 'f32', got {weights_dtype!r}"
+        )
+    write_streamed = _write_f64_streamed if weights_dtype == "f64" else _write_f32_streamed
     blob_path = resolved_out_dir / "weights.blob"
     manifest_tensors: dict[str, Any] = {}
     cursor = 0
@@ -591,7 +893,7 @@ def _write_converted_checkpoint(
                     n_elements *= dim
                 written = 0
                 for chunk in value_chunks:
-                    _write_f64_streamed(blob_out, chunk)
+                    write_streamed(blob_out, chunk)
                     written += chunk.size
                 if written != n_elements:
                     raise InferenceError(
@@ -636,6 +938,11 @@ def _write_converted_checkpoint(
         "tie_word_embeddings": 1 if tied_embeddings else 0,
         "attention_bias": 1 if attention_bias else 0,
     }
+    if weights_dtype == "f32":
+        # Absent key == f64: a pre-Gemma-3 reader sees no difference on an f64 blob.
+        manifest_config["weights_dtype"] = "f32"
+    if extra_manifest_config:
+        manifest_config.update(extra_manifest_config)
     # End-of-sequence id(s) the engine should stop on, carried from the checkpoint's own config
     # instead of a hardcoded constant. Absent on some configs -- only written when present, so an
     # older manifest consumer sees no new key unless the checkpoint declares one.
@@ -647,11 +954,15 @@ def _write_converted_checkpoint(
     # the source's own baked values verbatim; otherwise the parametric llama3 scheme from the
     # checkpoint config (validated by `_validate_rope_scaling` before either converter reaches
     # here). A checkpoint with NO scaling writes neither key, and a pre-scaling engine reading
-    # this manifest behaves byte-for-byte as it always did.
-    if rope_freq_factors:
-        manifest_config["rope_freq_factors"] = [float(value) for value in rope_freq_factors]
-    else:
-        manifest_config.update(_rope_scaling_manifest_entries(config))
+    # this manifest behaves byte-for-byte as it always did. Gemma 3 sets llama_rope_scaling=False:
+    # its rope is a DIFFERENT convention (dual per-layer-class theta + a linear factor on the
+    # global layers) carried by its own extra_manifest_config keys, so the llama3 entries must
+    # not fire on its `rope_scaling` dict.
+    if llama_rope_scaling:
+        if rope_freq_factors:
+            manifest_config["rope_freq_factors"] = [float(value) for value in rope_freq_factors]
+        else:
+            manifest_config.update(_rope_scaling_manifest_entries(config))
 
     manifest = {
         "config": manifest_config,
@@ -1323,15 +1634,21 @@ def prepare_model_checkpoint(
     prompt_token_ids: list[int],
     *,
     out_dir: str | Path | None = None,
+    weights_dtype: str = "f64",
 ) -> Path:
     """Validate `checkpoint_dir`'s architecture, then convert it into the `manifest.json` +
     `weights.blob` pair the model-agnostic kernel entry point reads. Handles any supported-family
-    model, single- or multi-shard.
+    model, single- or multi-shard -- Qwen3/llama-family AND Gemma 3 (the multimodal wrapper config
+    lifts to its text model; the text tensors remap from their `language_model.` snapshot prefix
+    onto the canonical manifest names; every RMSNorm gain is written REBASED to Gemma's
+    (1.0 + weight) convention the kernels then apply verbatim).
 
     `checkpoint_dir` is a local HuggingFace snapshot directory (`config.json` + one or more
-    `model*.safetensors`). Raises `UnsupportedArchitectureError` for an unsupported architecture and
-    `InferenceError("checkpoint_not_found", ...)` for missing files. Returns the directory the
-    manifest + blob were written to.
+    `model*.safetensors`). `weights_dtype` selects the blob element width: "f64" (default -- the
+    historical format) or "f32" (exact for BF16-origin checkpoints, half the disk -- a 27B-class
+    f64 blob exceeds a race VM's disk). Raises `UnsupportedArchitectureError` for an unsupported
+    architecture and `InferenceError("checkpoint_not_found", ...)` for missing files. Returns the
+    directory the manifest + blob were written to.
     """
     try:
         import numpy as np  # noqa: F401
@@ -1351,19 +1668,51 @@ def prepare_model_checkpoint(
             f"{config_path.name} is missing.",
         )
     config = _normalize_config(json.loads(config_path.read_text(encoding="utf-8")))
+    is_gemma3 = config.get("model_type") == "gemma3_text"
+    if is_gemma3:
+        config = _gemma3_prepare_config(config, checkpoint_dir)
     _validate_architecture(checkpoint_dir, config)
-    _validate_rope_scaling(config, config_source=str(config_path))
+    if not is_gemma3:
+        # Gemma 3's rope (dual per-layer-class theta + the linear factor on global layers only)
+        # is fully validated inside _gemma3_prepare_config; the llama3-only validator below would
+        # refuse its linear scheme.
+        _validate_rope_scaling(config, config_source=str(config_path))
     _validate_prompt_token_ids(prompt_token_ids)
 
     # Load the shard index if present (multi-shard checkpoints).
     index_path = checkpoint_dir / "model.safetensors.index.json"
     index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.is_file() else None
 
-    tied_embeddings = config.get("tie_word_embeddings", True) is True
-    has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
-    attention_bias = _detect_attention_bias(checkpoint_dir, index)
+    # Gemma 3 snapshots prefix their text tensors with the multimodal wrapper path; the manifest
+    # contract keeps the canonical `model.*` names, so a rename map bridges the two.
+    tensor_prefix = ""
+    if is_gemma3:
+        tensor_prefix = _gemma3_probe_prefix(checkpoint_dir, index)
+
+    if is_gemma3:
+        # Tie is a FACT of the tensors: the wrapper's lm_head aliases the text embedding table
+        # when the snapshot ships no lm_head weight (the 27B-it checkpoint is tied; the probe
+        # handles any future untied gemma3 export too).
+        tied_embeddings = not any(
+            _safetensors_has_tensor(checkpoint_dir, index, candidate)
+            for candidate in (
+                f"{tensor_prefix}lm_head.weight",
+                "language_model.lm_head.weight",
+                "model.language_model.lm_head.weight",
+                "lm_head.weight",
+            )
+        )
+        has_qk_norm = _safetensors_has_tensor(
+            checkpoint_dir, index, f"{tensor_prefix}model.layers.0.self_attn.q_norm.weight"
+        )
+        attention_bias = False  # _gemma3_prepare_config already refused attention_bias=true
+    else:
+        tied_embeddings = config.get("tie_word_embeddings", True) is True
+        has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
+        attention_bias = _detect_attention_bias(checkpoint_dir, index)
     required = _required_hf_tensor_names(
-        config["num_hidden_layers"], tied_embeddings, has_qk_norm, attention_bias
+        config["num_hidden_layers"], tied_embeddings, has_qk_norm, attention_bias,
+        gemma3=is_gemma3,
     )
 
     resolved_out_dir = (
@@ -1375,17 +1724,18 @@ def prepare_model_checkpoint(
         # One tensor in flight at a time: read its BF16 bytes out of the shard, widen in tiles,
         # yield to the streaming writer -- the full model is never resident in host memory.
         for name in sorted(required):
-            shard_path = _resolve_shard_for_tensor(checkpoint_dir, name, index)
+            actual = f"{tensor_prefix}{name}"
+            shard_path = _resolve_shard_for_tensor(checkpoint_dir, actual, index)
             header, data_start = _read_safetensors_header(shard_path)
-            info = header.get(name)
+            info = header.get(actual)
             if info is None:
                 raise InferenceError(
-                    "checkpoint_not_found", f"tensor {name!r} not found in {shard_path}."
+                    "checkpoint_not_found", f"tensor {actual!r} not found in {shard_path}."
                 )
             if info.get("dtype") != "BF16":
                 raise InferenceError(
                     "checkpoint_not_found",
-                    f"{name} in {shard_path} is {info.get('dtype')}, expected BF16 -- this "
+                    f"{actual} in {shard_path} is {info.get('dtype')}, expected BF16 -- this "
                     "converter handles BF16 checkpoints.",
                 )
             shape = list(info["shape"])
@@ -1400,8 +1750,15 @@ def prepare_model_checkpoint(
                 transposed = True
             else:
                 chunks = _bf16_bytes_to_f64_tiles(raw)
+            if is_gemma3 and (
+                name.endswith(_GEMMA3_NORM_GAIN_SUFFIXES) or name == "model.norm.weight"
+            ):
+                # Gemma's (1.0 + weight) gain convention, rebased HERE so every engine norm kernel
+                # (gain-multiply by construction) computes it exactly, with zero kernel changes.
+                chunks = (chunk + 1.0 for chunk in chunks)
             yield name, chunks, shape, transposed
 
+    extra_manifest_config = config.pop("_gemma3_manifest_entries", None) if is_gemma3 else None
     return _write_converted_checkpoint(
         resolved_out_dir,
         entries=_iter_entries(),
@@ -1410,6 +1767,9 @@ def prepare_model_checkpoint(
         has_qk_norm=has_qk_norm,
         tied_embeddings=tied_embeddings,
         attention_bias=attention_bias,
+        extra_manifest_config=extra_manifest_config,
+        weights_dtype=weights_dtype,
+        llama_rope_scaling=not is_gemma3,
     )
 
 
