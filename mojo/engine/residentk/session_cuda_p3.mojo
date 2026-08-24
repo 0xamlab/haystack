@@ -220,9 +220,7 @@ from residentk.session_cuda import (
     _B1_PF_ROWS,
     _CudaResidentQwen3,
 )
-<<<<<<< HEAD
 from residentk.loadvec import _ld4
-=======
 from residentk.tc_shim_bridge import (
     TC_SHIM_BUILD,
     TC_MIN_M,
@@ -235,7 +233,6 @@ from residentk.tc_shim_bridge import (
     _pf_swiglu_rows_kernel,
 )
 from std.time import perf_counter_ns
->>>>>>> 8218eae9 (feat(residentk): TC escape-hatch integration — cuBLAS HMMA prefill behind -D ALGENTA_TC_SHIM (default OFF))
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling, and the
