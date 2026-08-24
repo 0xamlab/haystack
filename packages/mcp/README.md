@@ -80,9 +80,12 @@ Connect modern clients to:
 http://localhost:8001/mcp
 ```
 
-The endpoint uses stateless Streamable HTTP and negotiates MCP protocol `2025-11-25`. Algenta pins
-the official Python MCP SDK `1.28.1`. Deprecated `/mcp/sse` and `/mcp/messages` routes remain for
-older clients but are not the default.
+The endpoint uses stateless Streamable HTTP. It dual-serves both protocol eras from the same
+endpoint: a legacy `initialize` handshake negotiates `2025-11-25`, and a modern per-request caller
+(the `MCP-Protocol-Version` header plus the `2026-07-28` `_meta` envelope, no handshake) gets
+`2026-07-28`, including the built-in `server/discover` method. Algenta pins the official Python MCP
+SDK `2.0.0`. Deprecated `/mcp/sse` and `/mcp/messages` routes remain for older clients but are not
+the default.
 
 LangChain example:
 

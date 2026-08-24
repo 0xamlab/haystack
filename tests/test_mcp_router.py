@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import builtins
 import importlib.util
+import json
 from importlib.metadata import version
 from pathlib import Path
 from types import SimpleNamespace
@@ -170,6 +171,123 @@ def test_streamable_http_negotiates_latest_protocol_and_lists_tools(monkeypatch)
             json={"jsonrpc": "2.0", "id": 3, "method": "tools/list", "params": {}},
         )
         assert invalid_version.status_code == 400
+
+
+def test_modern_protocol_era_round_trips_through_real_registry_and_auth_challenge(
+    monkeypatch,
+) -> None:
+    """The 2026-07-28 per-request era (no `initialize` handshake — a `_meta`-enveloped request
+    plus `MCP-Protocol-Version`/`Mcp-Method` headers) against a REAL running server instance: real
+    `Server` dual-era dispatch (on_list_tools=/on_call_tool=, mcp>=2.0.0), real
+    `_MCPToolCallAuthChallengeASGIApp` auth gate, and real `apps.mcp_server.registry.call_tool`
+    name-based dispatch. Only the tool's own outbound HTTP call to the downstream Algenta API is
+    stubbed (api_with_status) — same boundary test_mcp_meta_tools.py stubs at, and the same
+    minimal-mock level test_published_mcp_package_uses_same_streamable_http_contract already uses
+    for the legacy handshake path below. Nothing about the SDK, the router, or the auth challenge
+    is mocked.
+    """
+    pytest.importorskip("mcp")
+    from copy import deepcopy
+
+    from starlette.testclient import TestClient
+
+    from apps.mcp_server import config as mcp_config
+    from apps.mcp_server.tools import meta as meta_tools
+    from apps.mcp_server.transports.http_sse import _build_http_app
+    from apps.platform_contract import load_platform_contract_manifest
+
+    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.algenta.ai")
+
+    # A real, fully valid contract payload (same source _platform_contract_payload() in
+    # tests/test_mcp_meta_tools.py uses) — the handler validates this against the real
+    # PlatformContractResponse schema, so a hand-trimmed dict would fail that real validation.
+    contract_payload = deepcopy(load_platform_contract_manifest())
+
+    async def _fake_api_with_status(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+        assert (method, path) == ("GET", "/v1/meta/contract")
+        return 200, contract_payload
+
+    monkeypatch.setattr(meta_tools, "api_with_status", _fake_api_with_status)
+
+    modern_meta = {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": {},
+        "io.modelcontextprotocol/clientInfo": {"name": "algenta-modern-era-test", "version": "1.0.0"},
+    }
+    modern_headers = {
+        "Accept": "application/json, text/event-stream",
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": "2026-07-28",
+    }
+
+    with TestClient(_build_http_app(), base_url="https://api.algenta.ai") as client:
+        # 1. Discovery (tools/list) is public on the modern path too — no handshake, no session.
+        tools_response = client.post(
+            "/mcp",
+            headers={**modern_headers, "Mcp-Method": "tools/list"},
+            json={
+                "jsonrpc": "2.0",
+                "id": "modern-tools-list",
+                "method": "tools/list",
+                "params": {"_meta": modern_meta},
+            },
+        )
+        assert tools_response.status_code == 200
+        list_result = tools_response.json()["result"]
+        # resultType/serverInfo are stamped unconditionally by the SDK for 2026-07-28 responses —
+        # their presence proves this really took the modern path, not a legacy one silently
+        # ignoring the extra headers.
+        assert list_result["resultType"] == "complete"
+        assert list_result["_meta"]["io.modelcontextprotocol/serverInfo"]["version"] == mcp_config.VERSION
+        tool_names = {item["name"] for item in list_result["tools"]}
+        assert {"get_contract", "list_data", "query_data"} <= tool_names
+
+        # 2. Execution IS gated — same auth-challenge posture the legacy handshake path gets
+        # (test_embedded_tool_call_without_auth_returns_oauth_challenge pins the legacy version of
+        # this exact assertion; the challenge sniffs the JSON-RPC body's "method", not the era).
+        anonymous_call = client.post(
+            "/mcp",
+            headers={**modern_headers, "Mcp-Method": "tools/call"},
+            json={
+                "jsonrpc": "2.0",
+                "id": "modern-call-anonymous",
+                "method": "tools/call",
+                "params": {"name": "get_contract", "arguments": {}, "_meta": modern_meta},
+            },
+        )
+        assert anonymous_call.status_code == 401
+        assert anonymous_call.json()["error"]["code"] == -32001
+
+        # 3. An authenticated caller's modern tools/call reaches Algenta's REAL registry/router:
+        # get_contract really executes end to end and really answers with this server's own
+        # contract tool output, round-tripped through the real running app.
+        authenticated_call = client.post(
+            "/mcp",
+            headers={
+                **modern_headers,
+                "Mcp-Method": "tools/call",
+                "Mcp-Name": "get_contract",
+                "Authorization": "Bearer sk-modern-era-round-trip-test",
+            },
+            json={
+                "jsonrpc": "2.0",
+                "id": "modern-call-authenticated",
+                "method": "tools/call",
+                "params": {"name": "get_contract", "arguments": {}, "_meta": modern_meta},
+            },
+        )
+
+    assert authenticated_call.status_code == 200
+    call_result = authenticated_call.json()["result"]
+    assert call_result["resultType"] == "complete"
+    assert call_result["isError"] is False
+    tool_output = json.loads(call_result["content"][0]["text"])
+    assert tool_output["contract_version"] == "v1.5"
+    # The truthful field get_contract adds on top of whatever the (here-stubbed) API returned —
+    # this deployment really serves both eras, and this real round trip proves it end to end.
+    assert tool_output["mcp_protocol_versions_supported"] == list(
+        mcp_config.MCP_PROTOCOL_VERSIONS_SUPPORTED
+    )
 
 
 def test_streamable_http_rejects_untrusted_host_and_origin(monkeypatch) -> None:
@@ -341,7 +459,7 @@ def test_published_mcp_package_uses_same_streamable_http_contract(monkeypatch) -
 
     monkeypatch.setattr(package_registry, "call_tool", _capture_downstream_base_url)
 
-    assert version("mcp") == "1.28.1"
+    assert version("mcp") == "2.0.0"
     initialize = {
         "jsonrpc": "2.0",
         "id": 1,

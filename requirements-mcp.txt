@@ -18,12 +18,18 @@
 #
 # ────────────────────────────────────────────────────────────────────────────────
 
-mcp==1.28.1
+mcp==2.0.0
+# mcp==2.0.0 hard-pins mcp-types==2.0.0 (Requires-Dist), so it resolves transitively — no separate
+# pin needed here. It also newly depends on httpx2 (a distinct successor package to httpx, from
+# the same maintainer/org; unrelated to and non-conflicting with the httpx pin below), which mcp
+# itself pins >=2.5.0.
+httpx2>=2.5.0
 fastapi==0.133.1
 httpx>=0.28.0
 structlog>=24.1.0
 anyio[trio]>=4.5
-pydantic>=2.11.0
+# mcp==2.0.0 requires pydantic>=2.12.0 (was >=2.7.2 under mcp==1.28.1).
+pydantic>=2.12.0
 pydantic-settings>=2.5.0
 # HTTP transport extras
 uvicorn==0.51.0

@@ -69,6 +69,26 @@ async def test_get_contract_tool_handler_forwards_contract_payload(monkeypatch) 
 
 
 @pytest.mark.anyio
+async def test_get_contract_tool_handler_reports_real_dual_era_support(monkeypatch) -> None:
+    """`mcp_protocol_version` (the generated cross-SDK contract field) still names only the legacy
+    handshake version — unchanged, and correct: that's still what a plain `initialize` negotiates.
+    `get_contract` additionally reports the full, real truth: this server also serves the modern
+    2026-07-28 per-request era (mcp>=2.0.0's dual-era dispatch), with zero extra registration."""
+    expected_payload = _platform_contract_payload()
+
+    async def _fake_api_with_status(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+        return 200, expected_payload
+
+    monkeypatch.setattr(meta, "api_with_status", _fake_api_with_status)
+
+    raw = await meta.get_contract_handler({})
+    body = json.loads(raw)
+
+    assert body["mcp_protocol_version"] == "2025-11-25"
+    assert body["mcp_protocol_versions_supported"] == ["2025-11-25", "2026-07-28"]
+
+
+@pytest.mark.anyio
 async def test_get_contract_tool_handler_rejects_invalid_payload(monkeypatch) -> None:
     async def _fake_api_with_status(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
         assert (method, path) == ("GET", "/v1/meta/contract")

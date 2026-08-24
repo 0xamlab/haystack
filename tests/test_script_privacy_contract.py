@@ -190,7 +190,7 @@ def test_requirements_mcp_includes_fastapi_for_http_transport() -> None:
     text = (ROOT / "requirements-mcp.txt").read_text(encoding="utf-8")
 
     assert "fastapi==0.133.1" in text
-    assert "mcp==1.28.1" in text
+    assert "mcp==2.0.0" in text
     assert "starlette==1.3.1" in text
 
 

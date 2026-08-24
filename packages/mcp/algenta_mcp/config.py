@@ -13,6 +13,21 @@ VERSION: Final[str] = "1.0.4"
 # cloud is not disabled.
 _DEFAULT_API_BASE_URL: Final[str] = "https://api.algenta.ai"
 
+# The legacy Streamable HTTP handshake version this server negotiates for an `initialize`-opened
+# connection (matches the embedded copy's apps.platform_contract_constants.MCP_PROTOCOL_VERSION;
+# this package is deliberately decoupled from the monorepo, so it is a literal here, not an import).
+MCP_PROTOCOL_VERSION_LEGACY: Final[str] = "2025-11-25"
+# The modern per-request protocol era this server ALSO serves — with zero extra registration, via
+# mcp>=2.0.0's built-in dual-era dispatch (MCP-Protocol-Version header / `_meta` envelope; see
+# algenta_mcp/transports/{http_sse,stdio}.py). Real and reachable today, not aspirational.
+MCP_PROTOCOL_VERSION_MODERN: Final[str] = "2026-07-28"
+# Both eras this deployment actually serves. MCP_PROTOCOL_VERSION_LEGACY stays first/default: it's
+# still what a plain `initialize` handshake negotiates.
+MCP_PROTOCOL_VERSIONS_SUPPORTED: Final[tuple[str, ...]] = (
+    MCP_PROTOCOL_VERSION_LEGACY,
+    MCP_PROTOCOL_VERSION_MODERN,
+)
+
 for _legacy_dynamic_name in (
     "BASE_URL",
     "API_KEY",
@@ -82,6 +97,9 @@ __all__ = [
     "BASE_URL",
     "CONNECT_TIMEOUT",
     "HOST",
+    "MCP_PROTOCOL_VERSION_LEGACY",
+    "MCP_PROTOCOL_VERSION_MODERN",
+    "MCP_PROTOCOL_VERSIONS_SUPPORTED",
     "PORT",
     "TIMEOUT",
     "VERSION",

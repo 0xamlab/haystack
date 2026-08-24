@@ -19,7 +19,13 @@ async def run_stdio_server() -> None:
         from mcp.server import NotificationOptions, Server
         from mcp.server.models import InitializationOptions
         from mcp.server.stdio import stdio_server
-        from mcp.types import TextContent, Tool
+        from mcp.types import (
+            CallToolRequestParams,
+            CallToolResult,
+            ListToolsResult,
+            TextContent,
+            Tool,
+        )
     except ImportError:
         logger.error(
             "mcp_package_missing",
@@ -61,27 +67,41 @@ async def run_stdio_server() -> None:
     _product = (os.environ.get("ALGENTA_PRODUCT") or "").strip() or None
     allowed = resolve_visible_tools(_product, constraints=_license_feature_constraints(_product))
 
-    server = Server("algenta-mcp", version=config.VERSION)
+    # mcp>=2.0.0 deleted the @server.list_tools()/@server.call_tool() decorator API; handlers are
+    # now passed as on_list_tools=/on_call_tool= constructor kwargs and take the SDK's per-request
+    # ServerRequestContext as their first argument. stdio has no per-request transport object, so
+    # ctx.request is always None here — this dispatch is otherwise unchanged, including dual-era
+    # serving (an opening `initialize` frame always negotiates the legacy handshake regardless of
+    # any modern _meta envelope; a non-initialize opening frame with the envelope negotiates
+    # 2026-07-28), with zero extra registration required.
+    async def handle_list_tools(ctx: Any, params: Any) -> ListToolsResult:
+        return ListToolsResult(
+            tools=[
+                Tool(
+                    name=spec["name"],
+                    description=spec["description"],
+                    inputSchema=spec["inputSchema"],
+                )
+                for spec in get_tool_specs(allowed)
+            ]
+        )
 
-    @server.list_tools()  # type: ignore[misc]
-    async def handle_list_tools() -> list[Tool]:
-        return [
-            Tool(
-                name=spec["name"],
-                description=spec["description"],
-                inputSchema=spec["inputSchema"],
-            )
-            for spec in get_tool_specs(allowed)
-        ]
-
-    @server.call_tool()  # type: ignore[misc]
-    async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    async def handle_call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
+        name = params.name
+        arguments = params.arguments
         try:
             result = await call_tool(name, arguments or {}, allowed)
         except Exception as exc:
             logger.error("tool_error", tool=name, error=str(exc))
             result = serialize_tool_error(exc, tool_name=name)
-        return [TextContent(type="text", text=result)]
+        return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
+
+    server = Server(
+        "algenta-mcp",
+        version=config.VERSION,
+        on_list_tools=handle_list_tools,
+        on_call_tool=handle_call_tool,
+    )
 
     async with stdio_server() as (read_stream, write_stream):
         init_opts = InitializationOptions(

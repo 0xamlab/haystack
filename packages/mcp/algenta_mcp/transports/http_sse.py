@@ -315,12 +315,16 @@ def _effective_product(product: str | None) -> str | None:
     return product or _deployment_product()
 
 
-def _request_product(server: Any) -> str | None:
-    """Pull the product hint off the active MCP request's HTTP scope (if any)."""
-    try:
-        request = server.request_context.request
-    except LookupError:
-        return None
+def _request_product(ctx: Any) -> str | None:
+    """Pull the product hint off the active MCP request's HTTP scope (if any).
+
+    ``ctx`` is the SDK's per-request ``ServerRequestContext`` (mcp>=2.0.0 hands this to every
+    ``on_list_tools``/``on_call_tool`` handler as its first argument). Its ``request`` field is
+    the transport's own request object — a Starlette ``Request`` on HTTP, ``None`` on stdio/loop
+    transports — so no lookup/exception handling is needed, unlike the pre-2.0.0
+    ``server.request_context.request`` contextvar property this replaces.
+    """
+    request = ctx.request
     if request is not None and hasattr(request, "scope"):
         return _scope_product(request.scope)
     return None
@@ -387,7 +391,7 @@ def _build_http_app() -> ASGIApp:
     from mcp.server.models import InitializationOptions
     from mcp.server.sse import SseServerTransport
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-    from mcp.types import TextContent, Tool
+    from mcp.types import CallToolRequestParams, CallToolResult, ListToolsResult, TextContent, Tool
     from starlette.applications import Starlette
     from starlette.responses import JSONResponse
     from starlette.routing import Mount, Route
@@ -399,27 +403,29 @@ def _build_http_app() -> ASGIApp:
     from algenta_mcp.registry import call_tool, get_tool_specs
 
     def _build_server(*, use_request_base_url: bool) -> Any:
-        server = Server("algenta-mcp", version=config.VERSION)
+        # mcp>=2.0.0 deleted the @server.list_tools()/@server.call_tool() decorator API; handlers
+        # are now passed as on_list_tools=/on_call_tool= constructor kwargs and take the SDK's
+        # per-request ServerRequestContext as their first argument (ctx.request replaces the old
+        # server.request_context.request contextvar — see _request_product above). This dispatch
+        # is otherwise unchanged: the SDK dual-serves the legacy 2025-11-25 handshake AND the
+        # modern 2026-07-28 per-request envelope from these same two handlers with zero extra code.
+        async def handle_list_tools(ctx: Any, params: Any) -> ListToolsResult:
+            allowed = resolve_visible_tools(_effective_product(_request_product(ctx)))
+            return ListToolsResult(
+                tools=[
+                    Tool(
+                        name=spec["name"],
+                        description=spec["description"],
+                        inputSchema=spec["inputSchema"],
+                    )
+                    for spec in get_tool_specs(allowed)
+                ]
+            )
 
-        @server.list_tools()  # type: ignore[misc]
-        async def handle_list_tools() -> list[Tool]:
-            allowed = resolve_visible_tools(_effective_product(_request_product(server)))
-            return [
-                Tool(
-                    name=spec["name"],
-                    description=spec["description"],
-                    inputSchema=spec["inputSchema"],
-                )
-                for spec in get_tool_specs(allowed)
-            ]
-
-        @server.call_tool()  # type: ignore[misc]
-        async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-            request: object | None = None
-            try:
-                request = server.request_context.request
-            except LookupError:
-                pass
+        async def handle_call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
+            name = params.name
+            arguments = params.arguments
+            request = ctx.request
             scope = request.scope if request is not None and hasattr(request, "scope") else {}
             try:
                 with request_overrides(
@@ -440,9 +446,14 @@ def _build_http_app() -> ASGIApp:
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
-            return [TextContent(type="text", text=result)]
+            return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
 
-        return server
+        return Server(
+            "algenta-mcp",
+            version=config.VERSION,
+            on_list_tools=handle_list_tools,
+            on_call_tool=handle_call_tool,
+        )
 
     def _build_legacy_transport_endpoints(*, messages_path: str) -> tuple[ASGIApp, ASGIApp]:
         server = _build_server(use_request_base_url=False)
@@ -534,7 +545,13 @@ def _build_fastapi_router() -> APIRouter | None:
         from mcp.server.models import InitializationOptions
         from mcp.server.sse import SseServerTransport
         from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-        from mcp.types import TextContent, Tool
+        from mcp.types import (
+            CallToolRequestParams,
+            CallToolResult,
+            ListToolsResult,
+            TextContent,
+            Tool,
+        )
 
         from algenta_mcp import config
         from algenta_mcp.client import request_overrides
@@ -629,27 +646,26 @@ def _build_fastapi_router() -> APIRouter | None:
         return router
 
     def _build_server(*, use_request_base_url: bool) -> Any:
-        server = Server("algenta-mcp", version=config.VERSION)
+        # See the matching _build_server in _build_http_app above for why this is
+        # on_list_tools=/on_call_tool= kwargs (mcp>=2.0.0) rather than decorators, and why the
+        # handlers take ctx as their first argument.
+        async def _list_tools(ctx: Any, params: Any) -> ListToolsResult:
+            allowed = resolve_visible_tools(_effective_product(_request_product(ctx)))
+            return ListToolsResult(
+                tools=[
+                    Tool(
+                        name=spec["name"],
+                        description=spec["description"],
+                        inputSchema=spec["inputSchema"],
+                    )
+                    for spec in get_tool_specs(allowed)
+                ]
+            )
 
-        @server.list_tools()  # type: ignore[misc]
-        async def _list_tools() -> list[Tool]:
-            allowed = resolve_visible_tools(_effective_product(_request_product(server)))
-            return [
-                Tool(
-                    name=spec["name"],
-                    description=spec["description"],
-                    inputSchema=spec["inputSchema"],
-                )
-                for spec in get_tool_specs(allowed)
-            ]
-
-        @server.call_tool()  # type: ignore[misc]
-        async def _call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-            request: object | None = None
-            try:
-                request = server.request_context.request
-            except LookupError:
-                pass
+        async def _call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
+            name = params.name
+            arguments = params.arguments
+            request = ctx.request
             scope = request.scope if request is not None and hasattr(request, "scope") else {}
             try:
                 with request_overrides(
@@ -670,9 +686,14 @@ def _build_fastapi_router() -> APIRouter | None:
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
-            return [TextContent(type="text", text=result)]
+            return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
 
-        return server
+        return Server(
+            "algenta-mcp",
+            version=config.VERSION,
+            on_list_tools=_list_tools,
+            on_call_tool=_call_tool,
+        )
 
     mcp_server = _build_server(use_request_base_url=True)
     sse_transport = SseServerTransport("/mcp/messages")
