@@ -1,7 +1,7 @@
 .PHONY: dev dev-api dev-local dev-up dev-build down logs seed self-host-smoke self-host-persistence-proof self-host-install-proof self-host-endpoint-matrix self-host-status self-host-verify docs-gitbook-status docs-gitbook-pack docs-gitbook-verify docs-gen docs-check docs-a-z-audit docs-a-z-audit-live capability-plane-verify repository-intelligence-channel-parity \
         migrate migrate-down migrate-new mcp-setup mcp-stdio mcp-http \
         test test-unit test-integration test-contract test-load \
-        lint format typecheck openapi clean help stop-api logs-api-local \
+        lint format typecheck openapi openapi-check clean help stop-api logs-api-local \
         js-install js-lint js-test js-build js-check \
         bench bench-gate bench-mojo-gate bench-boundary bench-vs-python bench-algenta-mojo-catalog bench-algenta-import bench-decision-engine-import bench-decision-engine-client-init bench-algenta-connector-preview bench-algenta-runtime-read-cache bench-algenta-local-runtime-exact bench-algenta-local-connect bench-algenta-api-exact-resolve bench-algenta-api-payload \
         go-live-status go-live-status-json go-live-status-strict go-live-status-tier2 go-live-status-tier3 \
@@ -616,18 +616,34 @@ typecheck:
 
 # ─── OpenAPI ───────────────────────────────────────────────────────────────────
 
-## Generate and validate OpenAPI spec from running API
+## Generate and validate OpenAPI spec in-process (no live server required)
 openapi:
 	@echo "Generating OpenAPI spec..."
 	@set -e; \
 	mkdir -p schemas/openapi; \
 	tmp="$$(mktemp schemas/openapi/openapi.yaml.XXXXXX)"; \
 	trap 'rm -f "$$tmp"' EXIT; \
-	curl -fsS http://localhost:8000/openapi.json | $(REPO_PYTHON) -c 'import json, sys, yaml; yaml.safe_dump(json.load(sys.stdin), sys.stdout, sort_keys=False)' > "$$tmp"; \
+	$(REPO_PYTHON) scripts/openapi/export_openapi.py --output "$$tmp"; \
 	$(REPO_PYTHON) -c 'from pathlib import Path; import sys, yaml; from openapi_spec_validator import validate_spec; validate_spec(yaml.safe_load(Path(sys.argv[1]).read_text()))' "$$tmp"; \
 	mv "$$tmp" schemas/openapi/openapi.yaml; \
 	trap - EXIT; \
 	echo "✅ OpenAPI spec generated and validated: schemas/openapi/openapi.yaml"
+
+## CI gate: fail if schemas/openapi/openapi.yaml is stale vs a fresh in-process regen.
+## Complements tests/test_openapi_spec_drift.py's operation-set check with a full byte-diff
+## (catches description/tag/schema text changes too, not just added/removed routes).
+openapi-check:
+	@set -e; \
+	tmp="$$(mktemp schemas/openapi/openapi.yaml.check.XXXXXX)"; \
+	trap 'rm -f "$$tmp"' EXIT; \
+	$(REPO_PYTHON) scripts/openapi/export_openapi.py --output "$$tmp"; \
+	if ! diff -q "$$tmp" schemas/openapi/openapi.yaml > /dev/null; then \
+		echo "❌ schemas/openapi/openapi.yaml is stale vs a fresh in-process regen:" >&2; \
+		diff -u schemas/openapi/openapi.yaml "$$tmp" | head -80 >&2; \
+		echo "Run 'make openapi' and commit the result." >&2; \
+		exit 1; \
+	fi; \
+	echo "✅ schemas/openapi/openapi.yaml matches a fresh in-process regen (no drift)"
 
 # ─── Build ─────────────────────────────────────────────────────────────────────
 

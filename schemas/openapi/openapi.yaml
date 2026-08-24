@@ -7895,6 +7895,18 @@ paths:
       security:
       - BearerAuth: []
       - LegacyApiKey: []
+  /mcp/tools:
+    get:
+      tags:
+      - MCP
+      summary: List available MCP tools
+      operationId: list_tools_mcp_tools_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
   /v1/simulate/templates:
     get:
       tags:
@@ -8107,18 +8119,6 @@ paths:
           description: MCP session not found.
         '405':
           description: Session termination is not enabled.
-  /mcp/tools:
-    get:
-      tags:
-      - MCP
-      summary: List available MCP tools
-      operationId: list_tools_mcp_tools_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
   /mcp/sse:
     get:
       tags:
@@ -18403,7 +18403,7 @@ components:
           $ref: '#/components/schemas/ConstraintSpec'
         resolved_plan:
           anyOf:
-          - $ref: '#/components/schemas/ResolvedPlan'
+          - $ref: '#/components/schemas/ResolvedPlan-Input'
           - type: 'null'
           description: Exact plan returned by POST /v1/resolve.
       additionalProperties: false
@@ -20232,7 +20232,7 @@ components:
       properties:
         resolved_plan:
           anyOf:
-          - $ref: '#/components/schemas/ResolvedPlan'
+          - $ref: '#/components/schemas/ResolvedPlan-Output'
           - type: 'null'
         confidence:
           type: number
@@ -20336,7 +20336,55 @@ components:
       - confidence_source
       - intent_signature
       title: ResolveResponse
-    ResolvedPlan:
+    ResolvedPlan-Input:
+      properties:
+        source_name:
+          type: string
+          title: Source Name
+        metric_column:
+          type: string
+          title: Metric Column
+        aggregation:
+          type: string
+          title: Aggregation
+          description: sum | avg | count | max | min
+          default: sum
+        group_column:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Group Column
+        join_path:
+          anyOf:
+          - $ref: '#/components/schemas/JoinPathSpec'
+          - type: 'null'
+        filter:
+          anyOf:
+          - $ref: '#/components/schemas/FilterSpec'
+          - type: 'null'
+        limit:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Limit
+        order:
+          type: string
+          title: Order
+          description: desc | asc
+          default: desc
+        constraints:
+          $ref: '#/components/schemas/ConstraintSpec'
+        schema_revision:
+          type: string
+          title: Schema Revision
+      additionalProperties: false
+      type: object
+      required:
+      - source_name
+      - metric_column
+      - schema_revision
+      title: ResolvedPlan
+    ResolvedPlan-Output:
       properties:
         source_name:
           type: string
@@ -23978,7 +24026,7 @@ components:
           default: assist
         resolved_plan:
           anyOf:
-          - $ref: '#/components/schemas/ResolvedPlan'
+          - $ref: '#/components/schemas/ResolvedPlan-Input'
           - type: 'null'
           description: Exact plan returned by POST /v1/resolve.
       type: object

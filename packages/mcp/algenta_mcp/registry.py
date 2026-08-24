@@ -1,7 +1,7 @@
 """
 MCP tool registry — full capability inventory.
 
-117 tools across 12 categories:
+140 tools across 13 categories:
   Data onboarding    onboard_dataset, list_datasets, get_dataset_status, retrain_dataset
   Data access        connect_data, list_data, get_data_summary,
                      get_data_schema, refresh_data, disconnect_data
@@ -13,7 +13,14 @@ MCP tool registry — full capability inventory.
   Query & ingest     query_data, query_batch, query_sql_report, ingest_data
   LLM utilities      list_models, resolve_artifact_bridge, tokenize, count_tokens, chat_completions, responses,
                      embeddings, embedding_similarity, rerank
-  Runtime libraries  list_runtime_libraries, execute_runtime_library
+  Runtime libraries  list_runtime_libraries, execute_runtime_library (API-backed in this
+                     standalone package -- the Algenta deployment owns the bundled
+                     compute lifecycle)
+  Capability plane   list_capability_providers, list_capability_bindings,
+                     create_capability_binding, test_capability_binding,
+                     discover_capability_binding, list_capabilities, get_capability,
+                     route_capabilities, execute_capability, list_skills, enable_skill,
+                     disable_skill
   Decisions          plan_decision, product_decision, product_agent_run,
                      product_optimize, product_retrieve, product_forecast,
                      simulate, recommend, score, batch, compare, submit_job,
@@ -225,8 +232,8 @@ TOOLS: dict[str, ToolEntry] = {
         "handler": llm.embedding_similarity_handler,
     },
     "rerank": {"spec": llm.RERANK_SPEC, "handler": llm.rerank_handler},
-    # Runtime libraries remain API-backed in the standalone package; the Algenta deployment
-    # owns the bundled compute lifecycle.
+    # ── Runtime libraries — API-backed in this standalone package ──
+    # (the Algenta deployment owns the bundled compute lifecycle)
     "list_runtime_libraries": {
         "spec": runtime_libraries.LIST_RUNTIME_LIBRARIES_SPEC,
         "handler": runtime_libraries.list_runtime_libraries_handler,
