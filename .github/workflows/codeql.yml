@@ -16,10 +16,19 @@ concurrency:
   group: codeql-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Adaptive scanning: on pull requests each language leg first asks
+# scripts/adaptive_codeql_scope.py for a decision (Codna repo-intelligence blast radius over
+# the change): skip when the diff has nothing in that language, differential when a bounded
+# blast-radius closure was computed (analysis is scoped to it via a generated `paths:` config and
+# its SARIF is NOT uploaded, so partial-scope runs never create alert churn — the leg simply fails
+# on any alert found inside the scope), or full otherwise. Push, the weekly schedule, and manual
+# dispatch always run the FULL scan (security soundness), with SARIF uploaded as before. Every
+# ambiguity in the scope computation degrades to full.
 jobs:
   analyze:
     name: CodeQL (${{ matrix.language }})
     runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 20
     permissions:
       actions: read
       contents: read
@@ -35,15 +44,75 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # PRs: check out the PR head (not the ephemeral merge commit) so the scope step's
+          # merge-base(base, HEAD) diff is exact. The scope step fetches the base history itself,
+          # progressively and depth-capped.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
+
+      - name: Compute adaptive scope (blast radius)
+        id: scope
+        run: |
+          python3 scripts/adaptive_codeql_scope.py \
+            --language "${{ matrix.language }}" \
+            --out-dir "$RUNNER_TEMP/codeql-scope"
+
+      - name: Skip analysis (nothing in scope for this language)
+        if: steps.scope.outputs.decision == 'skip'
+        run: |
+          echo "Skipping CodeQL (${{ matrix.language }}) for this change."
+          echo "Reason: ${{ steps.scope.outputs.reason }}"
 
       - name: Initialize CodeQL
+        if: steps.scope.outputs.decision != 'skip'
         uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           languages: ${{ matrix.language }}
           build-mode: none
-          config-file: .github/codeql/codeql-config.yml
+          config-file: ${{ steps.scope.outputs.decision == 'differential' && steps.scope.outputs.config_path || '.github/codeql/codeql-config.yml' }}
 
       - name: Perform CodeQL analysis
+        if: steps.scope.outputs.decision != 'skip'
         uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           category: /language:${{ matrix.language }}
+          output: ${{ runner.temp }}/codeql-sarif
+          # Differential runs must not create alert churn from a partial scope: analyze locally,
+          # gate the check on what was found, and never upload. Full runs upload exactly as before.
+          upload: ${{ steps.scope.outputs.decision == 'full' && 'always' || 'never' }}
+
+      - name: Gate on alerts inside the differential scope
+        if: steps.scope.outputs.decision == 'differential'
+        run: |
+          python3 - "$RUNNER_TEMP/codeql-sarif" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          sarif_dir = Path(sys.argv[1])
+          files = sorted(sarif_dir.glob("*.sarif"))
+          if not files:
+              print("::error::differential CodeQL run produced no SARIF output")
+              sys.exit(1)
+          total = 0
+          for path in files:
+              data = json.loads(path.read_text(encoding="utf-8"))
+              for run in data.get("runs", []):
+                  for result in run.get("results", []):
+                      if result.get("suppressions"):
+                          continue
+                      total += 1
+                      locations = result.get("locations") or []
+                      where = ""
+                      if locations:
+                          physical = locations[0].get("physicalLocation") or {}
+                          uri = (physical.get("artifactLocation") or {}).get("uri")
+                          line = (physical.get("region") or {}).get("startLine")
+                          if uri:
+                              where = f" ({uri}:{line})" if line else f" ({uri})"
+                      print(f"::error::{result.get('ruleId', 'unknown-rule')}{where}")
+          if total:
+              print(f"::error::{total} CodeQL alert(s) inside the differential scope")
+              sys.exit(1)
+          print("No alerts inside the differential scope.")
+          PY

@@ -186,6 +186,8 @@ curl -sS -X POST "$ALGENTA_API_URL/v1/repositories/$REPO_ID/graph-query" \
 
 You must supply `snapshot_id` or `workspace_evidence_bundle_ref` as the seed source. The `200` `RepositoryGraphQueryResponse` returns `direct_dependencies`, `direct_dependents`, `impacted_files`, `impacted_symbols`, full `graph_nodes` and `graph_edges`, and `top_change_risk_files` (each with a `relationship` of `seed`, `dependent`, `dependency`, or `connected` and a `risk_score`).
 
+The same blast-radius closure is available offline for CI: [Adaptive security scanning](adaptive-security-scanning.md) scopes CodeQL to exactly the files a pull request can affect, instead of re-scanning the whole repository.
+
 ## Running large analyses asynchronously
 
 Triage itself returns inline. The heavier downstream stages — a security analysis over a SARIF batch, a decision plan, or the one-call `pipeline` (snapshot → triage → plan → simulate) — accept an `async_execution=true` query parameter. When set, the engine takes the work off the request path and returns **`202 Accepted`** with a poll handle instead of the result:

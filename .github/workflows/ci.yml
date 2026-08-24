@@ -32,8 +32,12 @@ permissions:
 # Note: the job-level deploy concurrency groups below stay as they are — they serialize
 # migrations per Fly app, and a superseded deploy is likewise covered by the next one.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # PRs share ONE fleet-wide group per workflow class: runs queue FIFO and each PR's
+  # leg FINISHES instead of every open PR's matrix interleaving across the 5 runners
+  # and all of them wedging at once. Non-PR events keep a per-ref group so a superseded
+  # main run is still cancelled by its successor.
+  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-ci' || format('ci-{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.14"

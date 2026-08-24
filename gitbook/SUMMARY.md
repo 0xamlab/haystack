@@ -110,6 +110,7 @@
 * [Device binding](guides/device-binding.md)
 * [Run air-gapped](guides/air-gapped.md)
 * [Use Algenta in CI/CD](guides/ci-cd.md)
+* [Adaptive security scanning](guides/adaptive-security-scanning.md)
 * [Run local LLM decode](guides/run-qwen3-decode.md)
 * [Model-agnostic LLM inference](guides/run-qwen3-family-inference.md)
 

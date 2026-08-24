@@ -58,6 +58,8 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | **Agent run** | A persisted, observable agent execution with events, checkpoints, telemetry, approval gates, and lifecycle control. |
 | **Checkpoint** | Saved agent state you can pause at, resume from, or replay. |
 | **Repository intelligence** | The code-aware workflow: snapshot a repo, triage an issue, plan, simulate a patch, and apply a fix/PR. |
+| **Blast radius** | The set of files and symbols transitively affected by a change — what depends on it. Drives graph queries, patch-apply gating, and adaptive CI scan scoping. |
+| **Adaptive security scanning** | CI security analysis scoped by blast radius: skip, differential (scoped to the change's closure), or full. See [Adaptive security scanning](../guides/adaptive-security-scanning.md). |
 | **Async job** | A long-running execution submitted to `/v1/jobs`, polled for status, and fetched on completion. |
 | **Trigger** | A registered condition that fires an action (a webhook-driven automation). |
 

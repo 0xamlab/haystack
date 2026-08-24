@@ -160,9 +160,14 @@ Because the CLI exits non-zero on every engine error, `set -e` (or any CI runner
 
 Automated fix pull requests use the same Algenta repository-intelligence surface. From the engine side, run `de repositories triage`, `de repositories simulate`, and `de repositories apply`. See [Triage a repository](repository-intelligence.md) for the underlying capability.
 
+## Adaptive security scanning (related capability)
+
+The same blast radius that drives test-impact selection and fix-PR triage also scopes security scanners: [Adaptive security scanning](adaptive-security-scanning.md) restricts CodeQL on pull requests to the change's dependency closure (or skips the leg entirely), and keeps full scans for push, schedule, and dispatch.
+
 ## Next steps
 
 - [Python SDK](../sdk/python.md) — drive the same decisions and triage from a CI script in Python instead of the CLI.
 - [Triage a repository](repository-intelligence.md) — the full repository-intelligence flow the fix-PR automation is built on.
+- [Adaptive security scanning](adaptive-security-scanning.md) — scope CodeQL to the change's blast radius instead of scanning the whole repository.
 - [CLI reference](../cli.md) — every `de` subcommand, flag, and the endpoint it calls.
 - [Authentication](../authentication.md) — mint, scope, and revoke the API key you store as a CI secret.
