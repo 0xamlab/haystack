@@ -99,12 +99,15 @@ class CreateAPIKeyRequest(BaseModel):
 
 
 class OrgInfo(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: uuid.UUID
     name: str
     slug: str
     plan: str
     status: str
-    codna_fix_enabled: bool
+    # Public wire/schema name is brand-neutral; the attribute itself stays codna_fix_enabled so
+    # every existing internal call site (org model, account.py) is untouched.
+    codna_fix_enabled: bool = Field(serialization_alias="auto_fix_pipeline_enabled")
     created_at: datetime
 
 
@@ -178,7 +181,14 @@ class TemplateInfo(BaseModel):
 
 
 class UpdateMeRequest(BaseModel):
-    model_config = ConfigDict(strict=False)
+    model_config = ConfigDict(strict=False, populate_by_name=True)
     name: str | None = Field(default=None, min_length=1, max_length=255)
     org_name: str | None = Field(default=None, min_length=1, max_length=255)
-    codna_fix_enabled: bool | None = Field(default=None)
+    # Accepts either name on input (old callers keep working); public wire/schema name is the
+    # brand-neutral one. The attribute itself stays codna_fix_enabled so update_me()'s existing
+    # payload.codna_fix_enabled access is untouched.
+    codna_fix_enabled: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("auto_fix_pipeline_enabled", "codna_fix_enabled"),
+        serialization_alias="auto_fix_pipeline_enabled",
+    )

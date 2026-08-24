@@ -139,12 +139,9 @@ async def public_plans(request: Request, app: str | None = None) -> dict[str, An
     pricing is public (a pricing page renders before sign-in). Free + Enterprise (no Stripe price)
     are added by the frontend as bookends.
 
-    A BRANDED host prices exactly one brand: its own. `api.algenta.ai` used to answer
-    `{"app":"codna",...}` because the signature default was the literal `"codna"`, so an
-    Algenta-branded host publicly advertised another product's catalogue — and `?app=<brand>` let any
-    host price any brand, including unlaunched SKUs. The brand is now taken from an authoritative
-    signal (`ALGENTA_PRODUCT`, else the request's own `Host` via the registry's `public_api_base`),
-    and a request for a DIFFERENT brand on a branded host is refused rather than served: cross-brand
+    A BRANDED host prices exactly one brand: its own, resolved from an authoritative signal
+    (`ALGENTA_PRODUCT`, else the request's own `Host` via the registry's `public_api_base`). A
+    request for a DIFFERENT brand on a branded host is refused rather than served: cross-brand
     pricing stays possible only on the shared engine's own non-brand host, which is where a
     multi-brand portal belongs. `?app=<own brand>` remains valid so existing callers keep working.
 

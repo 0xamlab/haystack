@@ -57,7 +57,7 @@ def _installation_id(payload: dict[str, Any]) -> int | None:
     return int(iid) if iid is not None else None
 
 
-@router.post("/webhooks/github", summary="GitHub App webhook receiver")
+@router.post("/webhooks/github", summary="GitHub App webhook receiver", include_in_schema=False)
 async def github_webhook(
     request: Request,
     db: AsyncSessionDep,
@@ -303,7 +303,11 @@ def _first_configured_provider(provider_keys: dict[str, str]) -> tuple[str | Non
 
 
 # ── Install / OAuth ──────────────────────────────────────────────────────────
-@router.get("/github/app/install/start", summary="Begin a GitHub App install for this org")
+@router.get(
+    "/github/app/install/start",
+    summary="Begin a GitHub App install for this org",
+    include_in_schema=False,
+)
 async def github_install_start(
     request: Request,
     db: AsyncSessionDep,
@@ -351,7 +355,11 @@ async def github_install_start(
     )
 
 
-@router.get("/github/app/install/callback", summary="GitHub App post-install callback")
+@router.get(
+    "/github/app/install/callback",
+    summary="GitHub App post-install callback",
+    include_in_schema=False,
+)
 async def github_install_callback(
     request: Request,
     db: AsyncSessionDep,
@@ -488,7 +496,11 @@ async def github_install_callback(
     )
 
 
-@router.get("/github/app/setup", summary="GitHub App post-install success page")
+@router.get(
+    "/github/app/setup",
+    summary="GitHub App post-install success page",
+    include_in_schema=False,
+)
 async def github_app_setup(installation_id: int) -> HTMLResponse:
     """Dependency-free post-install landing page.
 

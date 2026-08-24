@@ -27,6 +27,10 @@ def test_openapi_surface_assigns_stable_mcp_operation_ids() -> None:
         == "terminate_mcp_session"
     )
     assert (
+        schema["paths"]["/mcp/tools"]["get"]["operationId"]
+        == "list_tools_mcp_tools_get"
+    )
+    assert (
         schema["paths"]["/mcp/sse"]["get"]["operationId"]
         == "stream_legacy_mcp_events"
     )

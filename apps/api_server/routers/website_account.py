@@ -140,6 +140,7 @@ async def _live_github_installations(
     "/account/settings",
     response_model=AccountSettingsResponse,
     summary="Get org settings (website / Supabase auth)",
+    include_in_schema=False,
 )
 async def get_account_settings(
     response: Response,
@@ -166,6 +167,7 @@ async def get_account_settings(
     "/account/settings",
     response_model=AccountSettingsResponse,
     summary="Update org settings (website / Supabase auth)",
+    include_in_schema=False,
 )
 async def update_account_settings(
     payload: UpdateAccountSettingsRequest,

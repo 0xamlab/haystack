@@ -89,6 +89,18 @@ class RuntimeDeploymentMode(str, Enum):
     hybrid_provider = "hybrid_provider"
     local_dev_daemon = "local_dev_daemon"
 
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema: Any, handler: Any) -> Any:
+        # Real customer deployments never report `local_dev_daemon` (it's this codebase's own
+        # is-development default, never a mode a real self-hosted/air-gapped/etc. deployment
+        # picks) -- the published schema/docs should advertise only the modes a real deployment
+        # can actually be in. Runtime validation and actual responses are untouched (this class
+        # keeps the real member, so real code paths that set/compare it still work); only the
+        # exported JSON schema's `enum` list is narrowed.
+        json_schema = handler(core_schema)
+        json_schema["enum"] = [m.value for m in cls if m is not cls.local_dev_daemon]
+        return json_schema
+
 
 class RuntimeLayer(str, Enum):
     mojo_llm_runtime_core = "mojo_llm_runtime_core"

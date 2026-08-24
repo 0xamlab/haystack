@@ -2206,22 +2206,18 @@ paths:
       description: "Plan titles/prices/descriptions/features straight from Stripe\
         \ (no hardcoding). Public \u2014\npricing is public (a pricing page renders\
         \ before sign-in). Free + Enterprise (no Stripe price)\nare added by the frontend\
-        \ as bookends.\n\nA BRANDED host prices exactly one brand: its own. `api.algenta.ai`\
-        \ used to answer\n`{\"app\":\"codna\",...}` because the signature default\
-        \ was the literal `\"codna\"`, so an\nAlgenta-branded host publicly advertised\
-        \ another product's catalogue \u2014 and `?app=<brand>` let any\nhost price\
-        \ any brand, including unlaunched SKUs. The brand is now taken from an authoritative\n\
-        signal (`ALGENTA_PRODUCT`, else the request's own `Host` via the registry's\
-        \ `public_api_base`),\nand a request for a DIFFERENT brand on a branded host\
-        \ is refused rather than served: cross-brand\npricing stays possible only\
-        \ on the shared engine's own non-brand host, which is where a\nmulti-brand\
-        \ portal belongs. `?app=<own brand>` remains valid so existing callers keep\
-        \ working.\n\nAn unregistered `app` is rejected rather than answered with\
-        \ an empty plan list under a 200, which\nread as \"this brand has no paid\
-        \ tiers\" instead of \"no such brand\" \u2014 and, because the brand string\n\
-        was passed straight into the Stripe catalogue cache, an unbounded number of\
-        \ distinct values each\nbought a permanent cache entry and a live Stripe call\
-        \ from an unauthenticated endpoint."
+        \ as bookends.\n\nA BRANDED host prices exactly one brand: its own, resolved\
+        \ from an authoritative signal\n(`ALGENTA_PRODUCT`, else the request's own\
+        \ `Host` via the registry's `public_api_base`). A\nrequest for a DIFFERENT\
+        \ brand on a branded host is refused rather than served: cross-brand\npricing\
+        \ stays possible only on the shared engine's own non-brand host, which is\
+        \ where a\nmulti-brand portal belongs. `?app=<own brand>` remains valid so\
+        \ existing callers keep working.\n\nAn unregistered `app` is rejected rather\
+        \ than answered with an empty plan list under a 200, which\nread as \"this\
+        \ brand has no paid tiers\" instead of \"no such brand\" \u2014 and, because\
+        \ the brand string\nwas passed straight into the Stripe catalogue cache, an\
+        \ unbounded number of distinct values each\nbought a permanent cache entry\
+        \ and a live Stripe call from an unauthenticated endpoint."
       operationId: public_plans_billing_plans_get
       parameters:
       - name: app
@@ -7217,197 +7213,6 @@ paths:
       security:
       - BearerAuth: []
       - LegacyApiKey: []
-  /webhooks/github:
-    post:
-      tags:
-      - GitHub App
-      summary: GitHub App webhook receiver
-      operationId: github_webhook_webhooks_github_post
-      parameters:
-      - name: x-github-event
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Github-Event
-      - name: x-hub-signature-256
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Hub-Signature-256
-      - name: x-github-delivery
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Github-Delivery
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /github/app/install/start:
-    get:
-      tags:
-      - GitHub App
-      summary: Begin a GitHub App install for this org
-      description: "Dashboard-first install kickoff \u2014 Supabase-authenticated\
-        \ (companion to /account/team,\n/account/devices), NOT an API key. The site\
-        \ calls this with the caller's Supabase\naccess_token (a browser session,\
-        \ never a codna API key), so it must resolve org the same\nway every other\
-        \ website surface does (``website_identity``) rather than via\n``get_current_org``\
-        \ \u2014 that call always 401'd here before this fix, silently dropping every\n\
-        \"Connect GitHub\" click to the stateless install-first fallback (state never\
-        \ set), which then\nbinds the installation to an org keyed off the GitHub\
-        \ org account itself instead of the\nclicking user's own org. That is how\
-        \ an installation could end up bound to a DIFFERENT org\nthan the one the\
-        \ user's BYOK key lives in, with no error surfaced anywhere."
-      operationId: github_install_start_github_app_install_start_get
-      parameters:
-      - name: authorization
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Authorization
-      - name: x-org-id
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Org-Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /github/app/install/callback:
-    get:
-      tags:
-      - GitHub App
-      summary: GitHub App post-install callback
-      operationId: github_install_callback_github_app_install_callback_get
-      parameters:
-      - name: installation_id
-        in: query
-        required: true
-        schema:
-          type: integer
-          title: Installation Id
-      - name: code
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Code
-      - name: state
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: State
-      - name: setup_action
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Setup Action
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /github/app/setup:
-    get:
-      tags:
-      - GitHub App
-      summary: GitHub App post-install success page
-      description: 'Dependency-free post-install landing page.
-
-
-        ``installation_id`` is int-cast by FastAPI''s path/query coercion AND re-int-cast
-        into the markup
-
-        below, so nothing user-supplied is interpolated as raw HTML (no XSS surface).
-        Deliberately NO
-
-        BYOK key form: a freshly install-first-provisioned org has no human admin
-        credential yet, so
-
-        the key is collected on the account page (linked below) rather than here.
-
-
-        The copy is deliberately specific, because a vaguer earlier version was wrong
-        three ways:
-
-        it promised codna fixes "failing CI checks" (it deliberately does NOT react
-        to a failing
-
-        check_suite on its own -- see codna''s webhook.py), it named Anthropic as
-        though it were the only
-
-        provider (three are supported), and it dead-ended the user with no link back
-        to the portal that
-
-        owns every remaining setting.'
-      operationId: github_app_setup_github_app_setup_get
-      parameters:
-      - name: installation_id
-        in: query
-        required: true
-        schema:
-          type: integer
-          title: Installation Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
   /byok:
     get:
       tags:
@@ -7995,83 +7800,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /account/settings:
-    get:
-      tags:
-      - account
-      summary: Get org settings (website / Supabase auth)
-      operationId: get_account_settings_account_settings_get
-      parameters:
-      - name: authorization
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Authorization
-      - name: x-org-id
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Org-Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountSettingsResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-    patch:
-      tags:
-      - account
-      summary: Update org settings (website / Supabase auth)
-      operationId: update_account_settings_account_settings_patch
-      parameters:
-      - name: authorization
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Authorization
-      - name: x-org-id
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: X-Org-Id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateAccountSettingsRequest'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccountSettingsResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
   /v1/libraries:
     get:
       tags:
@@ -8379,6 +8107,18 @@ paths:
           description: MCP session not found.
         '405':
           description: Session termination is not enabled.
+  /mcp/tools:
+    get:
+      tags:
+      - MCP
+      summary: List available MCP tools
+      operationId: list_tools_mcp_tools_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
   /mcp/sse:
     get:
       tags:
@@ -8542,33 +8282,6 @@ components:
       required:
       - token
       title: AcceptRequest
-    AccountSettingsResponse:
-      properties:
-        org_id:
-          type: string
-          title: Org Id
-        org_name:
-          type: string
-          title: Org Name
-        codna_fix_enabled:
-          type: boolean
-          title: Codna Fix Enabled
-        github_installations:
-          items:
-            $ref: '#/components/schemas/GithubInstallationInfo'
-          type: array
-          title: Github Installations
-        github_connected:
-          type: boolean
-          title: Github Connected
-      type: object
-      required:
-      - org_id
-      - org_name
-      - codna_fix_enabled
-      - github_installations
-      - github_connected
-      title: AccountSettingsResponse
     ActionResult:
       properties:
         name:
@@ -8639,7 +8352,6 @@ components:
           - self_hosted
           - air_gapped
           - hybrid_provider
-          - local_dev_daemon
           title: Deployment Mode
         service_name:
           type: string
@@ -8698,7 +8410,6 @@ components:
           - self_hosted
           - air_gapped
           - hybrid_provider
-          - local_dev_daemon
           title: Deployment Mode
         disable_cloud:
           type: boolean
@@ -8846,7 +8557,6 @@ components:
           - self_hosted
           - air_gapped
           - hybrid_provider
-          - local_dev_daemon
           title: Deployment Mode
         algenta_cloud_enabled:
           type: boolean
@@ -15866,31 +15576,6 @@ components:
       required:
       - statement
       title: FormalReleaseTheorem
-    GithubInstallationInfo:
-      properties:
-        installation_id:
-          type: integer
-          title: Installation Id
-        account_login:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Account Login
-        account_type:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Account Type
-        suspended:
-          type: boolean
-          title: Suspended
-      type: object
-      required:
-      - installation_id
-      - account_login
-      - account_type
-      - suspended
-      title: GithubInstallationInfo
     GovernedFilterContractResponse:
       properties:
         kind:
@@ -16149,7 +15834,6 @@ components:
           - self_hosted
           - air_gapped
           - hybrid_provider
-          - local_dev_daemon
           title: Deployment Mode
         engine_version:
           type: string
@@ -18006,9 +17690,9 @@ components:
         status:
           type: string
           title: Status
-        codna_fix_enabled:
+        auto_fix_pipeline_enabled:
           type: boolean
-          title: Codna Fix Enabled
+          title: Auto Fix Pipeline Enabled
         created_at:
           type: string
           format: date-time
@@ -18020,7 +17704,7 @@ components:
       - slug
       - plan
       - status
-      - codna_fix_enabled
+      - auto_fix_pipeline_enabled
       - created_at
       title: OrgInfo
     OutcomeResponse:
@@ -21544,7 +21228,6 @@ components:
       - self_hosted
       - air_gapped
       - hybrid_provider
-      - local_dev_daemon
       title: RuntimeDeploymentMode
     RuntimeEvaluationDimension:
       type: string
@@ -24012,20 +23695,6 @@ components:
         \ 0\u2192100%)\n    \"format\": \"compact\",     # standard | compact | scientific\n\
         \    \"base_unit\": \"satoshi\",  # sub-unit label (informational)\n    \"\
         sim_scale\": 1.0         # divide input by this before simulation\n  }"
-    UpdateAccountSettingsRequest:
-      properties:
-        codna_fix_enabled:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Codna Fix Enabled
-        org_name:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Org Name
-      type: object
-      title: UpdateAccountSettingsRequest
     UpdateMeRequest:
       properties:
         name:
@@ -24042,11 +23711,11 @@ components:
             minLength: 1
           - type: 'null'
           title: Org Name
-        codna_fix_enabled:
+        auto_fix_pipeline_enabled:
           anyOf:
           - type: boolean
           - type: 'null'
-          title: Codna Fix Enabled
+          title: Auto Fix Pipeline Enabled
       type: object
       title: UpdateMeRequest
     UpdatePolicyRequest:

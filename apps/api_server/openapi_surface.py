@@ -97,6 +97,28 @@ def apply_openapi_surface(schema: dict[str, object]) -> dict[str, object]:
             },
         }
     if isinstance(paths, dict):
+        # /mcp/tools is a real FastAPI route whenever the MCP router mounts, but the router is an
+        # optional mount (it is skipped when the mcp stack cannot load on a given instance), so a
+        # regeneration against such an instance silently drops it from the published spec — even
+        # though every real deployment serves it and the docs promise it is always available
+        # without auth. Hand-declare it (same shape FastAPI generates for the route) so the
+        # canonical schema stays complete by construction. A mounted router's own entry wins.
+        paths.setdefault(
+            "/mcp/tools",
+            {
+                "get": {
+                    "tags": ["MCP"],
+                    "summary": "List available MCP tools",
+                    "operationId": "list_tools_mcp_tools_get",
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": {"application/json": {"schema": {}}},
+                        }
+                    },
+                }
+            },
+        )
         # The deprecated HTTP+SSE pair requires a key on every request (unlike streamable /mcp, which
         # leaves discovery open and challenges only tools/call). These operations are hand-declared
         # because the routes are raw ASGI, so their security has to be declared here too — otherwise the

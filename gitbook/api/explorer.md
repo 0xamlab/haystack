@@ -674,28 +674,6 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/runs/{run_id}/export.{fmt}" method="get" %}
 {% endopenapi-operation %}
 
-## GitHub App
-
-### `POST /webhooks/github`
-
-{% openapi-operation spec="algenta-api" path="/webhooks/github" method="post" %}
-{% endopenapi-operation %}
-
-### `GET /github/app/install/start`
-
-{% openapi-operation spec="algenta-api" path="/github/app/install/start" method="get" %}
-{% endopenapi-operation %}
-
-### `GET /github/app/install/callback`
-
-{% openapi-operation spec="algenta-api" path="/github/app/install/callback" method="get" %}
-{% endopenapi-operation %}
-
-### `GET /github/app/setup`
-
-{% openapi-operation spec="algenta-api" path="/github/app/setup" method="get" %}
-{% endopenapi-operation %}
-
 ## Infrastructure
 
 ### `GET /v1/infrastructure`
@@ -1187,16 +1165,6 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `DELETE /account/team/{user_id}`
 
 {% openapi-operation spec="algenta-api" path="/account/team/{user_id}" method="delete" %}
-{% endopenapi-operation %}
-
-### `GET /account/settings`
-
-{% openapi-operation spec="algenta-api" path="/account/settings" method="get" %}
-{% endopenapi-operation %}
-
-### `PATCH /account/settings`
-
-{% openapi-operation spec="algenta-api" path="/account/settings" method="patch" %}
 {% endopenapi-operation %}
 
 ## credits

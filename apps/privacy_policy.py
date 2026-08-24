@@ -25,6 +25,17 @@ DeploymentMode = Literal[
     "hybrid_provider",
     "local_dev_daemon",
 ]
+
+#: Real customer deployments never report `local_dev_daemon` (this codebase's own is-development
+#: default). Runtime validation of DeploymentMode is untouched; this is only for narrowing what a
+#: public-facing Pydantic field's OpenAPI schema documents as the supported enum.
+PUBLIC_DEPLOYMENT_MODES: list[str] = [
+    "saas",
+    "vpc",
+    "self_hosted",
+    "air_gapped",
+    "hybrid_provider",
+]
 TelemetryMode = Literal["disabled", "local_audit", "control_plane_sync"]
 MeteringMode = Literal["disabled", "local_audit", "control_plane_sync"]
 EgressClass = Literal[

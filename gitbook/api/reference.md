@@ -231,15 +231,6 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | --- | --- | --- |
 | `GET` | `/v1/runs/{run_id}/export.{fmt}` | Export simulation run results |
 
-## GitHub App
-
-| Method | Path | Summary |
-| --- | --- | --- |
-| `POST` | `/webhooks/github` | GitHub App webhook receiver |
-| `GET` | `/github/app/install/start` | Begin a GitHub App install for this org |
-| `GET` | `/github/app/install/callback` | GitHub App post-install callback |
-| `GET` | `/github/app/setup` | GitHub App post-install success page |
-
 ## Infrastructure
 
 | Method | Path | Summary |
@@ -425,8 +416,6 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/account/team/invite` | Invite a team member (website / Supabase auth) |
 | `PATCH` | `/account/team/{user_id}/role` | Change a member's role (website / Supabase auth) |
 | `DELETE` | `/account/team/{user_id}` | Remove a member (website / Supabase auth) |
-| `GET` | `/account/settings` | Get org settings (website / Supabase auth) |
-| `PATCH` | `/account/settings` | Update org settings (website / Supabase auth) |
 
 ## credits
 
