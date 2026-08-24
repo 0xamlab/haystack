@@ -193,8 +193,10 @@ def test_api_reference_documents_machine_readable_discovery_contract() -> None:
 def test_makefile_openapi_target_uses_repo_python_and_validates_generated_spec() -> None:
     makefile_text = (ROOT / "Makefile").read_text()
     assert "mkdir -p schemas/openapi" in makefile_text
-    assert "curl -fsS http://localhost:8000/openapi.json" in makefile_text
-    assert "yaml.safe_dump" in makefile_text
+    # The spec is generated in-process (scripts/openapi/export_openapi.py imports the real
+    # FastAPI app and calls app.openapi() directly) -- no live server, so no curl dependency.
+    assert "curl -fsS http://localhost:8000/openapi.json" not in makefile_text
+    assert "scripts/openapi/export_openapi.py" in makefile_text
     assert "from openapi_spec_validator import validate_spec" in makefile_text
     assert "tmp=\"$$(mktemp schemas/openapi/openapi.yaml.XXXXXX)\"" in makefile_text
     assert 'mv "$$tmp" schemas/openapi/openapi.yaml' in makefile_text
