@@ -47,3 +47,8 @@ build/*
 mojo_env
 .pixi
 build/artifacts
+
+# pixi env dirs/symlinks must never enter build contexts: a leftover .pixi makes
+# `pixi install` fail with "File exists (os error 17)" inside the image build.
+**/.pixi
+**/.pixi/
