@@ -23,6 +23,18 @@ Device-sync cost per GEMM is host-side microseconds; the probe measured the per-
 savings at 4-24x the v2 kernel cost at the raced shapes, so the seam is noise in the sum.
 The ABI keeps `tc_shim_use_stream` ready for a MAX release that exposes stream handles.
 
+UPDATE (gemma3 lane, 2026-08-24): the seam is ABOLISHED without any MAX stream handle at
+all. Mojo 1.0.0 did ship `create_external_stream(Pointer[NoneType]) -> DeviceStream`, but
+the wrapped DeviceStream carries no kernel launcher (measured, ext_stream_probe2.mojo) and
+the external stream never joins the pool `select_stream` addresses — so the lane ships the
+LEGACY-STREAM interop instead: `_tc_use_legacy_stream` binds the cuBLAS handle to the CUDA
+legacy default stream, which the H100 probe (legacy_probe.mojo) proved is device-ordered
+against Mojo's default stream in BOTH directions with zero host syncs. Sessions under
+`-D ALGENTA_G3_STREAM` keep their ordinary `ctx` enqueues, dispatch
+`_tc_gemm_dispatch_async` (zero syncs inside) at every seam, and drop the per-GEMM
+`ctx.synchronize()` too — one stream-ordered pipeline, ONE sync per step (the token
+readback), 496 device syncs per 27B decode step removed.
+
 THE GEMM LAYOUT CONTRACT (tc_shim.cu's header, restated)
 --------------------------------------------------------
 `C[M,N] = A[M,K] @ W[N,K]^T`, ALL row-major — the exact residentk convention the v2 prefill
@@ -144,6 +156,63 @@ def _tc_init() -> Int:
         return -1
 
 
+def _tc_create_stream() -> Int:
+    """Stream factory (gemma3 lane, 2026-08-24): create a NEW non-blocking cudaStream_t on
+    the current context, bind the cuBLAS handle to it, return the raw pointer as an Int
+    (0 = failure, check `_tc_last_error`). Probed + WORKING, but NOT the shipped interop:
+    MAX 1.0.0's `create_external_stream` wraps the pointer into a `DeviceStream` whose
+    surface carries NO kernel launcher (measured: no enqueue_kernel/launch/submit/
+    enqueue_copy on the value; its `enqueue_function` is the DeviceExternalFunction entry),
+    and the external stream does NOT join the context pool `select_stream` addresses. The
+    lane ships the legacy-stream ordering below instead; this entry stays for a MAX release
+    whose DeviceStream grows a launch surface. Initializes the handle if needed."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_create_stream", Int64]())
+    else:
+        return 0
+
+
+def _tc_use_legacy_stream() -> Int:
+    """THE shipped stream-ordered seam (gemma3 lane, 2026-08-24): bind the cuBLAS handle
+    (and all shim-internal launches) to the CUDA LEGACY default stream. PROBE-PROVEN on the
+    H100 VM (legacy_probe.mojo): Mojo's DeviceContext default stream is device-ordered
+    against the legacy stream in BOTH directions (the implicit serialization blocking
+    streams have with it) — a 100-iteration Mojo-kernel/legacy-GemmEx/Mojo-kernel chain
+    with ZERO host syncs runs data-correct at ~6 us seam cost. With this binding, sessions
+    dispatch `_tc_gemm_dispatch_async` (no internal sync) straight between their ordinary
+    `ctx` enqueues and drop BOTH halves of the old per-GEMM seam (the ctx.synchronize()
+    before AND the cudaStreamSynchronize inside) — 496 device syncs per 27B decode step
+    removed. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call["tc_shim_use_stream", Int64, Int64](Int64(1))
+        )
+    else:
+        return -1
+
+
+def _tc_gemm_f16_32c_async(a: Int, w16: Int, m: Int, k: Int, n: Int, a16: Int, c32: Int,
+                          accum: Int) -> Int:
+    """The ASYNC twin of `_tc_gemm_f16_32c`: same compute (f16 HMMA, COMPUTE_32F, f32 C
+    direct, beta by `accum`), zero syncs — the A-convert kernel and the GemmEx enqueue on
+    the shim stream and the call returns at once. ONLY legal when the session's Mojo
+    enqueues ride the SAME stream the shim is bound to (`_tc_create_stream` + the wrapped
+    DeviceStream); the caller owns the single eventual sync. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_32c_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64,
+            ](Int64(a), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(a16), Int64(c32),
+              Int64(accum))
+        )
+    else:
+        return -1
+
+
 def _tc_last_error() -> Int:
     """The shim's last recorded error (raw cudaError_t/cublasStatus_t, or a negative
     shim-defined class) — diagnostics when a wrapper returns non-zero."""
@@ -252,6 +321,85 @@ def _tc_gemm_dispatch(a: Int, w16: Int, w32_fallback: Int, m: Int, k: Int, n: In
         return _tc_gemm_f16_assign(a, w16, m, k, n, a16, c16, c32)
     else:
         return _tc_gemm_f16_32c(a, w16, m, k, n, a16, c32, accum)
+
+
+def _tc_gemm_dispatch_async(a: Int, w16: Int, w32_fallback: Int, m: Int, k: Int, n: Int,
+                           a16: Int, c16: Int, c32: Int, accum: Int) -> Int:
+    """The stream-ordered twin of `_tc_gemm_dispatch` (gemma3 lane): routes to the ASYNC
+    entry the comptime `TC_ACC_MODE` selects. Mode 0 (the shipped mode) dispatches
+    `_tc_gemm_f16_32c_async`; the fallback rungs have no async twins (their ladder exists
+    only for a token-gate failure that never happened), so they dispatch their SYNC forms —
+    correct but seam-bearing, and only reachable by a rebuild that changes TC_ACC_MODE."""
+    @parameter
+    if TC_ACC_MODE == 1:
+        return _tc_gemm_tf32_beta(a, w32_fallback, m, k, n, c32, accum)
+    elif TC_ACC_MODE == 2:
+        if accum != 0:
+            return _tc_gemm_f16_acc16(a, w16, m, k, n, a16, c16, c32)
+        return _tc_gemm_f16_assign(a, w16, m, k, n, a16, c16, c32)
+    else:
+        return _tc_gemm_f16_32c_async(a, w16, m, k, n, a16, c32, accum)
+
+
+comptime G3_STREAM_ORDER: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_STREAM"]()
+"""The bridge's own read of the `-D ALGENTA_G3_STREAM` define (the sessions gate their
+seam syncs on the same define; both always agree within one binary)."""
+
+
+def _tc_gemm_dispatch_auto(a: Int, w16: Int, w32_fallback: Int, m: Int, k: Int, n: Int,
+                          a16: Int, c16: Int, c32: Int, accum: Int) -> Int:
+    """THE one seam call the G3_STREAM sessions make: ASYNC dispatch under
+    `-D ALGENTA_G3_STREAM` (legacy-stream-bound handle, zero syncs — the caller must have
+    skipped its own pre-seam `ctx.synchronize()` too), the ordinary SYNC dispatch in every
+    other build. Same args, same routing ladder as `_tc_gemm_dispatch`."""
+    @parameter
+    if G3_STREAM_ORDER:
+        return _tc_gemm_dispatch_async(a, w16, w32_fallback, m, k, n, a16, c16, c32, accum)
+    else:
+        return _tc_gemm_dispatch(a, w16, w32_fallback, m, k, n, a16, c16, c32, accum)
+
+
+def _tc_bgemm_f16_async(a16: Int, b16: Int, c32: Int, m: Int, n: Int, k: Int,
+                        ld_a: Int, ld_b: Int, ld_c: Int,
+                        stride_a: Int, stride_b: Int, stride_c: Int,
+                        batch: Int, trans_b: Int) -> Int:
+    """Strided-batched f16 tensor-core GEMM with f32 output, COMPUTE_32F, ASYNC (the
+    tensor-core prefill-attention lever). Row-major semantics: `trans_b=1` computes
+    `C[M,N] = A[M,K] @ B[N,K]^T` (the QK^T case, B in weights layout); `trans_b=0` computes
+    `C[M,N] = A[M,K] @ B[K,N]` (the PV case). `ld_*` are row strides, `stride_*` per-batch
+    offsets. Enqueues on the shim stream and returns without syncing (G3_STREAM contract).
+    0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_bgemm_f16_async", Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+            ](Int64(a16), Int64(b16), Int64(c32), Int64(m), Int64(n), Int64(k),
+              Int64(ld_a), Int64(ld_b), Int64(ld_c), Int64(stride_a), Int64(stride_b),
+              Int64(stride_c), Int64(batch), Int64(trans_b))
+        )
+    else:
+        return -1
+
+
+def _tc_attn_softmax_mask_async(s32: Int, p16: Int, n_keys: Int, m_rows: Int, h_q: Int,
+                                pos_base: Int, window: Int) -> Int:
+    """Masked causal+window softmax over the QK^T score rows -> f16 attention weights, ASYNC
+    (the tensor-core prefill-attention lever's middle stage). One block per (head, position)
+    row; key j attended iff j <= pos_base+p and (window <= 0 or j >= pos_base+p+1-window).
+    Enqueues on the shim stream, no sync. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_attn_softmax_mask_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(s32), Int64(p16), Int64(n_keys), Int64(m_rows), Int64(h_q),
+              Int64(pos_base), Int64(window))
+        )
+    else:
+        return -1
 
 
 def _tc_gemm_f16_assign(a: Int, w16: Int, m: Int, k: Int, n: Int, a16: Int, c16: Int,

@@ -63,6 +63,7 @@ from max.gpu.memory import AddressSpace
 from std.gpu.primitives.warp import sum as _warp_sum
 from std.math import exp, sqrt, tanh
 from std.memory import stack_allocation
+from std.sys import is_defined
 from residentk.contract import RESIDENT_MAX_D_MODEL, RESIDENT_MAX_HEAD_DIM
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
@@ -74,10 +75,10 @@ comptime _LANES: Int = 32
 comptime _SUBS: Int = _TG // _LANES
 comptime _VEC: Int = 4
 comptime _VEC_STRIDE: Int = _LANES * _VEC
-# Float16-weight vector widths — the SAME values `residentk.kernels` measured for its `_f16` twins
-# (half4 is a real vector type; half8 is not, and width 8 measured slower). Kept private here so
-# this module stays self-contained.
-comptime _VEC_H: Int = 4
+# Float16-weight vector widths. Baseline `_VEC_H=4` (half4). The bandwidth sweep (2026-08-24)
+# A/B-tests `_VEC_H=8` (half8 = one 128-bit load) via `-D ALGENTA_G3_VEC8` to halve the weight
+# transaction count. Kept private here so this module stays self-contained.
+comptime _VEC_H: Int = 8 if is_defined["ALGENTA_G3_VEC8"]() else 4
 comptime _VEC_STRIDE_H: Int = _LANES * _VEC_H
 comptime _NEG_HUGE: Float32 = -3.0e38
 
@@ -531,6 +532,157 @@ def _g3_norm_gemv2_geglu_kernel_f16(
             acc2 += xs[tt2] * Float32(w[base2 + tt2])
             tt2 += _LANES
     red[tid] = acc2
+    barrier()
+    var st2 = _LANES // 2
+    while st2 > 0:
+        if lane < st2:
+            red[tid] = red[tid] + red[tid + st2]
+        barrier()
+        st2 //= 2
+    if lane == 0 and j < n_ff:
+        var g = gsh[sub]
+        var u = red[sub * _LANES]
+        var inner = Float32(0.7978845608028654) * (g + Float32(0.044715) * g * g * g)
+        act[j] = Float32(0.5) * g * (Float32(1.0) + tanh(inner)) * u
+
+
+def _g3_norm_gemv2_geglu_kernel_f16_u4(
+    act: _FP, x: _FP, gamma: _FP, w: _HP, k_i64: Int64, n_ff_i64: Int64, eps: Float32
+):
+    """GEMV-bandwidth lever V1 (Gemma 3 decode sweep, 2026-08-24): the fp16 gate/up GeGLU kernel
+    with the k-loop UNROLLED 4-way on FOUR independent accumulators. The baseline
+    `_g3_norm_gemv2_geglu_kernel_f16` issues one width-4 weight load per loop iteration and folds
+    it into a single accumulator, so the loop-carried `acc +=` chain keeps only ~1 global load in
+    flight per thread — the nsys sweep measured it latency-bound at ~6% of HBM3. Unrolling puts 4
+    independent width-4 weight loads in flight per thread per iteration (4 separate partial sums,
+    combined once at the end), which is what a memory-bound GEMV needs to approach peak bandwidth.
+    Element ownership and the final value are unchanged from the baseline (same per-thread element
+    set, same reduce); only the accumulation ORDER within a thread differs (last-ulp at most).
+    """
+    var k = Int(k_i64)
+    var n_ff = Int(n_ff_i64)
+    var xs = stack_allocation[_G3_STAGE_CAP, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var k_vec = (k // _VEC_STRIDE_H) * _VEC_STRIDE_H
+    comptime VSH4: Int = 4 * _VEC_STRIDE_H
+
+    # ── gate (4-way unrolled, 4 in-flight weight loads / thread) ──
+    var g0 = Float32(0.0)
+    var g1 = Float32(0.0)
+    var g2 = Float32(0.0)
+    var g3 = Float32(0.0)
+    if j < n_ff:
+        var base = j * k
+        var t = lane * _VEC_H
+        while t + 3 * _VEC_STRIDE_H + _VEC_H <= k_vec:
+            var xv0 = xs.load[width=_VEC_H](t)
+            var xv1 = xs.load[width=_VEC_H](t + _VEC_STRIDE_H)
+            var xv2 = xs.load[width=_VEC_H](t + 2 * _VEC_STRIDE_H)
+            var xv3 = xs.load[width=_VEC_H](t + 3 * _VEC_STRIDE_H)
+            var wv0 = w.load[width=_VEC_H](base + t).cast[DType.float32]()
+            var wv1 = w.load[width=_VEC_H](base + t + _VEC_STRIDE_H).cast[DType.float32]()
+            var wv2 = w.load[width=_VEC_H](base + t + 2 * _VEC_STRIDE_H).cast[DType.float32]()
+            var wv3 = w.load[width=_VEC_H](base + t + 3 * _VEC_STRIDE_H).cast[DType.float32]()
+            var p0 = xv0 * wv0
+            var p1 = xv1 * wv1
+            var p2 = xv2 * wv2
+            var p3 = xv3 * wv3
+            for e in range(_VEC_H):
+                g0 += p0[e]
+                g1 += p1[e]
+                g2 += p2[e]
+                g3 += p3[e]
+            t += VSH4
+        while t + _VEC_H <= k_vec:
+            var xv = xs.load[width=_VEC_H](t)
+            var wv = w.load[width=_VEC_H](base + t).cast[DType.float32]()
+            var pv = xv * wv
+            for e in range(_VEC_H):
+                g0 += pv[e]
+            t += _VEC_STRIDE_H
+        var tt = k_vec + lane
+        while tt < k:
+            g0 += xs[tt] * Float32(w[base + tt])
+            tt += _LANES
+    red[tid] = (g0 + g1) + (g2 + g3)
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0:
+        gsh[sub] = red[sub * _LANES]
+    barrier()
+
+    # ── up (4-way unrolled) ──
+    var u0 = Float32(0.0)
+    var u1 = Float32(0.0)
+    var u2 = Float32(0.0)
+    var u3 = Float32(0.0)
+    if j < n_ff:
+        var base2 = (n_ff + j) * k
+        var t2 = lane * _VEC_H
+        while t2 + 3 * _VEC_STRIDE_H + _VEC_H <= k_vec:
+            var xv0 = xs.load[width=_VEC_H](t2)
+            var xv1 = xs.load[width=_VEC_H](t2 + _VEC_STRIDE_H)
+            var xv2 = xs.load[width=_VEC_H](t2 + 2 * _VEC_STRIDE_H)
+            var xv3 = xs.load[width=_VEC_H](t2 + 3 * _VEC_STRIDE_H)
+            var wv0 = w.load[width=_VEC_H](base2 + t2).cast[DType.float32]()
+            var wv1 = w.load[width=_VEC_H](base2 + t2 + _VEC_STRIDE_H).cast[DType.float32]()
+            var wv2 = w.load[width=_VEC_H](base2 + t2 + 2 * _VEC_STRIDE_H).cast[DType.float32]()
+            var wv3 = w.load[width=_VEC_H](base2 + t2 + 3 * _VEC_STRIDE_H).cast[DType.float32]()
+            var p0 = xv0 * wv0
+            var p1 = xv1 * wv1
+            var p2 = xv2 * wv2
+            var p3 = xv3 * wv3
+            for e in range(_VEC_H):
+                u0 += p0[e]
+                u1 += p1[e]
+                u2 += p2[e]
+                u3 += p3[e]
+            t2 += VSH4
+        while t2 + _VEC_H <= k_vec:
+            var xv = xs.load[width=_VEC_H](t2)
+            var wv = w.load[width=_VEC_H](base2 + t2).cast[DType.float32]()
+            var pv = xv * wv
+            for e in range(_VEC_H):
+                u0 += pv[e]
+            t2 += _VEC_STRIDE_H
+        var tt2 = k_vec + lane
+        while tt2 < k:
+            u0 += xs[tt2] * Float32(w[base2 + tt2])
+            tt2 += _LANES
+    red[tid] = (u0 + u1) + (u2 + u3)
     barrier()
     var st2 = _LANES // 2
     while st2 > 0:

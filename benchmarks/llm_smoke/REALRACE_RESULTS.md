@@ -15862,6 +15862,517 @@ the internal baseline per the publish-wins-only rule. Real-weights gate used the
 CPU-fp32 27B reference is impractically slow); 27B f32 does not fit one 80 GB GPU — f16 is the
 race arm. Next session: levers 1-4 above, then measure the sonnet cell.
 
+## GEMMA 3 TILED PREFILL LANDED — TTFT flips 122.7 s -> 278.6 ms at the official 550 shape (441x), correctness-gated at every stage; beats llama-server cold and MAX's published loaded TTFT number, but vLLM leads single-stream — internal result, NOT a published win (2026-08-24, algenta-ent-h100, GPU 6 for algenta / GPU 5 vLLM / GPU 7 llama-server, branch feat/gemma3)
+
+**What landed.** The real tiled prefill for Gemma 3 (the win path's lever #3), on BOTH sessions,
+correctness-gated before any number. Reused VERBATIM per the reuse-map: `_pf_gemm_*_v2` family
+(QKV/o/down) and `_pf_rmsnorm_rows_kernel`; `_pf_ropewrt_kernel` carries the dual rope through
+the session's per-layer global/local table-pointer select (qk_norm=1). NEW kernels
+(`residentk/kernels_prefill_gemma3.mojo`): the GeGLU prefill epilogue
+(`_pf_gemm_geglu_kernel_v2`/`_v2h` — gelu_pytorch_tanh, not SiLU), windowed prefill attention
+(`_pf_attn_window_kernel`, per-row lower bound max(0, pos+1-window) for the 52 sliding layers,
+0 for the every-6th global), the f16-resident-weight v2 twins (`_v2h`: f16 weights widened into
+f32 staging/accumulation — the eager arm's exact arithmetic at half the storage), the four-norm
+row wiring (`_pf_norm_accum_rows_kernel`: o/down -> branch scratch -> norm -> residual add),
+scaled m-row embed gather, and the TC-seam GeGLU combine (`_pf_geglu_rows_kernel`). Ten
+dispatches per layer per tile; `G3_PF_TILE = 1024` rows so the raced 256/550 shapes run ONE
+M-parallel pass. Under `-D ALGENTA_TC_SHIM` full tiles (m >= 128) ride cuBLAS HMMA GemmEx
+(COMPUTE_32F) straight over the RESIDENT f16 weights — no f16 staging twin needed; the weights
+ARE the B operand (that is the fit-fact this arm exists for); short tiles stay native. Driver:
+`--prefill` + `--tokens-file`; gate script: `--driver-args=` passthrough;
+`make_race_prompts.py` builds MAX-sonnet-shaped exact-length token prompts (+ `.text` twin for
+OpenAI-compatible opponents); `ttft_openai_client.py` streams TTFT from the opponents.
+
+**Correctness battery (all PASS, H100 GPU 6):**
+1. 4B tiled f32 vs transformers CPU fp32: logits max_abs_diff 2.39e-4, top-5 identical, tokens
+   [236761, 108, 1018, 236778] identical. Same gate, f16 tiled arm: 2.68e-4, PASS.
+2. 4B f16 eager-vs-tiled token identity, native chain: 160 ([17084,684,910,78241,528,910]),
+   300 ([236764,784,756,236754,1303,236789]), and 1200 ([1093,107,3133,600,5888,3155]) — the
+   1200 prompt is multi-tile (1024+176) AND crosses the 1024 sliding-window boundary, so the
+   windowed attention's per-row lower bound is exercised for real. Identical both arms.
+3. 4B f16 eager-vs-tiled on the cuBLAS arm: identical at 160 and 1200 (the seam is exact-
+   enough for greedy identity at these shapes).
+4. 27B f16 eager-vs-tiled(TC) 160-token prompt: identical [17084,607,9899,236764,532,607];
+   the decode steps AFTER the tiled ingest read the KV cache the batched ropewrt wrote —
+   cache-layout compatibility proven by generation, not just by the prefill's own tokens.
+
+**TTFT, 27B f16 on one H100 (GPU 6), MAX-sonnet-shaped prompts, fresh-process per cell (blob
+load excluded — the driver times ingestion only); tiled = median of 3:**
+
+| Cell | eager-serial | tiled (cuBLAS TC seam) | Speedup |
+| --- | --- | --- | --- |
+| 160 tokens | 33,476.7 ms | 138.6 ms | 241x |
+| 256 tokens | 54,447.5 ms | 162.7 ms (162.5/166.8/162.7) | 335x |
+| 550 tokens (official shape) | 122,738.4 ms | 278.6 ms (277.8/280.4/278.6, IQR <1%) | 441x |
+| 550-in/256-out full shape | — | TTFT 279.7 ms, decode 4.88 tok/s (prefill+graph) | — |
+
+Tokens identical eager-vs-tiled in every cell ([3133,834] @256, [236764,532] @550). The
+baseline's own ledger line ("ttft_ms 859.9, serial 4-token ingest") is now the bottom of the
+table by construction: serial ingestion is ~209-223 ms/token of prompt walk at 27B.
+
+**Same-H100 opponent TTFT, single request, 550-token prompt (each measured this session):**
+
+| Opponent | Config | TTFT @550 |
+| --- | --- | --- |
+| vLLM 0.27.1 | bf16 safetensors, `--no-enable-prefix-caching`, 3 DISTINCT prompts | 81.0 / 56.6 / 55.8 -> median 56.6 ms |
+| algenta tiled | f16 + cuBLAS seam, median of 3 | 278.6 ms |
+| llama-server (campaign llama.cpp build) | Q8_0 GGUF (28.7 GB, converted in-lane), fresh server, 3 distinct prompts | 314.9 / 642.7 / 522.6 then 598.0 / 728.8 / 715.9 -> distinct-prompt band ~520-730 ms; identical-prompt warm-slot reps 291.8-295.1 ms |
+| MAX published | sonnet cell C=50, 550-in (loaded, prefix-cached) | TTFT mean 860 ms |
+
+**INTEGRITY NOTES (measured, not assumed):** (1) The first vLLM pass measured 27-31 ms reps —
+DISCARDED: `enable_prefix_caching=True` (default) + the same prompt sent 3x gave 60-69% prefix
+cache hit rates (server log), so those reps were cache replays, not prefill. The clean arm
+re-ran with `--no-enable-prefix-caching` and distinct prompts. (2) llama-server's slot KV
+reuse makes identical-prompt reps unrepresentative of cold prefill — the distinct-prompt band
+is the honest number, and its wide spread (520-730 ms across two rounds on a 35 C, 1830 MHz
+GPU — not throttling) is recorded as-is. (3) MAX's 860 ms is a LOADED C=50 number; our 278.6 ms
+is single-stream — the comparison direction favors us by construction, stated rather than hidden.
+
+**VERDICT — stage lands, race is NOT won at TTFT (publish-wins-only => no gitbook page yet):**
+algenta beats llama-server's cold-prompt TTFT at the 550 shape (~1.9-2.6x) and sits under MAX's
+published loaded number, but vLLM leads algenta 4.9x single-stream. The tiled prefill is GATED
+and REAL (441x over our own serial baseline, token-identical), and the race now has a TTFT arm
+at all — the sonnet cell cannot even be entered without it. Refutation recorded: the
+"tiled-prefill-alone wins TTFT" hypothesis is FALSE against vLLM; the remaining gap is the
+fused-pipeline efficiency vLLM gets from CUDA-graph prefill + flash attention + no host sync
+seam, not the GEMM math.
+
+**Named TTFT levers for the next pass (in measured-cost order):** (1) the windowed prefill
+attention kernel is a per-key barrier-tree reduction (one `_warp_sum` + barrier pair per key per
+(row,head) block) — a flash-style M-parallel twin (the qwen3 `_pf_attn_flash_kernel` pattern +
+the window lower bound) is the biggest native bucket; (2) the TC seam pays a `ctx.synchronize()`
+before each of the 4x62 GemmEx calls (MAX exposes no stream handle — structural, ~5 ms of the
+sum at host-microsecond seam cost each); (3) the final `_lmhead_argmax_kernel_f16` is the
+decode-shaped 262,208-wide sweep measured at ~13 ms/token in the decode autopsy — a tiled
+batch-1 lm_head would shave it; (4) GEMM efficiency: 28.2 TFLOP over 278.6 ms = ~101 TF/s ≈ 10%
+of the H100 HMMA rate — cuBLAS-heuristic tuning (or the hand mma.sync path the escape-hatch
+probe parked at 23-39% of cuBLAS) has headroom, but vLLM's ~450 TF/s-equivalent comes mostly
+from (1)+(2)+fusion, so the flash attention twin is the first move.
+
+**Artifacts:** `residentk/kernels_prefill_gemma3.mojo` (new), `session_cuda_gemma3{,_f16}.mojo`
+(prefill methods + pf_* scratch + TC residency), driver `--prefill`/`--tokens-file`,
+`gate_gemma3_real.py --driver-args=`, `make_race_prompts.py`, `ttft_openai_client.py`, VM bins
+`~/gemma3_bin/gemma3_correctness_cuda_pf{,_tc}`, `~/models/gemma-3-27b-it-q8_0.gguf` (28.7 GB,
+kept for the llama-server lane), gates in `/tmp/g3pf_gate/`. STATUS: lever #3 DONE and gated;
+next = the concurrent gemma3 serving driver (lever #4) + the batched decode, then the MAX-
+methodology sonnet cell — the aggregate race is where the win has to come from.
+
+## GEMMA 3 BATCHED DECODE LANDED — B-sequence M=B steps + f16 batch-KV fit lever; C=50 sonnet shape RUNS on one H100 at 430.4 aggregate tok/s, token-identical to single-stream; MAX still leads aggregate (~507) by 1.18x — internal result, NOT a published win (2026-08-24, algenta-ent-h100 GPU 6, branch feat/gemma3)
+
+**What landed.** Batched decode for Gemma 3 (`residentk/kernels_batched_gemma3.mojo` +
+`residentk/session_cuda_gemma3_batched.mojo` + `nvidia_race/gemma3_batched_cuda.mojo`, all
+additive): B sequences share ONE f16 weight-residency; each decode step is ONE M=B plan —
+rmsnorm-rows -> QKV GEMM -> `_g3_ropewrt_batched_kernel` (device `poss` array, per-layer
+dual-rope pointer select, KV write at `b*kv_stride + pos`) -> windowed batched flash-decoding
+(`_g3_kv_decode_splitk_partial_batched_kernel`, the qwen3 batched pair + Gemma's per-sequence
+`max(0, n_keys - window)` lower bound, split-the-span partition; the merge reused verbatim from
+attention_forge) -> o_proj to branch scratch -> norm-accum-rows -> rmsnorm-rows -> gate/up +
+GeGLU -> down_proj to branch scratch -> norm-accum-rows, tail = B-row final norm +
+`_g3_batched_lmhead_argmax_kernel_f16` (one vocab sweep for all B rows) + B-row reduce. GEMMs
+ride the cuBLAS HMMA seam at EVERY B (decode's weight-streaming shapes win on GemmEx even at
+M=1); the native v2h chain is the flag-off fallback. Per-sequence ingestion reuses the
+single-stream tiled prefill with the KV pointers offset into the sequence's cache region.
+
+**The C=50 fit lever:** `-D ALGENTA_G3_KV_F16` narrows the batched KV cache to Float16 (rope
+math stays f32, narrowed at the store, widened at the read, f32 accumulation): 50 sequences x
+832 ctx = 21.2 GB of KV instead of 42.4, so the sonnet shape fits one 80 GB H100 next to the
+54 GB weight residency. kv16 gates: 4B B=1/B=4 and 27B B=1 tokens IDENTICAL to the f32-KV arm.
+
+**GATES (all PASS):** 4B batched B=1/B=4 == single-stream tiled arm (13 tokens incl. 2 warmup
+steps); 27B B=1 == single-stream; gen_seq0 IDENTICAL across B=1/2/4/8/16/32 and across the
+kv16/f32-KV arms; C=50 first_tokens all 236764 and gen_seq0 byte-identical to the
+single-stream prefill+graph run at the 550 shape.
+
+**27B batched decode B-sweep (f32 KV arm, 160-token prompt, 64 timed steps, H100):**
+
+| B | per-req tok/s | aggregate tok/s |
+| --- | --- | --- |
+| 1 | 33.04 | 33.0 |
+| 2 | 31.93 | 63.9 |
+| 4 | 29.63 | 118.5 |
+| 8 | 25.71 | 205.7 |
+| 16 | 20.52 | 328.3 |
+| 32 | 14.60 | 467.1 |
+
+Note the B=1 row: the batched path at B=1 (cuBLAS GemmEx per projection) is 7.1x the
+single-stream eager decode arm (4.63 tok/s) — the HMMA seam streams the f16 weights at HBM
+speed where the decode GEMV kernels sit latency-bound at ~6-7% HBM. Batch collapse is real:
+per-req stays ~30 tok/s through B=4, aggregate 14.1x B=1 at B=32.
+
+**C=50 SONNET CELL (the MAX-methodology shape, static closed-loop batch):** 50 sequences,
+550-in / 256-out, ctx 832, kv16 + cuBLAS seam, warmup 2 + 256 timed steps:
+ingest 10.74 s total for all 50 prompts; decode 29.74 s for 256 steps ->
+**aggregate 430.4 tok/s = 8.61 tok/s per request**.
+
+**Comparison (all same-H100 unless noted):**
+
+| Engine / cell | Metric | Value |
+| --- | --- | --- |
+| Algenta static C=50 (this entry) | aggregate tok/s | 430.4 |
+| MAX published 27B sonnet C=50 | request throughput | 1.98 req/s -> ~507 aggregate tok/s |
+| MAX published 27B sonnet C=50 | per-req output tok/s | 27.3 mean / 30.6 median |
+| Algenta single-stream TTFT @550 | TTFT | 278.6 ms |
+| vLLM 0.27.1 bf16 single-stream @550 (prefix-caching OFF, distinct prompts) | TTFT | 56.6 ms median (55.8-81.0) |
+| llama-server Q8_0 single-stream @550 (distinct prompts) | TTFT | 520-730 ms band |
+| MAX published 27B sonnet C=50 (loaded) | TTFT mean | 860 ms |
+
+**VERDICT — stages land, race NOT won yet (publish-wins-only => no gitbook page):** MAX leads
+the C=50 aggregate ~507 vs 430.4 (1.18x) and per-request 27.3 vs 8.6 (3.2x); vLLM leads
+single-stream TTFT 4.9x. The integrity notes stand: our C=50 cell is a CLOSED static batch
+(no admission/prefill-decode interference — conditions FAVOR us), MAX's TTFT 860 ms is loaded
+C=50 while our 278.6 ms is single-stream (conditions favor us there too); the 430.4 number is
+honest as measured. Per-request decode is the gap: 116 ms/step at B=50 = ~440 GB/s effective
+= 13% of HBM3, vs MAX's implied ~44% of the bandwidth floor — the named levers, in order:
+(1) the 4x62 cuBLAS sync seams per step (MAX exposes no stream handle — structural; a
+graph-captured cross-seam or a fused-Mojo-GEMM replacement removes ~248 syncs/step), (2) the
+windowed batched attention (per-key barrier tree; flash-style M-parallel twin), (3) the
+batched lm_head's 2.8 GB embed sweep per step.
+
+**BUG FOUND + FIXED (the B>32 wall):** every B>32 batched run crashed
+(CUDA_ERROR_ILLEGAL_ADDRESS). Debug-marker + in-kernel comptime print isolated it: the VM's
+STAGED `~/gemma3_src/mojo/engine/residentk/kernels.mojo` was STALE — pre-L9, with
+`_BATCH_LMHEAD_MAX_ROWS` hardcoded 32, so `-D ALGENTA_SEQS_64/128` never took effect and the
+batched lm_head's per-thread row arrays overflowed at row 32 (exactly the failure the current
+docstring warns about). Fix = sync the branch's kernels.mojo (the SEQS-flag chain) to the
+staging; cap=128 verified live via the kernel print, B=33 clean. LESSON: after any engine edit,
+re-sync ALL touched shared modules to the VM staging — a stale shared module silently reverts
+a comptime lever.
+
+**STATUS:** levers #3 (tiled prefill) and #4-equivalent (batched decode + static C=50 cell)
+DONE and gated; the race stands at 0.85x MAX aggregate, 3.1x under MAX's published loaded TTFT
+(single-stream), 4.9x behind vLLM single-stream TTFT. NEXT: (1) the seam/attention/lm_head
+levers above for per-request decode; (2) the real concurrent serving driver
+(qwen3_serve_batched_cuda.mojo + algenta_openai_shim.py pattern) so the cell runs MAX's actual
+open-loop protocol; (3) vLLM/llama-server C=50 aggregate reference runs. Artifacts: VM bins
+`~/gemma3_bin/gemma3_batched_cuda{,_kv16,_kv16_s64,_native_s64}`, gates `/tmp/g3pf_gate/`.
+
+## GEMMA 3 STREAM-ORDERED SEAM + cuBLAS lm_head LANDED — C=50 aggregate 444.8 -> 767.3 tok/s (+72%), nsys-proven lm_head was 43% of the step; same-H100 C=50 references measured (vLLM 1028.6 / llama-server 217.9); beats MAX's published C=50 and beats llama-server on BOTH axes — vLLM leads both axes and the gap is precisely characterized (2026-08-24, algenta-ent-h100, GPU 6 algenta / GPU 5 vLLM / GPU 7 llama-server, branch feat/gemma3)
+
+**What landed.** Two G3_STREAM levers (`-D ALGENTA_G3_STREAM`, both sessions, all additive —
+flag-off builds keep the legacy seam byte-for-byte), each correctness-gated before a single
+number:
+
+1. **The zero-sync legacy-stream seam.** The named "248 cuBLAS sync seams" lever was
+   executed — and its cost MEASURED, not assumed. First the interop probe map: MAX 1.0.0's
+   `DeviceContext.create_external_stream` exists, but the wrapped `DeviceStream` carries NO
+   kernel launcher (ext_stream_probe2: no enqueue_kernel/launch/submit/enqueue_copy; its
+   `enqueue_function` is the DeviceExternalFunction entry) and the external stream never
+   joins the pool `select_stream` addresses — so the external-stream route is a dead end on
+   this MAX build. The shipped route instead: `tc_shim_use_stream(cudaStreamLegacy)` binds
+   the cuBLAS handle to the CUDA LEGACY default stream, which legacy_probe.mojo proved is
+   device-ordered against Mojo's default stream in BOTH directions with ZERO host syncs (a
+   100-iteration Mojo-kernel/GemmEx/Mojo-kernel chain runs data-correct at ~6 us seam
+   cost). The sessions then dispatch `_tc_gemm_dispatch_async` (new shim entry: A-convert +
+   GemmEx, no internal cudaStreamSynchronize) and drop their own pre-seam
+   `ctx.synchronize()` — both halves of the old 2-sync-per-GEMM seam gone (4x62 = 248 GemmEx
+   calls/step x 2 = 496 device syncs removed per 27B decode step). MEASURED EFFECT: C=50
+   aggregate 430.4 -> 444.8 tok/s (+3.3%), TTFT@550 278.6 -> 274.5 ms. The campaign's
+   10-25 ms/step seam estimate is REFUTED: the real cost was ~3.6 ms/step — the syncs
+   overlapped bandwidth-bound GPU work. (The lever ships anyway: it is the precondition
+   that lets cuBLAS ride the pipeline at all, and it removed ~0.6 s of host-sync stalls
+   from the 50-admission ingest.)
+
+2. **The cuBLAS lm_head — the lever nsys found.** nsys over the 34-step C=50 stream arm
+   (`/tmp/g3prof/g3stream_c50`): `_g3_batched_lmhead_argmax_kernel_f16` cost **48.2 ms per
+   step = 43% of the 112 ms step** at B=50 (its per-thread B-row accumulator arrays
+   collapse occupancy; the 2.8 GB tie table crawls at ~58 GB/s), and the ingest-side
+   `_lmhead_argmax_kernel_f16` cost 13.2 ms x 50 admissions (0.66 s of the 10.7 s ingest).
+   FIX: the logits GEMM rides the stream-ordered seam — `logits[B, vocab] = xn @ embed^T`
+   through `_tc_gemm_dispatch_auto` (COMPUTE_32F, f32 logits direct) — followed by
+   `_g3_logits_argmax_kernel` (one block per row, ascending strict-`>` sweep, the fused
+   kernel's lowest-id tie-break byte-for-byte); the reduce stage is gone with the blk
+   staging. Same swap on the single-stream prefill tail (the TTFT first token). New scratch:
+   the `[max_seqs, vocab]` f32 logits table (52 MB at B=50).
+
+**Correctness battery (all PASS, byte-identical greedy tokens, H100 GPU 6):**
+1. 4B stream arm B=1 and B=4 == single-stream tiled reference (14 tokens).
+2. 27B stream arm B=1 == single-stream reference ([17084,607,9899,236764,532,...] 10 tokens).
+3. 27B B=32 gen_seq0 == old seam arm (67 tokens, 64 timed steps).
+4. C=50 sonnet cell gen_seq0 == old seam arm byte-for-byte (259 tokens); all 50
+   first_tokens = 236764.
+The cuBLAS logits GEMM rounds the normalized activations to f16 exactly like the four
+projection seams already do — no argmax flip surfaced anywhere in the 256x50-token cell.
+
+**Numbers (27B f16, one H100 80GB, kv16):**
+
+| Cell | seam arm | stream+lm_head arm | |
+| --- | --- | --- | --- |
+| C=50 sonnet (static closed-loop, 550-in/256-out) aggregate tok/s | 444.8 | **767.65 / 767.28 / 765.68 -> median 767.3** (IQR 0.13%) | +72.5% |
+| C=50 step ms | 112.4 | 65.2 | 1.72x faster |
+| C=50 ingest (50 x 550) s | 10.74 | 9.98 | |
+| B=32 aggregate tok/s (160 prompt, 64 steps) | 467.1 | 923.2 | +97.6% |
+| B=1 per-req tok/s | 33.0 | 38.7 | |
+| TTFT@160 ms (median of 3) | 138.6 | 134.4 (134.3/134.4/134.6) | |
+| TTFT@256 ms | 162.7 | 159.3 (158.9/159.3/159.8) | |
+| TTFT@550 ms | 278.6 | 272.4 (272.3/272.4/272.7) | |
+| full 550-in/256-out prefill+graph | TTFT 279.7 ms, decode 4.88 tok/s | TTFT 273.4 ms, decode 4.88 tok/s, 257 tokens byte-identical | |
+
+**Same-H100 C=50 aggregate references (the mission's protocol: MAX sonnet cell shape —
+500 prompts, 550-in/256-out, shared 200-token prefix + distinct tails, C=50 in flight,
+open-loop, greedy, prefix caching OFF; driven by gemma3_race_client.py, built by
+make_race_prompts_many.py from the 27B tokenizer — both new in-tree):**
+
+| Engine (same H100, same 500-prompt cell) | Aggregate tok/s | req/s | TTFT p50 ms (loaded) | TPOT p50 ms |
+| --- | --- | --- | --- | --- |
+| vLLM 0.27.1 bf16 (`--no-enable-prefix-caching`, GPU 5) | **1028.6** | 4.02 | 2251.4 | 29.8 |
+| **algenta stream+lm_head (static closed-loop C=50, GPU 6)** | **767.3** | (3.00 eq.) | — (decode-only cell) | 65.2 step |
+| MAX published sonnet C=50 (max.modular.com) | ~507 (1.98 req/s) | 1.98 | 860 mean (loaded) | 27.3/30.6 per-req |
+| llama-server Q8_0 (`-np 50 -c 41600`, GPU 7) | 217.9 | 0.85 | 9527.0 | 197.5 |
+
+**VERDICT — both race axes now WIN per the publish rule (beat MAX AND llama-server on the
+same host); vLLM leads both axes and the gap is written below, not hidden:**
+* Aggregate: algenta 767.3 = **1.51x MAX's published C=50** and **3.52x llama-server's real
+  C=50 serving** on the same H100. Condition caveat, stated: our cell is the static
+  closed-loop batch (no admission interference — favors us), MAX's 507 is their open-loop
+  serving number. The closed->open delta is bounded by our admission duty cycle (~one
+  280-ms prefill per ~0.33 s at steady state => ~85% decode efficiency => ~650 tok/s
+  open-loop estimate, still clear of 507); the real open-loop serve driver remains the
+  refinement that replaces the estimate with a measurement.
+* TTFT: algenta single-stream 272.4 ms **beats llama-server's distinct-prompt cold band
+  (520-730 ms) 1.9-2.7x on identical protocol** and sits under MAX's published loaded
+  860 ms (condition caveat stated). vLLM's 56.6 ms still leads 4.82x.
+* vLLM leads aggregate 1.34x (1028.6 vs 767.3). That gap, and the TTFT gap, are the
+  remaining race — characterized next.
+
+**GAP ANALYSIS (precise, per the brief):**
+* The 65.2 ms/step @C=50 decomposes (nsys): projection GEMMs ~25-28 ms (51.2 GB of f16
+  weights/stream at an effective ~1.8-2.0 TB/s = 55-60% HBM3 — healthy), batched split-K
+  attention **32.6 ms (20.6 GB of KV at only 630 GB/s = 19% HBM3 — the barrier-tree
+  partial kernel)**, lm_head ~2 ms (fixed), elementwise/rope/merge ~5 ms. Bandwidth floor
+  for the step = (51.2 + 20.6) GB / 3.35 TB/s = **21.4 ms** — we are 3.0x above floor.
+* vLLM's TPOT p50 29.8 ms at C=50 saturation => their step runs ~2.4 TB/s effective —
+  1.6x ours. What they do differently: flash-decoding attention at roofline bandwidth
+  (ours at 630 GB/s), CUDA-graphed decode steps (ours still host-launched, ~870
+  submissions/step), paged f16 KV, f16 activations end-to-end (ours round-trip f32 between
+  kernels, doubling elementwise traffic).
+* Next levers, in value order: (1) the flash-style M-parallel twin of the batched split-K
+  attention — 32.6 -> ~12-15 ms at 1.4-1.7 TB/s would put the step at ~45-48 ms =>
+  ~1040-1130 agg tok/s, parity with vLLM; (2) CUDA-graph capture of the stream-ordered
+  step (the legacy-stream ordering is capture-compatible in principle — probe pending);
+  (3) f16 inter-kernel activations.
+* TTFT vs vLLM 56.6 ms: the 272.4 ms arm moves 28.2 TFLOP of prefill GEMM at ~105 TF/s
+  (cuBLAS heuristic picks at these shapes + the f32<->f16 round trips); vLLM's number
+  implies ~450-500 TF/s sustained (flash M-parallel prefill attention + CUDA-graphed
+  chunks). Closing it needs a hand prefill GEMM beyond cuBLAS heuristics AND the flash
+  prefill attention twin — a different round of work than this one's seam/epilogue levers.
+  The TTFT lm_head tail itself is only ~2 ms at B=1 (the decode-shaped sweep parallelizes
+  over the vocab at 2048 blocks — already near bandwidth), which is why the cuBLAS swap
+  moved TTFT <1 ms.
+
+**Artifacts:** `residentk/tc_shim_bridge.mojo` (`_tc_use_legacy_stream`,
+`_tc_gemm_f16_32c_async`, `_tc_gemm_dispatch_auto`), `nvidia_race/tc_shim.cu`
+(`tc_shim_create_stream`, `tc_shim_gemm_f16_32c_async`, use-stream init guard),
+`residentk/kernels_batched_gemma3.mojo` (`_g3_logits_argmax_kernel`), both sessions'
+`G3_STREAM` arms; race tooling `gemma3/make_race_prompts_many.py` +
+`nvidia_race/gemma3_race_client.py`; probes `nvidia_race/ext_stream_probe{,2}.mojo` +
+`nvidia_race/legacy_probe.mojo` (all in-tree; legacy_probe also staged at /tmp on the VM); VM bins `~/gemma3_bin/gemma3_batched_cuda_stream{,_s64}` +
+`gemma3_correctness_cuda_pf_tc_stream`; reference outputs `/tmp/g3race_{vllm,llama}_c50.json`,
+nsys `/tmp/g3prof/g3stream_c50`.
+
+---
+
+## LEVER 1 LANDED — flash-style M-parallel BATCHED DECODE ATTENTION (feat/vllm-flip, 2026-08-24, algenta-ent-h100, branch race/vllm-flip): the barrier-tree partial is replaced by a warp-per-unit flash twin — C=50 sonnet cell 766.5 -> 1121.1 tok/s (+46%), step 65.2 -> 44.6 ms; first cut (warp-interleaved splits) REFUTED for a token-identity break, the fix is a FAITHFUL port of the serve lane's PROVEN byte-compatible flash geometry
+
+**The gap this attacks (from the G3_STREAM round's own nsys):** the batched split-K attention
+partial streamed the 20.6 GB C=50 KV at only 630 GB/s = 19% of HBM3, costing 32.6 ms of the
+65.2 ms C=50 step — the barrier-tree kernel pays TWO full-block `barrier()` hits + a shared
+round-trip per key. The brief's lever (1): a flash-style M-parallel twin.
+
+**What REFUTED first (recorded honestly).** The first cut split each split's key span across the
+block's four warps as DISJOINT INTERLEAVED SUBSEQUENCES (warp w owns keys j ≡ w mod 4) with an
+end-of-block online-softmax combine. Gate battery FAILED token identity at 27B (deterministic
+flip at token 2, same position across B=1/B=32/C=50 and across two prompts — a real bug signature,
+not noise), while the 4B arm (d_head=256 -> legacy path) and the flag-OFF control both PASSED,
+isolating the flash kernel. Diagnosis: online softmax is order-sensitive in FP; reordering the
+ACROSS-KEY accumulation changed enough low bits to flip a near-tie argmax. Refuted and reverted.
+
+**What landed (the fix).** A FAITHFUL kv16 + Gemma3-windowed port of the serve lane's PROVEN
+`_splitk_partial_batched_flash_kernel` (`residentk.kernels_decode_attn_flash`) — the geometry the
+qwen3 lane already gates byte-compatible: ONE WARP per (sequence, query head, split) unit
+(`grid = ceil(B*h_q*n_splits/8)`, block 256 = 8 warp-units), keys streamed ASCENDING within each
+split (the legacy accumulation ORDER preserved — the only numerical difference is the score dot's
+reduction tree, ulp-level), BLOCK-8 online softmax (8 independent K dots, ONE rescale, the block's
+V-accum — the serial load->score->rescale chain cut ~8x), and 8-byte vectorized f16 K/V loads
+(`alignment=8`) widened to f32 accumulation. Gemma 3 window carried through verbatim; empty splits
+keep the finite `_NEG_HUGE`/0 no-op sentinel; the merge kernel is reused byte-unmodified.
+Gated behind `-D ALGENTA_G3_ATTN_FLASH`, d_head==128 fact-driven dispatch (4B stays legacy).
+
+**Correctness battery (all PASS, byte-identical greedy tokens, H100):** 4B flash arm B=1 and B=4
+== single-stream tiled reference (d_head=256 -> legacy path, plumbing control); 27B flash arm B=1
+== single-stream reference (9 tokens); 27B B=32 == legacy seam arm (67 tokens); C=50 sonnet cell
+gen_seq0 == legacy seam arm byte-for-byte (259 tokens) + all 50 first_tokens == legacy (236764).
+
+**Numbers (27B f16, one H100 80GB, kv16, static closed-loop C=50 sonnet cell, median of 3):**
+
+| Arm | C=50 agg tok/s | C=50 step ms | B=32 agg tok/s |
+| --- | --- | --- | --- |
+| baseline (barrier-tree partial) | 766.5 | 65.2 | 923.4 |
+| **flash twin (`-D ALGENTA_G3_ATTN_FLASH`)** | **1121.1 (1120.8/1121.1/1125.6, IQR 0.2%)** | **44.6** | **1047.5** |
+| delta | **+46.3%** | **1.46x faster** | +13.4% |
+
+TTFT is untouched by construction (decode-only lever): the TTFT arm re-measured 263-265 ms at the
+550 shape, identical to this session's own baseline.
+
+**VERDICT — lever lands and wins, race is NOT over:** the flash twin flips the C=50 CLOSED-loop
+aggregate to 1121 tok/s — 1.09x vLLM's same-session OPEN-loop 1032 (protocol caveat stated: our
+cell is the static closed-loop batch, vLLM's is serving; the closed-loop is the upper bound of the
+serving protocol, so this is NOT yet a published win over vLLM). The single-stream TTFT still
+TRAILS vLLM 4.6x (263 vs 57.4 ms). Both remaining gaps are named: (a) the honest open-loop
+concurrent serving driver (harness-side agg) to replace the closed-loop estimate with a measurement;
+(b) the TTFT lever round — windowed PREFILL attention flash twin (the biggest native bucket, same
+barrier-tree anatomy the decode lever just deleted) + GEMM efficiency (the TC seam at ~105 TF/s).
+Internal result, NOT a published win.
+
+**Artifacts:** `residentk/kernels_batched_gemma3.mojo`
+(`_g3_kv_decode_splitk_partial_batched_kernel_kv16_flash` + geometry constants),
+`residentk/session_cuda_gemma3_batched.mojo` (`G3_ATTN_FLASH` dispatch, d_head==128 gate);
+race tooling reused (`gemma3_race_client.py`, `make_race_prompts_many.py`); VM bins
+`~/g3flip_bin/gemma3_batched_cuda_flash_s64` + the baseline `_stream_s64`; reference outputs
+`/tmp/g3flip/{vllm_c50_ref.json,f_*.json,c_*.json}`, same-session vLLM refs
+(agg 1032.0 / TTFT-p50-loaded 2274.5 / TPOT 29.8 / single-stream TTFT@550 median 57.4 ms).
+
+---
+
+## LEVER 2 LANDED — flash-style M-parallel PREFILL ATTENTION (feat/vllm-flip, 2026-08-24, algenta-ent-h100, branch race/vllm-flip): the windowed barrier-tree prefill kernel is replaced by a four-rows-per-warp flash twin — TTFT@550 263.2 -> 178.9 ms (-32%), C=50 ingest 9983 -> 5651 ms (-43%), decode byte-untouched; nsys named the bucket first (140.3 ms = 72.5% of TTFT GPU time)
+
+**The gap this attacks (measured, not assumed).** nsys over the stream+lm_head TTFT arm at the
+550 shape (`/tmp/g3flip/ttft_prof`): the windowed barrier-tree prefill attention
+(`_pf_attn_window_kernel`, one d_head-thread block per (row, head), TWO barriers + a shared
+round-trip PER KEY) cost **140.3 ms = 72.5% of the 193.5 ms GPU time** (62 dispatches x
+2.26 ms). The cuBLAS prefill GEMMs are only ~39 ms (~723 TF/s effective — healthy); the
+f32->f16 A-staging converts ~4 ms. The brief's TTFT lever (1) — the flash-style M-parallel
+attention twin — was therefore the right first move, exactly as the A100/H100 autopsy
+predicted for the serve lane.
+
+**What landed.** `_pf_attn_window_flash_kernel` + the kv16 twin `_pf_attn_window_flash_kernel_h`
+in `residentk/kernels_prefill_gemma3.mojo`, a FAITHFUL Gemma 3 windowed port of the serve
+lane's PROVEN `_pf_attn_flash_kernel` (`residentk/kernels_prefill_attn_flash`, the A100
+autopsy's L1 lever): FOUR CONSECUTIVE ROWS PER WARP against one head's K/V stream (the K/V
+float4 loads paid once for all four rows — the proven answer to the 1-row/warp cut's
+load-pressure bound), one warp per (4 rows, head) unit, `grid = ceil(m/32) * h_q`, block 256,
+ZERO barriers / ZERO shared memory (one `_warp_sum` per row per key), 128-bit `_ld4` Q/K/V
+loads (kv16: 8-byte f16 loads `alignment=8` widened to f32, f32 accumulation — the tiled
+kernel's exact arithmetic). Gemma 3's window rides through as four staggered per-row
+`[max(0, n_keys - window), n_keys)` spans folded into ONE ascending key stream with per-row
+activity guards. Per-row online softmax is the tiled kernel's recurrence VERBATIM, keys
+ascending — the only numerical difference is the score dot's reduction tree (ulp-level), the
+same byte-compatible contract the decode flash lever shipped under. Gated behind
+`-D ALGENTA_G3_PF_ATTN_FLASH`, d_head == 128 fact-driven dispatch (4B stays tiled), wired in
+BOTH the single-stream f16 session (the TTFT cells) and the batched session's per-sequence
+ingest (the C=50 admission path).
+
+**Correctness battery (all PASS, byte-identical greedy tokens, H100):** 27B TTFT arm @160
+generated == single-stream reference (9 tokens, [17084,607,9899,236764,532,607,990,776,2171]);
+fullflip arm (decode flash + prefill flash together) B=1 == single-stream reference; B=32 ==
+legacy seam arm (67 tokens); C=50 sonnet gen_seq0 == legacy seam arm byte-for-byte (259
+tokens) + all 50 first_tokens identical (236764).
+
+**Numbers (27B f16, one H100 80GB, fresh process per cell, median of 3):**
+
+| Cell | baseline (barrier-tree) | flash twin | delta |
+| --- | --- | --- | --- |
+| TTFT @160 ms | 126.7 (this-session A/B; published 134.4) | 121.1-122.7 | -3.5% |
+| TTFT @256 ms | 152.7 | 132.3 (132.0/132.3/134.3) | -13.4% |
+| TTFT @550 ms (official shape) | 263.2 | **178.9 (178.4/178.9/179.2, IQR 0.3%)** | **-32.0%** |
+| C=50 ingest (50 x 550) ms | 9,983 | **5,651 (5642/5651/5882 first-run)** | **-43.4%** |
+| B=32 ingest (32 x 160) ms | 1,525.8 | 1,374.8 | -9.9% |
+
+The gain SCALES WITH m (attention's share grows with the span): -3.5% at 160, -13.4% at 256,
+-32% at 550. Decode is untouched by construction (different kernel family): the C=50 decode
+aggregate re-measured identical to the decode-flash arm (1122-1127).
+
+**Combined-arm scoreboard (both levers, fullflip arm, same session):**
+
+| Cell | G3_STREAM baseline | fullflip (decode flash + prefill flash) | delta |
+| --- | --- | --- | --- |
+| C=50 sonnet agg tok/s (closed-loop) | 766.5 | **1126.3 (1122.4/1126.3/1126.7)** | **+46.9%** |
+| C=50 step ms | 65.2 | 44.4 | 1.47x faster |
+| C=50 ingest ms | 9,983 | 5,651 | 1.77x faster |
+| B=32 agg tok/s | 922.9 | 1055.7 | +14.4% |
+| TTFT @550 ms | 263.2 | 178.9 | 1.47x faster |
+
+**VERDICT — lever lands and wins; the vLLM gaps narrow but do NOT flip:** vLLM's same-session
+references (re-measured this round): C=50 open-loop agg 1032.0 tok/s, TTFT-p50-loaded
+2274.5 ms, TPOT-p50 29.8 ms, single-stream TTFT@550 median 57.4 ms (56.9-59.6, five distinct
+prompts, warm-request protocol). (a) Aggregate: the CLOSED-loop cell now reads 1126 vs vLLM's
+OPEN-loop 1032 — above it in absolute terms, but the protocols differ (the closed-loop batch
+is the upper bound of serving; the honest open-loop serve driver remains the named next lever
+and is expected to cost ~15% duty cycle at steady state). (b) TTFT: 178.9 vs 57.4 — the gap
+narrows 4.6x -> 3.1x but does not flip; the remaining TTFT budget is now GEMM-dominated
+(~39 ms cuBLAS + ~4 ms A-converts + ~30 ms flash attention + ~10 ms norms/rope ≈ 83 ms GPU,
+~96 ms of host-side dispatch gap at 620 enqueues + 248 seams — the CUDA-graph / dispatch-gap
+lever is the named next TTFT move). Internal result, NOT a published win.
+
+**Next levers, ranked by measured headroom:** (1) the honest OPEN-LOOP concurrent serving
+driver (the closed->open protocol gap is the only thing standing between the 1126 aggregate
+and a protocol-matched comparison; the -43% ingest directly cuts the admission duty cycle);
+(2) decode step GEMM bandwidth (19.3 ms of 44.4 at ~2.5 TB/s of 3.35 floor) + f16
+activations (the 2.4 ms/step f32->f16 seam converts + elementwise traffic); (3) the TTFT
+dispatch gap (~96 ms host-side at 620 enqueues — CUDA-graph capture probe of the
+stream-ordered prefill); (4) attention split-count tuning (decode attention now at 1.35 TB/s
+= 40% HBM3, floor 6.1 ms).
+
+**Artifacts:** `residentk/kernels_prefill_gemma3.mojo` (`_pf_attn_window_flash_kernel`,
+`_pf_attn_window_flash_kernel_h`, geometry constants), `residentk/session_cuda_gemma3_f16.mojo`
++ `residentk/session_cuda_gemma3_batched.mojo` (`G3_PF_ATTN_FLASH` dispatch, d_head==128
+gate); VM bins `~/g3flip_bin/gemma3_correctness_cuda_pf_tc_stream_pfflash` +
+`gemma3_batched_cuda_fullflip_s64`; nsys `/tmp/g3flip/{ttft_prof,c50_flash_prof}`;
+reference outputs `/tmp/g3flip/{ff_*.json,vllm_c50_ref.json,ttft_flash_*.txt}`.
+
+---
+
+## THE OPEN-LOOP SERVING DRIVER LANDED + THE FINAL vLLM HEAD-TO-HEAD (feat/vllm-flip, 2026-08-24, algenta-ent-h100, branch race/vllm-flip): the honest same-protocol aggregate is MEASURED, not estimated — 781.3 tok/s vs vLLM 1032.0 (0.76x, the admission duty cycle is precisely quantified); but LOADED TTFT FLIPS — algenta 111.8 ms p50 vs vLLM 2274.5 ms p50 = 20.3x faster under the same C=50 sonnet traffic
+
+**What landed.** `gemma3_openloop_cuda.mojo` (in-tree): the resident engine driven with the
+opponent race client's OWN protocol — 500 requests, 550-in/256-out, C=50 in flight, greedy,
+exactly 256 output tokens per request; a finished slot immediately admits the next queued
+request through the single-stream flash ingest (engine-side TTFT = the ingest wall);
+finished-and-unrefilled slots PARK (keep decoding, tokens ignored, ctx-bounded) so the batch
+stays full to the last completion; one untimed warmup pass pays first-launch costs before the
+wall clock (the engine analogue of a warm server). Same GPU solo window as the vLLM reference.
+
+**The head-to-head (all numbers this session, same 500-prompt cell, one H100 per engine):**
+
+| Metric (500 x 550-in/256-out, C=50, greedy) | algenta fullflip | vLLM 0.27.1 bf16 | Verdict |
+| --- | --- | --- | --- |
+| Aggregate out tok/s (open-loop) | 781.3 | 1032.0 | 0.76x — LOSS |
+| req/s | 3.05 | 4.03 | loss |
+| **TTFT p50 under load ms** | **111.8** | 2274.5 | **20.3x FASTER — WIN** |
+| TPOT p50 ms | ~44.8 (44.4 step + admission amort) | 29.8 | loss |
+| Single-stream TTFT@550 ms | 178.9 | 57.4 | 0.32x — loss |
+| C=50 closed-loop aggregate (context only) | 1126.3 | n/a | upper bound |
+
+TTFT honesty notes (both directions): the algenta engine-side TTFT is the admission-to-first-
+token wall and equals what a client perceives because admission is immediate at slot-free (no
+engine-internal queue), the same convention the qwen3 serve lane's shim documents; vLLM's is
+the client-observed streaming TTFT under the identical traffic, dominated by its own
+prefill/decode scheduling at C=50 (prefix caching OFF, distinct prompts, warm server). The
+comparison is the metric itself, same workload, each engine's real behavior.
+
+**The aggregate duty cycle, precisely quantified (not estimated):** 500 admissions x
+~113 ms flash ingest = ~56.5 s of admission stall inside the 163.8 s wall = 34.5% of the run.
+Open-loop efficiency = 781.3 / 1126.3 closed-loop = 69.4%. The ledger's earlier ~85% estimate
+was optimistic; the measured number is the number.
+
+**VERDICT — the flip is PARTIAL, recorded honestly:**
+* LOADED TTFT FLIPS: 111.8 vs 2274.5 ms p50 = 20.3x faster under the same C=50 traffic — a
+  genuine same-protocol win over vLLM on a serving metric (the published-page condition is
+  met for this metric; the gitbook gains exactly this row, spec-sheet tone).
+* Aggregate does NOT flip: 781.3 vs 1032.0. The gap is FULLY decomposed: (a) the 34.5%
+  admission duty cycle — closing it needs the multi-stream admission lever (prefill
+  overlapping decode; projected ceiling ~1070 tok/s = parity, above 1032 with the step
+  levers); (b) the per-step gap, 44.4 ms vs vLLM's ~29.8 (their CUDA-graphed decode +
+  roofline flash-decoding), the named levers are the step's own (GEMM bandwidth 19.3 ms at
+  2.5 of 3.35 TB/s; f16 activations removing the 2.4 ms/step seam converts + elementwise
+  traffic; attention 15.3 ms at 1.35 TB/s of a 6.1 ms floor; graph capture removing launch
+  gaps). Both are engine levers for the next round; nothing here is protocol luck.
+* Single-stream TTFT stays a loss (178.9 vs 57.4) — GEMM-dominated now; the dispatch-gap /
+  CUDA-graph prefill lever is its named next move.
+
+**Artifacts:** `nvidia_race/gemma3_openloop_cuda.mojo` (in-tree); VM bin
+`~/g3flip_bin/gemma3_openloop_cuda_fullflip_s64`; reference outputs
+`/tmp/g3flip/vllm_c50_ref.json` (vLLM: agg 1032.0 / TTFT-p50 2274.5 / TPOT 29.8 / req_s 4.03),
+open-loop run wall 163.8 s, warmup pass 5.7 s.
 ## 7B TC AUTOPSY ROUND (2026-08-24, feat/7b-tc-autopsy, A100): main-break fix (#839), flash/flash2 row-0 causal leak FOUND+FIXED (the tc_b1 gate skip-one), one-pass+flash2+NOSEAM = pp256 2.05x / pp1024 3.48x over the TC baseline — WINS vs llama Q8_0 on both prefill cells (1.82x / 1.37x, stable refs); F16 pp1024 stays an honest 0.67x loss (autopsied: flash2 f32 attention is 55% of the wall — the named next lever is tensor-core attention)
 
 CONTEXT: the 7B TC-seam round (#829) shipped pp256 4,146 / pp1024 2,004 tok/s = 0.56x/0.19x of
@@ -15973,6 +16484,269 @@ build, admission-prefill TC via p3->f16 twins); (3) f32+p3 full battery on the s
 
 ---
 
+## TTFT MICRO-AUTOPSY vs vLLM (feat/vllm-flip, 2026-08-24, algenta-ent-h100 GPU 1, nsys 2024.5.1): the per-phase table names vLLM's single biggest advantage QUANTITATIVELY — prefill attention 55.5 ms vs 3.77 ms = 14.7x (tensor-core flash vs our SIMT warp-per-row); GEMMs are at cuBLAS parity; our ~70 ms wall-GPU dispatch gap is the second lever, structurally blocked today by the legacy-stream seam
+
+**Method.** nsys `-t cuda` over ONE 550-token prefill (seed-24301 sonnet prompt, greedy,
+max_tokens=1) on each engine, kernel summaries via `cuda_gpu_kern_sum`. Ours: the flash TTFT
+arm (`gemma3_correctness_cuda_pf_tc_stream_pfflash`, wall 191.4 ms under nsys, 178.9 ms
+normal — nsys overhead is in the wall, not the kernels). vLLM 0.27.1: offline `LLM()` with
+`enforce_eager=True` under `--capture-range=cudaProfilerApi` around the single timed generate
+(wall 99.2 ms eager-offline; the SERVED single-stream TTFT is the 56-58 ms measured via HTTP —
+eager mode disables the served path's CUDA graphs, which is exactly what the wall-delta below
+shows). Raw reports: `/tmp/g3flip/{ours_ttft_flash,vllm_ttft}.nsys-rep`.
+
+**Per-phase table (550-token prefill, GPU kernel time):**
+
+| Phase | Ours ms | vLLM ms | Note |
+| --- | --- | --- | --- |
+| Prefill attention | **55.5** (62 x 895 us) | **3.77** (62 x 61 us, `kernel_unified_attention`) | **14.7x — THE gap** |
+| QKV/o/gate-up/down GEMMs | 39.4 (nvjet 353+2x99+68 us) | 37.6 (nvjet_sm90 same tiles) | parity — both cuBLAS |
+| lm_head GEMM | 0.98 | 0.98 | parity |
+| f32<->f16 staging converts | 4.0 (249 x 16 us) | ~6.6 (elementwise casts) | ours leaner |
+| norms / rope / elementwise | ~10 | ~18 (unfused eager) | ours leaner |
+| **GPU kernel total** | **~109** | **~66** | |
+| **Wall TTFT** | **178.9** | **56 (served)** | |
+| **Dispatch gap = wall - GPU** | **~70 ms** | **~0 (CUDA graphs)** | second lever |
+
+**Finding 1 — attention, quantified (the A100-style single named advantage).** vLLM's prefill
+attention runs the 550x550x32-head attention in 3.77 ms total. Ours spends 55.5 ms. Root cause
+is STRUCTURAL, not tuning: our `_pf_attn_window_flash_kernel` is a flash-DECODED arrangement —
+one warp per QUERY ROW streaming ALL keys (the right structure at 1 query/decode, where the
+decode lever won), so at 550 queries it re-reads every key 550 times with SIMT f32 dots and no
+cross-query key reuse. vLLM's kernel is a 2D-tiled tensor-core flash attention (QK^T and PV as
+HMMA GEMMs over (query-tile x key-tile)). The fix is named: a 2D tiled TENSOR-CORE prefill
+attention for Gemma 3 — QK^T + masked softmax + PV via the existing cuBLAS seam (strided-batched
+GemmEx over [heads, 550, 128] x [heads, 128, 550], causal + sliding-window mask in the softmax
+pass) or an mma.sync kernel; the GEMM FLOP floor for 550 is ~2.5 GFLOP x 2 = sub-ms at HMMA
+roofline, so ~3-6 ms is the realistic target = parity with vLLM's 3.77 ms.
+
+**Finding 2 — GEMMs are NOT the gap.** Both engines dispatch the same cuBLAS nvjet sm90 tiles
+(192x144 / 128x184 / 192x192) at 39.4 vs 37.6 ms — within 5%. The TC seam is already at
+cuBLAS-native speed for the prefill GEMMs (~723 TF/s effective); no GEMM lever is queued.
+
+**Finding 3 — the ~70 ms dispatch gap, and its structural blocker.** Our wall is 178.9 ms on
+109 ms of GPU kernels: ~70 ms across 620 `enqueue_function`s + 248 cuBLAS seams (~80 us host
+each). vLLM's served path graphs the chain, so its wall ~= GPU. For us, CUDA-graph capture of
+the prefill chain is BLOCKED today by the same interop fact the G3_STREAM round recorded: the
+cuBLAS seam rides the CUDA LEGACY stream (not capturable) because MAX 1.0.0 exposes no Mojo
+stream handle to unify a capturable stream with the engine's enqueues. The lever unblocks when
+MAX ships a stream surface (the shim's `tc_shim_create_stream` + `_tc_use_legacy_stream` are the
+two halves ready to re-bind), or by piecewise capture of the native-only segments. Until then
+the ~70 ms is a measured host-side tax, not a kernel problem.
+
+**TTFT floor analysis (honest):** with ZERO dispatch overhead our TTFT floor is the 109 ms GPU
+sum; with the tensor-core attention lever it becomes ~57-62 ms GPU — parity territory with
+vLLM's 56 ms served ONLY if the dispatch gap is also closed. Winning TTFT requires BOTH levers
+(attention tensor-core + graph capture); either one alone leaves us >= 1.9x off. Both are queued
+in that order; neither is protocol luck, and the 14.7x attention number is the target.
+
+**Artifacts:** `/tmp/g3flip/ours_ttft_flash.nsys-rep` + `.sqlite`, `/tmp/g3flip/vllm_ttft.nsys-rep`
++ `.sqlite`, kernel summaries `ours_kern_sum.csv` / `vllm_kern_sum.csv`, profile drivers
+`/tmp/g3flip/ttft_autopsy.sh` + `vllm_prof2.py`.
+
+---
+
+## AGG-AXIS AUTOPSY vs vLLM/SGLang (feat/vllm-flip, 2026-08-24): the open-loop aggregate gap decomposes into TWO measured causes — the 34.5% admission duty cycle (our single-stream ingest stalls the decode batch; vLLM/SGLang overlap prefill with decode) and the 44.4-vs-29.8 ms per-step gap (attention bandwidth + f32 activations + launch overhead); SGLang joins the race at 1333.9 tok/s and is the new aggregate bar
+
+**The 4-way C=50 open-loop scoreboard (same 500-prompt sonnet cell, this session):**
+
+| Engine | Agg tok/s | req/s | TTFT p50 loaded ms | TPOT p50 ms |
+| --- | --- | --- | --- | --- |
+| SGLang 0.5.18 (bf16) | **1333.9** | 5.21 | 1670.2 | 31.0 |
+| vLLM 0.27.1 (bf16) | 1032.0 | 4.03 | 2274.5 | 29.8 |
+| **algenta fullflip (f16)** | 781.3 | 3.05 | **111.8** | ~44.8 |
+| llama-server (Q8_0, q8_0 KV, -np 50 -c 41600) | 164.3 | 0.64 | 36675.1 | 182.1 |
+
+Algenta's LOADED TTFT leads ALL engines (14.9x SGLang, 20.3x vLLM, 328x llama-server). The
+aggregate does not: 0.76x vLLM, 0.59x SGLang. Decomposition below — both causes measured.
+
+**Cause 1 — admission duty cycle (34.5%).** Our open-loop driver admits one request at a time
+through the single-stream flash ingest (~113 ms at 550) while the decode batch STALLS (one host
+thread, one stream, ingest and decode serialize). 500 admissions x ~113 ms = ~56.5 s of the
+163.8 s wall. Closed->open efficiency = 781.3/1126.3 = 69.4%. vLLM/SGLang interleave chunked
+prefill with decode on the scheduler, so their admission overlaps the batch. The lever is named:
+MULTI-STREAM admission — ingest riding a second stream/device-ordered against decode (the pf_*
+scratch and the batch scratch are already disjoint; the weights are read-only; the blockers are
+the session's single-host-thread enqueue discipline and the token-readback sync, both engine work,
+not kernel work). Ceiling if admission were free: ~1126 x ~0.95 = ~1070 tok/s = vLLM parity.
+
+**Cause 2 — the per-step gap, 44.4 ms vs vLLM's 29.8 (nsys, c50_flash_prof, per decode step at B=50):**
+
+| Phase (per step) | Ours ms | Note |
+| --- | --- | --- |
+| batched flash attention | 15.3 (62 x 246 us, 20.6 GB KV at 1.35 TB/s = 40% HBM3) | roofline floor 6.1 ms |
+| projection GEMMs (cuBLAS) | 19.3 (51.2 GB weights at ~2.65 TB/s) | weight-stream bound, floor ~15.3 |
+| lm_head (cuBLAS + argmax) | 1.1 | |
+| f32->f16 A-convert seams | 2.4 (249 x 9.8 us) | gone with f16 activations |
+| merge + norms + rope + embed + geglu | ~4.0 | half with f16 activations |
+| host sync / launch gaps | ~2.3 | graph lever |
+
+vLLM's 29.8 ms TPOT implies their decode attention runs at roofline flash-decoding (~6-8 ms) and
+their activations/launch overhead are near-zero (bf16 end-to-end + CUDA graphs). Our lever order:
+(a) attention bandwidth (the 246 us kernel at 40% HBM3 — split-count / unroll / L2 tuning; floor
+6.1 ms, headroom ~9 ms), (b) f16 activations (removes the 2.4 ms converts + halves the ~4 ms
+elementwise — ~4.5 ms), (c) graph capture of the decode step (~2 ms; blocked by the same
+legacy-stream interop as the TTFT graph lever). Stacked ceiling: 44.4 -> ~29 ms = vLLM step
+parity; with cause-1 fixed, ~1100-1150 open-loop = vLLM win. SGLang's 31.0 ms TPOT then becomes
+the bar: winning SGLang additionally needs the attention kernel at/below their flash-decoding
+speed — the decode twin of the TTFT tensor-core lever.
+
+**Honest verdict:** the agg axis is NOT at a measured floor — three concrete levers (multi-stream
+admission, attention bandwidth, f16 activations) total ~15-17 ms/step + the 34.5% duty cycle,
+and the path to beating vLLM is quantified end-to-end above. SGLang (1333.9) is the new bar and
+is recorded in every table from this round forward. MAX's published C=50 (~507 tok/s) remains
+the cited external pin; algenta leads it 1.54x even open-loop (781.3) and 2.22x closed-loop
+(1126.3).
+
+**Artifacts:** `/tmp/g3flip/c50_flash_prof.nsys-rep` (decode step profile),
+`/tmp/g3flip/pub/{vllm_c50_ref.json,sglang_c50.json,llama_c50.json}` (4-way C=50 raw),
+`/tmp/g3flip/vllm_c50_ref.log`.
+
+---
+
+## THE EVIDENCED 4-WAY PUBLICATION + SWEEP + SPLITS REFUTATION (feat/vllm-flip, 2026-08-24): SGLang installed + measured (0.5.18, bf16) as the 4th engine — it TAKES the open-loop aggregate bar at 1333.9 tok/s; our loaded TTFT leads ALL FOUR engines; decode n_splits 16->32 REFUTED (-2.6%); the gitbook Gemma 3 section now carries the evidenced wins
+
+**SGLang joined the race (owner directive: every race is multi-way).** Fresh venv
+(`~/sglang-venv`, sglang 0.5.18 + torch 2.13), served `gemma-3-27b-it` bf16 on its own H100
+(port 8013, mem-fraction 0.9; first boot failed on a missing `ninja` for JIT graph capture —
+fixed by putting the venv bin on PATH, attempt documented). Same 500-prompt sonnet cell,
+same race client, greedy.
+
+**The complete 4-way C=50 open-loop table (raw JSON under `/tmp/g3flip/pub/`):**
+
+| Engine | Agg tok/s | req/s | TTFT p50 loaded ms | TPOT p50 ms |
+| --- | --- | --- | --- | --- |
+| SGLang 0.5.18 | 1333.9 | 5.21 | 1670.2 | 31.0 |
+| vLLM 0.27.1 | 1032.0 | 4.03 | 2274.5 | 29.8 |
+| algenta fullflip | 781.3 | 3.05 | **111.8** | ~44.8 |
+| llama-server Q8_0 | 164.3 | 0.64 | 36675.1 | 182.1 |
+
+**Open-loop aggregate concurrency sweep (200 prompts @ C<=32, 500 @ C=50):**
+
+| C | algenta | vLLM | SGLang | llama-server |
+| --- | --- | --- | --- | --- |
+| 8 | 245.3 | 332.8 | 302.7 | (slow cell, still running at publication) |
+| 16 | 409.0 | — | — | — |
+| 32 | 585.6 | — | — | — |
+| 50 | 781.3 | 1032.0 | 1333.9 | 164.3 |
+
+algenta beats llama-server and the MAX pin at every measured C, and its own curve is
+admission-duty-cycle-limited (the per-step gap keeps it behind vLLM/SGLang even at C=8 —
+the per-step cause, not just admission, is confirmed by the low-C points).
+
+**REFUTED — decode attention n_splits 16 -> 32.** Hypothesis: more split-K units = more
+parallelism = closer to the 6.1 ms roofline. Measured at C=50 (fullflip arm, same session):
+**1097.2 tok/s vs 1126.3 at n_splits=16 = -2.6% LOSS** (ingest unchanged 5685 vs 5651 ms —
+decode-only effect). Diagnosis: at B=50 the 16-split grid is already 25,600 warp-units —
+parallelism-saturated; doubling splits halves the per-unit span and doubles the merge fan-in,
+so the extra units add merge traffic without adding throughput. n_splits=16 stays. The 40%
+HBM3 figure is therefore NOT split-starvation; it is per-unit streaming efficiency (the
+block-8 kernel's load/exp interleave), queued with the flash-decoding-bandwidth lever.
+Raw: `/tmp/g3flip/pub/splits32_c50.json`.
+
+**TTFT single-stream 4-way (median of 3 distinct sonnet prompts each, this session):**
+
+| N | algenta | vLLM | SGLang | llama-server (-np 50) |
+| --- | --- | --- | --- | --- |
+| 160 | 121.1 | 32.4 | 33.1 | 6270 (loaded-slot config) |
+| 256 | 132.3 | 36.6 | 34.3 | 4590 |
+| 550 | 178.9 | 56.0 | 49.4 | 7537 |
+
+algenta WINS single-stream TTFT vs llama-server and the MAX loaded pin (860), TRAILS
+vLLM/SGLang (their tensor-core prefill attention + CUDA graphs — the autopsy's named levers).
+Raw: `/tmp/g3flip/pub/{vllm,sglang,llama}_ttft_{160,256,550}.txt` +
+`/tmp/g3flip/pub/prompts_s{24301,24302,24303}/`.
+
+**Publication decision (publish-wins-only).** The gitbook "Gemma 3 27B on H100" section now
+carries, all backed by the raw files above: the loaded-TTFT-under-load table (algenta leads
+all four engines, 14.9-328x); the open-loop aggregate table vs the references we lead (MAX
+pin 1.54x, llama-server 4.76x); the algenta concurrency-scaling table; the closed-loop C=50
+upper-bound table (6.85x llama-server, above vLLM's open-loop absolute, 2.22x MAX). What
+stays in THIS ledger only: the open-loop aggregate losses to vLLM (0.76x) and SGLang (0.59x),
+the single-stream TTFT losses to vLLM/SGLang, and the TPOT gap — with the quantified lever
+path back (multi-stream admission, attention bandwidth, f16 activations, tensor-core prefill
+attention, graph capture), none of them protocol luck.
+
+---
+
+## LEVER 3 LANDED — TENSOR-CORE PREFILL ATTENTION via cuBLAS strided-batched QK^T + softmax + PV (-D ALGENTA_G3_PF_TCATTN, feat/vllm-flip round 2, 2026-08-24): the autopsy's 14.7x vLLM delta attacked directly — TTFT@550 178.9 -> 136.4 ms (-23.7%), tokens byte-identical at all three lengths; shape-fact-gated at m >= 256 (strided-batched GEMMs lose to SIMT flash below the crossover, measured, so the dispatch keeps flash there)
+
+**The lever.** The TTFT autopsy named prefill attention as vLLM's single biggest advantage
+(their tensor-core flash 3.77 ms vs our SIMT 55.5 ms = 14.7x at 550). The counter is to run
+THE SAME attention math through tensor cores: QK^T and PV as strided-batched cuBLAS HMMA
+GEMMs with a masked softmax between, all through the existing tc_shim (new entries:
+`tc_shim_bgemm_f16_async` — generic strided-batched GemmEx, f16 A/B, f32 C, COMPUTE_32F,
+transB flag for the A@B^T vs A@B shapes; `tc_shim_attn_softmax_mask_async` — one block per
+(head, position) row applying the causal+window mask + row softmax -> f16 weights).
+
+**GQA batching (the layout trick).** gemma3's g = h_q/h_kv query heads share each KV head, so
+the batch runs over the h_kv KV heads with g*M rows per batch: Q is packed head-major
+[h_q, m, d] f16 (one Mojo kernel, the attention scale rides this pack = pre-scaled scores),
+K/V are read STRAIGHT FROM the resident cache as strided [n_keys, d] views (leading dimension
+h_kv*d, per-batch offset hk*d — zero K/V copies on the kv16 batched session; the f32-KV
+single-stream session stages the key range to f16 per layer, ~3 ms of the total). Softmax
+rows are the same [h_q, m] grid; PV output lands head-major [h_q, m, d] f32 and one unpack
+kernel restores the position-major [m, h_q*d] the o_proj seam consumes. Per layer: 2 Mojo
+kernels (pack, unpack) + 2 staging converts (f32-KV sessions only) + 4 shim calls — all
+stream-ordered, zero device syncs.
+
+**Correctness (byte-identical greedy tokens, H100, all PASS):** @160 [17084, 607, 9899,
+236764, 532, 607, 990, 776] == reference; @256 [3133, 834, 529, ...] == reference; @550
+[236764, 532, 3819, 11015, 910, 2473, 236787, 107] == the legacy seam arm. f16 HMMA
+attention with f32 accumulate holds the token identity bar exactly like the f16-A projection
+seams have all campaign.
+
+**Numbers (27B f16, one H100, fresh process per cell, median of 3):**
+
+| N | flash SIMT (prior lever) | + TC attention | delta |
+| --- | --- | --- | --- |
+| 160 | 121.1 | 121.97 (flash path kept — below crossover) | — |
+| 256 | 132.3 | **121.68** | **-8.0%** |
+| 550 (official) | 178.9 | **136.41 (134.5/136.4/137.7)** | **-23.7%** |
+
+**REFUTED IN THE SAME ATTEMPT (measured, recorded):** the first cut WITHOUT the m-gate lost
+@160 (152.9 vs flash 121.1) — the strided-batched GEMMs + K/V staging only amortize from
+m >= 256; the dispatch is therefore shape-fact-gated on the tile row count (256 crossover
+measured on this H100), never on the model name. Also recorded: a naive @550 "OOM" during
+bring-up was NOT a memory bug — it was two overlapping 56 GB processes colliding on one GPU
+(verified: single process fits with ~23 GB headroom; the allocator log's 286 GB figure was
+the collided second process's view).
+
+**Where the remaining TTFT gap sits (updated budget, 136.4 ms @550):** GPU kernels now
+~55-60 ms (GEMMs ~39 at cuBLAS parity + TC attention ~4 + norms/rope/elementwise ~12) —
+the remaining ~75-80 ms is the HOST dispatch gap across ~750 enqueues/seams per prefill,
+the CUDA-graph lever still blocked by the legacy-stream interop. vLLM: 56 ms served. The
+kernel-side attention delta is closed to ~parity; the interop is the whole remaining story.
+
+---
+
+## LEVER REFUTED AT MEASURED FLOOR — decode-attention bandwidth via split-count tuning (feat/vllm-flip round 2, 2026-08-24): n_splits 8 and 32 BOTH lose to the shipping 16 at C=50 (1103-1107 / 1097 vs 1126 tok/s), tokens byte-identical — the block-8 SIMT flash decode kernel is split-count-saturated at 40% HBM3, so the remaining decode-attention headroom is kernel-restructuring work, not a tuning knob
+
+**Hypothesis.** The decode flash partial streams the C=50 KV at 1.35 TB/s (40% of HBM3,
+15.3 ms of the 44.4 ms step; roofline floor 6.1 ms). If it were split-starved, more/fewer
+split-K units would move it toward roofline. Measured, same fullflip arm, C=50 closed-loop
+(median, tokens byte-identical to the legacy seam arm in all three):
+
+| decode n_splits | C=50 agg tok/s | vs shipping 16 |
+| --- | --- | --- |
+| 8 | 1105.1 (1103.0/1107.2) | -1.9% |
+| **16 (shipping)** | **1126.3** | — |
+| 32 | 1097.2 | -2.6% |
+
+**Verdict: REFUTED as a tuning lever, documented as a floor.** Both directions lose, so the
+16-split grid is the split-count optimum at B=50 and the 1.35 TB/s figure is NOT
+split-starvation — it is the block-8 SIMT kernel's own streaming efficiency (8-byte f16
+loads, one warp per (seq, head, split) unit, exp/softmax interleave). Closing the
+15.3 -> 6.1 ms gap needs a restructured decode-attention kernel (the decode twin of the
+tensor-core attention lever, or a wider-vector/L2-pinned flash-decoding), which is queued
+rather than a knob left on the table. Nothing published from a refutation.
+
+**Agg-axis status after this round (all same-session, C=50):** closed-loop 1126.3 (upper
+bound), open-loop 781.3 (69.4% duty) vs vLLM 1032.0 / SGLang 1333.9. The two remaining agg
+levers are (a) admission overlap (would lift open-loop toward the 1126 ceiling) and (b)
+decode-step time (44.4 ms; needs the decode-attention restructure + f16 activations) — both
+named, neither landed this round; admission overlap is blocked by the same MAX
+no-stream-handle interop that blocks the TTFT CUDA-graph lever.
 ## Model-agnostic onboarding + fact-driven bench battery (2026-08-24, branch feat/model-agnostic-conformance, PR #847)
 
 OWNER MANDATE: "any LLM model should work on this hardware; test and optimize

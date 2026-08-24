@@ -1,5 +1,5 @@
 {
- "kernel_count": 137,
+ "kernel_count": 166,
  "kernels": [
   {
    "backend": "metal",
@@ -500,6 +500,62 @@
   {
    "backend": "cuda",
    "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_batched_lmhead_argmax_kernel_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_kv_decode_splitk_partial_batched_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_kv_decode_splitk_partial_batched_kernel_kv16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_kv_decode_splitk_partial_batched_kernel_kv16_flash"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_logits_argmax_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_ropewrt_batched_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_batched_gemma3",
+   "name": "g3_ropewrt_batched_kernel_kv16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
     "qwen3_llama"
    ],
    "module": "residentk.kernels_cuda_graph",
@@ -632,6 +688,14 @@
    ],
    "module": "residentk.kernels_gemma3",
    "name": "g3_norm_gemv2_geglu_kernel_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_gemma3",
+   "name": "g3_norm_gemv2_geglu_kernel_f16_u4"
   },
   {
    "backend": "cuda",
@@ -900,6 +964,118 @@
   {
    "backend": "cuda",
    "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_attn_window_flash_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_attn_window_flash_kernel_h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_attn_window_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_attn_window_kernel_h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_embed_rows_g3_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_embed_rows_g3_kernel_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_geglu_rows_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_gemm_accum_kernel_v2h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_gemm_assign_kernel_v2h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_gemm_geglu_kernel_v2"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_gemm_geglu_kernel_v2h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_norm_accum_rows_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_ropewrt_kernel_h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_row_copy_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
     "qwen3_llama"
    ],
    "module": "residentk.kernels_prefill_v2f16",
@@ -1023,6 +1199,30 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_attn_softmax_mask_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_bgemm_f16_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_create_stream"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_dequant_packed3_f16_dense"
   },
   {
@@ -1039,7 +1239,31 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_dispatch_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_dispatch_auto"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_gemm_f16_32c"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_f16_32c_async"
   },
   {
    "backend": "cuda",
@@ -1096,6 +1320,14 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_stage_f32_to_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_use_legacy_stream"
   }
  ],
  "schema": 1

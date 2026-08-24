@@ -22,6 +22,10 @@ Build (on the race VM):
 Usage:
     ./gemma3_correctness_cuda /path/to/converted --tokens 3,17,42,8 --max-new 16
     ./gemma3_correctness_cuda /path/to/converted --tokens 3,17,42,8 --dump-logits
+
+`--prefill` ingests the prompt through the tiled prefill (parallel, the TTFT arm) instead of
+the serial step-by-step ingestion; the two are the eager-vs-tiled identity gate. `--tokens-file`
+reads a comma-separated id list from a file (long race prompts).
 """
 
 from std.math import sqrt
@@ -39,6 +43,7 @@ from json.parser import (
 from attnk.rope import rope_table, rope_table_freq_factors
 from attnk.contract import ATTN_OK
 from residentk.contract import RESIDENT_OK, residentk_status_name
+from residentk.session import _StepOut
 from residentk.session_cuda_gemma3 import CUDA_GEMMA3_BUILD, _CudaResidentGemma3, gemma3_dims_ok
 from residentk.session_cuda_gemma3_f16 import _CudaResidentGemma3F16
 from std.time import perf_counter_ns
@@ -107,6 +112,7 @@ def _upload_and_run_f32(
     n_layers: Int, vocab: Int,
     cos_g: List[Float64], sin_g: List[Float64], cos_l: List[Float64], sin_l: List[Float64],
     prompt: List[Int], max_new: Int, dump_logits: Bool, eos_ids: List[Int],
+    use_prefill: Int,
 ) raises:
     """Load every weight out of the blob into the session, ingest the prompt, and either dump the
     final logits or greedy-generate. Float32-weight arm — the upload/ingest/generate body; the f16 twin is
@@ -138,16 +144,22 @@ def _upload_and_run_f32(
         )
     _check_resident(s.seal(), "seal")
 
-    # ── ingest the prompt one token at a time (decode-only correctness arm) ──
+    # ── ingest the prompt: tiled prefill (parallel) or one token at a time (serial) ──
     var n_prompt = len(prompt)
     var t0 = perf_counter_ns()
-    var r = s.step(prompt[0], 0)
-    if r.status != RESIDENT_OK:
-        raise Error("gemma3_correctness_cuda: prompt step 0 failed")
-    for t in range(1, n_prompt):
-        r = s.step(prompt[t], t)
+    var r = _StepOut(0, 0.0, 0, RESIDENT_OK)
+    if use_prefill == 1:
+        r = s.prefill(prompt)
         if r.status != RESIDENT_OK:
-            raise Error("gemma3_correctness_cuda: prompt step failed at " + String(t))
+            raise Error("gemma3_correctness_cuda: tiled prefill failed")
+    else:
+        r = s.step(prompt[0], 0)
+        if r.status != RESIDENT_OK:
+            raise Error("gemma3_correctness_cuda: prompt step 0 failed")
+        for t in range(1, n_prompt):
+            r = s.step(prompt[t], t)
+            if r.status != RESIDENT_OK:
+                raise Error("gemma3_correctness_cuda: prompt step failed at " + String(t))
     var t_pf = perf_counter_ns()
 
     if dump_logits:
@@ -197,7 +209,8 @@ def _upload_and_run_f32(
         out += String(generated[t])
         if t < len(generated) - 1:
             out += ", "
-    out += "], \"ttft_ms\": " + String(ttft_ms) + ", \"decode_tok_s\": " + String(decode_tok_s) + ", \"n_generated\": " + String(len(generated)) + "}"
+    var arm = "prefill" if use_prefill == 1 else "eager"
+    out += "], \"ttft_ms\": " + String(ttft_ms) + ", \"decode_tok_s\": " + String(decode_tok_s) + ", \"arm\": \"" + arm + "\", \"n_generated\": " + String(len(generated)) + "}"
     print(out)
     exit(0)
 
@@ -210,6 +223,7 @@ def _upload_and_run_f16(
     n_layers: Int, vocab: Int,
     cos_g: List[Float64], sin_g: List[Float64], cos_l: List[Float64], sin_l: List[Float64],
     prompt: List[Int], max_new: Int, dump_logits: Bool, eos_ids: List[Int], use_graph: Int,
+    use_prefill: Int,
 ) raises:
     """Load every weight out of the blob into the session, ingest the prompt, and either dump the
     final logits or greedy-generate. Float16-weight arm twin of `_upload_and_run_f32`. When
@@ -241,16 +255,22 @@ def _upload_and_run_f16(
         )
     _check_resident(s.seal(), "seal")
 
-    # ── ingest the prompt one token at a time (decode-only correctness arm) ──
+    # ── ingest the prompt: tiled prefill (parallel) or one token at a time (serial) ──
     var n_prompt = len(prompt)
     var t0 = perf_counter_ns()
-    var r = s.step(prompt[0], 0)
-    if r.status != RESIDENT_OK:
-        raise Error("gemma3_correctness_cuda: prompt step 0 failed")
-    for t in range(1, n_prompt):
-        r = s.step(prompt[t], t)
+    var r = _StepOut(0, 0.0, 0, RESIDENT_OK)
+    if use_prefill == 1:
+        r = s.prefill(prompt)
         if r.status != RESIDENT_OK:
-            raise Error("gemma3_correctness_cuda: prompt step failed at " + String(t))
+            raise Error("gemma3_correctness_cuda: tiled prefill failed")
+    else:
+        r = s.step(prompt[0], 0)
+        if r.status != RESIDENT_OK:
+            raise Error("gemma3_correctness_cuda: prompt step 0 failed")
+        for t in range(1, n_prompt):
+            r = s.step(prompt[t], t)
+            if r.status != RESIDENT_OK:
+                raise Error("gemma3_correctness_cuda: prompt step failed at " + String(t))
     var t_pf = perf_counter_ns()
 
     if dump_logits:
@@ -304,7 +324,8 @@ def _upload_and_run_f16(
             out += String(generated[t])
             if t < len(generated) - 1:
                 out += ", "
-        out += "], \"ttft_ms\": " + String(ttft_ms) + ", \"decode_tok_s\": " + String(decode_tok_s) + ", \"arm\": \"graph\", \"n_generated\": " + String(len(generated)) + "}"
+        var arm = "prefill+graph" if use_prefill == 1 else "graph"
+        out += "], \"ttft_ms\": " + String(ttft_ms) + ", \"decode_tok_s\": " + String(decode_tok_s) + ", \"arm\": \"" + arm + "\", \"n_generated\": " + String(len(generated)) + "}"
         print(out)
         exit(0)
     while len(generated) < max_new and not stopped:
@@ -331,7 +352,8 @@ def _upload_and_run_f16(
         out += String(generated[t])
         if t < len(generated) - 1:
             out += ", "
-    out += "], \"ttft_ms\": " + String(ttft_ms) + ", \"decode_tok_s\": " + String(decode_tok_s) + ", \"arm\": \"eager\", \"n_generated\": " + String(len(generated)) + "}"
+    var arm = "prefill" if use_prefill == 1 else "eager"
+    out += "], \"ttft_ms\": " + String(ttft_ms) + ", \"decode_tok_s\": " + String(decode_tok_s) + ", \"arm\": \"" + arm + "\", \"n_generated\": " + String(len(generated)) + "}"
     print(out)
     exit(0)
 
@@ -347,6 +369,7 @@ def main() raises:
     var dump_logits = False
     var use_f16 = False
     var use_graph = 0
+    var use_prefill = 0
     var i = 2
     while i < len(args):
         var a = String(args[i])
@@ -354,6 +377,15 @@ def main() raises:
             var parts = String(args[i + 1]).split(",")
             for p in parts:
                 prompt.append(parse_int(String(p)))
+            i += 2
+        elif a == "--tokens-file" and i + 1 < len(args):
+            # comma-separated token ids from a file (long race prompts; writer emits no
+            # whitespace, so a bare split is exact)
+            var raw = _read_text_file(String(args[i + 1]))
+            var parts = raw.split(",")
+            for p in parts:
+                if String(p).byte_length() > 0:
+                    prompt.append(parse_int(String(p)))
             i += 2
         elif a == "--max-new" and i + 1 < len(args):
             max_new = parse_int(String(args[i + 1]))
@@ -366,6 +398,9 @@ def main() raises:
             i += 1
         elif a == "--graph":
             use_graph = 1
+            i += 1
+        elif a == "--prefill":
+            use_prefill = 1
             i += 1
         else:
             i += 1
@@ -475,22 +510,24 @@ def main() raises:
                 embed_scale, sliding_window, layer_is_global,
             )
             print("  device:", s.device_name(), "| arm: f16 weights",
+                  "| ingest: prefill" if use_prefill == 1 else "| ingest: serial",
                   "| decode: graph" if use_graph == 1 else "| decode: eager")
             _upload_and_run_f16(
                 s, blob_path, tensors_obj, elem_bytes, n_layers, vocab,
                 rt_g.cos_table, rt_g.sin_table, rt_l.cos_table, rt_l.sin_table,
-                prompt, max_new, dump_logits, eos_ids, use_graph,
+                prompt, max_new, dump_logits, eos_ids, use_graph, use_prefill,
             )
         else:
             var s = _CudaResidentGemma3(
                 d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, MAX_CTX, eps, scale,
                 embed_scale, sliding_window, layer_is_global,
             )
-            print("  device:", s.device_name(), "| arm: f32 weights")
+            print("  device:", s.device_name(), "| arm: f32 weights",
+                  "| ingest: prefill" if use_prefill == 1 else "| ingest: serial")
             _upload_and_run_f32(
                 s, blob_path, tensors_obj, elem_bytes, n_layers, vocab,
                 rt_g.cos_table, rt_g.sin_table, rt_l.cos_table, rt_l.sin_table,
-                prompt, max_new, dump_logits, eos_ids,
+                prompt, max_new, dump_logits, eos_ids, use_prefill,
             )
 
 

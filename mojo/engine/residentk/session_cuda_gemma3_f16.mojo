@@ -56,6 +56,8 @@ from residentk.kernels import (
     _argmax_reduce_kernel,
     _lmhead_argmax_kernel_f16,
     _norm_gemv_kernel_f16,
+    _pf_rmsnorm_rows_kernel,
+    _pf_ropewrt_kernel,
     _qk_rope_write_kernel,
     _splitk_merge_kernel_simd,
 )
@@ -69,9 +71,46 @@ from residentk.kernels_gemma3 import (
     _g3_gemv_kernel_f16,
     _g3_norm_accum_kernel,
     _g3_norm_gemv2_geglu_kernel_f16,
+    _g3_norm_gemv2_geglu_kernel_f16_u4,
     _g3_norm_inplace_kernel,
     _g3_sdpa_window_kernel,
     _g3_splitk_partial_kernel_simd_g,
+)
+from residentk.kernels_prefill_gemma3 import (
+    G3_PF_TILE,
+    _pf_attn_window_kernel,
+    _pf_attn_window_flash_kernel,
+    _G3_PF_FLASH_ROWS_PER_BLOCK,
+    _G3_PF_FLASH_NTHREADS,
+    _pf_q_pack_hm_f16,
+    _pf_attn_unpack_hm_f32,
+    _pf_embed_rows_g3_kernel_f16,
+    _pf_geglu_rows_kernel,
+    _pf_gemm_accum_kernel_v2h,
+    _pf_gemm_assign_kernel_v2h,
+    _pf_gemm_geglu_kernel_v2h,
+    _pf_norm_accum_rows_kernel,
+    _pf_row_copy_kernel,
+)
+from residentk.kernels_prefill_f32_v2 import (
+    _G2_BM,
+    _G2_BN,
+    _G2_NTHREADS,
+)
+from residentk.kernels_batched_gemma3 import (
+    _g3_logits_argmax_kernel,
+)
+from residentk.tc_shim_bridge import (
+    TC_SHIM_BUILD,
+    TC_MIN_M,
+    _tc_init,
+    _tc_last_error,
+    _tc_gemm_dispatch,
+    _tc_gemm_dispatch_auto,
+    _tc_use_legacy_stream,
+    _tc_bgemm_f16_async,
+    _tc_attn_softmax_mask_async,
+    _tc_stage_f32_to_f16,
 )
 from residentk.session import (
     RESIDENT_GPU_BUILD,
@@ -85,10 +124,43 @@ from residentk.session import (
 
 comptime CUDA_GEMMA3_BUILD: Bool = RESIDENT_GPU_BUILD and is_defined["ALGENTA_CUDA"]()
 
+comptime G3_STREAM: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_STREAM"]()
+"""The stream-ordered seam lever (2026-08-24) — the single-stream prefill arm of it: with
+`-D ALGENTA_G3_STREAM` the cuBLAS handle binds to the CUDA LEGACY default stream at TC init
+and the tiled prefill's four-per-layer GemmEx seams dispatch `_tc_gemm_dispatch_auto`
+(async) with NO `ctx.synchronize()` before them — Mojo's default stream is device-ordered
+against the legacy stream (legacy_probe.mojo, H100), so the 248 seams of a 550-token TTFT
+ingest keep full order with zero host syncs. See `residentk.session_cuda_gemma3_batched`'s
+`G3_STREAM` for the decode arm and the full rationale."""
+
 comptime GEMMA3_GRAPH_N_SPLITS: Int = 32
 """The split-K fan-out of the gemma3 graph decode arm (same reasoning as
 residentk.session_cuda.CUDA_GRAPH_N_SPLITS: in-graph the launch overhead is gone, so
 h_q x splits blocks win at every depth)."""
+
+comptime _G3_GEGLU_U4: Bool = is_defined["ALGENTA_G3_GEGLU_U4"]()
+"""GEMV-bandwidth lever sweep (2026-08-24): build with `-D ALGENTA_G3_GEGLU_U4` to dispatch the
+4-way-unrolled gate/up GeGLU kernel (`_g3_norm_gemv2_geglu_kernel_f16_u4`) instead of the
+baseline. A/B against the baseline by building with/without the define; both arms are
+correctness-gated before a winner is kept."""
+
+comptime G3_PF_ATTN_FLASH: Bool = is_defined["ALGENTA_G3_PF_ATTN_FLASH"]()
+"""The flash-style M-parallel PREFILL attention lever (the TTFT lever of the vLLM-flip round,
+2026-08-24): with `-D ALGENTA_G3_PF_ATTN_FLASH` the tiled prefill's windowed attention
+dispatches the warp-per-(4 rows) FLASH twin (`_pf_attn_window_flash_kernel`) instead of the
+barrier-tree `_pf_attn_window_kernel`, but ONLY at `d_head == 128` (the flash twin's structural
+lane contract); every other head dim stays on the byte-for-byte tiled kernel. Fact-driven
+capability dispatch (head-dim), never a per-model branch. Flag-off builds keep the tiled
+kernel byte-for-byte."""
+
+comptime G3_PF_TCATTN: Bool = is_defined["ALGENTA_G3_PF_TCATTN"]()
+"""The TENSOR-CORE prefill-attention lever (vLLM-flip round 2, 2026-08-24): with
+`-D ALGENTA_G3_PF_TCATTN` (and the TC shim ready, `d_head == 128`) the tiled prefill's
+windowed attention dispatches the strided-batched cuBLAS HMMA pipeline — Q pack to head-major
+f16, QK^T GemmStridedBatchedEx over the KV heads (GQA: g query heads per KV head as g*M
+rows), masked causal+window softmax, PV GemmStridedBatchedEx, unpack — instead of the SIMT
+kernels. Takes precedence over G3_PF_ATTN_FLASH when both are set. Same fact-driven
+capability gate (d_head == 128 + tc_ready); flag-off builds are byte-unmodified."""
 
 alias _FP = UnsafePointer[Float32]
 
@@ -154,6 +226,38 @@ struct _CudaResidentGemma3F16(Movable):
     var host_val: HostBuffer[DType.float32]
     var host_idx: HostBuffer[DType.int32]
     var host_logits: HostBuffer[DType.float32]
+
+    # tiled-prefill scratch — one G3_PF_TILE-row working set (the four-norm chain needs the
+    # o/down BRANCH output materialised row-major before its norm + residual add; `pf_gu` holds
+    # the TC seam's [m, 2*d_ff] gate/up result when the cuBLAS arm runs)
+    var pf_tokens: DeviceBuffer[DType.int32]
+    var pf_hidden: DeviceBuffer[DType.float32]
+    var pf_xn: DeviceBuffer[DType.float32]
+    var pf_qkv: DeviceBuffer[DType.float32]
+    var pf_q_rot: DeviceBuffer[DType.float32]
+    var pf_attn: DeviceBuffer[DType.float32]
+    var pf_act: DeviceBuffer[DType.float32]
+    var pf_branch: DeviceBuffer[DType.float32]
+    var pf_gu: DeviceBuffer[DType.float32]
+
+    # TC escape-hatch scratch — the f16 A staging + the f16-C fallback rung. The resident
+    # weights ARE already the f16 B operand (no staging twin needed — that is the fit-fact this
+    # arm exists for). Real sizes only under TC_SHIM_BUILD; 1-element placeholders otherwise.
+    # `tc_ready`: 0 = init pending, 1 = cuBLAS handle bound, -1 = absent/failed.
+    var tc_a16: DeviceBuffer[DType.float16]
+    var tc_c16: DeviceBuffer[DType.float16]
+    var tc_ready: Int
+
+    # tensor-core prefill-attention scratch (vLLM-flip lever, -D ALGENTA_G3_PF_TCATTN):
+    # head-major packed Q f16 [h_q, tile, d], QK^T scores f32 [h_q, tile, max_ctx], softmax
+    # P f16 [h_q, tile, max_ctx], PV output f32 [h_q, tile, d]. Real sizes only under
+    # TC_SHIM_BUILD; 1-element placeholders otherwise.
+    var pf_tc_q16: DeviceBuffer[DType.float16]
+    var pf_tc_p16: DeviceBuffer[DType.float16]
+    var pf_tc_scores: DeviceBuffer[DType.float32]
+    var pf_tc_o32: DeviceBuffer[DType.float32]
+    var pf_tc_k16: DeviceBuffer[DType.float16]
+    var pf_tc_v16: DeviceBuffer[DType.float16]
 
     # decode-graph arm — captured per-token dispatch sequence + dynamic-scalar feed (same design
     # as residentk.session_cuda's graph arm). step_state = [token_id, pos, n_keys].
@@ -233,6 +337,55 @@ struct _CudaResidentGemma3F16(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
         self.host_logits = self.ctx.enqueue_create_host_buffer[DType.float32](vocab)
+
+        var t = G3_PF_TILE
+        self.pf_tokens = self.ctx.enqueue_create_buffer[DType.int32](t)
+        self.pf_hidden = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_xn = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_qkv = self.ctx.enqueue_create_buffer[DType.float32](t * n_qkv)
+        self.pf_q_rot = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_attn = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_act = self.ctx.enqueue_create_buffer[DType.float32](t * d_ff)
+        self.pf_branch = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_gu = self.ctx.enqueue_create_buffer[DType.float32](t * 2 * d_ff)
+
+        self.tc_a16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_c16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.tc_ready = -1
+        self.pf_tc_q16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_tc_p16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_tc_scores = self.ctx.enqueue_create_buffer[DType.float32](1)
+        self.pf_tc_o32 = self.ctx.enqueue_create_buffer[DType.float32](1)
+        self.pf_tc_k16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_tc_v16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        @parameter
+        if TC_SHIM_BUILD:
+            # The weights ARE the f16 B operand already; the scratch is ONLY the f32->f16 A
+            # staging (rows x the widest K role) + the rung-2 f16-C staging (rows x the widest
+            # N role). ~130 MB at 27B's shapes; sized for the largest tile `prefill` dispatches.
+            var max_k = d_model
+            if h_q * d_head > max_k:
+                max_k = h_q * d_head
+            if d_ff > max_k:
+                max_k = d_ff
+            var max_n = n_qkv
+            if 2 * d_ff > max_n:
+                max_n = 2 * d_ff
+            self.tc_a16 = self.ctx.enqueue_create_buffer[DType.float16](t * max_k)
+            self.tc_c16 = self.ctx.enqueue_create_buffer[DType.float16](t * max_n)
+            # Tensor-core prefill-attention scratch (vLLM-flip lever): head-major Q f16,
+            # scores f32 / P f16 over [tile, max_ctx], PV output f32. ~220 MB at 27B.
+            self.pf_tc_q16 = self.ctx.enqueue_create_buffer[DType.float16](t * h_q * d_head)
+            self.pf_tc_o32 = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+            self.pf_tc_scores = self.ctx.enqueue_create_buffer[DType.float32](
+                t * h_q * max_ctx)
+            self.pf_tc_p16 = self.ctx.enqueue_create_buffer[DType.float16](t * h_q * max_ctx)
+            # K/V f16 staging for the f32-KV cache (layout-preserving [max_ctx, h_kv, d]).
+            self.pf_tc_k16 = self.ctx.enqueue_create_buffer[DType.float16](
+                max_ctx * h_kv * d_head)
+            self.pf_tc_v16 = self.ctx.enqueue_create_buffer[DType.float16](
+                max_ctx * h_kv * d_head)
+            self.tc_ready = 0
 
         # decode-graph arm buffers (lazy capture in _build_decode_graph; allocated here so every
         # pointer is resident before capture).
@@ -341,6 +494,391 @@ struct _CudaResidentGemma3F16(Movable):
         self.ctx.synchronize()
         return RESIDENT_OK
 
+    def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
+        """The WHOLE prompt, tiled — the f16-weight twin of `_CudaResidentGemma3.prefill`'s
+        ten-dispatch four-norm plan, plus the tensor-core seam: full tiles (m >= TC_MIN_M) ride
+        cuBLAS HMMA GemmEx over the RESIDENT f16 weights under TC_SHIM_BUILD (the weights ARE
+        the f16 B operand — no staging twin; that is the fit-fact this arm exists for), with the
+        GeGLU combine as the native row-elementwise epilogue; short tiles and flag-off builds
+        run the native v2h f32-accumulation chain. Returns the greedy FIRST generated token —
+        the same `_StepOut` contract `step` uses; the caller chains `step(...)` starting at
+        `pos = len(prompt_ids)`."""
+
+        @parameter
+        if not CUDA_GEMMA3_BUILD:
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            var n_prompt = len(prompt_ids)
+            if n_prompt < 1:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+            if n_prompt > self.max_ctx:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            for i in range(n_prompt):
+                if prompt_ids[i] < 0 or prompt_ids[i] >= self.vocab:
+                    return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            @parameter
+            if TC_SHIM_BUILD:
+                if self.tc_ready == 0:
+                    var r = _tc_init()
+                    if r == 0:
+                        @parameter
+                        if G3_STREAM:
+                            # bind the handle to the legacy default stream — Mojo's default
+                            # stream is device-ordered against it (legacy_probe.mojo), so
+                            # the async seams below need no host sync at all.
+                            var rb = _tc_use_legacy_stream()
+                            if rb != 0:
+                                self.tc_ready = -1
+                                print("gemma3-f16: legacy-stream binding FAILED, status", rb,
+                                      "last_error:", _tc_last_error(),
+                                      "| prefill stays on the native chain")
+                            else:
+                                self.tc_ready = 1
+                                print("gemma3-f16: TC shim cuBLAS handle BOUND to the LEGACY",
+                                      "stream | G3_STREAM: zero-sync async GemmEx seams")
+                        else:
+                            self.tc_ready = 1
+                            print("gemma3-f16: TC shim cuBLAS handle BOUND | full-tile",
+                                  "prefill GEMMs ride the HMMA seam")
+                    else:
+                        self.tc_ready = -1
+                        print("gemma3-f16: TC shim init FAILED, status", r,
+                              "last_error:", _tc_last_error(),
+                              "| prefill stays on the native chain")
+
+            var n_q = self.h_q * self.d_head
+            var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
+            var issued = 0
+            var pos = 0
+            var last_m = 0
+            while pos < n_prompt:
+                var m = G3_PF_TILE
+                if n_prompt - pos < m:
+                    m = n_prompt - pos
+                last_m = m
+
+                var use_tc = False
+                @parameter
+                if TC_SHIM_BUILD:
+                    use_tc = self.tc_ready == 1 and m >= TC_MIN_M
+
+                # ── this chunk's token ids, uploaded once ──
+                with self.pf_tokens.map_to_host() as h:
+                    for i in range(m):
+                        h[i] = Int32(prompt_ids[pos + i])
+                self.ctx.synchronize()
+
+                # ── the scaled embedding rows, gathered on-device from the resident table ──
+                self.ctx.enqueue_function[_pf_embed_rows_g3_kernel_f16](
+                    self.pf_hidden.unsafe_ptr(), self.embed.unsafe_ptr(),
+                    self.pf_tokens.unsafe_ptr(),
+                    Int64(self.d_model), Int64(m), self.embed_scale,
+                    grid_dim=_ceil_div(self.d_model, _TG) * m, block_dim=_TG,
+                )
+                issued += 1
+
+                for layer in range(self.n_layers):
+                    ref lw = self.layers[layer]
+                    var is_global = self.layer_is_global[layer]
+
+                    # 1 ── rmsnorm(input_layernorm) over every row
+                    self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                        lw.ln1.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 2 ── fused Q/K/V projection (ASSIGN) — TC seam or the v2h kernel
+                    if use_tc:
+                        @parameter
+                        if not G3_STREAM:
+                            self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch_auto(
+                            Int(self.pf_xn.unsafe_ptr()),
+                            Int(lw.w_qkv.unsafe_ptr()), 0,
+                            m, self.d_model, n_qkv,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_qkv.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2h](
+                            self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_qkv.unsafe_ptr(),
+                            Int64(m), Int64(self.d_model), Int64(n_qkv),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(n_qkv, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 3 ── q_norm + k_norm + per-class RoPE + the in-place KV-cache write
+                    var cos_p = self.cos_global.unsafe_ptr() if is_global == 1 \
+                        else self.cos_local.unsafe_ptr()
+                    var sin_p = self.sin_global.unsafe_ptr() if is_global == 1 \
+                        else self.sin_local.unsafe_ptr()
+                    self.ctx.enqueue_function[_pf_ropewrt_kernel](
+                        self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                        self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                        cos_p, sin_p,
+                        Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                        self.eps, Int64(m),
+                        Int64(1),  # gemma3 always has QK-norm
+                        grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
+                    )
+                    # 4 ── windowed causal attention (per-row key lower bound)
+                    var use_pf_flash = False
+                    @parameter
+                    if G3_PF_ATTN_FLASH:
+                        # fact-driven capability dispatch: the flash twin's lane contract is
+                        # d_head == 128 == WARP_SIZE * 4; any other head dim stays
+                        # byte-for-byte on the tiled barrier-tree kernel.
+                        use_pf_flash = self.d_head == 128
+                    var use_tc_attn = False
+                    @parameter
+                    if G3_PF_TCATTN:
+                        # fact-driven capability gate: d_head == 128 (the strided-batched
+                        # lane contract) + the TC shim ready. This session's KV cache is f32,
+                        # so the K/V tile is staged to f16 per layer below. The strided-
+                        # batched GEMMs only amortize at larger tiles — measured crossover on
+                        # the H100: TC attention wins from m >= 256 (121.7 vs 132.3 flash at
+                        # 256; 154.3 vs 178.9 at 550) but loses at m=160 (152.9 vs 121.1), so
+                        # the dispatch is shape-fact-gated on the tile row count, never the
+                        # model name.
+                        use_tc_attn = self.d_head == 128 and self.tc_ready == 1 and m >= 256
+                    if use_tc_attn:
+                        var n_keys_tc = pos + m
+                        var gqa = self.h_q // self.h_kv
+                        var gm = gqa * m
+                        var window_arg = 0 if is_global == 1 else self.sliding_window
+                        # (i) Q pack [m, h_q*d] f32 -> head-major [h_q, m, d] f16 (scaled)
+                        self.ctx.enqueue_function[_pf_q_pack_hm_f16](
+                            self.pf_tc_q16.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                            Int64(m), Int64(self.h_q), Int64(self.d_head), self.scale,
+                            grid_dim=_ceil_div(self.h_q * m * self.d_head, _TG),
+                            block_dim=_TG,
+                        )
+                        @parameter
+                        if not G3_STREAM:
+                            self.ctx.synchronize()
+                        # (ii) K/V f32 cache -> f16 staging (layout-preserving, keys 0..n_keys)
+                        var rkv = _tc_stage_f32_to_f16(
+                            Int(lw.ck.unsafe_ptr()), Int(self.pf_tc_k16.unsafe_ptr()),
+                            n_keys_tc * self.h_kv * self.d_head)
+                        if rkv != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        rkv = _tc_stage_f32_to_f16(
+                            Int(lw.cv.unsafe_ptr()), Int(self.pf_tc_v16.unsafe_ptr()),
+                            n_keys_tc * self.h_kv * self.d_head)
+                        if rkv != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # (iii) QK^T: scores[h_kv, g*m, n_keys] = Q @ K^T (batched over KV heads)
+                        var ra = _tc_bgemm_f16_async(
+                            Int(self.pf_tc_q16.unsafe_ptr()),
+                            Int(self.pf_tc_k16.unsafe_ptr()),
+                            Int(self.pf_tc_scores.unsafe_ptr()),
+                            gm, n_keys_tc, self.d_head,
+                            self.d_head, self.h_kv * self.d_head, n_keys_tc,
+                            gm * self.d_head, self.d_head, gm * n_keys_tc,
+                            self.h_kv, 1)
+                        if ra != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # (iv) causal+window masked softmax -> P f16
+                        ra = _tc_attn_softmax_mask_async(
+                            Int(self.pf_tc_scores.unsafe_ptr()),
+                            Int(self.pf_tc_p16.unsafe_ptr()),
+                            n_keys_tc, m, self.h_q, pos, window_arg)
+                        if ra != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # (v) PV: out[h_kv, g*m, d] = P @ V (batched over KV heads)
+                        ra = _tc_bgemm_f16_async(
+                            Int(self.pf_tc_p16.unsafe_ptr()),
+                            Int(self.pf_tc_v16.unsafe_ptr()),
+                            Int(self.pf_tc_o32.unsafe_ptr()),
+                            gm, self.d_head, n_keys_tc,
+                            n_keys_tc, self.h_kv * self.d_head, self.d_head,
+                            gm * n_keys_tc, self.d_head, gm * self.d_head,
+                            self.h_kv, 0)
+                        if ra != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # (vi) unpack head-major [h_q, m, d] -> position-major [m, h_q*d]
+                        self.ctx.enqueue_function[_pf_attn_unpack_hm_f32](
+                            self.pf_attn.unsafe_ptr(), self.pf_tc_o32.unsafe_ptr(),
+                            Int64(m), Int64(self.h_q), Int64(self.d_head),
+                            grid_dim=_ceil_div(self.h_q * m * self.d_head, _TG),
+                            block_dim=_TG,
+                        )
+                        issued += 1
+                    elif use_pf_flash:
+                        self.ctx.enqueue_function[_pf_attn_window_flash_kernel](
+                            self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                            lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            Int64(pos), Int64(self.h_q), Int64(self.h_kv),
+                            Int64(self.d_head),
+                            Int64(self.sliding_window), Int64(is_global), self.scale,
+                            Int64(m),
+                            grid_dim=_ceil_div(m, _G3_PF_FLASH_ROWS_PER_BLOCK) * self.h_q,
+                            block_dim=_G3_PF_FLASH_NTHREADS,
+                        )
+                    else:
+                        self.ctx.enqueue_function[_pf_attn_window_kernel](
+                            self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                            lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                            Int64(self.sliding_window), Int64(is_global), self.scale, Int64(m),
+                            grid_dim=self.h_q * m, block_dim=self.d_head,
+                        )
+                    # 5 ── o_proj into the BRANCH scratch (ASSIGN — the post-branch norm
+                    #      forbids the llama-style residual accumulate)
+                    if use_tc:
+                        @parameter
+                        if not G3_STREAM:
+                            self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch_auto(
+                            Int(self.pf_attn.unsafe_ptr()),
+                            Int(lw.w_o.unsafe_ptr()), 0,
+                            m, n_q, self.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_branch.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2h](
+                            self.pf_branch.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                            lw.w_o.unsafe_ptr(),
+                            Int64(m), Int64(n_q), Int64(self.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 6 ── hidden += rmsnorm(branch) * (1+w_post_attention), every row
+                    self.ctx.enqueue_function[_pf_norm_accum_rows_kernel](
+                        self.pf_hidden.unsafe_ptr(), self.pf_branch.unsafe_ptr(),
+                        lw.ln2.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 7 ── rmsnorm(pre_feedforward_layernorm) over every row
+                    self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                        lw.ln3.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 8 ── gate/up + GeGLU — TC seam (+ native GeGLU epilogue) or the fused
+                    #      v2h kernel
+                    if use_tc:
+                        @parameter
+                        if not G3_STREAM:
+                            self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch_auto(
+                            Int(self.pf_xn.unsafe_ptr()),
+                            Int(lw.w_gu.unsafe_ptr()), 0,
+                            m, self.d_model, 2 * self.d_ff,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_gu.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        self.ctx.enqueue_function[_pf_geglu_rows_kernel](
+                            self.pf_act.unsafe_ptr(), self.pf_gu.unsafe_ptr(),
+                            Int64(m * self.d_ff), Int64(self.d_ff),
+                            grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                        )
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_geglu_kernel_v2h](
+                            self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                            lw.w_gu.unsafe_ptr(),
+                            Int64(m), Int64(self.d_model), Int64(self.d_ff),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 9 ── down_proj into the branch scratch (ASSIGN)
+                    if use_tc:
+                        @parameter
+                        if not G3_STREAM:
+                            self.ctx.synchronize()
+                        var r = _tc_gemm_dispatch_auto(
+                            Int(self.pf_act.unsafe_ptr()),
+                            Int(lw.w_down.unsafe_ptr()), 0,
+                            m, self.d_ff, self.d_model,
+                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                            Int(self.pf_branch.unsafe_ptr()), 0)
+                        if r != 0:
+                            return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                    else:
+                        self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2h](
+                            self.pf_branch.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                            lw.w_down.unsafe_ptr(),
+                            Int64(m), Int64(self.d_ff), Int64(self.d_model),
+                            grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                            block_dim=_G2_NTHREADS,
+                        )
+                    # 10 ── hidden += rmsnorm(branch) * (1+w_post_feedforward), every row
+                    self.ctx.enqueue_function[_pf_norm_accum_rows_kernel](
+                        self.pf_hidden.unsafe_ptr(), self.pf_branch.unsafe_ptr(),
+                        lw.ln4.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    issued += 10
+                pos += m
+
+            # ── the final residual row into the decode-shaped `hidden` (so `dump_logits` and a
+            #    following `step`/graph chain see the serial-ingest state), then final rmsnorm +
+            #    tied lm_head + per-threadgroup argmax ──
+            self.ctx.enqueue_function[_pf_row_copy_kernel](
+                self.hidden.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                Int64(last_m - 1), Int64(self.d_model),
+                grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
+            )
+            var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+            @parameter
+            if G3_STREAM:
+                # the cuBLAS lm_head lever's single-stream arm (the TTFT tail): the fused
+                # decode-shaped sweep cost ~13 ms on the 27B first token; normalize the one
+                # residual row into d_tmp, ride the stream-ordered seam for the [1, vocab]
+                # logits GEMM over the resident f16 tie table, one single-row argmax sweep.
+                self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                    self.d_tmp.unsafe_ptr(), self.hidden.unsafe_ptr(),
+                    self.final_norm.unsafe_ptr(),
+                    Int64(self.d_model), self.eps, Int64(1),
+                    grid_dim=1, block_dim=_TG,
+                )
+                var r = _tc_gemm_dispatch_auto(
+                    Int(self.d_tmp.unsafe_ptr()),
+                    Int(self.embed.unsafe_ptr()), 0,
+                    1, self.d_model, self.vocab,
+                    Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                    Int(self.logits.unsafe_ptr()), 0)
+                if r != 0:
+                    return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                self.ctx.enqueue_function[_g3_logits_argmax_kernel](
+                    self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
+                    self.logits.unsafe_ptr(), Int64(1), Int64(self.vocab),
+                    grid_dim=1, block_dim=_TG,
+                )
+            else:
+                self.ctx.enqueue_function[_lmhead_argmax_kernel_f16](
+                    self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(),
+                    self.hidden.unsafe_ptr(),
+                    self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
+                    Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
+                    grid_dim=_LM_BLOCKS, block_dim=_TG,
+                )
+                self.ctx.enqueue_function[_argmax_reduce_kernel](
+                    self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
+                    self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(),
+                    Int64(_LM_BLOCKS),
+                    grid_dim=1, block_dim=_TG,
+                )
+            issued += 3
+
+            self.ctx.enqueue_copy(self.host_val, self.out_val)
+            self.ctx.enqueue_copy(self.host_idx, self.out_idx)
+            self.ctx.synchronize()
+            var tok = Int(self.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(tok, lg, issued, RESIDENT_OK)
+
     def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         @parameter
         if not CUDA_GEMMA3_BUILD:
@@ -413,11 +951,19 @@ struct _CudaResidentGemma3F16(Movable):
                     grid_dim=1, block_dim=_TG,
                 )
                 # 6 ── rmsnorm(pre_ffn) + gate/up (f16) + GeGLU
-                self.ctx.enqueue_function[_g3_norm_gemv2_geglu_kernel_f16](
-                    self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln3.unsafe_ptr(),
-                    lw.w_gu.unsafe_ptr(), Int64(self.d_model), Int64(self.d_ff), self.eps,
-                    grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
-                )
+                @parameter
+                if _G3_GEGLU_U4:
+                    self.ctx.enqueue_function[_g3_norm_gemv2_geglu_kernel_f16_u4](
+                        self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln3.unsafe_ptr(),
+                        lw.w_gu.unsafe_ptr(), Int64(self.d_model), Int64(self.d_ff), self.eps,
+                        grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
+                    )
+                else:
+                    self.ctx.enqueue_function[_g3_norm_gemv2_geglu_kernel_f16](
+                        self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln3.unsafe_ptr(),
+                        lw.w_gu.unsafe_ptr(), Int64(self.d_model), Int64(self.d_ff), self.eps,
+                        grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
+                    )
                 # 7 ── down_proj (f16) to scratch
                 self.ctx.enqueue_function[_g3_gemv_kernel_f16](
                     self.d_tmp.unsafe_ptr(), self.act.unsafe_ptr(), lw.w_down.unsafe_ptr(),
@@ -647,11 +1193,19 @@ struct _CudaResidentGemma3F16(Movable):
                     grid_dim=1, block_dim=_TG,
                 )
                 # 6 ── rmsnorm(pre_ffn) + gate/up + GeGLU
-                rec.enqueue_function[_g3_norm_gemv2_geglu_kernel_f16](
-                    act_p, hidden_p, ln3_p,
-                    wgu_p, d_model_i, d_ff_i, eps_c,
-                    grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
-                )
+                @parameter
+                if _G3_GEGLU_U4:
+                    rec.enqueue_function[_g3_norm_gemv2_geglu_kernel_f16_u4](
+                        act_p, hidden_p, ln3_p,
+                        wgu_p, d_model_i, d_ff_i, eps_c,
+                        grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                    )
+                else:
+                    rec.enqueue_function[_g3_norm_gemv2_geglu_kernel_f16](
+                        act_p, hidden_p, ln3_p,
+                        wgu_p, d_model_i, d_ff_i, eps_c,
+                        grid_dim=_ceil_div(Int(d_ff_i), _SUBS), block_dim=_TG,
+                    )
                 # 7 ── down_proj into scratch
                 rec.enqueue_function[_g3_gemv_kernel_f16](
                     d_tmp_p, act_p, wd_p,

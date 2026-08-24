@@ -115,6 +115,10 @@ extern "C" int64_t tc_shim_init(void) {
 // MAX 26.5 surface has no handle accessor — but an integration round that captures graphs or a
 // future MAX release may). 0 = use the shim's own stream from tc_shim_init.
 extern "C" int64_t tc_shim_use_stream(void* stream_ptr) {
+    if (g_handle == nullptr) {
+        int64_t r = tc_shim_init();
+        if (r != 0) return r;
+    }
     cudaStream_t s = (cudaStream_t)stream_ptr;
     cublasStatus_t st = cublasSetStream(g_handle, s);
     if (st != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)st); return -(int64_t)st; }
@@ -343,6 +347,68 @@ extern "C" int64_t tc_shim_gemm_f16_32c(const void* a_f32, const void* w_f16,
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// STREAM-ORDERED SEAM (gemma3 lane, 2026-08-24) — the sync-seam removal. MAX 1.0.0's
+// DeviceContext grew `create_external_stream(Pointer[NoneType]) -> DeviceStream`, so the
+// session can wrap a CALLER-OWNED cudaStream_t and enqueue ALL Mojo kernels onto it. These
+// two entries complete the other half: the shim CREATES that stream (returning the raw
+// pointer for the Mojo side to wrap) and then every dispatch below runs ASYNCHRONOUSLY on
+// it — the GemmEx and its A-convert kernel enqueue and RETURN with no cudaStreamSynchronize.
+// Ordering is then the stream's own: Mojo kernel -> convert -> GemmEx -> Mojo kernel, all
+// one stream, zero host syncs per seam (the old seam paid 2 device syncs per GEMM: the
+// session's ctx.synchronize() BEFORE + the shim's cudaStreamSynchronize INSIDE — 496
+// device-syncs per 27B decode step at 4 GEMMs x 62 layers).
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+// Create a NEW non-blocking cudaStream_t on the current context, bind the cuBLAS handle to
+// it, and return the raw pointer (int64) for the Mojo side to wrap with
+// `ctx.create_external_stream`. Initializes the handle if needed. Returns 0 on failure
+// (check tc_shim_last_error). The stream is shim-owned; tc_shim_shutdown destroys it only
+// if the shim created it internally (this one is caller-owned via the returned pointer).
+extern "C" int64_t tc_shim_create_stream(void) {
+    if (g_handle == nullptr) {
+        int64_t r = tc_shim_init();
+        if (r != 0) return 0;
+    }
+    cudaStream_t s = nullptr;
+    cudaError_t e = cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+    if (e != cudaSuccess) { record_error((int64_t)e); return 0; }
+    cublasStatus_t st = cublasSetStream(g_handle, s);
+    if (st != CUBLAS_STATUS_SUCCESS) {
+        record_error((int64_t)st);
+        cudaStreamDestroy(s);
+        return 0;
+    }
+    g_stream = s;
+    g_stream_created = 0;  // caller owns it (wrapped as a DeviceStream on the Mojo side)
+    return (int64_t)(uintptr_t)s;
+}
+
+// The ASYNC workhorse twin of tc_shim_gemm_f16_32c: identical compute (f32->f16 A convert +
+// GemmEx COMPUTE_32F, f32 C direct, beta by `accum`), but NOTHING syncs — both the convert
+// kernel and the GemmEx enqueue on the shim stream and the entry returns immediately. The
+// caller MUST have routed the Mojo-side enqueues onto the SAME stream (the wrapped
+// external stream) and owns the eventual sync (one per step, not per GEMM).
+extern "C" int64_t tc_shim_gemm_f16_32c_async(const void* a_f32, const void* w_f16,
+                                              int64_t M, int64_t K, int64_t N,
+                                              void* a16_scratch, void* c_f32, int64_t accum) {
+    int64_t r = tc_shim_f32_to_f16(a_f32, a16_scratch, M * K);
+    if (r != 0) return r;
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f16, CUDA_R_16F, (int)K,
+        a16_scratch, CUDA_R_16F, (int)K,
+        &beta,
+        c_f32, CUDA_R_32F, (int)N,
+        CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    return 0;
+}
+
 // Fallback ladder rung 2 (only if the 32F-acc token gates ever fail): TF32 with a beta
 // select — f32 weights DIRECTLY (zero dual residency), ASSIGN (beta 0) or ACCUMULATE
 // (beta 1) into the f32 residual.
@@ -521,6 +587,148 @@ extern "C" int64_t tc_shim_wmma_smoke(const void* a16, const void* b16_nk, void*
 #else
 extern "C" int64_t tc_shim_wmma_smoke(const void*, const void*, void*) { return -100; }
 #endif
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// TENSOR-CORE PREFILL ATTENTION (vLLM-flip round, 2026-08-24) — strided-batched cuBLAS
+// HMMA QK^T + masked softmax + PV, replacing the SIMT warp-per-row prefill attention that the
+// nsys autopsy measured at 55.5 ms (vLLM's tensor-core flash runs the same shape in 3.77 ms).
+//
+// Layout contract (all row-major, gemma3 GQA: h_q query heads, h_kv KV heads, g = h_q / h_kv):
+//   * Q packed by the Mojo side to `q16` [h_q, M, d] f16, contiguous (strideA = M*d per
+//     KV-head group spans g query heads => g*M rows per batch).
+//   * K/V live in the resident KV cache `ck`/`cv` [ctx, h_kv, d] f16; the per-KV-head view is
+//     a strided [n_keys, d] matrix with leading dimension h_kv*d and per-batch offset hk*d.
+//   * scores `s32` [h_q, M, n_keys] f32 (QK^T output), P `p16` [h_q, M, n_keys] f16 (softmax),
+//     attn `o32` [h_q, M, d] f32 (PV output, same packed layout as Q for the Mojo unpack).
+// Batching is over the h_kv KV heads; each batch covers g*M rows (the g query heads that share
+// a KV head), so strideB = d (K head offset), strideA = g*M*d, strideC = g*M*(n_keys or d).
+// All entries enqueue on the shim stream and return WITHOUT syncing (the G3_STREAM contract).
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+// Generic strided-batched GemmEx, f16 A/B, f32 C, COMPUTE_32F. Row-major semantics:
+//   transB=1: C[M,N] = A[M,K] @ B[N,K]^T  (B is "weights" layout, the QK^T case)
+//   transB=0: C[M,N] = A[M,K] @ B[K,N]    (the PV case)
+// ldA/ldB/ldC are row strides; strideA/strideB/strideC are per-batch offsets.
+static int64_t bgemm_f16_core(const void* a16, const void* b16, void* c32,
+                              int64_t M, int64_t N, int64_t K,
+                              int64_t ldA, int64_t ldB, int64_t ldC,
+                              int64_t strideA, int64_t strideB, int64_t strideC,
+                              int64_t batch, int transB) {
+    float alpha = 1.0f, beta = 0.0f;
+    cublasStatus_t s;
+    if (transB) {
+        // C_rm[M,N] = A_rm[M,K] @ B_rm[N,K]^T  ->  (OP_T, OP_N, N, M, K; B ld=ldB, A ld=ldA)
+        s = cublasGemmStridedBatchedEx(
+            g_handle, CUBLAS_OP_T, CUBLAS_OP_N,
+            (int)N, (int)M, (int)K, &alpha,
+            b16, CUDA_R_16F, (int)ldB, strideB,
+            a16, CUDA_R_16F, (int)ldA, strideA,
+            &beta,
+            c32, CUDA_R_32F, (int)ldC, strideC,
+            (int)batch, CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    } else {
+        // C_rm[M,N] = A_rm[M,K] @ B_rm[K,N]  ->  (OP_N, OP_N, N, M, K; B ld=ldB, A ld=ldA)
+        s = cublasGemmStridedBatchedEx(
+            g_handle, CUBLAS_OP_N, CUBLAS_OP_N,
+            (int)N, (int)M, (int)K, &alpha,
+            b16, CUDA_R_16F, (int)ldB, strideB,
+            a16, CUDA_R_16F, (int)ldA, strideA,
+            &beta,
+            c32, CUDA_R_32F, (int)ldC, strideC,
+            (int)batch, CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    }
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    return 0;
+}
+
+extern "C" int64_t tc_shim_bgemm_f16_async(const void* a16, const void* b16, void* c32,
+                                           int64_t M, int64_t N, int64_t K,
+                                           int64_t ldA, int64_t ldB, int64_t ldC,
+                                           int64_t strideA, int64_t strideB, int64_t strideC,
+                                           int64_t batch, int64_t transB) {
+    return bgemm_f16_core(a16, b16, c32, M, N, K, ldA, ldB, ldC,
+                          strideA, strideB, strideC, batch, (int)transB);
+}
+
+// Masked causal+window softmax over one score row -> f16 attention weights. One block per row
+// (row r = query head h = r / m_rows, tile position p = r % m_rows; global position
+// qpos = pos_base + p). Key j is attended iff j <= qpos AND (window <= 0 OR j >= qpos+1-window).
+// grid = h_q * m_rows blocks, block = 256 threads; reads s32, writes p16 (both [row, n_keys]).
+__global__ void _attn_softmax_mask_kernel(const float* __restrict__ s32,
+                                          __half* __restrict__ p16,
+                                          int n_keys, int m_rows, int pos_base, int window) {
+    int row = blockIdx.x;
+    int p = row % m_rows;
+    int qpos = pos_base + p;
+    int lo = (window > 0) ? (qpos + 1 - window) : 0;
+    if (lo < 0) lo = 0;
+    const float* srow = s32 + (long)row * n_keys;
+    __half* prow = p16 + (long)row * n_keys;
+
+    __shared__ float red[32];
+    int tid = threadIdx.x;
+
+    // pass 1: row max over valid keys
+    float mx = -1e30f;
+    for (int j = tid; j < n_keys; j += blockDim.x) {
+        if (j >= lo && j <= qpos) {
+            float v = srow[j];
+            if (v > mx) mx = v;
+        }
+    }
+    // block reduce max
+    int lane = tid & 31, wid = tid >> 5;
+    for (int off = 16; off > 0; off >>= 1)
+        mx = fmaxf(mx, __shfl_down_sync(0xffffffff, mx, off));
+    if (lane == 0) red[wid] = mx;
+    __syncthreads();
+    if (wid == 0) {
+        mx = (lane < (blockDim.x >> 5)) ? red[lane] : -1e30f;
+        for (int off = 16; off > 0; off >>= 1)
+            mx = fmaxf(mx, __shfl_down_sync(0xffffffff, mx, off));
+        if (lane == 0) red[0] = mx;
+    }
+    __syncthreads();
+    float row_max = red[0];
+
+    // pass 2: sum exp(v - max) over valid keys
+    float sum = 0.0f;
+    for (int j = tid; j < n_keys; j += blockDim.x) {
+        if (j >= lo && j <= qpos) sum += __expf(srow[j] - row_max);
+    }
+    for (int off = 16; off > 0; off >>= 1)
+        sum += __shfl_down_sync(0xffffffff, sum, off);
+    if (lane == 0) red[wid] = sum;
+    __syncthreads();
+    if (wid == 0) {
+        sum = (lane < (blockDim.x >> 5)) ? red[lane] : 0.0f;
+        for (int off = 16; off > 0; off >>= 1)
+            sum += __shfl_down_sync(0xffffffff, sum, off);
+        if (lane == 0) red[0] = sum;
+    }
+    __syncthreads();
+    float row_sum = red[0];
+    float inv = (row_sum > 0.0f) ? (1.0f / row_sum) : 0.0f;
+
+    // pass 3: normalize + write f16
+    for (int j = tid; j < n_keys; j += blockDim.x) {
+        float v = 0.0f;
+        if (j >= lo && j <= qpos) v = __expf(srow[j] - row_max) * inv;
+        prow[j] = __float2half(v);
+    }
+}
+
+extern "C" int64_t tc_shim_attn_softmax_mask_async(const void* s32, void* p16,
+                                                   int64_t n_keys, int64_t m_rows,
+                                                   int64_t h_q, int64_t pos_base,
+                                                   int64_t window) {
+    long rows = (long)h_q * (long)m_rows;
+    _attn_softmax_mask_kernel<<<(unsigned)rows, 256, 0, g_stream>>>(
+        (const float*)s32, (__half*)p16, (int)n_keys, (int)m_rows, (int)pos_base, (int)window);
+    cudaError_t e = cudaGetLastError();
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
 
 extern "C" int64_t tc_shim_shutdown(void) {
     if (g_handle != nullptr) { cublasDestroy(g_handle); g_handle = nullptr; }

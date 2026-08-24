@@ -41,10 +41,13 @@ How Gemma 3 differs from the Qwen3/llama resident chain, and where each differen
 * sqrt(hidden_size) input-embedding scale (`_g3_embed_row_kernel`); the tied lm_head stays unscaled.
 * Attention score scale is `query_pre_attn_scalar ** -0.5`, passed as `scale` (NOT d_head-based).
 
-Decode-only this round: the prompt is ingested one token at a time through `step` (cautiously
-correct — attention is causal and position-based, so sequential ingestion is bit-equivalent to a
-parallel prefill), then generation continues through the same `step`. A real tiled prefill is the
-named performance follow-up (TTFT); correctness does not depend on it.
+Two ingestion arms. `step` walks the prompt one token at a time (cautiously correct — attention
+is causal and position-based, so sequential ingestion is bit-equivalent to a parallel prefill);
+`prefill` processes the whole prompt in `G3_PF_TILE`-row tiles, one M-parallel dispatch plan per
+layer — the TTFT arm (2026-08-24): it reuses `residentk.kernels`' weightless batched kernels
+(`_pf_rmsnorm_rows_kernel`, `_pf_ropewrt_kernel` with the per-layer rope-table pointer select)
+and the v2 f32 tiled GEMMs, and adds this lane's GeGLU/windowed-attention/branch-norm twins from
+`residentk.kernels_prefill_gemma3`. Generation continues through `step` either way.
 
 Stage tier: built with `-D ALGENTA_STAGE_6144`. Gemma 3 27B's d_ff (21504) EXCEEDS every shared
 tier, but `_g3_gemv_kernel` / `_g3_norm_gemv2_geglu_kernel` read the d_ff-wide activation from
@@ -75,6 +78,8 @@ from residentk.kernels import (
     _argmax_reduce_kernel,
     _lmhead_argmax_kernel,
     _norm_gemv_kernel,
+    _pf_rmsnorm_rows_kernel,
+    _pf_ropewrt_kernel,
     _qk_rope_write_kernel,
 )
 from residentk.kernels_gemma3 import (
@@ -84,6 +89,20 @@ from residentk.kernels_gemma3 import (
     _g3_norm_gemv2_geglu_kernel,
     _g3_norm_inplace_kernel,
     _g3_sdpa_window_kernel,
+)
+from residentk.kernels_prefill_f32_v2 import (
+    _G2_BM,
+    _G2_BN,
+    _G2_NTHREADS,
+    _pf_gemm_assign_kernel_v2,
+)
+from residentk.kernels_prefill_gemma3 import (
+    G3_PF_TILE,
+    _pf_attn_window_kernel,
+    _pf_embed_rows_g3_kernel,
+    _pf_gemm_geglu_kernel_v2,
+    _pf_norm_accum_rows_kernel,
+    _pf_row_copy_kernel,
 )
 from residentk.session import (
     RESIDENT_GPU_BUILD,
@@ -187,6 +206,17 @@ struct _CudaResidentGemma3(Movable):
     var host_idx: HostBuffer[DType.int32]
     var host_logits: HostBuffer[DType.float32]
 
+    # tiled-prefill scratch — one G3_PF_TILE-row working set (the four-norm chain needs the
+    # o/down BRANCH output materialised row-major before its norm + residual add)
+    var pf_tokens: DeviceBuffer[DType.int32]
+    var pf_hidden: DeviceBuffer[DType.float32]
+    var pf_xn: DeviceBuffer[DType.float32]
+    var pf_qkv: DeviceBuffer[DType.float32]
+    var pf_q_rot: DeviceBuffer[DType.float32]
+    var pf_attn: DeviceBuffer[DType.float32]
+    var pf_act: DeviceBuffer[DType.float32]
+    var pf_branch: DeviceBuffer[DType.float32]
+
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -255,6 +285,16 @@ struct _CudaResidentGemma3(Movable):
         self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
         self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
         self.host_logits = self.ctx.enqueue_create_host_buffer[DType.float32](vocab)
+
+        var t = G3_PF_TILE
+        self.pf_tokens = self.ctx.enqueue_create_buffer[DType.int32](t)
+        self.pf_hidden = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_xn = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
+        self.pf_qkv = self.ctx.enqueue_create_buffer[DType.float32](t * n_qkv)
+        self.pf_q_rot = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_attn = self.ctx.enqueue_create_buffer[DType.float32](t * h_q * d_head)
+        self.pf_act = self.ctx.enqueue_create_buffer[DType.float32](t * d_ff)
+        self.pf_branch = self.ctx.enqueue_create_buffer[DType.float32](t * d_model)
 
     def device_name(self) raises -> String:
         return self.ctx.name()
@@ -348,6 +388,187 @@ struct _CudaResidentGemma3(Movable):
     def seal(mut self) raises -> Int:
         self.ctx.synchronize()
         return RESIDENT_OK
+
+    def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
+        """The WHOLE prompt, tiled: chunks of up to `G3_PF_TILE` rows through every layer in ONE
+        M-parallel dispatch plan per projection (the decode path's sequential ingestion is
+        bit-equivalent but serial — this is the TTFT arm), then ONE final-norm + tied lm_head +
+        argmax on the final row. Returns the greedy FIRST generated token — the same `_StepOut`
+        contract `step` uses, so a caller chains `prefill(...)` into `step(...)` starting at
+        `pos = len(prompt_ids)`.
+
+        Per tile, per layer, TEN dispatches (the decode path's eight, with the two GEMV-fused
+        norm+projections replaced by rmsnorm-rows + tiled-GEMM pairs and the branch outputs
+        materialised for the post-branch norms): rmsnorm-rows (input_layernorm), fused-QKV tiled
+        GEMM (ASSIGN), the batched q/k-norm + per-class RoPE + KV-cache write, the windowed
+        causal attention (per-row key lower bound for sliding layers), o_proj tiled GEMM into
+        the BRANCH scratch, norm-accum-rows (post_attention_layernorm + residual add),
+        rmsnorm-rows (pre_feedforward_layernorm), the fused gate/up + GeGLU tiled GEMM,
+        down_proj tiled GEMM into the branch scratch, norm-accum-rows
+        (post_feedforward_layernorm + residual add). The weightless batched kernels
+        (`_pf_rmsnorm_rows_kernel`, `_pf_ropewrt_kernel` with qk_norm=1 and the SESSION-selected
+        per-layer rope table) are dispatched BYTE-UNMODIFIED from `residentk.kernels`; the
+        weight-reading roles use the v2 f32 family + this lane's GeGLU/window/branch twins."""
+
+        @parameter
+        if not CUDA_GEMMA3_BUILD:
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            var n_prompt = len(prompt_ids)
+            if n_prompt < 1:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+            if n_prompt > self.max_ctx:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            for i in range(n_prompt):
+                if prompt_ids[i] < 0 or prompt_ids[i] >= self.vocab:
+                    return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            var n_q = self.h_q * self.d_head
+            var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
+            var issued = 0
+            var pos = 0
+            var last_m = 0
+            while pos < n_prompt:
+                var m = G3_PF_TILE
+                if n_prompt - pos < m:
+                    m = n_prompt - pos
+                last_m = m
+
+                # ── this chunk's token ids, uploaded once ──
+                with self.pf_tokens.map_to_host() as h:
+                    for i in range(m):
+                        h[i] = Int32(prompt_ids[pos + i])
+                self.ctx.synchronize()
+
+                # ── the scaled embedding rows, gathered on-device from the resident table ──
+                self.ctx.enqueue_function[_pf_embed_rows_g3_kernel](
+                    self.pf_hidden.unsafe_ptr(), self.embed.unsafe_ptr(),
+                    self.pf_tokens.unsafe_ptr(),
+                    Int64(self.d_model), Int64(m), self.embed_scale,
+                    grid_dim=_ceil_div(self.d_model, _TG) * m, block_dim=_TG,
+                )
+                issued += 1
+
+                for layer in range(self.n_layers):
+                    ref lw = self.layers[layer]
+                    var is_global = self.layer_is_global[layer]
+
+                    # 1 ── rmsnorm(input_layernorm) over every row
+                    self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                        lw.ln1.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 2 ── fused Q/K/V projection (ASSIGN)
+                    self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                        self.pf_qkv.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                        lw.w_qkv.unsafe_ptr(),
+                        Int64(m), Int64(self.d_model), Int64(n_qkv),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(n_qkv, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 3 ── q_norm + k_norm + per-class RoPE + the in-place KV-cache write
+                    var cos_p = self.cos_global.unsafe_ptr() if is_global == 1 \
+                        else self.cos_local.unsafe_ptr()
+                    var sin_p = self.sin_global.unsafe_ptr() if is_global == 1 \
+                        else self.sin_local.unsafe_ptr()
+                    self.ctx.enqueue_function[_pf_ropewrt_kernel](
+                        self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                        self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                        cos_p, sin_p,
+                        Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                        self.eps, Int64(m),
+                        Int64(1),  # gemma3 always has QK-norm
+                        grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
+                    )
+                    # 4 ── windowed causal attention (per-row key lower bound)
+                    self.ctx.enqueue_function[_pf_attn_window_kernel](
+                        self.pf_attn.unsafe_ptr(), self.pf_q_rot.unsafe_ptr(),
+                        lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                        Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                        Int64(self.sliding_window), Int64(is_global), self.scale, Int64(m),
+                        grid_dim=self.h_q * m, block_dim=self.d_head,
+                    )
+                    # 5 ── o_proj into the BRANCH scratch (ASSIGN — the post-branch norm
+                    #      forbids the llama-style residual accumulate)
+                    self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                        self.pf_branch.unsafe_ptr(), self.pf_attn.unsafe_ptr(),
+                        lw.w_o.unsafe_ptr(),
+                        Int64(m), Int64(n_q), Int64(self.d_model),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 6 ── hidden += rmsnorm(branch) * (1+w_post_attention), every row
+                    self.ctx.enqueue_function[_pf_norm_accum_rows_kernel](
+                        self.pf_hidden.unsafe_ptr(), self.pf_branch.unsafe_ptr(),
+                        lw.ln2.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 7 ── rmsnorm(pre_feedforward_layernorm) over every row
+                    self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                        lw.ln3.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    # 8 ── gate/up + GeGLU, one tiled GEMM pair
+                    self.ctx.enqueue_function[_pf_gemm_geglu_kernel_v2](
+                        self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
+                        lw.w_gu.unsafe_ptr(),
+                        Int64(m), Int64(self.d_model), Int64(self.d_ff),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 9 ── down_proj into the branch scratch (ASSIGN)
+                    self.ctx.enqueue_function[_pf_gemm_assign_kernel_v2](
+                        self.pf_branch.unsafe_ptr(), self.pf_act.unsafe_ptr(),
+                        lw.w_down.unsafe_ptr(),
+                        Int64(m), Int64(self.d_ff), Int64(self.d_model),
+                        grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_model, _G2_BN),
+                        block_dim=_G2_NTHREADS,
+                    )
+                    # 10 ── hidden += rmsnorm(branch) * (1+w_post_feedforward), every row
+                    self.ctx.enqueue_function[_pf_norm_accum_rows_kernel](
+                        self.pf_hidden.unsafe_ptr(), self.pf_branch.unsafe_ptr(),
+                        lw.ln4.unsafe_ptr(),
+                        Int64(self.d_model), self.eps, Int64(m),
+                        grid_dim=m, block_dim=_TG,
+                    )
+                    issued += 10
+                pos += m
+
+            # ── the final residual row into the decode-shaped `hidden` (so `dump_logits` and a
+            #    following `step` chain see the serial-ingest state), then final rmsnorm + tied
+            #    lm_head + per-threadgroup argmax ──
+            self.ctx.enqueue_function[_pf_row_copy_kernel](
+                self.hidden.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                Int64(last_m - 1), Int64(self.d_model),
+                grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
+            )
+            var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+            self.ctx.enqueue_function[_lmhead_argmax_kernel](
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
+                self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
+                Int64(self.d_model), Int64(self.vocab), self.eps, Int64(n_iters),
+                grid_dim=_LM_BLOCKS, block_dim=_TG,
+            )
+            self.ctx.enqueue_function[_argmax_reduce_kernel](
+                self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), Int64(_LM_BLOCKS),
+                grid_dim=1, block_dim=_TG,
+            )
+            issued += 3
+
+            self.ctx.enqueue_copy(self.host_val, self.out_val)
+            self.ctx.enqueue_copy(self.host_idx, self.out_idx)
+            self.ctx.synchronize()
+            var tok = Int(self.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(tok, lg, issued, RESIDENT_OK)
 
     def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """ONE Gemma 3 token at position `pos`: embed-scale, then per layer the four-norm chain

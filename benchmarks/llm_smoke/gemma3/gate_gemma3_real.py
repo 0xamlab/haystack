@@ -14,6 +14,9 @@ Usage:
   python3 gate_gemma3_real.py --source-ckpt ~/models/gemma-3-4b-it \
       --driver ~/gemma3_bin/gemma3_correctness_cuda \
       --tokens 2,1756,3402,762 --max-new 4 [--top-k 5]
+
+`--driver-args` passes extra flags to EVERY driver invocation verbatim (e.g.
+`--driver-args="--f16 --prefill"` gates the tiled-prefill f16 arm).
 """
 
 from __future__ import annotations
@@ -54,7 +57,11 @@ def main() -> None:
     parser.add_argument("--max-new", type=int, default=4)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--converted", default=None, help="reuse an existing converted dir")
+    parser.add_argument("--driver-args", default="",
+                        help="extra flags passed verbatim to every driver invocation")
     args = parser.parse_args()
+
+    extra = [a for a in args.driver_args.split() if a]
 
     prompt = [int(p) for p in args.tokens.split(",") if p.strip()]
 
@@ -75,10 +82,11 @@ def main() -> None:
 
     # 2. engine logits + tokens
     eng_logits = _last_json(_run([
-        args.driver, str(converted), "--tokens", args.tokens, "--dump-logits",
+        args.driver, str(converted), "--tokens", args.tokens, "--dump-logits", *extra,
     ]))
     eng_tokens = _last_json(_run([
         args.driver, str(converted), "--tokens", args.tokens, "--max-new", str(args.max_new),
+        *extra,
     ]))["generated"]
 
     # 3. transformers CPU fp32 reference
