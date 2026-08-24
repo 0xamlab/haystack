@@ -274,6 +274,256 @@ def check_silent_visibility(report: CheckReport) -> None:
         )
 
 
+def _engine_kernel_floor() -> dict[str, Any]:
+    floor_path = _REPO_ROOT / "scripts" / "engine_kernel_floor.json"
+    try:
+        payload = json.loads(floor_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"schema": 1, "kernel_count": 0, "kernels": []}
+    kernels = payload.get("kernels") if isinstance(payload, dict) else None
+    if not isinstance(kernels, list):
+        return {"schema": 1, "kernel_count": 0, "kernels": []}
+    return {"schema": 1, "kernel_count": len(kernels), "kernels": kernels}
+
+
+def _live_engine_kernels_payload() -> dict[str, Any]:
+    from apps.runtime.mojo_inventory import discover_engine_kernels, engine_kernels_payload
+
+    return engine_kernels_payload(discover_engine_kernels())
+
+
+def _kernel_key(module: Any, name: Any) -> str:
+    return f"{module}.{name}"
+
+
+def check_engine_kernel_drift(report: CheckReport) -> None:
+    """The contract's `engine_kernels` section must be the live source-driven discovery.
+
+    The racing kernels are private symbols, so NOTHING else republishes them: if this
+    section drifts from the tree, the public surface lies (an unrefreshed contract after a
+    kernel landed, or a hand edit that quietly dropped one).
+    """
+    contract = _checked_in_contract()
+    section = contract.get("engine_kernels")
+    try:
+        live = _live_engine_kernels_payload()
+    except Exception as exc:  # noqa: BLE001 — discovery must fail the gate loudly, not crash it
+        report.add(
+            Check(
+                "engine_kernel_drift",
+                "drift",
+                "fail",
+                "gate",
+                f"engine kernel discovery failed: {exc}",
+            )
+        )
+        return
+    if not isinstance(section, dict):
+        report.add(
+            Check(
+                "engine_kernel_drift",
+                "drift",
+                "fail",
+                "gate",
+                "runtime_library_contract.json has no engine_kernels section; run "
+                "`make inventory-refresh` and commit the result",
+            )
+        )
+        return
+    if section == live:
+        report.add(
+            Check(
+                "engine_kernel_drift",
+                "drift",
+                "pass",
+                "gate",
+                f"engine_kernels matches live discovery ({live['module_count']} modules / "
+                f"{live['kernel_count']} kernels)",
+            )
+        )
+        return
+    drift_lines: list[str] = []
+    contract_keys = {
+        _kernel_key(kernel.get("module"), kernel.get("name"))
+        for kernel in section.get("kernels", [])
+        if isinstance(kernel, dict)
+    }
+    live_keys = {_kernel_key(kernel["module"], kernel["name"]) for kernel in live["kernels"]}
+    gone = sorted(contract_keys - live_keys)
+    new = sorted(live_keys - contract_keys)
+    if gone:
+        drift_lines.append(f"{len(gone)} contract kernel(s) absent from the tree")
+        drift_lines.extend(f"  - {key}" for key in gone[:15])
+    if new:
+        drift_lines.append(f"{len(new)} live kernel(s) absent from the contract")
+        drift_lines.extend(f"  + {key}" for key in new[:15])
+    common = contract_keys & live_keys
+    if common:
+        contract_by_key = {
+            _kernel_key(kernel.get("module"), kernel.get("name")): kernel
+            for kernel in section.get("kernels", [])
+            if isinstance(kernel, dict)
+        }
+        live_by_key = {
+            _kernel_key(kernel["module"], kernel["name"]): kernel
+            for kernel in live["kernels"]
+        }
+        changed = sorted(
+            key
+            for key in common
+            if {
+                field: value
+                for field, value in contract_by_key[key].items()
+                if field in ("backend", "families", "role", "symbol", "prefix")
+            }
+            != {
+                field: value
+                for field, value in live_by_key[key].items()
+                if field in ("backend", "families", "role", "symbol", "prefix")
+            }
+        )
+        if changed:
+            drift_lines.append(f"{len(changed)} kernel(s) with changed fields")
+            drift_lines.extend(f"  ~ {key}" for key in changed[:15])
+    if section.get("kernel_count") != len(section.get("kernels", [])):
+        drift_lines.append("engine_kernels.kernel_count disagrees with its own kernels list")
+    if section.get("module_count") != len(section.get("modules", [])):
+        drift_lines.append("engine_kernels.module_count disagrees with its own modules list")
+    report.add(
+        Check(
+            "engine_kernel_drift",
+            "drift",
+            "fail",
+            "gate",
+            "engine_kernels section does not match live discovery; run "
+            "`make inventory-refresh` and commit the result",
+            drift_lines,
+        )
+    )
+
+
+def check_engine_kernel_visibility(report: CheckReport) -> None:
+    """The silent-visibility-loss gate for the published kernel surface.
+
+    Every entry in ``scripts/engine_kernel_floor.json`` must still exist in live discovery
+    with the SAME backend and at least its families. A kernel disappearing from the public
+    inventory — or quietly losing a backend/family — fails CI. Removing one is a loud,
+    deliberate act: a manual edit of the floor file, never a side effect of a regen.
+    """
+    floor = _engine_kernel_floor()
+    floor_kernels = [entry for entry in floor["kernels"] if isinstance(entry, dict)]
+    try:
+        live = _live_engine_kernels_payload()
+    except Exception as exc:  # noqa: BLE001
+        report.add(
+            Check(
+                "engine_kernel_visibility",
+                "visibility",
+                "fail",
+                "gate",
+                f"engine kernel discovery failed: {exc}",
+            )
+        )
+        return
+    live_by_key = {
+        _kernel_key(kernel["module"], kernel["name"]): kernel for kernel in live["kernels"]
+    }
+    lost: list[str] = []
+    for entry in sorted(floor_kernels, key=lambda item: _kernel_key(item.get("module"), item.get("name"))):
+        key = _kernel_key(entry.get("module"), entry.get("name"))
+        kernel = live_by_key.get(key)
+        if kernel is None:
+            lost.append(f"{key} — published in the floor, absent from live discovery")
+            continue
+        if entry.get("backend") and entry.get("backend") != kernel.get("backend"):
+            lost.append(
+                f"{key} — lost backend {entry.get('backend')!r} (now {kernel.get('backend')!r})"
+            )
+        floor_families = set(entry.get("families") or [])
+        live_families = set(kernel.get("families") or [])
+        dropped = sorted(floor_families - live_families)
+        if dropped:
+            lost.append(f"{key} — lost families: {', '.join(dropped)}")
+    if lost:
+        report.add(
+            Check(
+                "engine_kernel_visibility",
+                "visibility",
+                "fail",
+                "gate",
+                f"{len(lost)} published engine kernel(s) vanished or shrank; removing a "
+                "kernel must be a loud, deliberate edit of scripts/engine_kernel_floor.json, "
+                "never a silent side effect",
+                lost[:30],
+            )
+        )
+    else:
+        report.add(
+            Check(
+                "engine_kernel_visibility",
+                "visibility",
+                "pass",
+                "gate",
+                f"all {len(floor_kernels)} published engine kernel(s) still ship with their "
+                "backends and families intact",
+            )
+        )
+
+
+def check_engine_kernel_floor_stale(report: CheckReport) -> None:
+    """The floor must cover everything live discovery publishes (grow side of the ratchet).
+
+    A new kernel lands in the source, flows into the contract via `make inventory-refresh`,
+    and is NOT yet in the floor -> this gate fails until the floor is grown with
+    `python3 scripts/generate_engine_kernel_floor.py`. That is the deliberate step which
+    puts the new kernel under the visibility ratchet above.
+    """
+    floor = _engine_kernel_floor()
+    floor_keys = {
+        _kernel_key(entry.get("module"), entry.get("name"))
+        for entry in floor["kernels"]
+        if isinstance(entry, dict)
+    }
+    try:
+        live = _live_engine_kernels_payload()
+    except Exception as exc:  # noqa: BLE001
+        report.add(
+            Check(
+                "engine_kernel_floor_stale",
+                "visibility",
+                "fail",
+                "gate",
+                f"engine kernel discovery failed: {exc}",
+            )
+        )
+        return
+    live_keys = {_kernel_key(kernel["module"], kernel["name"]) for kernel in live["kernels"]}
+    missing = sorted(live_keys - floor_keys)
+    if missing:
+        report.add(
+            Check(
+                "engine_kernel_floor_stale",
+                "visibility",
+                "fail",
+                "gate",
+                f"{len(missing)} live engine kernel(s) are not under the visibility floor; "
+                "run `python3 scripts/generate_engine_kernel_floor.py` and commit the grown "
+                "floor",
+                missing[:30],
+            )
+        )
+    else:
+        report.add(
+            Check(
+                "engine_kernel_floor_stale",
+                "visibility",
+                "pass",
+                "gate",
+                f"floor covers all {len(live_keys)} live engine kernel(s)",
+            )
+        )
+
+
 def check_surface_leaks(report: CheckReport) -> None:
     leaks: list[str] = []
     for module in _live_inventory():
@@ -590,7 +840,10 @@ def render_markdown(report: CheckReport, meta: dict[str, Any]) -> str:
 def run_all_checks() -> CheckReport:
     report = CheckReport()
     check_contract_drift(report)
+    check_engine_kernel_drift(report)
     check_silent_visibility(report)
+    check_engine_kernel_visibility(report)
+    check_engine_kernel_floor_stale(report)
     check_surface_leaks(report)
     check_test_coverage(report)
     check_capability_checklist(report)

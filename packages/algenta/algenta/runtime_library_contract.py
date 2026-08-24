@@ -72,6 +72,54 @@ class RuntimeLibraryModule:
     structs: tuple[RuntimeStructSpec, ...]
 
 
+@dataclass(frozen=True)
+class EngineKernelSpec:
+    """One published engine kernel — the pointer-based CUDA/Metal kernels the engine races.
+
+    These are deliberately NOT in `modules`: their arguments are device pointers, which do
+    not cross a JSON frame, so the runtime contract publishes them as a capability
+    declaration (what ships, per backend and model family) instead of faking callability.
+    `name` is the stable, readable public entry name; `symbol` is the private Mojo symbol it
+    maps to."""
+
+    name: str
+    symbol: str
+    module: str
+    backend: str
+    families: tuple[str, ...]
+    role: str
+    prefix: str | None = None
+
+
+@dataclass(frozen=True)
+class EngineKernelModule:
+    """A kernel module's published record: backend plus the evidence pointers its own
+    `@capability-module` block declares (golden vectors, benchmark)."""
+
+    name: str
+    path: str
+    backend: str
+    kernel_count: int
+    golden_vectors: str | None = None
+    benchmark: str | None = None
+
+
+@dataclass(frozen=True)
+class EngineKernelInventory:
+    modules: tuple[EngineKernelModule, ...]
+    kernels: tuple[EngineKernelSpec, ...]
+
+    @property
+    def backends(self) -> tuple[str, ...]:
+        return tuple(sorted({kernel.backend for kernel in self.kernels}))
+
+    def for_backend(self, backend: str) -> tuple[EngineKernelSpec, ...]:
+        return tuple(kernel for kernel in self.kernels if kernel.backend == backend)
+
+    def for_family(self, family: str) -> tuple[EngineKernelSpec, ...]:
+        return tuple(kernel for kernel in self.kernels if family in kernel.families)
+
+
 def _require_object(value: Any, context: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise RuntimeLibraryContractError("invalid_runtime_contract", f"{context} must be an object")
@@ -294,3 +342,162 @@ def find_runtime_function(
             {"module": module_name, "function": function_name},
         )
     return module, function
+
+
+def _optional_string(payload: dict[str, Any], key: str, context: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    return _require_string(value, f"{context}.{key}")
+
+
+def _parse_engine_kernel_module(value: Any, context: str) -> EngineKernelModule:
+    payload = _require_object(value, context)
+    kernel_count = payload.get("kernel_count")
+    if isinstance(kernel_count, bool) or not isinstance(kernel_count, int) or kernel_count < 0:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", f"{context}.kernel_count must be a non-negative integer"
+        )
+    return EngineKernelModule(
+        name=_require_string(payload.get("name"), f"{context}.name"),
+        path=_require_string(payload.get("path"), f"{context}.path"),
+        backend=_require_string(payload.get("backend"), f"{context}.backend"),
+        kernel_count=kernel_count,
+        golden_vectors=_optional_string(payload, "golden_vectors", context),
+        benchmark=_optional_string(payload, "benchmark", context),
+    )
+
+
+def _parse_engine_kernel(value: Any, context: str) -> EngineKernelSpec:
+    payload = _require_object(value, context)
+    families = tuple(
+        _require_string(item, f"{context}.families[{index}]")
+        for index, item in enumerate(
+            _require_list(payload.get("families"), f"{context}.families")
+        )
+    )
+    if not families:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", f"{context} must name at least one family"
+        )
+    prefix = payload.get("prefix")
+    return EngineKernelSpec(
+        name=_require_string(payload.get("name"), f"{context}.name"),
+        symbol=_require_string(payload.get("symbol"), f"{context}.symbol"),
+        module=_require_string(payload.get("module"), f"{context}.module"),
+        backend=_require_string(payload.get("backend"), f"{context}.backend"),
+        families=families,
+        role=_require_string(payload.get("role"), f"{context}.role"),
+        prefix=_require_string(prefix, f"{context}.prefix") if prefix is not None else None,
+    )
+
+
+def _load_contract_root() -> dict[str, Any]:
+    contract_path = resources.files("algenta").joinpath("runtime_library_contract.json")
+    try:
+        payload = json.loads(contract_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", "The bundled runtime contract is unreadable"
+        ) from exc
+    return _require_object(payload, "runtime contract")
+
+
+@lru_cache(maxsize=1)
+def engine_kernel_inventory() -> EngineKernelInventory:
+    """The published engine-kernel inventory shipped in the runtime contract.
+
+    The pointer-based CUDA/Metal kernels are not JSON-callable, so they are NOT in
+    `runtime_modules()`; this is the surface that declares them instead — what ships, per
+    backend and per model family. A contract predating the `engine_kernels` section loads
+    as an EMPTY inventory: absence means "not published", never an error (the same
+    convention `count_relations` uses).
+    """
+    root = _load_contract_root()
+    raw = root.get("engine_kernels")
+    if raw is None:
+        return EngineKernelInventory(modules=(), kernels=())
+    section = _require_object(raw, "engine_kernels")
+    if section.get("schema") != 1:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", "Unsupported engine_kernels schema version"
+        )
+    modules = tuple(
+        _parse_engine_kernel_module(item, f"engine_kernels.modules[{index}]")
+        for index, item in enumerate(
+            _require_list(section.get("modules"), "engine_kernels.modules")
+        )
+    )
+    kernels = tuple(
+        _parse_engine_kernel(item, f"engine_kernels.kernels[{index}]")
+        for index, item in enumerate(
+            _require_list(section.get("kernels"), "engine_kernels.kernels")
+        )
+    )
+    if len({module.name for module in modules}) != len(modules):
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", "engine_kernels contains duplicate modules"
+        )
+    if len({(kernel.module, kernel.name) for kernel in kernels}) != len(kernels):
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", "engine_kernels contains duplicate kernels"
+        )
+    if section.get("module_count") != len(modules):
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", "engine_kernels module count does not match payload"
+        )
+    if section.get("kernel_count") != len(kernels):
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", "engine_kernels kernel count does not match payload"
+        )
+    by_module = {module.name: module for module in modules}
+    kernels_per_module: dict[str, int] = {}
+    for kernel in kernels:
+        owner = by_module.get(kernel.module)
+        if owner is None:
+            raise RuntimeLibraryContractError(
+                "invalid_runtime_contract",
+                f"engine_kernels kernel {kernel.module}.{kernel.name} names a module "
+                "absent from engine_kernels.modules",
+            )
+        if owner.backend != kernel.backend:
+            raise RuntimeLibraryContractError(
+                "invalid_runtime_contract",
+                f"engine_kernels kernel {kernel.module}.{kernel.name} declares backend "
+                f"{kernel.backend!r} but its module declares {owner.backend!r}",
+            )
+        kernels_per_module[kernel.module] = kernels_per_module.get(kernel.module, 0) + 1
+    for module in modules:
+        if module.kernel_count != kernels_per_module.get(module.name, 0):
+            raise RuntimeLibraryContractError(
+                "invalid_runtime_contract",
+                f"engine_kernels module {module.name!r} declares kernel_count "
+                f"{module.kernel_count} but lists {kernels_per_module.get(module.name, 0)}",
+            )
+    return EngineKernelInventory(modules=modules, kernels=kernels)
+
+
+def engine_kernels(
+    *,
+    backend: str | None = None,
+    family: str | None = None,
+    role: str | None = None,
+) -> tuple[EngineKernelSpec, ...]:
+    """Query the shipped engine kernels. Filters compose (AND); no filter returns all.
+
+    Example: `engine_kernels(backend="metal")` lists every Metal kernel that ships;
+    `engine_kernels(backend="cuda", family="gemma3")` lists the Gemma 3 CUDA lane.
+    """
+    selected = engine_kernel_inventory().kernels
+    if backend is not None:
+        selected = tuple(kernel for kernel in selected if kernel.backend == backend)
+    if family is not None:
+        selected = tuple(kernel for kernel in selected if family in kernel.families)
+    if role is not None:
+        selected = tuple(kernel for kernel in selected if kernel.role == role)
+    return selected
+
+
+def engine_kernel_backends() -> tuple[str, ...]:
+    """The backends with at least one shipped kernel, sorted."""
+    return engine_kernel_inventory().backends

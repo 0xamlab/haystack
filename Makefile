@@ -248,6 +248,7 @@ docs-gen:
 	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py
 	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py
+	$(REPO_PYTHON) scripts/docs/gen_kernel_inventory.py
 
 ## Docs coverage gate: fail if any source-derived name (MCP tool, SDK method, CLI command,
 ## connector, backend, OpenAPI path, error meaning) is absent from gitbook/. Proves 100% coverage.
@@ -279,6 +280,7 @@ docs-check:
 	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py --check
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
+	$(REPO_PYTHON) scripts/docs/gen_kernel_inventory.py --check
 	$(REPO_PYTHON) scripts/docs/check_docs_coverage.py
 	$(REPO_PYTHON) scripts/docs/audit_gitbook_claims.py --source gitbook --skip-live --execute-safe-commands --strict --json-report build/docs-audit/gitbook-a-z.json
 
@@ -691,6 +693,7 @@ build-mojo-shards:
 ## and its tests pass but the local SDK cannot reach it (module_not_registered).
 inventory-refresh:
 	$(REPO_PYTHON) scripts/generate_algenta_runtime_contract.py
+	$(REPO_PYTHON) scripts/generate_engine_kernel_floor.py
 	$(REPO_PYTHON) scripts/generate_algenta_capability_manifest.py
 	$(REPO_PYTHON) scripts/generate_runtime_library_dispatch.py --report build/runtime_struct_construction.json
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py
@@ -699,6 +702,7 @@ inventory-refresh:
 ## Verify every kernel-inventory artifact is current (CI gate, no writes)
 inventory-check:
 	$(REPO_PYTHON) scripts/generate_algenta_runtime_contract.py --check
+	$(REPO_PYTHON) scripts/generate_engine_kernel_floor.py --check
 	$(REPO_PYTHON) scripts/generate_algenta_capability_manifest.py --check
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
 	$(MAKE) capability-check

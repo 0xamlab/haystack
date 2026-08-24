@@ -34,8 +34,12 @@ from apps.runtime.mojo_capability_manifest import (
 )
 
 __all__ = [
+    "ENGINE_KERNEL_DIRS",
     "CapabilityIssue",
     "CapabilityParse",
+    "EngineKernelDiscoveryError",
+    "EngineKernelModule",
+    "EngineKernelSpec",
     "MojoInventoryReport",
     "RuntimeCapabilityManifest",
     "RuntimeCapabilitySpec",
@@ -48,8 +52,10 @@ __all__ = [
     "build_capability_manifest",
     "build_inventory_report",
     "check_count_relations",
+    "discover_engine_kernels",
     "discover_runtime_library_modules",
     "discover_source_modules",
+    "engine_kernels_payload",
     "is_runtime_executable_function",
     "parse_runtime_capability_specs",
     "parse_runtime_struct_specs",
@@ -404,7 +410,11 @@ def _parse_param_specs(raw_params: str) -> tuple[RuntimeParamSpec, ...] | None:
     return tuple(parsed)
 
 
-def _parse_runtime_function_specs(path: Path) -> tuple[RuntimeFunctionSpec, ...]:
+def _parse_runtime_function_specs(
+    path: Path,
+    *,
+    include_private: bool = False,
+) -> tuple[RuntimeFunctionSpec, ...]:
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     specs: list[RuntimeFunctionSpec] = []
     index = 0
@@ -451,13 +461,23 @@ def _parse_runtime_function_specs(path: Path) -> tuple[RuntimeFunctionSpec, ...]
             index += 1
             continue
 
-        match = re.match(r"(?:fn|def)\s+([A-Za-z][A-Za-z0-9_]*)\s*\(", stripped)
+        # `include_private` is the engine-kernel discovery path ONLY (see
+        # `discover_engine_kernels`): the racing kernels are deliberately leading-underscore
+        # private so they stay out of the JSON-callable contract and the generated dispatch.
+        # The public surface they get instead is the kernel inventory, which maps the private
+        # symbols to readable names. The default (`False`) keeps the runtime-library parse
+        # bit-identical to before this parameter existed — including the name pattern, which
+        # historically never matched a leading underscore.
+        name_pattern = r"[_A-Za-z][A-Za-z0-9_]*" if include_private else r"[A-Za-z][A-Za-z0-9_]*"
+        match = re.match(r"(?:fn|def)\s+(" + name_pattern + r")\s*\(", stripped)
         if match is None:
             index += 1
             continue
 
         function_name = match.group(1)
-        if function_name.startswith("_") or function_name in _SKIP_PUBLIC_FUNCTIONS:
+        if function_name in _SKIP_PUBLIC_FUNCTIONS or (
+            function_name.startswith("_") and not include_private
+        ):
             index += 1
             continue
 
@@ -980,6 +1000,275 @@ def discover_source_modules(engine_root: Path = DEFAULT_ENGINE_DIR) -> tuple[Sou
             )
         )
     return tuple(modules)
+
+
+# ── engine kernel inventory ──────────────────────────────────────────────────
+#
+# A third, independent pass over the engine tree. The kernels the engine RACES (the
+# resident CUDA/Metal decode, prefill and batched chains) are deliberately leading-
+# underscore PRIVATE: a public name would put a GPU launch in the generated dispatch's
+# call graph and every build host would start requiring an accelerator toolchain (the
+# rule `residentk.kernels` and `accel/launch.mojo` state). They therefore never appear
+# in the JSON-callable `modules` contract — pointer-based kernels are not JSON-frameable,
+# and faking callability for them would be a lie about the surface. Their PUBLIC surface
+# is this inventory instead: a stable, readable capability declaration of every kernel
+# that ships, per backend and per model family, regenerated into the runtime contract and
+# ratcheted by `scripts/audit_gap_checks.py` so a kernel can never silently vanish from it.
+
+#: The kernel packages: every pointer-based GPU/native kernel the engine races lives in
+#: one of these directories. New kernel FILES inside a package flow into the inventory
+#: automatically (source-driven discovery, no per-kernel list anywhere); a brand-new kernel
+#: PACKAGE registers itself here in the same PR that lands its first kernel.
+ENGINE_KERNEL_DIRS: tuple[str, ...] = ("residentk", "metaldispatch")
+
+#: Name marker that makes a private function a KERNEL — a GPU/native launch entry — rather
+#: than a host-side helper (`_ceil_div`, `_narrow_into`, `_mb_alloc_buffer`, ...). Every
+#: racing kernel carries it; nothing that is not a kernel does.
+_ENGINE_KERNEL_NAME_MARKER = "_kernel"
+
+#: The tensor-core escape-hatch ABI wrappers (`residentk.tc_shim_bridge`) are FFI wrappers
+#: with no `_kernel` marker; they belong to the published kernel surface all the same and
+#: are recognised by prefix.
+_ENGINE_KERNEL_TC_PREFIX = "_tc_"
+
+#: Role classification: ordered, first-match-wins marker rules on the kernel symbol. The
+#: classes mirror the fusion roles the kernel files themselves document (prefill GEMM /
+#: flash attention / batched decode / lm_head / norm / rope / TC-shim), refined where the
+#: tree distinguishes stages (projection vs FFN projection vs FFN epilogue, prefill vs
+#: decode attention). A kernel's role is a function of its NAME alone, so it is stable
+#: across moves and renames-in-place and needs no hand maintenance.
+_ENGINE_KERNEL_ROLE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("tc_shim", ("_tc_",)),
+    # `argmax` (not only `argmax_reduce`): the final-vocabulary stage also spells itself
+    # `g3_logits_argmax_kernel` in the Gemma 3 batched lane.
+    ("lm_head", ("lmhead", "argmax")),
+    ("rope", ("rope",)),
+    ("flash_attention", ("attn_flash",)),
+    ("prefill_attention", ("pf_attn",)),
+    ("decode_attention", ("sdpa", "splitk", "kv_decode")),
+    ("kv_producer", ("kv_producer",)),
+    ("prefill_gemm", ("pf_gemm", "pf_gnrw", "smalln_")),
+    ("ffn_projection", ("norm_gemv2",)),
+    ("ffn_epilogue", ("swiglu", "geglu")),
+    ("projection", ("gemv", "qkv_proj", "qkv_bias")),
+    ("norm", ("norm",)),
+    ("embed", ("embed",)),
+    ("graph_capture", ("graph_advance",)),
+    ("dequant", ("dequant",)),
+)
+_ENGINE_KERNEL_ROLE_FALLBACK = "other"
+
+#: Discovery prefixes: the naming prefix a kernel carries when it declares WHICH arm of the
+#: tree it belongs to (`_pf_` = the batched-prefill family, `_g3_` = the Gemma 3 lane, ...).
+#: Recorded where present, absent otherwise.
+_ENGINE_KERNEL_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("_pf_", "pf"),
+    ("_g3_", "g3"),
+    ("_batched_", "batched"),
+    ("_packed3_", "packed3"),
+    ("_p3_", "p3"),
+    ("_smalln_", "smalln"),
+    ("_native_", "native"),
+    ("_tc_", "tc_shim"),
+)
+
+#: The capability-block backend vocabulary maps onto the inventory's three public backends.
+#: A kernel module that declares a CPU-side backend ships portable kernels; `metal` and
+#: `cuda` pass through unchanged (see BACKENDS in apps/runtime/mojo_capability_manifest.py).
+_ENGINE_KERNEL_PORTABLE_BACKENDS = frozenset({"mojo", "mojo_simd", "python_fallback"})
+
+
+class EngineKernelDiscoveryError(RuntimeError):
+    """A kernel module is unusable as published. Never downgraded to "no kernels here"."""
+
+
+@dataclass(frozen=True)
+class EngineKernelSpec:
+    """One published kernel. `symbol` is the private Mojo name; `name` is the stable,
+    readable public entry name (the symbol without its leading underscore) — never an
+    AIR-truncated or alias-mangled form."""
+
+    symbol: str
+    name: str
+    module: str
+    backend: str
+    families: tuple[str, ...]
+    role: str
+    prefix: str | None = None
+
+
+@dataclass(frozen=True)
+class EngineKernelModule:
+    import_path: str
+    path: Path
+    #: Repo-relative POSIX path, resolved AT DISCOVERY time against the scanned engine root,
+    #: so the payload serializer never has to re-derive it (and cannot pick the wrong root).
+    relative_path: str
+    backend: str
+    golden_vectors: str | None
+    benchmark: str | None
+    kernels: tuple[EngineKernelSpec, ...]
+
+
+def _is_engine_kernel_name(name: str) -> bool:
+    # Racing kernels are PRIVATE by construction (the leading underscore is what keeps them
+    # out of the dispatch call graph), so a public function that merely contains the marker —
+    # `residentk.probe.resident_gpu_kernels_compiled` — is not a kernel and never enters the
+    # inventory.
+    return name.startswith("_") and (
+        _ENGINE_KERNEL_NAME_MARKER in name or name.startswith(_ENGINE_KERNEL_TC_PREFIX)
+    )
+
+
+def _engine_kernel_role(symbol: str) -> str:
+    for role, markers in _ENGINE_KERNEL_ROLE_RULES:
+        if any(marker in symbol for marker in markers):
+            return role
+    return _ENGINE_KERNEL_ROLE_FALLBACK
+
+
+def _engine_kernel_prefix(symbol: str) -> str | None:
+    for marker, prefix in _ENGINE_KERNEL_PREFIXES:
+        if symbol.startswith(marker):
+            return prefix
+    return None
+
+
+def _engine_kernel_families(module_import_path: str, symbol: str) -> tuple[str, ...]:
+    """Lane attribution, mirroring the family split in
+    `packages/algenta/algenta/model_capabilities.py` (BACKEND_FACT_RANGES /
+    GEMMA3_FACT_RANGES): the Gemma 3 lane is a distinct kernel set, everything else is the
+    qwen3/llama lane. Detected from source markers, never from a hand-maintained list, so a
+    new gemma3 kernel lands in the right family the day it is written."""
+    if "gemma3" in module_import_path or "_g3_" in symbol or symbol.startswith("_g3"):
+        return ("gemma3",)
+    return ("qwen3_llama",)
+
+
+def _engine_kernel_backend(declared: str | None) -> str | None:
+    if declared in ("metal", "cuda"):
+        return declared
+    if declared in _ENGINE_KERNEL_PORTABLE_BACKENDS:
+        return "portable"
+    return None
+
+
+def discover_engine_kernels(
+    engine_root: Path = DEFAULT_ENGINE_DIR,
+) -> tuple[EngineKernelModule, ...]:
+    """Every racing kernel in the engine kernel packages, parsed from the Mojo sources.
+
+    Uses the SAME signature parser the runtime-library discovery and the dispatch generator
+    use (`_parse_runtime_function_specs`, with `include_private=True` so leading-underscore
+    kernels are captured), so kernel discovery inherits its multi-line-signature and
+    nested-closure discipline. A module that ships kernels but declares no usable backend in
+    its `@capability-module` block FAILS LOUDLY: an undeclared backend would publish a kernel
+    the inventory cannot attribute, which is exactly the silent-surface failure this pass
+    exists to remove.
+    """
+    modules: list[EngineKernelModule] = []
+    for package in ENGINE_KERNEL_DIRS:
+        package_root = engine_root / package
+        if not package_root.is_dir():
+            continue
+        for path in sorted(package_root.rglob("*.mojo")):
+            if path.name == "__init__.mojo":
+                continue
+            functions = _parse_runtime_function_specs(path, include_private=True)
+            kernel_symbols = sorted(
+                {spec.name for spec in functions if _is_engine_kernel_name(spec.name)}
+            )
+            if not kernel_symbols:
+                continue
+            import_path = _module_import_path(path, engine_root)
+            parse = parse_capability_blocks(
+                path.read_text(encoding="utf-8", errors="replace"), path=path.as_posix()
+            )
+            declared_backend = parse.module.backend if parse.module is not None else None
+            backend = _engine_kernel_backend(declared_backend)
+            if backend is None:
+                raise EngineKernelDiscoveryError(
+                    f"{import_path} ships {len(kernel_symbols)} kernel(s) but its "
+                    "@capability-module block declares no usable backend. Declare "
+                    "`backend: metal` / `backend: cuda` (or a portable backend) before "
+                    "publishing kernels — the public inventory attributes every kernel."
+                )
+            kernels = tuple(
+                EngineKernelSpec(
+                    symbol=symbol,
+                    name=symbol[1:] if symbol.startswith("_") else symbol,
+                    module=import_path,
+                    backend=backend,
+                    families=_engine_kernel_families(import_path, symbol),
+                    role=_engine_kernel_role(symbol),
+                    prefix=_engine_kernel_prefix(symbol),
+                )
+                for symbol in kernel_symbols
+            )
+            modules.append(
+                EngineKernelModule(
+                    import_path=import_path,
+                    path=path,
+                    relative_path=path.relative_to(engine_root).as_posix(),
+                    backend=backend,
+                    golden_vectors=(
+                        parse.module.golden_vectors if parse.module is not None else None
+                    ),
+                    benchmark=parse.module.benchmark if parse.module is not None else None,
+                    kernels=kernels,
+                )
+            )
+    modules.sort(key=lambda module: module.import_path)
+    return tuple(modules)
+
+
+def engine_kernels_payload(
+    modules: tuple[EngineKernelModule, ...],
+) -> dict[str, object]:
+    """The JSON shape the runtime contract publishes as its `engine_kernels` section.
+
+    Deterministic: modules by import path, kernels by (module, name). `prefix` and the
+    evidence pointers are omitted when absent rather than emitted as nulls, the same
+    convention the `count_relations` field uses.
+    """
+    kernel_entries: list[dict[str, object]] = []
+    module_entries: list[dict[str, object]] = []
+    backend_counts: dict[str, int] = {}
+    for module in modules:
+        backend_counts[module.backend] = backend_counts.get(module.backend, 0) + len(
+            module.kernels
+        )
+        module_entry: dict[str, object] = {
+            "name": module.import_path,
+            "path": module.relative_path,
+            "backend": module.backend,
+            "kernel_count": len(module.kernels),
+        }
+        if module.golden_vectors is not None:
+            module_entry["golden_vectors"] = module.golden_vectors
+        if module.benchmark is not None:
+            module_entry["benchmark"] = module.benchmark
+        module_entries.append(module_entry)
+        for kernel in module.kernels:
+            entry: dict[str, object] = {
+                "name": kernel.name,
+                "symbol": kernel.symbol,
+                "module": kernel.module,
+                "backend": kernel.backend,
+                "families": list(kernel.families),
+                "role": kernel.role,
+            }
+            if kernel.prefix is not None:
+                entry["prefix"] = kernel.prefix
+            kernel_entries.append(entry)
+    return {
+        "schema": 1,
+        "module_count": len(module_entries),
+        "kernel_count": len(kernel_entries),
+        "backend_counts": {backend: backend_counts[backend] for backend in sorted(backend_counts)},
+        "modules": module_entries,
+        "kernels": kernel_entries,
+    }
 
 
 def parse_test_all_import_modules(

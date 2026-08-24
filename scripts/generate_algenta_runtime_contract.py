@@ -18,7 +18,9 @@ if str(ROOT) not in sys.path:
 from apps.runtime.mojo_count_relations import declared_count_spec  # noqa: E402
 from apps.runtime.mojo_inventory import (  # noqa: E402
     RuntimeStructSpec,
+    discover_engine_kernels,
     discover_runtime_library_modules,
+    engine_kernels_payload,
     parse_runtime_struct_specs,
 )
 
@@ -122,11 +124,20 @@ def build_contract() -> dict[str, Any]:
         )
         function_count += len(functions)
 
+    # The public ENGINE-KERNEL inventory: the pointer-based CUDA/Metal kernels the engine
+    # races, parsed straight from the Mojo sources. A SEPARATE top-level section on purpose:
+    # `modules` is the JSON-callable surface and these kernels are not JSON-frameable (their
+    # arguments are device pointers), so listing them there would fake callability. Their
+    # public surface is capability declaration — what ships, per backend and model family —
+    # ratcheted by scripts/audit_gap_checks.py so a kernel can never silently vanish.
+    engine_kernels = engine_kernels_payload(discover_engine_kernels())
+
     return {
         "schema_version": 1,
         "module_count": len(payload_modules),
         "function_count": function_count,
         "modules": payload_modules,
+        "engine_kernels": engine_kernels,
     }
 
 

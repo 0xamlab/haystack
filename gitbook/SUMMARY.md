@@ -19,6 +19,7 @@
 * [Runtime library catalog](engine/runtime-library-catalog.md)
 * [Metal LLM decode](engine/qwen3-metal-decode.md)
 * [Model support matrix](engine/model-support-matrix.md)
+* [Kernel inventory](engine/kernel-inventory.md)
 * [GPU support](engine/gpu-support.md)
 * [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)

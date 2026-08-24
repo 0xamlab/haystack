@@ -653,6 +653,15 @@ _LAZY_EXPORTS = {
     "Tokenizer": ("algenta.tokenizer", "Tokenizer"),
     "TokenizerFormatError": ("algenta.tokenizer", "TokenizerFormatError"),
     "load_tokenizer": ("algenta.tokenizer", "load_tokenizer"),
+    # ── Public engine-kernel inventory: the CUDA/Metal kernels the engine races, declared as
+    # capability (they are pointer-based and not JSON-callable, so they are not in
+    # `runtime_modules()`). Lazy like the rest: no contract read until actually queried.
+    "EngineKernelInventory": ("algenta.runtime_library_contract", "EngineKernelInventory"),
+    "EngineKernelModule": ("algenta.runtime_library_contract", "EngineKernelModule"),
+    "EngineKernelSpec": ("algenta.runtime_library_contract", "EngineKernelSpec"),
+    "engine_kernel_backends": ("algenta.runtime_library_contract", "engine_kernel_backends"),
+    "engine_kernel_inventory": ("algenta.runtime_library_contract", "engine_kernel_inventory"),
+    "engine_kernels": ("algenta.runtime_library_contract", "engine_kernels"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(

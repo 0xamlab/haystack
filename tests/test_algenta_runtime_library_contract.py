@@ -16,6 +16,9 @@ if str(ALGENTA_PACKAGE) not in sys.path:
 from algenta.native import worker  # noqa: E402
 from algenta.runtime_library_contract import (  # noqa: E402
     RuntimeLibraryContractError,
+    engine_kernel_backends,
+    engine_kernel_inventory,
+    engine_kernels,
     find_runtime_function,
     runtime_modules,
 )
@@ -34,6 +37,10 @@ CONTRACT_PATH = ALGENTA_PACKAGE / "algenta" / "runtime_library_contract.json"
 # `make inventory-refresh`; never lower them.
 MODULE_COUNT_FLOOR = 495
 FUNCTION_COUNT_FLOOR = 4873
+# The PUBLIC engine-kernel inventory (pointer-based CUDA/Metal kernels, declared not
+# callable). Same ratchet discipline: raise deliberately, never lower.
+ENGINE_KERNEL_COUNT_FLOOR = 137
+ENGINE_KERNEL_MODULE_FLOOR = 19
 
 
 def _contract_payload() -> dict:
@@ -91,6 +98,7 @@ def test_generated_contract_is_sanitized() -> None:
         "function_count",
         "modules",
         "runtime_bundle",
+        "engine_kernels",
     }
     assert {"schema_version", "module_count", "function_count", "modules"} <= set(payload)
     if "runtime_bundle" in payload:
@@ -117,8 +125,73 @@ def test_generated_contract_is_sanitized() -> None:
             assert set(struct) == {"name", "fields"}
             for field in struct["fields"]:
                 assert set(field) == {"name", "type"}
+    # The engine-kernel section is capability declaration, not callability: NO params, NO
+    # return types, nothing JSON-frameable faked into it. `prefix` is optional.
+    section = payload["engine_kernels"]
+    assert set(section) == {
+        "schema",
+        "module_count",
+        "kernel_count",
+        "backend_counts",
+        "modules",
+        "kernels",
+    }
+    assert section["schema"] == 1
+    assert section["module_count"] == len(section["modules"])
+    assert section["kernel_count"] == len(section["kernels"])
+    assert section["kernel_count"] == sum(section["backend_counts"].values())
+    module_backends = {module["name"]: module["backend"] for module in section["modules"]}
+    for module in section["modules"]:
+        assert set(module) <= {"name", "path", "backend", "kernel_count", "golden_vectors", "benchmark"}
+        assert {"name", "path", "backend", "kernel_count"} <= set(module)
+    for kernel in section["kernels"]:
+        assert set(kernel) <= {"name", "symbol", "module", "backend", "families", "role", "prefix"}
+        assert {"name", "symbol", "module", "backend", "families", "role"} <= set(kernel)
+        assert kernel["backend"] == module_backends[kernel["module"]]
+        assert not kernel["name"].startswith("_")
+        assert kernel["symbol"].startswith("_")
+        assert kernel["families"] and all(isinstance(family, str) for family in kernel["families"])
     for forbidden in ("/users/", "decision-engine", "codna"):
         assert forbidden not in encoded
+
+
+def test_engine_kernel_inventory_floors_and_consistency() -> None:
+    payload = _contract_payload()["engine_kernels"]
+    assert payload["kernel_count"] >= ENGINE_KERNEL_COUNT_FLOOR
+    assert payload["module_count"] >= ENGINE_KERNEL_MODULE_FLOOR
+    assert set(payload["backend_counts"]) <= {"cuda", "metal", "portable"}
+    # Both racing backends are published; a backend silently emptying out is exactly the
+    # visibility loss the floor exists to stop.
+    assert payload["backend_counts"].get("cuda", 0) > 0
+    assert payload["backend_counts"].get("metal", 0) > 0
+    families = {family for kernel in payload["kernels"] for family in kernel["families"]}
+    assert families <= {"qwen3_llama", "gemma3"}
+    assert "gemma3" in families and "qwen3_llama" in families
+
+
+def test_engine_kernel_sdk_surface() -> None:
+    payload = _contract_payload()["engine_kernels"]
+    inventory = engine_kernel_inventory()
+    assert len(inventory.kernels) == payload["kernel_count"]
+    assert len(inventory.modules) == payload["module_count"]
+    assert engine_kernel_backends() == tuple(sorted(payload["backend_counts"]))
+
+    # SDK users query shipped kernels per backend / family / role; filters compose.
+    for backend, count in payload["backend_counts"].items():
+        assert len(engine_kernels(backend=backend)) == count
+    gemma3 = engine_kernels(backend="cuda", family="gemma3")
+    assert gemma3 and all("gemma3" in kernel.families for kernel in gemma3)
+    assert all(kernel.backend == "cuda" for kernel in gemma3)
+    assert engine_kernels(backend="metal", family="gemma3") == ()
+    tc_shim = engine_kernels(role="tc_shim")
+    assert tc_shim and all(kernel.module == "residentk.tc_shim_bridge" for kernel in tc_shim)
+    assert len(engine_kernels()) == len(inventory.kernels)
+
+    # Public entry names are stable and readable — the private symbol maps 1:1.
+    sample = inventory.kernels[0]
+    assert sample.symbol == f"_{sample.name}"
+    assert inventory.for_backend(sample.backend)
+    assert inventory.for_family(sample.families[0])
 
 
 def test_contract_rejects_unknown_module_and_function() -> None:
