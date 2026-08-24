@@ -15970,3 +15970,117 @@ attention (the named pp1024-F16 killer); (2) batched 7B serve (driver gaps scope
 has_qkv_bias in _CudaResidentQwen3Batched, flag forwarding through _ServeGraph/
 _CudaResidentQwen3BatchedP3Graph, q_norm/k_norm-conditional load, ALGENTA_STAGE_18944
 build, admission-prefill TC via p3->f16 twins); (3) f32+p3 full battery on the ship binary.
+
+---
+
+## 4-WAY ENGINE RACE — Qwen2.5-7B-Instruct on A100: algenta CUDA vs llama.cpp vs vLLM vs SGLang (2026-08-24, algenta-ent-a100, branch race/7b-4way-realrace)
+
+CONTEXT: owner directive — every benchmark is us vs llama.cpp vs vLLM vs other reputable
+engines; publish wins only, the ledger gets everything. This round extends the published
+Q8_0 prefill race (gitbook/benchmarks/nvidia-llm-throughput.md) to vLLM and SGLang, adds
+server TTFT cells, and adds the concurrent-requests aggregate axis (c=1/8/32, 256 out,
+greedy). Harness: `benchmarks/llm_smoke/nvidia_race/four_way_race.py` (stdlib only; kills
+every server between engines; solo-GPU wait before each run; 3 excluded warmups + 7
+measured runs per server cell, median + IQR; algenta cells = 20 runs/cell with the 16-token
+oracle gate inside every run).
+
+**Machine:** algenta-ent-a100 (GCP a2-highgpu-1g), 1x A100-SXM4-40GB, driver 595.71.05,
+Ubuntu 22.04, SM clocks pinned 1410 MHz (`nvidia-smi -lgc 1410,1410`), solo GPU for every
+timed window.
+
+**Engines (all serving the SAME unmodified HF checkpoint unless noted):**
+* algenta — p3 packed-int8 (1.58 B/weight) + cuBLAS tensor-core prefill on f16 twins,
+  one-pass flash2 attention, NOSEAM; resident session fixture driver (no HTTP layer).
+  Binary `~/algenta_nv/qwen25_7b_p3_graph_cuda_tc_b1_ns`, ckpt /tmp/w7b/ckpt.
+* llama.cpp pin 000547513f — Q8_0 GGUF (8.09 GB), llama-server: prefill instance
+  (parallel 4, ctx 4608 — one slot >= 1025 ctx for the 1024 cell) and sweep instance
+  (parallel 32, ctx 17920); `cache_prompt=false` on every request (no cross-request prompt
+  reuse). llama-bench run as the frozen-protocol continuity control.
+* vLLM 0.27.1 — bfloat16 (checkpoint torch_dtype, `--dtype auto`), `--max-model-len 2048`,
+  `--gpu-memory-utilization 0.9`, `--no-enable-prefix-caching`, VLLM_USE_FLASHINFER_SAMPLER=0.
+  NOTE: vLLM >= 0.27 dropped `prompt_token_ids` from /v1/completions — the race prompt was
+  fed as text and its tokenizer verified id-for-id identical to the race ids (256 and 1024)
+  via /tokenize before measurement.
+* SGLang 0.5.18 — bfloat16 (checkpoint dtype), `--mem-fraction-static 0.9`,
+  `--context-length 2048`, `--disable-radix-cache`; fed exact `input_ids` (token parity
+  with the race ids; the server's JIT needed the venv `ninja` on PATH — fixed in harness).
+
+**Prompt:** the prior race's 256-token chat-template-rendered race prompt ("Explain what a
+KV cache is..."); pp1024 = the same token ids repeated x4 (verified). Greedy everywhere
+(temperature 0); the algenta oracle is the fp32 CPU-transformers reference with
+repetition_penalty pinned at 1.0 (/tmp/w7b/gate/ref_tokens.json).
+
+**Correctness guard (all four engines, race prompt, greedy):** oracle first token = 14374
+("###").
+
+| Engine | First token | 16-token trace vs fp32 oracle |
+| --- | --- | --- |
+| algenta p3 | PASS (G0 gate, 16/16 inside every run) | 16/16 PASS |
+| llama.cpp Q8_0 | PASS | 16/16 PASS (id-for-id) |
+| vLLM bf16 | PASS | 16/16 PASS (id-for-id) |
+| SGLang bf16 | PASS | diverges at token 10 — documented near-tie: bf16 emits "A KV" where fp32/Q8_0/f16-twins emit "A **KV"; first 9 tokens id-for-id |
+
+**Prefill cells (median of measured runs, rel-IQR):**
+
+| Engine | pp256 TTFT ms | pp256 tok/s | pp1024 TTFT ms | pp1024 tok/s |
+| --- | --- | --- | --- | --- |
+| algenta (resident, no HTTP) | 30.2 | 8,487 (IQR 0.13%) | 147.1 | 6,961 (IQR 0.11%) |
+| llama.cpp Q8_0 (server TTFT) | 57.7 | 4,437 (IQR 0.23%) | 206.9 | 4,949 (IQR 0.04%) |
+| vLLM bf16 | 26.6 | 9,632 (IQR 0.91%) | 74.6 | 13,727 (IQR 0.51%) |
+| SGLang bf16 | 34.3 | 7,465 (IQR 0.95%) | 78.4 | 13,063 (IQR 0.42%) |
+
+llama-bench Q8_0 continuity controls (-r 5, same day): pp256 median 4,690.0 (samples
+3,916/4,682/4,690/4,693/4,690 — same bursty slow-first-run regime as the prior race),
+pp1024 median 5,086.8 (samples 5,084.8-5,087.4; prior race published 5,089.1).
+
+**Concurrent-requests aggregate sweep (c requests x 256-token prompt x 256 generated,
+greedy; agg = total generated tokens / wall, median of 7 runs):**
+
+| c | algenta | llama.cpp Q8_0 | vLLM bf16 | SGLang bf16 |
+| --- | --- | --- | --- | --- |
+| 1 | 82.7 tok/s (20-run median, IQR 0.004%) | 117 (IQR 0.11%) | 82.5 (IQR 0.03%) | 82.9 (IQR 0.06%) |
+| 8 | NOT RUN | 451 (IQR 2.21%) | 624 (IQR 0.05%) | 630 (IQR 0.11%) |
+| 32 | NOT RUN | 756 (IQR 1.32%) | 2,070 (IQR 0.16%) | 2,109 (IQR 0.09%) |
+
+c=1 decode is a statistical TIE across algenta/vLLM/SGLang (82.5-82.9 tok/s, spread 0.5%,
+all IQRs <= 0.06% — and the server engines' numbers include HTTP round-trip overhead that
+the resident session does not pay); llama.cpp Q8_0 is the outlier at 117 on its smaller
+weight stream. Ties are not publishable wins, so the cell stays ledger-only.
+
+Algenta c=1 = the resident-session gen256 cell (256-token prompt, 256 generated — exactly
+the c=1 sweep shape). c=8/c=32 are NOT RUN, not withheld: the 7B CUDA lane's batched serve
+path is not wired (Phase B scoped in the TC-autopsy round: has_qkv_bias in
+_CudaResidentQwen3Batched, flag forwarding through _ServeGraph, admission-prefill TC via
+p3->f16 twins). Running the sweep on the single-stream driver would queue requests
+serially and misrepresent the engine, so the cells stay empty until Phase B lands.
+
+**VERDICTS:**
+* WINS vs llama.cpp Q8_0 (publishable, published): pp256 1.91x on server TTFT / 1.81x vs
+  the llama-bench fast regime (8,487 vs 4,437 / 4,690); pp1024 1.41x / 1.37x
+  (6,961 vs 4,949 / 5,086.8). These reproduce the published Q8_0 wins within noise on a
+  second same-day protocol (HTTP TTFT instead of fixture-only).
+* WIN vs SGLang bf16: pp256 1.14x (8,487 vs 7,465 = TTFT 30.2 vs 34.3 ms).
+* LOSSES (ledger-only, per wins-only policy): vs vLLM bf16 pp256 0.88x and pp1024 0.51x;
+  vs SGLang bf16 pp1024 0.53x; vs llama.cpp Q8_0 c=1 decode 0.71x (82.7 vs 117 — Q8_0's
+  8.09 GB weight stream beats p3's 12.08 GB by construction on single-stream decode);
+  c=8/c=32 vs all three (not runnable yet — see above). The prefill loss pattern is the
+  KNOWN F16-class gap autopsied in the TC round: our flash2 f32 attention is ~55% of the
+  pp1024 wall while vLLM/SGLang run tensor-core f16 flash attention; the named lever
+  (TC attention through the shim) is unchanged and is now the lever that flips BOTH vLLM
+  and SGLang, not just llama F16.
+* REGIME DRIFT: algenta run A (before the opponent engines: 8,487.1 / 6,961.2 / 83.41 /
+  82.70) vs run B (after all of them: 8,497.7 / 6,966.4 / 83.35 / 82.65) = +0.13% / +0.08%
+  / -0.06% / -0.06% on pp256 / pp1024 / gen64 / gen256 (a third independent 20-run
+  measurement between the two, run A', landed at 8,509.5 / 6,964.3) — the race window did
+  not move under us; every algenta cell above is inside this <= 0.14% band.
+
+**Raw artifacts (VM algenta-ent-a100):** /tmp/w7b/race/results/{meta.json,
+algenta_race_a(_prefix).json/.txt/.log, llama_cells.json, llama_bench_controls.json,
+vllm_cells.json, sglang_cells.json, summary*.json, *_server*.log} plus the run-1 partial
+snapshot /tmp/w7b/race/results_run1_partial/. Harness + prompts + oracle in
+/tmp/w7b/race/{four_way_race.py, fixture_prompt.txt, oracle_texts.json}.
+
+STATUS: race complete; wins-only publication = gitbook page keeps the Q8_0 wins and adds
+the SGLang pp256 win + the 4-way methodology (losses stay here). Phase B (batched 7B serve)
+is the prerequisite for filling the c=8/c=32 algenta cells; TC attention is the lever for
+the vLLM/SGLang prefill losses.

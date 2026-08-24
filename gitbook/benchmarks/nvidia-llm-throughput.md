@@ -1,6 +1,6 @@
 ---
 icon: gauge-high
-description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — prefill and decode tok/s for Qwen3-0.6B and Qwen2.5-7B against llama.cpp, with configuration and methodology.
+description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — Qwen3-0.6B and Qwen2.5-7B prefill and decode against llama.cpp and SGLang, with methodology.
 ---
 
 # NVIDIA LLM throughput
@@ -8,7 +8,8 @@ description: Measured LLM inference throughput of the CUDA-native session on NVI
 This page reports measured throughput of the CUDA-native resident session on
 NVIDIA A100-SXM4-40GB and L4, against llama.cpp built with GGML\_CUDA on the same
 machines: Qwen3-0.6B-Base (packed-int8 weights, f32 prefill) vs the F16 GGUF, and
-Qwen2.5-7B-Instruct (packed-int8 weights, tensor-core prefill) vs the Q8\_0 GGUF.
+Qwen2.5-7B-Instruct (packed-int8 weights, tensor-core prefill) vs the Q8\_0 GGUF and
+vs SGLang serving the same Hugging Face checkpoint.
 
 ## Results
 
@@ -34,6 +35,23 @@ opponent (its first of five runs pays a one-time kernel-selection cost).
 | llama.cpp Q8\_0 | 4,680 | 5,089.1 |
 
 Prefill speedup: 1.82x at 256 tokens, 1.37x at 1024 tokens.
+
+### A100-SXM4-40GB — Qwen2.5-7B-Instruct, 256-token server TTFT
+
+The same 256-token race prompt served over HTTP, measured as time-to-first-token
+(streaming, greedy, one generated token). No cross-request prompt reuse on any engine;
+each server is started fresh and the GPU is drained between engines. Median of 20 runs
+(Algenta) / 7 runs (opponents), warmup runs excluded; rel-IQR <= 1% on every cell.
+
+| Engine | TTFT (256 tokens) | Prefill tok/s |
+| --- | --- | --- |
+| Algenta (packed3, cuBLAS tensor-core prefill, one-pass flash attention) | 30.2 ms | 8,487 |
+| SGLang 0.5.18 (bfloat16) | 34.3 ms | 7,465 |
+| llama.cpp Q8\_0 | 57.7 ms | 4,437 |
+
+TTFT speedup at 256 tokens: 1.14x vs SGLang, 1.91x vs llama.cpp Q8\_0. The Algenta cell
+is the resident-session measurement (no HTTP layer); its prefill rate reproduces the
+pinned-protocol table above within 0.1%.
 
 ### L4
 
@@ -62,13 +80,19 @@ Decode on g2-standard-8 (sm\_89), same protocol:
 ## Methodology
 
 * Checkpoints: `Qwen/Qwen3-0.6B-Base` and `Qwen/Qwen2.5-7B-Instruct` (Hugging Face,
-  unmodified; the 7B conversion preserves the q/k/v attention biases). Workload: fixed
+  unmodified; the 7B conversion preserves the q/k/v attention biases; the server engines
+  serve the same 7B checkpoint files). Workload: fixed
   256-token prompt, greedy (temperature 0); the 7B page adds a 1024-token cell (the race
-  prompt repeated x4 — prefill throughput is content-agnostic). The 7B oracle is a fp32
-  CPU transformers reference with repetition\_penalty pinned at 1.0.
+  prompt repeated x4 — prefill throughput is content-agnostic) and a server TTFT cell
+  (streaming time-to-first-token on the 256-token prompt). The 7B oracle is a fp32 CPU
+  transformers reference with repetition\_penalty pinned at 1.0.
 * Opponent: llama.cpp pinned at 000547513f, GGML\_CUDA, same VM; F16 GGUF for 0.6B, Q8\_0
   GGUF for 7B; fixture via `llama-completion -no-cnv`, prefill cells via `llama-bench`.
-* Statistics: 20 runs per cell, median, rel-IQR <= 5%; a 16/16 greedy-token oracle gates every
+  7B server opponents: SGLang 0.5.18, bfloat16 (the checkpoint dtype), radix cache
+  disabled, exact race-prompt token ids. Servers run one at a time, are killed between
+  engines, and every timed window is solo-GPU.
+* Statistics: median per cell (20 runs for the Algenta fixture cells, 7 runs for the
+  server cells, warmup excluded), rel-IQR <= 5%; a 16/16 greedy-token oracle gates every
   build before measurement; an optimization variant is recorded only after its bench number
   moves over baseline.
 * Hardware: GCP a2-highgpu-1g (A100-SXM4-40GB) and g2-standard-8 (L4), driver 595.71.05,
