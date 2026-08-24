@@ -413,51 +413,46 @@ def _validate_architecture(
 ) -> None:
     """Validate the structural invariants the kernels rely on, from the checkpoint's own shape
     declaration alone (`config_source` names where that declaration came from -- config.json for a
-    HuggingFace snapshot, GGUF metadata for a .gguf file -- so refusals point at the right file)."""
+    HuggingFace snapshot, GGUF metadata for a .gguf file -- so refusals point at the right file).
+
+    Model-agnostic conformance (2026-08-23): the gate is a PURE lookup into the declared
+    capability table (`algenta.model_capabilities`) -- every fact the kernels rely on is judged by
+    `refusals_for_facts` against the SUPPORTED FACT RANGES, never against a family name. Facts the
+    config declares but no kernel implements (a sliding window, an attention-logit softcap, a
+    non-SiLU activation, a per-layer layer-type pattern, a second rope base, a partial rotary
+    factor, a non-1/sqrt(head_dim) attention scale) are REFUSED here -- never silently ignored,
+    because ignoring them runs fluent-but-wrong math. The weight-level facts (qk_norm/bias tensor
+    presence, unsupported-tensor sweep) are judged by `prepare_model_checkpoint` AFTER the tensors
+    are probed -- tensors are the truth, configs can lie or omit."""
     missing = [key for key in _STRUCTURAL_FIELDS if key not in config]
     if missing:
         raise UnsupportedArchitectureError(
             f"unsupported model architecture: {checkpoint_dir} {config_source} is missing required "
-            f"fields: {', '.join(missing)}. This module runs models with a Qwen3-style decoder "
-            "config (hidden_size, num_hidden_layers, num_attention_heads, num_key_value_heads, "
-            "head_dim, intermediate_size, vocab_size, rope_theta, rms_norm_eps)."
+            f"fields: {', '.join(missing)}. This module runs decoder configs whose facts meet the "
+            "declared capability table (hidden_size, num_hidden_layers, num_attention_heads, "
+            "num_key_value_heads, head_dim, intermediate_size, vocab_size, rope_theta, "
+            "rms_norm_eps)."
         )
-    problems = []
-    h_q = config["num_attention_heads"]
-    h_kv = config["num_key_value_heads"]
-    d_model = config["hidden_size"]
-    d_ff = config["intermediate_size"]
-    d_head = config["head_dim"]
-    if h_kv < 1 or h_q % h_kv != 0:
-        problems.append(
-            f"GQA requires num_attention_heads ({h_q}) % num_key_value_heads ({h_kv}) == 0"
+    # The architecture gate is BACKEND-AGNOSTIC: conversion serves every backend
+    # (the gemma3 CUDA lane converts through this same door as the Metal path),
+    # so it judges the structural + family fact ranges only (enforce_backend=
+    # False) -- backend membership, bias availability and staging tiers are facts
+    # of the backend that RUNS the model, judged by the conform CLI and the
+    # probe-stage gates below, never by conversion. The probe facts stay None
+    # here (judged after the tensors are read), so the bias gate cannot fire on
+    # the config's own `attention_bias` key -- tensors are the truth.
+    from algenta.model_capabilities import extract_facts_from_config, refusals_for_facts
+
+    facts = extract_facts_from_config(config)
+    refusals = refusals_for_facts(facts, backend="metal", probed=True, enforce_backend=False)
+    if refusals:
+        problems = "; ".join(
+            f"{refusal.fact}={refusal.value!r} is not supported (supported: {refusal.supported})"
+            for refusal in refusals
         )
-    if d_model % 32 != 0:
-        problems.append(f"hidden_size ({d_model}) must be divisible by 32 (GEMM tile alignment)")
-    if d_ff % 32 != 0:
-        problems.append(f"intermediate_size ({d_ff}) must be divisible by 32 (GEMM tile alignment)")
-    if (h_q * d_head) % 32 != 0:
-        problems.append(
-            f"num_attention_heads*head_dim ({h_q * d_head}) must be divisible by 32 "
-            "(GEMM tile alignment)"
-        )
-    # Llama-family support (2026-08-13): the embedding/lm_head convention is now a BRANCH, not a
-    # refusal -- `tie_word_embeddings` true (Qwen3) reuses the embed table as lm_head; false (llama-
-    # family) converts the checkpoint's own `lm_head.weight` and the engine binds it separately.
-    # Absent means tied (the transformers default). The engine half of this gate (a dedicated
-    # lm_head buffer pair in the session) landed in the same change; the manifest carries
-    # `tie_word_embeddings` so the kernel side knows which branch it is running.
-    #
-    # Attention bias (7B-lane, 2026-08-23): q/k/v projection biases are now CONVERTED and applied
-    # (Qwen2/Qwen2.5 convention), so they are no longer refused here. The branch is detected from
-    # the SAFETENSORS tensors (`_detect_attention_bias`), never from this config key -- Qwen2.5's
-    # config.json omits `attention_bias` entirely while the model defaults it TRUE, which is
-    # exactly how the pre-bias-support converter silently dropped the biases.
-    if problems:
         raise UnsupportedArchitectureError(
-            f"unsupported model architecture: {checkpoint_dir} is not a supported model. "
-            f"Problems: {'; '.join(problems)}. This module runs Qwen3/llama-family decoders whose "
-            "dims meet the kernel alignment gates."
+            f"unsupported model architecture: {checkpoint_dir} ({config_source}) is not a "
+            f"supported model. Problems: {problems}."
         )
 
 
@@ -779,6 +774,66 @@ def _gemma3_probe_prefix(checkpoint_dir: Path, index: dict[str, Any] | None) -> 
     )
 
 
+# Tensors the engine does NOT consume and would therefore SILENTLY DROP if the
+# conversion proceeded: biases beyond the supported q/k/v set (an o_proj or an
+# mlp bias changes the math), probed at layer 0 in the same tensors-are-the-
+# truth convention as the qk-norm/bias probes. A checkpoint carrying any of
+# these is refused with the exact tensor name -- never converted with the
+# weights dropped (the exact silent-wrong-math hazard the fact gates exist to
+# prevent). The q/k/v projection biases are NOT here: they are the supported
+# `attention_bias` fact when the backend applies them. (Gemma 3 snapshots use
+# prefixed tensor names and their own validated required set; this sweep is
+# the qwen3/llama naming convention.)
+_UNSUPPORTED_PROBE_TENSORS = (
+    "model.layers.0.self_attn.o_proj.bias",
+    "model.layers.0.mlp.gate_proj.bias",
+    "model.layers.0.mlp.up_proj.bias",
+    "model.layers.0.mlp.down_proj.bias",
+    "model.layers.0.mlp.bias",
+)
+
+
+def _detect_unsupported_tensors(checkpoint_dir: Path, index: dict[str, Any] | None) -> list[str]:
+    """The unsupported probe tensors the checkpoint actually carries (empty for
+    every supported-family checkpoint). Same probe mechanics as
+    `_detect_has_qk_norm`: single-shard header or multi-shard weight map."""
+    if index is None:
+        single = checkpoint_dir / "model.safetensors"
+        if not single.is_file():
+            return []
+        header, _ = _read_safetensors_header(single)
+        present = {name for name in _UNSUPPORTED_PROBE_TENSORS if name in header}
+    else:
+        weight_map = index.get("weight_map") or {}
+        present = set()
+        for name in _UNSUPPORTED_PROBE_TENSORS:
+            shard_name = weight_map.get(name)
+            if shard_name is None:
+                continue
+            shard_path = checkpoint_dir / shard_name
+            if not shard_path.is_file():
+                continue
+            header, _ = _read_safetensors_header(shard_path)
+            if name in header:
+                present.add(name)
+    return sorted(present)
+
+
+def _load_checkpoint_index(checkpoint_dir: Path) -> Any:
+    """The shard-index fact for a checkpoint: `False` when NO safetensors are
+    present at all (a config-only conform run -- nothing to probe), `None` for
+    a single-shard `model.safetensors`, and the parsed
+    `model.safetensors.index.json` dict for a multi-shard snapshot. `None` vs
+    dict is exactly the argument `_detect_has_qk_norm`/`_detect_attention_bias`
+    take."""
+    index_path = checkpoint_dir / "model.safetensors.index.json"
+    if index_path.is_file():
+        return json.loads(index_path.read_text(encoding="utf-8"))
+    if (checkpoint_dir / "model.safetensors").is_file():
+        return None
+    return False
+
+
 def _validate_prompt_token_ids(prompt_token_ids: Any) -> None:
     """The prompt-id contract every converter shares: a non-empty list of non-negative ints."""
     if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
@@ -1037,10 +1092,19 @@ _GGUF_LAYER_TENSOR_NAMES = {
     "ffn_down.weight": "mlp.down_proj.weight",
 }
 
-# GGUF `general.architecture` values whose layout matches the supported decoder family (both use
-# the identical tensor-name convention above). More archs land as their metadata conventions are
-# verified against real files.
-_GGUF_SUPPORTED_ARCHITECTURES = ("llama", "qwen3")
+# GGUF `general.architecture` -> the LAYOUT that arch's metadata + tensors follow, declared as a
+# table instead of a family-string tuple (model-agnostic conformance, 2026-08-23): every arch the
+# reader accepts uses the SAME tensor-name convention above and the SAME `<arch>.*` metadata key
+# set, so one layout record serves both -- a new arch is one table row verified against a real
+# file, never a code change. `metadata_convention` names the `<arch>.` key prefix family;
+# `tensor_convention` is the llama.cpp name map above. Selection stays a pure lookup: the file's
+# own `general.architecture` string indexes the table, and anything absent from it is refused by
+# name with the table's contents as the supported set.
+_GGUF_ARCH_LAYOUTS: dict[str, dict[str, str]] = {
+    "llama": {"metadata_convention": "llama", "tensor_convention": "llama.cpp blk.N.*"},
+    "qwen3": {"metadata_convention": "llama", "tensor_convention": "llama.cpp blk.N.*"},
+}
+_GGUF_SUPPORTED_ARCHITECTURES = tuple(_GGUF_ARCH_LAYOUTS)
 
 
 def _gguf_read_string(handle: Any) -> str:
@@ -1551,6 +1615,24 @@ def prepare_model_checkpoint_from_gguf(
         hf_name = _gguf_map_tensor_name(info["name"])
         if hf_name is not None:
             hf_tensors[hf_name] = info
+    # Model-agnostic conformance (2026-08-23): the same tensors-are-the-truth gates the safetensors
+    # front door applies. Bias tensors the engine would silently drop (any q/k/v/o projection or FFN
+    # bias -- the Metal dispatch path applies none of them, and the GGUF reader does not convert
+    # them) are a typed refusal naming the exact tensor, never a silent drop.
+    _gguf_unsupported = sorted(
+        info["name"]
+        for info in tensor_infos
+        if info["name"].startswith("blk.") and info["name"].endswith(".bias")
+    )
+    if _gguf_unsupported:
+        raise InferenceError(
+            "unsupported_gguf",
+            f"{gguf_path} carries bias tensors the engine does not consume and would silently "
+            f"drop: {', '.join(_gguf_unsupported[:4])}"
+            + (f" (+{len(_gguf_unsupported) - 4} more)" if len(_gguf_unsupported) > 4 else "")
+            + ". The Metal dispatch path applies no projection/FFN biases; re-export without "
+            "them or use a backend whose kernel set applies them.",
+        )
     # Same truth as the safetensors path: the TENSORS decide qk-norm presence (config metadata can
     # lie or omit), layer 0's probe tensor standing in for all layers.
     has_qk_norm = "model.layers.0.self_attn.q_norm.weight" in hf_tensors
@@ -1710,6 +1792,33 @@ def prepare_model_checkpoint(
         tied_embeddings = config.get("tie_word_embeddings", True) is True
         has_qk_norm = _detect_has_qk_norm(checkpoint_dir, index)
         attention_bias = _detect_attention_bias(checkpoint_dir, index)
+
+        # Model-agnostic conformance (2026-08-23): the TENSOR-LEVEL fact gates, judged after the
+        # probe (tensors are the truth). Two typed refusals, never silent drops:
+        # (1) weights the engine does not consume (o_proj/mlp biases) would otherwise be
+        #     converted into the blob and silently NEVER READ -- refused naming the exact tensor;
+        # (2) q/k/v projection biases on the METAL dispatch path: the bias add is wired into the
+        #     CUDA lane's five 7B paths (PR #821) but NOT into metaldispatch's descriptor tables,
+        #     so a bias-carrying checkpoint on Metal would run with the biases silently dropped --
+        #     the exact 7B-lane hazard -- refused with the exact fact instead.
+        unsupported = _detect_unsupported_tensors(checkpoint_dir, index)
+        if unsupported:
+            raise UnsupportedArchitectureError(
+                f"unsupported model architecture: {checkpoint_dir} carries tensors the engine "
+                f"does not consume and would silently drop: {', '.join(unsupported)}. Supported "
+                "tensors are the manifest's required set (q/k/v projection biases included when "
+                "the backend applies them)."
+            )
+        if attention_bias:
+            from algenta.model_capabilities import BACKEND_FACT_RANGES
+
+            if 1 not in BACKEND_FACT_RANGES["metal"]["attention_bias"]:
+                raise UnsupportedArchitectureError(
+                    f"unsupported model architecture: {checkpoint_dir} carries q/k/v projection "
+                    "biases (attention_bias=1), which the Metal dispatch path does not apply -- "
+                    "the bias kernels are wired into the CUDA lane's 7B paths only. Refusing "
+                    "rather than running with the biases silently dropped."
+                )
     required = _required_hf_tensor_names(
         config["num_hidden_layers"], tied_embeddings, has_qk_norm, attention_bias,
         gemma3=is_gemma3,

@@ -136,9 +136,19 @@ shared staging is 18944 Float32 = 74.0 KiB per block, inside the A100's 163 KiB 
 budget per block (164 KiB per SM minus the runtime's own carve-out). Same presence-flag shape as
 the 6144 tier; one binary per tier by design."""
 
+comptime _RESIDENT_STAGE_8192_BUILT: Bool = is_defined["ALGENTA_STAGE_8192"]()
+"""True when this binary was compiled with `-D ALGENTA_STAGE_8192` -- the Llama-3.2-1B/3B staging
+tier (model-agnostic conformance, 2026-08-24): `stage_needed` = max(2048, 32*64, 8192) = d_ff =
+8192, so the shared staging is 8192 Float32 = 32.0 KiB per block, comfortably inside the NVIDIA
+163 KiB opt-in shared budget per block. This tier is a CUDA-only build: 32.0 KiB equals Apple
+silicon's whole 32 KiB threadgroup budget with no room for the 1 KiB reduction scratch, so a Metal
+binary must not be built at this tier (use 6144, the largest Metal tier). Same presence-flag shape
+as the other tiers; one binary per tier by design."""
+
 comptime RESIDENT_MAX_D_MODEL: Int = (
     18944 if _RESIDENT_STAGE_18944_BUILT
-    else (6144 if _RESIDENT_STAGE_6144_BUILT else 3072)
+    else (8192 if _RESIDENT_STAGE_8192_BUILT
+    else (6144 if _RESIDENT_STAGE_6144_BUILT else 3072))
 )
 """The decode kernels' shared-memory STAGING CEILING -- the single value every `_STAGE` allocation
 in `residentk/kernels.mojo` sizes to. It is NOT an arbitrary constant: it must equal the LARGEST

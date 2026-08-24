@@ -2811,11 +2811,15 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
         n_prompt = json_get_int(config, "n_tokens", -1)
         # ── Llama-family convention flags (2026-08-13): both DEFAULT TO THE QWEN3 CONVENTION
         # (1/1), so a manifest written before these keys existed runs byte-for-byte as it always
-        # did. The stop token defaults to the Qwen3 constant the same way; the llama-family SDK
-        # converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        # did. The SDK converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        # Model-agnostic conformance (2026-08-23): the stop token is a FACT of the checkpoint,
+        # never a fallback to another model's value -- the old default (Qwen3-0.6B's 151643)
+        # refused any eos-less manifest with a smaller vocab and would silently stop on a wrong
+        # token for any larger-vocab model. Absent (-1) means "no stop token": the run generates
+        # exactly max_new_tokens, and every eos comparison below guards on eos_token_id >= 0.
         has_qk_norm = json_get_int(config, "has_qk_norm", 1)
         tied_embeddings = json_get_int(config, "tie_word_embeddings", 1)
-        eos_token_id = json_get_int(config, "eos_token_id", QWEN3_0_6B_BASE_EOS_TOKEN_ID)
+        eos_token_id = json_get_int(config, "eos_token_id", -1)
         tensors_obj = json_get_object(manifest, "tensors")
 
         var ids_arr = json_get_array(manifest, "input_ids")
@@ -2841,7 +2845,9 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
             manifest_path + " carries a convention flag (has_qk_norm=" + String(has_qk_norm)
             + ", tie_word_embeddings=" + String(tied_embeddings) + ") that is neither 0 nor 1",
         )
-    if eos_token_id < 0 or eos_token_id >= vocab_size:
+    # eos_token_id == -1 means the manifest carries no stop token (accepted: the run generates
+    # exactly max_new_tokens); any other negative is malformed, and a present id must be in-vocab.
+    if eos_token_id < -1 or eos_token_id >= vocab_size:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
             manifest_path + " declares eos_token_id=" + String(eos_token_id)
@@ -3208,7 +3214,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                     prefill_tok_per_sec = Float64(n_prompt) / (prefill_ms / 1000.0)
 
             generated_ids.append(first_tok)
-            var stopped_on_eos = first_tok == eos_token_id
+            var stopped_on_eos = eos_token_id >= 0 and first_tok == eos_token_id
             var n_decoded = 1
             var dispatches_per_token = 0
 
@@ -3226,7 +3232,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3(
                     dispatches_per_token = r2.dispatches
                     generated_ids.append(r2.token_id)
                     n_decoded += 1
-                    if r2.token_id == eos_token_id:
+                    if eos_token_id >= 0 and r2.token_id == eos_token_id:
                         stopped_on_eos = True
                         break
             var t_decode_end = perf_counter_ns()
@@ -3344,11 +3350,15 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
         n_prompt = json_get_int(config, "n_tokens", -1)
         # ── Llama-family convention flags (2026-08-13): both DEFAULT TO THE QWEN3 CONVENTION
         # (1/1), so a manifest written before these keys existed runs byte-for-byte as it always
-        # did. The stop token defaults to the Qwen3 constant the same way; the llama-family SDK
-        # converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        # did. The SDK converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        # Model-agnostic conformance (2026-08-23): the stop token is a FACT of the checkpoint,
+        # never a fallback to another model's value -- the old default (Qwen3-0.6B's 151643)
+        # refused any eos-less manifest with a smaller vocab and would silently stop on a wrong
+        # token for any larger-vocab model. Absent (-1) means "no stop token": the run generates
+        # exactly max_new_tokens, and every eos comparison below guards on eos_token_id >= 0.
         has_qk_norm = json_get_int(config, "has_qk_norm", 1)
         tied_embeddings = json_get_int(config, "tie_word_embeddings", 1)
-        eos_token_id = json_get_int(config, "eos_token_id", QWEN3_0_6B_BASE_EOS_TOKEN_ID)
+        eos_token_id = json_get_int(config, "eos_token_id", -1)
         tensors_obj = json_get_object(manifest, "tensors")
 
         var ids_arr = json_get_array(manifest, "input_ids")
@@ -3374,7 +3384,9 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
             manifest_path + " carries a convention flag (has_qk_norm=" + String(has_qk_norm)
             + ", tie_word_embeddings=" + String(tied_embeddings) + ") that is neither 0 nor 1",
         )
-    if eos_token_id < 0 or eos_token_id >= vocab_size:
+    # eos_token_id == -1 means the manifest carries no stop token (accepted: the run generates
+    # exactly max_new_tokens); any other negative is malformed, and a present id must be in-vocab.
+    if eos_token_id < -1 or eos_token_id >= vocab_size:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
             manifest_path + " declares eos_token_id=" + String(eos_token_id)
@@ -3720,7 +3732,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
 
             generated_ids.append(first_tok)
             counts[first_tok] += 1
-            var stopped_on_eos = first_tok == eos_token_id
+            var stopped_on_eos = eos_token_id >= 0 and first_tok == eos_token_id
             var n_decoded = 1
             var dispatches_per_token = 0
 
@@ -3744,7 +3756,7 @@ def qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled(
                     generated_ids.append(draw.token)
                     counts[draw.token] += 1
                     n_decoded += 1
-                    if draw.token == eos_token_id:
+                    if eos_token_id >= 0 and draw.token == eos_token_id:
                         stopped_on_eos = True
                         break
             var t_decode_end = perf_counter_ns()
@@ -3861,11 +3873,15 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
         n_prompt = json_get_int(config, "n_tokens", -1)
         # ── Llama-family convention flags (2026-08-13): both DEFAULT TO THE QWEN3 CONVENTION
         # (1/1), so a manifest written before these keys existed runs byte-for-byte as it always
-        # did. The stop token defaults to the Qwen3 constant the same way; the llama-family SDK
-        # converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        # did. The SDK converter carries the checkpoint's own eos_token_id (TinyLlama's is 2).
+        # Model-agnostic conformance (2026-08-23): the stop token is a FACT of the checkpoint,
+        # never a fallback to another model's value -- the old default (Qwen3-0.6B's 151643)
+        # refused any eos-less manifest with a smaller vocab and would silently stop on a wrong
+        # token for any larger-vocab model. Absent (-1) means "no stop token": the run generates
+        # exactly max_new_tokens, and every eos comparison below guards on eos_token_id >= 0.
         has_qk_norm = json_get_int(config, "has_qk_norm", 1)
         tied_embeddings = json_get_int(config, "tie_word_embeddings", 1)
-        eos_token_id = json_get_int(config, "eos_token_id", QWEN3_0_6B_BASE_EOS_TOKEN_ID)
+        eos_token_id = json_get_int(config, "eos_token_id", -1)
         tensors_obj = json_get_object(manifest, "tensors")
 
         var ids_arr = json_get_array(manifest, "input_ids")
@@ -3891,7 +3907,9 @@ TOTAL prompt tokens across the batch. `prefill_chunks` reports B (one ingest per
             manifest_path + " carries a convention flag (has_qk_norm=" + String(has_qk_norm)
             + ", tie_word_embeddings=" + String(tied_embeddings) + ") that is neither 0 nor 1",
         )
-    if eos_token_id < 0 or eos_token_id >= vocab_size:
+    # eos_token_id == -1 means the manifest carries no stop token (accepted: the run generates
+    # exactly max_new_tokens); any other negative is malformed, and a present id must be in-vocab.
+    if eos_token_id < -1 or eos_token_id >= vocab_size:
         return _decode_err(
             MB_ERR_CHECKPOINT_UNREADABLE,
             manifest_path + " declares eos_token_id=" + String(eos_token_id)
