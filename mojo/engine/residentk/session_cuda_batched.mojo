@@ -143,11 +143,19 @@ from residentk.tc_shim_bridge import (
     _pf_swiglu_rows_kernel,
 )
 from std.time import perf_counter_ns
+from std.sys import is_defined
 
-comptime _CUDA_BATCH_DECODE_MAX_SEQS: Int = 32
+comptime _CUDA_BATCH_DECODE_MAX_SEQS: Int = 128 if is_defined["ALGENTA_SEQS_128"]() else (
+    64 if is_defined["ALGENTA_SEQS_64"]() else 32
+)
 """The FIXED maximum number of sequences the batched decode path provisions per-sequence KV
-slots for — the same cap the Metal batched stack's `_BATCH_DECODE_MAX_SEQS` (32) uses, so the
-two lanes' concurrency ceilings never drift. Each of the B (<= this) sequences gets its OWN
+slots for — the default (32) is the same cap the Metal batched stack's
+`_BATCH_DECODE_MAX_SEQS` (32) uses, so the two lanes' concurrency ceilings never drift.
+LEVER L9 (deep-saturation batch expansion, 2026-08-23): `-D ALGENTA_SEQS_64` /
+`-D ALGENTA_SEQS_128` raise the cap for the NVIDIA serve lane's 500-deep open-loop cells —
+KV is f32 and scales linearly, so pair SEQS_128 with ALGENTA_CTX_1536 (128 slots x 1536 x
+~224 KB/position ~= 44 GB, fits an 80 GB H100; at the default max_ctx 4736 it would be
+~135 GB and is rejected by OOM at upload). Each of the B (<= this) sequences gets its OWN
 `max_ctx * h_kv * d_head`-element K cache and V cache per layer, laid out contiguously in ONE
 oversized buffer per layer per K/V, sequence `b` selected by the flat element offset
 `b * kv_stride_elems`. The actual in-flight batch may be any B <= this; the weight-sweep win

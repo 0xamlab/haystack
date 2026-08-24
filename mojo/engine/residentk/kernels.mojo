@@ -3558,12 +3558,18 @@ def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx
 # amortizing the vocab sweep. The per-row argmax bookkeeping, int8 dequant, vectorized loads, and the
 # strict-`>` tie-break-to-lowest-id convention are copied from `_lmhead_argmax_kernel_simd_i8`, so each
 # row's result is token-identical to running that kernel on the row alone (the correctness gate).
-comptime _BATCH_LMHEAD_MAX_ROWS: Int = 32
-"""Must be >= the batched-decode `_BATCH_DECODE_MAX_SEQS` (metaldispatch.session_prefill). Sizes the
-per-thread PRIVATE row-accumulator / running-argmax arrays in `_batched_lmhead_argmax_kernel_simd_i8`
-and the per-(sub, row) shared staging. Raising `_BATCH_DECODE_MAX_SEQS` past this without raising it
-here is a compile-time-visible coupling, kept as two named constants rather than one shared import to
-avoid a metaldispatch<->residentk import cycle."""
+comptime _BATCH_LMHEAD_MAX_ROWS: Int = 128 if is_defined["ALGENTA_SEQS_128"]() else (
+    64 if is_defined["ALGENTA_SEQS_64"]() else 32
+)
+"""Must be >= the batched-decode `_CUDA_BATCH_DECODE_MAX_SEQS` (residentk.session_cuda_batched).
+Sizes the per-thread PRIVATE row-accumulator / running-argmax arrays in
+`_batched_lmhead_argmax_kernel_simd_i8` and the per-(sub, row) shared staging. LEVER L9
+(deep-saturation batch expansion, 2026-08-23): tracks the SEQS_64/SEQS_128 serve flags —
+raising the seq cap WITHOUT raising this cap here is an out-of-bounds per-thread-local write
+(compute-sanitizer: Invalid __local__ write in the packed3 batched lm_head at graph replay,
+block = row index past 32). Register/local pressure grows ~3*B per lane (acc/best/best_i
+spill to local memory past ~32 rows) — accepted for the saturation lane; the default build
+keeps the proven 32-row pressure point."""
 
 
 def _batched_lmhead_argmax_kernel_simd_i8(

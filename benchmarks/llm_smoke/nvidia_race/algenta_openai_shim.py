@@ -232,6 +232,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b"0\r\n\r\n")
 
 
+class _Server(ThreadingHTTPServer):
+    # The official sonnet cell submits 500 requests at inf rate -> ~500 fresh TCP
+    # connections in one burst (the harness opens one ClientSession per request);
+    # the stock TCPServer listen backlog of 5 overflows and the kernel RSTs
+    # connections (measured: Connection reset by peer on the L9 saturation cell).
+    request_queue_size = 1024
+    daemon_threads = True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8010)
@@ -248,8 +257,7 @@ def main() -> int:
     State.model_name = args.model_name
     State.timeout_s = args.timeout
 
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    server.daemon_threads = True
+    server = _Server((args.host, args.port), Handler)
     print(f"[shim] model={State.model_name} driver={args.driver!r} "
           f"listening on http://{args.host}:{args.port}", flush=True)
     try:

@@ -15651,3 +15651,122 @@ lever rounds) until the cell wins; only then does it graduate.
    HF dirs + GGUFs: Qwen3-1.7B-Q8_0, qwen2.5-7b-instruct-q8_0 3-shard).
 6. Gemma 3 27B official cell — pending HF_TOKEN (owner TODO).
 
+## VLLM-SATURATION LEVER ROUND 1 (2026-08-23): nsys micro-autopsy of the 500-deep sonnet loss + LEVER L9 deep-saturation batch expansion (decode cap 32->64 + deep-queue admission un-throttle) — aggregate 2,852 -> 4,020 tok/s (+41%), the vLLM gap narrows 5.20x -> 3.69x; loop continues (worktree .qwen/worktrees/vllm-sat-lever, branch feat/vllm-sat-lever, VM algenta-ent-h100 GPU4; MAX-methodology cells of PR #834 are the baseline)
+
+**Mandate.** Owner standing directive (2026-08-23): the algenta-vs-vLLM saturated sonnet loss
+is never published as a final result — dissect, optimize every layer, re-race until algenta
+>= vLLM aggregate, then publish. Same technique as the A100/H100 lever rounds. This section
+is the running ledger of that loop.
+
+### 1. MICRO-AUTOPSY (nsys 2024.5.1, serve_s4_l7 under the full 500-prompt sonnet saturation cell)
+
+Capture: `nsys profile --trace=cuda,osrt` wrapping the shim+driver across one official
+`max benchmark` sonnet run (GPU4, wall window 42.8 s of traced activity).
+
+| Quantity | Measured |
+|---|---|
+| GPU busy (union across streams) | **74.7%** of wall (idle 25.3%) |
+| Decode graph replays | 1,566 replays, median **19.3 ms** -> horizon collapses to ~1.6 steps/replay (K = min remaining budget over the active set under staggered completions) |
+| Prefill share of discrete kernel time | **96%** (GEMM passes 68.6% + flash attn 27.3%); ~9 s of it overlaps decode via the L5 lanes |
+| KV compaction (slot copies under churn) | 7,224 copies, **135 ms total (0.3% of wall)** — NOT a bottleneck |
+| Long idle gaps (>=5 ms) | only 0.64 s total — the idle is spread, not seam-spikes |
+| Admission pacing | ADMIT_GROUP_MAX=2 per loop iteration -> ~13 admits/s -> **median driver TTFT 44 s** for 500 queued requests |
+| Ceiling arithmetic | B=32 x ~12 ms/step ~= 2.7k tok/s == the measured 2,852 aggregate — the 32-slot decode cap is the binding ceiling |
+
+**Root-cause chain** (why vLLM is 5.20x ahead): (1) decode batch capped at 32 sequences
+(`_CUDA_BATCH_DECODE_MAX_SEQS=32`, f32 KV provisioned 32 x 4736 ctx ~= 35 GB) vs vLLM's
+~500 concurrent continuous batching; (2) group-2 admission pacing leaves the prefill lanes
+idle between waves while the queue is deep; (3) vLLM pages bf16 KV and swaps finished
+sequences every step. Compaction, seams, and long idles are all measured NON-issues.
+
+### 2. LEVER L9 — deep-saturation batch expansion (implemented, gated, raced)
+
+Changes (all flag-gated; the shipped race arms are untouched — the default build keeps the
+proven 32-row/2-admission behavior):
+
+1. `_CUDA_BATCH_DECODE_MAX_SEQS`: 32 -> 64/128 under `-D ALGENTA_SEQS_64` / `_SEQS_128`
+   (residentk/session_cuda_batched.mojo).
+2. `_BATCH_LMHEAD_MAX_ROWS` (residentk/kernels.mojo) must track the same cap — raising the
+   seq cap WITHOUT it is an out-of-bounds per-thread-local write; proven by
+   compute-sanitizer before the fix (Invalid __local__ write of size 4 in the packed3
+   batched lm_head at graph replay, block = row index past 32). Now flag-coupled.
+3. `_P3G_LOG_HEAD_CAP` re-coupled to B_MAX x CHUNK_MAX (the narrow log-readback guard
+   `B*n_steps > cap` would otherwise reject every legal chunk at B>32).
+4. `-D ALGENTA_DEEP_ADMIT`: while >= 16 requests are pending, the wave cap lifts from
+   ADMIT_GROUP_MAX to ALL lanes every iteration (queue-drain ~4x faster; small queues keep
+   the paced cap — the chat/rag cells are unaffected).
+5. Race arm pairs SEQS_64 with `-D ALGENTA_CTX_1536` (KV 64 x 1536 x ~224 KB ~= 22 GB;
+   sonnet's 551+256 tokens fit under 1536).
+6. SHIM FIX (found by this cell): the stdlib server's listen backlog of 5 overflowed under
+   the 500-connection burst (measured: `Connection reset by peer`); `request_queue_size`
+   raised to 1024 in algenta_openai_shim.py.
+
+**Gates (serve_s4_l7_seqs64, sm_90, this VM):** selftest PASS — gate 1 oracle 16/16 +
+gate 2 concurrent token identity 8/8 (multi-stream scheduler token-identical to the
+sequential per-dispatch p3 chain).
+
+### 3. RE-RACE — official saturated sonnet cell, N=20, Qwen3-0.6B-Base, H100 x1
+
+Medians of 20 runs; aggregate = per-run total_output_tokens/duration; same official
+`max benchmark` sonnet workload (500/550/256/200, seed 0x5EED).
+
+| Arm | agg output tok/s (relIQR) | duration (s) | vs vLLM 14,839 |
+|---|---|---|---|
+| vLLM 0.27.1 (baseline, PR #834) | **14,839** (6.8%) | 8.6 | 1.00x |
+| algenta serve_s4_l7 (baseline, PR #834) | 2,852 (39.7%) | 97.0 | 0.19x |
+| algenta serve_s4_l7_seqs64 (L9) | **4,012** (21.5% *) | 109.6 | 0.27x |
+| algenta serve_s4_l7_seqs128 (L9-128) | 2,975 (36.8% **) | 147.8 | 0.20x |
+
+\* L9-64 IQR audit: 13/20 runs sit in a 0.3% band at 4,011-4,022; seven runs collapse to
+850-3,604 tok/s. Census at the collapses: no foreign GPU process — the machine was sharing
+the MAX-serve first-boot AOT compile (~1,100% CPU) and this agent's own scp/build bursts.
+Diagnosis: the serve loop's host orchestration (stdin drain -> wave collect -> chunk seed)
+is on the critical path; when the host is contended, chunk seams stretch and the GPU idles
+between waves. vLLM/llama tolerate the same contention (their runtimes spread across many
+threads). Per the frozen rules the outliers are NOT excluded (excluding 7 would leave 13 <
+16) — the median stands as reported, the cell is flagged, and a clean sequential re-battery
+(machine to ourselves) is queued before any public number moves.
+
+\** L9-128 IQR audit: same pattern — 14/20 runs in a 0.3% band at 2,974-2,982; six
+contention collapses (738-1,891). Not excluded (20-6 = 14 < 16). The deterministic band
+makes the REFUTED-vs-64 verdict unambiguous regardless.
+
+**VERDICT (round 1):** L9 is a real, gated +41% aggregate win over the baseline arm
+(decode cap 32->64 + un-throttled deep admission), narrowing the vLLM gap 5.20x -> 3.69x
+on the median. It is NOT yet a race win — per the standing directive the loop continues.
+Per-lever B scaling: 32 -> 2,852; 64 -> 4,012 (step time ~12 -> ~16 ms; marginal tok/s per
+slot falls 89 -> 63, i.e. KV/activation traffic is taking over from weight-sweep
+amortization).
+
+### 4. LEVER L9-128 — REFUTED with measurement (B-scaling peak is 64 under f32 KV)
+
+SEQS_128 arm (same flags, 128 slots x 1536 ctx ~= 44 GB KV): gates PASS (selftest 16/16
+oracle + 8/8 concurrent token identity), raced N=20 same protocol.
+
+**Result: 2,980 tok/s aggregate — WORSE than the 64-slot arm (4,012).** The per-step cost
+grows super-linearly with B: ~11.2 ms (B=32) -> ~16.0 ms (B=64) -> ~43 ms (B=128). At
+B=128 the decode step is dominated by KV reads — every step re-reads each active sequence's
+whole context: B x avg_pos x ~224 KB (f32 K+V, all layers) ~= 128 x ~400 x 224 KB ~= 11+
+GB/step before weights, against an effective stream of only ~500 GB/s. Batch amortization
+of the 2.4 GB weight sweep is overtaken by KV traffic. RECORDED REFUTED (measured, not
+assumed): under f32 KV the batch ceiling sits at B ~= 64 for this workload; larger B
+requires cheaper KV bytes first.
+
+### 5. NEXT LEVERS (queued, in projected size order)
+
+1. **KV traffic reduction — the named structural lever.** f16 KV (2x traffic cut; halves
+   the 22/44 GB footprint too, opening B=128 at ~22 GB) or int8-KV-at-high-B. The prior
+   "int8-KV refuted" verdict was measured at C=8 where attention is load-LATENCY-bound
+   (DRAM 0.26%); at 500-deep saturation attention is BANDWIDTH-bound — the regime where
+   KV quantization pays. Re-test in-regime before assuming the old verdict carries.
+2. Per-step decode bandwidth: effective ~500 GB/s vs HBM3's 3.35 TB/s — the packed3 GEMV
+   high-B load path (the alignment-lever census applies: strings/`--emit asm` audit).
+3. Host-loop robustness: the L9-64 outlier collapses show the single-threaded serve-loop
+   orchestration is on the critical path under host contention — multi-threaded seam work
+   or pinned-thread isolation (also a fairness artifact of the shared-machine pilot).
+4. Clean sequential re-battery (machine to ourselves; MAX-serve compile off the CPU) to
+   retire the IQR flags before any number graduates to public.
+
+**Loop state:** round 1 closed — best gated arm serve_s4_l7_seqs64 = 4,012 tok/s = 0.27x
+of vLLM's 14,839. The vLLM loss remains unpublished per the standing directive; round 2
+opens on lever 5.1 (KV traffic).

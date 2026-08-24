@@ -90,14 +90,16 @@ from std.gpu import block_idx, grid_dim, thread_idx
 alias _I64P = UnsafePointer[Int64, origin=MutAnyOrigin]
 """A device Int64 buffer as a kernel parameter — the log-head copy's operand type."""
 
-comptime _P3G_LOG_HEAD_CAP: Int = 2048
+comptime _P3G_LOG_HEAD_CAP: Int = _CUDA_BATCH_DECODE_MAX_SEQS * 64
 """Narrow log-readback staging (MEASURED seam lever): the first cut of
 `seed_and_run_batched_graph` D2H-copied the WHOLE token log (32 x max_ctx int64 = 1.2 MB)
 after every chunk — the chunk-horizon A/B measured that copy as the graph seam's dominant
 cost (~2.4 ms per 8-step seam at C=8). The reader only ever touches the first
 `B * n_steps` entries, so one small kernel head-stages those entries into a
-`_P3G_LOG_HEAD_CAP`-entry device buffer and ONLY that head crosses to the host. 2048
-entries = 32 seqs x the driver's CHUNK_MAX(64) horizon."""
+`_P3G_LOG_HEAD_CAP`-entry device buffer and ONLY that head crosses to the host. Sized as
+B_MAX x CHUNK_MAX(64): 2048 entries at the default 32-seq cap, 8192 under LEVER L9's
+`ALGENTA_SEQS_128` (kept coupled to `_CUDA_BATCH_DECODE_MAX_SEQS` so the seed_and_run
+guard `B * n_steps > _P3G_LOG_HEAD_CAP` never trips on a legal chunk)."""
 
 
 def _p3g_log_head_copy_kernel(dst: _I64P, src: _I64P, n_i64: Int64):

@@ -296,6 +296,16 @@ loop simply re-admits on the next boundary). LEVER L8: `-D ALGENTA_ADMIT_GROUP_4
 `-D ALGENTA_ADMIT_GROUP_8` sweep the group cap — with multi-stream lanes a bigger group is
 several WAVES, not one stalled batch (round-1's AG=4 rejection predates L5)."""
 
+comptime DEEP_ADMIT: Bool = is_defined["ALGENTA_DEEP_ADMIT"]()
+"""LEVER L9 (deep-saturation batch expansion, 2026-08-23): with `-D ALGENTA_DEEP_ADMIT`,
+while the pending queue holds >= 16 requests the wave cap lifts from ADMIT_GROUP_MAX to
+ALL lanes every iteration. Rationale (nsys autopsy of the 500-deep sonnet cell): the
+group-2 pacing admits at ~13 req/s, so 500 requests wait a median ~44 s for their prefill
+while the prefill lanes sit idle between paced waves; under a deep queue TTFT is already
+dominated by queue wait, so filling every lane maximizes prefill throughput and drains the
+queue ~4x faster. Small queues (the chat/rag race cells) keep the paced group cap — this
+branch never fires below 16 pending."""
+
 comptime POLLIN: Int = 1
 comptime POLLERR: Int = 8
 comptime POLLHUP: Int = 16
@@ -2256,6 +2266,11 @@ def _serve_loop_mstreams(mut gs: _ServeGraph, mut lanes: _AdmissionLanes) raises
             # of filling every lane at once; with NOTHING active (startup) every lane fills
             # so the first wave is not artificially throttled.
             var wave_cap = ADMIT_GROUP_MAX if st.n_active > 0 else lanes.n_lanes
+            @parameter
+            if DEEP_ADMIT:
+                # LEVER L9: deep queue -> fill every lane each iteration (see DEEP_ADMIT).
+                if st.pending_len() >= 16:
+                    wave_cap = lanes.n_lanes
             var launched = 0
             while launched < wave_cap and lanes.launch_next(gs, st):
                 launched += 1
