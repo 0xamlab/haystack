@@ -190,7 +190,10 @@ runcmd:
   # workflows deliberately avoid actions/setup-python; Ubuntu 22.04 ships 3.10.
   - add-apt-repository -y ppa:deadsnakes/ppa
   - apt-get update
-  - apt-get install -y python3.14 python3.14-venv
+  # libpython3.14: the bundled runtime worker (algenta-runtime-native, used by
+  # the sdk-audit "Published artifact install + execute proof" doctor gate)
+  # links the distro libpython3.14 -- field-verified remedy, see doctor output.
+  - apt-get install -y python3.14 python3.14-venv libpython3.14
   # Azure CLI (needed only for the post-job self-delete; installed before the
   # runner starts so workflow steps never race the apt lock).
   - curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg
