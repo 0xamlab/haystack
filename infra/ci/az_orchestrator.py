@@ -79,6 +79,7 @@ POLL_SECONDS = int(os.environ.get("POLL_SECONDS", "15"))
 MAX_VM_AGE_MINUTES = int(os.environ.get("MAX_VM_AGE_MINUTES", "90"))
 PROVISION_CONCURRENCY = int(os.environ.get("PROVISION_CONCURRENCY", "4"))
 REAP_EVERY_LOOPS = int(os.environ.get("REAP_EVERY_LOOPS", "4"))
+RESOURCE_GC_EVERY_LOOPS = int(os.environ.get("RESOURCE_GC_EVERY_LOOPS", "40"))
 MAX_PROVISION_ATTEMPTS = int(os.environ.get("MAX_PROVISION_ATTEMPTS", "3"))
 COOLDOWN_SECONDS = int(os.environ.get("COOLDOWN_SECONDS", "90"))
 STATE_DB = os.environ.get("STATE_DB", "/var/lib/az-orchestrator/state.db")
@@ -561,6 +562,89 @@ def reap_stale_vms():
             )
 
 
+def _protected_vm_names():
+    """VM names currently being provisioned (must not GC their NIC/PIP/NSG/disk,
+    which transiently exist before the VM shows up in `az vm list`)."""
+    with _db_lock:
+        conn = _db()
+        try:
+            rows = conn.execute(
+                "SELECT vm_name FROM handled WHERE status = 'provisioning'"
+            ).fetchall()
+        finally:
+            conn.close()
+    return {r[0] for r in rows if r[0]}
+
+
+def reap_orphaned_resources():
+    """GC the NIC/PIP/NSG/OS-disk that `az vm delete` leaves behind when a
+    worker self-deletes (vm delete removes only the compute resource). Only
+    touched are ci-az-* resources whose VM no longer exists and is not
+    mid-provision, so a live or in-flight worker is never dismembered."""
+    proc = run_az(["vm", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
+    if proc.returncode != 0:
+        return
+    live_vms = {vm.get("name") for vm in json.loads(proc.stdout or "[]")}
+    protected = _protected_vm_names()
+
+    def gcable(base_vm: str) -> bool:
+        return bool(base_vm) and base_vm not in live_vms and base_vm not in protected
+
+    # Orphaned NICs (virtualMachine == null)
+    proc = run_az(["network", "nic", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
+    if proc.returncode == 0:
+        for nic in json.loads(proc.stdout or "[]"):
+            name = nic.get("name", "")
+            if name.startswith(VM_PREFIX) and name.endswith("VMNic") and nic.get("virtualMachine") is None:
+                base = name[: -len("VMNic")]
+                if gcable(base):
+                    run_az(["network", "nic", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name], check=False)
+                    log.info("gc: deleted orphaned NIC %s", name)
+
+    # Orphaned public IPs (detached)
+    proc = run_az(["network", "public-ip", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
+    if proc.returncode == 0:
+        for pip in json.loads(proc.stdout or "[]"):
+            name = pip.get("name", "")
+            if name.startswith(VM_PREFIX) and name.endswith("PublicIP") and not pip.get("ipConfiguration"):
+                base = name[: -len("PublicIP")]
+                if gcable(base):
+                    run_az(["network", "public-ip", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name], check=False)
+                    log.info("gc: deleted orphaned PIP %s", name)
+
+    # Orphaned NSGs (named <vm>NSG, VM gone)
+    proc = run_az(["network", "nsg", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
+    if proc.returncode == 0:
+        for nsg in json.loads(proc.stdout or "[]"):
+            name = nsg.get("name", "")
+            if name.startswith(VM_PREFIX) and name.endswith("NSG"):
+                base = name[: -len("NSG")]
+                if gcable(base):
+                    run_az(["network", "nsg", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name], check=False)
+                    log.info("gc: deleted orphaned NSG %s", name)
+
+    # Orphaned OS disks (managedBy == null, older than 10 min for safety)
+    proc = run_az(["disk", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
+    if proc.returncode == 0:
+        now = datetime.now(timezone.utc)
+        for disk in json.loads(proc.stdout or "[]"):
+            name = disk.get("name", "")
+            if not (name.startswith(VM_PREFIX) and disk.get("managedBy") is None):
+                continue
+            base = name.split("_OsDisk")[0]
+            created_raw = disk.get("timeCreated")
+            if created_raw:
+                try:
+                    created = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                    if (now - created).total_seconds() < 600:
+                        continue
+                except ValueError:
+                    pass
+            if gcable(base):
+                run_az(["disk", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name, "--yes"], check=False)
+                log.info("gc: deleted orphaned disk %s", name)
+
+
 def recover_stale_provisioning():
     """Recover jobs wedged in 'provisioning' after a daemon restart.
 
@@ -646,6 +730,11 @@ def main():
                     reap_stale_vms()
                 except Exception as exc:  # noqa: BLE001
                     log.warning("reap failed: %s", exc)
+            if loop % RESOURCE_GC_EVERY_LOOPS == 0:
+                try:
+                    reap_orphaned_resources()
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("resource gc failed: %s", exc)
             time.sleep(POLL_SECONDS)
 
 
