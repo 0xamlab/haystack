@@ -75,6 +75,43 @@ for dir in $RUNNER_DIRS; do
     done
   fi
 
+<<<<<<< HEAD
+  if [ "$n_workers" -gt 0 ] && [ -n "$live_lines" ]; then
+    # Hung-job mode: GitHub shows an in_progress job older than 45min while EVERY
+    # worker on this runner has burned <120s CPU => wedged dispatch (2026-08-24:
+    # workers alive 40+min at ~0 CPU while main's queue starved). Reap so the
+    # listener frees the slot; GitHub fails/requeues the orphaned job.
+    oldest=$(echo "$live_lines" | awk '{print $2}' | sort | head -1)
+    age=$(python3 -c "
+from datetime import datetime, timezone
+t=datetime.strptime('$oldest','%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+print(int((datetime.now(timezone.utc)-t).total_seconds()))" 2>/dev/null || echo 0)
+    if [ "$age" -gt 2700 ]; then
+      all_idle=1
+      for pid in $workers; do
+        cpu=$(ps -o time= -p "$pid" 2>/dev/null | python3 -c "
+import re,sys
+m=re.match(r'(?:(\d+):)?(\d+):(\d+)', sys.stdin.read().strip())
+h,mm,ss=m.groups('0') if m else ('0','0','0')
+print(int(h)*3600+int(mm)*60+int(ss))" 2>/dev/null || echo 99999)
+        [ "$cpu" -ge 120 ] && all_idle=0
+      done
+      if [ "$all_idle" = "1" ]; then
+        for pid in $workers; do
+          log "REAP-HUNG $name worker pid=$pid (job age=${age}s, all workers cpu<120s) dry_run=$DRY_RUN"
+          if [ "$DRY_RUN" = "0" ]; then
+            pkill -TERM -P "$pid" 2>/dev/null
+            kill -TERM "$pid" 2>/dev/null
+            ( sleep 20; kill -9 "$pid" 2>/dev/null; pkill -9 -P "$pid" 2>/dev/null ) &
+          fi
+          REAPED_NAMES="$REAPED_NAMES\"$name:$pid(hung)\","
+        done
+      fi
+    fi
+  fi
+
+=======
+>>>>>>> origin/main
   if [ "$n_workers" -eq 0 ] && [ "$QUEUED_TOTAL" -gt 0 ]; then
     # Idle-listener wedge: org has queued work but this runner spawns no worker
     # (listener stuck, 2026-08-24: 4 of 5 idle while queues drained at 1 worker).
