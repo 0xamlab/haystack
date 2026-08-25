@@ -80,6 +80,12 @@ jobs:
 
       - name: Start Postgres, wait for it
         run: |
+          # Managed runners (Blacksmith) may not have the docker daemon started;
+          # self-hosted/Azure images already run it. Bring it up if absent.
+          if ! docker info >/dev/null 2>&1; then
+            (sudo -n systemctl enable --now docker || sudo -n service docker start) >/dev/null 2>&1 || true
+            for i in 1 2 3 4 5 6; do docker info >/dev/null 2>&1 && break; sleep 5; done
+          fi
           # Persistent self-hosted runner, not an ephemeral cloud VM — a crashed/cancelled
           # prior run can leave this container behind, and a fixed --name collides on
           # `docker run` otherwise.
@@ -105,6 +111,15 @@ jobs:
           # EEXIST; real cached env dirs are kept.
           find mojo_env -maxdepth 1 -name .pixi -type l -delete
           PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
+
+      # Mojo shard builds link with the system clang; Azure workers bake it,
+      # Blacksmith/GH ubuntu-2404 images don't ship it.
+      - name: Ensure build toolchain (clang/lld)
+        run: |
+          command -v clang >/dev/null 2>&1 && command -v lld >/dev/null 2>&1 && exit 0
+          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then SUDO=sudo; else SUDO=; fi
+          $SUDO apt-get update -qq
+          $SUDO apt-get install -y -qq clang lld build-essential
 
       - name: Build audit shard workers
         env:
