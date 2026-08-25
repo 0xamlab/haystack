@@ -30,12 +30,15 @@ log() { echo "$(date '+%F %T') $*" >>"$LOG"; }
 # ── 1. Ground truth: which runner names have a live (in_progress) job right now.
 LIVE_FILE=$(mktemp)
 API_OK=1
+QUEUED_TOTAL=0
 for repo in $REPOS; do
   err=$(mktemp)
   runs=$(gh run list --repo "$repo" --status in_progress --limit 25 --json databaseId --jq '.[].databaseId' 2>"$err") || {
     grep -q '404' "$err" || API_OK=0   # missing repo/disabled actions is fine; real API errors are not
     rm -f "$err"; continue; }
   rm -f "$err"
+  q=$(gh run list --repo "$repo" --status queued --limit 25 --json databaseId --jq 'length' 2>/dev/null) || q=0
+  QUEUED_TOTAL=$(( QUEUED_TOTAL + q ))
   for run_id in $runs; do
     gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" \
       --jq '.jobs[] | select(.status=="in_progress") | "\(.runner_name // "none") \(.started_at)"' \
@@ -70,6 +73,28 @@ for dir in $RUNNER_DIRS; do
       fi
       REAPED_NAMES="$REAPED_NAMES\"$name:$pid\","
     done
+  fi
+
+  if [ "$n_workers" -eq 0 ] && [ "$QUEUED_TOTAL" -gt 0 ]; then
+    # Idle-listener wedge: org has queued work but this runner spawns no worker
+    # (listener stuck, 2026-08-24: 4 of 5 idle while queues drained at 1 worker).
+    # Grace 300s so normal between-job gaps never trigger a restart.
+    idle_file="/tmp/fleet-reaper-idle-$name"
+    if [ -f "$idle_file" ]; then
+      since=$(cat "$idle_file" 2>/dev/null || date +%s)
+      if [ $(( $(date +%s) - since )) -gt 300 ]; then
+        log "RESTART-IDLE $name (org queued=$QUEUED_TOTAL, idle>300s) dry_run=$DRY_RUN"
+        if [ "$DRY_RUN" = "0" ]; then
+          ( cd "$dir" && ./svc.sh stop >>"$LOG" 2>&1; ./svc.sh start >>"$LOG" 2>&1 )
+          RESTARTED="$RESTARTED\"$name(idle)\","
+        fi
+        rm -f "$idle_file"
+      fi
+    else
+      date +%s > "$idle_file"
+    fi
+  else
+    rm -f "/tmp/fleet-reaper-idle-$name" 2>/dev/null
   fi
 
   if [ "$n_workers" -eq 0 ] && [ -n "$live_lines" ]; then
