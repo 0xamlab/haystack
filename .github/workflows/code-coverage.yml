@@ -1,0 +1,81 @@
+# Code coverage reporting (Code Quality feature, fleet-optimized).
+# Runs the unit graph with coverage instrumentation and publishes the report as
+# an artifact + PR comment-free upload. NOT a merge gate: the ruleset's required
+# checks stay the real CI/SDK/CodeQL legs; coverage is signal, not a blocker.
+#
+# Fleet behavior: PR legs join the shared serial slot (see ci.yml) so coverage
+# never pins runners behind/beside the race fleet; main/schedule keep their own
+# per-ref lane. Scoped to the Python surface so docs-only pushes skip entirely.
+name: Code Coverage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "apps/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/code-coverage.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "apps/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/code-coverage.yml"
+  schedule:
+    - cron: "17 5 * * 2"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  # No shared fixed ports: run free per-ref for full fleet utilization (v2
+  # scheduling — the v1 serial slot starved idle runners; see ci.yml note).
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  coverage:
+    name: Python coverage report
+    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    timeout-minutes: 25
+    env:
+      PYTHON_VERSION: "3.14"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Pixi
+        run: |
+          find mojo_env -maxdepth 1 -name .pixi -type l -delete
+          curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$GITHUB_WORKSPACE/.pixi" PIXI_BIN_DIR="$GITHUB_WORKSPACE/.pixi/bin" PIXI_NO_PATH_UPDATE=1 bash
+          echo "$GITHUB_WORKSPACE/.pixi/bin" >> "$GITHUB_PATH"
+
+      - name: Install Mojo/Pixi environment
+        run: |
+          find mojo_env -maxdepth 1 -name .pixi -type l -delete
+          PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
+
+      # No --ignore=tests/integration: the conftest collect-gate already excludes
+      # it by default, and passing --ignore paradoxically MAKES pytest collect the
+      # integration files (observed: 5 collected with the flag vs 0 without), which
+      # then time out waiting for a live server.
+      - name: Run unit graph with coverage
+        run: |
+          ./scripts/run_repo_python.sh -m pytest -q \
+            --cov=packages/algenta/algenta --cov=apps/api_server \
+            --cov-report=xml:coverage.xml --cov-report=term-missing \
+            tests/ \
+        env:
+          PYTEST_TIMEOUT: 60
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          retention-days: 14
