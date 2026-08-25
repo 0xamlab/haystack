@@ -191,6 +191,12 @@ runcmd:
   - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" > /etc/apt/sources.list.d/azure-cli.list
   - apt-get update
   - apt-get install -y azure-cli
+  # Pixi: heavy jobs drive scripts/run_repo_python.sh, which needs pixi and
+  # otherwise falls back to plain python3 (no asyncpg/mojo) -- that fallback is
+  # why integration jobs died with "No module named 'asyncpg'". The pixi env
+  # (asyncpg/mojo/max, per mojo_env/pixi.toml) is materialized on first use.
+  - curl -fsSL -o /usr/local/bin/pixi "https://github.com/prefix-dev/pixi/releases/latest/download/pixi-x86_64-unknown-linux-musl"
+  - chmod +x /usr/local/bin/pixi
   - mkdir -p /opt/actions-runner
   - bash -c 'RUNNER_VERSION=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | jq -r .tag_name | tr -d v) && cd /opt/actions-runner && curl -fsSL -o runner.tar.gz "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz" && tar xzf runner.tar.gz && rm -f runner.tar.gz'
   - chown -R azureuser:azureuser /opt/actions-runner
