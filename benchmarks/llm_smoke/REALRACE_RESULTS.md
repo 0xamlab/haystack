@@ -16975,6 +16975,37 @@ the vLLM/SGLang prefill losses.
 
 ---
 
+## Batched-serve bias investigation + two more onboarded families (2026-08-24, H100 GPU0)
+
+1. **BATCHED-SERVE QKV-BIAS — ATTEMPTED, REVERTED TO TYPED REFUSAL (honest).**
+   Wired `_qkv_bias_add_rows_kernel` into the batched prefill chain
+   (session_cuda_batched + the serve driver's admission/prefill slots) so
+   bias-carrying models could get concurrent agg numbers. Verification against
+   the fp32 transformers reference: the SINGLE-STREAM lane is correct
+   (Qwen2.5-7B byte-window tokens match transformers exactly:
+   32 198 32 13 220 16 ...), but the batched bias path produced corrupted
+   tokens matching NEITHER the with-bias NOR the without-bias reference
+   (3983 480 16 9467 ...) — the bias add is not yet correct in the batched
+   chain. Rather than ship a wrong-math path, the batched driver keeps its
+   TYPED REFUSAL for attention_bias=1. FALLBACK NUMBER (single-stream 7B,
+   the served path for bias-carrying checkpoints): Qwen2.5-7B single-stream
+   decode 57.9 / 50.4 / 34.3 tok/s @160/256/550 (STAGE_18944). Batched-serve
+   bias remains a scoped follow-up (debug the batched bias buffer/dispatch;
+   single-stream lane is the reference-correct path today).
+
+2. **TWO MORE ONBOARDED FAMILIES (new fact combinations):**
+   * **Mistral-7B-Instruct-v0.3** (NEW family, CUDA STAGE_18944): untied,
+     qk_norm=0, no bias, head_dim 128, stage_needed 14336. Fact-driven
+     `conform_generate_cuda` single-stream: TTFT 220.1 / 264.1 / 671.3 ms
+     @160/256/550, decode 54.8 / 45.9 / 31.6 tok/s (the 550 cell EOS-stopped
+     at gen 15). Supported on cuda (the stage fits the 18944 tier).
+   * **Phi-3.5-mini-instruct** (NEW family, typed refusal): head_dim=96 not a
+     power of two + rope_scaling=longrope unimplemented — refused on both
+     backends, naming both facts. This is the support boundary, published.
+
+STATUS: batched-serve bias reverted to typed refusal (correctness over
+coverage); Mistral + Phi-3.5 onboarded (one supported on CUDA, one refused).
+PR #852 updated.
 ## ROUND 3 — BOTH WIN-PATH LEVERS CONFIRMED AT THEIR TOOLCHAIN FLOOR (feat/vllm-flip round 3, 2026-08-25, algenta-ent-h100, GPUs 1-7): (a) multi-stream admission RE-PROBED and still blocked — MAX 1.0.0 (ed45d567) DeviceStream still has NO kernel launcher; (b) decode-attention GQA-adjacency grid remap MEASURED and REFUTED (byte-identical, C=50 1116/1110 vs 1126 baseline — GQA K/V re-reads are already L2-cached) — the agg/TTFT wins both remain gated on a stream-handle interop MAX has not shipped
 
 **(a) Multi-stream admission (the agg-axis win path) — re-probed, still blocked.** Round 2
@@ -17062,3 +17093,4 @@ PR #867 carries this documentation (hosted CI). No gitbook change this round (no
 vLLM — publish-wins-only). Next concrete increment if the toolchain is unchanged: f16
 activations + decode-attention restructure for step-time; the flips unlock only when MAX
 exposes a launchable stream.
+

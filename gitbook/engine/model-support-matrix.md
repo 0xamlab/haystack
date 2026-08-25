@@ -171,6 +171,7 @@ against — each below was onboarded and benched by facts alone):
 | Llama-3.2-1B-Instruct | CUDA (H100, STAGE_8192) | 50.8 / 55.7 / 149.5 | 176 / 136 / 81 |
 | Llama-3.2-3B-Instruct | CUDA (H100, STAGE_8192) | 110.7 / 127.1 / 343.6 | 84.5 / 67.1 / 41.2 |
 | Qwen2.5-7B-Instruct | CUDA (H100, STAGE_18944) | 248.2 / 274.0 / 693.9 | 57.9 / 50.4 / 34.3 |
+| Mistral-7B-Instruct-v0.3 | CUDA (H100, STAGE_18944) | 220.1 / 264.1 / 671.3 | 54.8 / 45.9 / 31.6 |
 
 Concurrent serving runs the same fact-generalized batched resident session (chat mix,
 in 1024 / out 256, greedy, warmup excluded). Aggregate decode throughput scales with
@@ -181,9 +182,11 @@ concurrency; qk_norm=0 and qk_norm=1 models both run the same driver with no per
 | Qwen3-1.7B-Base | qk_norm=1, tied | 28.7 | 145.5 | 5.07x |
 | Llama-3.2-1B-Instruct | qk_norm=0, tied | 44.6 | 230.3 | 5.16x |
 
-Qwen2.5-family checkpoints (q/k/v projection biases) are served by the single-stream CUDA lane
-(the bias add is not yet wired into the batched chain); their single-stream measurements are
-tabled above and the batched driver returns a typed refusal.
+Qwen2/Qwen2.5-family checkpoints (q/k/v projection biases) are served by the single-stream CUDA
+lane: the batched driver returns a typed refusal for `attention_bias=1` (the bias add is not yet
+correct in the batched chain — an attempt produced corrupted tokens, so it is refused loudly rather
+than shipped wrong). Their single-stream measurements are tabled above and are the served-path
+numbers for bias-carrying checkpoints.
 
 Throughput is reported here as conformance evidence (the battery runs on every onboarded model),
 not as a race claim; race comparisons against named external baselines live in
