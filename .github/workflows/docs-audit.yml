@@ -46,7 +46,7 @@ jobs:
   audit:
     name: docs interaction-contract audit
     # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
