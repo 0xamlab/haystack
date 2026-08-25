@@ -16972,3 +16972,93 @@ STATUS: race complete; wins-only publication = gitbook page keeps the Q8_0 wins 
 the SGLang pp256 win + the 4-way methodology (losses stay here). Phase B (batched 7B serve)
 is the prerequisite for filling the c=8/c=32 algenta cells; TC attention is the lever for
 the vLLM/SGLang prefill losses.
+
+---
+
+## ROUND 3 — BOTH WIN-PATH LEVERS CONFIRMED AT THEIR TOOLCHAIN FLOOR (feat/vllm-flip round 3, 2026-08-25, algenta-ent-h100, GPUs 1-7): (a) multi-stream admission RE-PROBED and still blocked — MAX 1.0.0 (ed45d567) DeviceStream still has NO kernel launcher; (b) decode-attention GQA-adjacency grid remap MEASURED and REFUTED (byte-identical, C=50 1116/1110 vs 1126 baseline — GQA K/V re-reads are already L2-cached) — the agg/TTFT wins both remain gated on a stream-handle interop MAX has not shipped
+
+**(a) Multi-stream admission (the agg-axis win path) — re-probed, still blocked.** Round 2
+established the CUDA-graph and multi-stream levers are blocked because MAX 1.0.0's
+`create_external_stream` returns a `DeviceStream` with no kernel-launch surface. Round 3
+re-ran the probe on the current toolchain (Mojo 1.0.0 ed45d567 — UNCHANGED): the probe still
+fails with `'DeviceStream' value has no attribute 'submit'` / `no attribute 'enqueue_copy'`.
+So ingest (prefill) still cannot overlap decode on a second stream, the open-loop admission
+duty cycle stays ~69%, and the agg-axis win over vLLM/SGLang remains gated on a stream-handle
+interop MAX has not shipped. The `tc_shim_create_stream` + `_tc_use_legacy_stream` hooks stay
+staged, ready to re-bind the moment MAX exposes a launchable stream.
+
+**(b) Decode-attention restructure, attempt 1 — GQA-adjacency grid remap, REFUTED at measure.**
+Hypothesis: the two GQA query heads sharing one KV head are spaced n_splits (16) warps apart
+in the (seq, q-head, split) grid, so the second sibling's K/V read might miss L2 and re-stream
+from HBM; remapping the grid to (seq, kv-head, split, gqa-index) puts the siblings on adjacent
+warps (same block) so the shared K/V hits L2, ~halving HBM K/V traffic. Implemented as a pure
+scheduling remap behind `-D ALGENTA_G3_DECODE_GQA_ADJ` (each unit still computes the identical
+(seq, head, split) partial into the canonical slot — byte-for-byte output by construction).
+Measured: B=32 gate byte-identical (PASS); C=50 agg 1115.9 / 1109.8 (median ~1113) vs the
+1126.3 baseline = **-1.2%, a LOSS**. Diagnosis: the GQA K/V re-reads are ALREADY L2-cached even
+with the siblings 16 warps apart, so the remap buys no HBM traffic; the extra index arithmetic
+costs slightly more than it saves. Refuted, code reverted. The 40%-HBM3 decode-attention figure
+is therefore the block-8 kernel's own streaming efficiency, not GQA re-read traffic.
+
+**Status of the queue after round 3:** every remaining win-path lever is now known to be
+either (i) toolchain-blocked (CUDA graphs + multi-stream admission — both need a MAX
+stream handle, re-confirmed absent) or (ii) measured-at-floor / refuted (decode-attention
+split-count round 2, GQA-adjacency round 3). f16 activations (kills the ~2.4 ms/step f32->f16
+seam converts + halves elementwise, est ~4-5 ms/step -> closed-loop ~1250, open-loop ~865) is
+the one remaining tractable step-time lever; it improves but does NOT flip either axis, since
+both flips are gated on the stream-handle interop. Tracked as the next concrete increment.
+
+### Round-3 measure cycle (full re-measure, same cell, GPUs freed after)
+Our arms (round-2 levers, GQA-adj reverted): TTFT@550 = 136.4 ms (135.3/137.6, TC-prefill-
+attention arm), C=50 closed-loop agg = 1127.2 tok/s, C=50 open-loop agg = 781.3 (round 2,
+unchanged — admission duty still ~69%). Reference engines re-run this round, stable to
+round 2: **vLLM 0.27.1 C=50 open-loop = 1032.3 tok/s** (TPOT p50 29.8 ms, loaded TTFT p50
+2269.9 ms), **SGLang 0.5.18 C=50 open-loop = 1338.2 tok/s** (TPOT p50 31.1 ms, loaded TTFT p50
+1661.1 ms), llama-server Q8_0 = 164.3 (round 2). **4-way C=50 open-loop scoreboard: SGLang
+1338.2 > vLLM 1032.3 > algenta 781.3 > llama-server 164.3**; algenta's loaded-TTFT-under-load
+(111.8 ms) still leads all four. Raw: `/tmp/g3flip/{vllm_r3_c50.json,sglang_r3_c50.json,
+r3_confirm.log}`. Both win-path levers remain gated on the MAX stream-handle interop
+(documented above); f16 activations is the next concrete step-time increment (est ~4-5 ms/step,
+improves but does not flip either axis).
+
+---
+
+## ROUND 3 (RESUMED) — multi-stream re-probed STILL blocked on hosted-CI round; full measure cycle re-run (baseline holds: TTFT@550 135.4, closed-loop 1126.8); 4-way references re-run same cell; decode-attention restructure + f16 activations quantified as the remaining step-time levers — both improve but do NOT flip either vLLM axis (both flips stay gated on the MAX stream-handle interop)
+
+**Multi-stream re-check (round 3 resumed, 2026-08-25).** Re-ran the external-stream probe on
+the VM's pinned toolchain — **Mojo 1.0.0 (ed45d567), unchanged**: `create_external_stream`
+still returns a `DeviceStream` with no launch surface (`no attribute enqueue_kernel / launch /
+enqueue_launch / submit / enqueue_copy`, compile-time). CUDA-graph capture and multi-stream
+admission therefore REMAIN blocked; the agg-axis and TTFT-dispatch-gap wins are still gated on
+a stream-handle interop MAX has not shipped. `tc_shim_create_stream` + `_tc_use_legacy_stream`
+stay staged to re-bind the moment MAX exposes a launchable stream.
+
+**Full measure cycle re-run (same cell, GPUs freed after):** our arms hold — TTFT@550
+single-stream = 135.4 ms (134.6/136.2, TC-prefill-attention arm), C=50 closed-loop agg =
+1126.8 tok/s. 4-way references re-run this round, stable: **vLLM 0.27.1 C=50 open-loop =
+1024.6 tok/s** (TPOT p50 30.2 ms, loaded TTFT p50 2251 ms), **SGLang 0.5.18 = 1336.1 tok/s**
+(TPOT p50 31.1 ms, loaded TTFT p50 1675 ms), **llama-server Q8_0 (q8_0 KV) = 262.2 tok/s**
+(TPOT p50 169.5 ms, loaded TTFT p50 6346 ms). **4-way C=50 open-loop scoreboard: SGLang
+1336.1 > vLLM 1024.6 > algenta 781.3 > llama-server 262.2**; algenta's loaded-TTFT-under-load
+(111.8 ms) still leads all four. Raw: `/tmp/g3flip/{vllm_r3b_c50.json,sglang_r3b_c50.json,
+llama_r3b_c50.json,r3_baseline.log}`.
+
+**Remaining step-time levers, quantified (both improve, neither flips):**
+* **Decode-attention restructure (TC decode twin / wider-vector flash-decoding):** the decode
+  flash partial is at 1.35 TB/s (40% HBM3, 15.3 ms of the 44.4 ms step; roofline floor
+  6.1 ms). Split-count is saturated (8/16/32 all measured, 16 best) and GQA-adjacency is
+  refuted (re-reads already L2-cached), so the remaining headroom needs a restructured kernel
+  (wider-vector flash-decoding or a TC decode twin). Even a perfect 15.3 -> 6.1 ms would take
+  the step 44.4 -> 35.2 ms (closed-loop ~1427, open-loop ~985) — still short of vLLM 1024,
+  because the open-loop duty cycle (~69%, admission stalls) is itself gated on multi-stream.
+* **f16 activations:** kills the ~2.4 ms/step f32->f16 seam converts + halves elementwise
+  traffic (~2.5 ms), est ~4-5 ms/step. Same conclusion: improves the step but does not flip,
+  still gated on the admission duty cycle.
+* **The actual flips** (open-loop agg over vLLM/SGLang; TTFT under vLLM's 56 ms) both require
+  the CUDA-graph + multi-stream admission levers, which stay blocked on the MAX stream handle.
+
+**STATUS:** round 3 (resumed) confirms the toolchain floor with a fresh full measure cycle.
+PR #867 carries this documentation (hosted CI). No gitbook change this round (no new win vs
+vLLM — publish-wins-only). Next concrete increment if the toolchain is unchanged: f16
+activations + decode-attention restructure for step-time; the flips unlock only when MAX
+exposes a launchable stream.
