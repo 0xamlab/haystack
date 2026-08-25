@@ -186,7 +186,7 @@ curl -sS -X POST "$ALGENTA_API_URL/v1/repositories/$REPO_ID/graph-query" \
 
 You must supply `snapshot_id` or `workspace_evidence_bundle_ref` as the seed source. The `200` `RepositoryGraphQueryResponse` returns `direct_dependencies`, `direct_dependents`, `impacted_files`, `impacted_symbols`, full `graph_nodes` and `graph_edges`, and `top_change_risk_files` (each with a `relationship` of `seed`, `dependent`, `dependency`, or `connected` and a `risk_score`).
 
-The same blast-radius closure is available offline for CI: [Adaptive security scanning](adaptive-security-scanning.md) scopes CodeQL to exactly the files a pull request can affect, instead of re-scanning the whole repository.
+The same blast-radius closure drives the standard CI runs: test-impact selection scopes each pull request's test graph to exactly the files the change can affect, instead of re-running the whole suite.
 
 ## Running large analyses asynchronously
 

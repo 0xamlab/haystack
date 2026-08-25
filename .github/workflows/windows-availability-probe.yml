@@ -18,7 +18,7 @@ name: windows-availability-probe
 
 on:
   schedule:
-    # Daily, off-minute per org convention (cf. codeql.yml's 23-past).
+    # Daily, off-minute per org convention.
     - cron: "41 3 * * *"
   workflow_dispatch: {}
 

@@ -10,7 +10,7 @@ Static scanners produce long lists of findings, most of which are never reachabl
 This is a triage-and-verify workflow: create the analysis on a snapshot, read the proofs to decide what to fix, patch it, then re-prove closure. All routes live under `/v1/repositories` and require `Authorization: Bearer $ALGENTA_API_KEY`.
 
 {% hint style="info" %}
-Security analysis grades a batch of scanner findings; it does not run the scanner for you. Feed it the findings and the SARIF run digest from your existing scanner (for example a CodeQL or Semgrep run), and it proves reachability against the snapshot.
+Security analysis grades a batch of scanner findings; it does not run the scanner for you. Feed it the findings and the SARIF run digest from any scanner you use, and it proves reachability against the snapshot.
 {% endhint %}
 
 ## Before you start
