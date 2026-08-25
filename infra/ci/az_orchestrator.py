@@ -1,806 +1,624 @@
 #!/usr/bin/env python3
-"""Azure ephemeral-compute orchestrator for thyn-ai/algenta CI.
+"""Ephemeral Azure self-hosted runner orchestrator (repo-managed, deployed on ci-orch).
 
-Runs on the ci-orch VM (resource group thyn-ci, eastus) as the
-az-orchestrator.service systemd unit. Every POLL_SECONDS it polls GitHub
-Actions for queued workflow jobs that request the `az-ephemeral` runner label
-and, for each one, provisions a dedicated Ubuntu 22.04 worker VM in subnet
-`builders`. The worker's cloud-init registers a JIT ephemeral actions runner,
-executes exactly one job, and deletes the VM itself (az vm delete via the
-RG-scoped thyn-ci-builder service principal). As a safety net this daemon also
-reaps any ci-az-* VM older than MAX_VM_AGE_MINUTES.
+Polls GitHub for queued workflow_jobs requesting label `az-ephemeral`, provisions one
+Azure VM per job (parallel, quota-aware, multi-region), and GUARANTEES cleanup: a VM is
+deleted when its runner disappears from the repo runner list, plus age-based sweeps.
+Jobs are never permanently failed here — a provisioning failure leaves the job queued
+for the next poll (GitHub's own timeout is the backstop).
 
-State (handled job ids, for dedupe) lives in sqlite at STATE_DB.
+Azure is driven via plain ARM REST (SP client-credentials) — the az CLI on ci-orch proved
+unreliable (token-cache concurrency races, empty responses). Scales 0 -> MAX_CONCURRENCY
+workers when the queue is deep, back to 0 when idle.
 
-Configuration is environment-only (see /etc/az-orchestrator.env on ci-orch):
-
-  GITHUB_CI_TOKEN           GitHub oauth token: repo scope (job polling + JIT
-                            runner registration tokens). Rotate per docs.
-  GITHUB_REPO               default thyn-ai/algenta
-  AZURE_SUBSCRIPTION_ID / AZURE_TENANT_ID / AZURE_SP_CLIENT_ID /
-  AZURE_SP_CLIENT_SECRET    thyn-ci-builder SP (Contributor on RG thyn-ci ONLY)
-  AZURE_RESOURCE_GROUP      default thyn-ci
-  AZURE_LOCATION            default eastus
-  AZURE_SUBNET_ID           builders subnet resource id (NO delegation; the
-                            GitHub-delegated `runners` subnet must never host VMs)
-  AZURE_VM_SIZES            space-separated worker sizes tried in order
-                            (default "Standard_D8s_v4 Standard_D8s_v3" --
-                            one size per family so up to two workers run
-                            concurrently under the subscription's per-family
-                            caps; D8s_v6 is capacity-restricted in eastus;
-                            switch to "Standard_D16s_v5 Standard_D8s_v5" once
-                            the subscription's DSv5 quota is granted via a
-                            support request)
-  POLL_SECONDS              default 15
-  MAX_VM_AGE_MINUTES        default 90
-  PROVISION_CONCURRENCY     default 4
+Env: GITHUB_CI_TOKEN (repo-admin oauth/PAT); AZURE_SP_CLIENT_ID/AZURE_SP_CLIENT_SECRET
+(fallback AZURE_CLIENT_ID/AZURE_CLIENT_SECRET), AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
 """
-
+import base64
 import json
-import logging
 import os
-import sqlite3
-import subprocess
+import secrets
 import threading
 import time
-import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-log = logging.getLogger("az-orchestrator")
+RG = os.environ.get("AZURE_RESOURCE_GROUP", os.environ.get("AZURE_RG", "thyn-ci"))
+SUB = os.environ["AZURE_SUBSCRIPTION_ID"]
+TENANT = os.environ["AZURE_TENANT_ID"]
+REPO = "thyn-ai/algenta"
+LABEL = "az-ephemeral"
+POLL_S = 15
+MAX_AGE_S = 90 * 60
+# stock-image boot runs apt-get (docker.io) + runner download: 3-6min is normal,
+# so a 3min orphan sweep was killing VMs mid-bootstrap (runners never registered).
+ORPHAN_AGE_S = 10 * 60
+SIZE_CHAIN = [
+    "Standard_F8s_v2", "Standard_D8s_v5", "Standard_D8s_v6", "Standard_D8s_v4", "Standard_D8s_v3",
+    "Standard_F4s_v2", "Standard_D4s_v5", "Standard_D4s_v4", "Standard_D4s_v3",
+]
+VM_VCPU = {
+    "Standard_F8s_v2": 8, "Standard_D8s_v5": 8, "Standard_D8s_v6": 8, "Standard_D8s_v4": 8, "Standard_D8s_v3": 8,
+    "Standard_F4s_v2": 4, "Standard_D4s_v5": 4, "Standard_D4s_v4": 4, "Standard_D4s_v3": 4,
+}
+MAX_CONCURRENCY = int(os.environ.get("AZ_ORCH_MAX", "20"))
+# Blacksmith-style warm capacity: pre-booted registered runners so jobs are picked up
+# in seconds; drained to 0 after IDLE_DRAIN_S without queue/busy activity.
+WARM_MIN = int(os.environ.get("AZ_ORCH_WARM", "2"))
+IDLE_DRAIN_S = int(os.environ.get("AZ_ORCH_IDLE_DRAIN_S", "600"))
+WARM_PREFIX = "ci-warm-"
+GOLDEN_IMAGE = f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/images/ci-worker-v1"
+GOLDEN_REGION = "eastus2"  # managed images are regional; other regions use stock + full cloud-init
+SPOT = os.environ.get("AZ_ORCH_SPOT", "0") == "1"
+STATE = "/var/lib/az-orch"
+os.makedirs(STATE, exist_ok=True)
 
-# -- environment --------------------------------------------------------------
-GITHUB_TOKEN = os.environ["GITHUB_CI_TOKEN"]
-GITHUB_REPO = os.environ.get("GITHUB_REPO", "thyn-ai/algenta")
-AZ_SUBSCRIPTION = os.environ["AZURE_SUBSCRIPTION_ID"]
-AZ_TENANT = os.environ["AZURE_TENANT_ID"]
-AZ_CLIENT_ID = os.environ["AZURE_SP_CLIENT_ID"]
-AZ_CLIENT_SECRET = os.environ["AZURE_SP_CLIENT_SECRET"]
-AZ_RESOURCE_GROUP = os.environ.get("AZURE_RESOURCE_GROUP", "thyn-ci")
-AZ_LOCATION = os.environ.get("AZURE_LOCATION", "eastus")
-AZ_SUBNET_ID = os.environ["AZURE_SUBNET_ID"]
-AZ_VM_SIZES = os.environ.get(
-    "AZURE_VM_SIZES", "Standard_D8s_v4 Standard_D8s_v3"
-).split()
-WORKER_OS_DISK_GB = os.environ.get("WORKER_OS_DISK_GB", "128")
-WORKER_IMAGE = os.environ.get(
-    "WORKER_IMAGE", "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
-)
-WORKER_SSH_PUBKEY = os.environ.get(
-    "WORKER_SSH_PUBKEY", "/root/.ssh/ci_plane_key.pub"
-)
-POLL_SECONDS = int(os.environ.get("POLL_SECONDS", "15"))
-MAX_VM_AGE_MINUTES = int(os.environ.get("MAX_VM_AGE_MINUTES", "90"))
-PROVISION_CONCURRENCY = int(os.environ.get("PROVISION_CONCURRENCY", "4"))
-REAP_EVERY_LOOPS = int(os.environ.get("REAP_EVERY_LOOPS", "4"))
-RESOURCE_GC_EVERY_LOOPS = int(os.environ.get("RESOURCE_GC_EVERY_LOOPS", "40"))
-MAX_PROVISION_ATTEMPTS = int(os.environ.get("MAX_PROVISION_ATTEMPTS", "3"))
-COOLDOWN_SECONDS = int(os.environ.get("COOLDOWN_SECONDS", "90"))
-STUCK_RUNNING_MINUTES = int(os.environ.get("STUCK_RUNNING_MINUTES", "12"))
-STATE_DB = os.environ.get("STATE_DB", "/var/lib/az-orchestrator/state.db")
+REGIONS = [
+    ("eastus2", "thyn-ci-eastus2", "default"),  # golden image region: fastest boot
+    ("eastus", "thyn-gh-runners", "builders"),
+    ("centralus", "thyn-ci-centralus", "default"),
+    ("westus2", "thyn-ci-westus2", "default"),
+    ("westus", "thyn-ci-westus", "default"),
+    ("westus3", "thyn-ci-westus3", "default"),
+    ("southcentralus", "thyn-ci-southcentralus", "default"),
+    ("northcentralus", "thyn-ci-northcentralus", "default"),
+]
 
-# Errors that mean "no capacity RIGHT NOW" (quota/capacity exhaustion) or that
-# hide the ARM error entirely (az CLI crashes while formatting some ARM error
-# responses: "content for this response was already consumed"). Both are
-# transient: free capacity returns when a worker self-deletes, so the job is
-# retried after a cooldown instead of being failed permanently.
-TRANSIENT_MARKERS = (
-    "quotaexceeded",
-    "exceeding approved",
-    "allocationfailed",
-    "skunotavailable",
-    "capacity restrictions",
-    "operationnotallowed",
-    "no available capacity",
-    # az CLI crash signatures that swallow the underlying ARM error:
-    "the command failed with an unexpected error",
-    "the content for this response was already consumed",
-)
-
-_cooldown_lock = threading.Lock()
-_cooldown_until = 0.0
+_lock = threading.Lock()
+_inflight = set()
+_inflight_names = set()  # VM names currently being provisioned; cleanup must not reap their nic/pip
+_absent_once = set()  # net-sweep two-poll guard: base seen without a VM once, swept on second sight
+_token = {"value": None, "exp": 0}
+_token_lock = threading.Lock()
 
 
-def is_transient_error(err: str) -> bool:
-    e = err.lower()
-    return any(marker in e for marker in TRANSIENT_MARKERS)
+def log(msg):
+    line = f"{time.strftime('%H:%M:%S')} {msg}"
+    print(line, flush=True)
+    with open(f"{STATE}/orch.log", "a") as f:
+        f.write(line + "\n")
 
 
-def enter_cooldown():
-    global _cooldown_until
-    with _cooldown_lock:
-        _cooldown_until = time.time() + COOLDOWN_SECONDS
+def az_token():
+    with _token_lock:
+        if _token["value"] and time.time() < _token["exp"] - 60:
+            return _token["value"]
+        cid = os.environ.get("AZURE_SP_CLIENT_ID") or os.environ.get("AZURE_CLIENT_ID")
+        csec = os.environ.get("AZURE_SP_CLIENT_SECRET") or os.environ.get("AZURE_CLIENT_SECRET")
+        if not cid or not csec:
+            raise RuntimeError("no SP credentials in env (AZURE_SP_CLIENT_ID/AZURE_CLIENT_ID)")
+        body = (
+            f"grant_type=client_credentials&client_id={cid}"
+            f"&client_secret={csec}"
+            "&scope=https%3A%2F%2Fmanagement.azure.com%2F.default"
+        ).encode()
+        req = urllib.request.Request(
+            f"https://login.microsoftonline.com/{TENANT}/oauth2/v2.0/token",
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = json.load(r)
+        _token["value"] = d["access_token"]
+        _token["exp"] = time.time() + int(d.get("expires_in", 3500))
+        return _token["value"]
 
 
-def cooling_down() -> bool:
-    with _cooldown_lock:
-        return time.time() < _cooldown_until
-
-GH_API = "https://api.github.com"
-VM_PREFIX = "ci-az-"
-
-WORKER_CLOUD_INIT = """#cloud-config
-# Ephemeral GitHub Actions worker for thyn-ai/algenta -- one VM per job.
-# Registers a JIT ephemeral runner (labels az-ephemeral,self-hosted), runs
-# exactly one job, then deletes itself via the RG-scoped thyn-ci-builder SP.
-# If the self-delete fails, the orchestrator's 90-minute reaper deletes the VM.
-package_update: true
-package_upgrade: false
-packages:
-  - ca-certificates
-  - curl
-  - git
-  - jq
-  - docker.io
-  - python3
-  - python3-pip
-  - software-properties-common
-  # Build toolchain for the heavy jobs: the sdk-audit execution-sweep / ci.yml
-  # runtime shard builds compile Mojo and link it into executables, which needs
-  # clang (Mojo's linker) -- "clang not found; cannot link Mojo object" if absent.
-  - build-essential
-  - clang
-  - lld
-write_files:
-  - path: /opt/ci/secrets.env
-    permissions: '0600'
-    content: |
-      AZURE_TENANT_ID=__AZURE_TENANT_ID__
-      AZURE_SP_CLIENT_ID=__AZURE_SP_CLIENT_ID__
-      AZURE_SP_CLIENT_SECRET=__AZURE_SP_CLIENT_SECRET__
-      AZURE_SUBSCRIPTION_ID=__AZURE_SUBSCRIPTION_ID__
-      AZURE_RESOURCE_GROUP=__AZURE_RESOURCE_GROUP__
-  - path: /opt/ci/self-delete.sh
-    permissions: '0700'
-    content: |
-      #!/usr/bin/env bash
-      # Runs as root (invoked via sudo by run-worker.sh) so the SP secrets stay
-      # root-only; deletes this VM once the runner has finished its one job.
-      set -eu
-      . /opt/ci/secrets.env
-      az login --service-principal -u "$AZURE_SP_CLIENT_ID" \\
-        -p "$AZURE_SP_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID" --output none
-      az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-      az vm delete --resource-group "$AZURE_RESOURCE_GROUP" \\
-        --name "$(hostname)" --yes --no-wait
-  - path: /opt/ci/run-worker.sh
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      # Run the ephemeral agent (blocks until the one job finishes), then
-      # delete this VM so no compute outlives the job it was provisioned for.
-      set -u
-      cd /opt/actions-runner
-      ./run.sh
-      rc=$?
-      echo "runner exited rc=$rc; self-deleting VM $(hostname)"
-      sudo /opt/ci/self-delete.sh \\
-        || echo "self-delete FAILED; orchestrator reaper will reclaim this VM" >&2
-      exit 0
-runcmd:
-  - systemctl enable --now docker
-  - usermod -aG docker azureuser
-  # python3.14: several jobs (docs-audit) call it directly from PATH and the
-  # workflows deliberately avoid actions/setup-python; Ubuntu 22.04 ships 3.10.
-  - add-apt-repository -y ppa:deadsnakes/ppa
-  - apt-get update
-  # libpython3.14: the bundled runtime worker (algenta-runtime-native, used by
-  # the sdk-audit "Published artifact install + execute proof" doctor gate)
-  # links the distro libpython3.14 -- field-verified remedy, see doctor output.
-  - apt-get install -y python3.14 python3.14-venv libpython3.14
-  # Azure CLI (needed only for the post-job self-delete; installed before the
-  # runner starts so workflow steps never race the apt lock).
-  - curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg
-  - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" > /etc/apt/sources.list.d/azure-cli.list
-  - apt-get update
-  - apt-get install -y azure-cli
-  # Pixi: heavy jobs drive scripts/run_repo_python.sh, which needs pixi and
-  # otherwise falls back to plain python3 (no asyncpg/mojo) -- that fallback is
-  # why integration jobs died with "No module named 'asyncpg'". The pixi env
-  # (asyncpg/mojo/max, per mojo_env/pixi.toml) is materialized on first use.
-  - curl -fsSL -o /usr/local/bin/pixi "https://github.com/prefix-dev/pixi/releases/latest/download/pixi-x86_64-unknown-linux-musl"
-  - chmod +x /usr/local/bin/pixi
-  - mkdir -p /opt/actions-runner
-  - bash -c 'RUNNER_VERSION=$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | jq -r .tag_name | tr -d v) && cd /opt/actions-runner && curl -fsSL -o runner.tar.gz "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz" && tar xzf runner.tar.gz && rm -f runner.tar.gz'
-  - chown -R azureuser:azureuser /opt/actions-runner
-  - cd /opt/actions-runner && sudo -u azureuser ./config.sh --url https://github.com/__GITHUB_REPO__ --token __REGISTRATION_TOKEN__ --name __VM_NAME__ --labels az-ephemeral,self-hosted --ephemeral --unattended
-  - cd /opt/actions-runner && sudo -u azureuser nohup /opt/ci/run-worker.sh >/var/log/runner-exec.log 2>&1 &
-"""
+def arm(method, path, body=None, api="2023-07-01"):
+    url = f"https://management.azure.com{path}{'&' if '?' in path else '?'}api-version={api}"
+    for attempt in (1, 2, 3):
+        req = urllib.request.Request(
+            url,
+            method=method,
+            data=json.dumps(body).encode() if body is not None else None,
+            headers={"Authorization": f"Bearer {az_token()}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                raw = r.read()
+            return json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < 3:  # ARM throttle: back off, retry
+                time.sleep(5 * attempt)
+                continue
+            body = e.read().decode(errors="replace")[:300].replace("\r", "").replace("\n", " ")
+            raise urllib.error.HTTPError(e.url, e.code, f"{e.reason} body={body}", e.hdrs, None)
+    raise RuntimeError("unreachable")
 
 
-@dataclass
-class Job:
-    id: int
-    run_id: int
-    name: str
-    html_url: str
+_usage_cache = {}
 
 
-# -- GitHub API (stdlib only) -------------------------------------------------
-def gh_api(method: str, path: str, body=None):
+def gh(path, method="GET", body=None):
     req = urllib.request.Request(
-        f"{GH_API}{path}",
-        data=json.dumps(body).encode() if body is not None else None,
+        f"https://api.github.com/{path}",
         method=method,
+        data=json.dumps(body).encode() if body else None,
         headers={
-            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Authorization": f"Bearer {os.environ['GITHUB_CI_TOKEN']}",
             "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "algenta-az-orchestrator",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.load(resp)
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read() or b"{}")
 
 
-def fetch_queued_az_jobs():
-    """Queued jobs requesting the az-ephemeral label, across queued AND
-    in-progress runs (matrix legs can be queued while their run is running)."""
+def queued_jobs():
+    runs = gh(f"repos/{REPO}/actions/runs?status=queued&per_page=30")["workflow_runs"]
     jobs = []
-    seen_jobs = set()
-    for status in ("queued", "in_progress"):
-        try:
-            runs = gh_api(
-                "GET", f"/repos/{GITHUB_REPO}/actions/runs?status={status}&per_page=50"
-            ).get("workflow_runs", [])
-        except (urllib.error.URLError, TimeoutError) as exc:
-            log.warning("listing %s runs failed: %s", status, exc)
-            continue
-        for run in runs:
-            try:
-                page = gh_api(
-                    "GET",
-                    f"/repos/{GITHUB_REPO}/actions/runs/{run['id']}/jobs?per_page=100",
-                ).get("jobs", [])
-            except (urllib.error.URLError, TimeoutError) as exc:
-                log.warning("listing jobs for run %s failed: %s", run["id"], exc)
-                continue
-            for j in page:
-                if (
-                    j.get("status") == "queued"
-                    and "az-ephemeral" in j.get("labels", [])
-                    and j["id"] not in seen_jobs
-                ):
-                    seen_jobs.add(j["id"])
-                    jobs.append(
-                        Job(
-                            id=j["id"],
-                            run_id=run["id"],
-                            name=j.get("name", "?"),
-                            html_url=j.get("html_url", ""),
-                        )
-                    )
+    for run in runs:
+        for j in gh(f"repos/{REPO}/actions/runs/{run['id']}/jobs?per_page=50")["jobs"]:
+            if j["status"] == "queued" and any(LABEL in (l or "") for l in j.get("labels", [])):
+                jobs.append(j)
     return jobs
 
 
-def fetch_registration_token() -> str:
-    return gh_api(
-        "POST", f"/repos/{GITHUB_REPO}/actions/runners/registration-token", body={}
-    )["token"]
+def runner_names():
+    return {r["name"] for r in gh(f"repos/{REPO}/actions/runners?per_page=100")["runners"]}
 
 
-# -- state (dedupe by job id) -------------------------------------------------
-_db_lock = threading.Lock()
+def live_vms():
+    d = arm("GET", f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/virtualMachines")
+    out = []
+    for v in d.get("value", []):
+        if v["name"].startswith(("ci-az-", "ci-warm-")):
+            out.append((v["name"], v.get("properties", {}).get("timeCreated", "2000-01-01T00:00:00"), v["location"]))
+    return out
 
 
-def _db():
-    conn = sqlite3.connect(STATE_DB, timeout=10)
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS handled ("
-        " job_id INTEGER PRIMARY KEY,"
-        " run_id INTEGER,"
-        " vm_name TEXT,"
-        " status TEXT,"
-        " ts TEXT)"
-    )
-    return conn
+def free_vcpus(region):
+    try:
+        d = arm("GET", f"/subscriptions/{SUB}/providers/Microsoft.Compute/locations/{region}/usages")
+        free = {}
+        for u in d.get("value", []):
+            n = u["name"]["value"]
+            if n.startswith(("standardDSv3", "standardDSv4", "standardDSv5", "standardDSv6", "standardFSv2")):
+                free[n] = max(0, int(u["limit"]) - int(u["currentValue"]))
+            elif n == "cores":  # total regional vCPU cap; family quota alone is not enough
+                free["cores"] = max(0, int(u["limit"]) - int(u["currentValue"]))
+        return free
+    except Exception as e:
+        log(f"usage {region} failed: {e}")
+        return {}
 
 
-def is_handled(job_id: int) -> bool:
-    with _db_lock:
-        conn = _db()
-        try:
-            row = conn.execute(
-                "SELECT 1 FROM handled WHERE job_id = ?", (job_id,)
-            ).fetchone()
-            return row is not None
-        finally:
-            conn.close()
+def free_vcpus_cached(region):
+    now = time.time()
+    if region in _usage_cache and now - _usage_cache[region][0] < 120:
+        return _usage_cache[region][1]
+    free = free_vcpus(region)
+    _usage_cache[region] = (now, free)
+    return free
 
 
-def mark_handled(job: Job, vm_name: str, status: str = "provisioning"):
-    with _db_lock:
-        conn = _db()
-        try:
-            conn.execute(
-                "INSERT OR REPLACE INTO handled (job_id, run_id, vm_name, status, ts)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (
-                    job.id,
-                    job.run_id,
-                    vm_name,
-                    status,
-                    datetime.now(timezone.utc).isoformat(),
-                ),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+def family(size):
+    if size.startswith("Standard_F"):
+        return "standardFSv2Family"
+    for f in ("v6", "v5", "v4", "v3"):
+        if f in size:
+            return f"standardDS{f}Family"
+    return "standardDSv4Family"
 
 
-def unmark(job_id: int):
-    with _db_lock:
-        conn = _db()
-        try:
-            conn.execute("DELETE FROM handled WHERE job_id = ?", (job_id,))
-            conn.commit()
-        finally:
-            conn.close()
+SSH_PUB = ""
+for _p in ("/opt/ci/worker_key.pub", os.path.expanduser("~/.ssh/id_ed25519.pub")):
+    try:
+        with open(_p) as f:
+            SSH_PUB = f.read().strip()
+        break
+    except OSError:
+        pass
+
+# Bootstrap lives in a write_files block scalar: plain runcmd lines containing
+# "Header: value" are INVALID YAML (colon+space) and silently aborted cloud-init.
+CLOUD_INIT = """#cloud-config
+ssh_authorized_keys:
+  - __SSH_PUB__
+write_files:
+  - path: /root/bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      TOK="__GH_TOKEN__"
+      log(){ echo "T=$(date +%s) $*" | tee -a /root/boot.log; }
+      up(){ python3 - <<PY
+      import json,urllib.request
+      try:
+          gid=open("/root/gist.id").read().strip()
+          content=open("/root/boot.log").read()[-3000:]
+          req=urllib.request.Request("https://api.github.com/gists/"+gid,method="PATCH",
+           data=json.dumps({"files":{"boot.log":{"content":content}}}).encode(),
+           headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
+          urllib.request.urlopen(req,timeout=30)
+      except Exception:
+          pass
+      PY
+      }
+      log start
+      GIST=$(python3 - <<PY
+      import json,urllib.request
+      try:
+          req=urllib.request.Request("https://api.github.com/gists",method="POST",
+           data=json.dumps({"public":False,"files":{"boot.log":{"content":"init"}}}).encode(),
+           headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
+          print(json.load(urllib.request.urlopen(req,timeout=30))["id"])
+      except Exception as e:
+          print("ERR-%s"%e)
+      PY
+      )
+      echo "$GIST" > /root/gist.id
+      log "gist=$GIST"
+      up
+      # package set mirrors main's worker image: python3.14 (Test job + bundled-runtime
+      # doctor gate) and clang/lld (Mojo shard builds link with clang).
+      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker.io ca-certificates curl git jq libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
+      log "apt rc=$?"
+      up
+      add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1
+      timeout 240 sh -c 'apt-get update -qq && apt-get install -y -qq python3.14 python3.14-venv libpython3.14' >/dev/null 2>&1
+      # deadsnakes ships no pip module; jobs call `python3.14 -m pip` directly.
+      python3.14 -m ensurepip --upgrade >/dev/null 2>&1 || true
+      log "py314 rc=$?"
+      up
+      systemctl enable --now docker
+      curl -m 120 -o /tmp/runner.tar.gz -LsS https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
+      log "runner-dl rc=$?"
+      mkdir -p /opt/runner && tar -xzf /tmp/runner.tar.gz -C /opt/runner
+      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/repos/__REPO__/actions/runners/registration-token)
+      log "token rc=$?"
+      up
+      TOKEN=$(echo "$RT" | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null)
+      # runner config.sh refuses to run as root ("Must not run with sudo"); cloud-init is root.
+      useradd -m -s /bin/bash runner 2>/dev/null || true
+      usermod -aG docker runner 2>/dev/null || true
+      chown -R runner:runner /opt/runner
+      su - runner -c "/opt/runner/config.sh --url https://github.com/__REPO__ --token '$TOKEN' --name __VMNAME__ --labels az-ephemeral,self-hosted --ephemeral --unattended" >> /root/boot.log 2>&1
+      log "config rc=$?"
+      up
+      su - runner -c "/opt/runner/run.sh" || true
+      log "run-exited"
+      up
+      shutdown -h now || true
+runcmd:
+  - bash /root/bootstrap.sh
+"""
 
 
-def _set_status(job_id: int, status: str):
-    with _db_lock:
-        conn = _db()
-        try:
-            conn.execute(
-                "UPDATE handled SET status = ? WHERE job_id = ?", (status, job_id)
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-
-def _provisioning_rows():
-    with _db_lock:
-        conn = _db()
-        try:
-            return conn.execute(
-                "SELECT job_id, vm_name FROM handled WHERE status = 'provisioning'"
-            ).fetchall()
-        finally:
-            conn.close()
-
-
-def unmark_stale_running(queued_ids):
-    """Self-heal jobs wedged 'running' in the dedupe table but still queued.
-
-    Ephemeral runners pick ANY queued job matching their labels, not the exact
-    job a VM was provisioned for. When queued jobs outnumber the worker slots,
-    a provisioned VM's runner can run a different job, leaving the intended job
-    queued while its dedupe row says 'running' -- so it is never re-provisioned
-    and sits forever. Any 'running' row whose job is STILL queued on GitHub and
-    was marked more than STUCK_RUNNING_MINUTES ago is unmarked for retry. The
-    threshold exceeds worker cloud-init (~4-6 min) plus runner-start, so a
-    legitimately in-flight job (no longer queued) is never touched.
-    """
-    if not queued_ids:
-        return
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=STUCK_RUNNING_MINUTES)
-    stale = []
-    with _db_lock:
-        conn = _db()
-        try:
-            rows = conn.execute(
-                "SELECT job_id, ts FROM handled WHERE status = 'running'"
-            ).fetchall()
-            for job_id, ts in rows:
-                if job_id not in queued_ids:
-                    continue
-                try:
-                    marked = datetime.fromisoformat(ts)
-                except (ValueError, TypeError):
-                    stale.append(job_id)  # unreadable timestamp: treat as stale
-                    continue
-                if marked < cutoff:
-                    stale.append(job_id)
-            for job_id in stale:
-                conn.execute("DELETE FROM handled WHERE job_id = ?", (job_id,))
-            conn.commit()
-        finally:
-            conn.close()
-    for job_id in stale:
-        log.warning(
-            "self-heal: job %s still queued after %d min; unmarked for re-provision",
-            job_id,
-            STUCK_RUNNING_MINUTES,
+def write_ci_file(name):
+    with open(f"{STATE}/{name}.yml", "w") as f:
+        f.write(
+            CLOUD_INIT.replace("__SSH_PUB__", SSH_PUB)
+            .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
+            .replace("__REPO__", REPO)
+            .replace("__VMNAME__", name)
         )
 
 
-# -- Azure --------------------------------------------------------------------
-def _az_error_detail(stderr: str) -> str:
-    """Extract the real error from az CLI stderr.
-
-    The az CLI sometimes crashes while FORMATTING an ARM error response
-    ("The content for this response was already consumed"), emitting a long
-    Python traceback that buries/truncates the actual reason. Surface the real
-    `ERROR:`/`Code:`/`Message:` lines when present, else fall back to the tail
-    of stderr, and keep enough text for transient (quota/capacity) matching.
-    """
-    lines = [ln for ln in stderr.splitlines() if ln.strip()]
-    useful = [
-        ln
-        for ln in lines
-        if ln.strip().startswith(("ERROR:", "Code:", "Message:"))
-        or "quota" in ln.lower()
-        or "The command failed with an unexpected error" in ln
-        or "content for this response was already consumed" in ln
-    ]
-    if useful:
-        return " | ".join(ln.strip() for ln in useful)[:1500]
-    return stderr.strip()[-1500:]
-
-
-def run_az(args, check=True, timeout=600):
-    cmd = ["az"] + args + ["--output", "json"]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    if check and proc.returncode != 0:
-        detail = _az_error_detail(proc.stderr or "")
-        raise RuntimeError(f"az {' '.join(args[:3])} failed: {detail}")
-    return proc
-
-
-def ensure_az_login():
-    probe = subprocess.run(
-        ["az", "account", "show"], capture_output=True, text=True
+def subnet_id(region, vnet, subnet):
+    return (
+        f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Network/"
+        f"virtualNetworks/{vnet}/subnets/{subnet}"
     )
-    if probe.returncode != 0:
-        run_az(
-            [
-                "login",
-                "--service-principal",
-                "-u",
-                AZ_CLIENT_ID,
-                "-p",
-                AZ_CLIENT_SECRET,
-                "--tenant",
-                AZ_TENANT,
-            ]
-        )
-    run_az(["account", "set", "--subscription", AZ_SUBSCRIPTION])
-    log.info("az CLI authenticated as SP %s (subscription %s)", AZ_CLIENT_ID, AZ_SUBSCRIPTION)
 
 
-def render_worker_cloud_init(reg_token: str, vm_name: str) -> str:
-    rendered = (
-        WORKER_CLOUD_INIT
-        .replace("__AZURE_TENANT_ID__", AZ_TENANT)
-        .replace("__AZURE_SP_CLIENT_ID__", AZ_CLIENT_ID)
-        .replace("__AZURE_SP_CLIENT_SECRET__", AZ_CLIENT_SECRET)
-        .replace("__AZURE_SUBSCRIPTION_ID__", AZ_SUBSCRIPTION)
-        .replace("__AZURE_RESOURCE_GROUP__", AZ_RESOURCE_GROUP)
-        .replace("__GITHUB_REPO__", GITHUB_REPO)
-        .replace("__REGISTRATION_TOKEN__", reg_token)
-        .replace("__VM_NAME__", vm_name)
-    )
-    # Azure custom-data must survive latin-1 transport; fail loud, not mid-deploy.
-    rendered.encode("ascii")
-    return rendered
+CLOUD_INIT_FAST = """#cloud-config
+ssh_authorized_keys:
+  - __SSH_PUB__
+write_files:
+  - path: /root/bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      TOK="__GH_TOKEN__"
+      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/repos/__REPO__/actions/runners/registration-token)
+      TOKEN=$(echo "$RT" | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null)
+      useradd -m -s /bin/bash runner 2>/dev/null || true
+      usermod -aG docker runner 2>/dev/null || true
+      chown -R runner:runner /opt/runner
+      su - runner -c "/opt/runner/config.sh --url https://github.com/__REPO__ --token '$TOKEN' --name __VMNAME__ --labels az-ephemeral,self-hosted --ephemeral --unattended"
+      su - runner -c "/opt/runner/run.sh" || true
+      shutdown -h now || true
+runcmd:
+  - bash /root/bootstrap.sh
+"""
 
 
-def create_worker_vm(job: Job, vm_name: str, cloud_init: str):
-    """Try each configured size in order; first successful allocation wins."""
-    last_error = "no sizes configured"
-    for size in AZ_VM_SIZES:
-        init_file = f"/tmp/{vm_name}.cloud-init"
-        with open(init_file, "w", encoding="utf-8") as fh:
-            fh.write(cloud_init)
-        os.chmod(init_file, 0o600)
+_golden_ok = None
+
+
+def golden_available():
+    # ci-worker-v1 was never captured; probing once avoids a guaranteed 404 per eastus2 attempt.
+    global _golden_ok
+    if _golden_ok is None:
         try:
-            run_az(
-                [
-                    "vm",
-                    "create",
-                    "--resource-group",
-                    AZ_RESOURCE_GROUP,
-                    "--name",
-                    vm_name,
-                    "--location",
-                    AZ_LOCATION,
-                    "--image",
-                    WORKER_IMAGE,
-                    "--size",
-                    size,
-                    "--admin-username",
-                    "azureuser",
-                    "--ssh-key-value",
-                    WORKER_SSH_PUBKEY,
-                    "--subnet",
-                    AZ_SUBNET_ID,
-                    "--public-ip-sku",
-                    "Standard",
-                    "--os-disk-size-gb",
-                    WORKER_OS_DISK_GB,
-                    "--storage-sku",
-                    "Premium_LRS",
-                    "--custom-data",
-                    init_file,
-                    "--tags",
-                    "plane=az-ci",
-                    f"github-run={job.run_id}",
-                    f"github-job={job.id}",
-                ],
-                timeout=900,
-            )
-            log.info("provisioned %s (%s) for job %s", vm_name, size, job.id)
-            return
-        except (RuntimeError, subprocess.TimeoutExpired) as exc:
-            last_error = str(exc)
-            log.warning("size %s failed for %s: %s", size, vm_name, last_error)
-        finally:
+            arm("GET", f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/images/ci-worker-v1")
+            _golden_ok = True
+        except urllib.error.HTTPError as e:
+            _golden_ok = e.code != 404
+        except Exception:
+            _golden_ok = False
+        log(f"golden image ci-worker-v1 available: {_golden_ok}")
+    return _golden_ok
+
+
+def _exists(path, api):
+    try:
+        arm("GET", path, api=api)
+        return True
+    except urllib.error.HTTPError as e:
+        return e.code != 404
+
+
+def _wait_gone(path, api, timeout=90):
+    # ARM deletes are async; re-PUTting while the old resource is still Deleting 409s/404s.
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not _exists(path, api):
+            return True
+        time.sleep(5)
+    return False
+
+
+def create_vm(name, size, region, vnet, subnet):
+    # No public IP: workers only need outbound (Azure default SNAT), and the 20-PIP
+    # per-region quota was a recurring wall. Inbound debug access goes through the
+    # gist log sink in cloud-init instead of SSH.
+    nic = nic_path_for(name, region)
+    for p, api in ((vm_path(name), "2023-07-01"), (nic, "2022-07-01")):
+        if _exists(p, api):  # same-region leftovers from an earlier failed attempt (409 otherwise)
             try:
-                os.unlink(init_file)
-            except OSError:
+                arm("DELETE", p, api=api)
+            except Exception:
                 pass
-    raise RuntimeError(f"all sizes failed for {vm_name}: {last_error}")
-
-
-_attempts = {}  # job_id -> failed provision attempts (in-memory)
-_attempts_lock = threading.Lock()
-
-
-def provision(job: Job):
-    vm_name = f"{VM_PREFIX}{job.run_id}-{job.id}"[:64]
+            _wait_gone(p, api)
     try:
-        reg_token = fetch_registration_token()
-        cloud_init = render_worker_cloud_init(reg_token, vm_name)
-        create_worker_vm(job, vm_name, cloud_init)
-        mark_handled(job, vm_name, status="running")
-        log.info(
-            "job %s (%s) handled by %s -- %s", job.id, job.name, vm_name, job.html_url
-        )
-    except Exception as exc:  # noqa: BLE001 -- never let one job kill the loop
-        # Capacity/quota exhaustion (and az CLI crashes that hide ARM errors)
-        # is TRANSIENT: capacity frees up when a worker self-deletes. Reset the
-        # job and pause new provisioning for a cooldown instead of counting it
-        # toward the permanent-failure budget.
-        if is_transient_error(str(exc)):
-            unmark(job.id)
-            enter_cooldown()
-            log.warning(
-                "job %s provision hit transient capacity error; cooldown %ds: %s",
-                job.id,
-                COOLDOWN_SECONDS,
-                str(exc)[:400],
-            )
-            return
-        with _attempts_lock:
-            _attempts[job.id] = _attempts.get(job.id, 0) + 1
-            attempts = _attempts[job.id]
-        if attempts >= MAX_PROVISION_ATTEMPTS:
-            mark_handled(job, vm_name, status="failed")
-            log.error(
-                "job %s permanently failed after %d attempts: %s",
-                job.id,
-                attempts,
-                str(exc)[:400],
-            )
-        else:
-            unmark(job.id)
-            log.warning(
-                "job %s provision attempt %d/%d failed (will retry): %s",
-                job.id,
-                attempts,
-                MAX_PROVISION_ATTEMPTS,
-                str(exc)[:400],
-            )
+        _create_vm(name, size, region, vnet, subnet, nic)
+    except Exception:
+        clear_net(name, region)
+        raise
 
 
-def reap_stale_vms():
-    proc = run_az(
-        ["vm", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False
+def _create_vm(name, size, region, vnet, subnet, nic):
+    arm(
+        "PUT",
+        nic,
+        {
+            "location": region,
+            "properties": {
+                "ipConfigurations": [
+                    {"name": "ip", "properties": {"subnet": {"id": subnet_id(region, vnet, subnet)}}}
+                ]
+            },
+        },
+        api="2022-07-01",
     )
-    if proc.returncode != 0:
-        log.warning("reaper: vm list failed: %s", proc.stderr.strip()[:300])
-        return
-    now = datetime.now(timezone.utc)
-    for vm in json.loads(proc.stdout or "[]"):
-        name = vm.get("name", "")
-        created_raw = vm.get("timeCreated")
-        if not name.startswith(VM_PREFIX) or not created_raw:
-            continue
-        try:
-            created = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        age_min = (now - created).total_seconds() / 60
-        if age_min > MAX_VM_AGE_MINUTES:
-            log.warning(
-                "reaping stale VM %s (age %.0f min > %d min)",
-                name,
-                age_min,
-                MAX_VM_AGE_MINUTES,
+    pwd = "Ci-" + secrets.token_urlsafe(16)
+    golden = region == GOLDEN_REGION and golden_available()
+    if golden:
+        with open(f"{STATE}/{name}.fast.yml", "w") as f:
+            f.write(
+                CLOUD_INIT_FAST.replace("__SSH_PUB__", SSH_PUB)
+                .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
+                .replace("__REPO__", REPO)
+                .replace("__VMNAME__", name)
             )
-            run_az(
-                ["vm", "delete", "--resource-group", AZ_RESOURCE_GROUP,
-                 "--name", name, "--yes", "--no-wait"],
-                check=False,
-            )
+        ci_file = f"{STATE}/{name}.fast.yml"
+        image_ref = {"id": GOLDEN_IMAGE}
+    else:
+        ci_file = f"{STATE}/{name}.yml"
+        image_ref = {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts-gen2",
+            "version": "latest",
+        }
+    props = {
+        "hardwareProfile": {"vmSize": size},
+        "storageProfile": {"imageReference": image_ref},
+        "osProfile": {
+            "computerName": name[:64],
+            "adminUsername": "azureuser",
+            "adminPassword": pwd,
+            "customData": base64.b64encode(open(ci_file, "rb").read()).decode(),
+            "linuxConfiguration": {"disablePasswordAuthentication": False},
+        },
+        "networkProfile": {"networkInterfaces": [{"id": nic}]},
+    }
+    if SPOT:
+        props["priority"] = "Spot"
+        props["evictionPolicy"] = "Deallocate"
+        props["billingProfile"] = {"maxPrice": -1}
+    def put_vm():
+        arm("PUT", vm_path(name), {"location": region, "properties": props})
+
+    try:
+        props["storageProfile"]["osDisk"] = {
+            "createOption": "FromImage",
+            "diffDiskSettings": {"option": "Local"},  # ephemeral OS disk: zero storage cost, fast
+        }
+        put_vm()
+    except urllib.error.HTTPError as e:
+        if e.code == 409:  # stale VM from an earlier attempt: delete VM only (nic/pip stay), wait, retry
+            try:
+                arm("DELETE", vm_path(name))
+            except Exception:
+                pass
+            _wait_gone(vm_path(name), "2023-07-01")
+            props["storageProfile"].pop("osDisk", None)
+            put_vm()
+        else:
+            props["storageProfile"].pop("osDisk", None)  # sizes without local disk fall back
+            put_vm()
+    except Exception:
+        props["storageProfile"].pop("osDisk", None)  # sizes without local disk fall back
+        put_vm()
 
 
-def _protected_vm_names():
-    """VM names currently being provisioned (must not GC their NIC/PIP/NSG/disk,
-    which transiently exist before the VM shows up in `az vm list`)."""
-    with _db_lock:
-        conn = _db()
+def vm_path(name):
+    return f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/virtualMachines/{name}"
+
+
+def delete_vm(name, location):
+    for kind, path in (
+        ("vm", vm_path(name)),
+        ("nic", nic_path_for(name, location)),
+    ):
         try:
-            rows = conn.execute(
-                "SELECT vm_name FROM handled WHERE status = 'provisioning'"
-            ).fetchall()
-        finally:
-            conn.close()
-    return {r[0] for r in rows if r[0]}
+            arm("DELETE", path, api="2022-07-01" if kind != "vm" else "2023-07-01")
+        except Exception as e:
+            log(f"delete {kind} {name}: {e}")
 
 
-def reap_orphaned_resources():
-    """GC the NIC/PIP/NSG/OS-disk that `az vm delete` leaves behind when a
-    worker self-deletes (vm delete removes only the compute resource). Only
-    touched are ci-az-* resources whose VM no longer exists and is not
-    mid-provision, so a live or in-flight worker is never dismembered."""
-    proc = run_az(["vm", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
-    if proc.returncode != 0:
-        return
-    live_vms = {vm.get("name") for vm in json.loads(proc.stdout or "[]")}
-    protected = _protected_vm_names()
+def nic_path_for(name, region):
+    return f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Network/networkInterfaces/{name}-{region}-nic"
 
-    def gcable(base_vm: str) -> bool:
-        return bool(base_vm) and base_vm not in live_vms and base_vm not in protected
 
-    # Orphaned NICs (virtualMachine == null)
-    proc = run_az(["network", "nic", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
-    if proc.returncode == 0:
-        for nic in json.loads(proc.stdout or "[]"):
-            name = nic.get("name", "")
-            if name.startswith(VM_PREFIX) and name.endswith("VMNic") and nic.get("virtualMachine") is None:
-                base = name[: -len("VMNic")]
-                if gcable(base):
-                    run_az(["network", "nic", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name], check=False)
-                    log.info("gc: deleted orphaned NIC %s", name)
+def clear_net(name, region):
+    p = nic_path_for(name, region)
+    if _exists(p, "2022-07-01"):
+        try:
+            arm("DELETE", p, api="2022-07-01")
+        except Exception as e:
+            log(f"clear_net {name}: {e}")
 
-    # Orphaned public IPs (detached)
-    proc = run_az(["network", "public-ip", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
-    if proc.returncode == 0:
-        for pip in json.loads(proc.stdout or "[]"):
-            name = pip.get("name", "")
-            if name.startswith(VM_PREFIX) and name.endswith("PublicIP") and not pip.get("ipConfiguration"):
-                base = name[: -len("PublicIP")]
-                if gcable(base):
-                    run_az(["network", "public-ip", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name], check=False)
-                    log.info("gc: deleted orphaned PIP %s", name)
 
-    # Orphaned NSGs (named <vm>NSG, VM gone)
-    proc = run_az(["network", "nsg", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
-    if proc.returncode == 0:
-        for nsg in json.loads(proc.stdout or "[]"):
-            name = nsg.get("name", "")
-            if name.startswith(VM_PREFIX) and name.endswith("NSG"):
-                base = name[: -len("NSG")]
-                if gcable(base):
-                    run_az(["network", "nsg", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name], check=False)
-                    log.info("gc: deleted orphaned NSG %s", name)
-
-    # Orphaned OS disks (managedBy == null, older than 10 min for safety)
-    proc = run_az(["disk", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False)
-    if proc.returncode == 0:
-        now = datetime.now(timezone.utc)
-        for disk in json.loads(proc.stdout or "[]"):
-            name = disk.get("name", "")
-            if not (name.startswith(VM_PREFIX) and disk.get("managedBy") is None):
+def provision_worker(name):
+    with _lock:
+        _inflight_names.add(name)
+    write_ci_file(name)
+    for region, vnet, subnet in REGIONS:
+        free = free_vcpus_cached(region)
+        if not free:
+            continue
+        for size in SIZE_CHAIN:
+            if free.get(family(size), 0) < VM_VCPU[size] or free.get("cores", 10**9) < VM_VCPU[size]:
                 continue
-            base = name.split("_OsDisk")[0]
-            created_raw = disk.get("timeCreated")
-            if created_raw:
-                try:
-                    created = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-                    if (now - created).total_seconds() < 600:
-                        continue
-                except ValueError:
-                    pass
-            if gcable(base):
-                run_az(["disk", "delete", "--resource-group", AZ_RESOURCE_GROUP, "--name", name, "--yes"], check=False)
-                log.info("gc: deleted orphaned disk %s", name)
+            try:
+                create_vm(name, size, region, vnet, subnet)
+                log(f"provisioned {name} ({size} in {region})")
+                return True  # name stays protected until cleanup() sees the VM in live_vms()
+            except Exception as e:
+                log(f"{size}@{region} failed for {name}: {str(e)[-200:]}")
+    log(f"all regions/sizes failed for {name}")
+    with _lock:
+        _inflight_names.discard(name)
+    return False
 
 
-def recover_stale_provisioning():
-    """Recover jobs wedged in 'provisioning' after a daemon restart.
+def provision_job(job):
+    if not provision_worker(f"ci-az-{job['run_id']}-{job['id']}"):
+        log(f"leaving job {job['id']} queued for next poll")
+        with _lock:
+            _inflight.discard(job["id"])
 
-    A restart kills the in-flight provision threads (and their az children),
-    but their dedupe rows survive; the fresh daemon would then skip those jobs
-    forever. A row whose VM never materialized is reset so the job is retried;
-    a row whose VM DOES exist (the ARM deployment outlived the process) is kept
-    and promoted to 'running'.
-    """
-    # Clear rows marked 'failed' by a previous daemon lifetime: they were most
-    # often transient capacity errors mis-bucketed before a restart picked up
-    # fixes. GitHub still has the job queued, so retry it; a genuine repeat
-    # failure re-fails it within this lifetime.
-    with _db_lock:
-        conn = _db()
+
+def cleanup():
+    runners = runner_names()
+    now = time.time()
+    vms = live_vms()
+    for name, created, location in vms:
         try:
-            n = conn.execute("DELETE FROM handled WHERE status = 'failed'").rowcount
-            conn.commit()
-        finally:
-            conn.close()
-    if n:
-        log.info("recovery: reset %d previously failed job(s) for retry", n)
-
-    rows = _provisioning_rows()
-    if not rows:
-        return
-    existing = set()
-    proc = run_az(
-        ["vm", "list", "--resource-group", AZ_RESOURCE_GROUP], check=False
+            age = now - time.mktime(time.strptime(created[:19], "%Y-%m-%dT%H:%M:%S"))
+        except Exception:
+            age = MAX_AGE_S
+        if (name not in runners and age > ORPHAN_AGE_S) or age > MAX_AGE_S:
+            log(f"deleting {name} (age={int(age)}s, runner={'gone' if name not in runners else 'aged'})")
+            delete_vm(name, location)
+    # leaked nic/pip from failed provisions occupy the per-region PIP quota (limit 20)
+    vm_names = {n for n, _, _ in vms}
+    with _lock:
+        protected = set(_inflight_names)
+        for n in protected:
+            if n in vm_names:  # VM visible: lag window over, release protection
+                _inflight_names.discard(n)
+    for b in list(_absent_once):
+        if b in vm_names or b in protected:
+            _absent_once.discard(b)
+    d = arm(
+        "GET",
+        f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Network/networkInterfaces",
+        api="2022-07-01",
     )
-    if proc.returncode == 0:
-        existing = {vm.get("name") for vm in json.loads(proc.stdout or "[]")}
-    for job_id, vm_name in rows:
-        if vm_name in existing:
-            _set_status(job_id, "running")
-            log.info("recovery: job %s kept (VM %s exists)", job_id, vm_name)
-        else:
-            unmark(job_id)
-            log.info("recovery: job %s reset for retry (VM %s absent)", job_id, vm_name)
+    for p in d.get("value", []):
+        n = p["name"]
+        if not n.startswith(("ci-az-", "ci-warm-")):
+            continue
+        base = None
+        for r, _, _ in REGIONS:
+            if n.endswith(f"-{r}-nic"):
+                base = n[: -len(f"-{r}-nic")]
+                break
+        if base is None and n.endswith("-nic"):  # legacy pre-region-scoped names
+            base = n[: -len("-nic")]
+        if base is None or base in vm_names or base in protected:
+            continue
+        if base not in _absent_once:
+            # ARM read-after-write lag: a VM just PUT may not list for ~15-30s; sweeping
+            # its nic in that window fails the VM with NotFound (killed wave-2 workers).
+            _absent_once.add(base)
+            continue
+        _absent_once.discard(base)
+        log(f"sweeping leaked nic for {base}")
+        try:
+            arm("DELETE", p["id"], api="2022-07-01")
+        except Exception:
+            pass
 
 
-# -- main loop ----------------------------------------------------------------
-def main():
-    os.makedirs(os.path.dirname(STATE_DB), exist_ok=True)
-    ensure_az_login()
+def _read_last_activity():
     try:
-        recover_stale_provisioning()
-    except Exception as exc:  # noqa: BLE001
-        log.warning("recovery failed: %s", exc)
-    log.info(
-        "watching %s for az-ephemeral jobs (sizes: %s, poll %ds, reap >%d min)",
-        GITHUB_REPO,
-        ",".join(AZ_VM_SIZES),
-        POLL_SECONDS,
-        MAX_VM_AGE_MINUTES,
+        with open(f"{STATE}/last_activity") as f:
+            return float(f.read().strip())
+    except (OSError, ValueError):
+        return 0.0
+
+
+def manage_warm_pool(vms):
+    now = time.time()
+    queued = queued_jobs()
+    busy = any(
+        r["busy"]
+        for r in gh(f"repos/{REPO}/actions/runners?per_page=100")["runners"]
+        if r["name"].startswith(("ci-az-", WARM_PREFIX))
     )
-    loop = 0
-    cooldown_logged = False
-    with ThreadPoolExecutor(max_workers=PROVISION_CONCURRENCY) as pool:
-        while True:
-            loop += 1
-            try:
-                jobs = fetch_queued_az_jobs()
-            except Exception as exc:  # noqa: BLE001
-                log.warning("poll failed: %s", exc)
-                jobs = []
-            try:
-                unmark_stale_running({j.id for j in jobs})
-            except Exception as exc:  # noqa: BLE001
-                log.warning("stale-running self-heal failed: %s", exc)
-            if cooling_down():
-                if not cooldown_logged:
-                    log.info("provisioning paused for %ds (capacity cooldown)", COOLDOWN_SECONDS)
-                    cooldown_logged = True
-            else:
-                cooldown_logged = False
-                for job in jobs:
-                    if is_handled(job.id):
+    if queued or busy:
+        with open(f"{STATE}/last_activity", "w") as f:
+            f.write(str(now))
+    warm = [v for v in vms if v[0].startswith(WARM_PREFIX)]
+    if now - _read_last_activity() > IDLE_DRAIN_S:
+        for name, _, loc in warm:  # scale to 0 when idle
+            log(f"idle drain: deleting {name}")
+            delete_vm(name, loc)
+        return queued
+    with _lock:
+        warm_inflight = sum(1 for n in _inflight_names if n.startswith(WARM_PREFIX))
+    if (
+        len(warm) + warm_inflight < WARM_MIN
+        and len(vms) + len(_inflight) < MAX_CONCURRENCY
+    ):
+        name = f"{WARM_PREFIX}{int(now)}"
+        log(f"warm pool: provisioning {name}")
+        threading.Thread(target=provision_worker, args=(name,), daemon=True).start()
+    return queued
+
+
+def main():
+    log(f"orchestrator starting (REST mode, warm={WARM_MIN}, max={MAX_CONCURRENCY})")
+    while True:
+        try:
+            cleanup()
+            vms = live_vms()
+            queued = manage_warm_pool(vms)
+            for job in queued:
+                with _lock:
+                    if job["id"] in _inflight:
                         continue
-                    # Reserve the slot BEFORE the slow provision so the next
-                    # poll cannot double-provision; on failure the row is
-                    # removed.
-                    mark_handled(job, f"{VM_PREFIX}{job.run_id}-{job.id}"[:64])
-                    pool.submit(provision, job)
-            if loop % REAP_EVERY_LOOPS == 0:
-                try:
-                    reap_stale_vms()
-                except Exception as exc:  # noqa: BLE001
-                    log.warning("reap failed: %s", exc)
-            if loop % RESOURCE_GC_EVERY_LOOPS == 0:
-                try:
-                    reap_orphaned_resources()
-                except Exception as exc:  # noqa: BLE001
-                    log.warning("resource gc failed: %s", exc)
-            time.sleep(POLL_SECONDS)
+                    if len(vms) + len(_inflight) >= MAX_CONCURRENCY:
+                        break
+                    _inflight.add(job["id"])
+                threading.Thread(target=provision_job, args=(job,), daemon=True).start()
+        except Exception as e:
+            log(f"poll error: {e}")
+        time.sleep(POLL_S)
 
 
 if __name__ == "__main__":
