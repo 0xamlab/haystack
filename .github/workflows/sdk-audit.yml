@@ -93,7 +93,15 @@ jobs:
           docker run -d --name postgres-ci-sdkaudit -p 15433:5432 \
             -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
             postgres:16-alpine
-          ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py postgres
+          # Wait via pg_isready INSIDE the container: fresh managed microVMs have no
+          # pixi/asyncpg yet (run_repo_python's python3 fallback lacks the module),
+          # which made ci_wait_for_services.py report "not ready" on Blacksmith.
+          ok=0
+          for i in $(seq 1 30); do
+            docker exec postgres-ci-sdkaudit pg_isready -U postgres >/dev/null 2>&1 && { ok=1; break; }
+            sleep 2
+          done
+          [ "$ok" = "1" ] || { echo "postgres not ready after 60s" >&2; exit 1; }
 
       # The previous swap/toolchain-reclaim dance existed only to survive GitHub-hosted
       # runners' ~7.8 GiB RAM ceiling. The self-hosted macOS runner has ample RAM; the
