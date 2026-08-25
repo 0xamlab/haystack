@@ -19,7 +19,11 @@ from apps.api_server.routers.query_response_helpers import _build_query_response
 from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
 from apps.api_server.routers.query._cache_classes import _CachedSource, _get_registry_planner, _load_profiled_source
 from apps.api_server.routers.query._schema_graph import _graph_nodes_from_meta
-from apps.api_server.routers.query._resolvers import _call_mojo_source_score, _find_best_join_key
+from apps.api_server.routers.query._resolvers import (
+    _call_mojo_source_score,
+    _find_best_join_key,
+    resolve_source,
+)
 from apps.api_server.routers.query._execute_filters import _apply_filter_conditions, _resolve_filter_conditions
 from apps.api_server.routers.query._signatures import _detect_relations, _inline_schema_revision
 

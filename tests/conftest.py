@@ -466,3 +466,16 @@ async def client(app):
         base_url="http://testserver",
     ) as ac:
         yield ac
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_deployment_mode(monkeypatch):
+    """Tests run against the default self-host mode regardless of what the HOST exports.
+
+    Deployment-mode flags (multi-tenant fail-closed, managed LLM) flip key-resolution
+    and gating behavior; a fleet host exporting them (2026-08-24 incident) must not
+    change any test's contract. Tests that need a mode opt in explicitly with
+    monkeypatch.setenv, which overrides this delenv."""
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
+    monkeypatch.delenv("ALGENTA_MANAGED_LLM", raising=False)
+    yield
