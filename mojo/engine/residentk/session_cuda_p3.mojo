@@ -149,6 +149,7 @@ from max.gpu.memory import AddressSpace
 from std.math import exp, sqrt
 from std.memory import bitcast, stack_allocation
 from std.origin import MutAnyOrigin
+from std.sys import is_defined
 from residentk.contract import (
     RESIDENT_ERR_CONTEXT_FULL,
     RESIDENT_ERR_LAUNCH_FAILED,
@@ -231,14 +232,38 @@ from residentk.tc_shim_bridge import (
     _tc_last_error,
     _tc_stage_f32_to_f16,
     _tc_gemm_dispatch,
+    _tc_bgemm_f16_async,
+    _tc_attn_softmax_mask_async,
     _tc_dequant_packed3_f16_dense,
     _pf_swiglu_rows_kernel,
+)
+from residentk.kernels_prefill_gemma3 import (
+    _pf_q_pack_hm_f16,
+    _pf_attn_unpack_hm_f32,
 )
 from std.time import perf_counter_ns
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 """A device Float32 buffer as a kernel parameter — `residentk.kernels`' spelling, and the
 packed3 weight stream is typed Float32 on purpose (module docstring)."""
+
+comptime PF_TCATTN_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_TCATTN"]()
+"""The TENSOR-CORE prefill-attention lever for the 7B lane (ported 2026-08-24 from the
+gemma3 vLLM-flip round 2 pattern, ledger "LEVER 3 LANDED — TENSOR-CORE PREFILL ATTENTION"):
+with `-D ALGENTA_7B_PF_TCATTN` the TC prefill's causal attention dispatches the strided-
+batched cuBLAS HMMA pipeline — Q pack to head-major f16 (the attention scale rides the
+pack), QK^T GemmStridedBatchedEx over the KV heads (GQA: g query heads per KV head as g*M
+rows), masked causal softmax, PV GemmStridedBatchedEx, unpack — instead of the f32 SIMT
+flash2 kernel. Fact-driven capability gate (d_head == 128, shim staged, and the tile row
+count at/over the measured crossover), never the model name; flag-off builds are
+byte-unmodified."""
+
+comptime _PF_TCATTN_MIN_M: Int = 256
+"""Shape-fact gate for the TC attention dispatch: the strided-batched GEMMs + per-layer
+f32->f16 K/V staging only amortize from this tile row count up. The crossover is the
+gemma3 round's measured fact (m >= 256 wins, m = 160 loses on H100); the 7B round re-
+validates it on the A100 by A/B (this constant IS the measured fact — a different
+crossover lands as a different constant with its own measurement note)."""
 
 
 # ── the three packed3 decode twins ─────────────────────────────────────────────
@@ -1764,6 +1789,19 @@ struct _CudaResidentQwen3P3(Movable):
     var tc_gu: DeviceBuffer[DType.float32]
     var tc_staged: Int
 
+    # tensor-core prefill-attention scratch (-D ALGENTA_7B_PF_TCATTN, ported from the
+    # gemma3 vLLM-flip lever): head-major packed Q f16 [h_q, tile, d], QK^T scores f32
+    # [h_q, tile, max_ctx], softmax P f16 [h_q, tile, max_ctx], PV output f32
+    # [h_q, tile, d], and the per-layer f32->f16 K/V staging [max_ctx, h_kv, d]. Real
+    # sizes only under TC_SHIM_BUILD (allocated in `_tc_alloc`'s headroom try); 1-element
+    # placeholders otherwise — the flash2/tiled chain, byte-unmodified.
+    var pf_tc_q16: DeviceBuffer[DType.float16]
+    var pf_tc_p16: DeviceBuffer[DType.float16]
+    var pf_tc_scores: DeviceBuffer[DType.float32]
+    var pf_tc_o32: DeviceBuffer[DType.float32]
+    var pf_tc_k16: DeviceBuffer[DType.float16]
+    var pf_tc_v16: DeviceBuffer[DType.float16]
+
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -1861,6 +1899,12 @@ struct _CudaResidentQwen3P3(Movable):
         self.tc_a16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.tc_c16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.tc_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+        self.pf_tc_q16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_tc_p16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_tc_scores = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+        self.pf_tc_o32 = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+        self.pf_tc_k16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.tc_staged = -1
         @parameter
         if TC_SHIM_BUILD:
@@ -1897,6 +1941,22 @@ struct _CudaResidentQwen3P3(Movable):
         self.tc_a16 = self.f32.ctx.enqueue_create_buffer[DType.float16](rows * max_k)
         self.tc_c16 = self.f32.ctx.enqueue_create_buffer[DType.float16](rows * max_n)
         self.tc_gu = self.f32.ctx.enqueue_create_buffer[DType.float32](rows * 2 * d_ff)
+        # Tensor-core prefill-attention scratch (the gemma3 vLLM-flip lever port): sized
+        # for the largest tile `prefill` dispatches (`rows` = `_B1_PF_ROWS`). ~0.30 GB at
+        # the 7B shapes (28 q heads, d_head 128, max_ctx 1600) — inside the same headroom
+        # try as the dual residency, so a tight device falls back cleanly.
+        self.pf_tc_q16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
+            rows * self.f32.h_q * self.f32.d_head)
+        self.pf_tc_o32 = self.f32.ctx.enqueue_create_buffer[DType.float32](
+            rows * self.f32.h_q * self.f32.d_head)
+        self.pf_tc_scores = self.f32.ctx.enqueue_create_buffer[DType.float32](
+            rows * self.f32.h_q * self.f32.max_ctx)
+        self.pf_tc_p16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
+            rows * self.f32.h_q * self.f32.max_ctx)
+        self.pf_tc_k16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
+            self.f32.max_ctx * self.f32.h_kv * self.f32.d_head)
+        self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
+            self.f32.max_ctx * self.f32.h_kv * self.f32.d_head)
 
     def device_name(self) raises -> String:
         return self.f32.device_name()
@@ -2219,53 +2279,158 @@ struct _CudaResidentQwen3P3(Movable):
                             grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
                             block_dim=self.f32.d_head,
                         )
-                        # 4 ── causal attention, the SAME native selection f32.prefill runs
-                        #      (flash2 under L-H4, flash under L-H3, tiled otherwise)
+                        # 4 ── causal attention: the tensor-core strided-batched pipeline
+                        #      under the shape-fact gate, else the SAME native selection
+                        #      f32.prefill runs (flash2 under L-H4, flash under L-H3,
+                        #      tiled otherwise)
+                        var use_tc_attn = False
                         @parameter
-                        if CUDA_PREFILL_FLASH_B1:
-                            if self.f32.d_head == 128 and CUDA_PREFILL_FLASH2_B1:
-                                self.f32.ctx.enqueue_function[_pf_attn_flash2_kernel](
-                                    self.f32.pf_attn.unsafe_ptr(),
-                                    self.f32.pf_q_rot.unsafe_ptr(),
-                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
-                                    Int64(self.f32.d_head),
-                                    self.f32.scale, Int64(m),
-                                    grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK)
-                                    * self.f32.h_q,
-                                    block_dim=_PF_FLASH_NTHREADS,
-                                )
-                            elif self.f32.d_head == 128:
-                                self.f32.ctx.enqueue_function[_pf_attn_flash_kernel](
-                                    self.f32.pf_attn.unsafe_ptr(),
-                                    self.f32.pf_q_rot.unsafe_ptr(),
-                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
-                                    Int64(self.f32.d_head),
-                                    self.f32.scale, Int64(m),
-                                    grid_dim=_ceil_div(m, _PF_FLASH_ROWS_PER_BLOCK)
-                                    * self.f32.h_q,
-                                    block_dim=_PF_FLASH_NTHREADS,
-                                )
-                            else:
-                                self.f32.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
-                                    self.f32.pf_attn.unsafe_ptr(),
-                                    self.f32.pf_q_rot.unsafe_ptr(),
-                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                                    Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
-                                    Int64(self.f32.d_head),
-                                    self.f32.scale, Int64(m),
-                                    grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
-                                )
-                        else:
-                            self.f32.ctx.enqueue_function[_pf_attn_tiled_kernel_simd](
-                                self.f32.pf_attn.unsafe_ptr(),
+                        if PF_TCATTN_B1:
+                            # NOSEAM is part of the gate: the async shim entries enqueue
+                            # without syncs, and only the legacy-stream ordering contract
+                            # keeps the pipeline race-free (the sync-seam builds keep the
+                            # SIMT kernels). d_head == 128 + the measured tile-row
+                            # crossover are the shape facts, never the model name.
+                            use_tc_attn = (TC_NOSEAM and self.f32.d_head == 128
+                                           and m >= _PF_TCATTN_MIN_M)
+                        if use_tc_attn:
+                            var n_keys_tc = pos + m
+                            var gqa = self.f32.h_q // self.f32.h_kv
+                            var gm = gqa * m
+                            # (i) Q pack [m, h_q*d] f32 -> head-major [h_q, m, d] f16
+                            #     (the attention scale rides the pack = scaled scores)
+                            self.f32.ctx.enqueue_function[_pf_q_pack_hm_f16](
+                                self.pf_tc_q16.unsafe_ptr(),
                                 self.f32.pf_q_rot.unsafe_ptr(),
-                                lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                                Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
-                                Int64(self.f32.d_head), self.f32.scale, Int64(m),
-                                grid_dim=self.f32.h_q * m, block_dim=self.f32.d_head,
+                                Int64(m), Int64(self.f32.h_q), Int64(self.f32.d_head),
+                                self.f32.scale,
+                                grid_dim=_ceil_div(
+                                    self.f32.h_q * m * self.f32.d_head, _TG),
+                                block_dim=_TG,
                             )
+                            # (ii) K/V f32 cache -> f16 staging (layout-preserving,
+                            #      keys 0..n_keys; the 7B KV cache is f32 — the staging
+                            #      is the additive route, no KV-layout change)
+                            var rkv = _tc_stage_f32_to_f16(
+                                Int(lw.ck.unsafe_ptr()),
+                                Int(self.pf_tc_k16.unsafe_ptr()),
+                                n_keys_tc * self.f32.h_kv * self.f32.d_head)
+                            if rkv != 0:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            rkv = _tc_stage_f32_to_f16(
+                                Int(lw.cv.unsafe_ptr()),
+                                Int(self.pf_tc_v16.unsafe_ptr()),
+                                n_keys_tc * self.f32.h_kv * self.f32.d_head)
+                            if rkv != 0:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            # (iii) QK^T: scores[h_kv, g*m, n_keys] = Q @ K^T,
+                            #       batched over the KV heads (GQA: g query heads per
+                            #       KV head ride one batch as g*m rows)
+                            var ra = _tc_bgemm_f16_async(
+                                Int(self.pf_tc_q16.unsafe_ptr()),
+                                Int(self.pf_tc_k16.unsafe_ptr()),
+                                Int(self.pf_tc_scores.unsafe_ptr()),
+                                gm, n_keys_tc, self.f32.d_head,
+                                self.f32.d_head, self.f32.h_kv * self.f32.d_head,
+                                n_keys_tc,
+                                gm * self.f32.d_head, self.f32.d_head,
+                                gm * n_keys_tc,
+                                self.f32.h_kv, 1)
+                            if ra != 0:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            # (iv) causal masked softmax -> P f16 (window=0: the 7B
+                            #      family is full-context causal, no sliding layers)
+                            ra = _tc_attn_softmax_mask_async(
+                                Int(self.pf_tc_scores.unsafe_ptr()),
+                                Int(self.pf_tc_p16.unsafe_ptr()),
+                                n_keys_tc, m, self.f32.h_q, pos, 0)
+                            if ra != 0:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            # (v) PV: out[h_kv, g*m, d] = P @ V, batched over KV heads
+                            ra = _tc_bgemm_f16_async(
+                                Int(self.pf_tc_p16.unsafe_ptr()),
+                                Int(self.pf_tc_v16.unsafe_ptr()),
+                                Int(self.pf_tc_o32.unsafe_ptr()),
+                                gm, self.f32.d_head, n_keys_tc,
+                                n_keys_tc, self.f32.h_kv * self.f32.d_head,
+                                self.f32.d_head,
+                                gm * n_keys_tc, self.f32.d_head,
+                                gm * self.f32.d_head,
+                                self.f32.h_kv, 0)
+                            if ra != 0:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            # (vi) unpack head-major [h_q, m, d] f32 -> position-major
+                            #      [m, h_q*d] for the o_proj seam
+                            self.f32.ctx.enqueue_function[_pf_attn_unpack_hm_f32](
+                                self.f32.pf_attn.unsafe_ptr(),
+                                self.pf_tc_o32.unsafe_ptr(),
+                                Int64(m), Int64(self.f32.h_q), Int64(self.f32.d_head),
+                                grid_dim=_ceil_div(
+                                    self.f32.h_q * m * self.f32.d_head, _TG),
+                                block_dim=_TG,
+                            )
+                            issued += 1
+                        else:
+                            @parameter
+                            if CUDA_PREFILL_FLASH_B1:
+                                if self.f32.d_head == 128 and CUDA_PREFILL_FLASH2_B1:
+                                    self.f32.ctx.enqueue_function[_pf_attn_flash2_kernel](
+                                        self.f32.pf_attn.unsafe_ptr(),
+                                        self.f32.pf_q_rot.unsafe_ptr(),
+                                        lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                        Int64(pos), Int64(self.f32.h_q),
+                                        Int64(self.f32.h_kv),
+                                        Int64(self.f32.d_head),
+                                        self.f32.scale, Int64(m),
+                                        grid_dim=_ceil_div(
+                                            m, _PF_FLASH_ROWS_PER_BLOCK)
+                                        * self.f32.h_q,
+                                        block_dim=_PF_FLASH_NTHREADS,
+                                    )
+                                elif self.f32.d_head == 128:
+                                    self.f32.ctx.enqueue_function[_pf_attn_flash_kernel](
+                                        self.f32.pf_attn.unsafe_ptr(),
+                                        self.f32.pf_q_rot.unsafe_ptr(),
+                                        lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                        Int64(pos), Int64(self.f32.h_q),
+                                        Int64(self.f32.h_kv),
+                                        Int64(self.f32.d_head),
+                                        self.f32.scale, Int64(m),
+                                        grid_dim=_ceil_div(
+                                            m, _PF_FLASH_ROWS_PER_BLOCK)
+                                        * self.f32.h_q,
+                                        block_dim=_PF_FLASH_NTHREADS,
+                                    )
+                                else:
+                                    self.f32.ctx.enqueue_function[
+                                        _pf_attn_tiled_kernel_simd](
+                                        self.f32.pf_attn.unsafe_ptr(),
+                                        self.f32.pf_q_rot.unsafe_ptr(),
+                                        lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                        Int64(pos), Int64(self.f32.h_q),
+                                        Int64(self.f32.h_kv),
+                                        Int64(self.f32.d_head),
+                                        self.f32.scale, Int64(m),
+                                        grid_dim=self.f32.h_q * m,
+                                        block_dim=self.f32.d_head,
+                                    )
+                            else:
+                                self.f32.ctx.enqueue_function[
+                                    _pf_attn_tiled_kernel_simd](
+                                    self.f32.pf_attn.unsafe_ptr(),
+                                    self.f32.pf_q_rot.unsafe_ptr(),
+                                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                                    Int64(pos), Int64(self.f32.h_q),
+                                    Int64(self.f32.h_kv),
+                                    Int64(self.f32.d_head), self.f32.scale, Int64(m),
+                                    grid_dim=self.f32.h_q * m,
+                                    block_dim=self.f32.d_head,
+                                )
                         # 5 ── o_proj ACCUMULATE into the residual through the TC seam
                         @parameter
                         if not TC_NOSEAM:

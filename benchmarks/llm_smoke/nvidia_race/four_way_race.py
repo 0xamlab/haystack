@@ -49,7 +49,9 @@ MODEL_HF = "/home/angel/models/Qwen2.5-7B-Instruct"
 GGUF_Q8 = "/home/angel/models/qwen2.5-7b-instruct-q8_0.gguf"
 LLAMA_SERVER = "/home/angel/llama.cpp/build/bin/llama-server"
 LLAMA_BENCH = "/home/angel/llama.cpp/build/bin/llama-bench"
-ALGENTA_BIN = "/home/angel/algenta_nv/qwen25_7b_p3_graph_cuda_tc_b1_ns"
+ALGENTA_BIN = os.environ.get(
+    "ALGENTA_RACE_BIN",
+    "/home/angel/algenta_nv/qwen25_7b_p3_graph_cuda_tc_b1_ns")
 CKPT = "/tmp/w7b/ckpt"
 RACE_DIR = "/tmp/w7b/race"
 RESULTS = os.path.join(RACE_DIR, "results")

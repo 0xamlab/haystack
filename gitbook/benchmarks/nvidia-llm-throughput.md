@@ -1,6 +1,6 @@
 ---
 icon: gauge-high
-description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — Qwen3-0.6B and Qwen2.5-7B prefill and decode against llama.cpp and SGLang, with methodology.
+description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — Qwen3-0.6B and Qwen2.5-7B prefill and decode against llama.cpp, vLLM and SGLang, with methodology.
 ---
 
 # NVIDIA LLM throughput
@@ -9,7 +9,7 @@ This page reports measured throughput of the CUDA-native resident session on
 NVIDIA A100-SXM4-40GB and L4, against llama.cpp built with GGML\_CUDA on the same
 machines: Qwen3-0.6B-Base (packed-int8 weights, f32 prefill) vs the F16 GGUF, and
 Qwen2.5-7B-Instruct (packed-int8 weights, tensor-core prefill) vs the Q8\_0 GGUF and
-vs SGLang serving the same Hugging Face checkpoint.
+vs vLLM and SGLang serving the same Hugging Face checkpoint.
 
 ## Results
 
@@ -31,10 +31,10 @@ opponent (its first of five runs pays a one-time kernel-selection cost).
 
 | Engine | Prefill 256 tok/s | Prefill 1024 tok/s |
 | --- | --- | --- |
-| Algenta (packed3, cuBLAS tensor-core prefill, one-pass flash attention) | 8,494 | 6,968 |
+| Algenta (packed3, cuBLAS tensor-core prefill + tensor-core attention, one-pass) | 10,595 | 12,255 |
 | llama.cpp Q8\_0 | 4,680 | 5,089.1 |
 
-Prefill speedup: 1.82x at 256 tokens, 1.37x at 1024 tokens.
+Prefill speedup: 2.26x at 256 tokens, 2.41x at 1024 tokens.
 
 ### A100-SXM4-40GB — Qwen2.5-7B-Instruct, 256-token server TTFT
 
@@ -45,13 +45,14 @@ each server is started fresh and the GPU is drained between engines. Median of 2
 
 | Engine | TTFT (256 tokens) | Prefill tok/s |
 | --- | --- | --- |
-| Algenta (packed3, cuBLAS tensor-core prefill, one-pass flash attention) | 30.2 ms | 8,487 |
-| SGLang 0.5.18 (bfloat16) | 34.3 ms | 7,465 |
-| llama.cpp Q8\_0 | 57.7 ms | 4,437 |
+| Algenta (packed3, cuBLAS tensor-core prefill + tensor-core attention) | 24.2 ms | 10,595 |
+| vLLM 0.27.1 (bfloat16) | 27.1 ms | 9,451 |
+| SGLang 0.5.18 (bfloat16) | 34.6 ms | 7,395 |
+| llama.cpp Q8\_0 | 57.8 ms | 4,430 |
 
-TTFT speedup at 256 tokens: 1.14x vs SGLang, 1.91x vs llama.cpp Q8\_0. The Algenta cell
-is the resident-session measurement (no HTTP layer); its prefill rate reproduces the
-pinned-protocol table above within 0.1%.
+TTFT speedup at 256 tokens: 1.12x vs vLLM, 1.43x vs SGLang, 2.39x vs llama.cpp Q8\_0.
+The Algenta cell is the resident-session measurement (no HTTP layer); its prefill rate
+reproduces the pinned-protocol table above within 0.4%.
 
 ### L4
 
@@ -69,9 +70,13 @@ Decode on g2-standard-8 (sm\_89), same protocol:
   tile, bank-conflict-aware layouts. Layer GEMM sum is 9.9x the first generation.
 * Prefill (7B): packed-int8 weights are dequantized once into f16 twins at session open
   (one-time ~71 ms, +13.05 GB); the projection GEMMs then run on cuBLAS HMMA tensor cores
-  (f16 inputs, f32 accumulate and output), and the prompt runs through the flash attention
-  pass in a single M-parallel sweep. Same 16/16 greedy-token oracle as every build, plus
-  cross-engine text identity with llama.cpp F16 on five chat prompts.
+  (f16 inputs, f32 accumulate and output), and the prompt runs through the attention pass
+  in a single M-parallel sweep. Attention runs the same tensor-core path: QK^T and PV as
+  strided-batched cuBLAS HMMA GEMMs (batched over the KV heads — the grouped-query heads
+  ride each batch), a masked softmax between, Q packed head-major f16 with the attention
+  scale folded into the pack; the dispatch is shape-fact-gated on the tile row count.
+  Same 16/16 greedy-token oracle as every build, plus cross-engine token identity on five
+  chat prompts.
 * Decode: arithmetic-packed-int8 weights (1.58 B/weight) with captured-graph decode — zero
   per-token host traffic, split-K flash-decoding (32 splits), warp-shuffle attention
   reduction, fused gate/up SwiGLU. Bit-identical to the f32 session (16/16 greedy oracle on
@@ -88,9 +93,11 @@ Decode on g2-standard-8 (sm\_89), same protocol:
   transformers reference with repetition\_penalty pinned at 1.0.
 * Opponent: llama.cpp pinned at 000547513f, GGML\_CUDA, same VM; F16 GGUF for 0.6B, Q8\_0
   GGUF for 7B; fixture via `llama-completion -no-cnv`, prefill cells via `llama-bench`.
-  7B server opponents: SGLang 0.5.18, bfloat16 (the checkpoint dtype), radix cache
-  disabled, exact race-prompt token ids. Servers run one at a time, are killed between
-  engines, and every timed window is solo-GPU.
+  7B server opponents: vLLM 0.27.1 and SGLang 0.5.18, both bfloat16 (the checkpoint
+  dtype) with prompt caching disabled (prefix caching / radix cache), vLLM served with
+  `--dtype auto` on the same checkpoint; SGLang fed the exact race-prompt token ids.
+  Servers run one at a time, are killed between engines, and every timed window is
+  solo-GPU.
 * Statistics: median per cell (20 runs for the Algenta fixture cells, 7 runs for the
   server cells, warmup excluded), rel-IQR <= 5%; a 16/16 greedy-token oracle gates every
   build before measurement; an optimization variant is recorded only after its bench number

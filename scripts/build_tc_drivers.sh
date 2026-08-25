@@ -163,6 +163,16 @@ for arm in $ARMS; do
             "$NV/qwen25_7b_p3_graph_cuda.mojo" \
             -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_STAGE_18944 \
             "${B1_FLAGS[@]}" -D ALGENTA_TC_NOSEAM ${tc_flag[@]+"${tc_flag[@]}"}
+        # Autopsy ship config + TENSOR-CORE PREFILL ATTENTION (the gemma3 vLLM-flip
+        # round-2 lever ported to the 7B lane, -D ALGENTA_7B_PF_TCATTN): strided-batched
+        # cuBLAS QK^T + masked softmax + PV replaces the f32 SIMT flash2 at tile rows
+        # >= the measured crossover (shape-fact gate in session_cuda_p3). NOSEAM is part
+        # of the dispatch gate (the async shim entries ride the legacy-stream contract).
+        build_driver "$OUT_DIR/qwen25_7b_p3_graph_cuda_tc_b1_ns_ta" \
+            "$NV/qwen25_7b_p3_graph_cuda.mojo" \
+            -D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_STAGE_18944 \
+            "${B1_FLAGS[@]}" -D ALGENTA_TC_NOSEAM -D ALGENTA_7B_PF_TCATTN \
+            ${tc_flag[@]+"${tc_flag[@]}"}
     else
         build_driver "$OUT_DIR/qwen25_7b_p3_graph_cuda$suffix" \
             "$NV/qwen25_7b_p3_graph_cuda.mojo" \

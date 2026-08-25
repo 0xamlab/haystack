@@ -16975,6 +16975,101 @@ the vLLM/SGLang prefill losses.
 
 ---
 
+## TC PREFILL ATTENTION LANDED ON THE 7B LANE — the gemma3 vLLM-flip lever ported shape-fact-gated (feat/7b-tc-attention, 2026-08-24/25, algenta-ent-a100): the 4-way prefill losses attacked at the named lever
+
+CONTEXT: the 4-way race (previous section) left prefill losses vs vLLM bf16 (pp256 0.88x,
+pp1024 0.51x) and SGLang bf16 (pp1024 0.53x) with the autopsy's named lever: our flash2 f32
+SIMT attention was ~55% of the pp1024 wall while the opponents run tensor-core f16 flash.
+The gemma3 lane's vLLM-flip round 2 landed exactly that lever (ledger "LEVER 3 LANDED —
+TENSOR-CORE PREFILL ATTENTION via cuBLAS strided-batched QK^T + softmax + PV"); this round
+ports it to the 7B packed-int8 TC lane.
+
+**The port (additive, -D ALGENTA_7B_PF_TCATTN, session_cuda_p3.mojo):** the TC prefill's
+causal attention dispatches, under the shape-fact gate, the strided-batched cuBLAS HMMA
+pipeline VERBATIM from the gemma3 round — (i) `_pf_q_pack_hm_f16` (Q [m, h_q*d] f32 ->
+head-major [h_q, m, d] f16, the attention scale rides the pack), (ii) per-layer f32->f16
+staging of the key range from the f32 KV cache (the additive route — no KV layout change;
+the 7B cache stays f32), (iii) QK^T GemmStridedBatchedEx batched over the h_kv KV heads
+(GQA: g=7 query heads per KV head ride each batch as g*m rows), (iv) `_attn_softmax_mask_
+kernel` causal mask + row softmax -> P f16 (window=0: the family has no sliding layers),
+(v) PV GemmStridedBatchedEx, (vi) `_pf_attn_unpack_hm_f32` back to position-major for the
+o_proj seam. The two layout kernels are imported VERBATIM from residentk.kernels_prefill_
+gemma3 (family-agnostic pure data movement — no twin, no duplication).
+
+**Gate facts (the campaign discipline):**
+* SHAPE FACT: the dispatch gate is `TC_NOSEAM and d_head == 128 and m >= _PF_TCATTN_MIN_M`.
+  NOSEAM is part of the gate because the async shim entries enqueue without syncs — only
+  the legacy-stream ordering contract keeps the pipeline race-free (sync-seam builds keep
+  the SIMT kernels). `_PF_TCATTN_MIN_M = 256` — the gemma3 H100 crossover fact REVALIDATED on the A100 by this
+  round's A/B: at m=256 the TC path wins +25.0%/+25.2% (10,606/10,626 vs 8,508/8,496) and at
+  m=1024 +76.0%/+75.7% (12,261/12,244 vs 6,965/6,969) — the 256 gate stands on both parts.
+  (No sub-256 tile was raced this round; below-gate tiles keep flash2 by construction.)
+* CORRECTNESS: run_gates_7b.py on the TA binary (p3 arm): **6/6 PASS, 16/16 on every prompt** (fixture +
+  chat_0..4; the fixture and chat_0 are 256-token prompts = TC attention ACTIVE; chat_1..4
+  are 41-46 tokens = flash2 fallback regression probe). The fixture (256-token
+  prompt => m=256 => TC attention ACTIVE) is the direct arithmetic probe; the five chat
+  prompts (m < 256 => flash2 fallback) are the regression probe of the flag-off path inside
+  the same binary.
+* FLAG-OFF ARM: the autopsy ship binary (tc_b1_ns) rebuilt from the SAME tree is the A/B
+  control — its cells are byte-identical protocol to the published race.
+
+**A/B numbers (pinned 1410, interleaved A B A B, 20 runs/cell, median; 2026-08-24/25):**
+
+| arm | pp256 tok/s | pp1024 tok/s | gen64 | gen256 |
+| --- | --- | --- | --- | --- |
+| tc_b1_ns (control, run A) | 8,507.6 | 6,965.2 | 83.41 | 82.71 |
+| tc_b1_ns_ta (TC attn, run A) | **10,606.5 (1.247x)** | **12,260.9 (1.760x)** | 83.41 | 82.70 |
+| tc_b1_ns (control, run B) | 8,495.5 | 6,969.5 | 83.34 | 82.63 |
+| tc_b1_ns_ta (TC attn, run B) | **10,625.6 (1.251x)** | **12,244.4 (1.757x)** | 83.38 | 82.68 |
+
+**4-way re-race of the flipped cells (same prompts/protocol as the 4-way round, same day):**
+
+| Engine | pp256 TTFT ms / tok/s | pp1024 TTFT ms / tok/s |
+| --- | --- | --- |
+| algenta (TC attn arm) | **24.2 / 10,595** (run a/b 10,575/10,615) | **83.6 / 12,255** (run a/b 12,256/12,255) |
+| llama.cpp Q8_0 | 57.8 / 4,430 | 207.3 / 4,939 |
+| vLLM 0.27.1 bf16 | 27.1 / 9,451 | 74.5 / 13,748 |
+| SGLang 0.5.18 bf16 | 34.6 / 7,395 | 78.7 / 13,015 |
+
+Correctness guard re-run: greedy first token = fp32 oracle 14374 ("###") on ALL FOUR
+engines; 16-token traces id-for-id for llama.cpp and vLLM; SGLang bf16 repeats the round-1
+documented near-tie (diverges token 10, first token + first 9 id-identical); algenta G0
+16/16 inside every run. llama-bench Q8_0 continuity controls: pp256 4,685.8 / pp1024
+5,089.4 (published round: 4,680 / 5,089.1). Sweep cells: unchanged physics — c=1 is a
+statistical tie (algenta 82.7 vs llama 117.1 outlier / vLLM 82.5 / SGLang 82.9), c=8:
+llama 455.5, vLLM 624.0, SGLang 630.4; c=32: llama 755.6, vLLM 2,071.1, SGLang 2,108.3;
+algenta c=8/c=32 still NOT RUN (Phase B unchanged). Regime drift a->b: <= 0.39% every cell.
+
+**VERDICTS:**
+* WINS (publishable, published): **pp256 takes the 4-engine bar** — 1.12x vs vLLM bf16
+  (10,595 vs 9,451), 1.43x vs SGLang bf16, 2.39x vs llama.cpp server TTFT (2.26x vs the
+  llama-bench fast regime 4,685.8). The round-1 pp256 loss vs vLLM (0.88x) is FLIPPED.
+  pp1024 keeps the Q8_0 wins, widened: 2.48x server TTFT / 2.41x bench (12,255 vs
+  4,939 / 5,089.4). Decode invariant (83.4/82.7 — c=1 tie stands).
+* LOSSES (ledger-only): pp1024 vs vLLM bf16 0.89x (12,255 vs 13,748) and vs SGLang bf16
+  0.94x (12,255 vs 13,015) — NARROWED from 0.51x/0.53x by this lever but not yet flipped;
+  the remaining gap is the opponent's f16 KV-cache + CUDA-graph host path (our KV stays
+  f32 and every dispatch is host-issued — the autopsy's named next levers: f16 KV twin for
+  the TC path, then graph capture under the legacy-stream interop).
+* c=8/c=32: NOT RUN (Phase B — see below).
+
+**PHASE B (batched 7B serve, the c=8/c=32 cells) — NOT CLEANLY PORTABLE, scoped with
+evidence, not attempted this round:** the serve driver TYPEDLY REFUSES attention_bias=1
+models (qwen3_serve_batched_cuda.mojo: the "batched session does not yet apply q/k/v
+projection biases" refusal), and the gap is structural: has_qkv_bias is absent from ALL
+THREE batched session modules (session_cuda_batched{,_graph,_p3_graph}.mojo: 0 references);
+the bias must land in the admission-prefill chain AND the captured-graph decode step, plus
+q_norm/k_norm-conditional loading, flag forwarding through _ServeGraph, and the
+ALGENTA_STAGE_18944 build gate. That is a feature implementation, not a port — it stays
+queued (the 4-way table's NOT RUN cells stand with this evidence attached).
+
+STATUS: measurement complete; publication = gitbook/benchmarks/nvidia-llm-throughput.md
+updated with the TA arm (wins only: the 4-engine 256-token TTFT table + the widened Q8_0
+prefill margins); this ledger carries everything. Raw artifacts on algenta-ent-a100:
+/tmp/w7b/race/results/ (round 2), /tmp/w7b/race/results_4way_round1/ (round 1),
+/tmp/w7b/race/results_ta/ (A/B), /tmp/w7b/gate_ta/ (gate battery), binaries
+~/algenta_nv/qwen25_7b_p3_graph_cuda_tc_b1_ns{,_ta} (+ backup ~/algenta_nv_bak_autopsy),
+source tree ~/ta7b.
 ## Batched-serve bias investigation + two more onboarded families (2026-08-24, H100 GPU0)
 
 1. **BATCHED-SERVE QKV-BIAS — ATTEMPTED, REVERTED TO TYPED REFUSAL (honest).**
@@ -17093,4 +17188,5 @@ PR #867 carries this documentation (hosted CI). No gitbook change this round (no
 vLLM — publish-wins-only). Next concrete increment if the toolchain is unchanged: f16
 activations + decode-attention restructure for step-time; the flips unlock only when MAX
 exposes a launchable stream.
+
 
