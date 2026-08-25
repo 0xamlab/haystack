@@ -11,7 +11,7 @@ The engine's racing kernels — the fused CUDA and Metal kernels a resident deco
 
 | Backend | Kernels | Model families | Staging tiers (elements) |
 | --- | --- | --- | --- |
-| CUDA (NVIDIA) | 80 | gemma3, qwen3/llama | 3072, 6144, 8192, 18944 |
+| CUDA (NVIDIA) | 109 | gemma3, qwen3/llama | 3072, 6144, 8192, 18944 |
 | Metal (Apple Silicon) | 57 | qwen3/llama | 3072, 6144 |
 
 Staging is the decode kernels' shared-memory ceiling per build tier — one binary per tier; a checkpoint whose staged vectors exceed every tier of a backend is refused naming the value and the tiers. See the [Model support matrix](model-support-matrix.md) for the fact ranges that decide support.
@@ -21,6 +21,9 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | Kernel | Role | Family profile |
 | --- | --- | --- |
 | `native_kv_decode_splitk_partial_batched_f32_kernel_bg` | Decode attention (split-K flash-decoding / SDPA) | qwen3/llama |
+| `g3_kv_decode_splitk_partial_batched_kernel` | Decode attention (split-K flash-decoding / SDPA) | gemma3 |
+| `g3_kv_decode_splitk_partial_batched_kernel_kv16` | Decode attention (split-K flash-decoding / SDPA) | gemma3 |
+| `g3_kv_decode_splitk_partial_batched_kernel_kv16_flash` | Decode attention (split-K flash-decoding / SDPA) | gemma3 |
 | `sdpa_kernel_g` | Decode attention (split-K flash-decoding / SDPA) | qwen3/llama |
 | `sdpa_kernel_simd_g` | Decode attention (split-K flash-decoding / SDPA) | qwen3/llama |
 | `splitk_partial_kernel_simd_g` | Decode attention (split-K flash-decoding / SDPA) | qwen3/llama |
@@ -37,10 +40,14 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `g3_embed_row_kernel_f16_g` | Embedding gather | gemma3 |
 | `pf_embed_rows_kernel_f16` | Embedding gather | qwen3/llama |
 | `pf_embed_rows_kernel` | Embedding gather | qwen3/llama |
+| `pf_embed_rows_g3_kernel` | Embedding gather | gemma3 |
+| `pf_embed_rows_g3_kernel_f16` | Embedding gather | gemma3 |
 | `batched_p3_swiglu_kernel` | FFN activation combine (SwiGLU / GeGLU) | qwen3/llama |
+| `pf_geglu_rows_kernel` | FFN activation combine (SwiGLU / GeGLU) | gemma3 |
 | `pf_swiglu_rows_kernel` | FFN activation combine (SwiGLU / GeGLU) | qwen3/llama |
 | `g3_norm_gemv2_geglu_kernel` | FFN gate/up projection + norm | gemma3 |
 | `g3_norm_gemv2_geglu_kernel_f16` | FFN gate/up projection + norm | gemma3 |
+| `g3_norm_gemv2_geglu_kernel_f16_u4` | FFN gate/up projection + norm | gemma3 |
 | `norm_gemv2_swiglu_kernel_p3` | FFN gate/up projection + norm | qwen3/llama |
 | `norm_gemv2_swiglu_kernel_p3_v2` | FFN gate/up projection + norm | qwen3/llama |
 | `norm_gemv2_swiglu_kernel_p3_v3` | FFN gate/up projection + norm | qwen3/llama |
@@ -51,13 +58,21 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `graph_advance_kernel` | CUDA graph advance | qwen3/llama |
 | `native_kv_producer_batched_f32_kernel_bg` | KV-cache producer | qwen3/llama |
 | `batched_lmhead_argmax_kernel_f32` | LM head + argmax | qwen3/llama |
+| `g3_batched_lmhead_argmax_kernel_f16` | LM head + argmax | gemma3 |
+| `g3_logits_argmax_kernel` | LM head + argmax | gemma3 |
 | `batched_lmhead_argmax_kernel_p3` | LM head + argmax | qwen3/llama |
 | `lmhead_argmax_kernel_p3` | LM head + argmax | qwen3/llama |
 | `lmhead_argmax_kernel_p3_v2` | LM head + argmax | qwen3/llama |
 | `lmhead_argmax_kernel_p3_v3` | LM head + argmax | qwen3/llama |
 | `g3_norm_accum_kernel` | Norm / RMSNorm rows | gemma3 |
 | `g3_norm_inplace_kernel` | Norm / RMSNorm rows | gemma3 |
+| `pf_norm_accum_rows_kernel` | Norm / RMSNorm rows | gemma3 |
+| `pf_row_copy_kernel` | Utility | gemma3 |
 | `p3g_log_head_copy_kernel` | Utility | qwen3/llama |
+| `pf_attn_window_flash_kernel` | Prefill attention (tiled / windowed) | gemma3 |
+| `pf_attn_window_flash_kernel_h` | Prefill attention (tiled / windowed) | gemma3 |
+| `pf_attn_window_kernel` | Prefill attention (tiled / windowed) | gemma3 |
+| `pf_attn_window_kernel_h` | Prefill attention (tiled / windowed) | gemma3 |
 | `pf_gemm_accum_kernel_f16` | Prefill GEMM tile | qwen3/llama |
 | `pf_gemm_assign_kernel_f16` | Prefill GEMM tile | qwen3/llama |
 | `pf_gemm_swiglu_kernel_f16` | Prefill GEMM tile | qwen3/llama |
@@ -71,6 +86,10 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `pf_gemm_accum_kernel_v3` | Prefill GEMM tile | qwen3/llama |
 | `pf_gemm_accum_kernel_v3s` | Prefill GEMM tile | qwen3/llama |
 | `pf_gemm_assign_kernel_v3` | Prefill GEMM tile | qwen3/llama |
+| `pf_gemm_accum_kernel_v2h` | Prefill GEMM tile | gemma3 |
+| `pf_gemm_assign_kernel_v2h` | Prefill GEMM tile | gemma3 |
+| `pf_gemm_geglu_kernel_v2` | Prefill GEMM tile | gemma3 |
+| `pf_gemm_geglu_kernel_v2h` | Prefill GEMM tile | gemma3 |
 | `pf_gemm_accum_kernel_v2f16` | Prefill GEMM tile | qwen3/llama |
 | `pf_gemm_assign_kernel_v2f16` | Prefill GEMM tile | qwen3/llama |
 | `pf_gemm_swiglu_kernel_v2f16` | Prefill GEMM tile | qwen3/llama |
@@ -89,10 +108,19 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `packed3_gemv_accum_kernel` | Fused norm + projection (QKV / O / FFN GEMV) | qwen3/llama |
 | `packed3_gemv_accum_kernel_v2` | Fused norm + projection (QKV / O / FFN GEMV) | qwen3/llama |
 | `packed3_gemv_accum_kernel_v3` | Fused norm + projection (QKV / O / FFN GEMV) | qwen3/llama |
+| `g3_ropewrt_batched_kernel` | RoPE + KV-cache write | gemma3 |
+| `g3_ropewrt_batched_kernel_kv16` | RoPE + KV-cache write | gemma3 |
 | `qk_rope_write_kernel_g` | RoPE + KV-cache write | qwen3/llama |
+| `pf_ropewrt_kernel_h` | RoPE + KV-cache write | gemma3 |
+| `tc_attn_softmax_mask_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_bgemm_f16_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_create_stream` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_dequant_packed3_f16_dense` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_gemm_dispatch` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_gemm_dispatch_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_gemm_dispatch_auto` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_gemm_f16_32c` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_gemm_f16_32c_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_gemm_f16_acc16` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_gemm_f16_assign` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_gemm_tf32_beta` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
@@ -100,6 +128,7 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `tc_last_error` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_noseam` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_stage_f32_to_f16` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_use_legacy_stream` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 
 ## Metal (Apple Silicon) kernels
 
@@ -172,9 +201,10 @@ Each kernel module declares its own evidence in its `@capability-module` block: 
 | `residentk.kernels` | metal | 57 | `mojo/tests/libs/test_residentk_session.mojo` | `benchmarks/llm_smoke/qwen3_generate_metal.mojo` |
 | `residentk.kernels_batched_cuda` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_batched_cuda.mojo` |
 | `residentk.kernels_batched_cuda_graph` | cuda | 4 | `benchmarks/llm_smoke/nvidia_race/qwen3_batched_graph_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_batched_graph_cuda.mojo` |
+| `residentk.kernels_batched_gemma3` | cuda | 7 | `benchmarks/llm_smoke/nvidia_race/gemma3_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/gemma3_batched_cuda.mojo` |
 | `residentk.kernels_cuda_graph` | cuda | 7 | `benchmarks/llm_smoke/qwen3_generate_cuda.mojo` | `benchmarks/llm_smoke/qwen3_bench_cuda.mojo` |
 | `residentk.kernels_decode_attn_flash` | cuda | 2 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo --selftest` | `benchmarks/llm_smoke/nvidia_race/enterprise_bench.py` |
-| `residentk.kernels_gemma3` | cuda | 11 | `benchmarks/llm_smoke/gemma3/ref_gemma3_torch.py` | `benchmarks/llm_smoke/nvidia_race/gemma3_correctness_cuda.mojo` |
+| `residentk.kernels_gemma3` | cuda | 12 | `benchmarks/llm_smoke/gemma3/ref_gemma3_torch.py` | `benchmarks/llm_smoke/nvidia_race/gemma3_correctness_cuda.mojo` |
 | `residentk.kernels_packed3` | cuda | 7 | `benchmarks/llm_smoke/nvidia_race/packed3_gemv_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/packed3_gemv_probe.mojo` |
 | `residentk.kernels_packed3_batched` | cuda | 6 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo --selftest` | `benchmarks/llm_smoke/nvidia_race/enterprise_bench.py` |
 | `residentk.kernels_prefill_attn_flash` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo --selftest` | `benchmarks/llm_smoke/nvidia_race/ttft_probe.py` |
@@ -184,10 +214,11 @@ Each kernel module declares its own evidence in its `@capability-module` block: 
 | `residentk.kernels_prefill_f32_v2` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/prefill_gemm_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/prefill_gemm_probe.mojo` |
 | `residentk.kernels_prefill_f32_v2n` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` |
 | `residentk.kernels_prefill_f32_v3` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/h100_gemm_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/h100_gemm_probe.mojo` |
+| `residentk.kernels_prefill_gemma3` | cuda | 14 | `benchmarks/llm_smoke/gemma3/ref_transformers_gemma3.py` | `benchmarks/llm_smoke/nvidia_race/gemma3_correctness_cuda.mojo` |
 | `residentk.kernels_prefill_v2f16` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo --selftest` | `benchmarks/llm_smoke/nvidia_race/ttft_probe.py` |
 | `residentk.session_cuda_batched_p3_graph` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/enterprise_bench.py` |
 | `residentk.session_cuda_p3` | cuda | 10 | `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` |
-| `residentk.tc_shim_bridge` | cuda | 11 | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` |
+| `residentk.tc_shim_bridge` | cuda | 18 | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` |
 
 ## Querying the inventory from the SDK
 
