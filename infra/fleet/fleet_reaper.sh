@@ -75,7 +75,6 @@ for dir in $RUNNER_DIRS; do
     done
   fi
 
-<<<<<<< HEAD
   if [ "$n_workers" -gt 0 ] && [ -n "$live_lines" ]; then
     # Hung-job mode: GitHub shows an in_progress job older than 45min while EVERY
     # worker on this runner has burned <120s CPU => wedged dispatch (2026-08-24:
@@ -110,8 +109,6 @@ print(int(h)*3600+int(mm)*60+int(ss))" 2>/dev/null || echo 99999)
     fi
   fi
 
-=======
->>>>>>> origin/main
   if [ "$n_workers" -eq 0 ] && [ "$QUEUED_TOTAL" -gt 0 ]; then
     # Idle-listener wedge: org has queued work but this runner spawns no worker
     # (listener stuck, 2026-08-24: 4 of 5 idle while queues drained at 1 worker).
