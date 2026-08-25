@@ -32,16 +32,14 @@ permissions:
 # Note: the job-level deploy concurrency groups below stay as they are — they serialize
 # migrations per Fly app, and a superseded deploy is likewise covered by the next one.
 concurrency:
-  # PRs share ONE fleet-wide group per workflow class: runs queue FIFO and each PR's
-  # leg FINISHES instead of every open PR's matrix interleaving across the 5 runners
-  # and all of them wedging at once. Non-PR events keep a per-ref group so a superseded
-  # main run is still cancelled by its successor.
-  # ONE serial slot shared by ALL heavy workflows on PR events: the fleet finishes
-  # one run at a time with every free worker instead of splitting workers across
-  # open PRs (jobs inside the active run still fan out to all idle runners, so the
-  # whole fleet converges on the head of the queue, then moves to the next).
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('ci-{0}-{1}', github.workflow, github.ref) }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
+  # Scheduling v2: ci.yml uses DYNAMIC postgres ports (docker -p 0:5432 + port
+  # lookup), so its jobs are collision-free across runners on the shared Colima
+  # daemon — run free per-ref for full fleet utilization. Only fixed-port
+  # workflows serialize fleet-wide (see sdk-audit.yml). The v1 serial slot
+  # starved idle runners on single-job legs; zombies (reaper) and grind
+  # (adaptive CodeQL) were the real wedge causes and are fixed at root.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.14"

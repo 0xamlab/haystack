@@ -26,13 +26,11 @@ permissions:
 # execution-sweep's fixed postgres-ci-sdkaudit container name/port (see ci.yml for the same
 # reasoning — this bit us in practice with ci.yml's postgres-ci).
 concurrency:
-  # PRs share ONE fleet-wide group: runs queue FIFO and each PR's audit FINISHES
-  # instead of every open PR's sweep interleaving on the fleet and wedging (this also
-  # guarantees the fixed postgres-ci-sdkaudit container never has two PRs at once).
-  # Non-PR events keep a per-ref group with supersede-cancel.
-  # Shared serial slot (see ci.yml): whole fleet finishes one PR run at a time.
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('sdk-audit-{0}-{1}', github.workflow, github.ref) }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
+  # Fixed host port 15433 on the SHARED Colima daemon: two sdk-audit jobs on
+  # different runners would collide fleet-wide. Serialize this workflow across
+  # the whole fleet for ALL events; PR supersede-cancel still applies.
+  group: fleet-sdkaudit
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   gap-checks:
