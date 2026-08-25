@@ -36,7 +36,7 @@ curl -sS -X POST "https://api.algenta.ai/v1/repositories/$REPOSITORY_ID/security
   -d '{
     "snapshot_id": "'"$SNAPSHOT_ID"'",
     "sarif_digest": "sha256:9c1f...",
-    "scanner": { "name": "codeql", "version": "2.17.0" },
+    "scanner": { "name": "example-scanner", "version": "2.17.0" },
     "findings": [
       {
         "canonical_id": "finding-sql-injection-001",
@@ -62,7 +62,7 @@ resp = httpx.post(
     json={
         "snapshot_id": os.environ["SNAPSHOT_ID"],
         "sarif_digest": "sha256:9c1f...",
-        "scanner": {"name": "codeql", "version": "2.17.0"},
+        "scanner": {"name": "example-scanner", "version": "2.17.0"},
         "findings": [
             {
                 "canonical_id": "finding-sql-injection-001",
@@ -95,7 +95,7 @@ const resp = await fetch(
     body: JSON.stringify({
       snapshot_id: process.env.SNAPSHOT_ID,
       sarif_digest: "sha256:9c1f...",
-      scanner: { name: "codeql", version: "2.17.0" },
+      scanner: { name: "example-scanner", version: "2.17.0" },
       findings: [
         {
           canonical_id: "finding-sql-injection-001",

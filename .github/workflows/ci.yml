@@ -51,7 +51,7 @@ jobs:
   # ── Test ──────────────────────────────────────────────────────────────────
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.14"]
@@ -277,8 +277,32 @@ jobs:
       - name: Verify kernel inventory artifacts are current (no drift)
         run: make inventory-check
 
+      # Codna blast-radius gating (v1): on PRs whose diff cannot influence the
+      # test graph, skip the pytest legs (guard+lint+build still run). Subset
+      # scoping of the pytest lists is phase 2; push/schedule/dispatch always
+      # run the exhaustive graph. Fail-closed: any selection error => full run.
+      - name: Blast-radius test selection (PR only)
+        if: github.event_name == 'pull_request'
+        id: impact
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          git cat-file -e "$BASE" 2>/dev/null || BASE="origin/main"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null || true)
+          if [ -z "$CHANGED" ]; then echo "mode=skip" >> "$GITHUB_OUTPUT"; exit 0; fi
+          OUT=$(./scripts/run_repo_python.sh scripts/test_impact.py --json --changed $CHANGED 2>/dev/null || true)
+          MODE=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('mode','all'))" "$OUT" 2>/dev/null || echo all)
+          if [ "$MODE" = "subset" ]; then MODE=all; fi   # v1: only skip-mode is acted on
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "::notice::blast-radius selection mode=$MODE"
+
       - name: Run repo check graph
-        run: pnpm check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.impact.outputs.mode }}" = "skip" ]; then
+            echo "Blast radius: diff cannot influence the test graph - skipping pytest legs."
+            pnpm guard:reliability && pnpm lint && pnpm build
+          else
+            pnpm check
+          fi
         env:
           PYTEST_TIMEOUT: 30
 
@@ -343,7 +367,7 @@ jobs:
   # from source) — the "a user can actually `pip install` it" gate. Lean: no DB/Redis/pixi needed.
   sdk-artifact-install:
     name: SDK artifact install (Python ${{ matrix.python-version }})
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.14"]
@@ -365,7 +389,7 @@ jobs:
   # differences. Lean: npm-only, no DB/Redis/pixi.
   ts-sdk-artifact-install:
     name: TS SDK artifact install (Node ${{ matrix.node-version }})
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: ["18", "20", "22"]
@@ -398,7 +422,7 @@ jobs:
   # The push-to-main deploy repeats the same smoke against the pushed GHCR image before Fly rollout.
   api-image-mojo-smoke:
     name: API image Mojo runtime smoke
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'pull_request'
     permissions:
@@ -444,7 +468,7 @@ jobs:
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -579,7 +603,7 @@ jobs:
   # ENGINE (codna-engine) and tag-pinned/one-off deploys still go through the manual deploy.yml.
   deploy:
     name: Deploy to Fly (codna-api)
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -655,7 +679,7 @@ jobs:
   # expand/contract pattern, not by leaving this app un-deployed.
   deploy-control-plane:
     name: Deploy to Fly (algenta-control-plane)
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:

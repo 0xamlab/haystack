@@ -29,7 +29,7 @@ permissions:
 jobs:
   probe:
     name: probe for native Windows Mojo support
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check the conda channel and PyPI for win-64 Mojo

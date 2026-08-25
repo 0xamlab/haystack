@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build & push Mojo image
-    runs-on: ${{ fromJSON(vars.RUNNER_LABELS) }}
+    runs-on: ubuntu-latest
     steps:
       # Hosted-VM disk-reclaim hack removed: the self-hosted fleet's VM disk is dedicated.
 
