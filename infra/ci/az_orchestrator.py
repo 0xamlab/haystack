@@ -47,7 +47,7 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,6 +82,7 @@ REAP_EVERY_LOOPS = int(os.environ.get("REAP_EVERY_LOOPS", "4"))
 RESOURCE_GC_EVERY_LOOPS = int(os.environ.get("RESOURCE_GC_EVERY_LOOPS", "40"))
 MAX_PROVISION_ATTEMPTS = int(os.environ.get("MAX_PROVISION_ATTEMPTS", "3"))
 COOLDOWN_SECONDS = int(os.environ.get("COOLDOWN_SECONDS", "90"))
+STUCK_RUNNING_MINUTES = int(os.environ.get("STUCK_RUNNING_MINUTES", "12"))
 STATE_DB = os.environ.get("STATE_DB", "/var/lib/az-orchestrator/state.db")
 
 # Errors that mean "no capacity RIGHT NOW" (quota/capacity exhaustion) or that
@@ -349,6 +350,51 @@ def _provisioning_rows():
             ).fetchall()
         finally:
             conn.close()
+
+
+def unmark_stale_running(queued_ids):
+    """Self-heal jobs wedged 'running' in the dedupe table but still queued.
+
+    Ephemeral runners pick ANY queued job matching their labels, not the exact
+    job a VM was provisioned for. When queued jobs outnumber the worker slots,
+    a provisioned VM's runner can run a different job, leaving the intended job
+    queued while its dedupe row says 'running' -- so it is never re-provisioned
+    and sits forever. Any 'running' row whose job is STILL queued on GitHub and
+    was marked more than STUCK_RUNNING_MINUTES ago is unmarked for retry. The
+    threshold exceeds worker cloud-init (~4-6 min) plus runner-start, so a
+    legitimately in-flight job (no longer queued) is never touched.
+    """
+    if not queued_ids:
+        return
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=STUCK_RUNNING_MINUTES)
+    stale = []
+    with _db_lock:
+        conn = _db()
+        try:
+            rows = conn.execute(
+                "SELECT job_id, ts FROM handled WHERE status = 'running'"
+            ).fetchall()
+            for job_id, ts in rows:
+                if job_id not in queued_ids:
+                    continue
+                try:
+                    marked = datetime.fromisoformat(ts)
+                except (ValueError, TypeError):
+                    stale.append(job_id)  # unreadable timestamp: treat as stale
+                    continue
+                if marked < cutoff:
+                    stale.append(job_id)
+            for job_id in stale:
+                conn.execute("DELETE FROM handled WHERE job_id = ?", (job_id,))
+            conn.commit()
+        finally:
+            conn.close()
+    for job_id in stale:
+        log.warning(
+            "self-heal: job %s still queued after %d min; unmarked for re-provision",
+            job_id,
+            STUCK_RUNNING_MINUTES,
+        )
 
 
 # -- Azure --------------------------------------------------------------------
@@ -711,6 +757,10 @@ def main():
             except Exception as exc:  # noqa: BLE001
                 log.warning("poll failed: %s", exc)
                 jobs = []
+            try:
+                unmark_stale_running({j.id for j in jobs})
+            except Exception as exc:  # noqa: BLE001
+                log.warning("stale-running self-heal failed: %s", exc)
             if cooling_down():
                 if not cooldown_logged:
                     log.info("provisioning paused for %ds (capacity cooldown)", COOLDOWN_SECONDS)
