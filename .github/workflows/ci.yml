@@ -252,6 +252,22 @@ jobs:
       - name: Run linting (Ruff)
         run: ./scripts/run_repo_python.sh -m ruff check apps/ --ignore E501 || true
 
+      # Blast-radius CI: on PRs, run the tests inside the diff's dependency blast
+      # radius (scripts/test_impact.py; codna/telys enrichment via CODNA_BLAST_URL).
+      # Strictly additive over the explicit CI lists; ALL/NONE fall back to today's
+      # behavior (fail-open). Push/main runs keep the explicit lists only.
+      - name: Blast-radius test selection (codna/telys-aware)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=50 origin "$GITHUB_BASE_REF" || true
+          IMPACT=$(./scripts/run_repo_python.sh scripts/test_impact.py FETCH_HEAD HEAD 2>/dev/null || echo ALL)
+          echo "blast radius: $IMPACT"
+          if [ -n "$IMPACT" ] && [ "$IMPACT" != "ALL" ] && [ "$IMPACT" != "NONE" ]; then
+            ./scripts/run_repo_python.sh -m pytest -q $IMPACT
+          else
+            echo "blast radius $IMPACT: keeping explicit CI lists (fail-open)"
+          fi
+
       - name: Verify GitBook v1 docs pack
         run: make docs-gitbook-verify
 
