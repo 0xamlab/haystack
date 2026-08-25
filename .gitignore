@@ -168,3 +168,7 @@ scripts/.deploy.env
 # absolute /Users/<name>/ paths, so they were never shareable; they are local tooling, not
 # project config. Keep them out of the repo entirely.
 .codex/
+
+# Per-run generated adaptive-CodeQL differential configs (written inside the workspace
+# because codeql-action/init refuses configs outside it).
+.codeql-scope/

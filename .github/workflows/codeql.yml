@@ -55,9 +55,12 @@ jobs:
       - name: Compute adaptive scope (blast radius)
         id: scope
         run: |
+          # The generated config must live INSIDE the workspace: codeql-action/init
+          # refuses config files outside it ("outside of the workspace" — the repo-wide
+          # CodeQL (python) red since #851).
           python3 scripts/adaptive_codeql_scope.py \
             --language "${{ matrix.language }}" \
-            --out-dir "$RUNNER_TEMP/codeql-scope"
+            --out-dir "$GITHUB_WORKSPACE/.codeql-scope"
 
       - name: Skip analysis (nothing in scope for this language)
         if: steps.scope.outputs.decision == 'skip'
