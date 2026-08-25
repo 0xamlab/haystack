@@ -18,7 +18,8 @@ env:
 jobs:
   build:
     name: Build & push Mojo image
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     steps:
       # Hosted-VM disk-reclaim hack removed: the self-hosted fleet's VM disk is dedicated.
 

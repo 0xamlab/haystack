@@ -333,7 +333,8 @@ jobs:
     # a Linux runner, so the container is driven explicitly (the same pattern ci.yml already uses
     # for its service containers). Everything inside the container mirrors the hosted pipeline
     # 1:1 -- see .github/scripts/build_runtime_linux_amd64.sh.
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -379,7 +380,7 @@ jobs:
     # AND sshd silent -> watchdog VM restart -> every in-flight container job died with
     # unexpected EOF / exit 125). The gate is not on the publish critical path; stability wins.
     needs: [build-linux]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, az-ephemeral]
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -413,7 +414,7 @@ jobs:
     # wheel's binaries, so it runs inside the same amd64 container on the self-hosted fleet; the
     # workspace (with the downloaded runtime wheel) is mounted, and the algenta wheel the job
     # builds inside the container stays in the workspace for the artifact upload.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, az-ephemeral]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -444,7 +445,7 @@ jobs:
     needs: clean-machine-contract
     if: github.event_name == 'push' || inputs.publish == 'true'
     # Was `ubuntu-latest` (GitHub-hosted, billing-blocked); publishing is platform-independent.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, az-ephemeral]
     environment: release
     permissions:
       contents: read

@@ -30,7 +30,8 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Fly
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       SRC: ghcr.io/${{ github.repository }}

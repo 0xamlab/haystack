@@ -29,7 +29,8 @@ permissions:
 jobs:
   probe:
     name: probe for native Windows Mojo support
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     timeout-minutes: 15
     steps:
       - name: Check the conda channel and PyPI for win-64 Mojo

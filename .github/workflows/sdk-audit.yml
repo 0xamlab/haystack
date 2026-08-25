@@ -35,7 +35,8 @@ concurrency:
 jobs:
   gap-checks:
     name: SDK gap checks (static)
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -56,7 +57,7 @@ jobs:
   execution-sweep:
     name: Full execution sweep (compiled workers)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, az-ephemeral]
 
     # tests/conftest.py's autouse ensure_test_database_schema fixture runs the Alembic
     # migrations for EVERY pytest session under tests/ — including the ratchet suite —
@@ -152,7 +153,7 @@ jobs:
   published-artifact-proof:
     name: Published artifact install + execute proof
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, az-ephemeral]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

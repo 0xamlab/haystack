@@ -246,7 +246,8 @@ jobs:
     # requires a Linux runner) — the same pattern build-runtime.yml's build-linux uses.
     # Everything inside the container mirrors the hosted pipeline — see
     # .github/scripts/build_runtime_bundle_linux_amd64.sh.
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     timeout-minutes: 420
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -324,7 +325,7 @@ jobs:
     name: GitHub release (runtime-bundle-v* tags)
     needs: [build, build-linux]
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'runtime-bundle-v')
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, az-ephemeral]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

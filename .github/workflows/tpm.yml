@@ -40,7 +40,8 @@ jobs:
     # macOS arm64, so the whole validation runs in an amd64 ubuntu container (Rosetta
     # emulation -- swtpm and the ESAPI calls are userspace). Same container pattern as
     # build-runtime.yml's clean-machine contract.
-    runs-on: ubuntu-latest
+    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
+    runs-on: [self-hosted, az-ephemeral]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: TPM round-trip in an amd64 container (swtpm + libtss2 + tpm2-pytss)
