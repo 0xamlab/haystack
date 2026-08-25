@@ -141,6 +141,12 @@ packages:
   - python3
   - python3-pip
   - software-properties-common
+  # Build toolchain for the heavy jobs: the sdk-audit execution-sweep / ci.yml
+  # runtime shard builds compile Mojo and link it into executables, which needs
+  # clang (Mojo's linker) -- "clang not found; cannot link Mojo object" if absent.
+  - build-essential
+  - clang
+  - lld
 write_files:
   - path: /opt/ci/secrets.env
     permissions: '0600'
