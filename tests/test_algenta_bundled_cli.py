@@ -45,9 +45,29 @@ def _reset_loader(monkeypatch, tmp_path):
     _loader._HANDLE = None
 
 
+def _declared_version() -> str:
+    """The version packages/algenta declares, read from the installed distribution metadata.
+
+    Single source of truth shared by both assertions below, so a release bump cannot leave one
+    of them stale. Falls back to the module attribute only if the distribution is not installed
+    (editable/source runs), which is still the same value pyproject.toml sets.
+    """
+    try:
+        from importlib.metadata import version as _dist_version
+        return _dist_version("algenta")
+    except Exception:  # noqa: BLE001 -- not installed as a distribution; module attr is the same value
+        return algenta.__version__
+
+
 def test_import_algenta_is_lazy_no_native():
     # importing algenta must not have loaded the native lib / ctypes handle.
-    assert algenta.__version__ == "1.0.4"
+    # Version asserted against the packaging SOURCE OF TRUTH, not a literal. This line used to
+    # read `== "1.0.4"` while packages/algenta is 1.0.11 -- stale for seven releases, and it never
+    # failed because this file is one of the 792 top-level test files no CI invocation runs. A
+    # hardcoded version is a test that needs bumping on every release, which is exactly the
+    # pattern that rots; deriving it means the assertion keeps meaning "the CLI reports the
+    # version this package actually declares".
+    assert algenta.__version__ == _declared_version()
     assert _loader._LIB is None
 
 
@@ -169,7 +189,7 @@ def test_cli_version_and_whoami(capsys, monkeypatch, tmp_path):
     monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
     monkeypatch.setattr(sys, "argv", ["algenta", "version"])
     cli.main()
-    assert "algenta 1.0.4" in capsys.readouterr().out
+    assert f"algenta {_declared_version()}" in capsys.readouterr().out
     # whoami with no login → exit 1
     monkeypatch.setattr(sys, "argv", ["algenta", "whoami"])
     with pytest.raises(SystemExit) as e:
