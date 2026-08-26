@@ -316,6 +316,16 @@ _BACKEND_IMPORTS: dict[str, tuple[str, ...]] = {
     "index": ("memengine.runtime",),
 }
 
+# Entry points a backend's module must expose before it can serve anything. An import
+# alone is not enough: `memengine.runtime` can import and still carry none of the
+# governed collection's verbs, and `_index_entrypoint` in the execution half already
+# refuses that case by name. Probing only the import made `backend_status` answer
+# `available=True` for a backend every one of its calls then rejected -- a status that
+# disagrees with behaviour is worse than no status, because a caller acts on it.
+_BACKEND_ENTRYPOINTS: dict[str, tuple[str, ...]] = {
+    "index": ("remember", "recall", "compact"),
+}
+
 
 def _probe_import(module_name: str) -> tuple[bool, str]:
     """Import a module and report the name of whatever was missing if it failed.
@@ -387,6 +397,16 @@ def backend_status(backend: str, runtime: Any = None) -> BackendStatus:
         if not ok:
             missing.append(name)
             details.append(f"{module_name} could not be imported")
+            continue
+        # The import succeeded, so the module object is already in sys.modules and this
+        # cannot fail or cost anything; ask it for the entry points its verbs call.
+        module = importlib.import_module(module_name)
+        for entrypoint in _BACKEND_ENTRYPOINTS.get(backend, ()):
+            if not callable(getattr(module, entrypoint, None)):
+                missing.append(f"{module_name}.{entrypoint}")
+                details.append(
+                    f"{module_name} imports but does not expose {entrypoint}()"
+                )
     if missing:
         return BackendStatus(
             backend=backend,

@@ -274,16 +274,40 @@ def test_an_unavailable_backend_raises_and_names_the_missing_dependency():
 
 
 def test_the_governed_collection_names_its_own_missing_dependency():
-    """`telys`, not `faiss`: two absent backends must not report one cause."""
-    for call in (
-        lambda: remember(StubRuntime(), content="hello", collection="c"),
-        lambda: recall(StubRuntime(), query="hello", collection="c"),
-        lambda: compact(StubRuntime(), collection="c"),
-    ):
-        with pytest.raises(RetrievalBackendUnavailableError) as caught:
+    """The status and the governed verbs must name the same missing thing.
+
+    Asserted as an invariant, not as one machine's answer: whether the governed
+    collection is installed -- and how completely -- decides whether these verbs refuse
+    at all, so pinning a literal here made the test a statement about the developer's
+    laptop. What must hold everywhere is that `backend_status` and the call agree.
+    """
+    status = backend_status("index")
+    calls = (
+        ("remember", lambda: remember(StubRuntime(), content="hello", collection="c")),
+        ("recall", lambda: recall(StubRuntime(), query="hello", collection="c")),
+        ("compact", lambda: compact(StubRuntime(), collection="c")),
+    )
+    if status.available is False:
+        assert status.missing, "an unavailable backend must name what is missing"
+        for verb, call in calls:
+            with pytest.raises(RetrievalBackendUnavailableError) as caught:
+                call()
+            assert caught.value.backend == "index"
+            assert caught.value.verb == verb
+            assert caught.value.missing == status.missing
+        return
+    for _verb, call in calls:
+        try:
             call()
-        assert caught.value.missing == ("telys",)
-        assert caught.value.backend == "index"
+        except RetrievalBackendUnavailableError as exc:
+            pytest.fail(
+                "backend_status called the index backend available and the call "
+                f"disagreed, naming {exc.missing}"
+            )
+        except RetrievalError:
+            # The stub runtime cannot really serve a store; that is not a claim about
+            # the backend's availability, which is all this test is about.
+            pass
 
 
 def test_the_unavailable_message_says_why_it_is_not_an_empty_result():
@@ -296,11 +320,25 @@ def test_the_unavailable_message_says_why_it_is_not_an_empty_result():
 
 
 def test_backend_status_reports_the_truth_per_backend():
-    statuses = {name: backend_status(name) for name in BACKENDS if name != "local"}
-    assert statuses["dense"].available is False
-    assert statuses["index"].available is False
-    assert statuses["dense"].missing == ("faiss",)
-    assert statuses["index"].missing == ("telys",)
+    """`available` has to mean "a call will not refuse for a missing dependency".
+
+    Which of faiss and the governed collection is installed is a property of the
+    machine, so this asserts the shape of the answer and its agreement with the
+    execution half, not a fixed verdict. The old form asserted fixed verdicts and so
+    reported a *correctly* configured machine as broken.
+    """
+    for name in BACKENDS:
+        if name == "local":
+            continue
+        status = backend_status(name)
+        assert status.available in (True, False), name
+        if status.available is False:
+            assert status.missing, f"{name}: unavailable but named nothing to install"
+            for entry in status.missing:
+                assert entry and not entry.endswith("."), f"{name}: {entry!r}"
+            assert status.detail, f"{name}: unavailable with no explanation"
+        else:
+            assert status.missing == (), name
 
 
 def test_the_local_backend_is_undetermined_without_a_runtime():
@@ -353,14 +391,44 @@ def test_a_runtime_that_is_not_there_is_an_unavailable_backend():
 
 @_needs_lexical
 def test_the_lexical_lane_really_ranks():
+    """Deliberately does NOT assert which of `a` and `c` comes first.
+
+    Both tokenize to eight terms and carry each query term exactly once, so BM25 scores
+    them identically -- equal to the last float digit, measured. Their order is a
+    tie-break, and asserting it made this test fail on a change that altered nothing
+    about ranking quality. `test_a_document_that_matches_more_outranks_one_that_matches_once`
+    below makes the ordering claim on a corpus where ordering is actually determined.
+    """
     result = sparse_search(
         StubRuntime(), query="tokenize query", documents=DOCUMENTS, top_k=3
     )
     assert isinstance(result, RetrievalResult)
     assert result.backend == "lexical"
-    assert result.ids()[0] == "a"
+    # `b` shares no term with the query, so a real ranking drops it rather than
+    # returning it with a zero score.
+    assert set(result.ids()) == {"a", "c"}
     assert [hit.rank for hit in result.hits] == list(range(1, len(result.hits) + 1))
     assert all(hit.score > 0.0 for hit in result.hits)
+    scores = [hit.score for hit in result.hits]
+    assert scores == sorted(scores, reverse=True)
+
+
+@_needs_lexical
+def test_a_document_that_matches_more_outranks_one_that_matches_once():
+    """The ordering claim the test above cannot make, on a corpus that determines it."""
+    documents = [
+        *DOCUMENTS,
+        RetrievalDocument(
+            id="d",
+            text="tokenize query tokenize query tokenize query",
+            metadata={"lang": "py"},
+        ),
+    ]
+    result = sparse_search(
+        StubRuntime(), query="tokenize query", documents=documents, top_k=4
+    )
+    assert result.ids()[0] == "d"
+    assert result.hits[0].score > result.hits[1].score
 
 
 @_needs_lexical
