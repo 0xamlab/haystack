@@ -202,16 +202,11 @@ jobs:
       # setup-python's macOS .pkg installer needs passwordless sudo (only pre-configured
       # on GitHub-hosted runners), so it's dropped rather than fought.
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 10.15.0
-          # Default dest (~/setup-pnpm) is a fixed path shared by every runner process on this
-          # user account. With multiple self-hosted runners on one Mac, concurrent jobs race on
-          # it (ENOTEMPTY: directory not empty, rmdir '.../setup-pnpm/...'). runner.temp is
-          # unique per runner's own _work dir, so this isolates each runner's install.
-          dest: ${{ runner.temp }}/setup-pnpm
-
+      # setup-node MUST precede pnpm/action-setup -- see the ts-sdk-artifact-install job's
+      # fuller comment: pnpm's self-installer shells out to `npm`, and the runner's own
+      # self-updated externals dir shadows /usr/bin with an npm stub that has no
+      # ../lib/cli.js behind it ("Cannot find module '../lib/cli.js'", deterministic, not a
+      # flake). setup-node prepends a real tool-cache Node+npm ahead of that stub.
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -223,6 +218,16 @@ jobs:
           # nothing this would buy here -- same reasoning ts-sdk-artifact-install's
           # package-manager-cache:false already applies below.
           package-manager-cache: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 10.15.0
+          # Default dest (~/setup-pnpm) is a fixed path shared by every runner process on this
+          # user account. With multiple self-hosted runners on one Mac, concurrent jobs race on
+          # it (ENOTEMPTY: directory not empty, rmdir '.../setup-pnpm/...'). runner.temp is
+          # unique per runner's own _work dir, so this isolates each runner's install.
+          dest: ${{ runner.temp }}/setup-pnpm
 
       - name: Enable Corepack
         run: corepack enable
@@ -360,6 +365,32 @@ jobs:
           PYTEST_TIMEOUT: 60
         run: ./scripts/run_repo_python.sh -m pytest -q tests/test_object_store_minio_smoke.py tests/test_multi_replica_chaos.py
 
+      # Coverage lives HERE, not in a standalone workflow, because it needs the Postgres /
+      # Dragonfly / MinIO containers this job already started. The old code-coverage.yml ran
+      # `pytest tests/` on a bare runner with no services at all, so every DB-backed fixture
+      # ERRORed at setup -- and because coverage was never a merge gate, nobody noticed it was
+      # reporting a falsely LOW number rather than failing. (tests/conftest.py defaults
+      # DATABASE_URL to a developer-local `angel@localhost/decision_engine`, which happened to
+      # exist on the retired persistent Mac fleet and never exists on an ephemeral VM -- the
+      # same stale-fleet assumption behind the buildx/npm/golden-image breakage.)
+      # Not gating: `|| true` keeps coverage as signal, matching the old workflow's contract.
+      - name: Python coverage report
+        env:
+          PYTEST_TIMEOUT: 60
+        run: |
+          ./scripts/run_repo_python.sh -m pytest -q \
+            --cov=packages/algenta/algenta --cov=apps/api_server \
+            --cov-report=xml:coverage.xml --cov-report=term-missing \
+            tests/ || true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          retention-days: 14
+          if-no-files-found: warn
+
       # OBSERVED, not gating: repo-aware test selection (scripts/test_impact.py) reports the
       # subset of the suite this diff can actually influence — the signal that will trim PR test
       # runs once it has a production track record. Never fails the job: without codna installed
@@ -431,16 +462,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      # setup-node@v5's "Environment details" step runs `pnpm -v`; without pnpm on PATH it errors
-      # ("Unable to locate executable file: pnpm") and fails the step. Install pnpm first, as the
-      # Test job does. (This — not the Node version — is why this job was red.)
-      - name: Set up pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          version: 10.15.0
-          # See the Test job's identical comment: isolates this runner's pnpm install from the
-          # other self-hosted runners racing on the same shared ~/setup-pnpm path.
-          dest: ${{ runner.temp }}/setup-pnpm
+      # No pnpm setup in this job, deliberately: it builds a FRESH npm project and never
+      # invokes pnpm (verify_ts_sdk_artifact_install.mjs mentions it only in comments). pnpm
+      # was here solely to satisfy setup-node@v5's "Environment details" step, which runs
+      # `pnpm -v` when it auto-detects the repo's pnpm — package-manager-cache:false below
+      # already suppresses that, so the step was pure liability. Concretely: pnpm 10.15.0's
+      # @pnpm/exe installer uses import.meta.dirname (Node >= 20.11), so under this job's
+      # Node 18 matrix leg it died with path.resolve(undefined) -> "paths[0] must be of type
+      # string". The Test job below still sets pnpm up — it genuinely uses it, on Node 22.
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:

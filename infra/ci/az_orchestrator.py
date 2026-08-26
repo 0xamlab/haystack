@@ -18,16 +18,46 @@ Azure is driven via plain ARM REST (SP client-credentials) — the az CLI on ci-
 unreliable (token-cache concurrency races, empty responses). Scales 0 -> MAX_CONCURRENCY
 workers when the queue is deep, back to 0 when idle.
 
+Primary dispatch is a webhook receiver (HTTPS, GITHUB_WEBHOOK_TLS_CERT/_KEY, HMAC-verified
+against GITHUB_WEBHOOK_SECRET) subscribed to three event types, each earning its subscription
+with real handling -- no event is subscribed speculatively with nothing acting on it:
+  - `workflow_job` (queued): the actual dispatch signal -- GitHub pushes this instantly instead
+    of the orchestrator polling for new work.
+  - `pull_request` (opened/synchronize/reopened): a workflow_job-queued event for it is
+    imminent -- pre-warms one extra worker ahead of that reactive signal instead of waiting.
+  - `push` (to a branch in PREWARM_PUSH_BRANCHES, i.e. one that actually triggers this repo's
+    CI): same pre-warm, for push-triggered runs rather than PR-triggered ones.
+Every other event GitHub might deliver (an org's default hook subscribes to more than these
+three) is acked 202 and dropped -- see do_POST's early return -- rather than silently ignored
+with no trace, which is itself a fix: a correctly-signed-but-unhandled delivery used to leave
+zero log line, indistinguishable from a delivery that never arrived (confirmed live: this
+made registering the real org webhook impossible to verify from the log alone).
+
+The poll loop in main() still runs, but demoted to a RECONCILE_S-interval backstop
+(cleanup/warm-pool/orphan sweep plus a queued_jobs() re-check in case a webhook delivery was
+ever lost) rather than the primary trigger -- this also shrinks the historical blast radius of
+a hung API call: fewer poll cycles means fewer chances to hit one, even with gh()/arm()'s own
+tightened timeouts.
+
 Env: GITHUB_CI_TOKEN (org-admin oauth/PAT: needs org self-hosted-runner registration +
-org repo-list scope); GITHUB_REPOS (optional comma-separated override to pin/restrict
-the served repo list; unset = every repo in the org, auto-refreshed); AZURE_SP_CLIENT_ID/
-AZURE_SP_CLIENT_SECRET (fallback AZURE_CLIENT_ID/AZURE_CLIENT_SECRET), AZURE_TENANT_ID,
-AZURE_SUBSCRIPTION_ID.
+org repo-list + org webhook scope); GITHUB_WEBHOOK_SECRET (HMAC secret for the org-level
+`workflow_job` webhook -- independent of the GitHub App's own webhook secret in
+apps/api_server/config.py, deliberately: reusing the App's secret would mean registering
+through the App's single webhook URL, redirecting ALL its installation events, including
+codna's live fix-PR flow, onto this receiver); GITHUB_WEBHOOK_TLS_CERT/_KEY (paths to the
+Cloudflare Origin CA cert/key, see infra/cloudflare/webhook.tf); GITHUB_REPOS (optional
+comma-separated override to pin/restrict the served repo list; unset = every repo in the
+org, auto-refreshed); AZURE_SP_CLIENT_ID/AZURE_SP_CLIENT_SECRET (fallback AZURE_CLIENT_ID/
+AZURE_CLIENT_SECRET), AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
 """
 import base64
+import hashlib
+import hmac
+import http.server
 import json
 import os
 import secrets
+import ssl
 import threading
 import time
 import urllib.request
@@ -44,14 +74,41 @@ REPO_CACHE_S = 300  # org repo list changes rarely; avoid a full org/repos scan 
 # allowlist instead of code if per-repo access control is ever needed.
 RUNNER_GROUP = os.environ.get("AZ_ORCH_RUNNER_GROUP", "az-ephemeral-pool")
 LABEL = "az-ephemeral"
-POLL_S = 15
+# The poll loop is now a RECONCILE backstop, not the primary trigger (see module docstring) --
+# 90s, not 15s: fewer cycles means fewer chances to hit a hung call, and the webhook path
+# handles the actual "a job just queued" latency.
+RECONCILE_S = int(os.environ.get("AZ_ORCH_RECONCILE_S", "90"))
+WEBHOOK_PORT = int(os.environ.get("AZ_ORCH_WEBHOOK_PORT", "443"))
+WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+WEBHOOK_CERT = os.environ.get("GITHUB_WEBHOOK_TLS_CERT", "")
+WEBHOOK_KEY = os.environ.get("GITHUB_WEBHOOK_TLS_KEY", "")
+# Branches whose push triggers this repo's own CI-triggering workflow (ci.yml's own
+# `on: push: branches:`) -- pre-warming on push to any OTHER branch would just provision
+# workers for pushes that never queue a job. "main" alone is the portable default; a
+# deployment with a different convention (this repo's own ci.yml also triggers on "develop")
+# sets AZ_ORCH_PREWARM_BRANCHES explicitly.
+PREWARM_PUSH_BRANCHES = {
+    b.strip() for b in os.environ.get("AZ_ORCH_PREWARM_BRANCHES", "main").split(",") if b.strip()
+}
 MAX_AGE_S = 90 * 60
 # stock-image boot runs apt-get (docker.io) + runner download: 3-6min is normal,
 # so a 3min orphan sweep was killing VMs mid-bootstrap (runners never registered).
 ORPHAN_AGE_S = 10 * 60
+# Ordered by REALIZED capacity, not nominal preference. Two live facts drive this
+# (measured 2026-08-25 across eastus/eastus2/centralus/westus2):
+#   1. The F-series is quota-clean but CAPACITY-RESTRICTED in every region we use --
+#      Azure has no physical stock, so every attempt fails with "not available in
+#      location". free_vcpus() cannot see this (quota says 0/10 used, i.e. free), so
+#      F-first burned ~6s of guaranteed failures on EVERY provision. It stays in the
+#      chain as a genuine last resort, but never leads.
+#   2. Per-FAMILY vCPU limits are the real ceiling (mostly 10 = one 8-vCPU VM per
+#      family per region), so total concurrency comes from spreading across families.
+#      Dsv6/Dsv5 carry the largest limits (40 in centralus vs 10 for Dsv3/Dsv4), so
+#      leading with them yields materially more simultaneous workers.
 SIZE_CHAIN = [
-    "Standard_F8s_v2", "Standard_D8s_v5", "Standard_D8s_v6", "Standard_D8s_v4", "Standard_D8s_v3",
-    "Standard_F4s_v2", "Standard_D4s_v5", "Standard_D4s_v4", "Standard_D4s_v3",
+    "Standard_D8s_v6", "Standard_D8s_v5", "Standard_D8s_v4", "Standard_D8s_v3",
+    "Standard_D4s_v5", "Standard_D4s_v4", "Standard_D4s_v3",
+    "Standard_F8s_v2", "Standard_F4s_v2",
 ]
 VM_VCPU = {
     "Standard_F8s_v2": 8, "Standard_D8s_v5": 8, "Standard_D8s_v6": 8, "Standard_D8s_v4": 8, "Standard_D8s_v3": 8,
@@ -59,12 +116,33 @@ VM_VCPU = {
 }
 MAX_CONCURRENCY = int(os.environ.get("AZ_ORCH_MAX", "20"))
 # Blacksmith-style warm capacity: pre-booted registered runners so jobs are picked up
-# in seconds; drained to 0 after IDLE_DRAIN_S without queue/busy activity.
+# in seconds; drained to WARM_FLOOR (never 0) after IDLE_DRAIN_S without queue/busy activity.
+# The floor exists so the FIRST job after any quiet period still gets warm-pool pickup speed
+# instead of paying a full cold boot -- a burst-only pool (drain to 0) makes every post-idle
+# job slow, not just excess capacity beyond real demand.
 WARM_MIN = int(os.environ.get("AZ_ORCH_WARM", "2"))
+WARM_FLOOR = min(WARM_MIN, int(os.environ.get("AZ_ORCH_WARM_FLOOR", "1")))
 IDLE_DRAIN_S = int(os.environ.get("AZ_ORCH_IDLE_DRAIN_S", "600"))
 WARM_PREFIX = "ci-warm-"
-GOLDEN_IMAGE = f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/images/ci-worker-v1"
-GOLDEN_REGION = "eastus2"  # managed images are regional; other regions use stock + full cloud-init
+# Azure Compute Gallery image version, REPLICATED to every region in REGIONS. This replaces
+# the classic managed image (ci-worker-v1/v2), which was single-region by construction:
+# only centralus got the fast path, so the other 7 regions ran the full CLOUD_INIT bootstrap
+# (apt + docker repo + deadsnakes + Node + runner download) on every boot -- 3-6min before a
+# runner could register. Measured live 2026-08-25: 15 VMs up, 9 of them outside centralus and
+# therefore all still bootstrapping, which is why VM count and usable-runner count diverged so
+# badly. A gallery version is the supported way to get one image into many regions.
+#
+# Contents: docker-ce + buildx plugin (Docker's own apt repo, not Ubuntu's), python3.14,
+# clang/lld, and Node.js. Node is not optional: without a real system npm, pnpm's installer
+# falls through to the runner's own externals npm stub and dies deterministically (see
+# CLOUD_INIT's nodejs comment).
+GOLDEN_IMAGE = (
+    f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute"
+    "/galleries/thynci/images/ci-worker/versions/1.0.0"
+)
+# Retained only as the fallback probe region. With the gallery replicated everywhere, the
+# fast path is no longer region-gated -- see _create_vm.
+GOLDEN_REGION = "centralus"
 SPOT = os.environ.get("AZ_ORCH_SPOT", "0") == "1"
 STATE = "/var/lib/az-orch"
 os.makedirs(STATE, exist_ok=True)
@@ -81,6 +159,10 @@ REGIONS = [
 ]
 
 _lock = threading.Lock()
+_delivery_lock = threading.Lock()
+_delivery_seen = {}  # X-GitHub-Delivery -> received_at; GitHub retries a delivery verbatim on
+# a non-2xx/timeout response, so dedup is required for correctness, not just efficiency.
+_DELIVERY_TTL_S = 3600
 _inflight = set()
 _inflight_names = set()  # VM names currently being provisioned; cleanup must not reap their nic/pip
 _absent_once = set()  # net-sweep two-poll guard: base seen without a VM once, swept on second sight
@@ -340,7 +422,16 @@ write_files:
       up
       # package set mirrors main's worker image: python3.14 (Test job + bundled-runtime
       # doctor gate) and clang/lld (Mojo shard builds link with clang).
-      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker.io ca-certificates curl git jq libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
+      #
+      # Docker: NOT Ubuntu's docker.io/docker-buildx universe packages -- those produced a
+      # broken/absent buildx CLI plugin live on this fleet (root-caused 2026-08-25 against
+      # actions/runner-images' own install-docker.sh, which never uses the distro packages
+      # either). Docker's own apt repo + docker-buildx-plugin is the same method GitHub's
+      # own hosted-runner images use.
+      timeout 60 sh -c 'install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc' >/dev/null 2>&1
+      log "docker-repo-key rc=$?"
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin ca-certificates curl git jq libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
       log "apt rc=$?"
       up
       add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1
@@ -348,6 +439,17 @@ write_files:
       # deadsnakes ships no pip module; jobs call `python3.14 -m pip` directly.
       python3.14 -m ensurepip --upgrade >/dev/null 2>&1 || true
       log "py314 rc=$?"
+      up
+      # Node.js: GitHub's own hosted-runner images ship it preinstalled; this hand-rolled
+      # image never did, and the gap is NOT cosmetic. pnpm/action-setup's self-installer
+      # shells out to `npm`, and with no system Node the only `npm` on PATH is the runner's
+      # own bundled stub (/opt/runner/externals.*/node*/bin/npm) -- a 2-line shim that
+      # requires ../lib/cli.js, which the runner's Node bundle does not ship. That fails
+      # 100% of the time with "Cannot find module '../lib/cli.js'", which reads like a flaky
+      # network install but is fully deterministic (root-caused 2026-08-25). NodeSource, not
+      # Ubuntu's ancient distro nodejs.
+      timeout 120 sh -c 'curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y -qq nodejs' >/dev/null 2>&1
+      log "nodejs rc=$? version=$(node --version 2>/dev/null) npm=$(npm --version 2>/dev/null)"
       up
       systemctl enable --now docker
       curl -m 120 -o /tmp/runner.tar.gz -LsS https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
@@ -417,11 +519,13 @@ _golden_ok = None
 
 
 def golden_available():
-    # ci-worker-v1 was never captured; probing once avoids a guaranteed 404 per eastus2 attempt.
+    # Probe GOLDEN_IMAGE once: a missing/not-yet-replicated image would otherwise 404 on every
+    # single provision attempt, in every region. (v1 was referenced here for a long stretch
+    # while never actually having been captured -- the probe is what kept that cheap.)
     global _golden_ok
     if _golden_ok is None:
         try:
-            arm("GET", f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/images/ci-worker-v1")
+            arm("GET", GOLDEN_IMAGE, api="2023-07-03")
             _golden_ok = True
         except urllib.error.HTTPError as e:
             _golden_ok = e.code != 404
@@ -483,7 +587,12 @@ def _create_vm(name, size, region, vnet, subnet, nic):
         api="2022-07-01",
     )
     pwd = "Ci-" + secrets.token_urlsafe(16)
-    golden = region == GOLDEN_REGION and golden_available()
+    # No region gate: GOLDEN_IMAGE is a gallery version replicated to every region in
+    # REGIONS, so the fast path applies fleet-wide. This was `region == GOLDEN_REGION`
+    # while the golden image was a single-region managed image -- which meant 7 of 8
+    # regions always paid the full 3-6min bootstrap and were the reason usable runner
+    # count lagged VM count so badly under load.
+    golden = golden_available()
     if golden:
         with open(f"{STATE}/{name}.fast.yml", "w") as f:
             f.write(
@@ -664,6 +773,22 @@ def _read_last_activity():
         return 0.0
 
 
+def _prewarm(reason):
+    """Provision one extra warm worker ahead of an imminent CI run (a PR just opened/updated, or
+    a push to a CI-triggering branch) instead of waiting for the reactive workflow_job-queued
+    path. Bounded by MAX_CONCURRENCY like every other provisioning path; a no-op once at
+    capacity, never queues or blocks."""
+    vms = live_vms()
+    with _lock:
+        warm_inflight = sum(1 for n in _inflight_names if n.startswith(WARM_PREFIX))
+        if len(vms) + len(_inflight) + warm_inflight >= MAX_CONCURRENCY:
+            return False
+    name = f"{WARM_PREFIX}{int(time.time())}"
+    log(f"webhook: pre-warming {name} ({reason})")
+    threading.Thread(target=provision_worker, args=(name,), daemon=True).start()
+    return True
+
+
 def manage_warm_pool(vms):
     now = time.time()
     queued = queued_jobs()
@@ -676,41 +801,155 @@ def manage_warm_pool(vms):
         with open(f"{STATE}/last_activity", "w") as f:
             f.write(str(now))
     warm = [v for v in vms if v[0].startswith(WARM_PREFIX)]
-    if now - _read_last_activity() > IDLE_DRAIN_S:
-        for name, _, loc in warm:  # scale to 0 when idle
-            log(f"idle drain: deleting {name}")
+    idle = now - _read_last_activity() > IDLE_DRAIN_S
+    if idle and len(warm) > WARM_FLOOR:
+        # Scale down to the permanent floor, never to 0: the floor absorbs the very next job
+        # at warm-pool speed instead of every post-idle job paying a full cold boot.
+        for name, _, loc in warm[WARM_FLOOR:]:
+            log(f"idle drain: deleting {name} (keeping floor={WARM_FLOOR})")
             delete_vm(name, loc)
-        return queued
+        warm = warm[:WARM_FLOOR]
+    target = WARM_FLOOR if idle else WARM_MIN
     with _lock:
         warm_inflight = sum(1 for n in _inflight_names if n.startswith(WARM_PREFIX))
     if (
-        len(warm) + warm_inflight < WARM_MIN
+        len(warm) + warm_inflight < target
         and len(vms) + len(_inflight) < MAX_CONCURRENCY
     ):
         name = f"{WARM_PREFIX}{int(now)}"
-        log(f"warm pool: provisioning {name}")
+        log(f"warm pool: provisioning {name} (target={target}, idle={idle})")
         threading.Thread(target=provision_worker, args=(name,), daemon=True).start()
     return queued
 
 
+def _dispatch_job(job, vms):
+    """Claim + spawn a provisioning thread for one queued job, or no-op if already claimed /
+    at capacity. Shared by the poll-loop backstop and the webhook handler so both paths use the
+    exact same admission logic."""
+    with _lock:
+        if job["id"] in _inflight:
+            return False
+        if len(vms) + len(_inflight) >= MAX_CONCURRENCY:
+            return False
+        _inflight.add(job["id"])
+    threading.Thread(target=provision_job, args=(job,), daemon=True).start()
+    return True
+
+
+def _verify_signature(secret, body, header_value):
+    """Constant-time HMAC-SHA256 check of a GitHub webhook's X-Hub-Signature-256 header. An
+    unset secret always fails closed (never accept unsigned/unverifiable webhooks)."""
+    if not secret:
+        return False
+    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(header_value or "", expected)
+
+
+def _delivery_dedup(delivery_id):
+    """True if this X-GitHub-Delivery was already handled. GitHub retries a delivery verbatim
+    (same id) on a non-2xx response or timeout, so acting on a duplicate would double-provision."""
+    now = time.time()
+    with _delivery_lock:
+        for k in [k for k, t in _delivery_seen.items() if now - t > _DELIVERY_TTL_S]:
+            del _delivery_seen[k]
+        if delivery_id in _delivery_seen:
+            return True
+        _delivery_seen[delivery_id] = now
+        return False
+
+
+class _WebhookHandler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):  # noqa: A003 -- stdlib hook name; route through log()
+        pass  # BaseHTTPRequestHandler's default writes to stderr, bypassing orch.log entirely
+
+    def do_POST(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length) if length else b""
+            sig = self.headers.get("X-Hub-Signature-256", "")
+            if not _verify_signature(WEBHOOK_SECRET, body, sig):
+                log(f"webhook: bad signature from {self.client_address[0]}")
+                self.send_response(401)
+                self.end_headers()
+                return
+            delivery_id = self.headers.get("X-GitHub-Delivery", "")
+            event = self.headers.get("X-GitHub-Event", "")
+            log(f"webhook: accepted {event} delivery={delivery_id} from {self.client_address[0]}")
+            self.send_response(202)  # ack fast; GitHub's own delivery timeout is short
+            self.end_headers()
+            if event not in ("workflow_job", "pull_request", "push"):
+                return  # subscribed-but-unhandled (e.g. the org default's "push"): ack, no-op
+            if not delivery_id or _delivery_dedup(delivery_id):
+                return
+            payload = json.loads(body) if body else {}
+            repo = (payload.get("repository") or {}).get("full_name", "")
+
+            if event == "workflow_job":
+                if payload.get("action") != "queued":
+                    return
+                job = payload.get("workflow_job") or {}
+                if not any(LABEL in (l or "") for l in job.get("labels", [])):
+                    return
+                if repo and repo not in served_repos():  # defense in depth; label match is primary
+                    log(f"webhook: {repo} not in served_repos(), skipping job {job.get('id')}")
+                    return
+                dispatched = _dispatch_job(job, live_vms())
+                log(f"webhook: queued job {job.get('id')} ({repo}) dispatched={dispatched}")
+            elif event == "pull_request":
+                # A PR just opened or got a new commit -- a workflow_job-queued event for it is
+                # imminent. Pre-warm now instead of waiting for that reactive signal.
+                if payload.get("action") not in ("opened", "synchronize", "reopened"):
+                    return
+                if not repo or repo not in served_repos():
+                    return
+                _prewarm(f"pull_request {payload.get('action')} on {repo}")
+            elif event == "push":
+                ref = payload.get("ref", "")
+                branch = ref.removeprefix("refs/heads/")
+                if branch not in PREWARM_PUSH_BRANCHES:
+                    return  # push to a branch that doesn't trigger this repo's CI -- no-op
+                if not repo or repo not in served_repos():
+                    return
+                _prewarm(f"push to {branch} on {repo}")
+        except Exception as e:  # noqa: BLE001 -- a webhook handler must never crash the server thread
+            log(f"webhook error: {e}")
+            try:
+                self.send_response(500)
+                self.end_headers()
+            except Exception:
+                pass
+
+
+def run_webhook_server():
+    if not (WEBHOOK_SECRET and WEBHOOK_CERT and WEBHOOK_KEY):
+        log("webhook server disabled: GITHUB_WEBHOOK_SECRET/_TLS_CERT/_TLS_KEY not fully set")
+        return
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", WEBHOOK_PORT), _WebhookHandler)
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(certfile=WEBHOOK_CERT, keyfile=WEBHOOK_KEY)
+    server.socket = ctx.wrap_socket(server.socket, server_side=True)
+    log(f"webhook server listening on :{WEBHOOK_PORT}")
+    try:
+        server.serve_forever()
+    except Exception as e:
+        log(f"webhook server crashed: {e}")
+
+
 def main():
-    log(f"orchestrator starting (REST mode, warm={WARM_MIN}, max={MAX_CONCURRENCY})")
+    log(f"orchestrator starting (webhook + {RECONCILE_S}s reconcile backstop, warm={WARM_MIN}, floor={WARM_FLOOR}, max={MAX_CONCURRENCY})")
+    threading.Thread(target=run_webhook_server, daemon=True).start()
     while True:
         try:
             cleanup()
             vms = live_vms()
             queued = manage_warm_pool(vms)
             for job in queued:
-                with _lock:
-                    if job["id"] in _inflight:
-                        continue
-                    if len(vms) + len(_inflight) >= MAX_CONCURRENCY:
-                        break
-                    _inflight.add(job["id"])
-                threading.Thread(target=provision_job, args=(job,), daemon=True).start()
+                if len(vms) + len(_inflight) >= MAX_CONCURRENCY:
+                    break
+                _dispatch_job(job, vms)
         except Exception as e:
             log(f"poll error: {e}")
-        time.sleep(POLL_S)
+        time.sleep(RECONCILE_S)
 
 
 if __name__ == "__main__":

@@ -26,17 +26,22 @@ permissions:
 # execution-sweep's fixed postgres-ci-sdkaudit container name/port (see ci.yml for the same
 # reasoning — this bit us in practice with ci.yml's postgres-ci).
 concurrency:
-  # Fixed host port 15433 on the SHARED Colima daemon: two sdk-audit jobs on
-  # different runners would collide fleet-wide. Serialize this workflow across
-  # the whole fleet for ALL events; PR supersede-cancel still applies.
-  group: fleet-sdkaudit
+  # Was `fleet-sdkaudit` -- serialized across the WHOLE fleet because the old shared-Mac
+  # runners all published execution-sweep's postgres on fixed host port 15433 against ONE
+  # shared Colima daemon, so two concurrent sdk-audit jobs genuinely collided.
+  #
+  # That premise is gone: every job now gets its own ephemeral Azure VM with its own Docker
+  # daemon, so a fixed host port cannot collide across jobs by construction. Keeping the
+  # fleet-wide group would needlessly serialize every sdk-audit run org-wide. Per-ref,
+  # matching ci.yml's proven grouping.
+  group: sdkaudit-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   gap-checks:
     name: SDK gap checks (static)
     # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: [self-hosted, az-ephemeral]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -57,7 +62,7 @@ jobs:
   execution-sweep:
     name: Full execution sweep (compiled workers)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: [self-hosted, az-ephemeral]
 
     # tests/conftest.py's autouse ensure_test_database_schema fixture runs the Alembic
     # migrations for EVERY pytest session under tests/ — including the ratchet suite —
@@ -176,7 +181,7 @@ jobs:
   published-artifact-proof:
     name: Published artifact install + execute proof
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: [self-hosted, az-ephemeral]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
