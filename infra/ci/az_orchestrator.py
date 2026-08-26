@@ -178,6 +178,9 @@ _DELIVERY_TTL_S = 3600
 _inflight = set()
 _inflight_names = set()  # VM names currently being provisioned; cleanup must not reap their nic/pip
 _absent_once = set()  # net-sweep two-poll guard: base seen without a VM once, swept on second sight
+# NIC names the sweep could not parse. Log-once set, so an unhandled naming form is reported the
+# first time rather than every 90s poll -- but IS reported, which is what 31 leaked NICs cost.
+_unswept_nics = set()
 # Deletion ledger: VM name -> {at, reason, was_busy}. Consulted when a workflow_job `completed`
 # webhook reports a non-success, so an infra kill is attributed the moment GitHub notices it
 # instead of being reconstructed afterwards from three separate logs.
@@ -752,6 +755,31 @@ def nic_path_for(name, region):
     return f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Network/networkInterfaces/{name}-{region}-nic"
 
 
+def _nic_base(nic_name):
+    """The worker VM name a NIC belongs to, or None if the name is in no known form.
+
+    Three forms exist in this resource group, and only the first two were ever handled:
+      1. `<vm>-<region>-nic`  -- what nic_path_for() creates today.
+      2. `<vm>-nic`           -- legacy, pre-region-scoped.
+      3. `<vm>VMNic`          -- AZURE'S OWN default name, used when a VM is created without an
+                                 explicit NIC (the `az vm create` path this orchestrator used
+                                 before the ARM REST rewrite). No hyphen before "nic", so it
+                                 matched neither form above and leaked forever.
+    Measured 2026-08-26 in thyn-ci: 53 NICs for 14 VMs, 34 orphaned (virtualMachine == null), of
+    which 31 were form 3 -- e.g. ci-az-32854312574-97822446727VMNic, from runs long since gone.
+
+    Longest-suffix-first, so a hypothetical `<vm>-eastus2-nic` can never be mis-parsed as the
+    legacy form with `-eastus2` swallowed into the VM name."""
+    for r, _, _ in REGIONS:
+        suffix = f"-{r}-nic"
+        if nic_name.endswith(suffix):
+            return nic_name[: -len(suffix)]
+    for suffix in ("VMNic", "-nic"):
+        if nic_name.endswith(suffix):
+            return nic_name[: -len(suffix)]
+    return None
+
+
 def clear_net(name, region):
     p = nic_path_for(name, region)
     if _exists(p, "2022-07-01"):
@@ -860,14 +888,20 @@ def cleanup():
         n = p["name"]
         if not n.startswith(("ci-az-", "ci-warm-")):
             continue
-        base = None
-        for r, _, _ in REGIONS:
-            if n.endswith(f"-{r}-nic"):
-                base = n[: -len(f"-{r}-nic")]
-                break
-        if base is None and n.endswith("-nic"):  # legacy pre-region-scoped names
-            base = n[: -len("-nic")]
-        if base is None or base in vm_names or base in protected:
+        base = _nic_base(n)
+        if base is None:
+            # An unrecognized ci-* NIC name must never fall through SILENTLY. It did, and it cost
+            # 31 leaked NICs: Azure's own auto-generated name is `<vm>VMNic` (no hyphen before
+            # "nic"), so it matched neither the `-{region}-nic` form this orchestrator creates nor
+            # the legacy `-nic` fallback, and every one was skipped on every pass forever. Leaked
+            # NICs occupy per-region quota, so this throttles provisioning -- the sweep reporting
+            # nothing was the reason it went unnoticed for weeks.
+            if n not in _unswept_nics:
+                _unswept_nics.add(n)
+                log(f"WARNING: leaked-nic sweep cannot parse NIC name {n!r} -- not swept. "
+                    f"Add its suffix to _nic_base() or it will occupy quota indefinitely.")
+            continue
+        if base in vm_names or base in protected:
             continue
         if base not in _absent_once:
             # ARM read-after-write lag: a VM just PUT may not list for ~15-30s; sweeping
@@ -880,6 +914,49 @@ def cleanup():
             arm("DELETE", p["id"], api="2022-07-01")
         except Exception:
             pass
+    _sweep_stale_registrations(vm_names | protected)
+
+
+def _sweep_stale_registrations(live_names):
+    """Delete runner registrations whose VM is gone.
+
+    An ephemeral worker's registration outlives its VM, so the org list drifts far above the real
+    fleet: measured 2026-08-26, 32 registrations for 6 online runners (21 stale ci-az-/ci-warm-
+    plus 5 retired blacksmith entries). Nothing removed them, so the count only grew.
+
+    That matters because the runner listing is paginated at 100 per page. all_runners() now
+    follows pages so a large list is no longer *unsafe*, but letting it grow unbounded still means
+    every reaper pass pays extra API round-trips forever, and it was one truncation bug away from
+    reaping busy runners mid-job. Prune instead of merely tolerating.
+
+    THREE conditions, all required, because deleting the wrong registration is worse than keeping
+    a stale one -- GitHub cancels a job whose runner registration disappears:
+      * offline   -- an online runner may be about to accept work.
+      * not busy  -- a busy runner is mid-job by definition.
+      * no live VM -- the decisive one. A VM mid-bootstrap has no registration yet (nothing to
+        delete), so "no VM" genuinely means the worker is gone, not merely not-yet-arrived.
+    Plus a name-prefix guard: only this fleet's own workers. ci-orch itself is a runner (a
+    repo-level one, which is why an org-only listing does not even show it) and must never be
+    touched; neither must any runner some other system registered."""
+    try:
+        runners = all_runners()
+    except Exception as e:  # noqa: BLE001 -- reconciliation is best-effort, never fatal
+        log(f"registration sweep: listing failed, skipping this pass: {e}")
+        return
+    for r in runners:
+        name = r.get("name") or ""
+        if not name.startswith(("ci-az-", "ci-warm-")):
+            continue
+        if r.get("status") != "offline" or r.get("busy") or name in live_names:
+            continue
+        rid = r.get("id")
+        if rid is None:
+            continue
+        try:
+            gh(f"orgs/{ORG}/actions/runners/{rid}", method="DELETE")
+            log(f"pruned stale runner registration {name} (id={rid}, offline, no live VM)")
+        except Exception as e:  # noqa: BLE001 -- a failed prune is harmless; retry next pass
+            log(f"registration sweep: could not delete {name} (id={rid}): {e}")
 
 
 def _read_last_activity():
