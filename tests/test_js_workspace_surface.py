@@ -37,8 +37,14 @@ def test_root_package_json_exposes_repo_root_js_commands() -> None:
     assert "unset DE_BASE_URL" in test_js_script
     assert "unset ALGENTA_API_URL" in test_js_script
     assert (
-        "pnpm --dir packages/ts-sdk test -- --run "
-        "src/libraries.test.ts src/runtime_daemon_client.test.ts src/index.test.ts"
+        # The ts-sdk `test` script is `tsc && vitest run`, so `pnpm test -- --run <files>`
+        # appended the filters AFTER `vitest run` was composed: vitest never received them
+        # and silently ran the WHOLE suite (46 files, not 3 -- "Test Files 4 failed | 42
+        # passed (46)" in CI). `pnpm exec` reaches the binary directly. The explicit
+        # --testTimeout replaces vitest's 5000ms default, which assumed an unloaded machine
+        # and produced non-deterministic timeouts on contended CI workers (the same commit
+        # gave 1 timeout at 14:15 and 4 at 15:22).
+        "pnpm --dir packages/ts-sdk exec vitest run --testTimeout=30000"
     ) in test_js_script
     assert "pnpm --dir apps/gateway test" in test_js_script
     assert (
