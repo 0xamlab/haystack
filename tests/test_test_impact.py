@@ -375,3 +375,45 @@ def test_fallback_package_alias_resolution_is_ancestor_derived_not_hardcoded(tmp
     keys = ti._candidate_keys("libs/widget/widget/shape.py")
     assert "libs.widget.widget.shape" in keys   # primary, path-based key
     assert "widget.shape" in keys               # alias via the real package boundary
+
+
+def test_path_literal_lane_catches_a_test_that_loads_by_path(tmp_path, monkeypatch):
+    """Tests using importlib.spec_from_file_location have NO import edge, so the AST graph
+    cannot see them. This is the shape of every tests/test_az_orchestrator_*.py file, and a
+    change to infra/ci/az_orchestrator.py broke 4 of them while CI stayed green."""
+    import scripts.test_impact as ti  # noqa: PLC0415
+
+    test_src = tmp_path / "test_loads_by_path.py"
+    test_src.write_text(
+        'import importlib.util\n'
+        'from pathlib import Path\n'
+        'TOOL = Path("infra") / "ci" / "az_orchestrator.py"\n'
+        'def test_x():\n'
+        '    spec = importlib.util.spec_from_file_location("m", TOOL)\n'
+        '    assert spec\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    hit = ti._path_literal_dependents(
+        ["infra/ci/az_orchestrator.py"], ["test_loads_by_path.py"]
+    )
+    assert hit == {"test_loads_by_path.py"}, f"path-literal reference not detected: {hit}"
+
+
+def test_path_literal_lane_does_not_over_match(tmp_path, monkeypatch):
+    """Component-wise matching must not fire on a test that merely mentions one segment."""
+    import scripts.test_impact as ti  # noqa: PLC0415
+
+    (tmp_path / "test_unrelated.py").write_text(
+        'import importlib.util\n'
+        '# mentions "infra" only, not the full component set\n'
+        'NAME = "infra"\n'
+        'def test_y():\n'
+        '    assert importlib.util is not None\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    hit = ti._path_literal_dependents(
+        ["infra/ci/az_orchestrator.py"], ["test_unrelated.py"]
+    )
+    assert hit == set(), f"over-matched on a partial component overlap: {hit}"

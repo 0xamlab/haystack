@@ -45,7 +45,7 @@ def test_aged_but_busy_vm_is_not_reaped(monkeypatch):
     mod = _load(monkeypatch)
     deleted = []
     monkeypatch.setattr(mod, "log", lambda *a, **kw: None)
-    monkeypatch.setattr(mod, "delete_vm", lambda n, l: deleted.append(n))
+    monkeypatch.setattr(mod, "delete_vm", lambda n, l, **kw: deleted.append(n))
     monkeypatch.setattr(mod, "arm", lambda *a, **kw: {"value": []})
     # Pre-booted well past MAX_AGE_S (90min) and mid-job -- the exact live failure.
     monkeypatch.setattr(mod, "live_vms", lambda: [("ci-warm-1", "2000-01-01T00:00:00", "centralus")])
@@ -63,7 +63,7 @@ def test_aged_and_idle_vm_is_still_reaped(monkeypatch):
     mod = _load(monkeypatch)
     deleted = []
     monkeypatch.setattr(mod, "log", lambda *a, **kw: None)
-    monkeypatch.setattr(mod, "delete_vm", lambda n, l: deleted.append(n))
+    monkeypatch.setattr(mod, "delete_vm", lambda n, l, **kw: deleted.append(n))
     monkeypatch.setattr(mod, "arm", lambda *a, **kw: {"value": []})
     monkeypatch.setattr(mod, "live_vms", lambda: [("ci-warm-2", "2000-01-01T00:00:00", "centralus")])
     _runners(mod, monkeypatch, [("ci-warm-2", False)])
@@ -79,7 +79,7 @@ def test_idle_drain_never_deletes_a_busy_warm_worker(monkeypatch, tmp_path):
     mod = _load(monkeypatch)
     deleted = []
     monkeypatch.setattr(mod, "log", lambda *a, **kw: None)
-    monkeypatch.setattr(mod, "delete_vm", lambda n, l: deleted.append(n))
+    monkeypatch.setattr(mod, "delete_vm", lambda n, l, **kw: deleted.append(n))
     # STATE is a root-only absolute path on the real ci-orch host; manage_warm_pool writes
     # last_activity there whenever anything is busy.
     monkeypatch.setattr(mod, "STATE", str(tmp_path))

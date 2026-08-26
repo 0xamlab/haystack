@@ -53,7 +53,7 @@ def _wire(mod, monkeypatch, *, idle: bool, deleted: list, provisioned: list):
     monkeypatch.setattr(mod, "queued_jobs", lambda: [])
     monkeypatch.setattr(mod, "gh", lambda *a, **kw: {"runners": []})
     monkeypatch.setattr(mod, "_read_last_activity", lambda: 0.0 if idle else mod.time.time())
-    monkeypatch.setattr(mod, "delete_vm", lambda name, loc: deleted.append(name))
+    monkeypatch.setattr(mod, "delete_vm", lambda name, loc, **kw: deleted.append(name))
     monkeypatch.setattr(mod, "provision_worker", lambda name: provisioned.append(name))
     monkeypatch.setattr(threading, "Thread", _SyncThread)
     monkeypatch.setattr(mod, "_inflight", set())

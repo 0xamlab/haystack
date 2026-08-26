@@ -323,6 +323,59 @@ def _file_symbols(tree: ast.AST) -> list[str]:
     return names
 
 
+def _path_literal_dependents(changed, test_files):
+    """Tests that load a changed file BY PATH, which the AST import graph cannot see.
+
+    Many tests here do:
+        _TOOL = REPO_ROOT / "infra" / "ci" / "az_orchestrator.py"
+        spec = importlib.util.spec_from_file_location("under_test", _TOOL)
+    There is no import statement, so the module never appears in the dependency graph and the
+    test is invisible to selection. 20+ files in tests/ use this shape (also subprocess and
+    open() against repo paths).
+
+    This is not theoretical: on 2026-08-26 a change to infra/ci/az_orchestrator.py broke all 4
+    tests in tests/test_az_orchestrator_inflight_release.py, and the PR merged GREEN because
+    subset selection never picked that file. The telys/memengine lexical lane is designed for
+    exactly this class, but it is inert in CI (private repo, no cross-repo credential), so the
+    blind spot needs a lane with NO external dependency.
+
+    Match rule: every path COMPONENT of a changed file must appear as a string literal in the
+    test. `infra/ci/az_orchestrator.py` -> {"infra", "ci", "az_orchestrator.py"}, all three of
+    which appear in those tests. Component-wise (not substring) matching keeps it tight, and
+    like every other lane here it only ever WIDENS the set.
+    """
+    changed_components = {}
+    for c in changed:
+        parts = [p for p in Path(c).parts if p not in (".", "..", "/")]
+        if parts:
+            changed_components[c] = set(parts)
+    if not changed_components:
+        return set()
+    out = set()
+    for t in test_files:
+        try:
+            src = (REPO_ROOT / t).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "spec_from_file_location" not in src and "subprocess" not in src and "read_text" not in src:
+            continue  # cheap prefilter: only files that plausibly reach for a path
+        try:
+            tree = ast.parse(src)
+        except SyntaxError:
+            continue
+        lits = {
+            n.value for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)
+        }
+        if not lits:
+            continue
+        for comps in changed_components.values():
+            if comps <= lits:
+                out.add(t)
+                break
+    return out
+
+
 def _lexical_enrichment(
     changed: list[str], trees: dict[str, ast.AST | None], test_files: list[str],
 ) -> tuple[set[str], int]:
@@ -500,6 +553,17 @@ def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *
     # for direct imports but blind to "soft" references a lexical index over path+symbol text can
     # still catch. Applied last, after both safety guards above, and only ever WIDENS `affected` —
     # never re-triggers the shared-core guard retroactively, matching "run more, never fewer".
+    # Path-literal lane (no external dependency, always on): catches tests that load a changed
+    # file by PATH rather than importing it -- see _path_literal_dependents for the live
+    # regression that motivated it.
+    by_path = _path_literal_dependents(changed, test_files) - affected
+    if by_path:
+        affected = affected | by_path
+        preview = ", ".join(sorted(by_path)[:3]) + ("..." if len(by_path) > 3 else "")
+        # stderr, never stdout: stdout carries the --json contract and the newline-separated
+        # test list that CI consumes.
+        print(f"# path-literal lane added {len(by_path)} test(s): {preview}", file=sys.stderr)
+
     extra, _corpus_size = _lexical_enrichment(changed, trees, test_files)
     added = extra - affected
     if added:

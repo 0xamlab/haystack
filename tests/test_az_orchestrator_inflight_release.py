@@ -36,6 +36,9 @@ def _wire(mod, monkeypatch, *, vms):
     monkeypatch.setattr(mod, "delete_vm", lambda *a, **kw: None)
     # cleanup()'s trailing nic sweep is a live ARM call; stub it to an empty listing.
     monkeypatch.setattr(mod, "arm", lambda *a, **kw: {"value": []})
+    # cleanup() also queries GitHub for BUSY runners (added when busy runners stopped being
+    # reaped). Unstubbed that is a REAL HTTPS call which 401s under the fake test token.
+    monkeypatch.setattr(mod, "gh", lambda *a, **kw: {"runners": []})
 
 
 def test_claim_for_a_vanished_worker_is_released(monkeypatch):

@@ -178,6 +178,12 @@ _DELIVERY_TTL_S = 3600
 _inflight = set()
 _inflight_names = set()  # VM names currently being provisioned; cleanup must not reap their nic/pip
 _absent_once = set()  # net-sweep two-poll guard: base seen without a VM once, swept on second sight
+# Deletion ledger: VM name -> {at, reason, was_busy}. Consulted when a workflow_job `completed`
+# webhook reports a non-success, so an infra kill is attributed the moment GitHub notices it
+# instead of being reconstructed afterwards from three separate logs.
+_deleted = {}
+_deleted_lock = threading.Lock()
+_DELETED_TTL_S = 3 * 3600  # >> the ~9min runner-heartbeat timeout measured on 2026-08-26
 _token = {"value": None, "exp": 0}
 _token_lock = threading.Lock()
 
@@ -679,7 +685,26 @@ def vm_path(name):
     return f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/virtualMachines/{name}"
 
 
-def delete_vm(name, location):
+def delete_vm(name, location, reason="unspecified", was_busy=False):
+    """Delete a worker VM, recording it so a later job failure on this runner self-attributes.
+
+    Autopsy of the 2026-08-26 execution-sweep kill (Azure activity log + orchestrator log):
+      13:23:18.166  virtualMachines/delete Started    caller=<orchestrator SP>
+      13:23:18.509  networkInterfaces/delete FAILED   BadRequest (NicInUse -- VM still attached)
+      13:23:39.853  virtualMachines/delete Succeeded
+      13:32:42      GitHub reports the job FAILED     <- 9 MINUTES after the VM died
+    The job log contained no error of its own, so the red check pointed at the build. Attribution
+    has to be automatic; hand-correlating three logs is not a diagnosis path."""
+    with _deleted_lock:
+        now = time.time()
+        for k in [k for k, v in _deleted.items() if now - v["at"] > _DELETED_TTL_S]:
+            del _deleted[k]
+        _deleted[name] = {"at": now, "reason": reason, "was_busy": bool(was_busy)}
+    if was_busy:
+        # Unreachable now that both reaper paths skip busy runners -- but if a third path ever
+        # appears, this must be loud at the moment of the kill, not inferred 9 minutes later.
+        log(f"INFRA-KILL: deleting {name} while BUSY (reason={reason}) -- a job is running on "
+            f"it and will fail with an unrelated-looking error in ~9min")
     for kind, path in (
         ("vm", vm_path(name)),
         ("nic", nic_path_for(name, location)),
@@ -687,7 +712,9 @@ def delete_vm(name, location):
         try:
             arm("DELETE", path, api="2022-07-01" if kind != "vm" else "2023-07-01")
         except Exception as e:
-            log(f"delete {kind} {name}: {e}")
+            # NicInUse/BadRequest is EXPECTED (the NIC delete races the still-attached VM) and
+            # is itself diagnostic, so the reason travels with it instead of reading as noise.
+            log(f"delete {kind} {name} (reason={reason}): {e}")
 
 
 def nic_path_for(name, region):
@@ -756,8 +783,9 @@ def cleanup():
         if name in busy:
             continue  # mid-job: let it finish; MAX_AGE_S is a leak guard, not a job timeout
         if (name not in runners and age > ORPHAN_AGE_S) or age > MAX_AGE_S:
-            log(f"deleting {name} (age={int(age)}s, runner={'gone' if name not in runners else 'aged'})")
-            delete_vm(name, location)
+            why = "orphan-no-runner" if name not in runners else "max-age"
+            log(f"deleting {name} (age={int(age)}s, reason={why})")
+            delete_vm(name, location, reason=f"{why} age={int(age)}s", was_busy=name in busy)
     # leaked nic/pip from failed provisions occupy the per-region PIP quota (limit 20)
     vm_names = {n for n, _, _ in vms}
     with _lock:
@@ -874,7 +902,7 @@ def manage_warm_pool(vms):
         keep = len(warm) - len(drainable)  # busy workers already count toward the floor
         for name, _, loc in drainable[max(0, WARM_FLOOR - keep):]:
             log(f"idle drain: deleting {name} (keeping floor={WARM_FLOOR}, busy={len(busy_names)})")
-            delete_vm(name, loc)
+            delete_vm(name, loc, reason="idle-drain", was_busy=name in busy_names)
         warm = [v for v in warm if v[0] in busy_names] + drainable[: max(0, WARM_FLOOR - keep)]
     target = WARM_FLOOR if idle else WARM_MIN
     with _lock:
@@ -925,6 +953,31 @@ def _delivery_dedup(delivery_id):
         return False
 
 
+def _note_completed_job(job, repo):
+    """Attribute a non-success job to an infra kill, at the instant GitHub reports it.
+
+    GitHub's workflow_job `completed` event already carries `runner_name` AND `conclusion`, and
+    this receiver already gets it -- only `queued` was ever handled. One cross-reference against
+    the deletion ledger converts the hardest-to-diagnose failure class here into a single
+    self-explanatory line."""
+    conclusion = job.get("conclusion")
+    runner = job.get("runner_name") or ""
+    jid = job.get("id")
+    if conclusion == "success" or not runner:
+        return
+    with _deleted_lock:
+        rec = _deleted.get(runner)
+    if rec is None:
+        return
+    delta = int(time.time() - rec["at"])
+    log(
+        f"INFRA-KILL ATTRIBUTION: job {jid} ({repo}) reported '{conclusion}' on runner {runner}, "
+        f"which THIS ORCHESTRATOR deleted {delta}s earlier (reason={rec['reason']}, "
+        f"was_busy={rec['was_busy']}). The job did not fail on its own -- its runner was removed. "
+        f"Re-run it; do not debug the build."
+    )
+
+
 class _WebhookHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):  # noqa: A003 -- stdlib hook name; route through log()
         pass  # BaseHTTPRequestHandler's default writes to stderr, bypassing orch.log entirely
@@ -952,7 +1005,11 @@ class _WebhookHandler(http.server.BaseHTTPRequestHandler):
             repo = (payload.get("repository") or {}).get("full_name", "")
 
             if event == "workflow_job":
-                if payload.get("action") != "queued":
+                action = payload.get("action")
+                if action == "completed":
+                    _note_completed_job(payload.get("workflow_job") or {}, repo)
+                    return
+                if action != "queued":
                     return
                 job = payload.get("workflow_job") or {}
                 if not any(LABEL in (l or "") for l in job.get("labels", [])):
