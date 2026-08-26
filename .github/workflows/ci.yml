@@ -5,6 +5,17 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  # Manual only, for MEASURING the blast-radius known-red baseline. It sweeps every top-level
+  # test file the curated gate never runs (793 of 950 measured 2026-08-26) and is far too slow
+  # for a PR. It runs inside the `test` job below rather than in a workflow of its own so the
+  # baseline is measured in the SAME environment as the gate that consumes it -- a baseline
+  # measured anywhere else records that environment's accidents as permanent tolerances.
+  workflow_dispatch:
+    inputs:
+      measure_baseline:
+        description: "Sweep the never-run test files and emit the known-red baseline"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -605,14 +616,42 @@ jobs:
                 # coverage that was enforced before blast radius existed. What is advisory is
                 # strictly the newly-visible surface.
                 #
-                # Ratchet to make this blocking is filed as a follow-up: baseline the known-red
-                # node IDs (same pattern as scripts/reliability_guards' `baselined=True`), fail on
-                # anything NOT in the baseline, and shrink the baseline over time.
-                if ./scripts/run_repo_python.sh -m pytest -q $EXTRA; then
-                  echo "::notice::blast-radius extras all passed ($N file(s))"
+                # THE RATCHET. Enforcement is switched by the EXISTENCE of a measured baseline,
+                # deliberately, so there is no separate flag that can disagree with reality:
+                #   no  tests/blast_radius_known_red.txt -> advisory (this is the state today)
+                #   yes tests/blast_radius_known_red.txt -> only NEW reds fail the job
+                # Measure it with `workflow_dispatch` + measure_baseline=true (see the step at the
+                # end of this job), never on a laptop -- two classes of false local red were
+                # observed on 2026-08-26 (a shared Postgres stamped at an alembic revision in no
+                # tree, and a pixi env built from a stale branch pinning an older mcp), and
+                # baselining either would silence a real failure forever.
+                BASELINE="tests/blast_radius_known_red.txt"
+                # ONE FILE PER INVOCATION, and the baseline sweep does the same. The unit of
+                # measurement has to equal the unit of enforcement: a test that only fails when
+                # co-executed with others would otherwise be recorded as a permanent known-red
+                # (masking a later real failure at that node), and one that passes alone but
+                # fails alongside its neighbours would BLOCK a PR on a red no measurement had
+                # ever seen. Isolating both sides removes the whole class. Extras are a handful
+                # of files, so the extra process starts are cheap.
+                : > /tmp/extras.log
+                extras_rc=0
+                for one in $EXTRA; do
+                  set +e
+                  ./scripts/run_repo_python.sh -m pytest -q "$one" >> /tmp/extras.log 2>&1
+                  one_rc=$?
+                  set -e
+                  # 5 = "no tests collected", which is not a failure.
+                  if [ "$one_rc" != "0" ] && [ "$one_rc" != "5" ]; then extras_rc=1; fi
+                done
+                tail -3 /tmp/extras.log || true
+                if [ "$extras_rc" = "0" ]; then
+                  echo "::notice::blast-radius extras all passed ($N file(s), one invocation each)"
+                elif [ -f "$BASELINE" ]; then
+                  ./scripts/run_repo_python.sh scripts/ci_blast_radius_gate.py \
+                    --pytest-output /tmp/extras.log --baseline "$BASELINE"
                 else
-                  echo "::warning::blast-radius extras FAILED in $N newly-reached file(s). These are files no CI run has ever executed, so failures here are pre-existing until proven otherwise -- ADVISORY, not blocking. Triage owed; see the ratchet follow-up."
-                  ./scripts/run_repo_python.sh -m pytest -q $EXTRA 2>&1 | grep -E "^FAILED|^ERROR" | head -25 || true
+                  echo "::warning::blast-radius extras FAILED in $N newly-reached file(s). No measured baseline exists yet, so this is ADVISORY, not blocking -- and deliberately not a \`|| true\`: every red is printed below and triage is owed. Measure the baseline via workflow_dispatch (measure_baseline=true) to make this gate blocking."
+                  grep -E "^FAILED|^ERROR" /tmp/extras.log | head -25 || true
                 fi
               else
                 echo "::notice::blast-radius subset fully covered by the curated gate; nothing extra to run"
@@ -621,6 +660,92 @@ jobs:
           fi
         env:
           PYTEST_TIMEOUT: 30
+
+      # MEASURE the blast-radius known-red baseline that the gate above consumes. Manual only:
+      # it sweeps the 793 top-level test files (measured 2026-08-26) that no CI invocation has
+      # ever run, which is far too slow for a PR leg.
+      #
+      # Chunked, so one hard crash in an unknown file costs one chunk instead of the sweep. A
+      # chunk that produces NO pytest summary is recorded as UNMEASURED rather than quietly
+      # contributing zero reds -- a silently truncated sweep yields a baseline that looks clean
+      # and then blocks PRs on exactly the files it skipped, which is the failure mode most
+      # likely to discredit the whole ratchet.
+      - name: Measure blast-radius known-red baseline (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.measure_baseline
+        # 793 sequential pytest starts; batching would be faster but would measure the wrong
+        # thing (see the loop's comment). Manual, one-off, so wall-clock is the cheap axis.
+        timeout-minutes: 240
+        env:
+          PYTEST_TIMEOUT: 60
+        run: |
+          ./scripts/run_repo_python.sh scripts/ci_never_run_test_files.py > /tmp/never_run.txt
+          TOTAL=$(grep -c . /tmp/never_run.txt || true)
+          TOTAL=${TOTAL:-0}
+          # ONE FILE PER INVOCATION, matching the gate's extras step exactly. Batching would
+          # be faster but would measure a DIFFERENT thing: co-execution failures would enter
+          # the baseline as permanent tolerances, and files that only fail alongside others
+          # would block PRs on reds this sweep never saw. Isolation is the point, not speed.
+          echo "::notice::measuring $TOTAL never-run test file(s), one invocation each"
+          : > /tmp/reds.txt
+          : > /tmp/unmeasured.txt
+          i=0
+          while read -r one; do
+            [ -n "$one" ] || continue
+            i=$((i + 1))
+            set +e
+            # </dev/null so pytest cannot consume the while-read loop's stdin and swallow
+            # the rest of the file list -- the sweep would silently stop after one file.
+            ./scripts/run_repo_python.sh -m pytest -q --continue-on-collection-errors "$one" \
+              > /tmp/one.log 2>&1 < /dev/null
+            one_rc=$?
+            set -e
+            grep -E "^(FAILED|ERROR) " /tmp/one.log \
+              | sed -E 's/^(FAILED|ERROR) //; s/ - .*$//' >> /tmp/reds.txt || true
+            if ! grep -qE "(passed|failed|error|no tests ran)" /tmp/one.log; then
+              echo "::warning::$one produced no pytest summary (rc=$one_rc) -- UNMEASURED"
+              tail -5 /tmp/one.log || true
+              echo "$one" >> /tmp/unmeasured.txt
+            fi
+            if [ $((i % 25)) = 0 ] || [ "$i" = "$TOTAL" ]; then
+              echo "  swept $i / $TOTAL  (distinct reds so far: $(sort -u /tmp/reds.txt | grep -c . || true))"
+            fi
+          done < /tmp/never_run.txt
+          UNMEASURED=$(grep -c . /tmp/unmeasured.txt || true)
+          REDS=$(sort -u /tmp/reds.txt | grep -c . || true)
+          {
+            echo "# blast-radius known-red baseline -- consumed by scripts/ci_blast_radius_gate.py"
+            echo "#"
+            echo "# MEASURED ON CI. Do NOT add entries from a local run: a laptop reproduces reds"
+            echo "# that CI does not (a shared Postgres stamped at an alembic revision present in no"
+            echo "# tree; a pixi env built from a stale branch pinning an older mcp -- both observed"
+            echo "# 2026-08-26), and a false entry here silences a real failure permanently."
+            echo "#"
+            echo "# commit:      ${{ github.sha }}"
+            echo "# run:         ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "# files swept: ${TOTAL:-0}"
+            echo "# unmeasured:  ${UNMEASURED:-0}  (chunks that produced no summary; NOT proven green)"
+            echo "#"
+            echo "# Every line below is triage owed. This file may only shrink."
+            sort -u /tmp/reds.txt
+          } > /tmp/blast_radius_known_red.txt
+          echo "::notice::baseline measured: ${REDS:-0} distinct red(s) across ${TOTAL:-0} file(s), ${UNMEASURED:-0} unmeasured"
+          # Always written, even when empty, so the artifact upload has a stable file set and an
+          # empty unmeasured list is positive evidence rather than a missing file.
+          cp /tmp/unmeasured.txt /tmp/blast_radius_unmeasured.txt
+          if [ "${UNMEASURED:-0}" != "0" ]; then
+            echo "::warning::${UNMEASURED} file(s) were NOT measured -- commit the baseline only after re-running those, or the gate will block on them"
+          fi
+
+      - name: Upload the measured baseline
+        if: github.event_name == 'workflow_dispatch' && inputs.measure_baseline
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: blast-radius-known-red-baseline
+          path: |
+            /tmp/blast_radius_known_red.txt
+            /tmp/blast_radius_unmeasured.txt
+          if-no-files-found: error
+          retention-days: 14
 
       # Exercise the REAL S3Backend (boto3 → MinIO) + coordination against real Dragonfly. Every
       # object-store unit test mocks the backend with LocalFsBackend, so this is the only check that
