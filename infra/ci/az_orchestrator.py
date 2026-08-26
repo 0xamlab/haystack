@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 """Ephemeral Azure self-hosted runner orchestrator (repo-managed, deployed on ci-orch).
 
-Polls GitHub for queued workflow_jobs requesting label `az-ephemeral`, provisions one
-Azure VM per job (parallel, quota-aware, multi-region), and GUARANTEES cleanup: a VM is
-deleted when its runner disappears from the repo runner list, plus age-based sweeps.
-Jobs are never permanently failed here — a provisioning failure leaves the job queued
-for the next poll (GitHub's own timeout is the backstop).
+Polls GitHub for queued workflow_jobs requesting label `az-ephemeral` across every repo
+in the org (auto-discovered, not hardcoded -- any repo that requests the label gets
+served, same as GitHub-hosted/Blacksmith runners need no per-repo registration),
+provisions one Azure VM per job (parallel, quota-aware, multi-region), and GUARANTEES
+cleanup: a VM is deleted when its runner disappears from the org runner list, plus
+age-based sweeps. Jobs are never permanently failed here — a provisioning failure leaves
+the job queued for the next poll (GitHub's own timeout is the backstop).
+
+Runners register at the ORG level (not per-repo) via RUNNER_GROUP, an org-wide-visible
+group -- this replaces the retired thyn-mac fleet, which was also org-shared and had no
+repo allowlist. GITHUB_REPOS can still pin an explicit repo list (e.g. for a staged
+rollout); unset, it defaults to every repo in the org.
 
 Azure is driven via plain ARM REST (SP client-credentials) — the az CLI on ci-orch proved
 unreliable (token-cache concurrency races, empty responses). Scales 0 -> MAX_CONCURRENCY
 workers when the queue is deep, back to 0 when idle.
 
-Env: GITHUB_CI_TOKEN (repo-admin oauth/PAT); AZURE_SP_CLIENT_ID/AZURE_SP_CLIENT_SECRET
-(fallback AZURE_CLIENT_ID/AZURE_CLIENT_SECRET), AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
+Env: GITHUB_CI_TOKEN (org-admin oauth/PAT: needs org self-hosted-runner registration +
+org repo-list scope); GITHUB_REPOS (optional comma-separated override to pin/restrict
+the served repo list; unset = every repo in the org, auto-refreshed); AZURE_SP_CLIENT_ID/
+AZURE_SP_CLIENT_SECRET (fallback AZURE_CLIENT_ID/AZURE_CLIENT_SECRET), AZURE_TENANT_ID,
+AZURE_SUBSCRIPTION_ID.
 """
 import base64
 import json
@@ -25,7 +35,14 @@ import urllib.request
 RG = os.environ.get("AZURE_RESOURCE_GROUP", os.environ.get("AZURE_RG", "thyn-ci"))
 SUB = os.environ["AZURE_SUBSCRIPTION_ID"]
 TENANT = os.environ["AZURE_TENANT_ID"]
-REPO = "thyn-ai/algenta"
+ORG = os.environ.get("GITHUB_ORG", "thyn-ai")
+_PINNED_REPOS = [r.strip() for r in os.environ.get("GITHUB_REPOS", "").split(",") if r.strip()]
+_repo_cache = {"value": [], "exp": 0}
+REPO_CACHE_S = 300  # org repo list changes rarely; avoid a full org/repos scan every 15s poll
+# Org-wide-visible: any repo in the org can be served, matching GitHub-hosted/Blacksmith
+# behavior (no per-repo registration step). Narrow this via a runner-group repository
+# allowlist instead of code if per-repo access control is ever needed.
+RUNNER_GROUP = os.environ.get("AZ_ORCH_RUNNER_GROUP", "az-ephemeral-pool")
 LABEL = "az-ephemeral"
 POLL_S = 15
 MAX_AGE_S = 90 * 60
@@ -113,7 +130,11 @@ def arm(method, path, body=None, api="2023-07-01"):
             headers={"Authorization": f"Bearer {az_token()}", "Content-Type": "application/json"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            # 20s, not 120s: a healthy ARM call completes in low single-digit seconds. A
+            # genuinely hung TCP/TLS read (observed live via py-spy: MainThread stuck in
+            # ssl.py's socket read, no error, no data) at 120s can block the entire poll
+            # loop -- with zero log output -- for up to two full minutes on ONE call.
+            with urllib.request.urlopen(req, timeout=20) as r:
                 raw = r.read()
             return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as e:
@@ -122,6 +143,13 @@ def arm(method, path, body=None, api="2023-07-01"):
                 continue
             body = e.read().decode(errors="replace")[:300].replace("\r", "").replace("\n", " ")
             raise urllib.error.HTTPError(e.url, e.code, f"{e.reason} body={body}", e.hdrs, None)
+        except (TimeoutError, OSError) as e:
+            # A hung/dropped connection, not an HTTP error -- urlopen raises these instead
+            # of HTTPError. Retry like a 429 rather than propagating a bare socket error.
+            if attempt < 3:
+                time.sleep(3 * attempt)
+                continue
+            raise
     raise RuntimeError("unreachable")
 
 
@@ -138,22 +166,84 @@ def gh(path, method="GET", body=None):
             "Accept": "application/vnd.github+json",
         },
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read() or b"{}")
+    for attempt in (1, 2, 3):
+        try:
+            # 15s, not 60s -- see arm()'s comment; same live-observed hang applies here.
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return json.loads(r.read() or b"{}")
+        except (TimeoutError, OSError) as e:
+            if attempt < 3:
+                time.sleep(2 * attempt)
+                continue
+            raise
+    raise RuntimeError("unreachable")
+
+
+def served_repos():
+    if _PINNED_REPOS:
+        return _PINNED_REPOS
+    now = time.time()
+    if _repo_cache["value"] and now < _repo_cache["exp"]:
+        return _repo_cache["value"]
+    repos = []
+    page = 1
+    try:
+        while True:
+            batch = gh(f"orgs/{ORG}/repos?per_page=100&page={page}&type=all")
+            if not batch:
+                break
+            repos.extend(r["full_name"] for r in batch if not r.get("archived"))
+            if len(batch) < 100:
+                break
+            page += 1
+    except Exception as e:
+        log(f"served_repos() org scan failed: {e} (keeping previous list of {len(_repo_cache['value'])})")
+        return _repo_cache["value"]  # stale-but-known beats an empty served set on a transient error
+    _repo_cache["value"] = repos
+    _repo_cache["exp"] = now + REPO_CACHE_S
+    log(f"served_repos() refreshed: {len(repos)} repos in {ORG}")
+    return repos
+
+
+def _queued_jobs_for_repo(repo):
+    jobs = []
+    try:
+        runs = gh(f"repos/{repo}/actions/runs?status=queued&per_page=30")["workflow_runs"]
+        for run in runs:
+            for j in gh(f"repos/{repo}/actions/runs/{run['id']}/jobs?per_page=50")["jobs"]:
+                if j["status"] == "queued" and any(LABEL in (l or "") for l in j.get("labels", [])):
+                    jobs.append(j)
+    except Exception as e:
+        # One slow/erroring repo must not block the others or silently eat the whole poll
+        # cycle -- this call ran serially pre-org-wide (one repo); with N served repos a
+        # single hung request could stall the entire loop with zero log output for minutes.
+        log(f"queued_jobs({repo}) failed: {e}")
+    return jobs
 
 
 def queued_jobs():
-    runs = gh(f"repos/{REPO}/actions/runs?status=queued&per_page=30")["workflow_runs"]
+    repos = served_repos()
+    threads = []
+    results = [None] * len(repos)
+
+    def _run(i, repo):
+        results[i] = _queued_jobs_for_repo(repo)
+
+    for i, repo in enumerate(repos):
+        t = threading.Thread(target=_run, args=(i, repo), daemon=True)
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join(timeout=60)  # gh()'s own retries cap at ~45s worst case; 60s is headroom, not the bound
     jobs = []
-    for run in runs:
-        for j in gh(f"repos/{REPO}/actions/runs/{run['id']}/jobs?per_page=50")["jobs"]:
-            if j["status"] == "queued" and any(LABEL in (l or "") for l in j.get("labels", [])):
-                jobs.append(j)
+    for r in results:
+        jobs.extend(r or [])
     return jobs
 
 
 def runner_names():
-    return {r["name"] for r in gh(f"repos/{REPO}/actions/runners?per_page=100")["runners"]}
+    # Org-level: one shared pool, via RUNNER_GROUP, serves every repo served_repos() finds.
+    return {r["name"] for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"]}
 
 
 def live_vms():
@@ -263,7 +353,7 @@ write_files:
       curl -m 120 -o /tmp/runner.tar.gz -LsS https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
       log "runner-dl rc=$?"
       mkdir -p /opt/runner && tar -xzf /tmp/runner.tar.gz -C /opt/runner
-      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/repos/__REPO__/actions/runners/registration-token)
+      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/__ORG__/actions/runners/registration-token)
       log "token rc=$?"
       up
       TOKEN=$(echo "$RT" | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null)
@@ -271,7 +361,7 @@ write_files:
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner
-      su - runner -c "/opt/runner/config.sh --url https://github.com/__REPO__ --token '$TOKEN' --name __VMNAME__ --labels az-ephemeral,self-hosted --ephemeral --unattended" >> /root/boot.log 2>&1
+      su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended" >> /root/boot.log 2>&1
       log "config rc=$?"
       up
       su - runner -c "/opt/runner/run.sh" || true
@@ -288,7 +378,8 @@ def write_ci_file(name):
         f.write(
             CLOUD_INIT.replace("__SSH_PUB__", SSH_PUB)
             .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
-            .replace("__REPO__", REPO)
+            .replace("__ORG__", ORG)
+            .replace("__RUNNERGROUP__", RUNNER_GROUP)
             .replace("__VMNAME__", name)
         )
 
@@ -309,12 +400,12 @@ write_files:
     content: |
       #!/bin/bash
       TOK="__GH_TOKEN__"
-      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/repos/__REPO__/actions/runners/registration-token)
+      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/__ORG__/actions/runners/registration-token)
       TOKEN=$(echo "$RT" | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null)
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner
-      su - runner -c "/opt/runner/config.sh --url https://github.com/__REPO__ --token '$TOKEN' --name __VMNAME__ --labels az-ephemeral,self-hosted --ephemeral --unattended"
+      su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended"
       su - runner -c "/opt/runner/run.sh" || true
       shutdown -h now || true
 runcmd:
@@ -398,7 +489,8 @@ def _create_vm(name, size, region, vnet, subnet, nic):
             f.write(
                 CLOUD_INIT_FAST.replace("__SSH_PUB__", SSH_PUB)
                 .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
-                .replace("__REPO__", REPO)
+                .replace("__ORG__", ORG)
+                .replace("__RUNNERGROUP__", RUNNER_GROUP)
                 .replace("__VMNAME__", name)
             )
         ci_file = f"{STATE}/{name}.fast.yml"
@@ -577,7 +669,7 @@ def manage_warm_pool(vms):
     queued = queued_jobs()
     busy = any(
         r["busy"]
-        for r in gh(f"repos/{REPO}/actions/runners?per_page=100")["runners"]
+        for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"]
         if r["name"].startswith(("ci-az-", WARM_PREFIX))
     )
     if queued or busy:

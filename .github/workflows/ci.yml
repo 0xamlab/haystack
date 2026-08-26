@@ -177,7 +177,25 @@ jobs:
           export CI_WAIT_REDIS_URL="redis://localhost:${redis_port}/0"
           export CI_WAIT_MINIO_URL="http://localhost:${minio_port}/minio/health/ready"
 
-          ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py
+          # ci_wait_for_services.py's postgres/dragonfly checks need the asyncpg/redis PyPI
+          # packages. On a fresh ephemeral runner (Azure/Blacksmith) this step runs BEFORE
+          # "Install Pixi" below, so run_repo_python.sh's python3 fallback has neither yet,
+          # and the checks always failed here with "No module named 'asyncpg'" (confirmed
+          # live on main, run 32891162493). docker-exec readiness checks aren't a safe
+          # substitute: Dragonfly's own image ships no redis-cli (see this script's own
+          # module docstring), so a redis-cli-based check would just fail a different way.
+          # A throwaway venv (not --user / --break-system-packages) sidesteps both PEP 668
+          # externally-managed-environment locks AND permissions questions on whatever
+          # system python3 this runner has -- these two small, pure-Python packages install
+          # in seconds and need no compiler, far cheaper than pulling in pixi this early.
+          # python3.14 specifically (not bare python3): the runner's stock system python
+          # (3.10 on Ubuntu 22.04) ships without ensurepip/venv -- Debian/Ubuntu split those
+          # into python3.10-venv, which isn't installed -- while python3.14-venv IS always
+          # present from cloud-init boot on every az-ephemeral worker (confirmed live, run
+          # 32896542552: "ensurepip is not available ... apt install python3.10-venv").
+          python3.14 -m venv /tmp/ci-wait-venv
+          /tmp/ci-wait-venv/bin/python3 -m pip install --quiet --disable-pip-version-check asyncpg redis
+          /tmp/ci-wait-venv/bin/python3 scripts/ci_wait_for_services.py
 
       # No actions/setup-python here: every Python invocation in this job goes through
       # scripts/run_repo_python.sh, which routes through Pixi's own isolated interpreter.
