@@ -1151,7 +1151,22 @@ class _WebhookHandler(http.server.BaseHTTPRequestHandler):
                 return
             delivery_id = self.headers.get("X-GitHub-Delivery", "")
             event = self.headers.get("X-GitHub-Event", "")
-            log(f"webhook: accepted {event} delivery={delivery_id} from {self.client_address[0]}")
+            # WHICH webhook sent this. Without these, the delivery source is unauditable, and that
+            # is not theoretical: on 2026-08-26 an org owner holding admin:org_hook found
+            # GET /orgs/thyn-ai/hooks -> 200 [] , zero hooks on all 25 repos, no enterprise hooks,
+            # and no installed App subscribed to workflow_job -- while 1819 HMAC-VALID deliveries
+            # per day were arriving here. A correctly-signed delivery whose registration cannot be
+            # located through any GitHub API is a secret nobody can rotate or revoke.
+            # GitHub stamps every delivery with the hook's identity; log it so the origin is
+            # answerable from this log alone:
+            #   target_type = organization | repository | integration (integration == GitHub App)
+            #   target_id   = the org / repo / app id that owns the hook
+            #   hook_id     = the specific hook, usable directly against the REST API
+            hook_id = self.headers.get("X-GitHub-Hook-ID", "?")
+            tgt_type = self.headers.get("X-GitHub-Hook-Installation-Target-Type", "?")
+            tgt_id = self.headers.get("X-GitHub-Hook-Installation-Target-ID", "?")
+            log(f"webhook: accepted {event} delivery={delivery_id} from {self.client_address[0]} "
+                f"hook={hook_id} origin={tgt_type}:{tgt_id}")
             self.send_response(202)  # ack fast; GitHub's own delivery timeout is short
             self.end_headers()
             if event not in ("workflow_job", "pull_request", "push"):
