@@ -15,6 +15,13 @@ name: tpm-device-key
 
 on:
   push:
+    # branches filter, not just paths: without it a push to ANY feature branch ran this on top of
+    # the branch's own pull_request run -- double spend on a single-machine self-hosted fleet.
+    # Measured over the last 20 runs: 10 were push events on non-main branches (sdk-v1.0.9/10/11,
+    # fix/az-orchestrator x2, runtime-bundle-v0.1.1, fix/reaper-hung-mode, feat/7b-tc-attention,
+    # hosted-migration). PRs still get full validation via the pull_request trigger below; main
+    # keeps its post-merge run.
+    branches: [main]
     paths:
       - 'apps/runtime/hardware_key_store.py'
       - 'apps/runtime/device_keypair.py'

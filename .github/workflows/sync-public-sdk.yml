@@ -28,6 +28,15 @@ on:
 permissions:
   contents: read
 
+# Serialize: this job PUSHES to the public thyn-ai/algenta-sdk mirror, so two runs racing (two
+# main pushes landing close together, or a dispatch overlapping a push) can interleave commits on
+# the mirror. cancel-in-progress is deliberately FALSE, unlike the PR-oriented workflows here: a
+# sync killed midway can leave the mirror half-updated, which is strictly worse than making the
+# second run wait. Queue it, never cancel it.
+concurrency:
+  group: sync-public-sdk
+  cancel-in-progress: false
+
 jobs:
   sync:
     # Fleet runner: hosted runners are billing-blocked. Everything below is
