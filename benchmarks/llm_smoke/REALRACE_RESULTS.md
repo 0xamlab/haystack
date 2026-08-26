@@ -17190,3 +17190,62 @@ activations + decode-attention restructure for step-time; the flips unlock only 
 exposes a launchable stream.
 
 
+
+---
+
+## ROUND 4 — APPLES-TO-APPLES (A2A) BATTERY (2026-08-26, H100 GPUs1-7 + A100; answers external methodology critique)
+
+Protocol: open-loop arrivals, greedy, clocks pinned 1410, llama-server with
+`--no-cache-prompt --no-cache-idle-slots` (this pinned build defaults prompt-caching ON and
+request-level cache_prompt:false alone did NOT stop cross-request KV reuse — first-pass cells
+depended on the previous request's length; all llama cells rerun clean, server-side
+full-recompute timings primary), `-c` sized as TOTAL context / --parallel (first-pass
+`-c 1024` gave 20 tok/slot → HTTP 400; discarded). First-run inflation controlled via
+warmups (Q8 warmup1 239 vs steady 182; F16 281 vs 204). VM was SPOT-PREEMPTED 08:52:52Z
+mid-F16; restarted, clocks re-pinned, lost legs rerun. Drift armor <=0.15% both batteries.
+NOTE: systematic 5-25% absolute offset vs prior rounds on same VM (cause unidentified;
+memory clocks verified 2619 MHz) — WITHIN-battery comparisons are the valid ones.
+JSON: ~/a2a/gemma_h100_a2a.json + ~/a2a/qwen7b_a100_a2a.json (per-request TTFT lists,
+per-run arrays, audits).
+
+### Qwen2.5-7B, A100 — precision parity
+Leg A quant-vs-quant (algenta packed-int8 TC arm vs llama Q8_0):
+| cell | algenta | llama Q8_0 | ratio |
+|---|---|---|---|
+| pp256 | 10,638.8 tok/s (24.06 ms) | 4,435.6 (57.72 ms) | 2.40x |
+| pp1024 | 12,332.6 (83.03 ms) | 5,069.4 (202.00 ms) | 2.43x |
+| decode c1 | 82.65 tok/s | 121.71 | 0.68x LOSS |
+| pp4096 | GAP (MAX_CTX=1600 comptime) | 5,044.3 | n/a |
+Leg B full-vs-full (algenta f16/packed3 NON-TC control vs llama F16):
+| pp256 | 418.2 | 7,924.5 | 0.053x (control arm, not production) |
+| pp1024 | 378.2 | 10,390.1 | 0.036x |
+| decode c1 | 82.63 | 82.70 | 1.00x PARITY |
+Correctness all PASS (G0 16/16 oracle, G1 64/64 both arms; llama 16/16).
+
+### gemma-3-27b-it, H100 — C=50 open-loop (500x550-in/256-out)
+| engine | agg tok/s | TTFT p50 ms | TTFT p99 ms | decode c1 |
+|---|---|---|---|---|
+| SGLang 0.5.18 bf16 (graphs on, radix off) | 1074.55 | 2577.99 | 3116.22 | 40.49 |
+| vLLM 0.27.1 bf16 (graphs on, prefix off) | 983.44 | 2267.25 | 12175.04 | 45.09 |
+| algenta flash fullflip race arm | 702.59 | 134.10 | 134.47 | 4.41 LOSS |
+| llama F16 (precision-parity control) | 204.69 | 5764.20 | 185373.62 | -- |
+| llama Q8_0 | 182.27 | 7262.44 | 189730.51 | -- |
+Decode c1 graph parity: vLLM 45.09 ~ SGLang 40.49 >> algenta 4.41 (seam-bound graph
+decode; pre-existing loss axis, consistent with MAX stream-handle floor).
+NOTE: TC-prefill-attention is NOT wired into the batched/open-loop session; C=50 arm is the
+flash fullflip arm. TC arm measured in TTFT/RAG cells via single-stream driver.
+
+### gemma-3-27b-it, H100 — RAG-4096 (critique headline leg; 3 docs+question, token-exact)
+| engine | TTFT median ms | prefill tok/s | decode tok/s |
+|---|---|---|---|
+| algenta TC arm (ctx8192 patched copy; +7.5% TTFT overhead at 550 documented) | 666.22 | 6148.2 | 2.84 |
+| llama F16 | 924.82 | 4430.0 | 41.05 |
+| llama Q8_0 | 1675.47 | 2445.3 | 53.79 |
+WINS: 1.39x vs F16, 2.51x vs Q8_0 prefill. 1-token tokenizer drift (llama gguf 4097 vs HF
+4096) logged. Raw-prompt RAG makes instruct model EOS at token 1 -> llama decode metrics use
+ignore_eos (TTFT unaffected).
+
+### Structural gap
+gemma-27b F16 (54 GB) cannot fit A100-40GB: no A100 gemma F16 anchor exists; historical
+"A100 RAG" wins on record are the qwen2.5-7B lane. External critique's "A100+H100 RAG"
+attribution conflates lanes.

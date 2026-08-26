@@ -106,6 +106,46 @@ Decode on g2-standard-8 (sm\_89), same protocol:
   Ubuntu 22.04, mojo 1.0.0 / MAX 26.5.0; solo-GPU census during every timed window; clocks
   pinned at 1410 MHz on the A100; L4 comparisons on fresh-boot solo runs.
 
+## Apples-to-apples parity re-runs (2026-08-26)
+
+Full-protocol re-measurement with precision and protocol parity held constant: same
+quantization class on both sides, open-loop arrivals, greedy decoding, prompt caching
+disabled on every engine that has it, CUDA graphs enabled on every engine that has them,
+clocks pinned at 1410 MHz, drift armor <= 0.15%.
+
+### Gemma 3 27B — 4096-token RAG prefill (H100)
+
+| Engine | TTFT (ms) | Prefill tok/s |
+|---|---|---|
+| algenta (TC prefill attention) | 666 | 6,148 |
+| llama-server F16 | 925 | 4,430 |
+| llama-server Q8\_0 | 1,675 | 2,445 |
+
+Speedup at 4096-token RAG prefill: 1.39x vs llama-server at equal full precision, 2.51x vs
+llama-server Q8\_0.
+
+### Gemma 3 27B — time-to-first-token under C=50 open-loop load (H100)
+
+| Engine | TTFT p50 (ms) |
+|---|---|
+| algenta | 134 |
+| vLLM 0.27.1 | 2,267 |
+| SGLang 0.5.18 | 2,578 |
+| llama-server F16 | 5,764 |
+
+TTFT speedup under 50-way open-loop load: 16.9x vs vLLM, 19.2x vs SGLang, 43.0x vs
+llama-server at equal precision.
+
+### Qwen2.5-7B — equal-quantization prefill (A100)
+
+| Cell | algenta packed-int8 | llama-server Q8\_0 | Speedup |
+|---|---|---|---|
+| 256-token prefill | 10,639 tok/s | 4,436 tok/s | 2.40x |
+| 1024-token prefill | 12,333 tok/s | 5,069 tok/s | 2.43x |
+
+Equal-quantization (int8 vs int8) prefill speedup: 2.40x / 2.43x at 256 / 1024 tokens,
+with greedy first-token identity verified against the fp32 oracle on both engines.
+
 ## Scope
 
 * Results are for Qwen3-0.6B-Base and Qwen2.5-7B-Instruct on the pinned toolchain; the
