@@ -402,14 +402,38 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "$MODE" = "skip" ]; then
             echo "Blast radius: diff cannot influence the test graph - skipping pytest legs."
             pnpm guard:reliability && pnpm lint && pnpm build
-          elif [ "${{ github.event_name }}" = "pull_request" ] && [ "$MODE" = "subset" ]; then
-            # Non-pytest gates (reliability guard, lint, build) ALWAYS run in full -- only the
-            # pytest leg is narrowed to the diff's blast radius.
-            echo "Blast radius: running the impacted test subset."
-            pnpm guard:reliability && pnpm lint && pnpm build
-            ./scripts/run_repo_python.sh -m pytest -q ${{ steps.impact.outputs.tests }}
           else
+            # CURATED GATE UNION BLAST-RADIUS SUBSET -- coverage can only ever GROW.
+            #
+            # `pnpm check` gates Python entirely through hand-listed files in package.json.
+            # Measured 2026-08-26: 1014 test files exist under tests/, 176 are referenced by ANY
+            # CI invocation, and 838 never execute on any PR or push. A curated list cannot grow,
+            # so new coverage is born dead -- all 36 orchestrator tests written that day landed in
+            # the 838 and a real regression (HTTP 401 in cleanup()) reached main GREEN because of
+            # it.
+            #
+            # Replacing the list outright would risk DROPPING coverage if the selector ever
+            # under-selects, so the curated gate still runs in full and the selected subset is
+            # added on top, minus anything the curated gate already covers (no double-running).
             pnpm check
+            if [ "${{ github.event_name }}" = "pull_request" ] && [ "$MODE" = "subset" ]; then
+              ./scripts/run_repo_python.sh scripts/ci_curated_test_files.py > /tmp/curated.txt || : > /tmp/curated.txt
+              EXTRA=""
+              for t in ${{ steps.impact.outputs.tests }}; do
+                # conftest.py is a fixture module, not a test: the selector legitimately reports
+                # it as impacted (everything depends on it) but pytest has nothing to collect
+                # from it, so passing it wastes a collection pass and reads as a 0-test file.
+                case "$t" in */conftest.py|conftest.py) continue ;; esac
+                grep -qxF "$t" /tmp/curated.txt || EXTRA="$EXTRA $t"
+              done
+              if [ -n "$EXTRA" ]; then
+                N=$(printf '%s' "$EXTRA" | wc -w | tr -d ' ')
+                echo "::notice::blast radius adds $N test file(s) the curated gate does not cover"
+                ./scripts/run_repo_python.sh -m pytest -q $EXTRA
+              else
+                echo "::notice::blast-radius subset fully covered by the curated gate; nothing extra to run"
+              fi
+            fi
           fi
         env:
           PYTEST_TIMEOUT: 30
