@@ -367,10 +367,63 @@ jobs:
           # the selected set, never remove them.
           ALGENTA_REPOSITORIES_LEXICAL_RANKING: "true"
         run: |
+          # FAIL-CLOSED, for real this time. The previous form claimed "any selection error =>
+          # full run" and did the exact opposite -- it failed open to running NOTHING:
+          #
+          #   BASE="<pr.base.sha>"
+          #   git cat-file -e "$BASE" 2>/dev/null || BASE="origin/main"
+          #   CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null || true)
+          #   if [ -z "$CHANGED" ]; then echo "mode=skip"; exit 0; fi
+          #
+          # actions/checkout runs with fetch-depth: 1, so the base sha is NOT in the clone and
+          # `origin/main` is not fetched either. `git diff` therefore failed, `|| true` swallowed
+          # the error, CHANGED came out empty, and the step exited mode=skip -- which makes the
+          # check graph run `guard:reliability && lint && build` and NO pytest legs at all.
+          # Caught live on run 33010565375 (PR #911): the rendered line
+          # "Blast radius: diff cannot influence the test graph - skipping pytest legs."
+          # means that PR merged green having executed essentially no Python tests.
+          #
+          # The bug is conflating two different things: an EMPTY diff ("nothing changed", safe to
+          # skip) and a FAILED diff ("we don't know what changed", must run everything). They are
+          # now distinguished explicitly -- `git diff` exit status is captured instead of
+          # discarded, and only a SUCCESSFUL, genuinely-empty diff may reach mode=skip.
+          set -uo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
-          git cat-file -e "$BASE" 2>/dev/null || BASE="origin/main"
-          CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null || true)
-          if [ -z "$CHANGED" ]; then echo "mode=skip" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Shallow clone: deepen just enough to make the merge-base reachable. Bounded so a very
+          # old base cannot turn this into a full-history fetch on every PR.
+          if ! git cat-file -e "$BASE" 2>/dev/null; then
+            git fetch --no-tags --depth=200 origin "+${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}" 2>/dev/null || true
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null || true
+          fi
+          if ! git cat-file -e "$BASE" 2>/dev/null; then
+            BASE="origin/${{ github.event.pull_request.base.ref }}"
+          fi
+          # Capture the STATUS. `|| true` here is what hid the failure before.
+          if CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null); then
+            DIFF_OK=1
+          else
+            DIFF_OK=0
+            CHANGED=""
+          fi
+          if [ "$DIFF_OK" != "1" ]; then
+            # UNKNOWN diff -> full run. Never skip on ignorance.
+            echo "::warning::blast-radius could not compute the diff against '$BASE' - failing CLOSED to the full gate (mode=all), never skip"
+            {
+              echo "mode=all"
+              echo "tests="
+              echo "lanes="
+            } >> "$GITHUB_OUTPUT"
+            echo "::notice::blast-radius selection mode=all tests=0 lanes=0 (diff unavailable)"
+            exit 0
+          fi
+          if [ -z "$CHANGED" ]; then
+            # Genuinely empty diff: the ONLY route to skip, and it is now provably a successful
+            # `git diff` that returned nothing rather than a failed one.
+            echo "mode=skip" >> "$GITHUB_OUTPUT"
+            echo "::notice::blast-radius selection mode=skip (diff computed successfully and is empty)"
+            exit 0
+          fi
+          echo "::notice::blast-radius diff vs '$BASE': $(printf '%s' "$CHANGED" | wc -l | tr -d ' ') file(s) changed"
           OUT=$(./scripts/run_repo_python.sh scripts/test_impact.py --json --changed $CHANGED 2>/dev/null || true)
           MODE=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('mode','all'))" "$OUT" 2>/dev/null || echo all)
           # SUBSET IS NOW ACTED ON. It used to be force-downgraded to `all` here ("v1: only
