@@ -6,6 +6,31 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Path fragments that mark a *build output* rather than a checked-in surface.
+_GENERATED_MARKERS = ("/build/lib/", "/dist/")
+
+
+def _read_surface(relative_path: str) -> str:
+    """Read a surface under test, distinguishing build outputs from source.
+
+    Several parametrized paths point at build outputs. ``packages/python-sdk/build``
+    happens to be committed, but ``packages/algenta/build`` and
+    ``packages/ts-sdk/dist`` are not, so those assertions are vacuous in a fresh
+    clone and used to raise ``FileNotFoundError`` instead of asserting anything.
+    An absent build output is skipped -- there is no distribution to make a claim
+    about. An absent *source* path stays a hard failure: that means a real surface
+    was moved or deleted and this test's path list went stale with it.
+    """
+    path = ROOT / relative_path
+    if not path.exists():
+        if any(marker in f"/{relative_path}" for marker in _GENERATED_MARKERS):
+            pytest.skip(f"{relative_path} is a build output not present in this tree")
+        raise AssertionError(
+            f"{relative_path} is a source surface guarded by this test, but it does not exist"
+        )
+    return path.read_text()
+
+
 _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
     "packages/python-sdk/decision_engine/__init__.py": (
         "Cloud Managed path",
@@ -247,7 +272,7 @@ def test_user_visible_source_surfaces_call_out_private_profile_boundaries(
     relative_path: str,
     required_snippets: tuple[str, ...],
 ) -> None:
-    text = (ROOT / relative_path).read_text()
+    text = _read_surface(relative_path)
     for snippet in required_snippets:
         assert snippet in text
 
@@ -265,7 +290,7 @@ def test_distribution_surfaces_do_not_keep_stale_hosted_only_key_links(
     relative_path: str,
     forbidden_snippet: str,
 ) -> None:
-    text = (ROOT / relative_path).read_text()
+    text = _read_surface(relative_path)
     assert forbidden_snippet not in text
 
 
@@ -300,7 +325,7 @@ def test_distribution_surfaces_do_not_keep_stale_hosted_only_key_links(
 def test_user_visible_source_surfaces_avoid_live_looking_key_literals(
     relative_path: str,
 ) -> None:
-    text = (ROOT / relative_path).read_text()
+    text = _read_surface(relative_path)
     assert "de_live_..." not in text
     assert "api_key='de_live_...'" not in text
     assert 'api_key="de_live_..."' not in text
@@ -318,7 +343,7 @@ def test_internal_auth_surfaces_use_neutral_key_prefix_examples(
     relative_path: str,
     required_snippet: str,
 ) -> None:
-    text = (ROOT / relative_path).read_text()
+    text = _read_surface(relative_path)
     assert required_snippet in text
     assert "de_live_d36l" not in text
     assert 'de_live_ab12' not in text
