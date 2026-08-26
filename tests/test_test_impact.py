@@ -67,12 +67,26 @@ def test_cli_changed_test_file_returns_itself():
 
 def test_cli_broad_change_runs_full_suite():
     out = subprocess.run(
-        [sys.executable, str(_TOOL), "--changed", "pyproject.toml", "--json"],
+        # run_js_test_suite.sh rather than pyproject.toml: both are broad (so the mode=all
+        # assertion is unchanged), but this one has REAL path-literal dependents, which lets the
+        # lanes assertion below be non-vacuous. With pyproject.toml, lanes is legitimately empty
+        # and `assert "lanes" in data` passed even against a mutant that never emitted anything.
+        [sys.executable, str(_TOOL), "--changed", "scripts/run_js_test_suite.sh", "--json"],
         cwd=REPO_ROOT, capture_output=True, text=True,
     )
     assert out.returncode == 0
     data = json.loads(out.stdout)
     assert data["mode"] == "all"
+    # ci.yml reads `.lanes` on the mode=all path, so the key must ALWAYS be present -- a missing
+    # key would make the workflow's python one-liner yield "" and silently restore the blind spot
+    # this field exists to close. Asserted here rather than in a new test because the tool
+    # rebuilds the entire import graph per invocation (see the note on the test above).
+    assert "lanes" in data, "workflow consumes .lanes; it must always be emitted"
+    # NON-EMPTY, not merely present: two tests assert this script's contents by exact string, and
+    # they are precisely what mode=all + a curated fallback used to miss (#902 merged green and
+    # broke main). An empty list here means the blind spot is back.
+    assert data["lanes"], "broad change with path-literal dependents reported no lanes"
+    assert any("test_js_workspace_surface" in t for t in data["lanes"]), data["lanes"]
 
 
 # ── codna-backed multi-language fast path ────────────────────────────────────────────────────────
@@ -504,3 +518,51 @@ def test_delegated_engine_all_verdict_is_passed_through_untouched(monkeypatch):
     mode, tests, reason = ti.compute_affected(
         ["infra/ci/az_orchestrator.py"], [], None, impact_fn=compute_impact)
     assert (mode, tests, reason) == ("all", [], "broad change")
+
+
+def test_lane_hits_sees_a_broad_file_the_mode_verdict_cannot(tmp_path, monkeypatch):
+    """mode=all short-circuits before the additive lanes, so a caller that falls back to a
+    curated list loses them entirely. lane_hits() exposes them independently.
+
+    This is the #902 shape exactly: a broad/config file changed, and the only tests that could
+    catch it reference it BY PATH rather than importing it.
+    """
+    ti = _load_tool()
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    probe = tests_dir / "test_reads_the_script.py"
+    probe.write_text(
+        'from pathlib import Path\n'
+        'SCRIPT = Path("scripts") / "run_js_test_suite.sh"\n'
+        'def test_x():\n'
+        '    assert SCRIPT.read_text()\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    monkeypatch.delenv("ALGENTA_REPOSITORIES_LEXICAL_RANKING", raising=False)
+
+    # The mode verdict itself is "all" with an EMPTY test list -- that is the blind spot.
+    mode, tests, _reason = ti.compute_affected(
+        ["scripts/run_js_test_suite.sh"], [probe], None)
+    assert mode == "all" and tests == []
+
+    # lane_hits still finds the test that reads the file by path.
+    assert ti.lane_hits(["scripts/run_js_test_suite.sh"], [probe]) == [
+        "tests/test_reads_the_script.py"]
+
+
+def test_lane_hits_is_empty_when_nothing_references_the_change(tmp_path, monkeypatch):
+    """No false positives: an unrelated test must not be dragged in on every broad change."""
+    ti = _load_tool()
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    probe = tests_dir / "test_unrelated.py"
+    probe.write_text(
+        'import importlib.util\n'
+        'def test_y():\n    assert importlib.util is not None\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    monkeypatch.delenv("ALGENTA_REPOSITORIES_LEXICAL_RANKING", raising=False)
+
+    assert ti.lane_hits(["scripts/run_js_test_suite.sh"], [probe]) == []

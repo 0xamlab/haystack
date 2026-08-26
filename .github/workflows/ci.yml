@@ -389,12 +389,27 @@ jobs:
               echo "::warning::blast-radius returned subset with an EMPTY test list - failing open to full suite"
             fi
           fi
+          # A BROAD change used to be tested LESS than a narrow one. mode=all is the safe verdict,
+          # but the check graph below cannot afford the full ~1019-file suite on a PR, so it falls
+          # back to the curated list -- and the curated list is exactly what a broad change most
+          # needs to escape. Live cost: #902 changed scripts/run_js_test_suite.sh (a broad glob),
+          # took mode=all, and the two tests asserting that script's contents never ran. It merged
+          # green and broke main (2 failed, 950 passed).
+          # `lanes` carries what the additive lanes flag for the diff even under mode=all. On the
+          # #902 diff that is exactly 2 of 1019 test files -- so this closes the hole for the price
+          # of two files, not a full suite.
+          LANES=""
+          if [ "$MODE" = "all" ]; then
+            LANES=$(python3 -c "import json,sys; print(' '.join(json.loads(sys.argv[1]).get('lanes') or []))" "$OUT" 2>/dev/null || true)
+          fi
           {
             echo "mode=$MODE"
             echo "tests=$TESTS"
+            echo "lanes=$LANES"
           } >> "$GITHUB_OUTPUT"
           N=$(printf '%s' "$TESTS" | wc -w | tr -d ' ')
-          echo "::notice::blast-radius selection mode=$MODE tests=$N"
+          L=$(printf '%s' "$LANES" | wc -w | tr -d ' ')
+          echo "::notice::blast-radius selection mode=$MODE tests=$N lanes=$L"
 
       - name: Run repo check graph
         run: |
@@ -416,10 +431,15 @@ jobs:
             # under-selects, so the curated gate still runs in full and the selected subset is
             # added on top, minus anything the curated gate already covers (no double-running).
             pnpm check
-            if [ "${{ github.event_name }}" = "pull_request" ] && [ "$MODE" = "subset" ]; then
+            # mode=all is handled here too, via `lanes`, NOT just mode=subset. Previously the
+            # extras were appended only in subset mode, so a broad change (mode=all) ran the
+            # curated list and nothing else -- the wider the change, the less a PR covered it.
+            # See the selection step's own comment for the #902 case this cost.
+            SELECTED="${{ steps.impact.outputs.tests }} ${{ steps.impact.outputs.lanes }}"
+            if [ "${{ github.event_name }}" = "pull_request" ] && [ -n "$(printf '%s' "$SELECTED" | tr -d ' ')" ]; then
               ./scripts/run_repo_python.sh scripts/ci_curated_test_files.py > /tmp/curated.txt || : > /tmp/curated.txt
               EXTRA=""
-              for t in ${{ steps.impact.outputs.tests }}; do
+              for t in $SELECTED; do
                 # conftest.py is a fixture module, not a test: the selector legitimately reports
                 # it as impacted (everything depends on it) but pytest has nothing to collect
                 # from it, so passing it wastes a collection pass and reads as a 0-test file.

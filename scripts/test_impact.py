@@ -456,6 +456,32 @@ def _language_disjoint_selection(changed: list[str], codeunits):
             "no test in this suite can execute them")
 
 
+def lane_hits(changed: list[str], py_files: list[Path]) -> list[str]:
+    """Tests the additive lanes flag for ``changed``, independent of the mode verdict.
+
+    Exists for the ``mode == "all"`` case, which is the SAFE verdict but not the one CI can
+    always afford: on a pull request the check graph runs the CURATED list for mode=all, not the
+    full suite, so a BROAD change is tested LESS than a narrow one. Surfacing the lane hits lets
+    the caller run curated UNION lanes and keep the cheap path without the blind spot.
+
+    Not hypothetical. #902 changed scripts/run_js_test_suite.sh -- itself a broad glob, so
+    compute_affected returned mode=all and never reached the lanes -- and the two tests that
+    assert that script's contents by exact string were never run. It merged green and broke main
+    (2 failed, 950 passed). The path-literal lane finds EXACTLY those two of 1019 test files, so
+    this costs two test files, not a full suite.
+
+    The path-literal lane is always on (no external dependency, no AST parse -- it only reads
+    test sources). The lexical lane needs parsed trees, so it stays behind its existing flag and
+    only pays for the parse when explicitly enabled."""
+    test_files = sorted(_rel(p) for p in py_files if _is_test(_rel(p)))
+    hits = _path_literal_dependents(changed, test_files)
+    if _lexical_ranking_enabled():
+        *_ignored, trees = _build_graph(py_files)
+        extra, _corpus = _lexical_enrichment(changed, trees, test_files)
+        hits = hits | extra
+    return sorted(hits)
+
+
 def _additive_lanes(
     affected: set[str], changed: list[str], trees: dict[str, ast.AST | None],
     test_files: list[str], n_tests: int, base_reason: str | None = None,
@@ -635,12 +661,21 @@ def main() -> int:
         codeunits, impact_fn = _installed_codna()
     py_files = _iter_py_files()
     mode, tests, reason = compute_affected(changed, py_files, codeunits, impact_fn=impact_fn)
+    # `lanes` is advisory and only meaningful for mode=all: a caller that genuinely runs the FULL
+    # suite can ignore it, but one that falls back to a curated list (which is what this repo's
+    # check graph does on a PR) should run curated UNION lanes so a broad change is not tested
+    # LESS than a narrow one. Computed only for mode=all -- in subset mode the lanes are already
+    # folded into `tests` by _additive_lanes, and recomputing would double the work.
+    lanes = lane_hits(changed, py_files) if mode == "all" and changed else []
 
     if args.json:
-        print(json.dumps({"mode": mode, "tests": tests, "reason": reason}))
+        print(json.dumps({"mode": mode, "tests": tests, "reason": reason, "lanes": lanes}))
     elif mode == "all":
         print("ALL")
         print(f"# reason: {reason}", file=sys.stderr)
+        if lanes:
+            print(f"# lanes flag {len(lanes)} test(s) a curated fallback would miss: "
+                  f"{', '.join(lanes[:5])}", file=sys.stderr)
     else:
         for t in tests:
             print(t)
