@@ -344,9 +344,17 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     assert "ENV HOME=/home/app" in dockerfile
     assert "useradd --system --gid app --home-dir /home/app --create-home app" in worker_dockerfile
     assert "ENV HOME=/home/app" in worker_dockerfile
-    assert "COPY --from=builder /build/context/engines/ /app/engines/" in dockerfile
-    assert "COPY --from=builder /build/context/training/ /app/training/" in dockerfile
-    assert "COPY --from=builder /build/context/scripts/ /app/scripts/" in dockerfile
+    # --chown=app:app is part of the COPY, not a separate RUN. #737 ("drop the 1.05GB duplicate
+    # chown layer") folded ownership into these COPYs; these three assertions kept the pre-#737
+    # spelling and went stale. They never failed because this file is not in the curated CI list
+    # -- it is one of the 838 test files that never executed, and blast radius surfaced it the
+    # first time it ran (PR #914).
+    # Asserting the --chown form is STRICTER, not laxer: it pins both that the directory is copied
+    # AND that it lands owned by the non-root `app` user, which is the property the surrounding
+    # test (a non-root/service-only boundary check) actually cares about.
+    assert "COPY --from=builder --chown=app:app /build/context/engines/ /app/engines/" in dockerfile
+    assert "COPY --from=builder --chown=app:app /build/context/training/ /app/training/" in dockerfile
+    assert "COPY --from=builder --chown=app:app /build/context/scripts/ /app/scripts/" in dockerfile
     assert 'CMD ["python", "-m", "celery"' in worker_dockerfile
     assert "apps.worker.tasks.simulation_task:celery_app" in worker_dockerfile
     assert "self-host-status:" in makefile
