@@ -752,6 +752,30 @@ def cleanup():
         for n in protected:
             if n in vm_names:  # VM visible: lag window over, release protection
                 _inflight_names.discard(n)
+
+    # ── Release finished job claims (fixes a permanent capacity wedge) ────────────────
+    # _inflight holds claimed job IDs so two dispatch paths can't double-provision the same
+    # job. It was only ever discarded from on provisioning FAILURE (provision_job), so every
+    # SUCCESSFUL dispatch leaked its ID forever. Since _dispatch_job/_prewarm/manage_warm_pool
+    # all gate on `len(vms) + len(_inflight) >= MAX_CONCURRENCY`, the set grew monotonically
+    # until it alone hit the cap -- after which EVERY new job was refused with
+    # `dispatched=False` and the fleet drained to zero while jobs queued. Observed live
+    # 2026-08-26: 0 VMs, 0 runners, 5 jobs pending, every dispatch refused.
+    #
+    # A claim is dead once its worker no longer exists: the VM name encodes the job id
+    # (ci-az-<run_id>-<job_id>), so a claim is kept only while its VM is live OR still inside
+    # the provisioning window (_inflight_names) -- otherwise the job has been picked up,
+    # finished, or failed, and holding the slot serves no purpose.
+    live_job_ids = set()
+    for n in vm_names | protected:
+        if n.startswith("ci-az-"):
+            tail = n.rsplit("-", 1)[-1]
+            if tail.isdigit():
+                live_job_ids.add(int(tail))
+    with _lock:
+        for jid in [j for j in _inflight if j not in live_job_ids]:
+            _inflight.discard(jid)
+            log(f"released stale job claim {jid} (no live worker)")
     for b in list(_absent_once):
         if b in vm_names or b in protected:
             _absent_once.discard(b)
