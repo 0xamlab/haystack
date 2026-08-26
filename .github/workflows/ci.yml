@@ -207,41 +207,6 @@ jobs:
       # self-updated externals dir shadows /usr/bin with an npm stub that has no
       # ../lib/cli.js behind it ("Cannot find module '../lib/cli.js'", deterministic, not a
       # flake). setup-node prepends a real tool-cache Node+npm ahead of that stub.
-      # Telys' memengine powers scripts/test_impact.py's lexical enrichment lane (the same
-      # library apps/api_server/services/repository_intelligence_lexical.py uses). It is
-      # deliberately NOT in requirements-dev.txt -- installed here so the lane's tests exercise
-      # the REAL library instead of only ever taking the fail-open path.
-      #   * ensurepip first: the Pixi env ships without pip ("No module named pip").
-      #   * NO `memengine @ ` egg fragment: upstream renamed the distribution to
-      #     `telys-runtime` (it still provides the `memengine` module), so the old form fails
-      #     with "produced metadata for project name telys-runtime".
-      #   * thyn-ai/telys is PRIVATE. The default GITHUB_TOKEN is scoped to THIS repo, so the
-      #     clone will usually 404 here and the lane degrades to skipped -- which the status
-      #     step below states outright rather than hiding. Wiring a cross-repo token (App
-      #     installation or PAT with repo:read on telys) is what would make this lane run in
-      #     CI; until then it is verified locally against the real library, not in CI.
-      - name: Install memengine (Telys on-device lexical index)
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ./scripts/run_repo_python.sh -m ensurepip --upgrade >/dev/null 2>&1 || true
-          ./scripts/run_repo_python.sh -m pip install --quiet \
-            "git+https://x-access-token:${GH_TOKEN}@github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py" \
-            || ./scripts/run_repo_python.sh -m pip install --quiet \
-            "git+https://github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py"
-
-      # continue-on-error above degrades a failed install to skipped tests. Without this
-      # report, "lane never tested" and "lane passed" look identical in a green run -- the
-      # exact blind spot that let the stale install command sit unnoticed.
-      - name: Report memengine lane status
-        run: |
-          if ./scripts/run_repo_python.sh -c "import memengine.lexical" 2>/dev/null; then
-            echo "::notice::memengine present - lexical enrichment lane WILL be exercised"
-          else
-            echo "::warning::memengine ABSENT - enrichment tests will SKIP (lane unverified)"
-          fi
-
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -279,6 +244,43 @@ jobs:
           find mojo_env -maxdepth 1 -name .pixi -type l -delete
           PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
 
+      # Telys' memengine powers scripts/test_impact.py's lexical enrichment lane (the same library
+      # apps/api_server/services/repository_intelligence_lexical.py uses). Installed from the
+      # wheel already COMMITTED at vendor/wheels/ -- offline, credential-free, and reproducible.
+      #
+      # This replaces a `pip install git+https://...@github.com/thyn-ai/telys.git` that could
+      # never have worked, for two independent reasons proven from a live run
+      # (runs/32984900321, job 98230098866):
+      #   1. It ran BEFORE "Install Pixi", so run_repo_python.sh fell back to /usr/bin/python3 and
+      #      died with "No module named pip" -- before any network call. Ordering, not credentials.
+      #   2. thyn-ai/telys is PRIVATE and the default GITHUB_TOKEN is scoped to THIS repo, so the
+      #      clone would 404 even once ordered correctly.
+      # Every run therefore logged "memengine ABSENT - lane unverified". `telys-runtime` is also
+      # not installable from PyPI at all (404; the `memengine` package there is an unrelated
+      # langchain/torch project), so a committed wheel is the only credential-free source -- the
+      # same conclusion tests/test_vendored_telys_runtime_wheel.py already documents and enforces.
+      #
+      # --no-deps is deliberate: memengine.lexical needs only numpy (present in the Pixi env), and
+      # pulling the `telys` contracts package would add a PyPI round-trip this lane does not need.
+      # Verified locally on py3.14: imports clean, kernel absent -> pure-Python BM25 (score-exact
+      # per memengine/lexical.py), 30 lexical tests pass with ZERO skips.
+      - name: Install memengine (Telys on-device lexical index, offline from vendor/wheels)
+        run: |
+          set -euo pipefail
+          # ensurepip: the Pixi env ships without pip.
+          ./scripts/run_repo_python.sh -m ensurepip --upgrade >/dev/null 2>&1 || true
+          ./scripts/run_repo_python.sh -m pip install --quiet --no-index --no-deps \
+            vendor/wheels/telys_runtime-0.1.0a1-py3-none-any.whl
+
+      # No continue-on-error and no soft warning: the install is offline and unconditional, so a
+      # failure here is a real regression (deleted/renamed wheel), not an environment accident.
+      # "lane never tested" and "lane passed" must never look alike in a green run.
+      - name: Verify the memengine lexical lane is live
+        run: |
+          ./scripts/run_repo_python.sh -c "import memengine.lexical" \
+            || { echo "::error::memengine.lexical not importable after the offline install - the lexical enrichment lane would silently degrade to a no-op"; exit 1; }
+          echo "::notice::memengine present - lexical enrichment lane WILL be exercised"
+
       - name: Build compiled Mojo simulation runtime
         env:
           PIXI_HOME: ${{ github.workspace }}/.pixi
@@ -314,18 +316,14 @@ jobs:
       # radius (scripts/test_impact.py; codna/telys enrichment via CODNA_BLAST_URL).
       # Strictly additive over the explicit CI lists; ALL/NONE fall back to today's
       # behavior (fail-open). Push/main runs keep the explicit lists only.
-      - name: Blast-radius test selection (codna/telys-aware)
-        if: github.event_name == 'pull_request'
-        run: |
-          git fetch --depth=50 origin "$GITHUB_BASE_REF" || true
-          IMPACT=$(./scripts/run_repo_python.sh scripts/test_impact.py FETCH_HEAD HEAD 2>/dev/null || echo ALL)
-          echo "blast radius: $IMPACT"
-          if [ -n "$IMPACT" ] && [ "$IMPACT" != "ALL" ] && [ "$IMPACT" != "NONE" ]; then
-            ./scripts/run_repo_python.sh -m pytest -q $IMPACT
-          else
-            echo "blast radius $IMPACT: keeping explicit CI lists (fail-open)"
-          fi
-
+      # REMOVED: a second "Blast-radius test selection (codna/telys-aware)" step used to sit here.
+      # It invoked `scripts/test_impact.py FETCH_HEAD HEAD` -- positional args the CLI has never
+      # accepted (it takes --base/--head/--changed). argparse therefore exited 2 with
+      # "unrecognized arguments: FETCH_HEAD HEAD", `2>/dev/null || echo ALL` swallowed it, and
+      # IMPACT was the literal string "ALL" on every single run: the step could only ever print
+      # "keeping explicit CI lists (fail-open)" and select nothing. It was also redundant with
+      # the "(PR only)" step below, which does the real selection, and had it ever worked it would
+      # have run a SECOND full pytest pass over the subset on top of the check graph.
       - name: Verify GitBook v1 docs pack
         run: make docs-gitbook-verify
 
@@ -359,6 +357,15 @@ jobs:
       - name: Blast-radius test selection (PR only)
         if: github.event_name == 'pull_request'
         id: impact
+        env:
+          # Turn the Telys/memengine lexical lane ON for selection. Installing memengine was only
+          # half the wiring: _lexical_enrichment() short-circuits to (set(), 0) unless this flag
+          # is set, so before this the lane was a guaranteed no-op even on a runner that had the
+          # library. Same flag name the engine's own
+          # apps/api_server/services/repository_intelligence_lexical.py uses -- deliberately not a
+          # second flag for the same capability. The lane is additive-only: it can add tests to
+          # the selected set, never remove them.
+          ALGENTA_REPOSITORIES_LEXICAL_RANKING: "true"
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           git cat-file -e "$BASE" 2>/dev/null || BASE="origin/main"

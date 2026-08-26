@@ -335,9 +335,11 @@ def _path_literal_dependents(changed, test_files):
 
     This is not theoretical: on 2026-08-26 a change to infra/ci/az_orchestrator.py broke all 4
     tests in tests/test_az_orchestrator_inflight_release.py, and the PR merged GREEN because
-    subset selection never picked that file. The telys/memengine lexical lane is designed for
-    exactly this class, but it is inert in CI (private repo, no cross-repo credential), so the
-    blind spot needs a lane with NO external dependency.
+    subset selection never picked that file. The telys/memengine lexical lane targets the same
+    class of blind spot, but this lane deliberately keeps NO external dependency so it holds even
+    where memengine is absent. (The lexical lane is no longer inert in CI: it installs offline
+    from the committed vendor/wheels/ wheel and ci.yml sets the ranking flag on the selection
+    step. Both lanes now run, independently.)
 
     Match rule: every path COMPONENT of a changed file must appear as a string literal in the
     test. `infra/ci/az_orchestrator.py` -> {"infra", "ci", "az_orchestrator.py"}, all three of
@@ -454,6 +456,52 @@ def _language_disjoint_selection(changed: list[str], codeunits):
             "no test in this suite can execute them")
 
 
+def _additive_lanes(
+    affected: set[str], changed: list[str], trees: dict[str, ast.AST | None],
+    test_files: list[str], n_tests: int, base_reason: str | None = None,
+) -> tuple[str, list[str], str]:
+    """Apply every additive-only enrichment lane to ``affected`` and format the subset verdict.
+
+    Shared by BOTH selection paths — the local import graph and the codna-delegated engine — so
+    neither can quietly ship without the lanes the other one gets. Runs after the callers' safety
+    guards and only ever WIDENS ``affected``; it never re-triggers the shared-core guard
+    retroactively, matching this module's "run more, never fewer" bias.
+
+    ``base_reason`` (the delegated engine's own explanation) is preserved verbatim when no lane
+    widened anything — that message says why the engine chose what it chose, which is strictly
+    more informative than a bare count. It is replaced only once a lane actually adds a test, so
+    the reason never claims a selection the lanes have since widened past.
+    """
+    widened = False
+    # Path-literal lane (no external dependency, always on): catches tests that load a changed
+    # file by PATH rather than importing it -- see _path_literal_dependents for the live
+    # regression that motivated it.
+    by_path = _path_literal_dependents(changed, test_files) - affected
+    if by_path:
+        affected = affected | by_path
+        widened = True
+        preview = ", ".join(sorted(by_path)[:3]) + ("..." if len(by_path) > 3 else "")
+        # stderr, never stdout: stdout carries the --json contract and the newline-separated
+        # test list that CI consumes.
+        print(f"# path-literal lane added {len(by_path)} test(s): {preview}", file=sys.stderr)
+
+    # Codna/Telys lexical enrichment (additive-only, opt-in): the import graph is precise for
+    # direct imports but blind to "soft" references a lexical index over path+symbol text can
+    # still catch.
+    extra, _corpus_size = _lexical_enrichment(changed, trees, test_files)
+    added = extra - affected
+    if added:
+        affected = affected | added
+        preview = ", ".join(sorted(added)[:3]) + ("..." if len(added) > 3 else "")
+        return "subset", sorted(affected), (
+            f"{len(affected)}/{n_tests} tests affected "
+            f"({len(added)} via lexical enrichment: {preview})"
+        )
+    if not widened and base_reason is not None:
+        return "subset", sorted(affected), base_reason
+    return "subset", sorted(affected), f"{len(affected)}/{n_tests} tests affected"
+
+
 def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *, impact_fn=None):
     """Return (mode, tests, reason). mode in {"subset","all"}.
 
@@ -468,7 +516,21 @@ def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *
                         broad_globs=_BROAD_GLOBS,
                         shared_core_fraction=_SHARED_CORE_FRACTION,
                         ignore=tuple(_IGNORE_DIRS))
-        return res.mode, res.tests, res.reason
+        if res.mode != "subset":
+            return res.mode, res.tests, res.reason  # "all" is already maximal — nothing to widen.
+        # The delegated engine replaces this module's LOCAL IMPORT GRAPH — not its additive lanes.
+        # Returning `res` verbatim silently skipped both of them, which inverts the "run MORE,
+        # never fewer" bias into a real coverage loss: measured on this repo, a change to
+        # apps/api_server/services/repository_intelligence_lexical.py selected 1 test with codna
+        # absent (found by the path-literal lane) and 0 with codna present.
+        test_files = sorted(_rel(p) for p in py_files if _is_test(_rel(p)))
+        # Only the lexical lane needs parsed trees, and parsing is the expensive part of
+        # _build_graph — so keep the codna fast path genuinely fast whenever that lane is off.
+        trees: dict[str, ast.AST | None] = {}
+        if _lexical_ranking_enabled():
+            *_ignored, trees = _build_graph(py_files)
+        return _additive_lanes(set(res.tests), changed, trees, test_files,
+                               len(test_files) or len(res.tests), res.reason)
     if not changed:
         return "all", [], "no changed files reported; running full suite to be safe"
     # Anything broad/config/CI-ish -> run everything.
@@ -549,31 +611,7 @@ def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *
         if c.endswith(".py") and c not in trees:
             return "all", [], f"changed file was not indexed by the repo walk: {c}"
 
-    # Codna/Telys lexical enrichment (additive-only, opt-in): the import graph above is precise
-    # for direct imports but blind to "soft" references a lexical index over path+symbol text can
-    # still catch. Applied last, after both safety guards above, and only ever WIDENS `affected` —
-    # never re-triggers the shared-core guard retroactively, matching "run more, never fewer".
-    # Path-literal lane (no external dependency, always on): catches tests that load a changed
-    # file by PATH rather than importing it -- see _path_literal_dependents for the live
-    # regression that motivated it.
-    by_path = _path_literal_dependents(changed, test_files) - affected
-    if by_path:
-        affected = affected | by_path
-        preview = ", ".join(sorted(by_path)[:3]) + ("..." if len(by_path) > 3 else "")
-        # stderr, never stdout: stdout carries the --json contract and the newline-separated
-        # test list that CI consumes.
-        print(f"# path-literal lane added {len(by_path)} test(s): {preview}", file=sys.stderr)
-
-    extra, _corpus_size = _lexical_enrichment(changed, trees, test_files)
-    added = extra - affected
-    if added:
-        affected = affected | added
-        preview = ", ".join(sorted(added)[:3]) + ("..." if len(added) > 3 else "")
-        return "subset", sorted(affected), (
-            f"{len(affected)}/{n_tests} tests affected "
-            f"({len(added)} via lexical enrichment: {preview})"
-        )
-    return "subset", sorted(affected), f"{len(affected)}/{n_tests} tests affected"
+    return _additive_lanes(affected, changed, trees, test_files, n_tests)
 
 
 def main() -> int:

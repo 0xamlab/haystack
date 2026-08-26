@@ -417,3 +417,90 @@ def test_path_literal_lane_does_not_over_match(tmp_path, monkeypatch):
         ["infra/ci/az_orchestrator.py"], ["test_unrelated.py"]
     )
     assert hit == set(), f"over-matched on a partial component overlap: {hit}"
+
+
+def _delegating_engine(tests, reason="engine verdict"):
+    """A stand-in for codna.impact.compute_impact returning a fixed subset verdict."""
+    import types  # noqa: PLC0415
+
+    def compute_impact(repo_root, changed, **kw):
+        return types.SimpleNamespace(mode="subset", tests=list(tests), reason=reason)
+    return compute_impact
+
+
+def test_delegated_engine_still_gets_the_path_literal_lane(tmp_path, monkeypatch):
+    """Regression: delegating to codna.impact must not drop this module's own additive lanes.
+
+    Measured live before the fix — a change to
+    apps/api_server/services/repository_intelligence_lexical.py selected 1 test with codna absent
+    (found by the path-literal lane) and 0 with codna present, because compute_affected returned
+    the engine's verdict verbatim and never reached either lane. Selection got STRICTLY WEAKER by
+    installing codna, inverting the module's "run more, never fewer" bias into a silent coverage
+    loss.
+    """
+    ti = _load_tool()
+    # A test that loads the changed file BY PATH -- invisible to any import graph, engine or local.
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    probe = tests_dir / "test_loads_by_path.py"
+    probe.write_text(
+        'import importlib.util\n'
+        'from pathlib import Path\n'
+        'TOOL = Path("infra") / "ci" / "az_orchestrator.py"\n'
+        'def test_x():\n'
+        '    assert importlib.util.spec_from_file_location("m", TOOL)\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    monkeypatch.delenv("ALGENTA_REPOSITORIES_LEXICAL_RANKING", raising=False)
+
+    mode, tests, _reason = ti.compute_affected(
+        ["infra/ci/az_orchestrator.py"],
+        [probe],
+        None,
+        impact_fn=_delegating_engine([]),   # engine finds nothing -- the lane must still fire
+    )
+    assert mode == "subset"
+    assert "tests/test_loads_by_path.py" in tests, (
+        f"path-literal lane was skipped on the delegated path: {tests}")
+
+
+def test_delegated_engine_verdict_is_never_narrowed(tmp_path, monkeypatch):
+    """The union must keep every test the engine selected, on top of whatever the lanes add."""
+    ti = _load_tool()
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    probe = tests_dir / "test_loads_by_path.py"
+    probe.write_text(
+        # spec_from_file_location satisfies _path_literal_dependents' cheap prefilter, which
+        # deliberately skips files that never reach for a path at all.
+        'import importlib.util\n'
+        'from pathlib import Path\n'
+        'TOOL = Path("infra") / "ci" / "az_orchestrator.py"\n'
+        'def test_x():\n'
+        '    assert importlib.util.spec_from_file_location("m", TOOL)\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    monkeypatch.delenv("ALGENTA_REPOSITORIES_LEXICAL_RANKING", raising=False)
+
+    engine_picks = ["tests/picked_by_engine.py", "tests/also_by_engine.py"]
+    _mode, tests, _reason = ti.compute_affected(
+        ["infra/ci/az_orchestrator.py"], [probe], None,
+        impact_fn=_delegating_engine(engine_picks),
+    )
+    assert set(engine_picks).issubset(set(tests)), f"engine verdict was narrowed: {tests}"
+    assert "tests/test_loads_by_path.py" in tests, f"lane contribution missing: {tests}"
+
+
+def test_delegated_engine_all_verdict_is_passed_through_untouched(monkeypatch):
+    """mode=="all" is already maximal: no lane work, and the engine's reason is preserved."""
+    ti = _load_tool()
+    import types  # noqa: PLC0415
+
+    def compute_impact(repo_root, changed, **kw):
+        return types.SimpleNamespace(mode="all", tests=[], reason="broad change")
+
+    mode, tests, reason = ti.compute_affected(
+        ["infra/ci/az_orchestrator.py"], [], None, impact_fn=compute_impact)
+    assert (mode, tests, reason) == ("all", [], "broad change")
