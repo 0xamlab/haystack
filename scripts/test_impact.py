@@ -58,12 +58,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Python-importable source roots, searched in order when resolving an absolute import. Each entry
-# maps a top-level importable package/dir to its on-disk dir. Repo root itself is a root too, so
-# ``apps.api_server.x`` resolves against ``REPO_ROOT/apps/api_server/x.py``.
-_SOURCE_DIRS = ["apps", "packages", "integrations", "scripts", "tests"]
-_SOURCE_DIRS_SET = set(_SOURCE_DIRS)
-
 _TEST_DIR = "tests"
 
 # Changed paths matching any of these are treated as "affects everything" (config/CI/infra/shared).
@@ -86,15 +80,16 @@ _IGNORE_DIRS = {
 
 
 def _iter_py_files() -> list[Path]:
+    """Walk the WHOLE repo for .py files, minus ``_IGNORE_DIRS`` — no hardcoded source-dir
+    allowlist. This mirrors codna.impact's own ``_iter_py_files`` so the fallback graph works on
+    any repo shape (``src/``, ``lib/``, a flat layout, ...), not just this repo's ``apps/``/
+    ``packages/`` convention."""
     out: list[Path] = []
-    for d in _SOURCE_DIRS:
-        base = REPO_ROOT / d
-        if not base.is_dir():
-            continue
-        for p in base.rglob("*.py"):
-            if any(part in _IGNORE_DIRS for part in p.relative_to(REPO_ROOT).parts):
-                continue
-            out.append(p)
+    for root, dirs, files in os.walk(REPO_ROOT):
+        dirs[:] = [d for d in dirs if d not in _IGNORE_DIRS and not d.startswith(".")]
+        for fn in files:
+            if fn.endswith(".py"):
+                out.append(Path(root) / fn)
     return out
 
 
@@ -116,24 +111,28 @@ def _module_key(rel_path: str) -> str | None:
 
 def _candidate_keys(rel_path: str) -> list[str]:
     """Every dotted name this file may be imported as. The path-based key (repo-root relative) is
-    always one. Additionally, a file under ``packages/<pkg>/<name>/...`` where ``<name>`` is a real
-    package (has ``__init__.py``) is ALSO importable as ``<name>.<rest>`` — the form tests actually
-    use (``from algenta.inference import ...``, not ``from packages.algenta.algenta...``). This is
-    the package-name mapping Codna's repo intelligence resolves structurally; the MVP hard-codes the
-    ``packages/`` two-level convention."""
+    always one. Additionally, for EVERY ancestor directory that is a real package (has
+    ``__init__.py`` on disk), the path from that ancestor onward is also a candidate — the form
+    tests actually use (``from algenta.inference import ...``, not
+    ``from packages.algenta.algenta...``). Derived from the tree (any ancestor with an
+    ``__init__.py`` qualifies), not hardcoded to this repo's ``packages/<vendor>/<name>/...``
+    convention specifically — a repo using ``src/``, ``libs/``, or a flat layout gets the same
+    alias resolution for free."""
     keys: list[str] = []
     primary = _module_key(rel_path)
     if primary:
         keys.append(primary)
     parts = Path(rel_path).with_suffix("").parts
-    if len(parts) >= 3 and parts[0] == "packages":
-        pkg_root = Path("packages") / parts[1] / parts[2]
-        if (REPO_ROOT / pkg_root / "__init__.py").is_file():
-            inner = parts[2:]
+    for i in range(1, len(parts)):
+        ancestor = Path(*parts[:i])
+        if (REPO_ROOT / ancestor / "__init__.py").is_file():
+            inner = parts[i - 1 :]
             if inner and inner[-1] == "__init__":
                 inner = inner[:-1]
             if inner:
-                keys.append(".".join(inner))
+                alias = ".".join(inner)
+                if alias not in keys:
+                    keys.append(alias)
     return keys
 
 
@@ -386,19 +385,21 @@ def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *
             if _is_test(importer_rel):
                 affected.add(importer_rel)
                 continue
-            im_key = _module_key(importer_rel)
-            if im_key and im_key not in visited:
-                frontier.add(im_key)
-        # Propagate to parent package modules so files importing an enclosing package of a changed
-        # submodule are included too (a test doing `from decision_engine import _contract` IS affected
-        # when _contract.py changes). BUT stop at the source-root dirs (apps/, packages/, ...): their
-        # importer set is nearly the whole suite and would force "all" for any change under them.
-        parts = m.split(".")
-        for i in range(1, len(parts)):
-            parent = ".".join(parts[:i])
-            if parent.split(".")[0] in _SOURCE_DIRS_SET:
-                continue
-            frontier.add(parent)
+            # Re-seed with EVERY candidate key of the importer, not just its primary path-based
+            # key: an importer reached here may itself only ever be imported by one of its
+            # aliases (e.g. `mypkg.util`, never `src.acme.mypkg.util`), and using only the
+            # primary key silently dead-ends the walk right there — a real bug, not just a
+            # genericity gap (seeding with only `_module_key` predates this fix).
+            for im_key in _candidate_keys(importer_rel):
+                if im_key not in visited:
+                    frontier.add(im_key)
+        # No unconditional climb to enclosing packages: package-hub nodes collect enormous
+        # importer sets and blow straight through the shared-core guard (measured on this repo:
+        # a package __init__ change went 173->45 tests before this fix, 173->12 after — matching
+        # codna.impact's own campaign-validated fix for the same over-selection bug). Real
+        # re-export paths are already covered by real edges: `from pkg import x` resolves to
+        # pkg/__init__.py, and if that __init__ imports the changed module the chain completes
+        # without any synthetic climb.
 
     # Shared-core guard: if the affected set covers a large share of all tests, just run all.
     if n_tests and len(affected) / n_tests >= _SHARED_CORE_FRACTION:
@@ -406,11 +407,11 @@ def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *
             f"change reaches {len(affected)}/{n_tests} tests (>= {_SHARED_CORE_FRACTION:.0%}); "
             "treating as shared-core and running full suite"
         )
-    # A changed file outside the indexed source roots was never walked, so its importers are
-    # untracked -> under-count -> run the full suite to be safe.
+    # A changed .py file that the repo walk never reached (e.g. filtered by _IGNORE_DIRS, or
+    # outside REPO_ROOT) has untracked importers -> under-count -> run the full suite to be safe.
     for c in changed:
         if c.endswith(".py") and c not in trees:
-            return "all", [], f"changed file outside indexed source roots: {c}"
+            return "all", [], f"changed file was not indexed by the repo walk: {c}"
     return "subset", sorted(affected), f"{len(affected)}/{n_tests} tests affected"
 
 

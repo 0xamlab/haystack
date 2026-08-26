@@ -223,3 +223,53 @@ def test_installed_codna_absent(monkeypatch):
     ti = _load_tool()
     monkeypatch.setitem(sys.modules, "codna", None)   # makes `import codna` raise ImportError
     assert ti._installed_codna() == (None, None)
+
+
+# ── repo-agnostic fallback: no hardcoded apps/packages layout ───────────────────────────────────
+# The local (no-codna) fallback used to require this repo's own apps/packages/... convention
+# (_SOURCE_DIRS) to find anything at all. These prove it now works, unmodified, on a repo shaped
+# nothing like this one: a src/<vendor>/<pkg>/ layout with no apps/ or packages/ dir anywhere.
+
+
+def test_fallback_selects_correctly_on_a_differently_shaped_repo(tmp_path, monkeypatch):
+    ti = _load_tool()
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+
+    pkg = tmp_path / "src" / "acme" / "mypkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "core.py").write_text("VALUE = 1\n")
+    (pkg / "util.py").write_text("from mypkg.core import VALUE\n")
+
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_util.py").write_text("from mypkg.util import VALUE\n")
+    # Enough unrelated tests to keep 1-affected-test comfortably under the 34% shared-core
+    # threshold (this fixture is deliberately tiny; a real repo has thousands of tests).
+    unrelated = ["test_unrelated_a.py", "test_unrelated_b.py", "test_unrelated_c.py", "test_unrelated_d.py"]
+    for name in unrelated:
+        (tests_dir / name).write_text("VALUE = 2\n")
+
+    py_files = ti._iter_py_files()
+    # The full-repo walk finds every .py file with no apps/packages/... allowlist involved.
+    rels = {str(p.relative_to(tmp_path)) for p in py_files}
+    assert rels == {
+        "src/acme/mypkg/__init__.py", "src/acme/mypkg/core.py", "src/acme/mypkg/util.py",
+        "tests/test_util.py", *(f"tests/{n}" for n in unrelated),
+    }
+
+    mode, tests, reason = ti.compute_affected(["src/acme/mypkg/core.py"], py_files, None)
+    # core.py -> util.py (via the generic "src/acme/mypkg" == real package alias "mypkg") ->
+    # test_util.py. test_unrelated.py must NOT be pulled in.
+    assert mode == "subset", reason
+    assert tests == ["tests/test_util.py"]
+
+
+def test_fallback_package_alias_resolution_is_ancestor_derived_not_hardcoded(tmp_path, monkeypatch):
+    ti = _load_tool()
+    monkeypatch.setattr(ti, "REPO_ROOT", tmp_path)
+    (tmp_path / "libs" / "widget" / "widget").mkdir(parents=True)
+    (tmp_path / "libs" / "widget" / "widget" / "__init__.py").write_text("")
+    keys = ti._candidate_keys("libs/widget/widget/shape.py")
+    assert "libs.widget.widget.shape" in keys   # primary, path-based key
+    assert "widget.shape" in keys               # alias via the real package boundary
