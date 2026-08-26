@@ -105,8 +105,14 @@ ORPHAN_AGE_S = 10 * 60
 #      family per region), so total concurrency comes from spreading across families.
 #      Dsv6/Dsv5 carry the largest limits (40 in centralus vs 10 for Dsv3/Dsv4), so
 #      leading with them yields materially more simultaneous workers.
+# Dsv6 is DELIBERATELY ABSENT. It requires an NVMe disk controller, and this fleet's
+# golden image is Ubuntu Jammy Gen2 with a SCSI controller, so every Dsv6 attempt fails
+# with "disk controller types supported by the OS image ... for the VM size
+# 'Standard_D8s_v6'" (confirmed live 2026-08-26). Quota for it is therefore useless until
+# the image is rebuilt NVMe-capable -- listing it only burned a failed ARM round-trip per
+# provision. Dsv5 leads because it is the largest family PROVEN to boot this image here.
 SIZE_CHAIN = [
-    "Standard_D8s_v6", "Standard_D8s_v5", "Standard_D8s_v4", "Standard_D8s_v3",
+    "Standard_D8s_v5", "Standard_D8s_v4", "Standard_D8s_v3",
     "Standard_D4s_v5", "Standard_D4s_v4", "Standard_D4s_v3",
     "Standard_F8s_v2", "Standard_F4s_v2",
 ]
@@ -147,10 +153,16 @@ SPOT = os.environ.get("AZ_ORCH_SPOT", "0") == "1"
 STATE = "/var/lib/az-orch"
 os.makedirs(STATE, exist_ok=True)
 
+# Ordered by REAL available quota, highest first. provision_worker() walks this list in
+# order and takes the first region/size that fits, so a nearly-full region at the head
+# burns a failed ARM round-trip (~2s each) on EVERY provision before anything can succeed.
+# centralus leads because it carries by far the most headroom (190 total cores, 120 Dsv6
+# after the 2026-08-26 increase) vs 40 total cores in the others. The golden image is a
+# gallery version replicated to all 8 regions, so leading with centralus costs no boot speed.
 REGIONS = [
-    ("eastus2", "thyn-ci-eastus2", "default"),  # golden image region: fastest boot
-    ("eastus", "thyn-gh-runners", "builders"),
     ("centralus", "thyn-ci-centralus", "default"),
+    ("eastus2", "thyn-ci-eastus2", "default"),
+    ("eastus", "thyn-gh-runners", "builders"),
     ("westus2", "thyn-ci-westus2", "default"),
     ("westus", "thyn-ci-westus", "default"),
     ("westus3", "thyn-ci-westus3", "default"),
@@ -342,8 +354,15 @@ def free_vcpus(region):
         d = arm("GET", f"/subscriptions/{SUB}/providers/Microsoft.Compute/locations/{region}/usages")
         free = {}
         for u in d.get("value", []):
-            n = u["name"]["value"]
-            if n.startswith(("standardDSv3", "standardDSv4", "standardDSv5", "standardDSv6", "standardFSv2")):
+            # Keys are LOWERCASED before matching: Azure is not self-consistent about family
+            # casing. Live values include both `standardDSv3Family` and `StandardDsv6Family`
+            # (capital S, lowercase "sv6"). A case-SENSITIVE startswith silently missed every
+            # Dsv6/Dsv7-era family, so free.get(family(size)) returned 0 and those sizes were
+            # never provisionable -- invisible, because "no quota" and "quota not matched" look
+            # identical here. That made a 120-vCPU Dsv6 grant in centralus completely unusable
+            # while the fleet fell through to nearly-full eastus2 (found live 2026-08-26).
+            n = u["name"]["value"].lower()
+            if n.startswith(("standarddsv", "standardfsv2")):
                 free[n] = max(0, int(u["limit"]) - int(u["currentValue"]))
             elif n == "cores":  # total regional vCPU cap; family quota alone is not enough
                 free["cores"] = max(0, int(u["limit"]) - int(u["currentValue"]))
@@ -363,12 +382,14 @@ def free_vcpus_cached(region):
 
 
 def family(size):
+    # Returns a LOWERCASED key to match free_vcpus()'s lowercased map -- see the casing
+    # note there. Never return mixed case from here.
     if size.startswith("Standard_F"):
-        return "standardFSv2Family"
+        return "standardfsv2family"
     for f in ("v6", "v5", "v4", "v3"):
         if f in size:
-            return f"standardDS{f}Family"
-    return "standardDSv4Family"
+            return f"standardds{f}family"
+    return "standarddsv4family"
 
 
 SSH_PUB = ""

@@ -244,6 +244,18 @@ jobs:
           print("published artifact proof: all shards executed")
           PY
 
+      # REQUIRED before any npm/node use on this fleet. Ephemeral Azure workers do have a
+      # system Node (baked into the golden image), but the GitHub runner prepends its own
+      # externals dir to PATH, and that ships an `npm` stub whose ../lib/cli.js does not
+      # exist -- so a bare `npm install` dies with "Cannot find module '../lib/cli.js'".
+      # setup-node puts a real tool-cache Node+npm ahead of that stub. This job runs only on
+      # push-to-main, which is exactly why the gap survived: it never executes on a PR.
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
       - name: npm artifact install + import proof
         run: |
           mkdir -p /tmp/algenta-audit-npm

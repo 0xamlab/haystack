@@ -373,8 +373,15 @@ jobs:
       # DATABASE_URL to a developer-local `angel@localhost/decision_engine`, which happened to
       # exist on the retired persistent Mac fleet and never exists on an ephemeral VM -- the
       # same stale-fleet assumption behind the buildx/npm/golden-image breakage.)
-      # Not gating: `|| true` keeps coverage as signal, matching the old workflow's contract.
+      # PUSH ONLY, and that is load-bearing, not tidiness. This step re-runs the ENTIRE
+      # tests/ suite on top of a job that has already run the check graph, which pushed the
+      # job past its time budget and got it KILLED mid-step -- surfacing as a red
+      # `Test (Python 3.14)`, a REQUIRED check, on every PR. `|| true` does not save you
+      # there: it swallows pytest's exit code, but not the job being terminated for running
+      # too long. PRs are already gated by the check graph above and coverage is non-gating
+      # signal, so PRs lose nothing by skipping it. (Self-inflicted, found live 2026-08-26.)
       - name: Python coverage report
+        if: github.event_name == 'push'
         env:
           PYTEST_TIMEOUT: 60
         run: |
@@ -384,6 +391,7 @@ jobs:
             tests/ || true
 
       - name: Upload coverage report
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-xml
