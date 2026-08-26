@@ -131,7 +131,14 @@ def test_runner_names_queries_the_org_endpoint_not_a_repo_endpoint(monkeypatch):
     monkeypatch.setattr(mod, "gh", fake_gh)
     names = mod.runner_names()
 
-    assert seen["path"] == "orgs/thyn-ai/actions/runners?per_page=100"
+    # This test's subject is WHICH endpoint is queried -- org-level, never per-repo. The query
+    # string is deliberately matched by prefix rather than exact equality: the listing is
+    # paginated (`&page=N`, see all_runners()), and pinning the full string would fail on a
+    # pagination change that is entirely orthogonal to what this test is about. The negative
+    # assertion below is the one carrying the actual guarantee.
+    assert seen["path"].startswith("orgs/thyn-ai/actions/runners?per_page=100")
+    assert not seen["path"].startswith("repos/"), (
+        f"runner discovery must not be per-repo: {seen['path']}")
     assert names == {"ci-az-1"}
 
 

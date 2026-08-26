@@ -341,9 +341,40 @@ def queued_jobs():
     return jobs
 
 
+def all_runners():
+    """Every org runner registration, following pagination.
+
+    `?per_page=100` alone SILENTLY TRUNCATES at 100. That is not hypothetical here: ephemeral
+    workers leave their registration behind when the VM is deleted, so the org list grows well
+    past the live fleet (measured 2026-08-26: 32 registrations for 6 online runners -- 21 stale
+    az-ephemeral plus 5 retired blacksmith entries). Past 100, a truncated page silently drops
+    runners from the `busy` sets built by cleanup() and manage_warm_pool(), and a busy runner
+    missing from those sets is a runner eligible for reaping MID-JOB -- exactly the failure #898
+    fixed by a different route (age cap killing sdk-audit's execution-sweep 20 minutes into a
+    build, reported as a build failure). Truncation would reintroduce it silently, so paginate.
+
+    100 per page is the API maximum. Stop on a short page; the 20-page cap is a runaway guard
+    (2000 registrations is far past anything real) so a pathological response can never spin
+    the poll loop forever -- the same defensive shape as gh()'s bounded retry.
+    """
+    out = []
+    for page in range(1, 21):
+        batch = gh(f"orgs/{ORG}/actions/runners?per_page=100&page={page}").get("runners") or []
+        out.extend(batch)
+        if len(batch) < 100:
+            break
+    return out
+
+
 def runner_names():
     # Org-level: one shared pool, via RUNNER_GROUP, serves every repo served_repos() finds.
-    return {r["name"] for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"]}
+    return {r["name"] for r in all_runners()}
+
+
+def busy_runner_names():
+    """Names of runners GitHub reports as mid-job. NEVER derive this from a truncated listing:
+    a busy runner absent from this set is one the reapers will happily delete under a live job."""
+    return {r["name"] for r in all_runners() if r.get("busy")}
 
 
 def live_vms():
@@ -772,7 +803,7 @@ def cleanup():
     # "age=5465s, runner=aged" -- 20 minutes into a real build, reported as a build failure.
     # The repo's longest job is also main-only, so it was the likeliest victim and the least
     # likely to be caught before merge.
-    busy = {r["name"] for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"] if r.get("busy")}
+    busy = busy_runner_names()
     now = time.time()
     vms = live_vms()
     for name, created, location in vms:
@@ -879,9 +910,7 @@ def manage_warm_pool(vms):
     now = time.time()
     queued = queued_jobs()
     busy_names = {
-        r["name"]
-        for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"]
-        if r.get("busy") and r["name"].startswith(("ci-az-", WARM_PREFIX))
+        n for n in busy_runner_names() if n.startswith(("ci-az-", WARM_PREFIX))
     }
     busy = bool(busy_names)
     if queued or busy:
