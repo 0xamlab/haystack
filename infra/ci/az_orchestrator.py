@@ -518,13 +518,19 @@ write_files:
       timeout 60 sh -c 'install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc' >/dev/null 2>&1
       log "docker-repo-key rc=$?"
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
-      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin ca-certificates curl git jq libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
+      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin ca-certificates curl git jq unzip libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
       log "apt rc=$?"
       up
       add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1
       timeout 240 sh -c 'apt-get update -qq && apt-get install -y -qq python3.14 python3.14-venv libpython3.14' >/dev/null 2>&1
       # deadsnakes ships no pip module; jobs call `python3.14 -m pip` directly.
       python3.14 -m ensurepip --upgrade >/dev/null 2>&1 || true
+      # Provide a bare `python` as well. The Mac fleet this pool replaced had one, and the repos
+      # that landed here when RUNNER_LABELS went org-wide still call it -- codna's CI runs
+      # `python -m pip install -e ".[dev]"` and `python -m pytest`, both of which died with
+      # `python: command not found` (exit 127) on this image. Point it at 3.14, not the distro
+      # python3: ensurepip above gives 3.14 a working pip and the distro interpreter has none.
+      ln -sf "$(command -v python3.14)" /usr/local/bin/python 2>/dev/null || true
       log "py314 rc=$?"
       up
       # Node.js: GitHub's own hosted-runner images ship it preinstalled; this hand-rolled
@@ -591,6 +597,14 @@ write_files:
       TOK="__GH_TOKEN__"
       RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/__ORG__/actions/runners/registration-token)
       TOKEN=$(echo "$RT" | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null)
+      # The GOLDEN IMAGE predates two things the retired Mac fleet provided and that repos moved
+      # here by the org-wide RUNNER_LABELS still expect. Reasserted per boot because patching
+      # CLOUD_INIT alone would never reach a golden-image VM -- and that IS the normal path now.
+      # Both are guarded, so each becomes a no-op the moment the image is recaptured:
+      #   python : codna runs `python -m pip` / `python -m pytest` -> exit 127 without it
+      #   unzip  : actions/setup-bun shells out to it -> "Unable to locate executable file: unzip"
+      command -v python >/dev/null 2>&1 || ln -sf "$(command -v python3.14 || command -v python3)" /usr/local/bin/python 2>/dev/null || true
+      command -v unzip >/dev/null 2>&1 || timeout 120 sh -c 'apt-get update -qq && apt-get install -y -qq unzip' >/dev/null 2>&1 || true
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner
