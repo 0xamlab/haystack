@@ -735,6 +735,17 @@ def provision_job(job):
 
 def cleanup():
     runners = runner_names()
+    # BUSY runners are never reaped by age. The age cap exists to stop leaked/hung VMs
+    # accumulating, but it used to fire unconditionally -- `or age > MAX_AGE_S` deleted a VM
+    # even while it was actively executing a job. That specifically punished LONG jobs on
+    # WARM VMs: a warm worker's age clock starts when it is pre-booted, not when it picks up
+    # work, so the longer it waited in the pool the less budget remained for whatever job it
+    # accepted. Killed live 2026-08-26: ci-warm-1787745129 was pre-booted 11:52:13, took
+    # sdk-audit's `execution-sweep` at 13:03:41, and was deleted at 13:23:18 with
+    # "age=5465s, runner=aged" -- 20 minutes into a real build, reported as a build failure.
+    # The repo's longest job is also main-only, so it was the likeliest victim and the least
+    # likely to be caught before merge.
+    busy = {r["name"] for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"] if r.get("busy")}
     now = time.time()
     vms = live_vms()
     for name, created, location in vms:
@@ -742,6 +753,8 @@ def cleanup():
             age = now - time.mktime(time.strptime(created[:19], "%Y-%m-%dT%H:%M:%S"))
         except Exception:
             age = MAX_AGE_S
+        if name in busy:
+            continue  # mid-job: let it finish; MAX_AGE_S is a leak guard, not a job timeout
         if (name not in runners and age > ORPHAN_AGE_S) or age > MAX_AGE_S:
             log(f"deleting {name} (age={int(age)}s, runner={'gone' if name not in runners else 'aged'})")
             delete_vm(name, location)
@@ -837,11 +850,12 @@ def _prewarm(reason):
 def manage_warm_pool(vms):
     now = time.time()
     queued = queued_jobs()
-    busy = any(
-        r["busy"]
+    busy_names = {
+        r["name"]
         for r in gh(f"orgs/{ORG}/actions/runners?per_page=100")["runners"]
-        if r["name"].startswith(("ci-az-", WARM_PREFIX))
-    )
+        if r.get("busy") and r["name"].startswith(("ci-az-", WARM_PREFIX))
+    }
+    busy = bool(busy_names)
     if queued or busy:
         with open(f"{STATE}/last_activity", "w") as f:
             f.write(str(now))
@@ -850,10 +864,18 @@ def manage_warm_pool(vms):
     if idle and len(warm) > WARM_FLOOR:
         # Scale down to the permanent floor, never to 0: the floor absorbs the very next job
         # at warm-pool speed instead of every post-idle job paying a full cold boot.
-        for name, _, loc in warm[WARM_FLOOR:]:
-            log(f"idle drain: deleting {name} (keeping floor={WARM_FLOOR})")
+        #
+        # BUSY warm workers are excluded from the drain. This used to slice purely by position
+        # (`warm[WARM_FLOOR:]`), so a warm VM actively running a job could be deleted just for
+        # sorting past the floor -- the same class of bug as cleanup()'s unconditional age reap
+        # (see there). `idle` can legitimately be true while one long job still runs: it is
+        # derived from a last_activity timestamp that a single quiet poll can age out.
+        drainable = [v for v in warm if v[0] not in busy_names]
+        keep = len(warm) - len(drainable)  # busy workers already count toward the floor
+        for name, _, loc in drainable[max(0, WARM_FLOOR - keep):]:
+            log(f"idle drain: deleting {name} (keeping floor={WARM_FLOOR}, busy={len(busy_names)})")
             delete_vm(name, loc)
-        warm = warm[:WARM_FLOOR]
+        warm = [v for v in warm if v[0] in busy_names] + drainable[: max(0, WARM_FLOOR - keep)]
     target = WARM_FLOOR if idle else WARM_MIN
     with _lock:
         warm_inflight = sum(1 for n in _inflight_names if n.startswith(WARM_PREFIX))
