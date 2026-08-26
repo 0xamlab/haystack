@@ -389,6 +389,32 @@ def live_vms():
     return out
 
 
+def vm_power_state(name):
+    """This VM's power state ("running" / "stopped" / "deallocated" / ...), or None if unknown.
+
+    PER-VM deliberately, not a collection call, because neither collection form works here
+    (both verified live 2026-08-26 against this subscription):
+      * `virtualMachines?$expand=instanceView` fails CONSISTENTLY -- 2/2 attempts returned
+        502 ProviderError "Resource provider 'Microsoft.Compute' failed to return collection
+        response for type 'virtualMachines'". Not a transient blip; do not "just retry" it.
+      * `virtualMachines?statusOnly=true` returns 200 but carries no instanceView at all, so
+        there is no power state in the payload to read.
+    One call per VM is therefore the only shape that works, which is exactly why callers must
+    ask only about VMs where the answer changes a decision -- never the whole fleet per poll.
+
+    Returns None on any failure (unknown != stopped): the caller must fall back to the
+    age-based rule rather than delete a VM it could not inspect."""
+    try:
+        d = arm("GET", f"{vm_path(name)}/instanceView")
+    except Exception:  # noqa: BLE001 -- an uninspectable VM must not be deleted on that basis
+        return None
+    for s in d.get("statuses") or []:
+        code = s.get("code") or ""
+        if code.startswith("PowerState/"):
+            return code.split("/", 1)[1]
+    return None
+
+
 def free_vcpus(region):
     try:
         d = arm("GET", f"/subscriptions/{SUB}/providers/Microsoft.Compute/locations/{region}/usages")
@@ -841,8 +867,33 @@ def cleanup():
             age = MAX_AGE_S
         if name in busy:
             continue  # mid-job: let it finish; MAX_AGE_S is a leak guard, not a job timeout
-        if (name not in runners and age > ORPHAN_AGE_S) or age > MAX_AGE_S:
-            why = "orphan-no-runner" if name not in runners else "max-age"
+        unregistered = name not in runners
+        # A worker that has ALREADY POWERED OFF is finished or dead -- it can never register, so
+        # ORPHAN_AGE_S buys nothing and costs a lot. That grace window exists purely for a VM
+        # still BOOTING (see ORPHAN_AGE_S's own comment: stock-image boot runs apt-get + the
+        # runner download, 3-6min, and a 3min sweep was killing workers mid-bootstrap). A booting
+        # VM is powerState=running-but-unregistered; a STOPPED one is neither.
+        #
+        # Why it matters: a "stopped" (not deallocated) Azure VM still holds its full vCPU quota.
+        # Measured live 2026-08-26 -- 13 VMs, only 3 registered, 10 stopped; centralus DSv5 at
+        # 96/140 cores with 80 of them held by those 10 corpses, leaving room for 5 workers while
+        # 6 checks sat QUEUED. Deleting them by hand took quota to 8/140 and the orchestrator
+        # provisioned 8 workers within 3 seconds. This is the mechanism behind the recurring
+        # "only 1-3 runners are working" reports, and the earlier warm-pool failures logging
+        # "exceeding approved standardDSv5Family Cores quota".
+        stopped = False
+        if unregistered and age <= ORPHAN_AGE_S:
+            # Ask ONLY inside the window where the answer changes the verdict: past ORPHAN_AGE_S
+            # the rule below already deletes, and a registered VM is by definition alive. Power
+            # state costs one call per VM (see vm_power_state), so it must stay this narrow.
+            stopped = vm_power_state(name) in ("stopped", "deallocated")
+        if stopped or (unregistered and age > ORPHAN_AGE_S) or age > MAX_AGE_S:
+            if stopped:
+                why = "stopped-no-runner"
+            elif unregistered:
+                why = "orphan-no-runner"
+            else:
+                why = "max-age"
             log(f"deleting {name} (age={int(age)}s, reason={why})")
             delete_vm(name, location, reason=f"{why} age={int(age)}s", was_busy=name in busy)
     # leaked nic/pip from failed provisions occupy the per-region PIP quota (limit 20)
