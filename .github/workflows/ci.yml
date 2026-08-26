@@ -207,6 +207,41 @@ jobs:
       # self-updated externals dir shadows /usr/bin with an npm stub that has no
       # ../lib/cli.js behind it ("Cannot find module '../lib/cli.js'", deterministic, not a
       # flake). setup-node prepends a real tool-cache Node+npm ahead of that stub.
+      # Telys' memengine powers scripts/test_impact.py's lexical enrichment lane (the same
+      # library apps/api_server/services/repository_intelligence_lexical.py uses). It is
+      # deliberately NOT in requirements-dev.txt -- installed here so the lane's tests exercise
+      # the REAL library instead of only ever taking the fail-open path.
+      #   * ensurepip first: the Pixi env ships without pip ("No module named pip").
+      #   * NO `memengine @ ` egg fragment: upstream renamed the distribution to
+      #     `telys-runtime` (it still provides the `memengine` module), so the old form fails
+      #     with "produced metadata for project name telys-runtime".
+      #   * thyn-ai/telys is PRIVATE. The default GITHUB_TOKEN is scoped to THIS repo, so the
+      #     clone will usually 404 here and the lane degrades to skipped -- which the status
+      #     step below states outright rather than hiding. Wiring a cross-repo token (App
+      #     installation or PAT with repo:read on telys) is what would make this lane run in
+      #     CI; until then it is verified locally against the real library, not in CI.
+      - name: Install memengine (Telys on-device lexical index)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/run_repo_python.sh -m ensurepip --upgrade >/dev/null 2>&1 || true
+          ./scripts/run_repo_python.sh -m pip install --quiet \
+            "git+https://x-access-token:${GH_TOKEN}@github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py" \
+            || ./scripts/run_repo_python.sh -m pip install --quiet \
+            "git+https://github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py"
+
+      # continue-on-error above degrades a failed install to skipped tests. Without this
+      # report, "lane never tested" and "lane passed" look identical in a green run -- the
+      # exact blind spot that let the stale install command sit unnoticed.
+      - name: Report memengine lane status
+        run: |
+          if ./scripts/run_repo_python.sh -c "import memengine.lexical" 2>/dev/null; then
+            echo "::notice::memengine present - lexical enrichment lane WILL be exercised"
+          else
+            echo "::warning::memengine ABSENT - enrichment tests will SKIP (lane unverified)"
+          fi
+
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
@@ -331,15 +366,41 @@ jobs:
           if [ -z "$CHANGED" ]; then echo "mode=skip" >> "$GITHUB_OUTPUT"; exit 0; fi
           OUT=$(./scripts/run_repo_python.sh scripts/test_impact.py --json --changed $CHANGED 2>/dev/null || true)
           MODE=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('mode','all'))" "$OUT" 2>/dev/null || echo all)
-          if [ "$MODE" = "subset" ]; then MODE=all; fi   # v1: only skip-mode is acted on
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "::notice::blast-radius selection mode=$MODE"
+          # SUBSET IS NOW ACTED ON. It used to be force-downgraded to `all` here ("v1: only
+          # skip-mode is acted on"), which meant the selector ran, computed a real answer, and
+          # had it thrown away on every PR -- blast radius never once trimmed a run. The
+          # selector's bias is conservative-by-construction (it only ever widens: any broad or
+          # unparseable change returns `all`, and the lexical lane can add tests but never
+          # remove them), so honoring `subset` does not weaken the gate.
+          TESTS=""
+          if [ "$MODE" = "subset" ]; then
+            TESTS=$(python3 -c "import json,sys; print(' '.join(json.loads(sys.argv[1]).get('tests') or []))" "$OUT" 2>/dev/null || true)
+            # Empty list with mode=subset would silently run ZERO tests -- fail open to `all`
+            # rather than let a selector bug present as a green, empty run.
+            if [ -z "$TESTS" ]; then
+              MODE=all
+              echo "::warning::blast-radius returned subset with an EMPTY test list - failing open to full suite"
+            fi
+          fi
+          {
+            echo "mode=$MODE"
+            echo "tests=$TESTS"
+          } >> "$GITHUB_OUTPUT"
+          N=$(printf '%s' "$TESTS" | wc -w | tr -d ' ')
+          echo "::notice::blast-radius selection mode=$MODE tests=$N"
 
       - name: Run repo check graph
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.impact.outputs.mode }}" = "skip" ]; then
+          MODE="${{ steps.impact.outputs.mode }}"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$MODE" = "skip" ]; then
             echo "Blast radius: diff cannot influence the test graph - skipping pytest legs."
             pnpm guard:reliability && pnpm lint && pnpm build
+          elif [ "${{ github.event_name }}" = "pull_request" ] && [ "$MODE" = "subset" ]; then
+            # Non-pytest gates (reliability guard, lint, build) ALWAYS run in full -- only the
+            # pytest leg is narrowed to the diff's blast radius.
+            echo "Blast radius: running the impacted test subset."
+            pnpm guard:reliability && pnpm lint && pnpm build
+            ./scripts/run_repo_python.sh -m pytest -q ${{ steps.impact.outputs.tests }}
           else
             pnpm check
           fi

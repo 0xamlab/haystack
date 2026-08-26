@@ -26,6 +26,14 @@ How it works
    EVERY changed file is source in a known non-Python language and none of them is a test in that
    language, this (Python) suite has nothing that can execute them -> select nothing instead of the
    full suite. Without codna the behavior is exactly the conservative local fallback above.
+6. Telys/memengine lexical enrichment (additive-only, opt-in via ``ALGENTA_REPOSITORIES_LEXICAL_
+   RANKING`` — the same flag apps/api_server/services/repository_intelligence_lexical.py already
+   uses). The import graph above is precise for direct imports but blind to "soft" references —
+   string-based dynamic dispatch, a symbol referenced only in a docstring/config/prompt-template.
+   An on-device BM25 index (Telys' ``LexicalCodeIndex``, zero-model, no network) over every file's
+   path+symbol-name text, queried with the changed files' own symbol names, can surface test files
+   the import graph structurally cannot see — those hits are UNIONED into the selection, never used
+   to narrow it. Degrades to a no-op whenever ``memengine`` is unavailable or the flag is unset.
 
 Deliberate bias: when in doubt, run MORE tests, never fewer. A false "affected" costs minutes; a
 false "unaffected" ships a regression.
@@ -293,6 +301,81 @@ def _load_codna_impact(cli_path: str | None):
     return fn if callable(fn) else None
 
 
+_LEXICAL_RANKING_ENV = "ALGENTA_REPOSITORIES_LEXICAL_RANKING"
+
+
+def _lexical_ranking_enabled() -> bool:
+    """Mirrors apps/api_server/services/repository_intelligence_lexical.py::lexical_ranking_enabled
+    — same env var, same default-off. Duplicated rather than imported: this is a standalone
+    script (also runnable from a bare CI checkout via run_repo_python.sh), and importing across
+    the scripts/ -> apps/ boundary just to read one flag would make it depend on the whole apps
+    package chain for no reason."""
+    return os.environ.get(_LEXICAL_RANKING_ENV, "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _file_symbols(tree: ast.AST) -> list[str]:
+    """Function/class names defined in a parsed file — the "symbols" text the lexical index scores
+    against, same shape as repository_intelligence_lexical.py's own snapshot_manifest symbols."""
+    names = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.append(node.name)
+    return names
+
+
+def _lexical_enrichment(
+    changed: list[str], trees: dict[str, ast.AST | None], test_files: list[str],
+) -> tuple[set[str], int]:
+    """Additive-only enrichment via Telys' on-device LexicalCodeIndex (same integration pattern as
+    apps/api_server/services/repository_intelligence_lexical.py — BM25 over path+symbol-name text,
+    on-device, zero-model). The AST import graph above is precise for direct imports but blind to
+    "soft" references: string-based dynamic dispatch, a symbol referenced only by name in a
+    config/docstring/prompt-template, a plugin looked up by convention rather than imported.
+    Lexical similarity can catch some of what the import graph structurally cannot see.
+
+    Returns (extra_test_files, corpus_size). extra_test_files is UNIONED into the caller's
+    affected set, NEVER used to narrow it — matching this module's own stated bias (run MORE
+    tests, never fewer). Returns (set(), 0) on any failure: ranking disabled, memengine not
+    installed, or an empty corpus/query — behavior in every one of those cases is byte-identical
+    to not calling this function at all."""
+    if not _lexical_ranking_enabled():
+        return set(), 0
+    try:
+        from memengine.lexical import LexicalCodeIndex
+    except Exception:  # noqa: BLE001 — retrieval must never break selection; degrade to no-op
+        return set(), 0
+
+    ids: list[str] = []
+    texts: list[str] = []
+    for rel, tree in trees.items():
+        if tree is None:
+            continue
+        symbols = " ".join(_file_symbols(tree))
+        ids.append(rel)
+        texts.append(f"{rel} {symbols}".strip())
+    if not ids:
+        return set(), 0
+
+    query_terms: list[str] = []
+    for c in changed:
+        tree = trees.get(c)
+        if tree is not None:
+            query_terms.extend(_file_symbols(tree))
+    query = " ".join(query_terms).strip()
+    if not query:
+        return set(), len(ids)
+
+    try:
+        index = LexicalCodeIndex().build(ids, texts)
+        hits = index.search(query, k=min(10, len(ids)))
+    except Exception:  # noqa: BLE001 — never let a retrieval hiccup fail selection
+        return set(), len(ids)
+
+    test_set = set(test_files)
+    extra = {str(doc_id) for doc_id, _score in hits if str(doc_id) in test_set}
+    return extra, len(ids)
+
+
 def _language_disjoint_selection(changed: list[str], codeunits):
     """Codna-backed fast path: when every changed file is source in a known NON-Python language and
     none of them is a test in that language, no test in this (Python) suite can execute them.
@@ -412,6 +495,20 @@ def compute_affected(changed: list[str], py_files: list[Path], codeunits=None, *
     for c in changed:
         if c.endswith(".py") and c not in trees:
             return "all", [], f"changed file was not indexed by the repo walk: {c}"
+
+    # Codna/Telys lexical enrichment (additive-only, opt-in): the import graph above is precise
+    # for direct imports but blind to "soft" references a lexical index over path+symbol text can
+    # still catch. Applied last, after both safety guards above, and only ever WIDENS `affected` —
+    # never re-triggers the shared-core guard retroactively, matching "run more, never fewer".
+    extra, _corpus_size = _lexical_enrichment(changed, trees, test_files)
+    added = extra - affected
+    if added:
+        affected = affected | added
+        preview = ", ".join(sorted(added)[:3]) + ("..." if len(added) > 3 else "")
+        return "subset", sorted(affected), (
+            f"{len(affected)}/{n_tests} tests affected "
+            f"({len(added)} via lexical enrichment: {preview})"
+        )
     return "subset", sorted(affected), f"{len(affected)}/{n_tests} tests affected"
 
 
