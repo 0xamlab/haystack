@@ -281,6 +281,40 @@ jobs:
             || { echo "::error::memengine.lexical not importable after the offline install - the lexical enrichment lane would silently degrade to a no-op"; exit 1; }
           echo "::notice::memengine present - lexical enrichment lane WILL be exercised"
 
+      # codna carries the productized impact engine (codna.impact.compute_impact). Without it
+      # scripts/test_impact.py falls back to its own import graph, which OVER-selects: measured on
+      # this repo, a packages/algenta/algenta/inference.py change selects 44 of 1020 tests on the
+      # local graph and 17 of 1025 with codna -- 61% fewer, for the same conservative bias.
+      #
+      # From PyPI, deliberately. codna publishes there via Trusted Publishing (its own
+      # publish-cli.yml), so there is NO cross-repo credential involved -- an earlier plan to mint
+      # a read-only App token for thyn-ai/codna, and a later one to relay a wheel through GHCR,
+      # were both unnecessary. Building from source does NOT work: codna's setup.py
+      # unconditionally bundles a prebuilt Node agent-core and `pip wheel` dies with
+      # "agent-core runtime source is missing run-server.mjs".
+      #
+      # PINNED, not floating. codna.impact directly decides which tests run, so an unattended
+      # upgrade would silently change test selection -- exactly the class of invisible change this
+      # workflow keeps getting bitten by. Bump deliberately, with the two numbers above re-measured.
+      # --only-binary: never fall back to an sdist build (see the agent-core failure above).
+      - name: Install codna (productized blast-radius engine, from PyPI)
+        run: |
+          set -euo pipefail
+          ./scripts/run_repo_python.sh -m pip install --quiet --only-binary=:all: "codna==0.2.16"
+
+      # Same discipline as the memengine gate: a hard error, not a warning. If codna is importable
+      # but the impact seam is missing (a wheel predating thyn-ai/codna#446), selection silently
+      # degrades to the local graph and nobody notices -- so assert the SEAM, not just the import.
+      - name: Verify the codna impact engine is live
+        run: |
+          ./scripts/run_repo_python.sh -c "
+          from codna import codeunits
+          from codna.impact import compute_impact
+          assert hasattr(codeunits, 'language_for') and hasattr(codeunits, 'extract_file')
+          assert callable(compute_impact)
+          " || { echo "::error::codna installed but the impact seam is missing - blast radius would silently fall back to the local over-selecting graph"; exit 1; }
+          echo "::notice::codna present - productized impact engine WILL drive selection"
+
       - name: Build compiled Mojo simulation runtime
         env:
           PIXI_HOME: ${{ github.workspace }}/.pixi
@@ -388,26 +422,55 @@ jobs:
           # now distinguished explicitly -- `git diff` exit status is captured instead of
           # discarded, and only a SUCCESSFUL, genuinely-empty diff may reach mode=skip.
           set -uo pipefail
-          BASE="${{ github.event.pull_request.base.sha }}"
-          # Shallow clone: deepen just enough to make the merge-base reachable. Bounded so a very
-          # old base cannot turn this into a full-history fetch on every PR.
-          if ! git cat-file -e "$BASE" 2>/dev/null; then
-            git fetch --no-tags --depth=200 origin "+${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}" 2>/dev/null || true
-            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null || true
-          fi
-          if ! git cat-file -e "$BASE" 2>/dev/null; then
-            BASE="origin/${{ github.event.pull_request.base.ref }}"
-          fi
-          # Capture the STATUS. `|| true` here is what hid the failure before.
-          if CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/dev/null); then
+          # PRIMARY SOURCE IS THE API, NOT git. The changed-file list for a pull request is
+          # authoritative from GET /pulls/{n}/files and needs NO local history at all, which
+          # sidesteps the shallow-clone problem entirely instead of fighting it.
+          #
+          # The git route was tried first and does not work on these runners: with fetch-depth: 1
+          # the base sha is absent, and BOTH deepening fetches failed too -- run 33012371772 (the
+          # fix's own PR) rendered
+          #   "##[warning]blast-radius could not compute the diff against 'e8f7bf5b...'"
+          # so selection fell back to the full gate on every single PR. It was safe (that is what
+          # the previous commit fixed) but it never actually trimmed anything. Worse, the fetch's
+          # own errors were invisible because I had written `2>/dev/null` on them, so there was
+          # nothing in the log explaining WHY -- the diagnostic was silenced by the same reflex
+          # that caused the original bug.
+          #
+          # git diff is kept as the fallback for the case the API is unreachable, and its stderr
+          # is now CAPTURED and printed rather than discarded.
+          CHANGED=""
+          DIFF_OK=0
+          API="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+          # One-line python on purpose: a multi-line `-c '...'` puts continuation lines at column 0,
+          # which breaks the enclosing YAML block scalar (caught by yaml.safe_load before shipping).
+          if CHANGED=$(
+              curl -sS --fail-with-body -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                   -H "Accept: application/vnd.github+json" "$API?per_page=100" 2>/tmp/api_err.txt \
+              | python3 -c 'import json,sys; print("\n".join(f["filename"] for f in json.load(sys.stdin)))' 2>/dev/null
+             ) && [ -n "$CHANGED" ]; then
             DIFF_OK=1
+            echo "::notice::blast-radius: changed files from the PR files API ($(printf '%s' "$CHANGED" | wc -l | tr -d ' ') file(s))"
           else
-            DIFF_OK=0
-            CHANGED=""
+            echo "::warning::blast-radius: PR files API unusable ($(head -c 120 /tmp/api_err.txt 2>/dev/null || true)) - falling back to git"
+            BASE="${{ github.event.pull_request.base.sha }}"
+            if ! git cat-file -e "$BASE" 2>/dev/null; then
+              # stderr NOT discarded this time: if these fail, the reason must be in the log.
+              git fetch --no-tags --depth=200 origin \
+                "+${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}" 2>&1 | tail -3 || true
+              git fetch --no-tags --depth=200 origin "$BASE" 2>&1 | tail -3 || true
+            fi
+            git cat-file -e "$BASE" 2>/dev/null || BASE="origin/${{ github.event.pull_request.base.ref }}"
+            if CHANGED=$(git diff --name-only "$BASE"...HEAD 2>/tmp/git_err.txt); then
+              DIFF_OK=1
+            else
+              DIFF_OK=0
+              CHANGED=""
+              echo "::warning::blast-radius: git diff also failed: $(head -c 160 /tmp/git_err.txt 2>/dev/null || true)"
+            fi
           fi
           if [ "$DIFF_OK" != "1" ]; then
-            # UNKNOWN diff -> full run. Never skip on ignorance.
-            echo "::warning::blast-radius could not compute the diff against '$BASE' - failing CLOSED to the full gate (mode=all), never skip"
+            # UNKNOWN change set -> full run. Never skip on ignorance.
+            echo "::warning::blast-radius could not determine the changed files (API and git both failed) - failing CLOSED to the full gate (mode=all), never skip"
             {
               echo "mode=all"
               echo "tests="
