@@ -402,6 +402,18 @@ jobs:
       - name: Verify kernel inventory artifacts are current (no drift)
         run: make inventory-check
 
+      # The accelerator surface, compiled AND executed on a runner with NO accelerator.
+      # `--target-accelerator=none` makes every `@parameter if` gate elaborate for real, so a
+      # broken gate is a compile error here rather than a `shader_toolchain_absent` surprise on
+      # a user's GPU. This target already existed (Makefile) and NO workflow invoked it -- the
+      # only CI coverage the accel surface had was the macOS leg, which was billing-dead since
+      # 2026-08-24 and never executed a Metal kernel anyway (thyn-ai/algenta#922).
+      #
+      # This is the hardware-agnostic half of GPU coverage: it needs no GPU, no vendor toolkit
+      # and no Apple hardware, so it runs on the ordinary fleet like everything else.
+      - name: Verify the accelerator surface compiles AOT with no accelerator
+        run: make verify-accel-aot
+
       # Codna blast-radius gating (v1): on PRs whose diff cannot influence the
       # test graph, skip the pytest legs (guard+lint+build still run). Subset
       # scoping of the pytest lists is phase 2; push/schedule/dispatch always
