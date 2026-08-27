@@ -71,13 +71,19 @@ python3 = "engine tooling; NOTE tier0 guarantees an interpreter, NOT a writable 
 # a venv. algenta already does this everywhere; codna adopted it in thyn-ai/codna#489.
 python_writability = "jobs MUST create a venv; the system interpreter is not pip-writable"
 
-# The per-boot repair runs in the BACKGROUND, on purpose: blocking put up to 120s of apt in front
-# of runner registration on every boot, and boot latency is the fleet's measured bottleneck
-# (2026-08-27: queue p50 14s, p90 120s, max 264s -- 27% of all CI wall clock is waiting). The
-# honest cost of that choice is a race: a job that shells out to unzip/rsync/gh within the first
-# seconds of a COLD boot can still miss it. Warm-pool VMs have long since finished. Recapturing
-# the image is what removes the race; more retries in the bootstrap would not.
-repair_is_asynchronous = "backgrounded to protect boot latency; /var/run/ci-image-repair-done marks completion"
+# The per-boot repair BLOCKS runner registration. It was briefly backgrounded to protect boot
+# latency (queue p50 14s, p90 120s, max 264s -- 27% of all CI wall clock is waiting), and the race
+# that accepted fired on its first real test, not as a rare tail: ci-warm-1787804191 booted
+# 04:16:31Z carrying the repair, its job started 04:17:25Z, and codna's release died on
+# `gh: command not found` 54 seconds into a VM that HAD the fix. Adding an apt repo and installing
+# gh does not finish in 54s.
+#
+# Registering a runner while its guaranteed tier0 tools are still installing advertises a
+# guarantee the machine cannot keep. A runner that is not ready must not claim to be ready --
+# that is the whole point of calling these tier0. The ~20-40s is paid before a VM joins the pool,
+# so it costs cold provisions and warm-pool refill, never a warm hit. Recapturing the image
+# deletes the block and the cost together.
+repair_blocks_registration = "blocking by design; a runner must not advertise tier0 it does not yet have"
 
 # tier0 guarantees `python3`. It does NOT guarantee python >= 3.11: jammy's python3 is 3.10, whose
 # stdlib has no tomllib. codna's auto-release-cli died on exactly that. Jobs needing a newer stdlib

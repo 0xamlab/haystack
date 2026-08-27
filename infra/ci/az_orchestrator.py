@@ -622,11 +622,23 @@ write_files:
       #   python : codna runs `python -m pip` / `python -m pytest` -> exit 127 without it
       #   unzip  : actions/setup-bun shells out to it -> "Unable to locate executable file: unzip"
       command -v python >/dev/null 2>&1 || ln -sf "$(command -v python3.14 || command -v python3)" /usr/local/bin/python 2>/dev/null || true
-      # BACKGROUNDED on purpose. Blocking here put up to 120s of apt in front of runner
-      # registration on EVERY boot, which is the opposite of what this pool needs -- and boot
-      # latency is exactly what makes the fleet feel flaky (measured 2026-08-27: queue p50 14s,
-      # p90 120s; blocking apt would dominate both). Registration starts immediately and the
-      # tools land seconds later. Delete this whole block once the image is recaptured.
+      # BLOCKING, and it has to be. This was backgrounded to protect boot latency, and the race
+      # that choice accepted fired on its FIRST real test rather than as a rare tail:
+      #
+      #   orchestrator deployed  03:52Z
+      #   ci-warm-1787804191 booted  04:16:31Z   <- carried this repair
+      #   its job started        04:17:25Z   <- 54s later
+      #   result                 gh: command not found, exit 127
+      #
+      # Adding the cli.github.com repo and apt-installing gh does not finish in 54 seconds, so
+      # codna's release failed on a VM that HAD the fix. Registering a runner while its
+      # guaranteed tier0 tools are still installing advertises a guarantee the machine cannot
+      # keep -- the same class of untruth the image contract exists to stop. A runner that is
+      # not ready must not claim to be ready.
+      #
+      # The cost is real and bounded: ~20-40s before a new VM joins the pool, which affects cold
+      # provisions and warm-pool refill, not warm hits (those VMs are already registered).
+      # Recapturing the golden image deletes this whole block and the cost with it.
       (
         # One `command -v <tool>` per tool, deliberately not a loop over "$t": the contract test
         # greps for exactly that literal per tier0 entry, so a loop would satisfy the shell while
@@ -644,11 +656,11 @@ write_files:
         if ! command -v gh >/dev/null 2>&1; then
           timeout 150 sh -c 'curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && apt-get update -qq && apt-get install -y -qq gh' >/dev/null 2>&1
         fi
-        # Marker for the honest caveat in manifest.toml [notes].repair_is_asynchronous: a job that
-        # shells out to one of these within the first few seconds of a cold boot can still lose the
-        # race. Recapturing the image is what removes the race, not more retries here.
         touch /var/run/ci-image-repair-done 2>/dev/null || true
-      ) &
+      )
+      # Every timeout above is bounded, so a network failure degrades to "tool still missing"
+      # rather than wedging the boot. A job that then needs the tool fails naming it, which is
+      # what the workflow-side guards are for -- silence is the thing to avoid, not failure.
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner

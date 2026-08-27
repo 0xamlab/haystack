@@ -145,3 +145,48 @@ def test_tools_that_broke_the_fleet_are_now_declared() -> None:
     tier0 = set(_manifest()["tier0"])
     for tool in ("unzip", "gh", "rsync", "python3", "node"):
         assert tool in tier0, f"{tool!r} must be a declared tier0 guarantee"
+
+
+def test_the_repair_completes_before_the_runner_registers() -> None:
+    """A runner must not advertise tier0 tools it is still installing.
+
+    This repair was briefly backgrounded to protect boot latency, and the race that choice
+    accepted fired on its first real test rather than as a rare tail. Measured 2026-08-27:
+
+        orchestrator deployed     03:52:00Z
+        ci-warm-1787804191 booted 04:16:31Z   <- carried the repair
+        its job started           04:17:25Z   <- 54 seconds later
+        result                    gh: command not found, exit 127
+
+    codna's release died on a VM that HAD the fix, because adding an apt repo and installing gh
+    does not finish in 54 seconds. Registering first and installing after means the runner claims
+    a guarantee the machine cannot yet keep -- which is the same untruth the rest of this file
+    exists to prevent, just relocated into a timing window.
+    """
+    if not _manifest()["image"]["rebuild_required"]:
+        return  # no per-boot repair to order once the image is current
+    source = _orchestrator_source()
+    fast_path = source[source.index('CLOUD_INIT_FAST = """') :]
+
+    # `.find()` + an explicit assertion, never `.index()`. A missing marker means the repair
+    # block was removed while rebuild_required is still true -- a real regression -- and
+    # `.index()` would report it as `ValueError: substring not found`, which names nothing.
+    # (Raised by `codna review` on this very file; the tool's first working review.)
+    def _offset(marker: str, why: str) -> int:
+        at = fast_path.find(marker)
+        assert at != -1, f"CLOUD_INIT_FAST no longer contains {marker!r} -- {why}"
+        return at
+
+    repair_done = _offset(
+        "ci-image-repair-done", "the per-boot repair block appears to be gone entirely"
+    )
+    register = _offset("config.sh --url", "the runner registration step appears to be gone")
+    assert repair_done < register, (
+        "the per-boot repair no longer completes before the runner registers; a job can be "
+        "handed to this VM while its tier0 tools are still installing"
+    )
+    need = _offset("NEED=", "the repair block no longer probes for missing tools")
+    assert ") &" not in fast_path[need:register], (
+        "the repair subshell is backgrounded again. That is exactly what let "
+        "ci-warm-1787804191 register 54s before gh existed and fail codna's release."
+    )
