@@ -126,8 +126,18 @@ MAX_CONCURRENCY = int(os.environ.get("AZ_ORCH_MAX", "20"))
 # The floor exists so the FIRST job after any quiet period still gets warm-pool pickup speed
 # instead of paying a full cold boot -- a burst-only pool (drain to 0) makes every post-idle
 # job slow, not just excess capacity beyond real demand.
-WARM_MIN = int(os.environ.get("AZ_ORCH_WARM", "2"))
-WARM_FLOOR = min(WARM_MIN, int(os.environ.get("AZ_ORCH_WARM_FLOOR", "1")))
+# Sized against real demand, not a round number. ONE pull request fires 3-4 jobs here
+# (CI/CD + sdk-audit + codeql), so a pool of 2 guaranteed that most of every PR paid a full
+# cold boot -- measured 2026-08-27T01:33Z: 7 jobs queued, 3 runners online, 5 VMs created in
+# the same minute and none registered for ~3 minutes. That IS the flakiness; nothing was
+# stuck, everything was waiting for Ubuntu to boot.
+#
+# 6 warm x 8 vCPU (Standard_D8s_v5) = 48 vCPU held steady. Live quota at the time of this
+# change: 108 of 350 regional vCPUs used, so this fits with room for MAX_CONCURRENCY bursts
+# on top. The floor rises with it: after a quiet period the first PR should still find a
+# warm runner, which is the whole point of a floor.
+WARM_MIN = int(os.environ.get("AZ_ORCH_WARM", "6"))
+WARM_FLOOR = min(WARM_MIN, int(os.environ.get("AZ_ORCH_WARM_FLOOR", "3")))
 IDLE_DRAIN_S = int(os.environ.get("AZ_ORCH_IDLE_DRAIN_S", "600"))
 WARM_PREFIX = "ci-warm-"
 # Azure Compute Gallery image version, REPLICATED to every region in REGIONS. This replaces
@@ -604,7 +614,12 @@ write_files:
       #   python : codna runs `python -m pip` / `python -m pytest` -> exit 127 without it
       #   unzip  : actions/setup-bun shells out to it -> "Unable to locate executable file: unzip"
       command -v python >/dev/null 2>&1 || ln -sf "$(command -v python3.14 || command -v python3)" /usr/local/bin/python 2>/dev/null || true
-      command -v unzip >/dev/null 2>&1 || timeout 120 sh -c 'apt-get update -qq && apt-get install -y -qq unzip' >/dev/null 2>&1 || true
+      # BACKGROUNDED on purpose. Blocking here put up to 120s of apt in front of runner
+      # registration on EVERY boot, which is the opposite of what this pool needs -- and boot
+      # latency is exactly what makes the fleet feel flaky. Registration starts immediately;
+      # unzip lands seconds later, long before any job reaches a step that shells out to it.
+      # Delete this line entirely once the golden image is recaptured with unzip baked in.
+      ( command -v unzip >/dev/null 2>&1 || timeout 120 sh -c 'apt-get update -qq && apt-get install -y -qq unzip' >/dev/null 2>&1 ) &
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner
