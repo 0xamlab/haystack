@@ -202,17 +202,46 @@ def test_sdk_release_workflow_is_idempotent() -> None:
 
 
 def test_python_release_builds_use_safe_import_path() -> None:
-    workflows = {
-        name: (_REPO_ROOT / ".github" / "workflows" / name).read_text("utf-8")
-        for name in ("release-sdks.yml", "build-runtime.yml")
-    }
+    """Every `-m build` that runs from the repo root must pass `-P`.
 
-    for name, workflow in workflows.items():
-        assert "python -m build" not in workflow, (
-            f"{name} must use `python -P -m build`; the repository's build/ directory "
-            "otherwise shadows the PyPA build package"
-        )
-        assert "python -P -m build" in workflow, name
+    Without it, the repository's own `build/` directory shadows the PyPA `build` package and
+    the wheel build dies on an import that looks nothing like the real cause.
+
+    DISCOVERED, not listed. The previous version of this test named two workflow files and
+    asserted the safe form was PRESENT in each. That had two failure modes and hit both: it
+    never checked `.github/scripts/*.sh`, where two of the five real invocations actually
+    live, and it broke the moment a named file legitimately stopped building a wheel (the
+    macOS leg's removal) -- a test failing because a build MOVED, not because it regressed.
+    Scanning instead means a new workflow or script is covered the day it is added.
+    """
+    roots = [_REPO_ROOT / ".github" / "workflows", _REPO_ROOT / ".github" / "scripts"]
+    sources = [
+        path
+        for root in roots
+        if root.is_dir()
+        for path in sorted(root.rglob("*"))
+        if path.is_file() and path.suffix in {".yml", ".yaml", ".sh"}
+    ]
+    assert sources, "found no workflow/script sources to scan"
+
+    # `python`/`python3`/`$PY`/"$PY" ... -m build, capturing whatever sits between.
+    invocation = re.compile(r"""(?P<interp>[\w"'$./{}-]*python[\w"'$./{}-]*)(?P<flags>[^\n]*?)-m\s+build""")
+
+    offenders: list[str] = []
+    seen = 0
+    for path in sources:
+        for lineno, line in enumerate(path.read_text("utf-8").splitlines(), 1):
+            for match in invocation.finditer(line):
+                seen += 1
+                if "-P" not in match.group("flags"):
+                    offenders.append(f"{path.relative_to(_REPO_ROOT)}:{lineno}: {line.strip()}")
+
+    assert not offenders, "`-m build` without `-P` (repo build/ shadows the PyPA package):\n" + "\n".join(
+        offenders
+    )
+    # A regression floor, not an exact count: if a refactor left ZERO invocations the scan
+    # above would pass vacuously while nothing builds a wheel at all.
+    assert seen >= 3, f"expected the repo to still build wheels somewhere; found {seen}"
 
 
 def test_sdk_release_workflow_only_targets_existing_pypi_projects() -> None:
