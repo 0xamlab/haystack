@@ -219,6 +219,30 @@ def test_no_publishing_job_can_run_on_workflow_dispatch():
     assert not unguarded, f"these jobs could fire on a manual dispatch: {unguarded}"
 
 
+def test_a_dispatch_run_cannot_share_a_concurrency_group_with_a_push():
+    """The measurement must survive an active main branch, or it can never be taken.
+
+    GitHub allows one RUNNING and one PENDING run per concurrency group. A dispatch that has
+    not been given a runner yet occupies the pending slot, and the next run entering that group
+    evicts it -- `cancel-in-progress: false` does not help, because that governs the *running*
+    run, not the pending one.
+
+    Measured 2026-08-27: run 33036715923 sat pending for 19 minutes behind a saturated fleet
+    and was cancelled the moment a push landed. The baseline sweeps ~793 files, so it is exactly
+    the run least likely to start promptly and most likely to be evicted.
+    """
+    yaml = pytest.importorskip("yaml")
+    workflow = yaml.safe_load(
+        (_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+    group = str(workflow["concurrency"]["group"])
+    assert "workflow_dispatch" in group and "run_id" in group, (
+        "the concurrency group does not distinguish a workflow_dispatch run "
+        f"({group!r}), so a dispatch shares the per-ref slot with main pushes and gets "
+        "evicted before it ever starts. Key dispatch runs by github.run_id."
+    )
+
+
 def test_the_baseline_measurement_is_dispatch_only():
     """It sweeps ~793 files; if it ever ran on a PR it would dominate every PR's runtime."""
     yaml = pytest.importorskip("yaml")

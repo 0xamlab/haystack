@@ -56,7 +56,14 @@ concurrency:
   # workflows serialize fleet-wide (see sdk-audit.yml). The v1 serial slot
   # starved idle runners on single-job legs; zombies (reaper) and grind
   # (adaptive CodeQL) were the real wedge causes and are fixed at root.
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # A workflow_dispatch run gets its OWN group, keyed by run_id. Sharing the per-ref group with
+  # main pushes made the baseline measurement impossible to run: GitHub allows only ONE PENDING
+  # run per group, so a dispatch that has not started yet is EVICTED by the next push. Measured
+  # 2026-08-27 -- run 33036715923 sat pending 19 minutes behind a saturated fleet and was
+  # cancelled the instant a push landed, even though cancel-in-progress is false for pushes.
+  # `cancel-in-progress: false` does not protect a run that never got a runner; the pending slot
+  # is the scarce resource, not the running one. A dispatch neither evicts nor is evicted now.
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'shared' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
