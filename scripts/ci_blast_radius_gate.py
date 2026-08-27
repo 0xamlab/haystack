@@ -27,10 +27,15 @@ Two deliberate choices:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 _KEYWORDS = ("FAILED ", "ERROR ")
+
+# A pytest node ID names a .py file, optionally followed by ::test[...]. Anything else on
+# a FAILED/ERROR line is display noise, not a result.
+_NODE_RE = re.compile(r"^[^\s:]+\.py(::.+)?$")
 
 
 def _node_from_summary(rest: str) -> str:
@@ -65,7 +70,11 @@ def parse_reds(text: str) -> list[str]:
         for keyword in _KEYWORDS:
             if line.startswith(keyword):
                 node = _node_from_summary(line[len(keyword) :])
-                if node:
+                # A node ID always names a .py file. pytest wraps a long id and prints the
+                # bare status on the next line ("FAILED            [ 9%]"); accepting that
+                # put 18 junk entries into the first measured baseline. Requiring the path
+                # shape here means neither the gate nor a baseline can ingest progress noise.
+                if node and _NODE_RE.match(node):
                     seen.setdefault(node, None)
                 break
     return list(seen)

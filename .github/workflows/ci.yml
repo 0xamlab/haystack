@@ -711,9 +711,21 @@ jobs:
               > /tmp/one.log 2>&1 < /dev/null
             one_rc=$?
             set -e
-            grep -E "^(FAILED|ERROR) " /tmp/one.log \
+            # `tests/` is REQUIRED right after the keyword. pytest wraps a long node id and
+            # puts the bare status on the next line ("FAILED            [ 9%]"); a keyword-only
+            # match swallowed 18 of those into the first measured baseline as junk entries.
+            grep -E "^(FAILED|ERROR) tests/" /tmp/one.log \
               | sed -E 's/^(FAILED|ERROR) //; s/ - .*$//' >> /tmp/reds.txt || true
-            if ! grep -qE "(passed|failed|error|no tests ran)" /tmp/one.log; then
+            # pytest's own exit codes are the reliable signal: 0 ok, 1 tests failed,
+            # 5 nothing collected -- all mean it RAN. 2/3/4 (interrupted, internal, usage) and
+            # anything >128 (signal) mean it did not. Grepping the summary text instead flagged
+            # 7 all-skipped files as UNMEASURED, because "7 skipped" contains none of the words
+            # that pattern looked for.
+            case "$one_rc" in
+              0|1|5) ran=1 ;;
+              *)     ran=0 ;;
+            esac
+            if [ "$ran" = "0" ]; then
               echo "::warning::$one produced no pytest summary (rc=$one_rc) -- UNMEASURED"
               tail -5 /tmp/one.log || true
               echo "$one" >> /tmp/unmeasured.txt

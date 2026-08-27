@@ -250,3 +250,21 @@ def test_every_baselined_path_still_exists():
         if not (_ROOT / entry.split("::", 1)[0]).is_file()
     ]
     assert not stale, f"baseline names paths that no longer exist: {stale}"
+
+
+def test_wrapped_progress_noise_is_not_mistaken_for_a_red():
+    """pytest wraps a long node id and prints the bare status on the next line, so the log
+    contains `FAILED                 [  9%]` with no path. The first measured baseline
+    swallowed 18 of those as entries. They match no real red, so they can never be removed
+    by fixing anything -- the baseline would just carry permanent dead weight."""
+    out = (
+        "FAILED                                                    [  9%]\n"
+        "ERROR                                                     [ 16%]\n"
+        "FAILED tests/test_x.py::test_a - boom\n"
+    )
+    assert gate.parse_reds(out) == ["tests/test_x.py::test_a"]
+
+
+def test_a_bare_file_path_is_still_a_valid_red():
+    """Collection errors have no ::test part; they must survive the path-shape check."""
+    assert gate.parse_reds("ERROR tests/test_x.py\n") == ["tests/test_x.py"]
