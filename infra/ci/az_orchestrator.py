@@ -624,10 +624,31 @@ write_files:
       command -v python >/dev/null 2>&1 || ln -sf "$(command -v python3.14 || command -v python3)" /usr/local/bin/python 2>/dev/null || true
       # BACKGROUNDED on purpose. Blocking here put up to 120s of apt in front of runner
       # registration on EVERY boot, which is the opposite of what this pool needs -- and boot
-      # latency is exactly what makes the fleet feel flaky. Registration starts immediately;
-      # unzip lands seconds later, long before any job reaches a step that shells out to it.
-      # Delete this line entirely once the golden image is recaptured with unzip baked in.
-      ( command -v unzip >/dev/null 2>&1 || timeout 120 sh -c 'apt-get update -qq && apt-get install -y -qq unzip' >/dev/null 2>&1 ) &
+      # latency is exactly what makes the fleet feel flaky (measured 2026-08-27: queue p50 14s,
+      # p90 120s; blocking apt would dominate both). Registration starts immediately and the
+      # tools land seconds later. Delete this whole block once the image is recaptured.
+      (
+        # One `command -v <tool>` per tool, deliberately not a loop over "$t": the contract test
+        # greps for exactly that literal per tier0 entry, so a loop would satisfy the shell while
+        # leaving the gate blind -- which is the class of hole that let `gh` ship missing.
+        NEED=""
+        command -v unzip >/dev/null 2>&1 || NEED="$NEED unzip"
+        command -v rsync >/dev/null 2>&1 || NEED="$NEED rsync"
+        [ -n "$NEED" ] && timeout 120 sh -c "apt-get update -qq && apt-get install -y -qq $NEED" >/dev/null 2>&1
+        # `gh` is NOT in jammy main -- it ships from cli.github.com, the same third-party-repo
+        # pattern the full bootstrap already uses for docker-ce. This one is not hypothetical:
+        # codna's auto-release-cli died with `gh: command not found` (exit 127) on the FIRST real
+        # release after the fleet went org-wide, which is exactly the event infra/ci/image/
+        # manifest.toml predicted when it declared gh tier0. It was declared and apt-installed in
+        # CLOUD_INIT, but never repaired HERE -- and CLOUD_INIT never runs on a golden-image VM.
+        if ! command -v gh >/dev/null 2>&1; then
+          timeout 150 sh -c 'curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && apt-get update -qq && apt-get install -y -qq gh' >/dev/null 2>&1
+        fi
+        # Marker for the honest caveat in manifest.toml [notes].repair_is_asynchronous: a job that
+        # shells out to one of these within the first few seconds of a cold boot can still lose the
+        # race. Recapturing the image is what removes the race, not more retries here.
+        touch /var/run/ci-image-repair-done 2>/dev/null || true
+      ) &
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner

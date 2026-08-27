@@ -97,7 +97,8 @@ def test_per_boot_repair_covers_the_fast_path_while_the_image_lags() -> None:
     boot has to appear there too, or it never reaches a real worker -- the mistake made when
     `unzip` was first added.
     """
-    if not _manifest()["image"]["rebuild_required"]:
+    manifest = _manifest()
+    if not manifest["image"]["rebuild_required"]:
         return  # image is current; per-boot repair is not expected to exist
     source = _orchestrator_source()
     fast_path = source[source.index('CLOUD_INIT_FAST = """') :]
@@ -108,12 +109,20 @@ def test_per_boot_repair_covers_the_fast_path_while_the_image_lags() -> None:
     executable = "\n".join(
         line for line in fast_path.splitlines() if not line.lstrip().startswith("#")
     )
-    for tool in ("unzip", "python"):
-        assert f"command -v {tool}" in executable, (
-            f"CLOUD_INIT_FAST has no `command -v {tool}` repair guard. That is the path "
-            "golden-image VMs actually run, so patching CLOUD_INIT alone changes nothing for a "
-            "real worker."
-        )
+    # DERIVED from the manifest, never a hardcoded list. The earlier version checked a literal
+    # ("unzip", "python") tuple, so when `gh` was declared tier0 and apt-installed in CLOUD_INIT
+    # -- but never repaired here -- this test stayed green. codna's first real release after the
+    # fleet move then died with `gh: command not found`, exit 127. A gate that only knows about
+    # yesterday's tools cannot catch tomorrow's instance of the same mistake.
+    required = sorted(set(manifest["tier0"]) - set(manifest["image"].get("baked_in", [])))
+    missing = [t for t in required if f"command -v {t}" not in executable]
+    assert not missing, (
+        f"tier0 declares {missing} but CLOUD_INIT_FAST has no `command -v <tool>` repair for "
+        "them. That is the path golden-image VMs actually run, so patching CLOUD_INIT alone "
+        "changes nothing for a real worker -- it is how `gh` reached production missing. Either "
+        "add the repair, or list the tool under [image].baked_in once the recaptured image "
+        "genuinely ships it."
+    )
 
 
 def test_tier1_tools_are_not_silently_promised() -> None:

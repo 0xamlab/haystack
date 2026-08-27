@@ -23,9 +23,24 @@
 [image]
 # Bumped whenever the tool set changes. The bootstrap stamps this into /etc/ci-image.json so a
 # job can assert what it is running on instead of discovering a gap 50s into a test.
-contract = "1.1.0"
+contract = "1.2.0"
 gallery_version = "1.0.0"          # the CAPTURED image; lags contract until a recapture
 rebuild_required = true            # contract != gallery_version -> per-boot repair is active
+
+# Tier-0 binaries the CAPTURED image genuinely already ships, so they need no per-boot repair.
+# Everything in [tier0] that is NOT listed here MUST have a `command -v <tool>` guard in
+# CLOUD_INIT_FAST while rebuild_required is true -- tests/test_ci_image_contract.py derives that
+# requirement from this list rather than from a hardcoded tuple.
+#
+# That derivation exists because the hardcoded version missed a real one. `gh` was declared tier0
+# and apt-installed in CLOUD_INIT, but CLOUD_INIT never runs on a golden-image VM, and the test
+# only knew to check `unzip` and `python`. codna's first real release after the fleet went
+# org-wide then failed with `gh: command not found`, exit 127 -- the precise event the tier0 note
+# on `gh` had predicted.
+baked_in = [
+  "bash", "git", "curl", "jq", "tar", "gzip", "make",
+  "docker", "node", "npm", "clang", "lld", "python3",
+]
 
 [tier0]
 # Guaranteed on every runner, language-agnostic. A repo may assume these without declaring them.
@@ -55,6 +70,20 @@ python3 = "engine tooling; NOTE tier0 guarantees an interpreter, NOT a writable 
 # The contract is therefore: an interpreter is guaranteed, a WRITABLE one is not. Jobs create
 # a venv. algenta already does this everywhere; codna adopted it in thyn-ai/codna#489.
 python_writability = "jobs MUST create a venv; the system interpreter is not pip-writable"
+
+# The per-boot repair runs in the BACKGROUND, on purpose: blocking put up to 120s of apt in front
+# of runner registration on every boot, and boot latency is the fleet's measured bottleneck
+# (2026-08-27: queue p50 14s, p90 120s, max 264s -- 27% of all CI wall clock is waiting). The
+# honest cost of that choice is a race: a job that shells out to unzip/rsync/gh within the first
+# seconds of a COLD boot can still miss it. Warm-pool VMs have long since finished. Recapturing
+# the image is what removes the race; more retries in the bootstrap would not.
+repair_is_asynchronous = "backgrounded to protect boot latency; /var/run/ci-image-repair-done marks completion"
+
+# tier0 guarantees `python3`. It does NOT guarantee python >= 3.11: jammy's python3 is 3.10, whose
+# stdlib has no tomllib. codna's auto-release-cli died on exactly that. Jobs needing a newer stdlib
+# must PROBE for the capability rather than pin a version -- a pinned "python3.14" breaks the moment
+# the image ships 3.15.
+python_version_floor = "python3 may be 3.10; probe for the capability you need, never pin a version"
 
 [bootstrap_packages]
 # apt package -> the tier0 binaries it provides. The test asserts every tier0 binary is
