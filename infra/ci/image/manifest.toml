@@ -1,0 +1,92 @@
+# The az-ephemeral runner image contract.
+#
+# THIS FILE IS THE SOURCE OF TRUTH for what a thyn-ai CI runner guarantees. It exists because
+# the gallery image `ci-worker/1.0.0` had NO source in the repository at all -- `git grep
+# ci-worker` returned only the ID string in az_orchestrator.py. An image nobody can rebuild is
+# an image nobody can extend, so every gap got patched at boot instead of fixed once:
+# `python` and `unzip` both went in as per-boot repairs in August 2026.
+#
+# The failure mode this prevents is specific and already happened three times. The image is a
+# FROZEN capture of CLOUD_INIT as it stood at one commit. CLOUD_INIT kept gaining packages
+# afterwards, but golden-image VMs run CLOUD_INIT_FAST, which executes zero apt -- and that is
+# the normal path in all 8 regions. So anything added to the bootstrap after the capture is
+# DEAD ON ARRIVAL, silently. tests/test_ci_image_contract.py fails when this file and the
+# bootstrap disagree, which is the gate that was missing.
+#
+# HOW TO ADD A TOOL
+#   1. add it to [tier0] below with the reason it is fleet-wide
+#   2. add the apt package to bootstrap_packages so a full CLOUD_INIT boot installs it
+#   3. recapture the image (see rebuild_required) and bump image_contract
+# Steps 1-2 alone leave the tool missing on every golden-image VM. The test enforces 1<->2;
+# only a human can do 3, which is why rebuild_required exists.
+
+[image]
+# Bumped whenever the tool set changes. The bootstrap stamps this into /etc/ci-image.json so a
+# job can assert what it is running on instead of discovering a gap 50s into a test.
+contract = "1.1.0"
+gallery_version = "1.0.0"          # the CAPTURED image; lags contract until a recapture
+rebuild_required = true            # contract != gallery_version -> per-boot repair is active
+
+[tier0]
+# Guaranteed on every runner, language-agnostic. A repo may assume these without declaring them.
+# Each entry: the binary a workflow invokes, and why it is fleet-wide rather than repo-declared.
+bash = "POSIX shell; every run: block"
+git = "checkout, diff-based test selection"
+curl = "token fetch in the bootstrap itself"
+jq = "JSON in shell steps across every repo"
+tar = "artifact pack/unpack"
+gzip = "artifact pack/unpack"
+unzip = "actions/setup-bun shells out to it -- absence reads as 'Unable to locate executable file: unzip', naming nothing"
+make = "Makefile targets are the common entry point"
+docker = "service containers + image builds"
+node = "pnpm/corepack; without a system npm pnpm's installer falls through to the runner's npm stub"
+npm = "same"
+gh = "RELEASE and SYNC paths: algenta release-sdks.yml, codna auto-release-cli.yml"
+rsync = "SDK/vendor sync steps"
+clang = "Mojo shard builds link with clang"
+lld = "same"
+python3 = "engine tooling; NOTE tier0 guarantees an interpreter, NOT a writable site-packages"
+
+[notes]
+# Documented because a name on PATH is not the same as a usable interpreter, and this exact
+# gap cost a night: `python` was symlinked to the system python3.14, whose site-packages is
+# root-owned, so `pip install` still failed with
+#   [Errno 13] Permission denied: /usr/local/lib/python3.14/dist-packages/...
+# The contract is therefore: an interpreter is guaranteed, a WRITABLE one is not. Jobs create
+# a venv. algenta already does this everywhere; codna adopted it in thyn-ai/codna#489.
+python_writability = "jobs MUST create a venv; the system interpreter is not pip-writable"
+
+[bootstrap_packages]
+# apt package -> the tier0 binaries it provides. The test asserts every tier0 binary is
+# reachable from some package here AND that CLOUD_INIT actually installs each package.
+"ca-certificates" = []
+"curl" = ["curl"]
+"git" = ["git"]
+"jq" = ["jq"]
+"unzip" = ["unzip"]
+"rsync" = ["rsync"]
+"gh" = ["gh"]
+"build-essential" = ["make"]
+"clang" = ["clang"]
+"lld" = ["lld"]
+"docker-ce" = ["docker"]
+"docker-ce-cli" = []
+"containerd.io" = []
+"docker-buildx-plugin" = []
+"docker-compose-plugin" = []
+"nodejs" = ["node", "npm"]
+"python3.14" = ["python3"]
+"python3.14-venv" = []
+"libpython3.14" = []
+"libicu70" = []
+"libssl3" = []
+"software-properties-common" = []
+
+[tier1]
+# NOT guaranteed. A repo needing these declares them in its own workflow; the fleet never
+# learns the repo exists. Listed so a missing one produces a known answer rather than a hunt.
+rustfmt = "codna Rust benchmark contracts -- the reporter that PROVES an injected parse error is real"
+cargo = "same"
+gofmt = "the structurally identical Go path; not yet exercised, will behave exactly like rustfmt"
+go = "same"
+bun = "installed by oven-sh/setup-bun at job time (which is why unzip is tier0)"

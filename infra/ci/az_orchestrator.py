@@ -528,9 +528,17 @@ write_files:
       timeout 60 sh -c 'install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc' >/dev/null 2>&1
       log "docker-repo-key rc=$?"
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
-      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin ca-certificates curl git jq unzip libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
+      timeout 420 sh -c 'apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin ca-certificates curl git jq unzip rsync libicu70 libssl3 software-properties-common build-essential clang lld' >/dev/null 2>&1
       log "apt rc=$?"
       up
+      # GitHub CLI is not in jammy main. It sits on RELEASE and SYNC paths (release-sdks.yml,
+      # codna auto-release-cli.yml) that had not run since the fleet went org-wide -- so the
+      # first real release would have been the discovery event, not a test.
+      timeout 120 sh -c 'curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        -o /usr/share/keyrings/githubcli-archive-keyring.gpg && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+        && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list && apt-get update -qq && apt-get install -y -qq gh' >/dev/null 2>&1 || true
+      log "gh rc=$?"
       add-apt-repository -y ppa:deadsnakes/ppa >/dev/null 2>&1
       timeout 240 sh -c 'apt-get update -qq && apt-get install -y -qq python3.14 python3.14-venv libpython3.14' >/dev/null 2>&1
       # deadsnakes ships no pip module; jobs call `python3.14 -m pip` directly.
