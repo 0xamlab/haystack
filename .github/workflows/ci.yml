@@ -1141,10 +1141,15 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2,mode=max,compression=zstd
 
-      # GITHUB_TOKEN, not CODNA_TOKEN: the PUSHED engine image lives at the same
-      # thyn-ai/algenta package namespace as api/worker (the private codna base it was built FROM
-      # is a separate concern, already baked into the layers) — the same read access that already
-      # let this job pull its own just-pushed api/worker images applies here too.
+      # CODNA_TOKEN, NOT GITHUB_TOKEN. Live failure on the first real run (the build job only
+      # triggers on push to main, so this could not be caught pre-merge): GITHUB_TOKEN pulling
+      # ghcr.io/thyn-ai/algenta/engine got `permission_denied: read_package` / MANIFEST_UNKNOWN --
+      # the reasoning that it would have the same read access as api/worker (same repo, same
+      # package namespace) was wrong, and untested. deploy.yml's own comment already documented
+      # the actual fact: "CODNA_GHCR_READ_TOKEN (broad read:packages) reads all three images
+      # (api/worker/engine)" -- GITHUB_TOKEN evidently does not, for the engine package
+      # specifically. CODNA_TOKEN is the same credential the "Log in to GHCR for the bundled
+      # engine base" step above already uses successfully against this exact image.
       - name: SBOM + vulnerability scan for Engine image
         uses: ./.github/actions/image-sbom-scan
         with:
@@ -1152,7 +1157,7 @@ jobs:
           artifact-prefix: engine
           registry: ${{ env.REGISTRY }}
           registry-username: ${{ github.actor }}
-          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          registry-password: ${{ env.CODNA_TOKEN }}
 
       # The per-run docker-container builder (see setup step) must not survive the run: a reused
       # buildkit kept stale registry-auth state and pulled mojo anonymously (401) mid-job.
