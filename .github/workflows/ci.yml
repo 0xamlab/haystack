@@ -1039,6 +1039,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push API image
+        id: build-api
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
@@ -1056,6 +1057,18 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api-v2,mode=max,compression=zstd
 
+      # B4 (supply chain): SBOM + vulnerability report for the exact image just pushed, by digest
+      # (not `latest` — see the composite action's own header for why that distinction matters).
+      # Advisory only; not a signing step — see the composite action's header for that boundary.
+      - name: SBOM + vulnerability scan for API image
+        uses: ./.github/actions/image-sbom-scan
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api@${{ steps.build-api.outputs.digest }}
+          artifact-prefix: api
+          registry: ${{ env.REGISTRY }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata for Worker image
         id: meta-worker
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -1066,6 +1079,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push Worker image
+        id: build-worker
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
@@ -1077,6 +1091,15 @@ jobs:
           # Per-image registry cache — see the rationale at the API image step.
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker-v2,mode=max,compression=zstd
+
+      - name: SBOM + vulnerability scan for Worker image
+        uses: ./.github/actions/image-sbom-scan
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker@${{ steps.build-worker.outputs.digest }}
+          artifact-prefix: worker
+          registry: ${{ env.REGISTRY }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
 
       # The published Algenta engine encapsulates the async worker, Mojo binary, and agent runtime.
       # Its internal base is private, so a missing read token must fail the release rather than
@@ -1104,6 +1127,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push Engine image
+        id: build-engine
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
@@ -1116,6 +1140,19 @@ jobs:
           # same credentials that already push the engine image itself (same GHCR namespace).
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2,mode=max,compression=zstd
+
+      # GITHUB_TOKEN, not CODNA_TOKEN: the PUSHED engine image lives at the same
+      # thyn-ai/algenta package namespace as api/worker (the private codna base it was built FROM
+      # is a separate concern, already baked into the layers) — the same read access that already
+      # let this job pull its own just-pushed api/worker images applies here too.
+      - name: SBOM + vulnerability scan for Engine image
+        uses: ./.github/actions/image-sbom-scan
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/engine@${{ steps.build-engine.outputs.digest }}
+          artifact-prefix: engine
+          registry: ${{ env.REGISTRY }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
 
       # The per-run docker-container builder (see setup step) must not survive the run: a reused
       # buildkit kept stale registry-auth state and pulled mojo anonymously (401) mid-job.

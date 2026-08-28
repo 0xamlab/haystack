@@ -1,0 +1,92 @@
+name: Image SBOM + vulnerability scan
+description: >-
+  Generate SPDX + CycloneDX SBOMs and a Grype vulnerability report for one already-pushed image,
+  referenced by digest, and upload all three as workflow artifacts.
+
+# WHY DIGEST, NOT A TAG. `latest` can move between this job pushing an image and this step
+# scanning it (a concurrent run on the same branch, however unlikely) -- a report for "whatever
+# `latest` resolves to right now" is not a report for the specific image this job just built. A
+# digest is the one reference that cannot silently point somewhere else mid-job.
+#
+# WHY THIS IS ADVISORY, NOT A GATE. Every image already has known CVEs in its base OS packages the
+# day it's built -- that is normal, not a build defect, and turning it into a hard failure on day
+# one would either block every release or get disabled at the first false-positive-shaped
+# annoyance. This uploads the evidence so it is visible and diffable release-over-release. Making
+# specific severities blocking is a follow-up, done deliberately once there is a triaged baseline
+# to ratchet against -- the same pattern this repo already uses for its own reliability guards
+# (`scripts/reliability_guards`, `baselined=True`): visibility first, blocking once there is
+# something real to ratchet.
+#
+# WHY NOT COSIGN SIGNING HERE TOO. A cosign signing key is a permanent trust anchor once any
+# customer starts verifying against its public half -- rotating it later is disruptive, unlike
+# adding a new SBOM format or scanner. That is an owner decision (which key custody model, whether
+# keyless is acceptable for air-gapped customers who cannot reach Rekor/Fulcio), not something to
+# fold into a scan-and-report step. Tracked separately.
+
+inputs:
+  image-ref:
+    description: Fully-qualified, digest-pinned image reference (registry/name@sha256:...).
+    required: true
+  artifact-prefix:
+    description: Prefix for the uploaded artifact names (e.g. "api", "worker", "engine").
+    required: true
+  registry:
+    description: Registry host the image was pushed to (for the login syft/grype need to pull it).
+    required: true
+  registry-username:
+    description: Registry username.
+    required: true
+  registry-password:
+    description: Registry password/token.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Log in so syft/grype can pull the image by digest
+      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.registry-username }}
+        password: ${{ inputs.registry-password }}
+
+    - name: Generate SPDX SBOM
+      uses: anchore/sbom-action@006b7ce8314066bdf1765b4500370d40fa6917a3 # v0.24.2
+      with:
+        image: ${{ inputs.image-ref }}
+        format: spdx-json
+        output-file: ${{ inputs.artifact-prefix }}-sbom.spdx.json
+        upload-artifact: false
+
+    - name: Generate CycloneDX SBOM
+      uses: anchore/sbom-action@006b7ce8314066bdf1765b4500370d40fa6917a3 # v0.24.2
+      with:
+        image: ${{ inputs.image-ref }}
+        format: cyclonedx-json
+        output-file: ${{ inputs.artifact-prefix }}-sbom.cyclonedx.json
+        upload-artifact: false
+
+    - name: Scan for known vulnerabilities (advisory — see header)
+      # Never fails the job: `fail-build: false`. This step's purpose is the artifact it
+      # produces, not a pass/fail gate — see the composite action's own header comment for why.
+      uses: anchore/scan-action@8576240a41341d866dbd7ebc72cd9fc0ef023f54 # v7.4.2
+      id: grype
+      with:
+        image: ${{ inputs.image-ref }}
+        fail-build: false
+        output-format: json
+        add-cpes-if-none: true
+
+    - name: Rename the vulnerability report for a clear artifact name
+      shell: bash
+      run: cp "${{ steps.grype.outputs.json }}" "${{ inputs.artifact-prefix }}-vulnerabilities.json"
+
+    - name: Upload SBOM + vulnerability report
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.artifact-prefix }}-supply-chain-${{ github.run_id }}
+        path: |
+          ${{ inputs.artifact-prefix }}-sbom.spdx.json
+          ${{ inputs.artifact-prefix }}-sbom.cyclonedx.json
+          ${{ inputs.artifact-prefix }}-vulnerabilities.json
+        retention-days: 90
