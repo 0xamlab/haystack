@@ -56,6 +56,7 @@ import hmac
 import http.server
 import json
 import os
+import re
 import secrets
 import ssl
 import threading
@@ -729,6 +730,15 @@ def create_vm(name, size, region, vnet, subnet):
         raise
 
 
+# An ephemeral os disk needs a local temp disk at least as large as the image, and MOST OF
+# SIZE_CHAIN HAS NONE. Measured in centralus: D8s_v5 / D8s_v6 / D8s_v4 / D4s_v5 / D4s_v4 all report
+# 0 MB of resource disk; F8s_v2 and D8s_v3 (65536), F4s_v2 and D4s_v3 (32768) can do it. SIZE_CHAIN
+# prefers D8s_v5, so the "zero storage cost" path was failing on the COMMON case and every fallback
+# created a managed 30 GB Premium P4 disk that delete_vm() never removed. The fallback still needs a
+# managed disk -- no choice on those sizes -- but now one ARM deletes with the VM.
+_MANAGED_OS_DISK = {"createOption": "FromImage", "deleteOption": "Delete"}
+
+
 def _create_vm(name, size, region, vnet, subnet, nic):
     arm(
         "PUT",
@@ -779,7 +789,12 @@ def _create_vm(name, size, region, vnet, subnet, nic):
             "customData": base64.b64encode(open(ci_file, "rb").read()).decode(),
             "linuxConfiguration": {"disablePasswordAuthentication": False},
         },
-        "networkProfile": {"networkInterfaces": [{"id": nic}]},
+        # deleteOption=Delete makes ARM cascade the nic AND the os disk (below) with the VM, in one
+        # operation. Strictly better than sweeping after: a sweep has an orphan window and both
+        # had been leaking through it. Measured 2026-08-28: 1411 unattached disks / 41.6 TiB, and
+        # Storage was $378.65 of a $582.64 month-to-date bill -- the largest line, ahead of VMs
+        # at $189.38, for a CI plane whose entire job is running VMs.
+        "networkProfile": {"networkInterfaces": [{"id": nic, "properties": {"deleteOption": "Delete"}}]},
     }
     if SPOT:
         props["priority"] = "Spot"
@@ -789,10 +804,9 @@ def _create_vm(name, size, region, vnet, subnet, nic):
         arm("PUT", vm_path(name), {"location": region, "properties": props})
 
     try:
-        props["storageProfile"]["osDisk"] = {
-            "createOption": "FromImage",
-            "diffDiskSettings": {"option": "Local"},  # ephemeral OS disk: zero storage cost, fast
-        }
+        props["storageProfile"]["osDisk"] = dict(
+            _MANAGED_OS_DISK, diffDiskSettings={"option": "Local"}  # ephemeral: no disk resource at all
+        )
         put_vm()
     except urllib.error.HTTPError as e:
         if e.code == 409:  # stale VM from an earlier attempt: delete VM only (nic/pip stay), wait, retry
@@ -801,13 +815,13 @@ def _create_vm(name, size, region, vnet, subnet, nic):
             except Exception:
                 pass
             _wait_gone(vm_path(name), "2023-07-01")
-            props["storageProfile"].pop("osDisk", None)
+            props["storageProfile"]["osDisk"] = dict(_MANAGED_OS_DISK)
             put_vm()
         else:
-            props["storageProfile"].pop("osDisk", None)  # sizes without local disk fall back
+            props["storageProfile"]["osDisk"] = dict(_MANAGED_OS_DISK)  # sizes without local disk fall back
             put_vm()
     except Exception:
-        props["storageProfile"].pop("osDisk", None)  # sizes without local disk fall back
+        props["storageProfile"]["osDisk"] = dict(_MANAGED_OS_DISK)  # sizes without local disk fall back
         put_vm()
 
 
@@ -1035,7 +1049,49 @@ def cleanup():
             arm("DELETE", p["id"], api="2022-07-01")
         except Exception:
             pass
+    sweep_leaked_disks(vm_names, protected)
     _sweep_stale_registrations(vm_names | protected)
+
+
+_DISK_OWNER_RE = re.compile(r"^(?P<base>.+?)_(?:disk1|OsDisk_1)_[0-9a-f]{8,}$")
+
+
+def sweep_leaked_disks(vm_names, protected):
+    """Delete Unattached disks whose owning VM is gone.
+
+    Belt-and-braces behind deleteOption=Delete: that covers every VM created from now on, but
+    cannot adopt disks left by VMs deleted earlier, and an operator deletion can still strand one.
+    Uses the SAME two-pass _absent_once guard as the nic sweep, for the same reason -- a VM just PUT
+    may not list for 15-30s, and deleting its disk in that window kills the VM.
+    """
+    try:
+        d = arm("GET", f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/disks",
+                api="2023-04-02")
+    except Exception as e:
+        log(f"disk sweep list failed: {e}")
+        return
+    for disk in d.get("value", []):
+        name = disk.get("name", "")
+        m = _DISK_OWNER_RE.match(name)
+        if not m:
+            continue  # not a VM-derived name; never touch it
+        base = m.group("base")
+        if not base.startswith(("ci-az-", "ci-warm-")):
+            continue  # ci-golden-build / probe / cidebug disks are not ours to delete
+        if disk.get("properties", {}).get("diskState") != "Unattached":
+            continue
+        if base in vm_names or base in protected:
+            continue
+        key = f"disk:{base}"
+        if key not in _absent_once:
+            _absent_once.add(key)
+            continue
+        _absent_once.discard(key)
+        log(f"sweeping leaked disk {name} (owner {base} gone)")
+        try:
+            arm("DELETE", disk["id"], api="2023-04-02")
+        except Exception as e:
+            log(f"delete disk {name}: {e}")
 
 
 def _sweep_stale_registrations(live_names):
