@@ -184,6 +184,14 @@
 * [Licensing & editions](licensing.md)
 * [Usage & limits](billing.md)
 
+## Trust & Security
+
+* [Trust overview](trust/overview.md)
+* [Governed execution](trust/governed-execution.md)
+* [Data boundaries](trust/data-boundaries.md)
+* [Audit and evidence](trust/audit-and-evidence.md)
+* [Identity and access](trust/identity-and-access.md)
+
 ## HTTP API
 
 * [API overview](api/overview.md)
