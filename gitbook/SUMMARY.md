@@ -17,22 +17,24 @@
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
 * [Runtime library catalog](engine/runtime-library-catalog.md)
-* [Metal LLM decode](engine/qwen3-metal-decode.md)
-* [Model support matrix](engine/model-support-matrix.md)
 * [Kernel inventory](engine/kernel-inventory.md)
-* [GPU support](engine/gpu-support.md)
 * [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)
-* [Columnar queries](engine/columnar-queries.md)
 * [Reproducibility](engine/reproducibility.md)
-* [Sparse systems & graph analytics](engine/sparse-and-graph.md)
-* [Optimization & decision programs](engine/optimization.md)
-* [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
-* [Retrieval & ranking](engine/retrieval.md)
-* [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
-* [Reproducible evolutionary search](engine/reproducible-search.md)
-* [Asset degradation state](engine/degradation-state.md)
-* [Contest simulation & service timing](engine/contest-strategy.md)
+
+## GPU & LLM inference
+
+* [Metal LLM decode](engine/qwen3-metal-decode.md)
+* [Model support matrix](engine/model-support-matrix.md)
+* [GPU support](engine/gpu-support.md)
+
+## Compute & kernel primitives
+
+* [Data integrity and encoding](engine/data-integrity-and-encoding.md)
+* [Attention kernels](engine/attention-kernels.md)
+
+## Machine learning
+
 * [Time-series model selection](engine/ml-model-selection.md)
 * [Statistical model comparison](engine/ml-model-comparison.md)
 * [Probability calibration](engine/ml-calibration.md)
@@ -56,25 +58,41 @@
 * [Feature hashing (the hashing trick)](engine/ml-feature-hashing.md)
 * [Partial least squares regression (PLS1)](engine/ml-pls.md)
 * [Trainable SVM classifier (simplified SMO)](engine/ml-svm.md)
+* [Batched chain greeks](engine/ml-chain-greeks.md)
+
+## Optimization & simulation
+
+* [Optimization & decision programs](engine/optimization.md)
+* [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
+* [Discrete-event simulation & queueing](engine/discrete-event-simulation.md)
+* [Strategy comparison & simulation](engine/strategy-simulation.md)
+* [Contest simulation & service timing](engine/contest-strategy.md)
+* [Reproducible evolutionary search](engine/reproducible-search.md)
+* [Asset degradation state](engine/degradation-state.md)
+
+## Time series & statistics
+
 * [Forecasting and backtesting](engine/forecasting.md)
+* [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
 * [Statistical inference](engine/statistical-inference.md)
 * [Causal inference](engine/causal-inference.md)
-* [Batched chain greeks](engine/ml-chain-greeks.md)
-* [How the engine works](concepts/engine.md)
 * [Survival analysis](engine/survival-analysis.md)
+* [Evaluation & calibration gates](engine/evaluation-calibration.md)
+
+## Data & retrieval
+
+* [Sparse systems & graph analytics](engine/sparse-and-graph.md)
+* [Retrieval & ranking](engine/retrieval.md)
 * [Data quality & feature hygiene](engine/data-quality.md)
 * [Geospatial indexing & joins](engine/geospatial.md)
 * [Streaming sketches](engine/streaming-sketches.md)
 * [Windowed aggregates](engine/streaming-windows.md)
-* [Discrete-event simulation & queueing](engine/discrete-event-simulation.md)
-* [Evaluation & calibration gates](engine/evaluation-calibration.md)
-* [Strategy comparison & simulation](engine/strategy-simulation.md)
+* [Columnar queries](engine/columnar-queries.md)
 * [Spreadsheet formula plane](engine/sheet-formula-plane.md)
-* [Data integrity and encoding](engine/data-integrity-and-encoding.md)
-* [Attention kernels](engine/attention-kernels.md)
 
 ## Concepts
 
+* [How the engine works](concepts/engine.md)
 * [The governed decision lifecycle](concepts/decision-service.md)
 * [Governed data & query](concepts/governed-data.md)
 * [The capability plane](concepts/capability-plane.md)
