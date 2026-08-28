@@ -2829,6 +2829,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /v1/audit-logs/export.{fmt}:
+    get:
+      tags:
+      - Team
+      summary: Export the audit log (csv | json) with a verifiable content hash
+      description: 'Export this org''s audit log, with `X-Content-SHA256` over the
+        exact bytes returned.
+
+
+        WHY THE BODY IS BUFFERED RATHER THAN STREAMED. The header has to be the digest
+        of the bytes the
+
+        client actually receives, and HTTP headers precede the body -- so a genuinely
+        streamed response
+
+        could only carry the digest in a trailer, which most clients silently drop.
+        A hash the recipient
+
+        cannot check is worse than none, because it invites trust it has not earned.
+        The DB read IS
+
+        batched (`_AUDIT_EXPORT_BATCH`), so a large history does not materialise as
+        one result set;
+
+        memory is bounded by the size of the export the caller asked for.
+
+
+        Filters are the same ones /v1/audit-logs accepts, through the same helper,
+        so an export is
+
+        exactly the rows an operator saw in the UI.'
+      operationId: export_audit_logs_v1_audit_logs_export__fmt__get
+      security:
+      - BearerAuth: []
+      - LegacyApiKey: []
+      parameters:
+      - name: fmt
+        in: path
+        required: true
+        schema:
+          type: string
+          description: 'Export format: csv | json'
+          title: Fmt
+        description: 'Export format: csv | json'
+      - name: actor_email
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actor Email
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Action
+      - name: resource_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resource Type
+      - name: result
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Result
+      - name: policy_snapshot_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Policy Snapshot Id
+      - name: schema_snapshot_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Schema Snapshot Id
+      - name: manifest_version
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Manifest Version
+      - name: request_hash
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Request Hash
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /v1/audit-logs/artifacts:
     get:
       tags:

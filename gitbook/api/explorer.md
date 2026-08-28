@@ -1071,6 +1071,11 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/audit-logs" method="get" %}
 {% endopenapi-operation %}
 
+### `GET /v1/audit-logs/export.{fmt}`
+
+{% openapi-operation spec="algenta-api" path="/v1/audit-logs/export.{fmt}" method="get" %}
+{% endopenapi-operation %}
+
 ### `GET /v1/audit-logs/artifacts`
 
 {% openapi-operation spec="algenta-api" path="/v1/audit-logs/artifacts" method="get" %}

@@ -1,12 +1,16 @@
 """Team management endpoints — /v1/team, /v1/audit-logs, /v1/audit-logs/artifacts."""
 
+import csv
+import hashlib
+import io
 import json
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Path as PathParam, Query
+from fastapi.responses import Response
 from fastapi.params import Param
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
@@ -84,43 +88,24 @@ class TeamListResponse(BaseModel):
     pages: int
 
 
-def _generate_demo_audit_log(org_id: UUID) -> list[AuditLogEntry]:
-    now = datetime.now(UTC)
-    return [
-        AuditLogEntry(
-            id=str(uuid4()),
-            timestamp=now,
-            actor_email="owner@algenta.ai",
-            action="simulate",
-            resource_type="simulation_run",
-            resource_id=str(org_id),
-            ip_address="203.0.113.10",
-            result="success",
-            metadata={"source": "demo"},
-        ),
-        AuditLogEntry(
-            id=str(uuid4()),
-            timestamp=now,
-            actor_email="admin@algenta.ai",
-            action="invite_member",
-            resource_type="team_member",
-            resource_id=str(uuid4()),
-            ip_address="203.0.113.11",
-            result="success",
-            metadata={"source": "demo"},
-        ),
-        AuditLogEntry(
-            id=str(uuid4()),
-            timestamp=now,
-            actor_email="viewer@algenta.ai",
-            action="access_denied",
-            resource_type="audit_log",
-            resource_id=str(org_id),
-            ip_address="203.0.113.12",
-            result="failure",
-            metadata={"source": "demo"},
-        ),
-    ]
+def _audit_entry_from_row(e: Any) -> "AuditLogEntry":
+    """Map one audit_events row to the wire shape. Shared by /v1/audit-logs and its export.
+
+    Extracted so the two surfaces cannot drift: an exported column that the paginated view does not
+    show (or the reverse) would make the export unverifiable against what an operator reviewed.
+    """
+    return AuditLogEntry(
+        id=str(e.id),
+        timestamp=e.created_at,
+        actor_email=e.actor_email,
+        action=e.action,
+        resource_type=e.resource_type or "\u2014",
+        resource_id=e.resource_id,
+        ip_address=e.ip_address,
+        result=e.result,
+        content_hash=None,
+        metadata=_parse_audit_metadata(e.metadata_json),
+    )
 
 
 def _parse_audit_metadata(raw_metadata: str | None) -> dict[str, Any] | None:
@@ -508,7 +493,15 @@ async def remove_member(
     await invalidate_user_api_key_caches(db, user_id, redis)
 
 
-# ── Audit log (in-memory stub — production would use audit_events table) ──────
+# ── Audit log (audit_events table; an empty table returns an empty page) ─────────────────────
+#
+# There used to be a `_generate_demo_audit_log()` here, injected whenever the query returned no
+# rows. It fabricated three entries with invented actors (owner@algenta.ai), invented client IPs
+# (203.0.113.x) and an invented `access_denied` security event. An operator whose audit table was
+# genuinely empty -- a fresh install, or a tenant with nothing logged yet -- saw security events
+# that never happened, and could not tell them from real ones. For an audit surface that is the
+# worst possible failure mode: it is worse than an error, because it is silently plausible.
+# An empty table now returns an honest empty page.
 
 
 @router.get(
@@ -547,50 +540,8 @@ async def get_audit_logs(
     base_q = select(AuditEvent).where(*workspace_scope_clauses(AuditEvent, auth))
     all_events = ((await db.execute(base_q.order_by(desc(AuditEvent.created_at)))).scalars().all())
 
-    if not all_events:
-        demo_entries = _generate_demo_audit_log(auth["org_id"])
-        filtered_demo_entries = [
-            entry
-            for entry in demo_entries
-            if _matches_audit_log_filters(
-                actor_email=entry.actor_email,
-                action=entry.action,
-                resource_type=entry.resource_type,
-                result=entry.result,
-                metadata=entry.metadata,
-                actor_email_filter=actor_email,
-                action_filter=action,
-                resource_type_filter=resource_type,
-                result_filter=result,
-                policy_snapshot_id=policy_snapshot_id,
-                schema_snapshot_id=schema_snapshot_id,
-                manifest_version=manifest_version,
-                request_hash=request_hash,
-            )
-        ]
-        total = len(filtered_demo_entries)
-        offset = (page - 1) * limit
-        return AuditLogResponse(
-            entries=filtered_demo_entries[offset : offset + limit],
-            total=total,
-            page=page,
-            limit=limit,
-            pages=max(1, (total + limit - 1) // limit),
-        )
-
     filtered_entries = [
-        AuditLogEntry(
-            id=str(e.id),
-            timestamp=e.created_at,
-            actor_email=e.actor_email,
-            action=e.action,
-            resource_type=e.resource_type or "—",
-            resource_id=e.resource_id,
-            ip_address=e.ip_address,
-            result=e.result,
-            content_hash=None,
-            metadata=_parse_audit_metadata(e.metadata_json),
-        )
+        _audit_entry_from_row(e)
         for e in all_events
         if _matches_audit_log_filters(
             actor_email=e.actor_email,
@@ -616,6 +567,152 @@ async def get_audit_logs(
         page=page,
         limit=limit,
         pages=max(1, (total + limit - 1) // limit),
+    )
+
+
+_AUDIT_EXPORT_MIME = {"csv": "text/csv", "json": "application/json"}
+
+# Column order is part of the contract: a verifier re-hashing a download must reproduce these bytes
+# exactly, so the order is fixed here rather than taken from dict iteration.
+_AUDIT_EXPORT_COLUMNS = (
+    "id", "timestamp", "actor_email", "action",
+    "resource_type", "resource_id", "ip_address", "result", "metadata",
+)
+
+# How many rows to pull per round trip. Bounds the DB result set for a tenant with a large audit
+# history; it does NOT stream the response (see the note on X-Content-SHA256 below).
+_AUDIT_EXPORT_BATCH = 1000
+
+
+def _audit_export_bytes(entries: list["AuditLogEntry"], fmt: str) -> bytes:
+    if fmt == "json":
+        # sort_keys + compact separators so the same entries always hash to the same digest.
+        return json.dumps(
+            [
+                {
+                    "id": e.id,
+                    "timestamp": e.timestamp.isoformat(),
+                    "actor_email": e.actor_email,
+                    "action": e.action,
+                    "resource_type": e.resource_type,
+                    "resource_id": e.resource_id,
+                    "ip_address": e.ip_address,
+                    "result": e.result,
+                    "metadata": e.metadata,
+                }
+                for e in entries
+            ],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    buf = io.StringIO(newline="")
+    # \r\n explicitly: csv's platform default would make the digest differ between a Linux server
+    # and a reviewer verifying on Windows.
+    w = csv.writer(buf, lineterminator="\r\n")
+    w.writerow(_AUDIT_EXPORT_COLUMNS)
+    for e in entries:
+        w.writerow([
+            e.id, e.timestamp.isoformat(), e.actor_email, e.action,
+            e.resource_type, e.resource_id or "", e.ip_address or "", e.result,
+            json.dumps(e.metadata, sort_keys=True, separators=(",", ":")) if e.metadata else "",
+        ])
+    return buf.getvalue().encode()
+
+
+@router.get(
+    "/v1/audit-logs/export.{fmt}",
+    summary="Export the audit log (csv | json) with a verifiable content hash",
+)
+async def export_audit_logs(
+    db: AsyncSessionDep,
+    auth: Annotated[AuthContext, Depends(require_role("admin"))],
+    fmt: Annotated[str, PathParam(description="Export format: csv | json")],
+    actor_email: str | None = Query(default=None),
+    action: str | None = Query(default=None),
+    resource_type: str | None = Query(default=None),
+    result: str | None = Query(default=None),
+    policy_snapshot_id: str | None = Query(default=None),
+    schema_snapshot_id: str | None = Query(default=None),
+    manifest_version: str | None = Query(default=None),
+    request_hash: str | None = Query(default=None),
+) -> Response:
+    """Export this org's audit log, with `X-Content-SHA256` over the exact bytes returned.
+
+    WHY THE BODY IS BUFFERED RATHER THAN STREAMED. The header has to be the digest of the bytes the
+    client actually receives, and HTTP headers precede the body -- so a genuinely streamed response
+    could only carry the digest in a trailer, which most clients silently drop. A hash the recipient
+    cannot check is worse than none, because it invites trust it has not earned. The DB read IS
+    batched (`_AUDIT_EXPORT_BATCH`), so a large history does not materialise as one result set;
+    memory is bounded by the size of the export the caller asked for.
+
+    Filters are the same ones /v1/audit-logs accepts, through the same helper, so an export is
+    exactly the rows an operator saw in the UI.
+    """
+    from sqlalchemy import desc, select
+
+    from apps.api_server.models.audit_event import AuditEvent
+
+    if fmt not in _AUDIT_EXPORT_MIME:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported format '{fmt}'. Use: {', '.join(sorted(_AUDIT_EXPORT_MIME))}",
+        )
+
+    actor_email = _normalize_optional_query_string(actor_email)
+    action = _normalize_optional_query_string(action)
+    resource_type = _normalize_optional_query_string(resource_type)
+    result = _normalize_optional_query_string(result)
+    policy_snapshot_id = _normalize_optional_query_string(policy_snapshot_id)
+    schema_snapshot_id = _normalize_optional_query_string(schema_snapshot_id)
+    manifest_version = _normalize_optional_query_string(manifest_version)
+    request_hash = _normalize_optional_query_string(request_hash)
+
+    # workspace_scope_clauses is the tenant boundary -- without it an admin of one org would export
+    # another's audit trail, which is the worst possible cross-tenant leak.
+    base_q = (
+        select(AuditEvent)
+        .where(*workspace_scope_clauses(AuditEvent, auth))
+        .order_by(desc(AuditEvent.created_at))
+    )
+
+    entries: list[AuditLogEntry] = []
+    offset = 0
+    while True:
+        rows = (
+            (await db.execute(base_q.limit(_AUDIT_EXPORT_BATCH).offset(offset))).scalars().all()
+        )
+        if not rows:
+            break
+        for e in rows:
+            if _matches_audit_log_filters(
+                actor_email=e.actor_email,
+                action=e.action,
+                resource_type=e.resource_type,
+                result=e.result,
+                metadata=_parse_audit_metadata(e.metadata_json),
+                actor_email_filter=actor_email,
+                action_filter=action,
+                resource_type_filter=resource_type,
+                result_filter=result,
+                policy_snapshot_id=policy_snapshot_id,
+                schema_snapshot_id=schema_snapshot_id,
+                manifest_version=manifest_version,
+                request_hash=request_hash,
+            ):
+                entries.append(_audit_entry_from_row(e))
+        if len(rows) < _AUDIT_EXPORT_BATCH:
+            break
+        offset += _AUDIT_EXPORT_BATCH
+
+    body = _audit_export_bytes(entries, fmt)
+    return Response(
+        content=body,
+        media_type=_AUDIT_EXPORT_MIME[fmt],
+        headers={
+            "X-Content-SHA256": hashlib.sha256(body).hexdigest(),
+            "X-Audit-Export-Rows": str(len(entries)),
+            "Content-Disposition": f'attachment; filename="audit-log.{fmt}"',
+        },
     )
 
 

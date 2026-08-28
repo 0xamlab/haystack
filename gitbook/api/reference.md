@@ -383,6 +383,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `PATCH` | `/v1/team/{user_id}/role` | Update a team member's role |
 | `DELETE` | `/v1/team/{user_id}` | Remove a team member |
 | `GET` | `/v1/audit-logs` | Paginated audit log from DB |
+| `GET` | `/v1/audit-logs/export.{fmt}` | Export the audit log (csv \| json) with a verifiable content hash |
 | `GET` | `/v1/audit-logs/artifacts` | Paginated audit log artifacts from Parquet runtime storage |
 
 ## Triggers
