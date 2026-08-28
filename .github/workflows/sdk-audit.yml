@@ -95,9 +95,27 @@ jobs:
           # prior run can leave this container behind, and a fixed --name collides on
           # `docker run` otherwise.
           docker rm -fv postgres-ci-sdkaudit >/dev/null 2>&1 || true
-          docker run -d --name postgres-ci-sdkaudit -p 15433:5432 \
-            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
-            postgres:16-alpine
+          # `docker run` on an uncached image implicitly pulls, which talks to Docker Hub's
+          # auth endpoint before any layer transfer — a transient failure there (seen live:
+          # "dial tcp: lookup auth.docker.io ...: server misbehaving", the self-hosted
+          # runner's local resolver stub, not this image or this job) aborts the whole
+          # container start with nothing to retry on the daemon side. A failed `docker run`
+          # here leaves no container (rm -fv above/below is therefore always safe, not just
+          # cosmetic), so retrying the exact same command is safe and sufficient — no
+          # separate `docker pull` step needed.
+          pull_ok=0
+          for attempt in 1 2 3 4 5; do
+            if docker run -d --name postgres-ci-sdkaudit -p 15433:5432 \
+              -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
+              postgres:16-alpine; then
+              pull_ok=1
+              break
+            fi
+            echo "docker run postgres:16-alpine failed (attempt $attempt/5) -- retrying after cleanup" >&2
+            docker rm -fv postgres-ci-sdkaudit >/dev/null 2>&1 || true
+            sleep $((attempt * 5))
+          done
+          [ "$pull_ok" = "1" ] || { echo "docker run postgres:16-alpine failed after 5 attempts" >&2; exit 1; }
           # Wait via pg_isready INSIDE the container: fresh managed microVMs have no
           # pixi/asyncpg yet (run_repo_python's python3 fallback lacks the module),
           # which made ci_wait_for_services.py report "not ready" on Blacksmith.
