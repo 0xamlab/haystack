@@ -161,18 +161,43 @@ jobs:
           pg_name="postgres-ci-${CI_SERVICE_SUFFIX}"
           redis_name="dragonfly-ci-${CI_SERVICE_SUFFIX}"
           minio_name="minio-ci-${CI_SERVICE_SUFFIX}"
-          docker run -d --name "$pg_name" -p 0:5432 \
+
+          # `docker run` on an uncached image implicitly pulls first, which talks to that
+          # image's registry (Docker Hub, docker.dragonflydb.io, ...) before any container
+          # exists. A transient failure there -- seen live, twice, on two different
+          # registries: "dial tcp: lookup auth.docker.io ...: server misbehaving" and
+          # "lookup docker.dragonflydb.io ...: connection refused" -- is the self-hosted
+          # runner's local resolver stub (127.0.0.53) having a bad moment, not this image, not
+          # this job. A failed `docker run` leaves no container behind, so retrying the exact
+          # same command is safe; `docker rm -fv` before each attempt is belt-and-suspenders
+          # for a partial start, not load-bearing for the common case. Still fails loudly (this
+          # step has no `set +e`, so a real, non-transient failure aborts the job here, with the
+          # actual docker error already printed) if the failure isn't transient.
+          docker_run_retry() {
+            local name="$1"; shift
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              docker run "$@" && return 0
+              echo "docker run for $name failed (attempt $attempt/5) -- retrying after cleanup" >&2
+              docker rm -fv "$name" >/dev/null 2>&1 || true
+              sleep $((attempt * 5))
+            done
+            echo "docker run for $name failed after 5 attempts" >&2
+            return 1
+          }
+
+          docker_run_retry "$pg_name" -d --name "$pg_name" -p 0:5432 \
             --label algenta-ci=test-services \
             --label "algenta-ci-created=$(date +%s)" \
             --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=test_db \
             postgres:16-alpine
-          docker run -d --name "$redis_name" -p 0:6379 --ulimit memlock=-1 \
+          docker_run_retry "$redis_name" -d --name "$redis_name" -p 0:6379 --ulimit memlock=-1 \
             --label algenta-ci=test-services \
             --label "algenta-ci-created=$(date +%s)" \
             --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
-          docker run -d --name "$minio_name" -p 0:9000 \
+          docker_run_retry "$minio_name" -d --name "$minio_name" -p 0:9000 \
             --label algenta-ci=test-services \
             --label "algenta-ci-created=$(date +%s)" \
             --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
