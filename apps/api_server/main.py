@@ -727,6 +727,34 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     request_id = getattr(request.state, "request_id", None)
     detail: Any = exc.detail
 
+    # A router that raises HTTPException(detail={"code": ..., "message": ...}) is naming a specific
+    # failure, and that name is the machine-readable part a client branches on. Without this branch
+    # such a detail fell through to the generic fallback below, which sets code="http_error" and
+    # message=str(detail) -- so the caller received a Python dict repr inside a human-readable
+    # string and had to parse it out to learn the reason:
+    #
+    #   {"error": {"code": "http_error",
+    #              "message": "{'code': 'plan_not_approved', 'message': \"Plan is 'executed'...\"}"}}
+    #
+    # Verified live against a running engine. Every one of the 17 codes the decision-cases router
+    # maps (plan_hash_mismatch, invalid_nonce, approval_expired, stale_plan, ...) was affected: the
+    # status code was right, the name was not machine-readable. A governed-execution surface whose
+    # denials cannot be told apart programmatically forces callers to string-match error prose,
+    # which then breaks whenever the prose is reworded.
+    if isinstance(detail, dict) and "error" not in detail and isinstance(detail.get("code"), str):
+        error_body = {
+            "code": detail["code"],
+            "message": str(detail.get("message", "")),
+            "request_id": request_id,
+            "docs_url": f"https://docs.algenta.ai/errors/{detail['code']}",
+            **{k: v for k, v in detail.items() if k not in {"code", "message"}},
+        }
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": error_body},
+            headers=_response_headers_with_request_state(request, exc.headers),
+        )
+
     if isinstance(detail, dict) and "error" in detail:
         error_body = detail["error"]
         if isinstance(error_body, dict):
