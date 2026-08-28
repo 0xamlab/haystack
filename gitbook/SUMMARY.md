@@ -71,6 +71,7 @@
 * [Strategy comparison & simulation](engine/strategy-simulation.md)
 * [Spreadsheet formula plane](engine/sheet-formula-plane.md)
 * [Data integrity and encoding](engine/data-integrity-and-encoding.md)
+* [Attention kernels](engine/attention-kernels.md)
 
 ## Concepts
 
