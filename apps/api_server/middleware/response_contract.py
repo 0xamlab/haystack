@@ -8,6 +8,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from apps.api_server.middleware.deprecation import is_alias_successor_path
+
 
 def _apply_request_state_headers(request: Request, response: Response) -> None:
     extra_headers = getattr(request.state, "extra_response_headers", {})
@@ -26,6 +28,13 @@ class ResponseContractMiddleware(BaseHTTPMiddleware):
         _apply_request_state_headers(request, response)
 
         if not request.url.path.startswith("/v1/"):
+            return response
+
+        # A generated /v1 alias must behave EXACTLY like the unversioned path it stands in for
+        # (see middleware/deprecation.py), so it does not pick up contract headers its legacy
+        # twin has never emitted. Migrating a caller from /auth/login to /v1/auth/login is then a
+        # pure path change with no observable difference.
+        if is_alias_successor_path(request):
             return response
 
         content_type = response.headers.get("content-type", "")

@@ -1411,6 +1411,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      deprecated: true
   /auth/login:
     post:
       tags:
@@ -1438,6 +1439,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      deprecated: true
   /auth/verify:
     get:
       tags:
@@ -1445,6 +1447,7 @@ paths:
       summary: Verify email address via token link
       description: Verify a user's email address. Token sent on signup.
       operationId: verify_email_auth_verify_get
+      deprecated: true
       parameters:
       - name: token
         in: query
@@ -1499,6 +1502,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      deprecated: true
   /auth/reset-password:
     post:
       tags:
@@ -1528,6 +1532,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      deprecated: true
   /v1/me:
     get:
       tags:
@@ -2219,6 +2224,7 @@ paths:
         \ unbounded number of distinct values each\nbought a permanent cache entry\
         \ and a live Stripe call from an unauthenticated endpoint."
       operationId: public_plans_billing_plans_get
+      deprecated: true
       parameters:
       - name: app
         in: query
@@ -7340,6 +7346,7 @@ paths:
       summary: List the caller's configured per-org BYOK backends (website / Supabase-authenticated;
         no key material)
       operationId: list_byok_byok_get
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7376,6 +7383,7 @@ paths:
       summary: Set the caller's per-org BYOK key (website / Supabase-authenticated;
         write-only)
       operationId: set_byok_byok_post
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7413,6 +7421,7 @@ paths:
       - BYOK
       summary: Remove the caller's per-org BYOK key (idempotent)
       operationId: delete_byok_byok_delete
+      deprecated: true
       parameters:
       - name: provider
         in: query
@@ -7456,6 +7465,7 @@ paths:
         within the seat window) or idle, plus a seat summary. Powers the subscription
         dashboard's device list.
       operationId: list_account_devices_account_devices_get
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7497,6 +7507,7 @@ paths:
         \ to free its seat. Org-scoped \u2014 you can only revoke devices on your\
         \ own plan. The device loses access on its next license refresh."
       operationId: revoke_account_device_account_devices__registration_id__delete
+      deprecated: true
       parameters:
       - name: registration_id
         in: path
@@ -7548,6 +7559,7 @@ paths:
         \ steps like simulations never do \u2014 plus the plan's fix allowance (Stripe\
         \ product metadata, or the free allowance). Powers the dashboard's usage meter."
       operationId: account_usage_account_usage_get
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7590,6 +7602,7 @@ paths:
         and managed-LLM spend vs the plan's monthly cap. Powers the subscription dashboard's
         billing card.
       operationId: account_billing_info_account_billing_get
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7628,6 +7641,7 @@ paths:
       - account
       summary: Start Stripe Checkout for a plan upgrade (website / Supabase auth)
       operationId: account_billing_checkout_account_billing_checkout_post
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7673,6 +7687,7 @@ paths:
       - account
       summary: Open the Stripe Customer Portal (website / Supabase auth)
       operationId: account_billing_portal_account_billing_portal_post
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7723,6 +7738,7 @@ paths:
         \ account calls. Never a 409 \u2014 an empty/single list is\na valid answer\
         \ here."
       operationId: list_account_orgs_account_orgs_get
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7753,6 +7769,7 @@ paths:
       - account
       summary: List team members + seat usage (website / Supabase auth)
       operationId: list_account_team_account_team_get
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7791,6 +7808,7 @@ paths:
       - account
       summary: Invite a team member (website / Supabase auth)
       operationId: invite_account_member_account_team_invite_post
+      deprecated: true
       parameters:
       - name: authorization
         in: header
@@ -7835,6 +7853,7 @@ paths:
       - account
       summary: Change a member's role (website / Supabase auth)
       operationId: update_account_member_role_account_team__user_id__role_patch
+      deprecated: true
       parameters:
       - name: user_id
         in: path
@@ -7887,6 +7906,7 @@ paths:
       - account
       summary: Remove a member (website / Supabase auth)
       operationId: remove_account_member_account_team__user_id__delete
+      deprecated: true
       parameters:
       - name: user_id
         in: path
@@ -8027,6 +8047,904 @@ paths:
           content:
             application/json:
               schema: {}
+  /v1/auth/signup:
+    post:
+      tags:
+      - Auth
+      summary: Create a new account
+      description: "Self-serve signup. Creates an organization, user account, and\
+        \ first API key in one step. The raw API key is shown **once** in the response\
+        \ \u2014 store it securely."
+      operationId: signup_v1_alias_v1_auth_signup_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignUpResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Login and get a session token
+      description: 'Returns a JWT bearer token valid for 7 days. Use as `Authorization:
+        Bearer <token>`.'
+      operationId: login_v1_alias_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/auth/verify:
+    get:
+      tags:
+      - Auth
+      summary: Verify email address via token link
+      description: Verify a user's email address. Token sent on signup.
+      operationId: verify_email_v1_alias_v1_auth_verify_get
+      parameters:
+      - name: token
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Verification token from email
+          title: Token
+        description: Verification token from email
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Verify Email V1 Alias V1 Auth Verify Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/auth/forgot-password:
+    post:
+      tags:
+      - Auth
+      summary: Request a password reset email
+      description: Send a password reset link to the user's email.
+      operationId: forgot_password_v1_alias_v1_auth_forgot_password_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Forgot Password V1 Alias V1 Auth Forgot Password Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/auth/reset-password:
+    post:
+      tags:
+      - Auth
+      summary: Complete password reset with token
+      description: Reset a user's password using a valid reset token.
+      operationId: reset_password_v1_alias_v1_auth_reset_password_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Reset Password V1 Alias V1 Auth Reset Password Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/billing/plans:
+    get:
+      tags:
+      - Billing
+      summary: "Public \u2014 active plans for an app, dynamic from Stripe"
+      description: "Plan titles/prices/descriptions/features straight from Stripe\
+        \ (no hardcoding). Public \u2014\npricing is public (a pricing page renders\
+        \ before sign-in). Free + Enterprise (no Stripe price)\nare added by the frontend\
+        \ as bookends.\n\nA BRANDED host prices exactly one brand: its own, resolved\
+        \ from an authoritative signal\n(`ALGENTA_PRODUCT`, else the request's own\
+        \ `Host` via the registry's `public_api_base`). A\nrequest for a DIFFERENT\
+        \ brand on a branded host is refused rather than served: cross-brand\npricing\
+        \ stays possible only on the shared engine's own non-brand host, which is\
+        \ where a\nmulti-brand portal belongs. `?app=<own brand>` remains valid so\
+        \ existing callers keep working.\n\nAn unregistered `app` is rejected rather\
+        \ than answered with an empty plan list under a 200, which\nread as \"this\
+        \ brand has no paid tiers\" instead of \"no such brand\" \u2014 and, because\
+        \ the brand string\nwas passed straight into the Stripe catalogue cache, an\
+        \ unbounded number of distinct values each\nbought a permanent cache entry\
+        \ and a live Stripe call from an unauthenticated endpoint."
+      operationId: public_plans_v1_alias_v1_billing_plans_get
+      parameters:
+      - name: app
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: App
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Public Plans V1 Alias V1 Billing Plans Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/oauth/device/code:
+    post:
+      tags:
+      - oauth-device
+      summary: Device Code
+      operationId: device_code_v1_alias_v1_oauth_device_code_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCodeRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Device Code V1 Alias V1 Oauth Device Code Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/oauth/device/token:
+    post:
+      tags:
+      - oauth-device
+      summary: Device Token
+      operationId: device_token_v1_alias_v1_oauth_device_token_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceTokenRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Device Token V1 Alias V1 Oauth Device Token Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/oauth/device/grant:
+    get:
+      tags:
+      - oauth-device
+      summary: Device Grant Lookup
+      operationId: device_grant_lookup_v1_alias_v1_oauth_device_grant_get
+      parameters:
+      - name: user_code
+        in: query
+        required: true
+        schema:
+          type: string
+          title: User Code
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Device Grant Lookup V1 Alias V1 Oauth Device Grant
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/oauth/device/approve:
+    post:
+      tags:
+      - oauth-device
+      summary: Device Approve
+      operationId: device_approve_v1_alias_v1_oauth_device_approve_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apps__api_server__routers__oauth_device__ApproveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Device Approve V1 Alias V1 Oauth Device Approve Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/byok:
+    get:
+      tags:
+      - BYOK
+      summary: List the caller's configured per-org BYOK backends (website / Supabase-authenticated;
+        no key material)
+      operationId: list_byok_v1_alias_v1_byok_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderKeyListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - BYOK
+      summary: Set the caller's per-org BYOK key (website / Supabase-authenticated;
+        write-only)
+      operationId: set_byok_v1_alias_v1_byok_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ByokRequest'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - BYOK
+      summary: Remove the caller's per-org BYOK key (idempotent)
+      operationId: delete_byok_v1_alias_v1_byok_delete
+      parameters:
+      - name: provider
+        in: query
+        required: false
+        schema:
+          type: string
+          default: anthropic
+          title: Provider
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/devices:
+    get:
+      tags:
+      - account
+      summary: List the signed-in user's devices + seat usage (website / Supabase
+        auth)
+      description: Returns the caller's org devices, each marked `active` (heartbeating
+        within the seat window) or idle, plus a seat summary. Powers the subscription
+        dashboard's device list.
+      operationId: list_account_devices_v1_alias_v1_account_devices_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Account Devices V1 Alias V1 Account Devices Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/devices/{registration_id}:
+    delete:
+      tags:
+      - account
+      summary: Revoke one of the signed-in user's devices (frees a seat)
+      description: "Self-service seat management: revoke a device you no longer use\
+        \ to free its seat. Org-scoped \u2014 you can only revoke devices on your\
+        \ own plan. The device loses access on its next license refresh."
+      operationId: revoke_account_device_v1_alias_v1_account_devices__registration_id__delete
+      parameters:
+      - name: registration_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Registration Id
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Revoke Account Device V1 Alias V1 Account Devices  Registration
+                  Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/usage:
+    get:
+      tags:
+      - account
+      summary: Current-period GitHub fixes used vs plan allowance (website / Supabase
+        auth)
+      description: "Returns the caller's org fix count for the current billing period\
+        \ \u2014 only fix-completing events count (pipeline runs / applies); internal\
+        \ steps like simulations never do \u2014 plus the plan's fix allowance (Stripe\
+        \ product metadata, or the free allowance). Powers the dashboard's usage meter."
+      operationId: account_usage_v1_alias_v1_account_usage_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Account Usage V1 Alias V1 Account Usage Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/billing:
+    get:
+      tags:
+      - account
+      summary: Current plan + managed-LLM usage for the signed-in user (website /
+        Supabase auth)
+      description: Returns the caller's current plan, subscription status + renewal,
+        and managed-LLM spend vs the plan's monthly cap. Powers the subscription dashboard's
+        billing card.
+      operationId: account_billing_info_v1_alias_v1_account_billing_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Account Billing Info V1 Alias V1 Account Billing Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/billing/checkout:
+    post:
+      tags:
+      - account
+      summary: Start Stripe Checkout for a plan upgrade (website / Supabase auth)
+      operationId: account_billing_checkout_v1_alias_v1_account_billing_checkout_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Account Billing Checkout V1 Alias V1 Account Billing
+                  Checkout Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/billing/portal:
+    post:
+      tags:
+      - account
+      summary: Open the Stripe Customer Portal (website / Supabase auth)
+      operationId: account_billing_portal_v1_alias_v1_account_billing_portal_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/PortalRequest'
+              - type: 'null'
+              title: Payload
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Account Billing Portal V1 Alias V1 Account Billing
+                  Portal Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/orgs:
+    get:
+      tags:
+      - account
+      summary: List every org the caller may act in (for the org picker)
+      description: "Return the caller's eligible orgs (0, 1, or many). Someone who\
+        \ admins several picks one and\nsends it back as ``X-Org-Id`` on subsequent\
+        \ account calls. Never a 409 \u2014 an empty/single list is\na valid answer\
+        \ here."
+      operationId: list_account_orgs_v1_alias_v1_account_orgs_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Account Orgs V1 Alias V1 Account Orgs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/team:
+    get:
+      tags:
+      - account
+      summary: List team members + seat usage (website / Supabase auth)
+      operationId: list_account_team_v1_alias_v1_account_team_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Account Team V1 Alias V1 Account Team Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/team/invite:
+    post:
+      tags:
+      - account
+      summary: Invite a team member (website / Supabase auth)
+      operationId: invite_account_member_v1_alias_v1_account_team_invite_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteBody'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Invite Account Member V1 Alias V1 Account Team Invite
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/team/{user_id}/role:
+    patch:
+      tags:
+      - account
+      summary: Change a member's role (website / Supabase auth)
+      operationId: update_account_member_role_v1_alias_v1_account_team__user_id__role_patch
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleBody'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Account Member Role V1 Alias V1 Account Team  User
+                  Id  Role Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/account/team/{user_id}:
+    delete:
+      tags:
+      - account
+      summary: Remove a member (website / Supabase auth)
+      operationId: remove_account_member_v1_alias_v1_account_team__user_id__delete
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: x-org-id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Org-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /v1/simulate/templates:
     get:
       tags:

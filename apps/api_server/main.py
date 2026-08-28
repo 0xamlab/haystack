@@ -22,6 +22,10 @@ from apps.api_server.app_support import (
 from apps.api_server.app_support import sync_cors_middleware as _sync_cors_middleware
 from apps.api_server.config import SettingsProxy, get_settings
 from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.deprecation import (
+    DeprecationMiddleware,
+    mount_versioned_aliases,
+)
 from apps.api_server.middleware.idempotency import IdempotencyMiddleware
 from apps.api_server.middleware.logging import StructuredLoggingMiddleware
 from apps.api_server.middleware.request_id import RequestIDMiddleware
@@ -203,6 +207,9 @@ app.add_middleware(
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(ResponseContractMiddleware)
+# A5 API stability contract — RFC 9745 Deprecation / RFC 8594 Sunset / rel="successor-version"
+# on the unversioned path families. Inert on every /v1 path.
+app.add_middleware(DeprecationMiddleware)
 app.add_middleware(StructuredLoggingMiddleware)
 
 # Deployment routing middleware — proxies requests to per-org data planes when
@@ -438,6 +445,13 @@ except Exception as _mcp_exc:  # pragma: no cover
         reason=str(_mcp_exc),
         hint="pip install mcp to enable MCP AI-agent connectivity",
     )
+
+# ── A5 API stability contract ────────────────────────────────────────────────
+# Register a /v1 successor for every route in an unversioned family (/auth, /account, /billing,
+# /byok, /oauth). MUST come after every include_router above: the aliases are generated from the
+# live route table, so a router mounted later would not get one. See middleware/deprecation.py.
+mount_versioned_aliases(app)
+
 
 def custom_openapi() -> dict[str, Any]:
     if app.openapi_schema:

@@ -17,6 +17,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from apps.api_server.middleware.deprecation import is_alias_successor_path
+
 _WRITE_METHODS = frozenset({"POST", "PATCH", "DELETE"})
 _ENTRY_TTL_SECONDS = 24 * 60 * 60
 _WRITE_LOCK_TTL_SECONDS = 30
@@ -331,6 +333,14 @@ def _should_skip_write_protection(request: Request) -> bool:
     if method not in _WRITE_METHODS:
         return True
     if not path.startswith("/v1/"):
+        return True
+    # A generated /v1 alias must behave EXACTLY like the unversioned path it stands in for (see
+    # middleware/deprecation.py). Without this, POST /v1/auth/login would acquire a single-flight
+    # write lock that POST /auth/login has never had, so two byte-identical concurrent logins --
+    # a double-clicked form -- would get 409 resource_write_conflict instead of logging in. These
+    # families are unprotected on BOTH paths, exactly as they are today; extending protection to
+    # them is separate work, tracked in gitbook/api/stability.md.
+    if is_alias_successor_path(request):
         return True
     if path.startswith("/v1/simulate/stream"):
         return True

@@ -224,6 +224,31 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/auth/reset-password" method="post" %}
 {% endopenapi-operation %}
 
+### `POST /v1/auth/signup`
+
+{% openapi-operation spec="algenta-api" path="/v1/auth/signup" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/auth/login`
+
+{% openapi-operation spec="algenta-api" path="/v1/auth/login" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/auth/verify`
+
+{% openapi-operation spec="algenta-api" path="/v1/auth/verify" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/auth/forgot-password`
+
+{% openapi-operation spec="algenta-api" path="/v1/auth/forgot-password" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/auth/reset-password`
+
+{% openapi-operation spec="algenta-api" path="/v1/auth/reset-password" method="post" %}
+{% endopenapi-operation %}
+
 ## BYOK
 
 ### `GET /byok`
@@ -239,6 +264,21 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `DELETE /byok`
 
 {% openapi-operation spec="algenta-api" path="/byok" method="delete" %}
+{% endopenapi-operation %}
+
+### `GET /v1/byok`
+
+{% openapi-operation spec="algenta-api" path="/v1/byok" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/byok`
+
+{% openapi-operation spec="algenta-api" path="/v1/byok" method="post" %}
+{% endopenapi-operation %}
+
+### `DELETE /v1/byok`
+
+{% openapi-operation spec="algenta-api" path="/v1/byok" method="delete" %}
 {% endopenapi-operation %}
 
 ## Billing
@@ -261,6 +301,11 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `GET /v1/billing/info`
 
 {% openapi-operation spec="algenta-api" path="/v1/billing/info" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/billing/plans`
+
+{% openapi-operation spec="algenta-api" path="/v1/billing/plans" method="get" %}
 {% endopenapi-operation %}
 
 ## Calibration
@@ -1172,6 +1217,61 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/account/team/{user_id}" method="delete" %}
 {% endopenapi-operation %}
 
+### `GET /v1/account/devices`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/devices" method="get" %}
+{% endopenapi-operation %}
+
+### `DELETE /v1/account/devices/{registration_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/devices/{registration_id}" method="delete" %}
+{% endopenapi-operation %}
+
+### `GET /v1/account/usage`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/usage" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/account/billing`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/billing" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/account/billing/checkout`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/billing/checkout" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/account/billing/portal`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/billing/portal" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/account/orgs`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/orgs" method="get" %}
+{% endopenapi-operation %}
+
+### `GET /v1/account/team`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/team" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/account/team/invite`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/team/invite" method="post" %}
+{% endopenapi-operation %}
+
+### `PATCH /v1/account/team/{user_id}/role`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/team/{user_id}/role" method="patch" %}
+{% endopenapi-operation %}
+
+### `DELETE /v1/account/team/{user_id}`
+
+{% openapi-operation spec="algenta-api" path="/v1/account/team/{user_id}" method="delete" %}
+{% endopenapi-operation %}
+
 ## credits
 
 ### `POST /v1/credits/refresh`
@@ -1262,4 +1362,24 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 ### `POST /oauth/device/approve`
 
 {% openapi-operation spec="algenta-api" path="/oauth/device/approve" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/oauth/device/code`
+
+{% openapi-operation spec="algenta-api" path="/v1/oauth/device/code" method="post" %}
+{% endopenapi-operation %}
+
+### `POST /v1/oauth/device/token`
+
+{% openapi-operation spec="algenta-api" path="/v1/oauth/device/token" method="post" %}
+{% endopenapi-operation %}
+
+### `GET /v1/oauth/device/grant`
+
+{% openapi-operation spec="algenta-api" path="/v1/oauth/device/grant" method="get" %}
+{% endopenapi-operation %}
+
+### `POST /v1/oauth/device/approve`
+
+{% openapi-operation spec="algenta-api" path="/v1/oauth/device/approve" method="post" %}
 {% endopenapi-operation %}

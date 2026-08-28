@@ -71,6 +71,11 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `GET` | `/auth/verify` | Verify email address via token link |
 | `POST` | `/auth/forgot-password` | Request a password reset email |
 | `POST` | `/auth/reset-password` | Complete password reset with token |
+| `POST` | `/v1/auth/signup` | Create a new account |
+| `POST` | `/v1/auth/login` | Login and get a session token |
+| `GET` | `/v1/auth/verify` | Verify email address via token link |
+| `POST` | `/v1/auth/forgot-password` | Request a password reset email |
+| `POST` | `/v1/auth/reset-password` | Complete password reset with token |
 
 ## BYOK
 
@@ -79,6 +84,9 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `GET` | `/byok` | List the caller's configured per-org BYOK backends (website / Supabase-authenticated; no key material) |
 | `POST` | `/byok` | Set the caller's per-org BYOK key (website / Supabase-authenticated; write-only) |
 | `DELETE` | `/byok` | Remove the caller's per-org BYOK key (idempotent) |
+| `GET` | `/v1/byok` | List the caller's configured per-org BYOK backends (website / Supabase-authenticated; no key material) |
+| `POST` | `/v1/byok` | Set the caller's per-org BYOK key (website / Supabase-authenticated; write-only) |
+| `DELETE` | `/v1/byok` | Remove the caller's per-org BYOK key (idempotent) |
 
 ## Billing
 
@@ -88,6 +96,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/v1/billing/checkout` | Create Stripe Checkout session |
 | `POST` | `/v1/billing/portal` | Create Stripe Billing Portal session |
 | `GET` | `/v1/billing/info` | Get current billing info |
+| `GET` | `/v1/billing/plans` | Public — active plans for an app, dynamic from Stripe |
 
 ## Calibration
 
@@ -417,6 +426,17 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/account/team/invite` | Invite a team member (website / Supabase auth) |
 | `PATCH` | `/account/team/{user_id}/role` | Change a member's role (website / Supabase auth) |
 | `DELETE` | `/account/team/{user_id}` | Remove a member (website / Supabase auth) |
+| `GET` | `/v1/account/devices` | List the signed-in user's devices + seat usage (website / Supabase auth) |
+| `DELETE` | `/v1/account/devices/{registration_id}` | Revoke one of the signed-in user's devices (frees a seat) |
+| `GET` | `/v1/account/usage` | Current-period GitHub fixes used vs plan allowance (website / Supabase auth) |
+| `GET` | `/v1/account/billing` | Current plan + managed-LLM usage for the signed-in user (website / Supabase auth) |
+| `POST` | `/v1/account/billing/checkout` | Start Stripe Checkout for a plan upgrade (website / Supabase auth) |
+| `POST` | `/v1/account/billing/portal` | Open the Stripe Customer Portal (website / Supabase auth) |
+| `GET` | `/v1/account/orgs` | List every org the caller may act in (for the org picker) |
+| `GET` | `/v1/account/team` | List team members + seat usage (website / Supabase auth) |
+| `POST` | `/v1/account/team/invite` | Invite a team member (website / Supabase auth) |
+| `PATCH` | `/v1/account/team/{user_id}/role` | Change a member's role (website / Supabase auth) |
+| `DELETE` | `/v1/account/team/{user_id}` | Remove a member (website / Supabase auth) |
 
 ## credits
 
@@ -463,3 +483,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/oauth/device/token` | Device Token |
 | `GET` | `/oauth/device/grant` | Device Grant Lookup |
 | `POST` | `/oauth/device/approve` | Device Approve |
+| `POST` | `/v1/oauth/device/code` | Device Code |
+| `POST` | `/v1/oauth/device/token` | Device Token |
+| `GET` | `/v1/oauth/device/grant` | Device Grant Lookup |
+| `POST` | `/v1/oauth/device/approve` | Device Approve |

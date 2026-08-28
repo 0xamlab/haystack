@@ -191,6 +191,7 @@
 * [Streaming (SSE)](api/streaming.md)
 * [API explorer (live)](api/explorer.md)
 * [Error codes](api/errors.md)
+* [API stability](api/stability.md)
 * [Execution policy & safety limits](api/rate-limits.md)
 
 ## Connectors
