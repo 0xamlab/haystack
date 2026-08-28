@@ -378,6 +378,11 @@ class DeviceLicense:
     commercial_use: bool = False
     redistribution_allowed: bool = False
     offline_grace_days: int = 0
+    # Vendor-signed mint time (epoch seconds), covered by the token's RS256 signature. When the
+    # local lapse floor is unverifiable (missing/tampered), a license carrying this claim re-seeds
+    # the floor from the vendor signature instead of trusting the host's wall clock — closing
+    # the delete-floor + roll-back-clock re-validation attack (trusted_time.floor_integrity).
+    signed_epoch: int = 0
 
     def is_expired(self) -> bool:
         from apps.runtime.trusted_time import trusted_now_epoch
@@ -506,6 +511,7 @@ def _device_license_from_payload(
         commercial_use=bool(payload.get("commercial_use", False)),
         redistribution_allowed=bool(payload.get("redistribution_allowed", False)),
         offline_grace_days=_coerce_int(payload.get("offline_grace_days"), 0),
+        signed_epoch=_coerce_int(payload.get("signed_epoch"), 0),
     )
 
 
@@ -775,6 +781,10 @@ def mint_deployment_token(
         "iat": now,
         "nbf": now,
         "issued_at": now,
+        # Vendor-signed mint time — covered by the RS256 signature. Lets the runtime re-seed its
+        # lapse floor from the vendor signature when the local floor is unverifiable (GAP-1),
+        # keeping first-boot air-gapped activation working.
+        "signed_epoch": now,
         "exp": expires_at + grace * 86400,  # hard-deny boundary; runtime owns grace within
         "expires_at": expires_at,
         "grace_days": grace,
@@ -1347,6 +1357,23 @@ def renew_license(api_key: str, device_info: Mapping[str, object] | None = None)
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
+def _settle_lapse_floor(parsed: DeviceLicense) -> None:
+    """Durably settle the lapse floor past a lapsed token's hard-deny boundary.
+
+    Called when a lapse verdict had to be made WITHOUT a verifiable floor (missing/tampered):
+    the floor is advanced to ``expires_at + grace_days + 1`` — vendor-signed claims, never the
+    host clock — so a later boot cannot re-validate the lapsed token by rolling the wall clock
+    back under a wall-clock-seeded floor. ``max`` with the current trusted time keeps an honest
+    (already-later) clock from ever moving backward. The floor is monotonic and signed from here
+    on; deleting it again just re-runs the same fail-closed gate."""
+    from apps.runtime.trusted_time import observe_time, trusted_now_epoch
+
+    if parsed.expires_at <= 0:
+        return
+    hard_deny_boundary = float(parsed.expires_at + parsed.grace_days * 86400 + 1)
+    observe_time(max(hard_deny_boundary, trusted_now_epoch()), source="lapse-floor")
+
+
 def load_license(api_key: str = "") -> DeviceLicense:
     """
     Load the local license. Precedence:
@@ -1355,7 +1382,12 @@ def load_license(api_key: str = "") -> DeviceLicense:
       3. Allow explicit dev stub only when ALGENTA_RUNTIME_DEV_MODE is enabled
     """
     from apps.runtime.device import get_device_info
-    from apps.runtime.trusted_time import trusted_now_epoch
+    from apps.runtime.trusted_time import floor_integrity, observe_time, trusted_now_epoch
+
+    # GAP-1 (time-floor hardening): capture the lapse-floor integrity verdict BEFORE
+    # trusted_now_epoch() runs — that first read recreates a MISSING floor from the wall clock,
+    # which must not launder a deleted floor back into "ok" before the lapse decision below.
+    floor_status = floor_integrity()
 
     trusted_now_epoch()
 
@@ -1364,11 +1396,45 @@ def load_license(api_key: str = "") -> DeviceLicense:
     if raw:
         parsed = _parse_token(raw, api_key)
         if parsed:
-            if parsed.is_hard_expired():
-                logger.warning("license_hard_expired", device_id=parsed.device_id)
+            # GAP-1 (time-floor hardening): for a license that CAN lapse (finite expiry), the
+            # expiry verdict is only as trustworthy as the lapse floor under it. When the floor
+            # is unverifiable (missing or tampered), the host's wall clock may NOT decide lapse —
+            # that is exactly the delete-the-floor + roll-back-the-clock re-validation attack.
+            # Never-expiring licenses (expires_at=0) and the Community floor itself don't consult
+            # the floor for any expiry decision, so they are exempt.
+            floor_unverifiable = (
+                parsed.expires_at > 0
+                and parsed.plan != "algenta_free"
+                and floor_status != "ok"
+            )
+            if floor_unverifiable:
+                if parsed.signed_epoch > 0:
+                    # The token carries a vendor-signed mint time (signed_epoch is part of the
+                    # RS256 payload, so the signature already covers it): re-seed the floor from
+                    # the vendor signature and proceed normally. This is also what keeps the
+                    # first-boot air-gapped activation ceremony working (no floor exists yet).
+                    observe_time(float(parsed.signed_epoch), source="signed-epoch")
+                    logger.info(
+                        "time_floor_reseeded_from_signed_epoch",
+                        device_id=parsed.device_id[:8],
+                        signed_epoch=parsed.signed_epoch,
+                    )
+                    floor_unverifiable = False
+                else:
+                    logger.warning(
+                        "time_floor_unverifiable",
+                        floor_status=floor_status,
+                        device_id=parsed.device_id[:8],
+                    )
+            if parsed.is_hard_expired() or floor_unverifiable:
+                if floor_unverifiable:
+                    logger.warning("license_lapse_unverifiable", device_id=parsed.device_id)
+                else:
+                    logger.warning("license_hard_expired", device_id=parsed.device_id)
                 # Preferred refresh: prove possession of the bound device key → a fresh license
                 # WITHOUT a full re-login. Dark: any failure (old server, unbound device, egress
-                # denial) falls through to the existing expired message.
+                # denial) falls through to the Community settle below. A successful renewal also
+                # re-anchors the lapse floor from the control plane's server_time.
                 if api_key and not _local_license_required():
                     renewed = renew_license(api_key)
                     if renewed:
@@ -1380,6 +1446,24 @@ def load_license(api_key: str = "") -> DeviceLicense:
                 # Renewal unavailable (offline / unbound / server unreachable). A previously valid
                 # paid license settles at Community (free-forever), including in an air-gapped
                 # deployment. Missing or invalid local licenses still fail closed below.
+                if floor_unverifiable:
+                    # Durable lapse: settle the floor PAST this token's hard-deny boundary so the
+                    # verdict survives reboots — a wall-clock-seeded floor must never let a later
+                    # boot re-validate the lapsed token as paid. The anchor is vendor-signed data
+                    # (expires_at + grace_days are RS256 claims), never the host clock; deleting
+                    # the floor again simply re-runs this same gate.
+                    _settle_lapse_floor(parsed)
+                    logger.info(
+                        "license_downgraded_to_community",
+                        reason="time-floor-unverifiable",
+                        prev_plan=parsed.plan,
+                        device_id=parsed.device_id[:8],
+                    )
+                    return _make_community_license(
+                        api_key,
+                        reason="time-floor-unverifiable",
+                        deployment_id=parsed.deployment_id,
+                    )
                 logger.info(
                     "license_downgraded_to_community",
                     prev_plan=parsed.plan,

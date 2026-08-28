@@ -296,6 +296,12 @@ def test_runtime_local_hosted_limits_work_offline_with_stored_license(
         org_id="org_runtime_test",
     )
     license_mod._save_license(token)
+    # A connected device always has a control-plane-anchored lapse floor by the time it goes
+    # offline (registration/renewal observe server_time) — seed it here, since the time-floor
+    # hardening refuses to decide lapse off the wall clock when no verifiable floor exists.
+    _reload_runtime_trusted_time_module().observe_time(
+        float(datetime.now(UTC).timestamp()), source="control-plane-register"
+    )
     credits_mod.get_store().initialize_sync(credits_granted=2, billing_period="2026-04")
 
     runtime = Runtime(api_key="de_live_test_key")
@@ -350,6 +356,12 @@ def test_runtime_local_hosted_limits_allow_key_bound_offline_execution_without_c
         api_key_expires_at=datetime.fromtimestamp(future_expiry, UTC),
     )
     license_mod._save_license(token)
+    # A connected device always has a control-plane-anchored lapse floor by the time it goes
+    # offline (registration/renewal observe server_time) — seed it here, since the time-floor
+    # hardening refuses to decide lapse off the wall clock when no verifiable floor exists.
+    _reload_runtime_trusted_time_module().observe_time(
+        float(datetime.now(UTC).timestamp()), source="control-plane-register"
+    )
 
     runtime = Runtime(api_key="de_live_test_key")
     runtime.connect(REAL_MARCH_ORDERS, name="orders_detail")
@@ -553,6 +565,9 @@ def test_runtime_local_air_gapped_profile_accepts_offline_local_license(
             "device_limit": 0,
             "permitted_modules": ["*"],
             "issued_at": 1_900_000_000,
+            # First-boot air-gapped activation: no lapse floor exists yet, so the license must
+            # carry the vendor-signed mint time to re-seed it (every new minter emits this claim).
+            "signed_epoch": 1_900_000_000,
             "expires_at": 1_999_999_999,
             "key_expires_at": 1_999_999_999,
             "grace_days": 14,

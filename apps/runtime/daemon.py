@@ -152,6 +152,25 @@ def _require_verified_native_worker() -> bool:
             in {"1", "true", "yes", "on"})
 
 
+def _recheck_deployment_capacity(license_record: object) -> None:
+    """GAP-2: re-run the Compute-Unit gate whenever a renewal/reload REPLACES the in-memory
+    license. ``load_license`` is the one seam that can replace the license (its internal
+    auto-renewal stores the renewed token and returns it), and a renewed license may carry a
+    DIFFERENT (smaller) unit ceiling than the one this node was admitted under — so every
+    daemon/server call site of load_license routes the result through this gate, not just the
+    pre-renewal boot state. Same fail-closed semantics as boot: NodeAdmissionError → log + refuse.
+    Deliberately kept OUT of the per-request hot path — only license-reload sites call it."""
+    from apps.runtime import node_broker
+
+    try:
+        node_broker.assert_deployment_capacity(license_record, enforcing=True)
+    except node_broker.NodeAdmissionError as exc:
+        logger.error("license_reload_deployment_capacity_refused", error=str(exc))
+        raise RuntimeError(
+            f"License reload refused by the Compute-Unit capacity gate: {exc}"
+        ) from exc
+
+
 def _validate_daemon_startup_prerequisites() -> None:
     from apps.privacy_policy import policy_from_environment
     from apps.runtime.license import load_license

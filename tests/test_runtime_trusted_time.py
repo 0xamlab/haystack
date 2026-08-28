@@ -33,7 +33,8 @@ def test_trusted_now_uses_monotonic_elapsed_when_wall_clock_stalls(
     trusted_epoch = trusted_time.trusted_now_epoch()
     assert trusted_epoch == pytest.approx(wall_now + 75.0)
 
-    state = trusted_time._read_state()
+    state, integrity = trusted_time._read_state()
+    assert integrity == "ok"  # the persisted floor carries a verifying HMAC
     assert state is not None
     assert state.trusted_epoch == pytest.approx(wall_now + 75.0)
     assert state.source == "local"

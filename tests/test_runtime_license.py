@@ -205,6 +205,13 @@ def test_load_license_prefers_stored_control_plane_token_when_offline(monkeypatc
     )
     license_mod._save_license(token)
 
+    # A connected device always has a control-plane-anchored lapse floor by the time it goes
+    # offline (registration/renewal observe server_time) — seed it here, since the time-floor
+    # hardening refuses to decide lapse off the wall clock when no verifiable floor exists.
+    from apps.runtime.trusted_time import observe_time
+
+    observe_time(float(datetime.now(UTC).timestamp()), source="control-plane-register")
+
     with patch.object(
         license_mod,
         "_exchange_api_key_for_license",

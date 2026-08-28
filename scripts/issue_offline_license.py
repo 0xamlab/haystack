@@ -196,6 +196,10 @@ def _build_claims(args: argparse.Namespace) -> dict[str, object]:
         "expires_at": expires_at,
         "key_expires_at": key_expires_at,
         "grace_days": max(0, int(args.grace_days)),
+        # Vendor-signed mint time — covered by the RS256 signature. Lets the runtime re-seed its
+        # lapse floor from the vendor signature when the local floor is unverifiable (GAP-1),
+        # keeping first-boot air-gapped activation working.
+        "signed_epoch": issued_at,
         "iss": "algenta-offline-license",
         "sub": "device-license",
         "ver": 2,

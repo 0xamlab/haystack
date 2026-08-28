@@ -18,6 +18,7 @@ NEVER from ``jku``/``x5u`` in the token.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 from dataclasses import dataclass
@@ -128,6 +129,25 @@ def is_strict_profile_token(token: str) -> bool:
     return header.get("typ") == LICENSE_TYP
 
 
+def _raw_jose_header(token: str) -> dict | None:
+    """Best-effort decode of the UNPROTECTED JOSE header without PyJWT's crit pre-rejection.
+
+    Newer PyJWT versions raise ``InvalidTokenError`` from ``get_unverified_header`` itself when
+    the header carries a ``crit`` extension, before this profile can name the rejection. This
+    decoder reads the header segment directly so the crit gate can run first. Returns None for
+    anything unparseable — ``get_unverified_header`` then produces the normal "bad_header" path.
+    No trust decision is ever based on this decode alone: the signature is still verified by
+    PyJWT against the trust-bundle key before any claim is honored."""
+    try:
+        segment = token.split(".", 1)[0]
+        padded = segment + "=" * (-len(segment) % 4)
+        decoded = base64.urlsafe_b64decode(padded.encode("ascii"))
+        header = json.loads(decoded)
+    except Exception:  # noqa: BLE001 — any decode failure → let PyJWT name the header error
+        return None
+    return header if isinstance(header, dict) else None
+
+
 def _validate_claim_sizes(payload: dict[str, object]) -> None:
     for key, value in payload.items():
         if isinstance(value, str) and len(value) > _MAX_STR_CLAIM_LEN:
@@ -153,6 +173,15 @@ def verify_license_token(
     """
     if not token or len(token.encode("utf-8", "ignore")) > _MAX_TOKEN_BYTES:
         raise LicenseVerificationError("token_size", "token missing or too large")
+
+    # crit gate FIRST, on the raw header: newer PyJWT (>= 2.10) raises InvalidTokenError from
+    # get_unverified_header ITSELF on any crit extension ("Unsupported critical extension"),
+    # which would mask this profile's named crit rejection as the generic "bad_header". The
+    # verdict is identical either way (the token is rejected); checking the raw header first
+    # keeps the reason code stable across PyJWT versions.
+    raw_header = _raw_jose_header(token)
+    if raw_header is not None and raw_header.get("crit"):
+        raise LicenseVerificationError("crit_unsupported", "unknown critical header params")
 
     try:
         header = jwt.get_unverified_header(token)
