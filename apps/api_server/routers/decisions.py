@@ -201,8 +201,19 @@ class ExecuteDecisionRequest(BaseModel):
     )
 
 
-class ExecutionReceipt(BaseModel):
-    """Returned by POST /v1/decisions/{id}/execute."""
+class DecisionWebhookReceipt(BaseModel):
+    """Returned by POST /v1/decisions/{id}/execute.
+
+    Renamed from ExecutionReceipt (A4 follow-up): apps.api_server.schemas.receipt.ExecutionReceipt
+    is the versioned, governed-execution receipt (plan_hash, approval_state, execution_id, ...).
+    This is an unrelated concept -- confirmation that a logged decision's webhook fired, carrying
+    policy_snapshot_id/schema_snapshot_id/manifest_version instead -- that happened to share the
+    class name. FastAPI safely disambiguates two same-named schemas by fully-qualified module path
+    (verified), so nothing was broken today, but the moment anything in this app types a field as
+    the OTHER ExecutionReceipt, the published OpenAPI spec gets two components both titled
+    "ExecutionReceipt" -- confusing for a human reading Swagger UI and for a generated SDK's class
+    names. Fixed before it could bite rather than after.
+    """
 
     decision_id: uuid.UUID
     webhook_url: str
@@ -581,7 +592,7 @@ async def record_outcome(
 
 @router.post(
     "/v1/decisions/{decision_id}/execute",
-    response_model=ExecutionReceipt,
+    response_model=DecisionWebhookReceipt,
     status_code=200,
     summary="Execute a decision via webhook",
     description=(
@@ -598,7 +609,7 @@ async def execute_decision(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     db: AsyncSession = Depends(get_db),
-) -> ExecutionReceipt:
+) -> DecisionWebhookReceipt:
     result = await db.execute(
         select(DecisionLog).where(
             DecisionLog.id == decision_id, *workspace_scope_clauses(DecisionLog, auth)
@@ -791,7 +802,7 @@ async def execute_decision(
         policy_snapshot_id=policy.snapshot_id,
     )
 
-    return ExecutionReceipt(
+    return DecisionWebhookReceipt(
         decision_id=entry.id,
         webhook_url=payload.webhook_url,
         execution_status=execution_status,

@@ -6665,7 +6665,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExecutionReceipt'
+                $ref: '#/components/schemas/DecisionWebhookReceipt'
         '422':
           description: Validation Error
           content:
@@ -14939,6 +14939,83 @@ components:
         ,\n              probability: 0.3, variables: {\"revenue\": 0},\n        \
         \      objective_function: \"-launch_cost\" }\n          ]\n        }\n  \
         \    ]\n    }\n  ]"
+    DecisionWebhookReceipt:
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+          title: Decision Id
+        webhook_url:
+          type: string
+          title: Webhook Url
+        execution_status:
+          type: string
+          title: Execution Status
+        response_code:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Response Code
+        executed_at:
+          type: string
+          format: date-time
+          title: Executed At
+        policy_snapshot_id:
+          type: string
+          title: Policy Snapshot Id
+        schema_snapshot_id:
+          type: string
+          title: Schema Snapshot Id
+        manifest_version:
+          type: string
+          title: Manifest Version
+        payload_summary:
+          additionalProperties: true
+          type: object
+          title: Payload Summary
+        safety_overridden:
+          type: boolean
+          title: Safety Overridden
+          default: false
+      type: object
+      required:
+      - decision_id
+      - webhook_url
+      - execution_status
+      - response_code
+      - executed_at
+      - policy_snapshot_id
+      - schema_snapshot_id
+      - manifest_version
+      - payload_summary
+      title: DecisionWebhookReceipt
+      description: 'Returned by POST /v1/decisions/{id}/execute.
+
+
+        Renamed from ExecutionReceipt (A4 follow-up): apps.api_server.schemas.receipt.ExecutionReceipt
+
+        is the versioned, governed-execution receipt (plan_hash, approval_state, execution_id,
+        ...).
+
+        This is an unrelated concept -- confirmation that a logged decision''s webhook
+        fired, carrying
+
+        policy_snapshot_id/schema_snapshot_id/manifest_version instead -- that happened
+        to share the
+
+        class name. FastAPI safely disambiguates two same-named schemas by fully-qualified
+        module path
+
+        (verified), so nothing was broken today, but the moment anything in this app
+        types a field as
+
+        the OTHER ExecutionReceipt, the published OpenAPI spec gets two components
+        both titled
+
+        "ExecutionReceipt" -- confusing for a human reading Swagger UI and for a generated
+        SDK''s class
+
+        names. Fixed before it could bite rather than after.'
     DefaultsResponse:
       properties:
         read_only_default:
@@ -16029,10 +16106,8 @@ components:
           title: Actions
         receipt:
           anyOf:
-          - additionalProperties: true
-            type: object
+          - $ref: '#/components/schemas/ExecutionReceipt'
           - type: 'null'
-          title: Receipt
       type: object
       required:
       - plan_id
@@ -16121,55 +16196,111 @@ components:
       description: Versioned execution policy snapshots for the calling org.
     ExecutionReceipt:
       properties:
-        decision_id:
+        receipt_version:
+          type: string
+          title: Receipt Version
+          description: Receipt schema version. Bumped only on a breaking change.
+          default: '1'
+        status:
+          type: string
+          enum:
+          - executed
+          - denied
+          - approval_required
+          - failed
+          title: Status
+          description: Terminal state of the governed operation this receipt describes.
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+          description: Machine-readable reason when status is not 'executed' -- the
+            same DecisionServiceError code the HTTP layer maps (e.g. plan_hash_mismatch,
+            invalid_nonce, approval_expired).
+        retryable:
+          type: boolean
+          title: Retryable
+          description: Whether re-issuing the identical request could succeed. A policy
+            denial is NOT retryable; an upstream timeout is. Stated explicitly so
+            a caller does not have to infer intent from an HTTP status.
+          default: false
+        request_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Request Id
+          description: Identifies the single HTTP call that produced this receipt.
+        trace_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trace Id
+          description: W3C trace-id of the wider operation. One agent turn may produce
+            several receipts; this is what lets them be reassembled afterwards.
+        idempotency_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Idempotency Key
+          description: The Idempotency-Key the caller supplied, echoed so a retry
+            can be matched to its original outcome. None when the caller sent none.
+        execution_id:
           type: string
           format: uuid
-          title: Decision Id
-        webhook_url:
-          type: string
-          title: Webhook Url
-        execution_status:
-          type: string
-          title: Execution Status
-        response_code:
+          title: Execution Id
+          description: 'Unique id for this execution attempt, minted at execute time
+            and persisted with the receipt. Distinct from plan_id: the plan is what
+            was authorised, this is the act.'
+        plan_hash:
           anyOf:
-          - type: integer
+          - type: string
           - type: 'null'
-          title: Response Code
+          title: Plan Hash
+          description: Hash of the approved plan. An approval is bound to this exact
+            value.
+        approval_state:
+          anyOf:
+          - type: string
+            enum:
+            - approved
+            - not_required
+            - pending
+            - rejected
+            - expired
+          - type: 'null'
+          title: Approval State
+          description: Approval status at the moment of execution.
+        policy_snapshot_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Policy Snapshot Hash
+          description: Content hash of the policy snapshot in force. None on the decision-plan
+            path, which carries no policy snapshot -- deliberately null rather than
+            filled with a value that is not a policy hash.
         executed_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
           title: Executed At
-        policy_snapshot_id:
-          type: string
-          title: Policy Snapshot Id
-        schema_snapshot_id:
-          type: string
-          title: Schema Snapshot Id
-        manifest_version:
-          type: string
-          title: Manifest Version
-        payload_summary:
-          additionalProperties: true
-          type: object
-          title: Payload Summary
-        safety_overridden:
-          type: boolean
-          title: Safety Overridden
-          default: false
+          description: When execution completed.
+        result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Result
+          description: Operation-specific result. Everything above is stable across
+            operations.
       type: object
       required:
-      - decision_id
-      - webhook_url
-      - execution_status
-      - response_code
-      - executed_at
-      - policy_snapshot_id
-      - schema_snapshot_id
-      - manifest_version
-      - payload_summary
+      - status
+      - execution_id
       title: ExecutionReceipt
-      description: Returned by POST /v1/decisions/{id}/execute.
+      description: Evidence that one approved plan executed exactly once, and under
+        what authority.
     ExecutionSessionStatus:
       type: string
       enum:

@@ -1,10 +1,21 @@
 """A4: the execution receipt is a versioned, typed contract.
 
-WHAT WAS WRONG. `ExecutionPlanResponse.receipt` was `dict[str, Any]`, built inline as three keys:
+WHAT WAS WRONG, IN TWO LAYERS. Originally `ExecutionPlanResponse.receipt` was `dict[str, Any]`,
+built inline as three keys (`plan.receipt = {"executed_at": ..., "prepared_artifacts": [...],
+"action_count": N}`), and the only assertion about it anywhere was `assert executed["receipt"]` --
+that it was truthy. The first fix (this file's original version) built a real, versioned
+`ExecutionReceipt` object internally and stored it correctly -- but the HTTP layer still declared
+`receipt: dict[str, Any] | None`, so the internal object flattened back to an opaque blob the
+moment it crossed the wire. The OpenAPI spec published `receipt` as `additionalProperties: true`,
+and FastAPI's response validation enforced nothing about its shape: a receipt missing every
+required field would have serialized and returned 200 exactly like a correct one. Proven, not
+assumed -- see test_an_untyped_receipt_field_would_accept_the_broken_shape below, which reverts
+the type in-process and shows the old shape passing silently.
 
-    plan.receipt = {"executed_at": ..., "prepared_artifacts": [...], "action_count": N}
+The second, follow-up fix types `ExecutionPlanResponse.receipt` as the real
+`apps.api_server.schemas.receipt.ExecutionReceipt`, so the contract that was already correct
+internally is now the contract on the wire, in the published spec, and under response validation.
 
-and the only existing assertion about it was `assert executed["receipt"]` -- that it was truthy.
 A receipt is what an operator, an auditor, or a partner's compliance review relies on to establish
 that *this execution happened, under this plan, with this approval*. That makes its shape an
 interface, and an unversioned interface cannot be changed without silently breaking whoever parses
@@ -257,6 +268,86 @@ def test_the_stored_form_is_json_safe() -> None:
 
     r = ExecutionReceipt(status="executed", execution_id=uuid.uuid4())
     json.dumps(r.to_stored())  # raises if a uuid/datetime leaked through
+
+
+# ── the wire type (follow-up: the receipt is typed on the response, not just internally) ────────
+
+
+def test_the_published_spec_types_the_receipt_field_not_an_opaque_object() -> None:
+    """`additionalProperties: true` was the actual, live shape of the OpenAPI contract.
+
+    A generated client sees an untyped blob and a partner reading the spec cannot tell what a
+    receipt contains -- exactly the failure mode A4 exists to close. Checked against the schema
+    the running app actually publishes, not a hand-maintained copy of it.
+    """
+    from apps.api_server.main import app
+
+    schema = app.openapi()
+    receipt_field = schema["components"]["schemas"]["ExecutionPlanResponse"]["properties"]["receipt"]
+    refs = [opt["$ref"] for opt in receipt_field.get("anyOf", []) if "$ref" in opt]
+    assert refs == ["#/components/schemas/ExecutionReceipt"], (
+        f"receipt field does not $ref the versioned ExecutionReceipt schema: {receipt_field}"
+    )
+
+
+def test_execution_receipt_and_decision_webhook_receipt_are_distinct_named_schemas() -> None:
+    """Two unrelated concepts once shared the class name `ExecutionReceipt` in this codebase:
+
+    this one (plan_hash/approval_state/execution_id -- governed plan execution) and
+    `routers.decisions.DecisionWebhookReceipt` (policy_snapshot_id/webhook_url -- confirmation a
+    logged decision's webhook fired). FastAPI disambiguates a genuine name collision safely (by
+    fully-qualified module path), so nothing was ever broken by it -- but a partner reading two
+    components both titled "ExecutionReceipt" in Swagger UI has no way to tell them apart. Fixed
+    by renaming the unrelated one; this asserts the rename stuck and the collision cannot recur
+    silently.
+    """
+    from apps.api_server.main import app
+
+    schema = app.openapi()
+    comp = schema["components"]["schemas"]
+    assert "ExecutionReceipt" in comp, "the governed-execution receipt schema is missing"
+    assert "DecisionWebhookReceipt" in comp, "the webhook-delivery receipt schema is missing"
+    assert set(comp["ExecutionReceipt"]["required"]) == {"status", "execution_id"}
+    assert "webhook_url" in comp["DecisionWebhookReceipt"]["properties"], (
+        "DecisionWebhookReceipt no longer looks like the webhook-delivery receipt -- check the "
+        "rename did not also change what routers.decisions returns"
+    )
+
+
+def test_an_untyped_receipt_field_would_accept_the_broken_shape() -> None:
+    """Proves the OLD type had no teeth, by reverting to it in-process and showing it stays silent.
+
+    Without this, "the field is now typed" is a claim about source code, not about behaviour. This
+    constructs the exact old 3-key shape (executed_at/prepared_artifacts/action_count, no status,
+    no execution_id) against a locally-redefined dict[str, Any] response model and confirms it
+    validates -- the failure mode this whole fix closes, demonstrated rather than asserted.
+    """
+    from typing import Any as _Any
+
+    from pydantic import BaseModel as _BaseModel
+
+    class _OldShapeResponse(_BaseModel):
+        receipt: dict[str, _Any] | None = None
+
+    old_shaped_receipt = {
+        "executed_at": "2026-01-01T00:00:00Z",
+        "prepared_artifacts": [],
+        "action_count": 0,
+    }
+    _OldShapeResponse(receipt=old_shaped_receipt)  # must NOT raise -- that is the bug being proven
+
+    class _NewShapeResponse(_BaseModel):
+        receipt: ExecutionReceipt | None = None
+
+    try:
+        _NewShapeResponse(receipt=old_shaped_receipt)
+    except Exception:
+        pass
+    else:
+        raise AssertionError(
+            "the real ExecutionReceipt type accepted the old, pre-A4 receipt shape -- the "
+            "required fields (status, execution_id) are not actually enforced"
+        )
 
 
 def test_a_denial_can_be_expressed_with_a_code_and_retryability() -> None:

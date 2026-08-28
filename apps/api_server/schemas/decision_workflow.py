@@ -13,6 +13,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from apps.api_server.schemas.receipt import ExecutionReceipt
+
 __all__ = [
     "CreateDecisionCaseRequest",
     "DecisionCaseResponse",
@@ -107,7 +109,13 @@ class ExecutionPlanResponse(BaseModel):
         None, description="Single-use approval challenge (present only at propose time)"
     )
     actions: dict[str, Any] | None
-    receipt: dict[str, Any] | None = None
+    # Was `dict[str, Any]`: the receipt DecisionService builds is already the versioned
+    # ExecutionReceipt (apps.api_server.schemas.receipt) -- typing it here is what makes that
+    # contract reach the wire. Before this, the OpenAPI spec published `receipt` as
+    # `additionalProperties: true`, so the shape existed internally but was invisible to any
+    # generated client and unenforced by response validation (a malformed receipt would have
+    # passed straight through). None only before execution (propose/approve responses).
+    receipt: ExecutionReceipt | None = None
 
 
 class ApproveRequest(BaseModel):
