@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from apps.api_server.schemas.receipt import ExecutionReceipt
 from apps.api_server.decision_packs import renewal_capacity_allocation as _rca
 from apps.api_server.decision_packs.renewal_capacity_allocation.contract import (
     RenewalAllocationInput,
@@ -56,6 +57,11 @@ class RequestScope:
     principal: str | None = None
     tenant: str | None = None
     role: str | None = None
+    # Correlation, carried so a receipt can record which call produced it and which wider operation
+    # that call belonged to. Optional because non-HTTP callers (tests, internal jobs) have neither.
+    request_id: str | None = None
+    trace_id: str | None = None
+    idempotency_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -626,11 +632,30 @@ class DecisionService:
             )
         # Safe MVP execution: produce artifacts/receipt only — no external side effects.
         actions = (plan.actions or {}).get("actions", [])
-        plan.receipt = {
-            "executed_at": self._now().isoformat(),
-            "prepared_artifacts": [a.get("type") for a in actions],
-            "action_count": len(actions),
-        }
+        # A versioned envelope, not an ad-hoc dict: see apps/api_server/schemas/receipt.py for why
+        # the shape is a contract. The three original keys live on under `result`, so an existing
+        # consumer keeps working while gaining the envelope around them.
+        receipt = ExecutionReceipt(
+            status="executed",
+            retryable=False,
+            request_id=scope.request_id,
+            trace_id=scope.trace_id,
+            idempotency_key=scope.idempotency_key,
+            execution_id=uuid.uuid4(),
+            plan_hash=plan.plan_hash,
+            # The plan reached "approved" through the nonce+plan_hash gate, so by the time execution
+            # runs the approval is a fact, not an inference.
+            approval_state="approved",
+            # policy_snapshot_hash stays None here: this path carries no policy snapshot, and a
+            # mislabelled hash on an evidence artifact is worse than an honest null.
+            executed_at=self._now(),
+            result={
+                "executed_at": self._now().isoformat(),
+                "prepared_artifacts": [a.get("type") for a in actions],
+                "action_count": len(actions),
+            },
+        )
+        plan.receipt = receipt.to_stored()
         plan.lifecycle_state = "executed"
         plan.updated_at = self._now()
         # Compare-and-set on 'approved': execute-once under concurrency (the loser 409s).

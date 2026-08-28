@@ -95,13 +95,21 @@ def get_decision_service(db: AsyncSession = Depends(get_db)) -> DecisionService:
 _APPROVAL_MIN_ROLE = "admin"
 
 
-def _scope_from_auth(auth: AuthContext) -> RequestScope:
+def _scope_from_auth(auth: AuthContext, request: Request | None = None) -> RequestScope:
     user_id = auth.get("user_id")
+    # request is optional so existing callers keep working; when present the receipt gains the
+    # correlation ids, which is what makes several receipts from one agent turn reassemblable.
+    request_id = getattr(request.state, "request_id", None) if request is not None else None
+    trace_id = getattr(request.state, "trace_id", None) if request is not None else None
+    idem = request.headers.get("Idempotency-Key", "").strip() if request is not None else ""
     return RequestScope(
         org_id=auth["org_id"],
         workspace_id=auth.get("workspace_id"),
         principal=str(user_id) if user_id else f"key:{auth.get('key_id')}",
         role=auth.get("role"),
+        request_id=request_id,
+        trace_id=trace_id,
+        idempotency_key=idem or None,
     )
 
 
@@ -404,11 +412,12 @@ async def approve_plan(
 )
 async def execute_plan(
     plan_id: uuid.UUID,
+    request: Request,
     auth: AuthContext = Depends(get_current_org),
     svc: DecisionService = Depends(get_decision_service),
     db: AsyncSession = Depends(get_db),
 ) -> ExecutionPlanResponse:
-    scope = _scope_from_auth(auth)
+    scope = _scope_from_auth(auth, request)
     try:
         plan = await svc.execute_approved_plan(
             scope, plan_id=plan_id, required_role=_APPROVAL_MIN_ROLE
