@@ -282,6 +282,7 @@ docs-check:
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_kernel_inventory.py --check
 	$(REPO_PYTHON) scripts/docs/check_docs_coverage.py
+	$(REPO_PYTHON) scripts/docs/check_engine_domain_coverage.py
 	$(REPO_PYTHON) scripts/docs/audit_gitbook_claims.py --source gitbook --skip-live --execute-safe-commands --strict --json-report build/docs-audit/gitbook-a-z.json
 
 ## capability-plane-verify: run the focused capability-plane proof bundle across contract, API, MCP, runtime, CLI, and docs
