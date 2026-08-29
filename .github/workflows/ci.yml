@@ -1163,6 +1163,18 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2,mode=max,compression=zstd
 
+      # See the identical steps after the API/Worker images' own scans (PR #950) -- that fix
+      # pruned BEFORE each build but never after the Engine build (the largest of the three, since
+      # it bundles the agent-core sidecar) and before ITS OWN scan. Reproduced live: the build
+      # itself now succeeds, but syft/grype's re-pull of the freshly-built Engine image for
+      # scanning then hit the exact same `no space left on device` -- the Engine build's own local
+      # layers had refilled the disk the two earlier prunes had freed.
+      - name: Reclaim disk before the Engine image's own SBOM scan
+        if: always()
+        run: |
+          docker builder prune --all --force || true
+          docker image prune --all --force || true
+
       # CODNA_TOKEN, NOT GITHUB_TOKEN. Live failure on the first real run (the build job only
       # triggers on push to main, so this could not be caught pre-merge): GITHUB_TOKEN pulling
       # ghcr.io/thyn-ai/algenta/engine got `permission_denied: read_package` / MANIFEST_UNKNOWN --
