@@ -352,7 +352,7 @@ Or if you have the official Algenta API image running, the MCP is already mounte
 
 The official image bundles the MCP transport dependencies. A `503` with `error.code = "mcp_transport_unavailable"` identifies an incomplete custom source build. Source contributors can restore the supported environment from `requirements-mcp.txt`; operators should upgrade the image rather than modify a running container.
 
-The canonical `/mcp` route implements stateless Streamable HTTP with MCP protocol `2025-11-25`. The deprecated `/mcp/sse` and `/mcp/messages` routes remain available only for older clients.
+The canonical `/mcp` route implements stateless Streamable HTTP and serves both MCP protocol eras: a plain `initialize` handshake negotiates the legacy `2025-11-25` session, while a request carrying the modern per-request envelope (`MCP-Protocol-Version` header / `_meta`, no handshake) is served under `2026-07-28` — both live today via `mcp>=2.0.0`'s built-in dual-era dispatch, not aspirational. The deprecated `/mcp/sse` and `/mcp/messages` routes remain available only for older clients on the legacy era.
 
 ---
 
