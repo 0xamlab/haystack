@@ -90,9 +90,7 @@ class _MCPToolCallAuthChallengeASGIApp:
         if isinstance(payload, dict) and payload.get("method") == "tools/call":
             response = JSONResponse(
                 status_code=401,
-                headers={
-                    "WWW-Authenticate": 'Bearer realm="algenta", error="invalid_token"'
-                },
+                headers={"WWW-Authenticate": _www_authenticate_header(scope)},
                 content={
                     "jsonrpc": "2.0",
                     "id": payload.get("id"),
@@ -142,7 +140,7 @@ class _MCPLegacyTransportAuthASGIApp:
             return
         response = JSONResponse(
             status_code=401,
-            headers={"WWW-Authenticate": 'Bearer realm="algenta", error="invalid_token"'},
+            headers={"WWW-Authenticate": _www_authenticate_header(scope)},
             content={
                 "error": {
                     "code": "authentication_required",
@@ -259,6 +257,46 @@ def _scope_base_url(scope: Scope) -> str | None:
     if not host:
         return None
     return f"{scheme}://{host}".rstrip("/")
+
+
+def _configured_authorization_servers() -> tuple[str, ...]:
+    """Every issuer URL this deployment's embedded API auth actually trusts today.
+
+    Backs the RFC 9728 ``resource_metadata`` challenge parameter below (and the matching
+    ``/.well-known/oauth-protected-resource[/mcp]`` document at
+    ``apps/api_server/routers/oauth_protected_resource.py``, which this function's counterpart
+    there re-derives independently). Empty — never a guess — when this process has no
+    ``apps.api_server`` to check (the standalone ``algenta-mcp`` package/process talks to a
+    *remote* engine over HTTP and cannot see its auth configuration) or when neither Microsoft
+    Entra ID nor generic OIDC is configured on this deployment: discovery must never advertise an
+    authorization server that doesn't exist.
+    """
+    try:
+        from apps.api_server.services import entra_auth, oidc_auth
+    except ImportError:
+        return ()
+    servers = list(entra_auth.entra_authorization_server_issuers())
+    oidc_issuer = oidc_auth.oidc_authorization_server_issuer()
+    if oidc_issuer and oidc_issuer not in servers:
+        servers.append(oidc_issuer)
+    return tuple(servers)
+
+
+def _www_authenticate_header(scope: Scope) -> str:
+    """The ``WWW-Authenticate`` challenge for a missing/invalid MCP bearer.
+
+    Carries RFC 9728's ``resource_metadata`` auth-param — pointing at this deployment's own
+    ``/.well-known/oauth-protected-resource/mcp`` — ONLY when at least one authorization server is
+    actually configured. With none configured, the header is unchanged from today's bearer-key-only
+    challenge: no discovery hint to a document that would 404 anyway.
+    """
+    base = 'Bearer realm="algenta", error="invalid_token"'
+    if not _configured_authorization_servers():
+        return base
+    base_url = _scope_base_url(scope)
+    if not base_url:
+        return base
+    return f'{base}, resource_metadata="{base_url}/.well-known/oauth-protected-resource/mcp"'
 
 
 def _embedded_downstream_base_url(scope: Scope) -> str:

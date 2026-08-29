@@ -262,6 +262,28 @@ def test_unconfigured_gateway_fails_closed(_patch) -> None:
     assert e.value.code == "not_configured"
 
 
+# ── entra_authorization_server_issuers (RFC 9728 discovery) ────────────────────
+
+
+def test_authorization_server_issuers_lists_the_configured_tenant(_patch) -> None:
+    assert entra_auth.entra_authorization_server_issuers() == (
+        f"https://login.microsoftonline.com/{TENANT}/v2.0",
+    )
+
+
+def test_authorization_server_issuers_includes_every_allowed_tenant(_patch) -> None:
+    _patch.entra_allowed_tenants = OTHER_TENANT
+    assert set(entra_auth.entra_authorization_server_issuers()) == {
+        f"https://login.microsoftonline.com/{TENANT}/v2.0",
+        f"https://login.microsoftonline.com/{OTHER_TENANT}/v2.0",
+    }
+
+
+def test_authorization_server_issuers_empty_when_unconfigured(_patch) -> None:
+    _patch.entra_tenant_id = ""
+    assert entra_auth.entra_authorization_server_issuers() == ()
+
+
 def test_looks_like_entra_token_routing(_patch) -> None:
     assert looks_like_entra_token(_token()) is True
     assert looks_like_entra_token("algenta_sk_notajwt") is False

@@ -101,6 +101,17 @@ def oidc_configured() -> bool:
     )
 
 
+def oidc_authorization_server_issuer() -> str | None:
+    """The single issuer URL ``verify_oidc_token`` actually trusts, for RFC 9728 protected-resource
+    metadata (``routers/oauth_protected_resource.py``). ``None`` when generic OIDC is not
+    configured; discovery must never advertise an authorization server this gateway would not
+    actually trust."""
+    if not oidc_configured():
+        return None
+    settings = get_settings()
+    return (getattr(settings, "oidc_issuer", None) or "").strip() or None
+
+
 def looks_like_oidc_token(token: str) -> bool:
     """Cheap, unverified pre-routing check — carries zero trust on its own. Compares the token's
     unverified ``iss`` against the exact configured issuer, not a substring/host match: a

@@ -333,6 +333,12 @@ from apps.api_server.routers import license as _license_router  # noqa: E402
 
 app.include_router(_license_router.router)
 
+# RFC 9728 OAuth protected-resource metadata for the MCP server — GET
+# /.well-known/oauth-protected-resource(/mcp). 404s until Entra and/or generic OIDC is configured.
+from apps.api_server.routers import oauth_protected_resource as _oauth_protected_resource_router  # noqa: E402
+
+app.include_router(_oauth_protected_resource_router.router)
+
 # Credit bucket — POST /v1/credits/refresh
 from apps.api_server.routers import credits as _credits_router  # noqa: E402
 

@@ -43,6 +43,7 @@ logger = structlog.get_logger(__name__)
 __all__ = [
     "EntraAuthError",
     "EntraPrincipal",
+    "entra_authorization_server_issuers",
     "entra_configured",
     "looks_like_entra_token",
     "verify_entra_token",
@@ -129,6 +130,21 @@ def looks_like_entra_token(token: str) -> bool:
     # real verify pins the issuer, but we keep the pre-check honest and CodeQL-clean).
     host = (urlsplit(iss).hostname or "").lower()
     return host in _ENTRA_ISSUER_HOSTS
+
+
+def entra_authorization_server_issuers() -> tuple[str, ...]:
+    """Every Entra v2 issuer URL ``verify_entra_token`` will actually accept, for RFC 9728
+    protected-resource metadata (``routers/oauth_protected_resource.py``). One per allowed tenant
+    (the configured tenant plus ``ALGENTA_ENTRA_ALLOWED_TENANTS``) -- exactly the set
+    ``_allowed_tenants`` checks a token's ``tid`` against. Empty when Entra is not configured;
+    discovery must never advertise an authorization server this gateway would not actually trust.
+    """
+    if not entra_configured():
+        return ()
+    settings = get_settings()
+    return tuple(
+        sorted(f"https://{_LOGIN_HOST}/{tenant}/v2.0" for tenant in _allowed_tenants(settings))
+    )
 
 
 def _allowed_tenants(settings: Any) -> frozenset[str]:

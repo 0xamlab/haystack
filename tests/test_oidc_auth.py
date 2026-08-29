@@ -220,6 +220,18 @@ def test_unconfigured_gateway_fails_closed(_patch) -> None:
     assert e.value.code == "not_configured"
 
 
+# ── oidc_authorization_server_issuer (RFC 9728 discovery) ──────────────────────
+
+
+def test_authorization_server_issuer_is_the_configured_issuer(_patch) -> None:
+    assert oidc_auth.oidc_authorization_server_issuer() == ISSUER
+
+
+def test_authorization_server_issuer_none_when_unconfigured(_patch) -> None:
+    _patch.oidc_issuer = ""
+    assert oidc_auth.oidc_authorization_server_issuer() is None
+
+
 def test_looks_like_oidc_token_routing(_patch) -> None:
     assert looks_like_oidc_token(_token()) is True
     assert looks_like_oidc_token("algenta_sk_notajwt") is False

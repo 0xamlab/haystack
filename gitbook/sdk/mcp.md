@@ -430,6 +430,36 @@ print(resp.json())
 Never expose the MCP HTTP port directly to the public internet without an authenticating gateway in front of it. The transport relays your key downstream to the Algenta API on every tool call.
 {% endhint %}
 
+## OAuth discovery (RFC 9728)
+
+When the API server embedding MCP has Microsoft Entra ID and/or a generic OIDC provider configured (see [Identity and access](../trust/identity-and-access.md) and [Generic OIDC](../integrations/identity/generic-oidc.md)), an unauthenticated `tools/call` — on the streamable `/mcp` mount or the deprecated `/mcp/sse` + `/mcp/messages` pair — answers `401` with a `WWW-Authenticate` header carrying an RFC 9728 discovery hint:
+
+```http title="401 response"
+WWW-Authenticate: Bearer realm="algenta", error="invalid_token", resource_metadata="https://your-gateway.example.com/.well-known/oauth-protected-resource/mcp"
+```
+
+A compliant OAuth-aware MCP client follows `resource_metadata` to fetch the protected-resource metadata document, which names every authorization server this gateway will actually accept a token from:
+
+```bash
+curl -s https://your-gateway.example.com/.well-known/oauth-protected-resource/mcp | jq
+```
+
+```json
+{
+  "resource": "https://your-gateway.example.com/mcp",
+  "authorization_servers": ["https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"],
+  "bearer_methods_supported": ["header"],
+  "resource_name": "Algenta MCP Server",
+  "resource_documentation": "https://docs.algenta.ai/sdk/mcp"
+}
+```
+
+The same document is also published at the bare `/.well-known/oauth-protected-resource` location for client compatibility.
+
+{% hint style="info" %}
+Both routes **404** when neither Entra nor generic OIDC is configured — this gateway never advertises an authorization server that doesn't exist, and a bearer-key-only deployment's `WWW-Authenticate` challenge is unchanged (no `resource_metadata` param). This is the same discipline `GET /.well-known/jwks.json` already follows for the license control plane.
+{% endhint %}
+
 ## Troubleshooting
 
 | Symptom | Resolution |
