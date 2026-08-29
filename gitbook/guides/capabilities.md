@@ -131,7 +131,7 @@ Verify: `plan.selected_capability_id` is non-empty and `plan.execution_owner` is
 * **Empty capability or provider list.** Nothing is bound for your scope yet. Bindings connect a provider profile to your org; without one there is nothing to route to. Confirm with `GET /v1/capability-bindings`.
 * **Route returns low confidence or no selection.** The objective did not match an enabled capability. Broaden it, drop restrictive `provider_ids`/`kinds` filters, or raise `max_fallbacks` to surface alternatives.
 * **Execution returns an `error` object.** Read the `error` payload on the response. A quarantined binding (`binding_status`) or unresolved execution ownership fails closed by design. A `403`/`401` means the key lacks access — see [API errors](../api/errors.md).
-* **`approval_required` is true.** The route plan sets `requires_approval`; high-risk capabilities gate execution behind an approval before they will run.
+* **`approval_required` is true.** The route plan sets `requires_approval`. Calling `POST /v1/capabilities/execute` for such a capability does not run it: the capability plane instead returns a pending plan (`plan_id`, `plan_hash`, `nonce`, and a `receipt` with `status: "approval_required"`) and performs no side effect. A credentialed operator approves it with `POST /v1/capability-executions/{plan_id}/approve` — a separate, admin-gated HTTP operation, deliberately not available as an MCP/LLM tool — and only then does calling `execute` again with `plan_id` set actually run the capability.
 
 ## Next
 

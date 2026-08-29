@@ -268,6 +268,16 @@ class CapabilityExecutionRequest(CapabilityPlaneModel):
     binding_id: str | None = None
     input: dict[str, Any] | None = None
     request_id: str | None = None
+    plan_id: str | None = Field(
+        default=None,
+        description=(
+            "Reference to a previously proposed capability execution plan (returned as "
+            "plan_id when an approval_required capability was invoked without a prior "
+            "approval). Required to actually execute such a capability once its plan has "
+            "been approved via POST /v1/capability-executions/{plan_id}/approve. Ignored "
+            "(must be omitted) for capabilities that do not require approval."
+        ),
+    )
 
 
 class CapabilityExecutionResponse(CapabilityPlaneModel):
@@ -281,6 +291,44 @@ class CapabilityExecutionResponse(CapabilityPlaneModel):
     error: dict[str, Any] | None = None
     started_at: datetime
     completed_at: datetime | None = None
+    plan_id: str | None = Field(
+        default=None,
+        description=(
+            "Set when this capability is approval_required: identifies the pending or "
+            "decided execution plan."
+        ),
+    )
+    plan_hash: str | None = Field(
+        default=None, description="Hash of the proposed plan; an approval is bound to this."
+    )
+    nonce: str | None = Field(
+        default=None,
+        description="Single-use approval challenge -- present only when a new plan is proposed.",
+    )
+    receipt: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "The versioned ExecutionReceipt (apps.api_server.schemas.receipt), present once a "
+            "plan is proposed (status='approval_required') or actually executed "
+            "(status='executed'/'failed')."
+        ),
+    )
+
+
+class CapabilityApprovalRequest(CapabilityPlaneModel):
+    plan_hash: str = Field(..., min_length=16, max_length=64)
+    nonce: str = Field(..., min_length=8, max_length=64)
+    idempotency_key: str | None = Field(None, max_length=128)
+
+
+class CapabilityApprovalResponse(CapabilityPlaneModel):
+    plan_id: str
+    capability_id: str
+    provider_id: str
+    binding_id: str | None = None
+    lifecycle_state: str
+    approver_principal: str | None = None
+    decided_at: datetime | None = None
 
 
 class CapabilityOutcomeRecord(CapabilityPlaneModel):

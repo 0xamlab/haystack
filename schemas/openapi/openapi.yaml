@@ -3442,6 +3442,11 @@ paths:
       tags:
       - Capability Plane
       summary: Execute one unified capability
+      description: Executes a capability. If its catalog entry has approval_required=True
+        and no approved plan_id is supplied, this does NOT execute -- it returns a
+        pending plan (status='approval_required' on the receipt, plus plan_id/plan_hash/nonce)
+        instead. Approve it via POST /v1/capability-executions/{plan_id}/approve,
+        then call this endpoint again with plan_id set to actually run it.
       operationId: execute_capability_v1_capabilities_execute_post
       requestBody:
         content:
@@ -3891,6 +3896,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CapabilityBindingTestResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /v1/capability-executions/{plan_id}/approve:
+    post:
+      tags:
+      - Capability Plane
+      summary: Approve a proposed capability execution plan
+      description: Approval is an explicit, credentialed operation bound to the exact
+        plan hash and a single-use nonce. It is intentionally not exposed as an MCP/LLM
+        tool. Approving does NOT execute the capability (approve != execute) -- call
+        POST /v1/capabilities/execute again with plan_id set to run it.
+      operationId: approve_capability_execution_v1_capability_executions__plan_id__approve_post
+      security:
+      - BearerAuth: []
+      - LegacyApiKey: []
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Plan Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapabilityApprovalRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityApprovalResponse'
         '422':
           description: Validation Error
           content:
@@ -11748,6 +11792,68 @@ components:
       required:
       - enums
       title: CapabilityAlgebraSchema
+    CapabilityApprovalRequest:
+      properties:
+        plan_hash:
+          type: string
+          maxLength: 64
+          minLength: 16
+          title: Plan Hash
+        nonce:
+          type: string
+          maxLength: 64
+          minLength: 8
+          title: Nonce
+        idempotency_key:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Idempotency Key
+      additionalProperties: false
+      type: object
+      required:
+      - plan_hash
+      - nonce
+      title: CapabilityApprovalRequest
+    CapabilityApprovalResponse:
+      properties:
+        plan_id:
+          type: string
+          title: Plan Id
+        capability_id:
+          type: string
+          title: Capability Id
+        provider_id:
+          type: string
+          title: Provider Id
+        binding_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Binding Id
+        lifecycle_state:
+          type: string
+          title: Lifecycle State
+        approver_principal:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Approver Principal
+        decided_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Decided At
+      additionalProperties: false
+      type: object
+      required:
+      - plan_id
+      - capability_id
+      - provider_id
+      - lifecycle_state
+      title: CapabilityApprovalResponse
     CapabilityAuthorizationCompleteRequest:
       properties:
         session_id:
@@ -12300,6 +12406,16 @@ components:
           - type: string
           - type: 'null'
           title: Request Id
+        plan_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Plan Id
+          description: Reference to a previously proposed capability execution plan
+            (returned as plan_id when an approval_required capability was invoked
+            without a prior approval). Required to actually execute such a capability
+            once its plan has been approved via POST /v1/capability-executions/{plan_id}/approve.
+            Ignored (must be omitted) for capabilities that do not require approval.
       additionalProperties: false
       type: object
       required:
@@ -12345,6 +12461,35 @@ components:
             format: date-time
           - type: 'null'
           title: Completed At
+        plan_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Plan Id
+          description: 'Set when this capability is approval_required: identifies
+            the pending or decided execution plan.'
+        plan_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Plan Hash
+          description: Hash of the proposed plan; an approval is bound to this.
+        nonce:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nonce
+          description: Single-use approval challenge -- present only when a new plan
+            is proposed.
+        receipt:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Receipt
+          description: The versioned ExecutionReceipt (apps.api_server.schemas.receipt),
+            present once a plan is proposed (status='approval_required') or actually
+            executed (status='executed'/'failed').
       additionalProperties: false
       type: object
       required:

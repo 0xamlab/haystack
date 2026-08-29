@@ -397,6 +397,11 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/capability-bindings/{binding_id}/test" method="post" %}
 {% endopenapi-operation %}
 
+### `POST /v1/capability-executions/{plan_id}/approve`
+
+{% openapi-operation spec="algenta-api" path="/v1/capability-executions/{plan_id}/approve" method="post" %}
+{% endopenapi-operation %}
+
 ### `GET /v1/capability-providers`
 
 {% openapi-operation spec="algenta-api" path="/v1/capability-providers" method="get" %}

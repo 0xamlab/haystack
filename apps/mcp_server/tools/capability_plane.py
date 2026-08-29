@@ -161,7 +161,15 @@ ROUTE_CAPABILITIES_SPEC: dict[str, Any] = {
 
 EXECUTE_CAPABILITY_SPEC: dict[str, Any] = {
     "name": "execute_capability",
-    "description": "Execute one routed or known algenta_managed capability by capability id. client_managed routes must execute in the customer app or adapter path.",
+    "description": (
+        "Execute one routed or known algenta_managed capability by capability id. "
+        "client_managed routes must execute in the customer app or adapter path. If the "
+        "capability requires approval (approval_required), this returns a pending plan "
+        "(status='approval_required', plus plan_id/plan_hash/nonce) instead of executing -- "
+        "approval is a separate, credentialed HTTP operation and is NOT available as a tool. "
+        "Once a human has approved it out-of-band, call this tool again with plan_id set to "
+        "actually run it."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -169,6 +177,13 @@ EXECUTE_CAPABILITY_SPEC: dict[str, Any] = {
             "binding_id": {"type": "string"},
             "input": {"type": "object"},
             "request_id": {"type": "string"},
+            "plan_id": {
+                "type": "string",
+                "description": (
+                    "Set only after a previously proposed, approval_required plan has been "
+                    "approved via POST /v1/capability-executions/{plan_id}/approve."
+                ),
+            },
         },
         "required": ["capability_id"],
         "additionalProperties": False,

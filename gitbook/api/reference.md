@@ -124,6 +124,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/v1/capability-bindings/{binding_id}/authorize/start` | Start capability-binding authorization |
 | `POST` | `/v1/capability-bindings/{binding_id}/discover` | Discover capabilities for a saved binding |
 | `POST` | `/v1/capability-bindings/{binding_id}/test` | Test a saved capability binding |
+| `POST` | `/v1/capability-executions/{plan_id}/approve` | Approve a proposed capability execution plan |
 | `GET` | `/v1/capability-providers` | List unified capability providers |
 | `GET` | `/v1/capability-providers/{provider_id}` | Get one unified capability provider |
 

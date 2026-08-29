@@ -14,7 +14,8 @@ from typing import Any, Iterable, Sequence
 from urllib.parse import urlencode
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.models.capability_plane import (
@@ -22,8 +23,10 @@ from apps.api_server.models.capability_plane import (
     BindingScope,
     BindingStatus,
     CapabilityBinding,
+    CapabilityExecutionPlan,
     CapabilityExecutionSession,
     CapabilityKind,
+    CapabilityPlanLifecycleState,
     CapabilityProvider,
     CapabilityProviderProfile,
     CapabilityRoutingOutcome,
@@ -35,6 +38,7 @@ from apps.api_server.models.capability_plane import (
 )
 from apps.api_server.models.data_connector import DataConnector
 from apps.api_server.models.organization import Organization
+from apps.api_server.schemas.receipt import ExecutionReceipt
 from apps.api_server.services import source_registry as sreg
 from apps.api_server.services.config_crypto import (
     decrypt_config_dict,
@@ -71,6 +75,23 @@ from apps.runtime_manifest import Replayability, RiskLevel, SideEffectClass
 POLICY_SNAPSHOT_ID = "capability-plane-policy-v1"
 SYSTEM_BINDING_REFRESH_TTL = timedelta(minutes=5)
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_.-]+")
+
+# Approving a capability execution plan is a privileged act: admin-or-owner only, mirroring
+# decision_cases.py's _APPROVAL_MIN_ROLE exactly. Service keys are pinned to 'viewer' by the
+# auth layer, so they can never satisfy this gate -- an agent holding only a service key can
+# never approve its own pending plan.
+_CAPABILITY_APPROVAL_MIN_ROLE = "admin"
+
+# Role hierarchy for the minimum-role gate. Unknown/missing roles rank below everything, so a
+# scope with no role (or a made-up one) can never satisfy a gate -- fail closed. Mirrors
+# decision_service/service.py's _ROLE_RANK (duplicated rather than imported: that name is
+# module-private to a different service, and the hierarchy is tiny and stable).
+_CAPABILITY_ROLE_RANK = {"viewer": 0, "member": 1, "admin": 2, "owner": 3}
+
+# Approval challenges expire this long after the plan was PROPOSED (a leaked propose response
+# must not be approvable days later) -- mirrors decision_service/service.py's
+# _APPROVAL_NONCE_TTL exactly.
+_CAPABILITY_APPROVAL_NONCE_TTL = timedelta(hours=24)
 
 
 from apps.api_server.services.capability_plane._constants import *  # noqa: F401, F403
@@ -236,8 +257,45 @@ async def execute_capability_service(
             "binding_mismatch",
             "binding_id does not match the selected capability binding.",
         )
+    if payload.plan_id and not capability.approval_required:
+        _raise_error(
+            400,
+            "plan_id_not_applicable",
+            "This capability does not require approval; do not pass plan_id.",
+        )
+    # Approval gate (Track C1b): a capability whose catalog entry sets approval_required=True
+    # must never reach the dispatch branches below on the strength of a bare request alone.
+    # This is the ONLY new control-flow fork for the default (approval_required=False) case --
+    # every capability below this branch executes exactly as it did before this gate existed.
+    if capability.approval_required:
+        if payload.plan_id:
+            return await _execute_approved_capability_plan(db, auth, capability, payload)
+        return await _propose_capability_execution(db, auth, capability, payload)
+
     session = await _create_execution_session(db, auth, capability, payload)
     request_input = dict(payload.input or {})
+    return await _dispatch_capability_execution(
+        db,
+        auth,
+        session=session,
+        capability=capability,
+        request_input=request_input,
+        request_id=payload.request_id,
+    )
+
+
+async def _dispatch_capability_execution(
+    db: AsyncSession,
+    auth: AuthContext,
+    *,
+    session: CapabilityExecutionSession,
+    capability: CapabilityCatalogEntry,
+    request_input: dict[str, Any],
+    request_id: str | None,
+) -> CapabilityExecutionResponse:
+    """The actual per-kind execution logic. Unchanged from before the approval gate existed --
+    only the caller changed (execute_capability_service for the direct path, or
+    _execute_approved_capability_plan once a plan has been approved)."""
     if capability.execution_owner is ExecutionOwner.CLIENT_MANAGED:
         return await _complete_execution_session(
             db,
@@ -345,7 +403,7 @@ async def execute_capability_service(
             module=module,
             function=function,
             args=request_input.get("args"),
-            request_id=payload.request_id,
+            request_id=request_id,
         )
         return await _complete_execution_session(
             db,
@@ -396,7 +454,7 @@ async def execute_capability_service(
                 arguments=arguments,
                 auth=auth_config,
                 audit=audit_context_from_auth(auth),
-                request_id=payload.request_id,
+                request_id=request_id,
             )
         except EgressPolicyDeniedError:
             return await _complete_execution_session(
@@ -456,6 +514,367 @@ async def execute_capability_service(
             ),
         },
     )
+
+
+# ── approval gate (Track C1b) ──────────────────────────────────────────────────────────────
+#
+# For a capability whose catalog entry sets approval_required=True, execute_capability_service
+# no longer dispatches directly. It mints a CapabilityExecutionPlan (PROPOSED), then a
+# separate, credentialed HTTP call (approve_capability_execution_service -- never an MCP/LLM
+# tool, mirroring decision_cases.py's own stated principle) flips it to APPROVED, and a second
+# execute_capability_service call carrying plan_id actually dispatches it. The check ORDER in
+# approve_capability_execution_service mirrors decision_service.service.DecisionService.approve
+# exactly: role gate, then idempotency replay, then plan_hash/nonce/TTL, then a
+# compare-and-set state transition.
+
+
+def _require_capability_role(role: str | None, required_role: str, *, action: str) -> None:
+    """Enforce a MINIMUM role (hierarchy-aware). Mirrors decision_service.service's
+    _require_min_role. Unknown/missing roles fail closed."""
+    have = _CAPABILITY_ROLE_RANK.get((role or "").lower(), -1)
+    need = _CAPABILITY_ROLE_RANK.get(required_role.lower())
+    if need is None:
+        need = max(_CAPABILITY_ROLE_RANK.values()) + 1  # unsatisfiable requirement, fail closed
+    if have < need:
+        _raise_error(
+            403, "insufficient_role", f"{action} requires role '{required_role}' or higher."
+        )
+
+
+def _approver_principal(auth: AuthContext) -> str:
+    user_id = auth.get("user_id")
+    return str(user_id) if user_id else f"key:{auth.get('key_id')}"
+
+
+async def _require_capability_plan(
+    db: AsyncSession, auth: AuthContext, plan_id: str
+) -> CapabilityExecutionPlan:
+    try:
+        parsed = uuid.UUID(plan_id)
+    except ValueError:
+        _raise_error(422, "invalid_plan_id", "plan_id must be a valid UUID.")
+    plan = await db.get(CapabilityExecutionPlan, parsed)
+    ws = auth.get("workspace_id")
+    if (
+        plan is None
+        or plan.org_id != _auth_org_id(auth)
+        or (ws is not None and plan.workspace_id != ws)
+    ):
+        _raise_error(
+            404,
+            "capability_execution_plan_not_found",
+            f"Capability execution plan '{plan_id}' not found.",
+        )
+    return plan
+
+
+async def _find_capability_plan_by_idempotency(
+    db: AsyncSession, auth: AuthContext, idempotency_key: str
+) -> CapabilityExecutionPlan | None:
+    # Org-wide lookup -- matches the scope of uq_capability_execution_plans_org_idempotency
+    # exactly, or a same-key insert from another workspace would bypass this pre-check.
+    result = await db.execute(
+        select(CapabilityExecutionPlan)
+        .where(CapabilityExecutionPlan.org_id == _auth_org_id(auth))
+        .where(CapabilityExecutionPlan.idempotency_key == idempotency_key)
+    )
+    return result.scalars().first()
+
+
+async def _transition_capability_plan(
+    db: AsyncSession,
+    plan: CapabilityExecutionPlan,
+    *,
+    from_state: str,
+    values: dict[str, Any],
+) -> bool:
+    """Conditional UPDATE -- the WHERE on lifecycle_state makes the transition win-once under
+    READ COMMITTED (a concurrent loser's UPDATE matches 0 rows once the winner's row-level
+    lock releases). Mirrors decision_service/sql_repository.py's transition_plan_state."""
+    stmt = (
+        update(CapabilityExecutionPlan)
+        .where(
+            CapabilityExecutionPlan.id == plan.id,
+            CapabilityExecutionPlan.lifecycle_state == from_state,
+        )
+        .values(**values)
+    )
+    result = await db.execute(stmt)
+    await db.flush()
+    return bool(getattr(result, "rowcount", 0))
+
+
+def _capability_approval_response(plan: CapabilityExecutionPlan) -> CapabilityApprovalResponse:
+    return CapabilityApprovalResponse(
+        plan_id=str(plan.id),
+        capability_id=plan.capability_id,
+        provider_id=plan.provider_id,
+        binding_id=str(plan.binding_id) if plan.binding_id else None,
+        lifecycle_state=plan.lifecycle_state,
+        approver_principal=plan.approver_principal,
+        decided_at=plan.decided_at,
+    )
+
+
+async def _propose_capability_execution(
+    db: AsyncSession,
+    auth: AuthContext,
+    capability: CapabilityCatalogEntry,
+    payload: CapabilityExecutionRequest,
+) -> CapabilityExecutionResponse:
+    """Mint a pending approval-gate instead of executing. No MCP tool call, no runtime-library
+    invocation, no dataset read has happened yet -- the execution session stays STARTED (never
+    completed) until a separate approval flips this plan to APPROVED and a second
+    execute_capability_service call (carrying plan_id) actually dispatches it."""
+    session = await _create_execution_session(db, auth, capability, payload)
+    input_snapshot = dict(payload.input or {})
+    plan_hash = _stable_hash(
+        {
+            "capability_id": capability.capability_id,
+            "binding_id": capability.binding_id,
+            "input": input_snapshot,
+            "manifest_hash": capability.manifest_hash,
+        }
+    )
+    nonce = uuid.uuid4().hex
+    plan = CapabilityExecutionPlan(
+        org_id=_auth_org_id(auth),
+        workspace_id=workspace_id_for_write(auth),
+        capability_id=capability.capability_id,
+        provider_id=capability.provider_id,
+        binding_id=uuid.UUID(capability.binding_id),
+        execution_session_id=session.id,
+        input_json=input_snapshot,
+        manifest_hash=capability.manifest_hash,
+        plan_hash=plan_hash,
+        nonce=nonce,
+        nonce_consumed=False,
+        lifecycle_state=CapabilityPlanLifecycleState.PROPOSED.value,
+    )
+    db.add(plan)
+    await db.flush()
+    receipt = ExecutionReceipt(
+        status="approval_required",
+        request_id=payload.request_id,
+        execution_id=uuid.uuid4(),
+        plan_hash=plan_hash,
+        approval_state="pending",
+        result={
+            "plan_id": str(plan.id),
+            "capability_id": capability.capability_id,
+            "message": (
+                f"This capability requires approval. Approve via POST "
+                f"/v1/capability-executions/{plan.id}/approve, then call execute again with "
+                "plan_id set."
+            ),
+        },
+    )
+    return CapabilityExecutionResponse(
+        execution_session_id=str(session.id),
+        capability_id=capability.capability_id,
+        provider_id=capability.provider_id,
+        binding_id=capability.binding_id,
+        execution_owner=capability.execution_owner,
+        status=ExecutionSessionStatus.STARTED,
+        output=None,
+        error=None,
+        started_at=session.started_at,
+        completed_at=None,
+        plan_id=str(plan.id),
+        plan_hash=plan_hash,
+        nonce=nonce,
+        receipt=receipt.to_stored(),
+    )
+
+
+async def _execute_approved_capability_plan(
+    db: AsyncSession,
+    auth: AuthContext,
+    capability: CapabilityCatalogEntry,
+    payload: CapabilityExecutionRequest,
+) -> CapabilityExecutionResponse:
+    plan = await _require_capability_plan(db, auth, payload.plan_id)
+    if plan.capability_id != capability.capability_id:
+        _raise_error(
+            409,
+            "plan_capability_mismatch",
+            "plan_id does not reference a plan for this capability_id.",
+        )
+    if plan.lifecycle_state != CapabilityPlanLifecycleState.APPROVED.value:
+        _raise_error(
+            409,
+            "plan_not_approved",
+            f"Capability execution plan is '{plan.lifecycle_state}', not 'approved'.",
+        )
+    if plan.manifest_hash != capability.manifest_hash:
+        _raise_error(
+            409,
+            "stale_capability_plan",
+            "The capability definition changed since this plan was approved; re-propose.",
+        )
+    # Compare-and-set BEFORE the real side-effecting call: a concurrent double-execute must be
+    # stopped here, not after an MCP tool / runtime library has already been invoked twice.
+    won = await _transition_capability_plan(
+        db,
+        plan,
+        from_state=CapabilityPlanLifecycleState.APPROVED.value,
+        values={"lifecycle_state": CapabilityPlanLifecycleState.EXECUTING.value},
+    )
+    if not won:
+        _raise_error(
+            409, "plan_not_approved", "The plan was concurrently executed or invalidated."
+        )
+    plan.lifecycle_state = CapabilityPlanLifecycleState.EXECUTING.value
+
+    session = await db.get(CapabilityExecutionSession, plan.execution_session_id)
+    if session is None:
+        _raise_error(
+            500,
+            "execution_session_missing",
+            "The execution session for this approved plan is missing.",
+        )
+    request_input = dict(plan.input_json or {})
+    response = await _dispatch_capability_execution(
+        db,
+        auth,
+        session=session,
+        capability=capability,
+        request_input=request_input,
+        request_id=payload.request_id,
+    )
+    receipt = ExecutionReceipt(
+        status="executed" if response.status is ExecutionSessionStatus.SUCCEEDED else "failed",
+        code=(response.error or {}).get("code") if response.error else None,
+        request_id=payload.request_id,
+        execution_id=uuid.uuid4(),
+        plan_hash=plan.plan_hash,
+        approval_state="approved",
+        executed_at=_utc_now(),
+        result=response.output,
+    )
+    plan.lifecycle_state = CapabilityPlanLifecycleState.EXECUTED.value
+    plan.receipt_json = receipt.to_stored()
+    await db.flush()
+    response.plan_id = str(plan.id)
+    response.plan_hash = plan.plan_hash
+    response.nonce = None  # never re-expose the nonce after propose time
+    response.receipt = receipt.to_stored()
+    return response
+
+
+async def approve_capability_execution_service(
+    db: AsyncSession,
+    auth: AuthContext,
+    plan_id: str,
+    payload: CapabilityApprovalRequest,
+) -> CapabilityApprovalResponse:
+    """Approve a proposed capability execution plan.
+
+    A separately-authenticated, credentialed HTTP operation -- deliberately NOT exposed as an
+    MCP/LLM tool (mirrors decision_cases.py's /v1/decision-plans/{plan_id}/approve). Check
+    order mirrors DecisionService.approve exactly: role gate first (so a below-min-role caller
+    can never receive approval material via idempotency replay), then the idempotency
+    fast-path, then plan_hash/nonce/TTL, then a staleness guard, then the compare-and-set
+    transition.
+    """
+    _require_capability_role(
+        auth.get("role"), _CAPABILITY_APPROVAL_MIN_ROLE, action="capability approval"
+    )
+
+    if payload.idempotency_key:
+        existing = await _find_capability_plan_by_idempotency(db, auth, payload.idempotency_key)
+        if existing is not None:
+            # A key is only a safe replay if the request fingerprint matches the stored plan
+            # EXACTLY -- otherwise a reused key would silently return a different plan's
+            # approval (misrouting + approval-material disclosure).
+            if (
+                str(existing.id) != plan_id
+                or existing.plan_hash != payload.plan_hash
+                or existing.nonce != payload.nonce
+            ):
+                _raise_error(
+                    409,
+                    "idempotency_key_conflict",
+                    "idempotency_key was already used for a different capability approval "
+                    "request.",
+                )
+            return _capability_approval_response(existing)
+
+    plan = await _require_capability_plan(db, auth, plan_id)
+    if plan.lifecycle_state != CapabilityPlanLifecycleState.PROPOSED.value:
+        _raise_error(
+            409,
+            "plan_not_approvable",
+            f"Capability execution plan is '{plan.lifecycle_state}', not 'proposed'.",
+        )
+    if plan.plan_hash != payload.plan_hash:
+        _raise_error(403, "plan_hash_mismatch", "plan_hash does not match the current plan.")
+    if plan.nonce != payload.nonce or plan.nonce_consumed:
+        _raise_error(403, "invalid_nonce", "approval nonce is invalid or already used.")
+    # The approval challenge expires by the nonce TTL measured from when the plan was
+    # PROPOSED, so a leaked propose-response can't be approved days later.
+    if _utc_now() > plan.created_at + _CAPABILITY_APPROVAL_NONCE_TTL:
+        _raise_error(
+            403,
+            "approval_expired",
+            "the approval challenge for this plan has expired; re-propose",
+        )
+    # Staleness guard: there is no "revision" concept for a single capability invocation, so
+    # the manifest_hash snapshot plays that role -- a re-discovery that changed the
+    # capability's definition since propose invalidates the plan rather than silently
+    # authorizing a definition the approver never saw.
+    try:
+        current = await get_capability_service(
+            db, auth, plan.capability_id, include_instruction=False
+        )
+    except CapabilityPlaneError:
+        current = None
+    if current is None or current.manifest_hash != plan.manifest_hash:
+        _raise_error(
+            409,
+            "stale_capability_plan",
+            "the capability definition changed since this plan was proposed; re-propose",
+        )
+
+    approver_principal = _approver_principal(auth)
+    now = _utc_now()
+    try:
+        # Win the state transition FIRST (compare-and-set on 'proposed'): under concurrency
+        # exactly one approve consumes the nonce; the loser sees plan_not_approvable.
+        won = await _transition_capability_plan(
+            db,
+            plan,
+            from_state=CapabilityPlanLifecycleState.PROPOSED.value,
+            values={
+                "lifecycle_state": CapabilityPlanLifecycleState.APPROVED.value,
+                "nonce_consumed": True,
+                "approver_principal": approver_principal,
+                "required_role": _CAPABILITY_APPROVAL_MIN_ROLE,
+                "idempotency_key": payload.idempotency_key,
+                "decided_at": now,
+            },
+        )
+    except IntegrityError as exc:
+        # uq_capability_execution_plans_org_idempotency -- a concurrent first-use of the same
+        # key beat us to it. Map the designed backstop to a workflow error, not a 500.
+        raise CapabilityPlaneError(
+            status_code=409,
+            code="idempotency_key_conflict",
+            message=(
+                "idempotency_key was concurrently used by another capability approval request."
+            ),
+        ) from exc
+    if not won:
+        _raise_error(
+            409, "plan_not_approvable", "the plan was concurrently approved or invalidated."
+        )
+    plan.lifecycle_state = CapabilityPlanLifecycleState.APPROVED.value
+    plan.nonce_consumed = True
+    plan.approver_principal = approver_principal
+    plan.required_role = _CAPABILITY_APPROVAL_MIN_ROLE
+    plan.idempotency_key = payload.idempotency_key
+    plan.decided_at = now
+    return _capability_approval_response(plan)
 
 
 async def record_capability_outcome_service(

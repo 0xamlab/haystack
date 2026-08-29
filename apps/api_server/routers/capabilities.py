@@ -5,9 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from apps.api_server.db.session import AsyncSessionDep
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, require_verified_email
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.capability_plane import (
+    CapabilityApprovalRequest,
+    CapabilityApprovalResponse,
     CapabilityAuthorizationCompleteRequest,
     CapabilityAuthorizationCompleteResponse,
     CapabilityAuthorizationStartRequest,
@@ -29,6 +31,7 @@ from apps.api_server.services.capability_plane import (
     CapabilityRoutePlan,
     CapabilityRouteRequest,
     BindingScope,
+    approve_capability_execution_service,
     capability_plane_error_payload,
     complete_capability_authorization_service,
     create_capability_binding_service,
@@ -345,6 +348,13 @@ async def route_capabilities(
     "/v1/capabilities/execute",
     response_model=CapabilityExecutionResponse,
     summary="Execute one unified capability",
+    description=(
+        "Executes a capability. If its catalog entry has approval_required=True and no "
+        "approved plan_id is supplied, this does NOT execute -- it returns a pending plan "
+        "(status='approval_required' on the receipt, plus plan_id/plan_hash/nonce) instead. "
+        "Approve it via POST /v1/capability-executions/{plan_id}/approve, then call this "
+        "endpoint again with plan_id set to actually run it."
+    ),
 )
 async def execute_capability(
     payload: CapabilityExecutionRequest,
@@ -353,6 +363,30 @@ async def execute_capability(
 ) -> CapabilityExecutionResponse:
     try:
         return await execute_capability_service(db, auth, payload)
+    except CapabilityPlaneError as exc:
+        _raise_http_exception(exc)
+
+
+@router.post(
+    "/v1/capability-executions/{plan_id}/approve",
+    response_model=CapabilityApprovalResponse,
+    summary="Approve a proposed capability execution plan",
+    description=(
+        "Approval is an explicit, credentialed operation bound to the exact plan hash and a "
+        "single-use nonce. It is intentionally not exposed as an MCP/LLM tool. Approving does "
+        "NOT execute the capability (approve != execute) -- call POST /v1/capabilities/execute "
+        "again with plan_id set to run it."
+    ),
+    dependencies=[Depends(require_verified_email)],
+)
+async def approve_capability_execution(
+    plan_id: str,
+    payload: CapabilityApprovalRequest,
+    db: AsyncSessionDep,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+) -> CapabilityApprovalResponse:
+    try:
+        return await approve_capability_execution_service(db, auth, plan_id, payload)
     except CapabilityPlaneError as exc:
         _raise_http_exception(exc)
 

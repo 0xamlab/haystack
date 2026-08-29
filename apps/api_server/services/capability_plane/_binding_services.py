@@ -491,6 +491,10 @@ async def discover_capability_binding_service(
     binding_context = _binding_context_from_model(binding)
     capabilities, metadata, message = await _discover_binding_capabilities(db, auth, binding_context)
     snapshot = await _persist_snapshot(db, auth, binding, capabilities=capabilities, metadata=metadata)
+    # A re-discover changes each capability's manifest_hash (Track C1b's approval-plan
+    # staleness guard reads it), so the cache must not keep serving the pre-discover catalog
+    # for up to _CATALOG_CACHE_TTL -- every other catalog-changing mutation already invalidates.
+    _invalidate_catalog_cache()
     return CapabilityDiscoverResponse(
         binding_id=str(binding.id),
         provider_id=binding.provider_id,

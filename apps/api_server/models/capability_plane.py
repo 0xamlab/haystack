@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, JSON, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -72,6 +72,24 @@ class ExecutionSessionStatus(enum.StrEnum):
     STARTED = "started"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+
+
+class CapabilityPlanLifecycleState(enum.StrEnum):
+    """Lifecycle of one approval-gate for an ``approval_required=True`` capability.
+
+    Mirrors DecisionService's proposed -> approved -> executed workflow (services/
+    decision_service/service.py), but a single row plays both the "plan" and the "approval"
+    role -- there is no revision/case concept here to justify DecisionService's separate
+    Approval/ExecutionPlan tables. EXECUTING sits between APPROVED and EXECUTED so a
+    concurrent double-execute is stopped by a compare-and-set on this column BEFORE the real
+    side-effecting call runs, not after.
+    """
+
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    EXECUTING = "executing"
+    EXECUTED = "executed"
+    EXPIRED = "expired"
 
 
 class CapabilityProvider(TimestampMixin, Base):
@@ -339,4 +357,81 @@ class CapabilityExecutionSession(UUIDMixin, Base):
     error_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CapabilityExecutionPlan(UUIDMixin, TimestampMixin, Base):
+    """A pending or decided approval-gate for one execute_capability_service call whose
+    catalog entry has ``approval_required=True``.
+
+    Created (PROPOSED) instead of executing when no prior approval is present; a separate,
+    credentialed HTTP operation (never an MCP/LLM tool -- see routers/capabilities.py) flips
+    it to APPROVED; a second call to execute_capability_service carrying this plan's id then
+    performs the real execution. plan_hash + a single-use nonce bind the approval to the exact
+    capability/binding/input that was proposed; manifest_hash is a staleness guard (if the
+    capability's discovered manifest changes between propose and approve/execute, the plan is
+    refused rather than silently authorizing a definition the approver never saw).
+    """
+
+    __tablename__ = "capability_execution_plans"
+    __table_args__ = (
+        # Idempotency keys are unique per org (when present) -- mirrors
+        # uq_decision_approvals_org_idempotency exactly (see decision_aggregate.Approval).
+        Index(
+            "uq_capability_execution_plans_org_idempotency",
+            "org_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    capability_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    provider_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    binding_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("capability_bindings.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    execution_session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("capability_execution_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    input_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True, doc="Frozen request input captured at propose time."
+    )
+    manifest_hash: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        doc="Capability manifest_hash snapshot at propose time (staleness guard).",
+    )
+    plan_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    nonce: Mapped[str] = mapped_column(
+        String(64), nullable=False, doc="Single-use approval challenge issued at propose time."
+    )
+    nonce_consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lifecycle_state: Mapped[str] = mapped_column(
+        String(24),
+        nullable=False,
+        default=CapabilityPlanLifecycleState.PROPOSED.value,
+        index=True,
+    )
+    approver_principal: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    required_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    receipt_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 

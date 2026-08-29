@@ -9134,6 +9134,30 @@
         "validation": "parsed"
       },
       {
+        "bytes": 158,
+        "language": "http",
+        "line": 437,
+        "path": "sdk/mcp.md",
+        "sha256": "3b6dd7e1e688c05f8410f635990501c788f28f9bc4dbef3b47d1b169266cf369",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 86,
+        "language": "bash",
+        "line": 443,
+        "path": "sdk/mcp.md",
+        "sha256": "51d568ab57ea161b055028aec461003dcf5141067864e0c0a25289df5d44ff95",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 310,
+        "language": "json",
+        "line": 447,
+        "path": "sdk/mcp.md",
+        "sha256": "852446bdfe2959666249a0fa78843fda4812f43a025d36a3705ce6b0034307ab",
+        "validation": "parsed"
+      },
+      {
         "bytes": 201,
         "language": "python",
         "line": 10,
@@ -11717,16 +11741,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capability-providers",
+        "endpoint": "/v1/capability-executions/{}/approve",
         "line": 400,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capability-providers",
+        "endpoint": "/v1/capability-executions/{}/approve",
         "line": 402,
         "match_kind": "exact",
         "method": null,
@@ -11735,7 +11759,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capability-providers/{}",
+        "endpoint": "/v1/capability-providers",
         "line": 405,
         "match_kind": "exact",
         "method": "GET",
@@ -11744,7 +11768,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capability-providers/{}",
+        "endpoint": "/v1/capability-providers",
         "line": 407,
         "match_kind": "exact",
         "method": null,
@@ -11753,8 +11777,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data",
+        "endpoint": "/v1/capability-providers/{}",
+        "line": 410,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/capability-providers/{}",
         "line": 412,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/data",
+        "line": 417,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -11763,24 +11805,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/data",
-        "line": 414,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/data/connect",
-        "line": 417,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/data/connect",
         "line": 419,
         "match_kind": "exact",
         "method": null,
@@ -11789,16 +11813,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}",
+        "endpoint": "/v1/data/connect",
         "line": 422,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}",
+        "endpoint": "/v1/data/connect",
         "line": 424,
         "match_kind": "exact",
         "method": null,
@@ -11810,7 +11834,7 @@
         "endpoint": "/v1/data/{}",
         "line": 427,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -11825,16 +11849,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}/refresh",
+        "endpoint": "/v1/data/{}",
         "line": 432,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}/refresh",
+        "endpoint": "/v1/data/{}",
         "line": 434,
         "match_kind": "exact",
         "method": null,
@@ -11843,16 +11867,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}/summary",
+        "endpoint": "/v1/data/{}/refresh",
         "line": 437,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}/summary",
+        "endpoint": "/v1/data/{}/refresh",
         "line": 439,
         "match_kind": "exact",
         "method": null,
@@ -11861,8 +11885,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors",
-        "line": 444,
+        "endpoint": "/v1/data/{}/summary",
+        "line": 442,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -11870,8 +11894,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors",
-        "line": 446,
+        "endpoint": "/v1/data/{}/summary",
+        "line": 444,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -11882,7 +11906,7 @@
         "endpoint": "/v1/connectors",
         "line": 449,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -11897,7 +11921,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/browse",
+        "endpoint": "/v1/connectors",
         "line": 454,
         "match_kind": "exact",
         "method": "POST",
@@ -11906,7 +11930,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/browse",
+        "endpoint": "/v1/connectors",
         "line": 456,
         "match_kind": "exact",
         "method": null,
@@ -11915,7 +11939,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/test",
+        "endpoint": "/v1/connectors/browse",
         "line": 459,
         "match_kind": "exact",
         "method": "POST",
@@ -11924,7 +11948,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/test",
+        "endpoint": "/v1/connectors/browse",
         "line": 461,
         "match_kind": "exact",
         "method": null,
@@ -11933,16 +11957,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/types",
+        "endpoint": "/v1/connectors/test",
         "line": 464,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/types",
+        "endpoint": "/v1/connectors/test",
         "line": 466,
         "match_kind": "exact",
         "method": null,
@@ -11951,7 +11975,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}",
+        "endpoint": "/v1/connectors/types",
         "line": 469,
         "match_kind": "exact",
         "method": "GET",
@@ -11960,7 +11984,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}",
+        "endpoint": "/v1/connectors/types",
         "line": 471,
         "match_kind": "exact",
         "method": null,
@@ -11972,7 +11996,7 @@
         "endpoint": "/v1/connectors/{}",
         "line": 474,
         "match_kind": "exact",
-        "method": "PATCH",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -11990,7 +12014,7 @@
         "endpoint": "/v1/connectors/{}",
         "line": 479,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "PATCH",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -12005,16 +12029,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}/browse",
+        "endpoint": "/v1/connectors/{}",
         "line": 484,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}/browse",
+        "endpoint": "/v1/connectors/{}",
         "line": 486,
         "match_kind": "exact",
         "method": null,
@@ -12023,16 +12047,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}/test",
+        "endpoint": "/v1/connectors/{}/browse",
         "line": 489,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}/test",
+        "endpoint": "/v1/connectors/{}/browse",
         "line": 491,
         "match_kind": "exact",
         "method": null,
@@ -12041,8 +12065,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/map",
+        "endpoint": "/v1/connectors/{}/test",
+        "line": 494,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/connectors/{}/test",
         "line": 496,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/map",
+        "line": 501,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -12051,24 +12093,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/map",
-        "line": 498,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/map/{}",
-        "line": 501,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/map/{}",
         "line": 503,
         "match_kind": "exact",
         "method": null,
@@ -12077,8 +12101,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets",
+        "endpoint": "/v1/map/{}",
+        "line": 506,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/map/{}",
         "line": 508,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/datasets",
+        "line": 513,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -12087,24 +12129,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/datasets",
-        "line": 510,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/datasets/onboard",
-        "line": 513,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/datasets/onboard",
         "line": 515,
         "match_kind": "exact",
         "method": null,
@@ -12113,7 +12137,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/onboard/file",
+        "endpoint": "/v1/datasets/onboard",
         "line": 518,
         "match_kind": "exact",
         "method": "POST",
@@ -12122,7 +12146,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/onboard/file",
+        "endpoint": "/v1/datasets/onboard",
         "line": 520,
         "match_kind": "exact",
         "method": null,
@@ -12131,7 +12155,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/{}/retrain",
+        "endpoint": "/v1/datasets/onboard/file",
         "line": 523,
         "match_kind": "exact",
         "method": "POST",
@@ -12140,7 +12164,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/{}/retrain",
+        "endpoint": "/v1/datasets/onboard/file",
         "line": 525,
         "match_kind": "exact",
         "method": null,
@@ -12149,16 +12173,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/{}/status",
+        "endpoint": "/v1/datasets/{}/retrain",
         "line": 528,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/{}/status",
+        "endpoint": "/v1/datasets/{}/retrain",
         "line": 530,
         "match_kind": "exact",
         "method": null,
@@ -12167,17 +12191,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/batch",
-        "line": 535,
+        "endpoint": "/v1/datasets/{}/status",
+        "line": 533,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/batch",
-        "line": 537,
+        "endpoint": "/v1/datasets/{}/status",
+        "line": 535,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -12185,7 +12209,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/compare",
+        "endpoint": "/v1/batch",
         "line": 540,
         "match_kind": "exact",
         "method": "POST",
@@ -12194,7 +12218,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/compare",
+        "endpoint": "/v1/batch",
         "line": 542,
         "match_kind": "exact",
         "method": null,
@@ -12203,7 +12227,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/recommend",
+        "endpoint": "/v1/compare",
         "line": 545,
         "match_kind": "exact",
         "method": "POST",
@@ -12212,7 +12236,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/recommend",
+        "endpoint": "/v1/compare",
         "line": 547,
         "match_kind": "exact",
         "method": null,
@@ -12221,7 +12245,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/score",
+        "endpoint": "/v1/recommend",
         "line": 550,
         "match_kind": "exact",
         "method": "POST",
@@ -12230,7 +12254,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/score",
+        "endpoint": "/v1/recommend",
         "line": 552,
         "match_kind": "exact",
         "method": null,
@@ -12239,8 +12263,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions",
-        "line": 557,
+        "endpoint": "/v1/score",
+        "line": 555,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -12248,8 +12272,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions",
-        "line": 559,
+        "endpoint": "/v1/score",
+        "line": 557,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -12260,7 +12284,7 @@
         "endpoint": "/v1/decisions",
         "line": 562,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -12275,16 +12299,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/plan",
+        "endpoint": "/v1/decisions",
         "line": 567,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/plan",
+        "endpoint": "/v1/decisions",
         "line": 569,
         "match_kind": "exact",
         "method": null,
@@ -12293,16 +12317,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}",
+        "endpoint": "/v1/decisions/plan",
         "line": 572,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}",
+        "endpoint": "/v1/decisions/plan",
         "line": 574,
         "match_kind": "exact",
         "method": null,
@@ -12314,7 +12338,7 @@
         "endpoint": "/v1/decisions/{}",
         "line": 577,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -12329,16 +12353,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}/execute",
+        "endpoint": "/v1/decisions/{}",
         "line": 582,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}/execute",
+        "endpoint": "/v1/decisions/{}",
         "line": 584,
         "match_kind": "exact",
         "method": null,
@@ -12347,16 +12371,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}/outcome",
+        "endpoint": "/v1/decisions/{}/execute",
         "line": 587,
         "match_kind": "exact",
-        "method": "PATCH",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}/outcome",
+        "endpoint": "/v1/decisions/{}/execute",
         "line": 589,
         "match_kind": "exact",
         "method": null,
@@ -12365,8 +12389,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}",
+        "endpoint": "/v1/decisions/{}/outcome",
+        "line": 592,
+        "match_kind": "exact",
+        "method": "PATCH",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/decisions/{}/outcome",
         "line": 594,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/analysis-runs/{}",
+        "line": 599,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -12375,24 +12417,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/analysis-runs/{}",
-        "line": 596,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/action-plans",
-        "line": 599,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/action-plans",
         "line": 601,
         "match_kind": "exact",
         "method": null,
@@ -12401,16 +12425,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/evidence",
+        "endpoint": "/v1/analysis-runs/{}/action-plans",
         "line": 604,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/evidence",
+        "endpoint": "/v1/analysis-runs/{}/action-plans",
         "line": 606,
         "match_kind": "exact",
         "method": null,
@@ -12419,7 +12443,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/result",
+        "endpoint": "/v1/analysis-runs/{}/evidence",
         "line": 609,
         "match_kind": "exact",
         "method": "GET",
@@ -12428,7 +12452,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/result",
+        "endpoint": "/v1/analysis-runs/{}/evidence",
         "line": 611,
         "match_kind": "exact",
         "method": null,
@@ -12437,16 +12461,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases",
+        "endpoint": "/v1/analysis-runs/{}/result",
         "line": 614,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases",
+        "endpoint": "/v1/analysis-runs/{}/result",
         "line": 616,
         "match_kind": "exact",
         "method": null,
@@ -12455,16 +12479,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}",
+        "endpoint": "/v1/decision-cases",
         "line": 619,
         "match_kind": "exact",
-        "method": "PUT",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}",
+        "endpoint": "/v1/decision-cases",
         "line": 621,
         "match_kind": "exact",
         "method": null,
@@ -12476,7 +12500,7 @@
         "endpoint": "/v1/decision-cases/{}",
         "line": 624,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "PUT",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -12491,16 +12515,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/analysis-runs",
+        "endpoint": "/v1/decision-cases/{}",
         "line": 629,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/analysis-runs",
+        "endpoint": "/v1/decision-cases/{}",
         "line": 631,
         "match_kind": "exact",
         "method": null,
@@ -12509,7 +12533,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/outcomes",
+        "endpoint": "/v1/decision-cases/{}/analysis-runs",
         "line": 634,
         "match_kind": "exact",
         "method": "POST",
@@ -12518,7 +12542,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/outcomes",
+        "endpoint": "/v1/decision-cases/{}/analysis-runs",
         "line": 636,
         "match_kind": "exact",
         "method": null,
@@ -12527,7 +12551,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/refresh",
+        "endpoint": "/v1/decision-cases/{}/outcomes",
         "line": 639,
         "match_kind": "exact",
         "method": "POST",
@@ -12536,7 +12560,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/refresh",
+        "endpoint": "/v1/decision-cases/{}/outcomes",
         "line": 641,
         "match_kind": "exact",
         "method": null,
@@ -12545,7 +12569,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-plans/{}/approve",
+        "endpoint": "/v1/decision-cases/{}/refresh",
         "line": 644,
         "match_kind": "exact",
         "method": "POST",
@@ -12554,7 +12578,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-plans/{}/approve",
+        "endpoint": "/v1/decision-cases/{}/refresh",
         "line": 646,
         "match_kind": "exact",
         "method": null,
@@ -12563,7 +12587,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-plans/{}/execute",
+        "endpoint": "/v1/decision-plans/{}/approve",
         "line": 649,
         "match_kind": "exact",
         "method": "POST",
@@ -12572,7 +12596,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-plans/{}/execute",
+        "endpoint": "/v1/decision-plans/{}/approve",
         "line": 651,
         "match_kind": "exact",
         "method": null,
@@ -12581,17 +12605,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments",
-        "line": 656,
+        "endpoint": "/v1/decision-plans/{}/execute",
+        "line": 654,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments",
-        "line": 658,
+        "endpoint": "/v1/decision-plans/{}/execute",
+        "line": 656,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -12602,7 +12626,7 @@
         "endpoint": "/v1/deployments",
         "line": 661,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -12617,16 +12641,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/regions",
+        "endpoint": "/v1/deployments",
         "line": 666,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/regions",
+        "endpoint": "/v1/deployments",
         "line": 668,
         "match_kind": "exact",
         "method": null,
@@ -12635,16 +12659,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}",
+        "endpoint": "/v1/deployments/regions",
         "line": 671,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}",
+        "endpoint": "/v1/deployments/regions",
         "line": 673,
         "match_kind": "exact",
         "method": null,
@@ -12653,16 +12677,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}/cost",
+        "endpoint": "/v1/deployments/{}",
         "line": 676,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}/cost",
+        "endpoint": "/v1/deployments/{}",
         "line": 678,
         "match_kind": "exact",
         "method": null,
@@ -12671,8 +12695,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines",
-        "line": 683,
+        "endpoint": "/v1/deployments/{}/cost",
+        "line": 681,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -12680,8 +12704,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines",
-        "line": 685,
+        "endpoint": "/v1/deployments/{}/cost",
+        "line": 683,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -12689,7 +12713,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines/tiers",
+        "endpoint": "/v1/engines",
         "line": 688,
         "match_kind": "exact",
         "method": "GET",
@@ -12698,7 +12722,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines/tiers",
+        "endpoint": "/v1/engines",
         "line": 690,
         "match_kind": "exact",
         "method": null,
@@ -12707,7 +12731,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines/{}",
+        "endpoint": "/v1/engines/tiers",
         "line": 693,
         "match_kind": "exact",
         "method": "GET",
@@ -12716,7 +12740,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines/{}",
+        "endpoint": "/v1/engines/tiers",
         "line": 695,
         "match_kind": "exact",
         "method": null,
@@ -12725,8 +12749,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/execution/policy",
-        "line": 700,
+        "endpoint": "/v1/engines/{}",
+        "line": 698,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -12734,8 +12758,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/execution/policy",
-        "line": 702,
+        "endpoint": "/v1/engines/{}",
+        "line": 700,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -12746,7 +12770,7 @@
         "endpoint": "/v1/execution/policy",
         "line": 705,
         "match_kind": "exact",
-        "method": "PATCH",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -12761,16 +12785,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/execution/policy/snapshots",
+        "endpoint": "/v1/execution/policy",
         "line": 710,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "PATCH",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/execution/policy/snapshots",
+        "endpoint": "/v1/execution/policy",
         "line": 712,
         "match_kind": "exact",
         "method": null,
@@ -12779,9 +12803,27 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs/{}/export.{}",
+        "endpoint": "/v1/execution/policy/snapshots",
+        "line": 715,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/execution/policy/snapshots",
         "line": 717,
         "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/runs/{}/export.{}",
+        "line": 722,
+        "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
@@ -12789,7 +12831,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/runs/{}/export.{}",
-        "line": 719,
+        "line": 724,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -12798,7 +12840,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/infrastructure",
-        "line": 724,
+        "line": 729,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -12807,24 +12849,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/infrastructure",
-        "line": 726,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/nodes/heartbeat",
-        "line": 729,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/nodes/heartbeat",
         "line": 731,
         "match_kind": "exact",
         "method": null,
@@ -12833,7 +12857,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/nodes/register",
+        "endpoint": "/v1/nodes/heartbeat",
         "line": 734,
         "match_kind": "exact",
         "method": "POST",
@@ -12842,7 +12866,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/nodes/register",
+        "endpoint": "/v1/nodes/heartbeat",
         "line": 736,
         "match_kind": "exact",
         "method": null,
@@ -12851,16 +12875,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/nodes/{}",
+        "endpoint": "/v1/nodes/register",
         "line": 739,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/nodes/{}",
+        "endpoint": "/v1/nodes/register",
         "line": 741,
         "match_kind": "exact",
         "method": null,
@@ -12869,9 +12893,27 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/ingest",
+        "endpoint": "/v1/nodes/{}",
+        "line": 744,
+        "match_kind": "exact",
+        "method": "DELETE",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/nodes/{}",
         "line": 746,
         "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/ingest",
+        "line": 751,
+        "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
@@ -12879,33 +12921,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/ingest",
-        "line": 748,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/artifacts/resolve",
         "line": 753,
         "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/artifacts/resolve",
-        "line": 755,
-        "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/chat/completions",
+        "endpoint": "/v1/artifacts/resolve",
         "line": 758,
         "match_kind": "exact",
         "method": "POST",
@@ -12914,7 +12938,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/chat/completions",
+        "endpoint": "/v1/artifacts/resolve",
         "line": 760,
         "match_kind": "exact",
         "method": null,
@@ -12923,7 +12947,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/count_tokens",
+        "endpoint": "/v1/chat/completions",
         "line": 763,
         "match_kind": "exact",
         "method": "POST",
@@ -12932,7 +12956,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/count_tokens",
+        "endpoint": "/v1/chat/completions",
         "line": 765,
         "match_kind": "exact",
         "method": null,
@@ -12941,7 +12965,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings",
+        "endpoint": "/v1/count_tokens",
         "line": 768,
         "match_kind": "exact",
         "method": "POST",
@@ -12950,7 +12974,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings",
+        "endpoint": "/v1/count_tokens",
         "line": 770,
         "match_kind": "exact",
         "method": null,
@@ -12959,7 +12983,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings/similarity",
+        "endpoint": "/v1/embeddings",
         "line": 773,
         "match_kind": "exact",
         "method": "POST",
@@ -12968,7 +12992,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings/similarity",
+        "endpoint": "/v1/embeddings",
         "line": 775,
         "match_kind": "exact",
         "method": null,
@@ -12977,16 +13001,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/models",
+        "endpoint": "/v1/embeddings/similarity",
         "line": 778,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/models",
+        "endpoint": "/v1/embeddings/similarity",
         "line": 780,
         "match_kind": "exact",
         "method": null,
@@ -12995,16 +13019,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/rerank",
+        "endpoint": "/v1/models",
         "line": 783,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/rerank",
+        "endpoint": "/v1/models",
         "line": 785,
         "match_kind": "exact",
         "method": null,
@@ -13013,7 +13037,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/responses",
+        "endpoint": "/v1/rerank",
         "line": 788,
         "match_kind": "exact",
         "method": "POST",
@@ -13022,7 +13046,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/responses",
+        "endpoint": "/v1/rerank",
         "line": 790,
         "match_kind": "exact",
         "method": null,
@@ -13031,7 +13055,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/tokenize",
+        "endpoint": "/v1/responses",
         "line": 793,
         "match_kind": "exact",
         "method": "POST",
@@ -13040,7 +13064,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/tokenize",
+        "endpoint": "/v1/responses",
         "line": 795,
         "match_kind": "exact",
         "method": null,
@@ -13049,8 +13073,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/logs",
+        "endpoint": "/v1/tokenize",
+        "line": 798,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/tokenize",
         "line": 800,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/logs",
+        "line": 805,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -13059,17 +13101,17 @@
       {
         "authority_match": true,
         "endpoint": "/v1/logs",
-        "line": 802,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/playground",
         "line": 807,
         "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/playground",
+        "line": 812,
+        "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
@@ -13077,33 +13119,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/playground",
-        "line": 809,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/agent/run",
         "line": 814,
         "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/agent/run",
-        "line": 816,
-        "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision",
+        "endpoint": "/v1/agent/run",
         "line": 819,
         "match_kind": "exact",
         "method": "POST",
@@ -13112,7 +13136,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision",
+        "endpoint": "/v1/agent/run",
         "line": 821,
         "match_kind": "exact",
         "method": null,
@@ -13121,7 +13145,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/forecast",
+        "endpoint": "/v1/decision",
         "line": 824,
         "match_kind": "exact",
         "method": "POST",
@@ -13130,7 +13154,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/forecast",
+        "endpoint": "/v1/decision",
         "line": 826,
         "match_kind": "exact",
         "method": null,
@@ -13139,7 +13163,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/optimize",
+        "endpoint": "/v1/forecast",
         "line": 829,
         "match_kind": "exact",
         "method": "POST",
@@ -13148,7 +13172,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/optimize",
+        "endpoint": "/v1/forecast",
         "line": 831,
         "match_kind": "exact",
         "method": null,
@@ -13157,7 +13181,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/retrieve",
+        "endpoint": "/v1/optimize",
         "line": 834,
         "match_kind": "exact",
         "method": "POST",
@@ -13166,7 +13190,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/retrieve",
+        "endpoint": "/v1/optimize",
         "line": 836,
         "match_kind": "exact",
         "method": null,
@@ -13175,8 +13199,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/registry/credentials",
+        "endpoint": "/v1/retrieve",
+        "line": 839,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/retrieve",
         "line": 841,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/registry/credentials",
+        "line": 846,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -13185,7 +13227,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/registry/credentials",
-        "line": 843,
+        "line": 848,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -13194,7 +13236,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/capabilities",
-        "line": 848,
+        "line": 853,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -13203,24 +13245,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/capabilities",
-        "line": 850,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/repositories/{}/apply",
-        "line": 853,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/repositories/{}/apply",
         "line": 855,
         "match_kind": "exact",
         "method": null,
@@ -13229,7 +13253,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/decision-plans",
+        "endpoint": "/v1/repositories/{}/apply",
         "line": 858,
         "match_kind": "exact",
         "method": "POST",
@@ -13238,7 +13262,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/decision-plans",
+        "endpoint": "/v1/repositories/{}/apply",
         "line": 860,
         "match_kind": "exact",
         "method": null,
@@ -13247,7 +13271,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/graph-query",
+        "endpoint": "/v1/repositories/{}/decision-plans",
         "line": 863,
         "match_kind": "exact",
         "method": "POST",
@@ -13256,7 +13280,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/graph-query",
+        "endpoint": "/v1/repositories/{}/decision-plans",
         "line": 865,
         "match_kind": "exact",
         "method": null,
@@ -13265,7 +13289,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/pipeline",
+        "endpoint": "/v1/repositories/{}/graph-query",
         "line": 868,
         "match_kind": "exact",
         "method": "POST",
@@ -13274,7 +13298,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/pipeline",
+        "endpoint": "/v1/repositories/{}/graph-query",
         "line": 870,
         "match_kind": "exact",
         "method": null,
@@ -13283,7 +13307,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/security-analyses",
+        "endpoint": "/v1/repositories/{}/pipeline",
         "line": 873,
         "match_kind": "exact",
         "method": "POST",
@@ -13292,7 +13316,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/security-analyses",
+        "endpoint": "/v1/repositories/{}/pipeline",
         "line": 875,
         "match_kind": "exact",
         "method": null,
@@ -13301,7 +13325,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/security-analyses/closure",
+        "endpoint": "/v1/repositories/{}/security-analyses",
         "line": 878,
         "match_kind": "exact",
         "method": "POST",
@@ -13310,7 +13334,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/security-analyses/closure",
+        "endpoint": "/v1/repositories/{}/security-analyses",
         "line": 880,
         "match_kind": "exact",
         "method": null,
@@ -13319,7 +13343,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/simulate",
+        "endpoint": "/v1/repositories/{}/security-analyses/closure",
         "line": 883,
         "match_kind": "exact",
         "method": "POST",
@@ -13328,7 +13352,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/simulate",
+        "endpoint": "/v1/repositories/{}/security-analyses/closure",
         "line": 885,
         "match_kind": "exact",
         "method": null,
@@ -13337,7 +13361,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/simulate-patch",
+        "endpoint": "/v1/repositories/{}/simulate",
         "line": 888,
         "match_kind": "exact",
         "method": "POST",
@@ -13346,7 +13370,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/simulate-patch",
+        "endpoint": "/v1/repositories/{}/simulate",
         "line": 890,
         "match_kind": "exact",
         "method": null,
@@ -13355,7 +13379,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/snapshots",
+        "endpoint": "/v1/repositories/{}/simulate-patch",
         "line": 893,
         "match_kind": "exact",
         "method": "POST",
@@ -13364,7 +13388,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/snapshots",
+        "endpoint": "/v1/repositories/{}/simulate-patch",
         "line": 895,
         "match_kind": "exact",
         "method": null,
@@ -13373,16 +13397,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/snapshots/{}",
+        "endpoint": "/v1/repositories/{}/snapshots",
         "line": 898,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/snapshots/{}",
+        "endpoint": "/v1/repositories/{}/snapshots",
         "line": 900,
         "match_kind": "exact",
         "method": null,
@@ -13391,16 +13415,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/triage",
+        "endpoint": "/v1/repositories/{}/snapshots/{}",
         "line": 903,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/triage",
+        "endpoint": "/v1/repositories/{}/snapshots/{}",
         "line": 905,
         "match_kind": "exact",
         "method": null,
@@ -13409,17 +13433,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analytics",
-        "line": 910,
+        "endpoint": "/v1/repositories/{}/triage",
+        "line": 908,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analytics",
-        "line": 912,
+        "endpoint": "/v1/repositories/{}/triage",
+        "line": 910,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -13427,7 +13451,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs",
+        "endpoint": "/v1/analytics",
         "line": 915,
         "match_kind": "exact",
         "method": "GET",
@@ -13436,7 +13460,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs",
+        "endpoint": "/v1/analytics",
         "line": 917,
         "match_kind": "exact",
         "method": null,
@@ -13445,7 +13469,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs/{}",
+        "endpoint": "/v1/runs",
         "line": 920,
         "match_kind": "exact",
         "method": "GET",
@@ -13454,7 +13478,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs/{}",
+        "endpoint": "/v1/runs",
         "line": 922,
         "match_kind": "exact",
         "method": null,
@@ -13463,8 +13487,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries",
+        "endpoint": "/v1/runs/{}",
+        "line": 925,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/runs/{}",
         "line": 927,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/libraries",
+        "line": 932,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -13473,24 +13515,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries",
-        "line": 929,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/libraries/execute",
-        "line": 932,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/libraries/execute",
         "line": 934,
         "match_kind": "exact",
         "method": null,
@@ -13499,16 +13523,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries/health",
+        "endpoint": "/v1/libraries/execute",
         "line": 937,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries/health",
+        "endpoint": "/v1/libraries/execute",
         "line": 939,
         "match_kind": "exact",
         "method": null,
@@ -13517,17 +13541,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query",
-        "line": 944,
+        "endpoint": "/v1/libraries/health",
+        "line": 942,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query",
-        "line": 946,
+        "endpoint": "/v1/libraries/health",
+        "line": 944,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -13535,7 +13559,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/batch",
+        "endpoint": "/v1/query",
         "line": 949,
         "match_kind": "exact",
         "method": "POST",
@@ -13544,7 +13568,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/batch",
+        "endpoint": "/v1/query",
         "line": 951,
         "match_kind": "exact",
         "method": null,
@@ -13553,7 +13577,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/sql-report",
+        "endpoint": "/v1/query/batch",
         "line": 954,
         "match_kind": "exact",
         "method": "POST",
@@ -13562,7 +13586,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/sql-report",
+        "endpoint": "/v1/query/batch",
         "line": 956,
         "match_kind": "exact",
         "method": null,
@@ -13571,7 +13595,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/resolve",
+        "endpoint": "/v1/query/sql-report",
         "line": 959,
         "match_kind": "exact",
         "method": "POST",
@@ -13580,7 +13604,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/resolve",
+        "endpoint": "/v1/query/sql-report",
         "line": 961,
         "match_kind": "exact",
         "method": null,
@@ -13589,7 +13613,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/schema",
+        "endpoint": "/v1/resolve",
         "line": 964,
         "match_kind": "exact",
         "method": "POST",
@@ -13598,7 +13622,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/schema",
+        "endpoint": "/v1/resolve",
         "line": 966,
         "match_kind": "exact",
         "method": null,
@@ -13607,7 +13631,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/verify",
+        "endpoint": "/v1/sources/schema",
         "line": 969,
         "match_kind": "exact",
         "method": "POST",
@@ -13616,7 +13640,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/verify",
+        "endpoint": "/v1/sources/schema",
         "line": 971,
         "match_kind": "exact",
         "method": null,
@@ -13625,8 +13649,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate",
+        "endpoint": "/v1/verify",
+        "line": 974,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/verify",
         "line": 976,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate",
+        "line": 981,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -13635,24 +13677,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 978,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/simulate/templates",
-        "line": 981,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/simulate/templates",
         "line": 983,
         "match_kind": "exact",
         "method": null,
@@ -13661,7 +13685,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate/templates/{}",
+        "endpoint": "/v1/simulate/templates",
         "line": 986,
         "match_kind": "exact",
         "method": "GET",
@@ -13670,7 +13694,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate/templates/{}",
+        "endpoint": "/v1/simulate/templates",
         "line": 988,
         "match_kind": "exact",
         "method": null,
@@ -13679,16 +13703,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/templates/{}/run",
+        "endpoint": "/v1/simulate/templates/{}",
         "line": 991,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/templates/{}/run",
+        "endpoint": "/v1/simulate/templates/{}",
         "line": 993,
         "match_kind": "exact",
         "method": null,
@@ -13697,17 +13721,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources",
-        "line": 998,
+        "endpoint": "/v1/templates/{}/run",
+        "line": 996,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources",
-        "line": 1000,
+        "endpoint": "/v1/templates/{}/run",
+        "line": 998,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -13715,7 +13739,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/graph",
+        "endpoint": "/v1/sources",
         "line": 1003,
         "match_kind": "exact",
         "method": "GET",
@@ -13724,7 +13748,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/graph",
+        "endpoint": "/v1/sources",
         "line": 1005,
         "match_kind": "exact",
         "method": null,
@@ -13733,16 +13757,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/register",
+        "endpoint": "/v1/sources/graph",
         "line": 1008,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/register",
+        "endpoint": "/v1/sources/graph",
         "line": 1010,
         "match_kind": "exact",
         "method": null,
@@ -13751,16 +13775,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/{}",
+        "endpoint": "/v1/sources/register",
         "line": 1013,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/{}",
+        "endpoint": "/v1/sources/register",
         "line": 1015,
         "match_kind": "exact",
         "method": null,
@@ -13772,7 +13796,7 @@
         "endpoint": "/v1/sources/{}",
         "line": 1018,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -13787,8 +13811,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate/stream",
+        "endpoint": "/v1/sources/{}",
+        "line": 1023,
+        "match_kind": "exact",
+        "method": "DELETE",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/sources/{}",
         "line": 1025,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate/stream",
+        "line": 1030,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -13797,33 +13839,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate/stream",
-        "line": 1027,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/egress-log",
         "line": 1032,
         "match_kind": "exact",
-        "method": "GET",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/egress-log",
-        "line": 1034,
-        "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/egress-policy",
+        "endpoint": "/v1/admin/egress-log",
         "line": 1037,
         "match_kind": "exact",
         "method": "GET",
@@ -13832,7 +13856,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/egress-policy",
+        "endpoint": "/v1/admin/egress-log",
         "line": 1039,
         "match_kind": "exact",
         "method": null,
@@ -13841,7 +13865,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/privacy-report",
+        "endpoint": "/v1/admin/egress-policy",
         "line": 1042,
         "match_kind": "exact",
         "method": "GET",
@@ -13850,7 +13874,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/privacy-report",
+        "endpoint": "/v1/admin/egress-policy",
         "line": 1044,
         "match_kind": "exact",
         "method": null,
@@ -13859,7 +13883,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/benchmarks",
+        "endpoint": "/v1/admin/privacy-report",
         "line": 1047,
         "match_kind": "exact",
         "method": "GET",
@@ -13868,7 +13892,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/benchmarks",
+        "endpoint": "/v1/admin/privacy-report",
         "line": 1049,
         "match_kind": "exact",
         "method": null,
@@ -13877,7 +13901,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/modules",
+        "endpoint": "/v1/admin/runtime/benchmarks",
         "line": 1052,
         "match_kind": "exact",
         "method": "GET",
@@ -13886,7 +13910,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/modules",
+        "endpoint": "/v1/admin/runtime/benchmarks",
         "line": 1054,
         "match_kind": "exact",
         "method": null,
@@ -13895,7 +13919,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/validation",
+        "endpoint": "/v1/admin/runtime/modules",
         "line": 1057,
         "match_kind": "exact",
         "method": "GET",
@@ -13904,7 +13928,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/validation",
+        "endpoint": "/v1/admin/runtime/modules",
         "line": 1059,
         "match_kind": "exact",
         "method": null,
@@ -13913,7 +13937,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/health",
+        "endpoint": "/v1/admin/runtime/validation",
         "line": 1062,
         "match_kind": "exact",
         "method": "GET",
@@ -13922,7 +13946,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/health",
+        "endpoint": "/v1/admin/runtime/validation",
         "line": 1064,
         "match_kind": "exact",
         "method": null,
@@ -13931,7 +13955,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/meta/contract",
+        "endpoint": "/v1/health",
         "line": 1067,
         "match_kind": "exact",
         "method": "GET",
@@ -13940,7 +13964,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/meta/contract",
+        "endpoint": "/v1/health",
         "line": 1069,
         "match_kind": "exact",
         "method": null,
@@ -13949,7 +13973,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/library-stats",
+        "endpoint": "/v1/meta/contract",
         "line": 1072,
         "match_kind": "exact",
         "method": "GET",
@@ -13958,7 +13982,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/library-stats",
+        "endpoint": "/v1/meta/contract",
         "line": 1074,
         "match_kind": "exact",
         "method": null,
@@ -13967,7 +13991,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
+        "endpoint": "/v1/runtime/library-stats",
         "line": 1077,
         "match_kind": "exact",
         "method": "GET",
@@ -13976,7 +14000,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
+        "endpoint": "/v1/runtime/library-stats",
         "line": 1079,
         "match_kind": "exact",
         "method": null,
@@ -13985,7 +14009,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/version",
+        "endpoint": "/v1/runtime/manifest",
         "line": 1082,
         "match_kind": "exact",
         "method": "GET",
@@ -13994,7 +14018,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/version",
+        "endpoint": "/v1/runtime/manifest",
         "line": 1084,
         "match_kind": "exact",
         "method": null,
@@ -14003,8 +14027,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs",
-        "line": 1089,
+        "endpoint": "/v1/version",
+        "line": 1087,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -14012,8 +14036,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs",
-        "line": 1091,
+        "endpoint": "/v1/version",
+        "line": 1089,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -14021,7 +14045,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs/artifacts",
+        "endpoint": "/v1/audit-logs",
         "line": 1094,
         "match_kind": "exact",
         "method": "GET",
@@ -14030,7 +14054,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs/artifacts",
+        "endpoint": "/v1/audit-logs",
         "line": 1096,
         "match_kind": "exact",
         "method": null,
@@ -14039,7 +14063,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs/export.{}",
+        "endpoint": "/v1/audit-logs/artifacts",
         "line": 1099,
         "match_kind": "exact",
         "method": "GET",
@@ -14048,7 +14072,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs/export.{}",
+        "endpoint": "/v1/audit-logs/artifacts",
         "line": 1101,
         "match_kind": "exact",
         "method": null,
@@ -14057,7 +14081,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team",
+        "endpoint": "/v1/audit-logs/export.{}",
         "line": 1104,
         "match_kind": "exact",
         "method": "GET",
@@ -14066,7 +14090,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team",
+        "endpoint": "/v1/audit-logs/export.{}",
         "line": 1106,
         "match_kind": "exact",
         "method": null,
@@ -14075,16 +14099,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/accept",
+        "endpoint": "/v1/team",
         "line": 1109,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/accept",
+        "endpoint": "/v1/team",
         "line": 1111,
         "match_kind": "exact",
         "method": null,
@@ -14093,7 +14117,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/invite",
+        "endpoint": "/v1/team/accept",
         "line": 1114,
         "match_kind": "exact",
         "method": "POST",
@@ -14102,7 +14126,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/invite",
+        "endpoint": "/v1/team/accept",
         "line": 1116,
         "match_kind": "exact",
         "method": null,
@@ -14111,16 +14135,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/{}",
+        "endpoint": "/v1/team/invite",
         "line": 1119,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/{}",
+        "endpoint": "/v1/team/invite",
         "line": 1121,
         "match_kind": "exact",
         "method": null,
@@ -14129,16 +14153,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/{}/role",
+        "endpoint": "/v1/team/{}",
         "line": 1124,
         "match_kind": "exact",
-        "method": "PATCH",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/{}/role",
+        "endpoint": "/v1/team/{}",
         "line": 1126,
         "match_kind": "exact",
         "method": null,
@@ -14147,17 +14171,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers",
-        "line": 1131,
+        "endpoint": "/v1/team/{}/role",
+        "line": 1129,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "PATCH",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers",
-        "line": 1133,
+        "endpoint": "/v1/team/{}/role",
+        "line": 1131,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -14168,7 +14192,7 @@
         "endpoint": "/v1/triggers",
         "line": 1136,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
@@ -14183,16 +14207,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}",
+        "endpoint": "/v1/triggers",
         "line": 1141,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}",
+        "endpoint": "/v1/triggers",
         "line": 1143,
         "match_kind": "exact",
         "method": null,
@@ -14201,16 +14225,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}/fire",
+        "endpoint": "/v1/triggers/{}",
         "line": 1146,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}/fire",
+        "endpoint": "/v1/triggers/{}",
         "line": 1148,
         "match_kind": "exact",
         "method": null,
@@ -14219,16 +14243,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}/pause",
+        "endpoint": "/v1/triggers/{}/fire",
         "line": 1151,
         "match_kind": "exact",
-        "method": "PATCH",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}/pause",
+        "endpoint": "/v1/triggers/{}/fire",
         "line": 1153,
         "match_kind": "exact",
         "method": null,
@@ -14237,8 +14261,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate/what-if",
+        "endpoint": "/v1/triggers/{}/pause",
+        "line": 1156,
+        "match_kind": "exact",
+        "method": "PATCH",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/triggers/{}/pause",
         "line": 1158,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate/what-if",
+        "line": 1163,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -14247,7 +14289,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate/what-if",
-        "line": 1160,
+        "line": 1165,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -14256,7 +14298,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/account/billing",
-        "line": 1220,
+        "line": 1225,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/explorer.md",
@@ -14265,24 +14307,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/account/billing",
-        "line": 1222,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/account/billing/checkout",
-        "line": 1225,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/account/billing/checkout",
         "line": 1227,
         "match_kind": "exact",
         "method": null,
@@ -14291,7 +14315,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/billing/portal",
+        "endpoint": "/v1/account/billing/checkout",
         "line": 1230,
         "match_kind": "exact",
         "method": "POST",
@@ -14300,7 +14324,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/billing/portal",
+        "endpoint": "/v1/account/billing/checkout",
         "line": 1232,
         "match_kind": "exact",
         "method": null,
@@ -14309,16 +14333,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/devices",
+        "endpoint": "/v1/account/billing/portal",
         "line": 1235,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/devices",
+        "endpoint": "/v1/account/billing/portal",
         "line": 1237,
         "match_kind": "exact",
         "method": null,
@@ -14327,16 +14351,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/devices/{}",
+        "endpoint": "/v1/account/devices",
         "line": 1240,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/devices/{}",
+        "endpoint": "/v1/account/devices",
         "line": 1242,
         "match_kind": "exact",
         "method": null,
@@ -14345,16 +14369,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/orgs",
+        "endpoint": "/v1/account/devices/{}",
         "line": 1245,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/orgs",
+        "endpoint": "/v1/account/devices/{}",
         "line": 1247,
         "match_kind": "exact",
         "method": null,
@@ -14363,7 +14387,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team",
+        "endpoint": "/v1/account/orgs",
         "line": 1250,
         "match_kind": "exact",
         "method": "GET",
@@ -14372,7 +14396,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team",
+        "endpoint": "/v1/account/orgs",
         "line": 1252,
         "match_kind": "exact",
         "method": null,
@@ -14381,16 +14405,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/invite",
+        "endpoint": "/v1/account/team",
         "line": 1255,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/invite",
+        "endpoint": "/v1/account/team",
         "line": 1257,
         "match_kind": "exact",
         "method": null,
@@ -14399,16 +14423,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/{}",
+        "endpoint": "/v1/account/team/invite",
         "line": 1260,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/{}",
+        "endpoint": "/v1/account/team/invite",
         "line": 1262,
         "match_kind": "exact",
         "method": null,
@@ -14417,16 +14441,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/{}/role",
+        "endpoint": "/v1/account/team/{}",
         "line": 1265,
         "match_kind": "exact",
-        "method": "PATCH",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/{}/role",
+        "endpoint": "/v1/account/team/{}",
         "line": 1267,
         "match_kind": "exact",
         "method": null,
@@ -14435,16 +14459,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/usage",
+        "endpoint": "/v1/account/team/{}/role",
         "line": 1270,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "PATCH",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/usage",
+        "endpoint": "/v1/account/team/{}/role",
         "line": 1272,
         "match_kind": "exact",
         "method": null,
@@ -14453,9 +14477,27 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/credits/refresh",
+        "endpoint": "/v1/account/usage",
+        "line": 1275,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/account/usage",
         "line": 1277,
         "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/credits/refresh",
+        "line": 1282,
+        "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
@@ -14463,33 +14505,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/credits/refresh",
-        "line": 1279,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/deployment/activate",
         "line": 1284,
         "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/deployment/activate",
-        "line": 1286,
-        "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployment/node/challenge",
+        "endpoint": "/v1/deployment/activate",
         "line": 1289,
         "match_kind": "exact",
         "method": "POST",
@@ -14498,7 +14522,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployment/node/challenge",
+        "endpoint": "/v1/deployment/activate",
         "line": 1291,
         "match_kind": "exact",
         "method": null,
@@ -14507,7 +14531,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployment/node/heartbeat",
+        "endpoint": "/v1/deployment/node/challenge",
         "line": 1294,
         "match_kind": "exact",
         "method": "POST",
@@ -14516,7 +14540,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployment/node/heartbeat",
+        "endpoint": "/v1/deployment/node/challenge",
         "line": 1296,
         "match_kind": "exact",
         "method": null,
@@ -14525,8 +14549,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/heartbeat",
+        "endpoint": "/v1/deployment/node/heartbeat",
+        "line": 1299,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/deployment/node/heartbeat",
         "line": 1301,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/device/heartbeat",
+        "line": 1306,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -14535,24 +14577,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/heartbeat",
-        "line": 1303,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/device/list",
-        "line": 1306,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/device/list",
         "line": 1308,
         "match_kind": "exact",
         "method": null,
@@ -14561,16 +14585,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/register",
+        "endpoint": "/v1/device/list",
         "line": 1311,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/register",
+        "endpoint": "/v1/device/list",
         "line": 1313,
         "match_kind": "exact",
         "method": null,
@@ -14579,16 +14603,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/{}",
+        "endpoint": "/v1/device/register",
         "line": 1316,
         "match_kind": "exact",
-        "method": "DELETE",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/{}",
+        "endpoint": "/v1/device/register",
         "line": 1318,
         "match_kind": "exact",
         "method": null,
@@ -14597,16 +14621,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/authorize",
+        "endpoint": "/v1/device/{}",
         "line": 1321,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "DELETE",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/authorize",
+        "endpoint": "/v1/device/{}",
         "line": 1323,
         "match_kind": "exact",
         "method": null,
@@ -14615,17 +14639,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/license/challenge",
-        "line": 1328,
+        "endpoint": "/v1/runtime/authorize",
+        "line": 1326,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/license/challenge",
-        "line": 1330,
+        "endpoint": "/v1/runtime/authorize",
+        "line": 1328,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -14633,7 +14657,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/license/renew",
+        "endpoint": "/v1/license/challenge",
         "line": 1333,
         "match_kind": "exact",
         "method": "POST",
@@ -14642,7 +14666,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/license/renew",
+        "endpoint": "/v1/license/challenge",
         "line": 1335,
         "match_kind": "exact",
         "method": null,
@@ -14651,9 +14675,27 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/metering",
+        "endpoint": "/v1/license/renew",
+        "line": 1338,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/license/renew",
         "line": 1340,
         "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/metering",
+        "line": 1345,
+        "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
@@ -14661,33 +14703,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/metering",
-        "line": 1342,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/oauth/device/approve",
         "line": 1347,
         "match_kind": "exact",
-        "method": "POST",
-        "path": "api/explorer.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/oauth/device/approve",
-        "line": 1349,
-        "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/code",
+        "endpoint": "/oauth/device/approve",
         "line": 1352,
         "match_kind": "exact",
         "method": "POST",
@@ -14696,7 +14720,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/code",
+        "endpoint": "/oauth/device/approve",
         "line": 1354,
         "match_kind": "exact",
         "method": null,
@@ -14705,16 +14729,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/grant",
+        "endpoint": "/oauth/device/code",
         "line": 1357,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/grant",
+        "endpoint": "/oauth/device/code",
         "line": 1359,
         "match_kind": "exact",
         "method": null,
@@ -14723,16 +14747,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/token",
+        "endpoint": "/oauth/device/grant",
         "line": 1362,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/token",
+        "endpoint": "/oauth/device/grant",
         "line": 1364,
         "match_kind": "exact",
         "method": null,
@@ -14741,7 +14765,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/approve",
+        "endpoint": "/oauth/device/token",
         "line": 1367,
         "match_kind": "exact",
         "method": "POST",
@@ -14750,7 +14774,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/approve",
+        "endpoint": "/oauth/device/token",
         "line": 1369,
         "match_kind": "exact",
         "method": null,
@@ -14759,7 +14783,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/code",
+        "endpoint": "/v1/oauth/device/approve",
         "line": 1372,
         "match_kind": "exact",
         "method": "POST",
@@ -14768,7 +14792,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/code",
+        "endpoint": "/v1/oauth/device/approve",
         "line": 1374,
         "match_kind": "exact",
         "method": null,
@@ -14777,16 +14801,16 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/grant",
+        "endpoint": "/v1/oauth/device/code",
         "line": 1377,
         "match_kind": "exact",
-        "method": "GET",
+        "method": "POST",
         "path": "api/explorer.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/grant",
+        "endpoint": "/v1/oauth/device/code",
         "line": 1379,
         "match_kind": "exact",
         "method": null,
@@ -14795,8 +14819,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/token",
+        "endpoint": "/v1/oauth/device/grant",
         "line": 1382,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/oauth/device/grant",
+        "line": 1384,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/explorer.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/oauth/device/token",
+        "line": 1387,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/explorer.md",
@@ -14805,7 +14847,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/oauth/device/token",
-        "line": 1384,
+        "line": 1389,
         "match_kind": "exact",
         "method": null,
         "path": "api/explorer.md",
@@ -16064,7 +16106,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capability-providers",
+        "endpoint": "/v1/capability-executions/{}/approve",
         "line": 127,
         "match_kind": "exact",
         "method": null,
@@ -16073,7 +16115,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capability-providers/{}",
+        "endpoint": "/v1/capability-providers",
         "line": 128,
         "match_kind": "exact",
         "method": null,
@@ -16082,8 +16124,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data",
-        "line": 134,
+        "endpoint": "/v1/capability-providers/{}",
+        "line": 129,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16091,7 +16133,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/connect",
+        "endpoint": "/v1/data",
         "line": 135,
         "match_kind": "exact",
         "method": null,
@@ -16100,7 +16142,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}",
+        "endpoint": "/v1/data/connect",
         "line": 136,
         "match_kind": "exact",
         "method": null,
@@ -16118,7 +16160,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}/refresh",
+        "endpoint": "/v1/data/{}",
         "line": 138,
         "match_kind": "exact",
         "method": null,
@@ -16127,7 +16169,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data/{}/summary",
+        "endpoint": "/v1/data/{}/refresh",
         "line": 139,
         "match_kind": "exact",
         "method": null,
@@ -16136,8 +16178,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors",
-        "line": 145,
+        "endpoint": "/v1/data/{}/summary",
+        "line": 140,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16154,7 +16196,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/browse",
+        "endpoint": "/v1/connectors",
         "line": 147,
         "match_kind": "exact",
         "method": null,
@@ -16163,7 +16205,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/test",
+        "endpoint": "/v1/connectors/browse",
         "line": 148,
         "match_kind": "exact",
         "method": null,
@@ -16172,7 +16214,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/types",
+        "endpoint": "/v1/connectors/test",
         "line": 149,
         "match_kind": "exact",
         "method": null,
@@ -16181,7 +16223,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}",
+        "endpoint": "/v1/connectors/types",
         "line": 150,
         "match_kind": "exact",
         "method": null,
@@ -16208,7 +16250,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}/browse",
+        "endpoint": "/v1/connectors/{}",
         "line": 153,
         "match_kind": "exact",
         "method": null,
@@ -16217,7 +16259,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/connectors/{}/test",
+        "endpoint": "/v1/connectors/{}/browse",
         "line": 154,
         "match_kind": "exact",
         "method": null,
@@ -16226,8 +16268,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/map",
-        "line": 160,
+        "endpoint": "/v1/connectors/{}/test",
+        "line": 155,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16235,7 +16277,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/map/{}",
+        "endpoint": "/v1/map",
         "line": 161,
         "match_kind": "exact",
         "method": null,
@@ -16244,8 +16286,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets",
-        "line": 167,
+        "endpoint": "/v1/map/{}",
+        "line": 162,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16253,7 +16295,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/onboard",
+        "endpoint": "/v1/datasets",
         "line": 168,
         "match_kind": "exact",
         "method": null,
@@ -16262,7 +16304,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/onboard/file",
+        "endpoint": "/v1/datasets/onboard",
         "line": 169,
         "match_kind": "exact",
         "method": null,
@@ -16271,7 +16313,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/{}/retrain",
+        "endpoint": "/v1/datasets/onboard/file",
         "line": 170,
         "match_kind": "exact",
         "method": null,
@@ -16280,7 +16322,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/datasets/{}/status",
+        "endpoint": "/v1/datasets/{}/retrain",
         "line": 171,
         "match_kind": "exact",
         "method": null,
@@ -16289,8 +16331,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/batch",
-        "line": 177,
+        "endpoint": "/v1/datasets/{}/status",
+        "line": 172,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16298,7 +16340,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/compare",
+        "endpoint": "/v1/batch",
         "line": 178,
         "match_kind": "exact",
         "method": null,
@@ -16307,7 +16349,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/recommend",
+        "endpoint": "/v1/compare",
         "line": 179,
         "match_kind": "exact",
         "method": null,
@@ -16316,7 +16358,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/score",
+        "endpoint": "/v1/recommend",
         "line": 180,
         "match_kind": "exact",
         "method": null,
@@ -16325,8 +16367,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions",
-        "line": 186,
+        "endpoint": "/v1/score",
+        "line": 181,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16343,7 +16385,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/plan",
+        "endpoint": "/v1/decisions",
         "line": 188,
         "match_kind": "exact",
         "method": null,
@@ -16352,7 +16394,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}",
+        "endpoint": "/v1/decisions/plan",
         "line": 189,
         "match_kind": "exact",
         "method": null,
@@ -16370,7 +16412,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}/execute",
+        "endpoint": "/v1/decisions/{}",
         "line": 191,
         "match_kind": "exact",
         "method": null,
@@ -16379,7 +16421,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}/outcome",
+        "endpoint": "/v1/decisions/{}/execute",
         "line": 192,
         "match_kind": "exact",
         "method": null,
@@ -16388,8 +16430,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}",
-        "line": 198,
+        "endpoint": "/v1/decisions/{}/outcome",
+        "line": 193,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16397,7 +16439,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/action-plans",
+        "endpoint": "/v1/analysis-runs/{}",
         "line": 199,
         "match_kind": "exact",
         "method": null,
@@ -16406,7 +16448,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/evidence",
+        "endpoint": "/v1/analysis-runs/{}/action-plans",
         "line": 200,
         "match_kind": "exact",
         "method": null,
@@ -16415,7 +16457,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analysis-runs/{}/result",
+        "endpoint": "/v1/analysis-runs/{}/evidence",
         "line": 201,
         "match_kind": "exact",
         "method": null,
@@ -16424,7 +16466,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases",
+        "endpoint": "/v1/analysis-runs/{}/result",
         "line": 202,
         "match_kind": "exact",
         "method": null,
@@ -16433,7 +16475,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}",
+        "endpoint": "/v1/decision-cases",
         "line": 203,
         "match_kind": "exact",
         "method": null,
@@ -16451,7 +16493,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/analysis-runs",
+        "endpoint": "/v1/decision-cases/{}",
         "line": 205,
         "match_kind": "exact",
         "method": null,
@@ -16460,7 +16502,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/outcomes",
+        "endpoint": "/v1/decision-cases/{}/analysis-runs",
         "line": 206,
         "match_kind": "exact",
         "method": null,
@@ -16469,7 +16511,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-cases/{}/refresh",
+        "endpoint": "/v1/decision-cases/{}/outcomes",
         "line": 207,
         "match_kind": "exact",
         "method": null,
@@ -16478,7 +16520,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-plans/{}/approve",
+        "endpoint": "/v1/decision-cases/{}/refresh",
         "line": 208,
         "match_kind": "exact",
         "method": null,
@@ -16487,7 +16529,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision-plans/{}/execute",
+        "endpoint": "/v1/decision-plans/{}/approve",
         "line": 209,
         "match_kind": "exact",
         "method": null,
@@ -16496,8 +16538,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments",
-        "line": 215,
+        "endpoint": "/v1/decision-plans/{}/execute",
+        "line": 210,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16514,7 +16556,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/regions",
+        "endpoint": "/v1/deployments",
         "line": 217,
         "match_kind": "exact",
         "method": null,
@@ -16523,7 +16565,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}",
+        "endpoint": "/v1/deployments/regions",
         "line": 218,
         "match_kind": "exact",
         "method": null,
@@ -16532,7 +16574,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}/cost",
+        "endpoint": "/v1/deployments/{}",
         "line": 219,
         "match_kind": "exact",
         "method": null,
@@ -16541,8 +16583,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines",
-        "line": 225,
+        "endpoint": "/v1/deployments/{}/cost",
+        "line": 220,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16550,7 +16592,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines/tiers",
+        "endpoint": "/v1/engines",
         "line": 226,
         "match_kind": "exact",
         "method": null,
@@ -16559,7 +16601,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/engines/{}",
+        "endpoint": "/v1/engines/tiers",
         "line": 227,
         "match_kind": "exact",
         "method": null,
@@ -16568,8 +16610,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/execution/policy",
-        "line": 233,
+        "endpoint": "/v1/engines/{}",
+        "line": 228,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16586,7 +16628,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/execution/policy/snapshots",
+        "endpoint": "/v1/execution/policy",
         "line": 235,
         "match_kind": "exact",
         "method": null,
@@ -16595,8 +16637,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/execution/policy/snapshots",
+        "line": 236,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/runs/{}/export.{}",
-        "line": 241,
+        "line": 242,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16605,15 +16656,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/infrastructure",
-        "line": 247,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/nodes/heartbeat",
         "line": 248,
         "match_kind": "exact",
         "method": null,
@@ -16622,7 +16664,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/nodes/register",
+        "endpoint": "/v1/nodes/heartbeat",
         "line": 249,
         "match_kind": "exact",
         "method": null,
@@ -16631,7 +16673,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/nodes/{}",
+        "endpoint": "/v1/nodes/register",
         "line": 250,
         "match_kind": "exact",
         "method": null,
@@ -16640,8 +16682,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/nodes/{}",
+        "line": 251,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/ingest",
-        "line": 256,
+        "line": 257,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16650,15 +16701,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/artifacts/resolve",
-        "line": 262,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/chat/completions",
         "line": 263,
         "match_kind": "exact",
         "method": null,
@@ -16667,7 +16709,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/count_tokens",
+        "endpoint": "/v1/chat/completions",
         "line": 264,
         "match_kind": "exact",
         "method": null,
@@ -16676,7 +16718,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings",
+        "endpoint": "/v1/count_tokens",
         "line": 265,
         "match_kind": "exact",
         "method": null,
@@ -16685,7 +16727,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings/similarity",
+        "endpoint": "/v1/embeddings",
         "line": 266,
         "match_kind": "exact",
         "method": null,
@@ -16694,7 +16736,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/models",
+        "endpoint": "/v1/embeddings/similarity",
         "line": 267,
         "match_kind": "exact",
         "method": null,
@@ -16703,7 +16745,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/rerank",
+        "endpoint": "/v1/models",
         "line": 268,
         "match_kind": "exact",
         "method": null,
@@ -16712,7 +16754,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/responses",
+        "endpoint": "/v1/rerank",
         "line": 269,
         "match_kind": "exact",
         "method": null,
@@ -16721,7 +16763,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/tokenize",
+        "endpoint": "/v1/responses",
         "line": 270,
         "match_kind": "exact",
         "method": null,
@@ -16730,8 +16772,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/tokenize",
+        "line": 271,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/logs",
-        "line": 276,
+        "line": 277,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16740,7 +16791,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/playground",
-        "line": 282,
+        "line": 283,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16749,15 +16800,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/run",
-        "line": 288,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/decision",
         "line": 289,
         "match_kind": "exact",
         "method": null,
@@ -16766,7 +16808,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/forecast",
+        "endpoint": "/v1/decision",
         "line": 290,
         "match_kind": "exact",
         "method": null,
@@ -16775,7 +16817,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/optimize",
+        "endpoint": "/v1/forecast",
         "line": 291,
         "match_kind": "exact",
         "method": null,
@@ -16784,7 +16826,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/retrieve",
+        "endpoint": "/v1/optimize",
         "line": 292,
         "match_kind": "exact",
         "method": null,
@@ -16793,8 +16835,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/retrieve",
+        "line": 293,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/registry/credentials",
-        "line": 298,
+        "line": 299,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16803,15 +16854,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/capabilities",
-        "line": 304,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/repositories/{}/apply",
         "line": 305,
         "match_kind": "exact",
         "method": null,
@@ -16820,7 +16862,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/decision-plans",
+        "endpoint": "/v1/repositories/{}/apply",
         "line": 306,
         "match_kind": "exact",
         "method": null,
@@ -16829,7 +16871,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/graph-query",
+        "endpoint": "/v1/repositories/{}/decision-plans",
         "line": 307,
         "match_kind": "exact",
         "method": null,
@@ -16838,7 +16880,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/pipeline",
+        "endpoint": "/v1/repositories/{}/graph-query",
         "line": 308,
         "match_kind": "exact",
         "method": null,
@@ -16847,7 +16889,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/security-analyses",
+        "endpoint": "/v1/repositories/{}/pipeline",
         "line": 309,
         "match_kind": "exact",
         "method": null,
@@ -16856,7 +16898,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/security-analyses/closure",
+        "endpoint": "/v1/repositories/{}/security-analyses",
         "line": 310,
         "match_kind": "exact",
         "method": null,
@@ -16865,7 +16907,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/simulate",
+        "endpoint": "/v1/repositories/{}/security-analyses/closure",
         "line": 311,
         "match_kind": "exact",
         "method": null,
@@ -16874,7 +16916,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/simulate-patch",
+        "endpoint": "/v1/repositories/{}/simulate",
         "line": 312,
         "match_kind": "exact",
         "method": null,
@@ -16883,7 +16925,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/snapshots",
+        "endpoint": "/v1/repositories/{}/simulate-patch",
         "line": 313,
         "match_kind": "exact",
         "method": null,
@@ -16892,7 +16934,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/snapshots/{}",
+        "endpoint": "/v1/repositories/{}/snapshots",
         "line": 314,
         "match_kind": "exact",
         "method": null,
@@ -16901,7 +16943,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/repositories/{}/triage",
+        "endpoint": "/v1/repositories/{}/snapshots/{}",
         "line": 315,
         "match_kind": "exact",
         "method": null,
@@ -16910,8 +16952,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/analytics",
-        "line": 321,
+        "endpoint": "/v1/repositories/{}/triage",
+        "line": 316,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16919,7 +16961,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs",
+        "endpoint": "/v1/analytics",
         "line": 322,
         "match_kind": "exact",
         "method": null,
@@ -16928,7 +16970,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runs/{}",
+        "endpoint": "/v1/runs",
         "line": 323,
         "match_kind": "exact",
         "method": null,
@@ -16937,8 +16979,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries",
-        "line": 329,
+        "endpoint": "/v1/runs/{}",
+        "line": 324,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16946,7 +16988,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries/execute",
+        "endpoint": "/v1/libraries",
         "line": 330,
         "match_kind": "exact",
         "method": null,
@@ -16955,7 +16997,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries/health",
+        "endpoint": "/v1/libraries/execute",
         "line": 331,
         "match_kind": "exact",
         "method": null,
@@ -16964,8 +17006,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query",
-        "line": 337,
+        "endpoint": "/v1/libraries/health",
+        "line": 332,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -16973,7 +17015,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/batch",
+        "endpoint": "/v1/query",
         "line": 338,
         "match_kind": "exact",
         "method": null,
@@ -16982,7 +17024,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/sql-report",
+        "endpoint": "/v1/query/batch",
         "line": 339,
         "match_kind": "exact",
         "method": null,
@@ -16991,7 +17033,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/resolve",
+        "endpoint": "/v1/query/sql-report",
         "line": 340,
         "match_kind": "exact",
         "method": null,
@@ -17000,7 +17042,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/schema",
+        "endpoint": "/v1/resolve",
         "line": 341,
         "match_kind": "exact",
         "method": null,
@@ -17009,7 +17051,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/verify",
+        "endpoint": "/v1/sources/schema",
         "line": 342,
         "match_kind": "exact",
         "method": null,
@@ -17018,8 +17060,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate",
-        "line": 348,
+        "endpoint": "/v1/verify",
+        "line": 343,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17027,7 +17069,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate/templates",
+        "endpoint": "/v1/simulate",
         "line": 349,
         "match_kind": "exact",
         "method": null,
@@ -17036,7 +17078,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate/templates/{}",
+        "endpoint": "/v1/simulate/templates",
         "line": 350,
         "match_kind": "exact",
         "method": null,
@@ -17045,7 +17087,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/templates/{}/run",
+        "endpoint": "/v1/simulate/templates/{}",
         "line": 351,
         "match_kind": "exact",
         "method": null,
@@ -17054,8 +17096,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources",
-        "line": 357,
+        "endpoint": "/v1/templates/{}/run",
+        "line": 352,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17063,7 +17105,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/graph",
+        "endpoint": "/v1/sources",
         "line": 358,
         "match_kind": "exact",
         "method": null,
@@ -17072,7 +17114,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/register",
+        "endpoint": "/v1/sources/graph",
         "line": 359,
         "match_kind": "exact",
         "method": null,
@@ -17081,7 +17123,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/sources/{}",
+        "endpoint": "/v1/sources/register",
         "line": 360,
         "match_kind": "exact",
         "method": null,
@@ -17099,8 +17141,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/sources/{}",
+        "line": 362,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/simulate/stream",
-        "line": 367,
+        "line": 368,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17109,15 +17160,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/egress-log",
-        "line": 373,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/egress-policy",
         "line": 374,
         "match_kind": "exact",
         "method": null,
@@ -17126,7 +17168,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/privacy-report",
+        "endpoint": "/v1/admin/egress-policy",
         "line": 375,
         "match_kind": "exact",
         "method": null,
@@ -17135,7 +17177,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/benchmarks",
+        "endpoint": "/v1/admin/privacy-report",
         "line": 376,
         "match_kind": "exact",
         "method": null,
@@ -17144,7 +17186,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/modules",
+        "endpoint": "/v1/admin/runtime/benchmarks",
         "line": 377,
         "match_kind": "exact",
         "method": null,
@@ -17153,7 +17195,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/validation",
+        "endpoint": "/v1/admin/runtime/modules",
         "line": 378,
         "match_kind": "exact",
         "method": null,
@@ -17162,7 +17204,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/health",
+        "endpoint": "/v1/admin/runtime/validation",
         "line": 379,
         "match_kind": "exact",
         "method": null,
@@ -17171,7 +17213,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/meta/contract",
+        "endpoint": "/v1/health",
         "line": 380,
         "match_kind": "exact",
         "method": null,
@@ -17180,7 +17222,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/library-stats",
+        "endpoint": "/v1/meta/contract",
         "line": 381,
         "match_kind": "exact",
         "method": null,
@@ -17189,7 +17231,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
+        "endpoint": "/v1/runtime/library-stats",
         "line": 382,
         "match_kind": "exact",
         "method": null,
@@ -17198,7 +17240,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/version",
+        "endpoint": "/v1/runtime/manifest",
         "line": 383,
         "match_kind": "exact",
         "method": null,
@@ -17207,8 +17249,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs",
-        "line": 389,
+        "endpoint": "/v1/version",
+        "line": 384,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17216,7 +17258,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs/artifacts",
+        "endpoint": "/v1/audit-logs",
         "line": 390,
         "match_kind": "exact",
         "method": null,
@@ -17225,7 +17267,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/audit-logs/export.{}",
+        "endpoint": "/v1/audit-logs/artifacts",
         "line": 391,
         "match_kind": "exact",
         "method": null,
@@ -17234,7 +17276,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team",
+        "endpoint": "/v1/audit-logs/export.{}",
         "line": 392,
         "match_kind": "exact",
         "method": null,
@@ -17243,7 +17285,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/accept",
+        "endpoint": "/v1/team",
         "line": 393,
         "match_kind": "exact",
         "method": null,
@@ -17252,7 +17294,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/invite",
+        "endpoint": "/v1/team/accept",
         "line": 394,
         "match_kind": "exact",
         "method": null,
@@ -17261,7 +17303,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/{}",
+        "endpoint": "/v1/team/invite",
         "line": 395,
         "match_kind": "exact",
         "method": null,
@@ -17270,7 +17312,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/team/{}/role",
+        "endpoint": "/v1/team/{}",
         "line": 396,
         "match_kind": "exact",
         "method": null,
@@ -17279,8 +17321,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers",
-        "line": 402,
+        "endpoint": "/v1/team/{}/role",
+        "line": 397,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17297,7 +17339,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}",
+        "endpoint": "/v1/triggers",
         "line": 404,
         "match_kind": "exact",
         "method": null,
@@ -17306,7 +17348,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}/fire",
+        "endpoint": "/v1/triggers/{}",
         "line": 405,
         "match_kind": "exact",
         "method": null,
@@ -17315,7 +17357,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/triggers/{}/pause",
+        "endpoint": "/v1/triggers/{}/fire",
         "line": 406,
         "match_kind": "exact",
         "method": null,
@@ -17324,8 +17366,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/triggers/{}/pause",
+        "line": 407,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/simulate/what-if",
-        "line": 412,
+        "line": 413,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17334,15 +17385,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/account/billing",
-        "line": 429,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/account/billing/checkout",
         "line": 430,
         "match_kind": "exact",
         "method": null,
@@ -17351,7 +17393,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/billing/portal",
+        "endpoint": "/v1/account/billing/checkout",
         "line": 431,
         "match_kind": "exact",
         "method": null,
@@ -17360,7 +17402,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/devices",
+        "endpoint": "/v1/account/billing/portal",
         "line": 432,
         "match_kind": "exact",
         "method": null,
@@ -17369,7 +17411,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/devices/{}",
+        "endpoint": "/v1/account/devices",
         "line": 433,
         "match_kind": "exact",
         "method": null,
@@ -17378,7 +17420,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/orgs",
+        "endpoint": "/v1/account/devices/{}",
         "line": 434,
         "match_kind": "exact",
         "method": null,
@@ -17387,7 +17429,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team",
+        "endpoint": "/v1/account/orgs",
         "line": 435,
         "match_kind": "exact",
         "method": null,
@@ -17396,7 +17438,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/invite",
+        "endpoint": "/v1/account/team",
         "line": 436,
         "match_kind": "exact",
         "method": null,
@@ -17405,7 +17447,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/{}",
+        "endpoint": "/v1/account/team/invite",
         "line": 437,
         "match_kind": "exact",
         "method": null,
@@ -17414,7 +17456,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/team/{}/role",
+        "endpoint": "/v1/account/team/{}",
         "line": 438,
         "match_kind": "exact",
         "method": null,
@@ -17423,7 +17465,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/account/usage",
+        "endpoint": "/v1/account/team/{}/role",
         "line": 439,
         "match_kind": "exact",
         "method": null,
@@ -17432,8 +17474,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/account/usage",
+        "line": 440,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/credits/refresh",
-        "line": 445,
+        "line": 446,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17442,15 +17493,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/deployment/activate",
-        "line": 451,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/deployment/node/challenge",
         "line": 452,
         "match_kind": "exact",
         "method": null,
@@ -17459,7 +17501,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployment/node/heartbeat",
+        "endpoint": "/v1/deployment/node/challenge",
         "line": 453,
         "match_kind": "exact",
         "method": null,
@@ -17468,8 +17510,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/heartbeat",
-        "line": 459,
+        "endpoint": "/v1/deployment/node/heartbeat",
+        "line": 454,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17477,7 +17519,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/list",
+        "endpoint": "/v1/device/heartbeat",
         "line": 460,
         "match_kind": "exact",
         "method": null,
@@ -17486,7 +17528,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/register",
+        "endpoint": "/v1/device/list",
         "line": 461,
         "match_kind": "exact",
         "method": null,
@@ -17495,7 +17537,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/device/{}",
+        "endpoint": "/v1/device/register",
         "line": 462,
         "match_kind": "exact",
         "method": null,
@@ -17504,7 +17546,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/authorize",
+        "endpoint": "/v1/device/{}",
         "line": 463,
         "match_kind": "exact",
         "method": null,
@@ -17513,8 +17555,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/license/challenge",
-        "line": 469,
+        "endpoint": "/v1/runtime/authorize",
+        "line": 464,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17522,7 +17564,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/license/renew",
+        "endpoint": "/v1/license/challenge",
         "line": 470,
         "match_kind": "exact",
         "method": null,
@@ -17531,8 +17573,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/license/renew",
+        "line": 471,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/metering",
-        "line": 476,
+        "line": 477,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -17541,15 +17592,6 @@
       {
         "authority_match": true,
         "endpoint": "/oauth/device/approve",
-        "line": 482,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/reference.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/oauth/device/code",
         "line": 483,
         "match_kind": "exact",
         "method": null,
@@ -17558,7 +17600,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/grant",
+        "endpoint": "/oauth/device/code",
         "line": 484,
         "match_kind": "exact",
         "method": null,
@@ -17567,7 +17609,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/oauth/device/token",
+        "endpoint": "/oauth/device/grant",
         "line": 485,
         "match_kind": "exact",
         "method": null,
@@ -17576,7 +17618,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/approve",
+        "endpoint": "/oauth/device/token",
         "line": 486,
         "match_kind": "exact",
         "method": null,
@@ -17585,7 +17627,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/code",
+        "endpoint": "/v1/oauth/device/approve",
         "line": 487,
         "match_kind": "exact",
         "method": null,
@@ -17594,7 +17636,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/grant",
+        "endpoint": "/v1/oauth/device/code",
         "line": 488,
         "match_kind": "exact",
         "method": null,
@@ -17603,8 +17645,17 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/oauth/device/token",
+        "endpoint": "/v1/oauth/device/grant",
         "line": 489,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/reference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/oauth/device/token",
+        "line": 490,
         "match_kind": "exact",
         "method": null,
         "path": "api/reference.md",
@@ -22224,6 +22275,24 @@
         "line": 131,
         "match_kind": "exact",
         "method": "GET",
+        "path": "guides/capabilities.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/capabilities/execute",
+        "line": 134,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "guides/capabilities.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/capability-executions/{}/approve",
+        "line": 134,
+        "match_kind": "exact",
+        "method": "POST",
         "path": "guides/capabilities.md",
         "scope": "algenta"
       },
@@ -28317,6 +28386,24 @@
         "line": 426,
         "match_kind": "exact",
         "method": "GET",
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/mcp/sse",
+        "line": 435,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/mcp/messages",
+        "line": 435,
+        "match_kind": "exact",
+        "method": null,
         "path": "sdk/mcp.md",
         "scope": "algenta"
       },
@@ -39664,25 +39751,37 @@
       },
       {
         "kind": "internal",
-        "line": 446,
+        "line": 435,
+        "path": "sdk/mcp.md",
+        "target": "../trust/identity-and-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 435,
+        "path": "sdk/mcp.md",
+        "target": "../integrations/identity/generic-oidc.md"
+      },
+      {
+        "kind": "internal",
+        "line": 476,
         "path": "sdk/mcp.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 450,
+        "line": 480,
         "path": "sdk/mcp.md",
         "target": "../api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 454,
+        "line": 484,
         "path": "sdk/mcp.md",
         "target": "python.md"
       },
       {
         "kind": "internal",
-        "line": 458,
+        "line": 488,
         "path": "sdk/mcp.md",
         "target": "../self-hosting.md"
       },
@@ -40704,27 +40803,27 @@
         "term": "algenta"
       },
       {
-        "line": 262,
+        "line": 263,
         "path": "api/reference.md",
         "term": "algenta"
       },
       {
-        "line": 264,
+        "line": 265,
         "path": "api/reference.md",
         "term": "algenta"
       },
       {
-        "line": 270,
+        "line": 271,
         "path": "api/reference.md",
         "term": "algenta"
       },
       {
-        "line": 282,
+        "line": 283,
         "path": "api/reference.md",
         "term": "algenta"
       },
       {
-        "line": 380,
+        "line": 381,
         "path": "api/reference.md",
         "term": "algenta"
       },
@@ -45564,22 +45663,37 @@
         "term": "algenta"
       },
       {
-        "line": 439,
+        "line": 438,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 440,
+        "line": 452,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 441,
+        "line": 453,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 443,
+        "line": 469,
+        "path": "sdk/mcp.md",
+        "term": "algenta"
+      },
+      {
+        "line": 470,
+        "path": "sdk/mcp.md",
+        "term": "algenta"
+      },
+      {
+        "line": 471,
+        "path": "sdk/mcp.md",
+        "term": "algenta"
+      },
+      {
+        "line": 473,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
@@ -52827,6 +52941,14 @@
         "syntax_valid": true
       },
       {
+        "classification": "requires_environment",
+        "command": "curl -s https://your-gateway.example.com/.well-known/oauth-protected-resource/mcp | jq",
+        "executed": false,
+        "line": 444,
+        "path": "sdk/mcp.md",
+        "syntax_valid": true
+      },
+      {
         "classification": "environment_mutating",
         "command": "pip install algenta-sdk",
         "executed": false,
@@ -53396,8 +53518,8 @@
   "openapi_identity": {
     "algenta_title": true,
     "cross_product_mentions": 0,
-    "operations": 263,
-    "paths": 239,
+    "operations": 264,
+    "paths": 240,
     "runtime_encapsulation_mentions": 0
   },
   "package_registries": {
@@ -53464,7 +53586,7 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 484,
+      "endpoint_mentions": 486,
       "external_links": 0,
       "internal_links": 2,
       "links": 2,
@@ -53539,7 +53661,7 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 242,
+      "endpoint_mentions": 243,
       "external_links": 0,
       "internal_links": 3,
       "links": 3,
@@ -56614,7 +56736,7 @@
         "safe_static": 0,
         "static_only": 2
       },
-      "endpoint_mentions": 9,
+      "endpoint_mentions": 11,
       "external_links": 0,
       "internal_links": 7,
       "links": 7,
@@ -58155,29 +58277,29 @@
       "shell_commands": 4
     },
     {
-      "code_fences": 16,
+      "code_fences": 19,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 1,
         "external_or_mutating": 2,
-        "requires_environment": 3,
+        "requires_environment": 4,
         "safe_static": 2,
         "static_only": 5
       },
-      "endpoint_mentions": 30,
+      "endpoint_mentions": 32,
       "external_links": 0,
-      "internal_links": 4,
-      "links": 4,
+      "internal_links": 6,
+      "links": 6,
       "path": "sdk/mcp.md",
       "product_claims": {
-        "algenta": 26,
+        "algenta": 29,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 13
+      "shell_commands": 14
     },
     {
       "code_fences": 4,
@@ -58906,19 +59028,19 @@
     }
   ],
   "route_authority": {
-    "combined_operations": 278,
-    "combined_paths": 253,
-    "schema_operations": 263,
-    "schema_paths": 239,
-    "source_operations": 248,
-    "source_paths": 227
+    "combined_operations": 281,
+    "combined_paths": 256,
+    "schema_operations": 264,
+    "schema_paths": 240,
+    "source_operations": 251,
+    "source_paths": 230
   },
   "snippets": {
-    "code_fences": 1305,
+    "code_fences": 1308,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
-    "shell_commands": 846,
-    "static_or_guarded_commands": 779
+    "shell_commands": 847,
+    "static_or_guarded_commands": 780
   },
   "source": "gitbook",
   "source_claims": {
@@ -58928,46 +59050,46 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1130,
+    "claim_mentions": 1133,
     "command_execution_percent": 100.0,
-    "commands_classified": 846,
+    "commands_classified": 847,
     "commands_executed": 67,
     "commands_unexecuted": 0,
-    "endpoint_mentions": 2395,
+    "endpoint_mentions": 2402,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1424,
+    "links_checked": 1426,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
     "pages_checked": 220,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 780,
-    "snippets_checked": 1305,
+    "skips": 781,
+    "snippets_checked": 1308,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7100,
+    "source_items_inventoried": 7116,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1130,
-    "code_fences": 1305,
+    "claim_mentions": 1133,
+    "code_fences": 1308,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
-    "endpoint_mentions": 2395,
+    "endpoint_mentions": 2402,
     "environment_mutating_commands": 24,
     "executed_commands": 67,
     "external_links": 11,
     "external_or_mutating_commands": 274,
     "failures": 0,
     "fixes": 0,
-    "guarded_commands": 779,
-    "internal_links": 1377,
-    "links": 1424,
+    "guarded_commands": 780,
+    "internal_links": 1379,
+    "links": 1426,
     "pages": 220,
     "product_claims": {
-      "algenta": 1120,
+      "algenta": 1123,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
@@ -58975,19 +59097,19 @@
       "mission": 10
     },
     "public_pages": 219,
-    "requires_environment_commands": 388,
+    "requires_environment_commands": 389,
     "runnable_commands": 67,
     "safe_static_commands": 67,
-    "shell_commands": 846,
-    "shell_syntax_validated_commands": 846,
+    "shell_commands": 847,
+    "shell_syntax_validated_commands": 847,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 780,
+    "skips": 781,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7100,
+    "source_items_inventoried": 7116,
     "static_only_commands": 75,
-    "static_or_guarded_commands": 779,
+    "static_or_guarded_commands": 780,
     "unexecuted_runnable_commands": 0,
-    "unique_endpoint_operations": 514,
+    "unique_endpoint_operations": 518,
     "warnings": 0
   }
 }
