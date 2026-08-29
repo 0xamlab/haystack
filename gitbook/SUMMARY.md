@@ -228,6 +228,14 @@
 * [Data boundaries](trust/data-boundaries.md)
 * [Audit and evidence](trust/audit-and-evidence.md)
 * [Identity and access](trust/identity-and-access.md)
+* [Capability status](trust/capability-status.md)
+* [Protocol compatibility](trust/protocol-compatibility.md)
+* [Architecture and trust boundaries](trust/architecture.md)
+* [Evidence walkthrough](trust/evidence-walkthrough.md)
+* [Security questionnaire](trust/security-questionnaire.md)
+* [Supply chain](trust/supply-chain.md)
+* [Threat model](trust/threat-model.md)
+* [Support policy](trust/support-policy.md)
 
 ## HTTP API
 

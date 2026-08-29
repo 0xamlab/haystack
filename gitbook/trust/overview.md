@@ -62,15 +62,30 @@ hybrid deployments, where Algenta operates the runtime by design — see the tab
 - [Identity and access](identity-and-access.md) — the four separate identity mechanisms and why
   they don't fall through to one another.
 - [API stability](../api/stability.md) — which paths carry a compatibility promise.
+- [Capability status](capability-status.md) — every protocol surface and integration, labeled
+  against the same three-status discipline this section uses throughout.
+- [Protocol compatibility](protocol-compatibility.md) — MCP version negotiation, the Responses and
+  Chat Completions surfaces, and the cross-framework conformance suite's actual results.
+- [Architecture and trust boundaries](architecture.md) — where the engine, your model, and your
+  MCP clients run relative to each other, as a diagram.
+- [Evidence walkthrough](evidence-walkthrough.md) — the execution-receipt envelope and the
+  audit export, worked end to end.
+- [Security questionnaire](security-questionnaire.md) — the recurring vendor-review questions,
+  answered directly and checked against this repository.
+- [Supply chain](supply-chain.md) — what's SBOM'd and scanned today, and what isn't signed yet.
+- [Threat model](threat-model.md) — a public summary: assets, threats, and the control for each.
+- [Support policy](support-policy.md) — what's committed today and what's pending owner sign-off.
 
 ## What is not yet published here
 
-A security questionnaire response set, a formal threat model, a documented incident-response
-process beyond [vulnerability reporting](https://github.com/thyn-ai/algenta/blob/main/SECURITY.md),
-tested backup/restore runbooks with
-stated recovery objectives, and a published support-tier/LTS commitment are none of them here yet.
-Publishing any of them before they are true would be worse than the gap itself; they will land as
-they become real commitments rather than descriptions of intent.
+A formal internal threat model (a public summary now exists — see
+[Threat model](threat-model.md) — but the fuller internal version is separate and not published), a
+documented incident-response process beyond
+[vulnerability reporting](https://github.com/thyn-ai/algenta/blob/main/SECURITY.md), tested
+backup/restore runbooks with stated recovery objectives, and a published support-tier/LTS
+commitment (see [Support policy](support-policy.md) for the honest placeholder that stands in for
+it today) are not here yet. Publishing any of them before they are true would be worse than the
+gap itself; they will land as they become real commitments rather than descriptions of intent.
 
 ## Next steps
 
@@ -78,3 +93,4 @@ they become real commitments rather than descriptions of intent.
 - [Data boundaries](data-boundaries.md)
 - [Audit and evidence](audit-and-evidence.md)
 - [Identity and access](identity-and-access.md)
+- [Capability status](capability-status.md)
