@@ -33,6 +33,7 @@ from algenta.chat_template import (  # noqa: E402
     is_qwen3_chat_template,
     load_chat_template,
     render_qwen3_chat_template,
+    split_tool_calls_from_generated_text,
 )
 
 # Special-token markers, built by concatenation so a literal control token never sits in this
@@ -205,6 +206,68 @@ def test_tools_preamble_emits_function_schemas() -> None:
     assert out.endswith(_IM_S + "assistant\n")
 
 
+def test_split_tool_calls_extracts_single_call() -> None:
+    # Shaped exactly like the tools preamble instructs the model to answer: a compact JSON object
+    # inside the tool_call tags.
+    text = (
+        _TOOL_CALL_O + "\n"
+        + '{"name": "get_weather", "arguments": {"city": "Paris"}}'
+        + "\n" + _TOOL_CALL_C
+    )
+    content, calls = split_tool_calls_from_generated_text(text)
+    assert content is None  # tool-call-only turn, nothing left over
+    assert calls == [{"name": "get_weather", "arguments": {"city": "Paris"}}]
+
+
+def test_split_tool_calls_extracts_multiple_calls_in_order() -> None:
+    text = (
+        _TOOL_CALL_O + '\n{"name": "a", "arguments": {}}\n' + _TOOL_CALL_C
+        + _TOOL_CALL_O + '\n{"name": "b", "arguments": {"x": 1}}\n' + _TOOL_CALL_C
+    )
+    content, calls = split_tool_calls_from_generated_text(text)
+    assert content is None
+    assert calls == [
+        {"name": "a", "arguments": {}},
+        {"name": "b", "arguments": {"x": 1}},
+    ]
+
+
+def test_split_tool_calls_keeps_leading_and_trailing_text() -> None:
+    text = (
+        "Let me check that.\n"
+        + _TOOL_CALL_O + '\n{"name": "get_weather", "arguments": {"city": "Paris"}}\n' + _TOOL_CALL_C
+        + "\nOne moment."
+    )
+    content, calls = split_tool_calls_from_generated_text(text)
+    assert content == "Let me check that.\n\nOne moment."
+    assert calls == [{"name": "get_weather", "arguments": {"city": "Paris"}}]
+
+
+def test_split_tool_calls_no_block_returns_content_unchanged() -> None:
+    content, calls = split_tool_calls_from_generated_text("Paris is the capital of France.")
+    assert content == "Paris is the capital of France."
+    assert calls == []
+
+
+def test_split_tool_calls_malformed_block_left_as_content() -> None:
+    # Not valid JSON at all -- degrades to plain content rather than raising.
+    text = _TOOL_CALL_O + "\nnot json\n" + _TOOL_CALL_C
+    content, calls = split_tool_calls_from_generated_text(text)
+    assert content == text.strip()
+    assert calls == []
+
+    # Valid JSON, but missing the required "name"/"arguments" shape.
+    text = _TOOL_CALL_O + '\n{"foo": "bar"}\n' + _TOOL_CALL_C
+    content, calls = split_tool_calls_from_generated_text(text)
+    assert content == text.strip()
+    assert calls == []
+
+
+def test_split_tool_calls_empty_and_none_text() -> None:
+    assert split_tool_calls_from_generated_text("") == ("", [])
+    assert split_tool_calls_from_generated_text(None) == (None, [])
+
+
 def test_gate_refuses_none_empty_and_foreign_templates() -> None:
     assert is_qwen3_chat_template(None) is False
     assert is_qwen3_chat_template("") is False
@@ -263,6 +326,31 @@ def test_decode_messages_input_guards() -> None:
             messages=[{"role": "user", "content": "hi"}],
         )
     assert excinfo.value.code == "unsupported_chat_template"
+
+
+def test_decode_tools_requires_messages() -> None:
+    """Track C3: `tools` is rendered by the chat template, which only `messages` reaches -- passing
+    it alongside `prompt_text`/`prompt_token_ids` is refused client-side rather than silently
+    ignored."""
+    from algenta.inference import InferenceError, decode
+
+    with pytest.raises(InferenceError) as excinfo:
+        decode(
+            object(),
+            checkpoint_dir="/nonexistent",
+            prompt_text="x",
+            tools=[{"type": "function", "function": {"name": "f"}}],
+        )
+    assert excinfo.value.code == "invalid_arguments"
+
+    with pytest.raises(InferenceError) as excinfo:
+        decode(
+            object(),
+            checkpoint_dir="/nonexistent",
+            prompt_token_ids=[1, 2, 3],
+            tools=[{"type": "function", "function": {"name": "f"}}],
+        )
+    assert excinfo.value.code == "invalid_arguments"
 
 
 # ── oracle: real checkpoints + transformers, skip-unless-present ───────────────────────────────

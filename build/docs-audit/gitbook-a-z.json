@@ -6790,6 +6790,14 @@
         "validation": "parsed"
       },
       {
+        "bytes": 730,
+        "language": "python",
+        "line": 159,
+        "path": "guides/run-qwen3-family-inference.md",
+        "sha256": "97ccfe10bf616d9de793be4b006aa7dfc76c2ca604d906fb854c7cbb175a0f4d",
+        "validation": "parsed"
+      },
+      {
         "bytes": 616,
         "language": "bash",
         "line": 32,
@@ -7504,7 +7512,7 @@
       {
         "bytes": 239,
         "language": "bash",
-        "line": 309,
+        "line": 313,
         "path": "llm/completions.md",
         "sha256": "2f2d6f5e0da42eb4b2fa7d54c86cc5be278a922fec22f70ae7ad0005e7d16acb",
         "validation": "command_inventory"
@@ -7512,7 +7520,7 @@
       {
         "bytes": 126,
         "language": "python",
-        "line": 321,
+        "line": 325,
         "path": "llm/completions.md",
         "sha256": "35312f9b309fd1e0e3aa5f07c366ddeeab50a2416173e54217c433e82dfebe2b",
         "validation": "parsed"
@@ -7520,7 +7528,7 @@
       {
         "bytes": 152,
         "language": "typescript",
-        "line": 331,
+        "line": 335,
         "path": "llm/completions.md",
         "sha256": "1701c7c32345c8e6b0c117ea91e3b262b724d9b233ddf331de68a9ea1a73a7dc",
         "validation": "static_inventory"
@@ -7528,15 +7536,39 @@
       {
         "bytes": 68,
         "language": "bash",
-        "line": 341,
+        "line": 345,
         "path": "llm/completions.md",
         "sha256": "c3bc7426bf176323b5349fd68b7b4cc9b3fabaf86800ffd455a1ced8fec56bb0",
         "validation": "command_inventory"
       },
       {
+        "bytes": 1139,
+        "language": "bash",
+        "line": 362,
+        "path": "llm/completions.md",
+        "sha256": "9db902228cb42abe9d189a614bdb633c392e321a541e44a66eb73d64b2ff6d4c",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 755,
+        "language": "python",
+        "line": 394,
+        "path": "llm/completions.md",
+        "sha256": "f0928ac8cbcc20b66d8a99f69065b476dc42fd50c5a5d5c4a6dec828ad439de7",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 727,
+        "language": "typescript",
+        "line": 423,
+        "path": "llm/completions.md",
+        "sha256": "d973794bbcc8e8f2320af783eb686a30e8fb021b148463a7c1e04da8900211eb",
+        "validation": "static_inventory"
+      },
+      {
         "bytes": 398,
         "language": "bash",
-        "line": 356,
+        "line": 462,
         "path": "llm/completions.md",
         "sha256": "4ad4fcb6f54d97ad93b059f7625a6f9081af76d2ab5cf95f8cb7e7a107e7be99",
         "validation": "command_inventory"
@@ -7544,7 +7576,7 @@
       {
         "bytes": 197,
         "language": "python",
-        "line": 370,
+        "line": 476,
         "path": "llm/completions.md",
         "sha256": "7147f9b2c04591ef05d90b60d6f38c7656e169f32449b53ced8988b5f9de3829",
         "validation": "parsed"
@@ -7552,7 +7584,7 @@
       {
         "bytes": 260,
         "language": "typescript",
-        "line": 380,
+        "line": 486,
         "path": "llm/completions.md",
         "sha256": "a9ab9a399c5e579d5cef449f5878699e32977bd6d2558ffb034fb1a0c27399cb",
         "validation": "static_inventory"
@@ -7560,7 +7592,7 @@
       {
         "bytes": 125,
         "language": "bash",
-        "line": 390,
+        "line": 496,
         "path": "llm/completions.md",
         "sha256": "8e5957704bdbc5e4bc3c1f28cdb704a530d9d3eb2d5ccf8eaff56e9ef5845667",
         "validation": "command_inventory"
@@ -24492,6 +24524,15 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/chat/completions",
+        "line": 191,
+        "match_kind": "exact",
+        "method": null,
+        "path": "guides/run-qwen3-family-inference.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/repositories",
         "line": 10,
         "match_kind": "route_family",
@@ -25213,7 +25254,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/responses",
-        "line": 305,
+        "line": 306,
         "match_kind": "exact",
         "method": "POST",
         "path": "llm/completions.md",
@@ -25222,7 +25263,25 @@
       {
         "authority_match": true,
         "endpoint": "/v1/responses",
-        "line": 310,
+        "line": 314,
+        "match_kind": "exact",
+        "method": null,
+        "path": "llm/completions.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/responses",
+        "line": 364,
+        "match_kind": "exact",
+        "method": null,
+        "path": "llm/completions.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/responses",
+        "line": 382,
         "match_kind": "exact",
         "method": null,
         "path": "llm/completions.md",
@@ -25231,7 +25290,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/tokenize",
-        "line": 352,
+        "line": 458,
         "match_kind": "exact",
         "method": "POST",
         "path": "llm/completions.md",
@@ -25240,7 +25299,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/count_tokens",
-        "line": 352,
+        "line": 458,
         "match_kind": "exact",
         "method": "POST",
         "path": "llm/completions.md",
@@ -25249,7 +25308,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/tokenize",
-        "line": 357,
+        "line": 463,
         "match_kind": "exact",
         "method": null,
         "path": "llm/completions.md",
@@ -25258,7 +25317,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/count_tokens",
-        "line": 362,
+        "line": 468,
         "match_kind": "exact",
         "method": null,
         "path": "llm/completions.md",
@@ -25267,7 +25326,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/tokenize",
-        "line": 397,
+        "line": 503,
         "match_kind": "exact",
         "method": null,
         "path": "llm/completions.md",
@@ -25276,7 +25335,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/count_tokens",
-        "line": 397,
+        "line": 503,
         "match_kind": "exact",
         "method": null,
         "path": "llm/completions.md",
@@ -25285,7 +25344,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 405,
+        "line": 511,
         "match_kind": "exact",
         "method": "GET",
         "path": "llm/completions.md",
@@ -25294,7 +25353,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/chat/completions",
-        "line": 413,
+        "line": 519,
         "match_kind": "exact",
         "method": null,
         "path": "llm/completions.md",
@@ -38111,19 +38170,19 @@
       },
       {
         "kind": "internal",
-        "line": 182,
+        "line": 231,
         "path": "guides/run-qwen3-family-inference.md",
         "target": "../benchmarks/llm-inference-overview.md"
       },
       {
         "kind": "internal",
-        "line": 186,
+        "line": 235,
         "path": "guides/run-qwen3-family-inference.md",
         "target": "run-qwen3-decode.md"
       },
       {
         "kind": "internal",
-        "line": 190,
+        "line": 239,
         "path": "guides/run-qwen3-family-inference.md",
         "target": "../benchmarks/llm-prefill-throughput.md"
       },
@@ -38764,32 +38823,38 @@
         "target": "../authentication.md"
       },
       {
+        "kind": "anchor",
+        "line": 356,
+        "path": "llm/completions.md",
+        "target": "#tool-calling"
+      },
+      {
         "kind": "internal",
-        "line": 405,
+        "line": 511,
         "path": "llm/completions.md",
         "target": "models.md"
       },
       {
         "kind": "internal",
-        "line": 421,
+        "line": 527,
         "path": "llm/completions.md",
         "target": "../api/errors.md"
       },
       {
         "kind": "internal",
-        "line": 429,
+        "line": 535,
         "path": "llm/completions.md",
         "target": "embeddings.md"
       },
       {
         "kind": "internal",
-        "line": 430,
+        "line": 536,
         "path": "llm/completions.md",
         "target": "models.md"
       },
       {
         "kind": "internal",
-        "line": 431,
+        "line": 537,
         "path": "llm/completions.md",
         "target": "../guides/byok.md"
       },
@@ -43854,6 +43919,16 @@
         "term": "algenta"
       },
       {
+        "line": 160,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
+        "line": 184,
+        "path": "guides/run-qwen3-family-inference.md",
+        "term": "algenta"
+      },
+      {
         "line": 8,
         "path": "guides/security-analysis.md",
         "term": "algenta"
@@ -44570,6 +44645,11 @@
       },
       {
         "line": 67,
+        "path": "llm/completions.md",
+        "term": "algenta"
+      },
+      {
+        "line": 453,
         "path": "llm/completions.md",
         "term": "algenta"
       },
@@ -51680,7 +51760,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/responses\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"model\": \"provider.openai:gpt-4o\",\n\"input\": \"Give me one fact about the ocean.\"\n}'",
         "executed": false,
-        "line": 310,
+        "line": 314,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -51688,7 +51768,7 @@
         "classification": "requires_environment",
         "command": "de llm responses request.json",
         "executed": false,
-        "line": 342,
+        "line": 346,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -51696,7 +51776,23 @@
         "classification": "requires_environment",
         "command": "de llm responses request.json --stream",
         "executed": false,
-        "line": 343,
+        "line": 347,
+        "path": "llm/completions.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "external_or_mutating",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/responses\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"model\": \"provider.openai:gpt-4o\",\n\"input\": [{\"type\": \"message\", \"role\": \"user\", \"content\": \"What is the weather in Paris?\"}],\n\"tools\": [{\n\"type\": \"function\",\n\"function\": {\n\"name\": \"get_weather\",\n\"parameters\": {\"type\": \"object\", \"properties\": {\"location\": {\"type\": \"string\"}}, \"required\": [\"location\"]}\n}\n}],\n\"tool_choice\": \"auto\"\n}'",
+        "executed": false,
+        "line": 364,
+        "path": "llm/completions.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "external_or_mutating",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/responses\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"model\": \"provider.openai:gpt-4o\",\n\"input\": [{\"type\": \"function_call_output\", \"call_id\": \"call_abc123\", \"output\": \"15C, partly cloudy\"}],\n\"previous_response_id\": \"resp_...\"\n}'",
+        "executed": false,
+        "line": 382,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -51704,7 +51800,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/tokenize\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"model\": \"text.tokenizer\", \"input\": \"hello world\"}'",
         "executed": false,
-        "line": 357,
+        "line": 463,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -51712,7 +51808,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/count_tokens\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"model\": \"text.tokenizer\", \"input\": \"hello world\"}'",
         "executed": false,
-        "line": 362,
+        "line": 468,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -51720,7 +51816,7 @@
         "classification": "requires_environment",
         "command": "de llm tokenize --input \"hello world\" --model text.tokenizer",
         "executed": false,
-        "line": 391,
+        "line": 497,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -51728,7 +51824,7 @@
         "classification": "requires_environment",
         "command": "de llm count-tokens --input \"hello world\" --model text.tokenizer",
         "executed": false,
-        "line": 392,
+        "line": 498,
         "path": "llm/completions.md",
         "syntax_valid": true
       },
@@ -57009,7 +57105,7 @@
       "shell_commands": 6
     },
     {
-      "code_fences": 2,
+      "code_fences": 3,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -57018,13 +57114,13 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 0,
+      "endpoint_mentions": 1,
       "external_links": 0,
       "internal_links": 4,
       "links": 6,
       "path": "guides/run-qwen3-family-inference.md",
       "product_claims": {
-        "algenta": 9,
+        "algenta": 11,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -57434,29 +57530,29 @@
       "shell_commands": 6
     },
     {
-      "code_fences": 22,
+      "code_fences": 25,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
-        "external_or_mutating": 6,
+        "external_or_mutating": 8,
         "requires_environment": 7,
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 18,
+      "endpoint_mentions": 20,
       "external_links": 0,
       "internal_links": 7,
-      "links": 7,
+      "links": 8,
       "path": "llm/completions.md",
       "product_claims": {
-        "algenta": 5,
+        "algenta": 6,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 13
+      "shell_commands": 15
     },
     {
       "code_fences": 14,
@@ -58818,11 +58914,11 @@
     "source_paths": 227
   },
   "snippets": {
-    "code_fences": 1301,
+    "code_fences": 1305,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
-    "shell_commands": 844,
-    "static_or_guarded_commands": 777
+    "shell_commands": 846,
+    "static_or_guarded_commands": 779
   },
   "source": "gitbook",
   "source_claims": {
@@ -58832,46 +58928,46 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1127,
+    "claim_mentions": 1130,
     "command_execution_percent": 100.0,
-    "commands_classified": 844,
+    "commands_classified": 846,
     "commands_executed": 67,
     "commands_unexecuted": 0,
-    "endpoint_mentions": 2392,
+    "endpoint_mentions": 2395,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1423,
+    "links_checked": 1424,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
     "pages_checked": 220,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 778,
-    "snippets_checked": 1301,
+    "skips": 780,
+    "snippets_checked": 1305,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7087,
+    "source_items_inventoried": 7100,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1127,
-    "code_fences": 1301,
+    "claim_mentions": 1130,
+    "code_fences": 1305,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
-    "endpoint_mentions": 2392,
+    "endpoint_mentions": 2395,
     "environment_mutating_commands": 24,
     "executed_commands": 67,
     "external_links": 11,
-    "external_or_mutating_commands": 272,
+    "external_or_mutating_commands": 274,
     "failures": 0,
     "fixes": 0,
-    "guarded_commands": 777,
+    "guarded_commands": 779,
     "internal_links": 1377,
-    "links": 1423,
+    "links": 1424,
     "pages": 220,
     "product_claims": {
-      "algenta": 1117,
+      "algenta": 1120,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
@@ -58882,14 +58978,14 @@
     "requires_environment_commands": 388,
     "runnable_commands": 67,
     "safe_static_commands": 67,
-    "shell_commands": 844,
-    "shell_syntax_validated_commands": 844,
+    "shell_commands": 846,
+    "shell_syntax_validated_commands": 846,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 778,
+    "skips": 780,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7087,
+    "source_items_inventoried": 7100,
     "static_only_commands": 75,
-    "static_or_guarded_commands": 777,
+    "static_or_guarded_commands": 779,
     "unexecuted_runnable_commands": 0,
     "unique_endpoint_operations": 514,
     "warnings": 0

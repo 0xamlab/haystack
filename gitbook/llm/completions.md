@@ -298,7 +298,8 @@ To continue the conversation, append the assistant's `tool_calls` message and a 
 | `google_genai` | Full — translated to `functionDeclarations`; Gemini assigns no call id, so the engine synthesizes one | Same set, translated to `functionCallingConfig` |
 | `cohere` | Full | `"auto"` and `"required"`/`"none"` only — forcing one named function returns `422 model_capability_unsupported` (Cohere's Chat v2 API has no per-function forcing) |
 | `ollama` | Full | `"auto"` only — forcing `"required"`/`"none"`/a named function returns `422 model_capability_unsupported` (`/api/chat` has no request-side forcing knob) |
-| `algenta_local`, `text.tokenizer` | Not supported — `422 model_capability_unsupported` | — |
+| `algenta_local` | Supported on a checkpoint with a chat template (rendered into the Qwen3 template's tools preamble; `<tool_call>` blocks in the generation are parsed back into structured `tool_calls`) — refuses `422 model_capability_unsupported` on a checkpoint with no chat template | `"auto"` (default) and `"none"` only — the template's preamble is a hint the model may act on, not a mechanism that forces one, so `"required"`/a named-function choice return `422 model_capability_unsupported` |
+| `text.tokenizer` | Not supported — `422 model_capability_unsupported` | — |
 
 ## The unified response envelope
 

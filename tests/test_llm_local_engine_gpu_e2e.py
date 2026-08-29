@@ -107,6 +107,96 @@ def test_local_backend_chat_completion_through_real_gpu(monkeypatch) -> None:
     not _WORKER.is_file() or not (_CHECKPOINT / "config.json").is_file(),
     reason="needs the GPU worker binary and the Qwen3-0.6B-Base snapshot",
 )
+def test_local_backend_chat_completion_with_tools_through_real_gpu(monkeypatch) -> None:
+    """Track C3 wiring proof, real GPU: `tools` reaches the real Metal decode path end to end
+    (chat_template's tools preamble -> tokenization -> algenta.inference.decode() -> generated
+    text), with no exception anywhere in that chain.
+
+    NOTE on the assertion shape: the checkpoint under test is a BASE model (not instruction-tuned)
+    -- like the sibling test above, it does not reliably follow the tools preamble's instruction to
+    answer with a `<tool_call>` block, so this does not assert that a tool was actually called
+    (that would be asserting the model's behavior, not the serving path's). What IS asserted, the
+    same way the sibling test asserts the chat template applied: the real engine tokenized and
+    decoded the TOOLS-AUGMENTED prompt (a token count derived from `apply_chat_template(...,
+    tools=tools)` + the real tokenizer, not a magic number) and generated without raising --
+    proving `tools` genuinely reaches the chat template and the engine, not silently dropped."""
+    monkeypatch.setenv(
+        "ALGENTA_LLM_PROVIDER_MODELS_JSON",
+        json.dumps(
+            [
+                {
+                    "id": "provider.algenta_local",
+                    "backend": "algenta_local",
+                    "model_name": "qwen3-0.6b-base",
+                    "capabilities": ["chat_completions"],
+                }
+            ]
+        ),
+    )
+    monkeypatch.setenv(
+        "ALGENTA_LOCAL_LLM_MODELS_JSON",
+        json.dumps({"qwen3-0.6b-base": str(_CHECKPOINT)}),
+    )
+    monkeypatch.setenv("ALGENTA_NATIVE_WORKER", str(_WORKER))
+    monkeypatch.setenv("ALGENTA_RUNTIME_FALLBACK_MODE", "allow")
+
+    from algenta.chat_template import apply_chat_template
+    from algenta.tokenizer import load_tokenizer
+
+    from apps.api_server.services import llm_api_service, llm_provider_service
+    from apps.api_server.services.llm_provider_service import _executors_local
+
+    messages = [{"role": "user", "content": "What is the weather in Paris?"}]
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a location.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"city": {"type": "string"}},
+                    "required": ["city"],
+                },
+            },
+        }
+    ]
+    expected_prompt_ids = load_tokenizer(_CHECKPOINT).encode(
+        apply_chat_template(_CHECKPOINT, messages, tools=tools)
+    )
+
+    llm_provider_service.load_provider_model_configs.cache_clear()
+    _executors_local.load_local_llm_checkpoint_map.cache_clear()
+    try:
+        descriptor, completion = asyncio.run(
+            llm_api_service.create_chat_completion(
+                model_id="provider.algenta_local",
+                messages=messages,
+                tools=tools,
+                max_output_tokens=32,
+            )
+        )
+    finally:
+        llm_provider_service.load_provider_model_configs.cache_clear()
+        _executors_local.load_local_llm_checkpoint_map.cache_clear()
+
+    assert completion.provider.provider_backend == "algenta_local"
+    assert completion.prompt_tokens == len(expected_prompt_ids), (
+        f"serving did not apply the tools-augmented chat template: got {completion.prompt_tokens} "
+        f"prompt tokens, expected {len(expected_prompt_ids)} for the tools-augmented prompt"
+    )
+    assert completion.completion_tokens == 32
+    # A tool-call-only turn sets content=None; either way, a real generation happened.
+    assert completion.content or completion.tool_calls, "the GPU generated nothing"
+    # finish_reason is only "tool_calls" when the parser actually found a <tool_call> block --
+    # this base checkpoint is not expected to emit one, so "stop" is the expected, honest outcome.
+    assert completion.finish_reason in ("stop", "tool_calls")
+
+
+@pytest.mark.skipif(
+    not _WORKER.is_file() or not (_CHECKPOINT / "config.json").is_file(),
+    reason="needs the GPU worker binary and the Qwen3-0.6B-Base snapshot",
+)
 def test_local_backend_second_prompt_reuses_conversion_and_quantized_caches(monkeypatch) -> None:
     """The serving shape: the prompt travels separately from the converted weights, so ONE
     conversion per checkpoint serves every prompt. Two call shapes are both valid depending on

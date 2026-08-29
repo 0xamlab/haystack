@@ -277,13 +277,19 @@ class ChatCompletionsRequest(BaseModel):
         default=None,
         description=(
             "Function tools the model may call. Forwarded to provider-backed chat models that "
-            "support tool calling; unsupported on the deterministic tokenizer utility model and "
-            "on algenta_local."
+            "support tool calling, and to algenta_local (rendered into the Qwen3 chat template's "
+            "tools preamble); unsupported on the deterministic tokenizer utility model and on an "
+            "algenta_local checkpoint with no chat template."
         ),
     )
     tool_choice: Literal["auto", "none", "required"] | ChatCompletionNamedToolChoice | None = Field(
         default=None,
-        description="Controls whether/which tool the model must call. Ignored unless 'tools' is set.",
+        description=(
+            "Controls whether/which tool the model must call. Ignored unless 'tools' is set. "
+            "algenta_local supports 'auto' (default) and 'none' only -- its tools preamble is a "
+            "hint the model may act on, not a mechanism that can force a call, so 'required' and "
+            "a named-function choice are refused (model_capability_unsupported) on that backend."
+        ),
     )
     parallel_tool_calls: bool | None = Field(
         default=None,
@@ -518,13 +524,19 @@ class ResponsesRequest(BaseModel):
         default=None,
         description=(
             "Function tools the model may call. Forwarded to provider-backed chat models that "
-            "support tool calling; unsupported on the deterministic tokenizer utility model and "
-            "on algenta_local."
+            "support tool calling, and to algenta_local (rendered into the Qwen3 chat template's "
+            "tools preamble); unsupported on the deterministic tokenizer utility model and on an "
+            "algenta_local checkpoint with no chat template."
         ),
     )
     tool_choice: Literal["auto", "none", "required"] | ChatCompletionNamedToolChoice | None = Field(
         default=None,
-        description="Controls whether/which tool the model must call. Ignored unless 'tools' is set.",
+        description=(
+            "Controls whether/which tool the model must call. Ignored unless 'tools' is set. "
+            "algenta_local supports 'auto' (default) and 'none' only -- its tools preamble is a "
+            "hint the model may act on, not a mechanism that can force a call, so 'required' and "
+            "a named-function choice are refused (model_capability_unsupported) on that backend."
+        ),
     )
     parallel_tool_calls: bool | None = Field(
         default=None,

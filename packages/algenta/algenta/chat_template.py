@@ -51,7 +51,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
+from typing import Any
 
 __all__ = [
     "ChatTemplateError",
@@ -59,6 +61,7 @@ __all__ = [
     "render_qwen3_chat_template",
     "load_chat_template",
     "is_qwen3_chat_template",
+    "split_tool_calls_from_generated_text",
 ]
 
 
@@ -292,3 +295,62 @@ def render_qwen3_chat_template(
             parts.append(_THINK_OPEN + "\n\n" + _THINK_CLOSE + "\n\n")
 
     return "".join(parts)
+
+
+# ── The inverse direction: pulling tool calls back OUT of generated text ───────────────────────
+#
+# `render_qwen3_chat_template`'s tools preamble instructs the model to answer a function call by
+# emitting a `<tool_call>{"name": ..., "arguments": {...}}</tool_call>` block (see the preamble
+# text above: "For each function call, return a json object with function name and arguments
+# within <tool_call></tool_call> XML tags"). This is the reference Qwen3/Hermes tool-call wire
+# format the model is trained to produce -- the same tags this module uses to RENDER a prior
+# assistant turn's tool_calls back into a prompt (round-trip symmetry: what this module writes
+# into a prompt is exactly what it must be able to read back out of a completion).
+_TOOL_CALL_BLOCK_RE = re.compile(
+    re.escape(_TOOL_CALL_OPEN) + r"(.*?)" + re.escape(_TOOL_CALL_CLOSE), re.DOTALL
+)
+
+
+def split_tool_calls_from_generated_text(
+    text: str | None,
+) -> tuple[str | None, list[dict[str, Any]]]:
+    """Pull every `<tool_call>...</tool_call>` block out of freshly generated text, in emission
+    order. Returns `(content, calls)`:
+
+    * `content` is the text OUTSIDE every tool_call block, stripped -- `None` when nothing is left
+      (a tool-call-only turn), matching this module's own tool-call-only rendering convention
+      (assistant `content=""` alongside `tool_calls`).
+    * `calls` is a list of `{"name": str, "arguments": dict}` records, one per recognized block.
+
+    This parses MODEL OUTPUT, not a contract this module controls: a block whose body is not valid
+    `{"name": ..., "arguments": {...}}` JSON is left untouched in `content` (tags and all) rather
+    than raising -- a malformed generation degrades to plain text instead of failing the whole
+    turn. An empty/`None` `text` returns `(text, [])` unchanged.
+    """
+    if not text:
+        return text, []
+
+    calls: list[dict[str, Any]] = []
+    pieces: list[str] = []
+    cursor = 0
+    for match in _TOOL_CALL_BLOCK_RE.finditer(text):
+        pieces.append(text[cursor : match.start()])
+        try:
+            parsed = json.loads(match.group(1).strip())
+        except json.JSONDecodeError:
+            parsed = None
+        if (
+            isinstance(parsed, dict)
+            and isinstance(parsed.get("name"), str)
+            and parsed["name"]
+            and isinstance(parsed.get("arguments"), dict)
+        ):
+            calls.append({"name": parsed["name"], "arguments": parsed["arguments"]})
+        else:
+            # Not a recognizable tool call -- keep the tags and body as plain content rather than
+            # silently discarding generated text the model produced.
+            pieces.append(match.group(0))
+        cursor = match.end()
+    pieces.append(text[cursor:])
+    content = "".join(pieces).strip()
+    return (content or None), calls

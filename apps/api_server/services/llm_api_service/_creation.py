@@ -688,6 +688,16 @@ async def create_utility_conversation_response(
     return descriptor, response_id, [output_item], total_tokens
 
 
+def _local_tool_choice_requires_forcing(tool_choice: object | None) -> bool:
+    """Whether `tool_choice` demands the model be MADE to call something: `"required"`, or a named
+    function choice (`{"type": "function", "function": {"name": ...}}`). `None`/`"auto"`/`"none"`
+    all leave the decision to the model (or opt it out entirely), which the Qwen3 chat template's
+    tools preamble supports; forcing one is not something a prompt-level preamble can guarantee."""
+    if tool_choice == "required":
+        return True
+    return isinstance(tool_choice, dict)
+
+
 async def create_chat_completion(
     *,
     model_id: str,
@@ -709,16 +719,24 @@ async def create_chat_completion(
     )
     provider_config = llm_provider_service.get_configured_provider_model(model_id)
     if provider_config is not None and provider_config.backend == "algenta_local":
-        # Parity gap 2 (2026-08-10): the local Apple-Silicon GPU engine. Not an HTTP provider --
-        # executed directly through algenta.inference.decode(); sampling parameters apply to this
-        # backend (remote providers keep their server-side defaults until their payload builders
-        # grow parameter pass-through). Tool calling on the local engine is a separate track (C3) --
-        # refuse honestly rather than silently answering without ever looking at the tools.
-        if tools:
+        # Parity gap 2 (2026-08-10) + Track C3 (2026-08-29): the local Apple-Silicon GPU engine.
+        # Not an HTTP provider -- executed directly through algenta.inference.decode(); sampling
+        # parameters apply to this backend (remote providers keep their server-side defaults until
+        # their payload builders grow parameter pass-through). Tool calling is real (the Qwen3 chat
+        # template's tools preamble, wired through by execute_local_chat_completion), but it is a
+        # HINT the model may act on, not a mechanism that can force a call -- a tool_choice that
+        # demands forcing is refused honestly here rather than silently best-effort'd or ignored.
+        if tools and _local_tool_choice_requires_forcing(tool_choice):
             raise LLMAPIError(
                 "model_capability_unsupported",
-                f"Model '{model_id}' (backend 'algenta_local') does not support tool calling.",
-                {"model": model_id, "backend": "algenta_local", "required_capability": "tool_calling"},
+                f"Model '{model_id}' (backend 'algenta_local') cannot force a specific tool call: "
+                "the Qwen3 chat template's tools preamble is a hint the model may act on, not a "
+                "mechanism that guarantees one. Use tool_choice='auto' (the default) or 'none'.",
+                {
+                    "model": model_id,
+                    "backend": "algenta_local",
+                    "required_capability": "tool_choice_forced",
+                },
             )
         return descriptor, await llm_provider_service.execute_local_chat_completion(
             config=provider_config,
@@ -727,6 +745,8 @@ async def create_chat_completion(
             temperature=temperature,
             top_p=top_p,
             seed=seed,
+            tools=tools,
+            tool_choice=tool_choice,
         )
     if provider_config is not None:
         # Forward the output budget/tool-calling params only when set, so callers/stubs that

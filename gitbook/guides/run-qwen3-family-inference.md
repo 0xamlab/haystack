@@ -148,6 +148,55 @@ Properties: the same prompt + parameters + seed reproduce the identical token se
 at any temperature reproduces the greedy sequence exactly; the sampled pass materializes the full
 logits row host-side, so it runs slower per token than greedy.
 
+## Tool calling
+
+Pass `tools` alongside `messages` and `decode()` renders the Qwen3 chat template's tools preamble
+(the same OpenAI-shaped `[{"type": "function", "function": {...}}]` list the HTTP API's
+`ChatCompletionsRequest.tools` accepts) before tokenization. `tools` is only valid alongside
+`messages` — the template is what renders it, and `prompt_text`/`prompt_token_ids` bypass the
+template entirely, so passing `tools` with either raises `InferenceError("invalid_arguments")`.
+
+```python
+from algenta.chat_template import split_tool_calls_from_generated_text
+
+result = decode(
+    runtime,
+    checkpoint_dir="./qwen3-1.7b",
+    messages=[{"role": "user", "content": "What is the weather in Paris?"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a location.",
+            "parameters": {
+                "type": "object",
+                "properties": {"location": {"type": "string"}},
+                "required": ["location"],
+            },
+        },
+    }],
+    max_new_tokens=64,
+    converted_checkpoint_dir=converted,
+)
+content, tool_calls = split_tool_calls_from_generated_text(result.generated_text)
+```
+
+`algenta.chat_template.split_tool_calls_from_generated_text()` is the inverse operation: it pulls
+every `<tool_call>...</tool_call>` block the model emitted back out of `generated_text` into
+`{"name": ..., "arguments": {...}}` records, in order, and returns the remaining text (`None` for
+a tool-call-only turn) alongside them. Stated precisely, so nothing here overclaims:
+
+* The tools preamble is a **hint** the model may act on — nothing in a prompt-level preamble can
+  *force* a call. There is no `tool_choice` parameter on `decode()`; steering is out of scope for
+  this SDK call (the HTTP API's `/v1/chat/completions` supports `tool_choice="auto"`/`"none"` on
+  `algenta_local` for exactly this reason, and refuses a forced choice rather than pretending to
+  honor it).
+* A checkpoint that ships no chat template cannot render a tools preamble either — `messages`
+  without a supported `chat_template` already refuses with `unsupported_chat_template`; `tools`
+  changes nothing about that.
+* A malformed or absent `<tool_call>` block degrades to plain content instead of raising — the
+  parser reads model output, not a contract this module controls.
+
 ## The quantized load cache
 
 The first `decode()` on a converted checkpoint writes `weights_i8.cache` next to the manifest —

@@ -1903,6 +1903,7 @@ def decode(
     prompt_token_ids: list[int] | None = None,
     prompt_text: str | None = None,
     messages: list[dict] | None = None,
+    tools: list[dict] | None = None,
     max_new_tokens: int = 16,
     max_ctx: int | None = None,
     use_msl_parity_all_roles: bool = True,
@@ -1935,6 +1936,13 @@ def decode(
     * `prompt_token_ids` -- pure token math, no tokenizer loaded.
     With `messages` or `prompt_text` the result also carries `generated_text`.
 
+    `tools` -- OpenAI-shaped tool definitions (`[{"type": "function", "function": {...}}, ...]`),
+    forwarded to the chat template's tools preamble (only valid alongside `messages`; refused with
+    `InferenceError("invalid_arguments")` otherwise). The template only renders the preamble that
+    tells the model it MAY call a function -- it cannot force a call, and the response comes back
+    as plain `generated_text` like any other completion. Pull structured calls back out of it with
+    `algenta.chat_template.split_tool_calls_from_generated_text`.
+
     GREEDY BY DEFAULT. `temperature=0` (the default) runs the fused lm_head+argmax kernel path --
     exactly the pre-sampling behavior, byte for byte. `temperature > 0` switches to the sampled
     path: the tail emits the full logits row and the engine draws each token (the first included)
@@ -1964,6 +1972,12 @@ def decode(
         raise InferenceError(
             "invalid_arguments",
             "pass exactly one of prompt_token_ids, prompt_text, or messages",
+        )
+    if tools is not None and messages is None:
+        raise InferenceError(
+            "invalid_arguments",
+            "tools is only valid alongside messages -- it is rendered into the prompt by the "
+            "chat template, which prompt_text/prompt_token_ids bypass entirely",
         )
     # The GGUF front door (beat-llama.cpp campaign, model coverage): an EXISTING FILE as the
     # checkpoint is a GGUF model file, decoded through the same conversion+engine path. A GGUF
@@ -1996,11 +2010,13 @@ def decode(
                     "Qwen3 template revisions are implemented); pass prompt_text or "
                     "prompt_token_ids instead.",
                 )
-            prompt_text = render_qwen3_chat_template(messages, add_generation_prompt=True)
+            prompt_text = render_qwen3_chat_template(
+                messages, add_generation_prompt=True, tools=tools
+            )
             tokenizer = _load_gguf_tokenizer(gguf_file)
         else:
             try:
-                prompt_text = apply_chat_template(checkpoint_dir, messages)
+                prompt_text = apply_chat_template(checkpoint_dir, messages, tools=tools)
             except ChatTemplateError as exc:
                 raise InferenceError("unsupported_chat_template", str(exc)) from exc
             tokenizer = load_tokenizer(checkpoint_dir)
