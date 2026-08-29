@@ -1069,6 +1069,20 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Three images get built+pushed+re-pulled-for-scanning in this ONE job on ONE runner, and
+      # nothing reclaims disk between them -- the local build cache/layers for an image already
+      # pushed (registry cache handles cross-run reuse via cache-to/cache-from above) are dead
+      # weight for the rest of the job. Left unreclaimed, this accumulates across all three images
+      # and their scans until the largest build (Engine, which bundles the agent-core sidecar) hits
+      # `ResourceExhausted: ... no space left on device` -- reproduced live on two consecutive main
+      # pushes. `docker builder prune` clears buildx cache; `docker image prune` drops the
+      # now-unneeded local copies of images already pushed and scanned.
+      - name: Reclaim disk before the next image build
+        if: always()
+        run: |
+          docker builder prune --all --force || true
+          docker image prune --all --force || true
+
       - name: Extract metadata for Worker image
         id: meta-worker
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -1100,6 +1114,14 @@ jobs:
           registry: ${{ env.REGISTRY }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+      # See the identical step after the API image's scan above -- same reason, before the
+      # largest of the three builds (Engine, which bundles the agent-core sidecar).
+      - name: Reclaim disk before the next image build
+        if: always()
+        run: |
+          docker builder prune --all --force || true
+          docker image prune --all --force || true
 
       # The published Algenta engine encapsulates the async worker, Mojo binary, and agent runtime.
       # Its internal base is private, so a missing read token must fail the release rather than
