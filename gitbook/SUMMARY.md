@@ -31,7 +31,14 @@
 ## Compute & kernel primitives
 
 * [Data integrity and encoding](engine/data-integrity-and-encoding.md)
+* [Compression kernels](engine/compression-kernels.md)
+* [Tensor buffer primitives](engine/tensorx-kernels.md)
+* [Normalization kernels](engine/normalization-kernels.md)
 * [Attention kernels](engine/attention-kernels.md)
+* [MLP block kernels](engine/mlp-block-kernels.md)
+* [GEMM kernels](engine/gemm-kernels.md)
+* [GPU acceleration kernels](engine/gpu-acceleration-kernels.md)
+* [LLM inference kernels](engine/llm-inference-kernels.md)
 
 ## Machine learning
 
@@ -59,10 +66,12 @@
 * [Partial least squares regression (PLS1)](engine/ml-pls.md)
 * [Trainable SVM classifier (simplified SMO)](engine/ml-svm.md)
 * [Batched chain greeks](engine/ml-chain-greeks.md)
+* [Classical ML algorithms](engine/ml-classical-algorithms.md)
 
 ## Optimization & simulation
 
 * [Optimization & decision programs](engine/optimization.md)
+* [Optimization benchmark plane](engine/optimization-model-formulation.md)
 * [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
 * [Discrete-event simulation & queueing](engine/discrete-event-simulation.md)
 * [Strategy comparison & simulation](engine/strategy-simulation.md)
@@ -73,11 +82,13 @@
 ## Time series & statistics
 
 * [Forecasting and backtesting](engine/forecasting.md)
+* [ES-RNN residual correction](engine/ml-esrnn.md)
 * [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
 * [Statistical inference](engine/statistical-inference.md)
 * [Causal inference](engine/causal-inference.md)
 * [Survival analysis](engine/survival-analysis.md)
 * [Evaluation & calibration gates](engine/evaluation-calibration.md)
+* [Program execution & scoring](engine/program-execution-scoring.md)
 
 ## Data & retrieval
 
@@ -89,6 +100,8 @@
 * [Windowed aggregates](engine/streaming-windows.md)
 * [Columnar queries](engine/columnar-queries.md)
 * [Spreadsheet formula plane](engine/sheet-formula-plane.md)
+* [Text processing kernels](engine/text-processing-kernels.md)
+* [Vector ranking kernels](engine/vector-ranking-kernels.md)
 
 ## Concepts
 

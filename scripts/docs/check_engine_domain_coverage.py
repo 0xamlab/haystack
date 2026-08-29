@@ -6,12 +6,15 @@ asserts every one of the 643 real modules appears SOMEWHERE in the gitbook corpu
 check is trivially satisfied by `gitbook/engine/runtime-library-catalog.md` alone, since that page
 is machine-generated FROM the same contract and by construction lists every module's name next to
 its function count. It proves a module has an INDEX ROW. It says nothing about whether anyone
-explains what the module is for, and measured directly: only 124 of 643 real modules (19%) are
+explains what the module is for, and measured directly: as of the A6 batch-2 pass (2026-08-29,
+16 family pages covering 68 modules across ml classical algorithms, tensorx, text processing,
+vector ranking, compression, forecasting ensembling, llmk, metaldispatch, mlpk, accel, esrnn,
+gemm, normk, optmodel, progexec, and the sheet formula plane), 162 of 643 real modules (25%) are
 referenced by a genuine NARRATIVE page (a page someone wrote prose on, as opposed to the
-auto-generated catalog/index pages) -- 519 modules exist in the runtime with zero narrative
-documentation beyond that one generated table row.
+auto-generated catalog/index pages) -- 481 modules still exist in the runtime with zero narrative
+documentation beyond that one generated table row (down from 549 immediately before this batch).
 
-WHY THIS SCRIPT DOES NOT GATE ON THE 519 GAP. That gap is a documentation-writing backlog, not a
+WHY THIS SCRIPT DOES NOT GATE ON THE 481 GAP. That gap is a documentation-writing backlog, not a
 regression -- something a CI check can flag but cannot itself close, and gating hard on it would
 either block every unrelated PR immediately or get disabled at the first annoyance (the same trap
 `scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
@@ -23,7 +26,7 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (519 modules, as of writing) rather than hiding it inside a passing
+  3. Prints the honest gap (481 modules, as of writing) rather than hiding it inside a passing
      check -- `--json` includes it explicitly under "undocumented_by_narrative".
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
@@ -96,10 +99,10 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (87,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, not the old figure this
-# script measured before the header/first-cell restriction fixed six false "stale reference" pages.
-DOCUMENTED_FLOOR = 85
+# Set from the actual measured count under the precise "Module table, first cell only" rule (162,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-2 pass
+# added 16 family pages' worth of module tables (68 modules) on top of the prior floor of 85.
+DOCUMENTED_FLOOR = 160
 
 
 def real_modules() -> set[str]:

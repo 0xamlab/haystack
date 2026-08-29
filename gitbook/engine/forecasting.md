@@ -69,6 +69,10 @@ any statistic you want later can be computed without re-running anything.
 | `forecasting.contract` | the package's one vocabulary: status names, method ids, size ceilings, the single empirical quantile, and one validator per class of input |
 | `forecasting.point` | ETS(A,N,N) / ETS(A,A,N) with damped trend / ETS(A,A,A), Theta and a trend-reproducing Theta variant, a validated AR forecast, four baselines, and seasonal adjustment with a reversibility check |
 | `forecasting.fitted` | `holt_fitted`, `damped_fitted` and `ets_aaa_fitted` — the same three model families as above, but with the smoothing parameters AND the initial level/trend/seasonal state fitted jointly by the reference Nelder-Mead optimizer, closing the frozen initial-state defect described above |
+| `forecasting.select` | per-series selection or inverse-MAE combination over {SES, Damped, Theta} by mean one-step in-sample error, ties breaking to the simpler model |
+| `forecasting.origin_select` | the same three candidates scored by K paired rolling origins instead of one in-sample number, plus a paired-t tournament gate that combines a genuine tie instead of forcing a single winner |
+| `forecasting.bagging` | moving-block-bootstrap bagging of one chosen candidate — perturb the series, refit, and average the paths to flatten parameter-estimation variance |
+| `forecasting.pool` | the same idea widened to an eight-candidate pool (adds Holt, the M4 Comb, ETS(A,A,A), seasonal-naive and Naive2) and rescored on a last-`horizon` TRAINING holdout instead of in-sample error |
 | `forecasting.backtest` | rolling-origin evaluation — per-origin and pooled errors, the worst origin, and MAE / RMSE / MAPE / sMAPE / MASE each with its own presence flag and undefined count |
 | `forecasting.interval` | prediction bands from backtest residuals, per lead time, empirical or seeded-bootstrap, plus a measurement of the coverage they actually achieved |
 | `forecasting.hierarchy` | bottom-up and top-down reconciliation of forecasts that must add up, and an audit of a hierarchy somebody else produced |
@@ -141,6 +145,183 @@ state.
 
 `ets_aaa_fitted` with `period == 1` reduces to `holt_fitted` (`gamma` reported `0.0`) rather
 than being refused, matching `forecasting.point.ets_aaa_forecast`'s own convention.
+
+## Select and origin_select score the same three candidates two different ways
+
+Four more modules sit on top of `point` and `fitted` rather than beside them: they call the
+existing drivers and choose or blend the paths those drivers already produced, adding no new
+forecasting arithmetic of their own.
+
+`forecasting.select` picks (or combines) among the same three fitted candidates — SES, the
+fitted damped trend, and classical Theta — by the mean absolute **one-step in-sample** error,
+t = 1..n-1. On a constant 10-point series all three fit exactly (MAE `0.0` for every
+candidate): `select_best_fitted` breaks the tie to the first, SES, and forecasts exactly
+`5.0`; `combine_inverse_mae_fitted` splits the weight into exact thirds and also forecasts
+exactly `5.0`.
+
+```python
+y_const = [5.0] * 10
+
+sb = runtime.execute("forecasting.select", "select_best_fitted", [y_const, 3])["result"]
+sb["chosen_method_id"]   # 4 -- FC_METHOD_ETS_ANN (SES), the tie-break winner
+sb["maes"]                # [0.0, 0.0, 0.0] -- every candidate fits the constant exactly
+sb["values"][0]           # 5.0
+
+cb = runtime.execute("forecasting.select", "combine_inverse_mae_fitted", [y_const, 3])["result"]
+cb["weights"]             # [0.333..., 0.333..., 0.333...] -- the exact-fit guard splits evenly
+cb["values"][0]           # 5.0
+```
+
+On a trending series the ranking flips predictably: Damped's in-sample MAE is smallest,
+Theta's is **exactly half** of SES's — an identity, not a coincidence, because on an exact
+line the theta-2 line equals the series itself, so the theta-line golden-section fit sees
+bit-identical input to the SES fit and its one-step error is structurally half of SES's — and
+`select_best_fitted` returns Damped one-hot.
+
+`forecasting.origin_select` replaces that single in-sample number with a K-SAMPLE PAIRED
+estimate: K rolling origins inside the training series, every candidate refitted on the SAME
+windows and scored on the SAME held-out horizon slice — common random numbers applied to
+method selection instead of to a simulation. The schedule is pinned in the suite:
+
+```python
+runtime.execute("forecasting.origin_select", "origin_schedule", [13, 6, 8])["result"]
+# [6, 7] -- the M4-Yearly minimum shape
+
+runtime.execute("forecasting.origin_select", "origin_schedule", [16, 8, 8])["result"]
+# [8] -- the M4-Quarterly minimum: only one origin fits
+
+runtime.execute("forecasting.origin_select", "origin_schedule", [60, 6, 8])["result"]
+# [33, 36, 39, 42, 45, 48, 51, 54] -- 8 origins, spaced 3 apart, from the recent end
+```
+
+`crn_origin_select` selects the smallest mean paired MAE, same tie-break order as `select`.
+`tournament_gated_select` adds a statistical gate on top: the apparent best is handed to
+`strategy.tournament`'s paired-t core against every other survivor at significance `alpha`;
+anything not significantly beaten stays in a tied set that gets combined by inverse
+mean-MAE weight, and a refused or undecided comparison counts as a tie, never a win. On a
+24-point constant series the two drivers disagree on purpose: `crn_origin_select` breaks the
+exact tie to SES one-hot, while `tournament_gated_select` reads the floating-point-residue
+differences between three exact fits as a genuine three-way tie and combines all three — still
+forecasting exactly `5.0` — because a mean per-origin difference below a floor scaled by the
+two means being compared (`1e-12 * (1 + mean_a + mean_b)`) is read as numerical residue before
+any test is even consulted. With fewer than two origins (a short Yearly series) no test exists
+at all, so every surviving candidate ties by construction: the least evidence yields the most
+cautious answer.
+
+The gate is sensitive to `alpha` at the exact reported p-value, not just qualitatively: on a
+wiggly, mildly-trending 60-point series, setting `alpha` just below the smallest per-candidate
+p ties everything into the full three-way combination; setting it just above the largest flips
+to a lone selection. And the whole apparatus is provably leakage-free: fed a pure upward trend
+(whose rolling origins all favour Damped) alongside a hand-built continuation — a flat line at
+the last observed level, which actually rewards SES, and is never passed to the kernel —
+`crn_origin_select` still returns Damped: a function of the training series alone, it
+structurally cannot see what the continuation rewards.
+
+## Bagging refits one candidate on perturbed histories, not a different model
+
+`forecasting.bagging` implements moving-block-bootstrap (MBB) bagging on this candidate pool:
+decompose the series into a shrinking-window centered moving-average trend plus a remainder,
+draw `n_boot` MBB resamples of the remainder (blocks of `block_len` consecutive points drawn
+with replacement, so the resample keeps the local autocorrelation an i.i.d. draw would
+destroy), recompose `n_boot` simulated series, refit ONE named candidate (0 = SES, 1 = Damped,
+2 = Theta — `forecasting.select`'s own fits and tie-break order) on each, and average the
+resulting forecast paths together with the fit on the ORIGINAL series. A replicate whose
+recomposition is non-finite or whose refit refuses is skipped and counted in `n_boot_refused`,
+never zero-filled; if the fit on the original series itself refuses, the whole call refuses
+(`every_candidate_undefined`) — an ensemble with no center is not a bagged version of anything.
+Draws are keyed by `(master_seed, series_id, replicate_id, stream, block index)` through
+`determinism.counter_rng` (Philox4x64-10), so two calls with identical arguments are
+bit-identical, and `BaggedForecast.rng_version` names the generator for a stored ensemble.
+
+Two identities the suite pins with `==`, not a tolerance:
+
+```python
+y = [2.0 + 3.0 * t for t in range(20)]   # a perfect line
+
+trend = runtime.execute("forecasting.bagging", "shrinking_ma_trend", [y, 7])["result"]
+trend["values"] == y                     # True -- a centered average of a line is the line
+
+bag = runtime.execute("forecasting.bagging", "bagged_candidate_forecast",
+                      [y, 4, 1, 10, 5, 7, 7, 11])["result"]   # candidate 1 = Damped
+# the remainder is identically zero at every point, so every recomposed replicate IS the
+# original series and the ensemble equals the single fit, bit for bit -- even with block_len
+# (5) well under n (20)
+```
+
+`block_len == n` is the other pinned identity: a single admissible block start means the
+resample IS the remainder, so the bagged forecast equals the single fit for any `n_boot`. Away
+from these degenerate cases — a genuinely wiggly remainder — the ensemble measurably differs
+from the single fit and moves with `block_len`, `trend_window` and the seed, while staying
+bit-reproducible for a fixed set of arguments. The decomposition states its own honest edge
+case: the moving-average window shrinks symmetrically at the edges (radius
+`min(trend_window // 2, i, n-1-i)`) rather than being zero-padded, so the two endpoints have an
+exactly-zero remainder and understate edge variance rather than extrapolating the record to
+hide it. This module expects a deseasonalised or non-seasonal series; a remainder taken around
+a moving average shorter than the season would carry the season into every block draw.
+
+## A wider pool, scored on a training holdout instead of in-sample error
+
+`forecasting.pool` exists because of one measured ceiling: on the full M4 corpus, the
+test-window oracle over the three-candidate pool above scores 0.775 total OWA while every
+honest in-sample selection criterion over that same pool lands around 0.874 — and the oracle
+over an eight-candidate pool drops to 0.671. The pool, not the selection criterion, is where
+the remaining headroom lives, so `pool` widens the candidate set to eight (adding Holt, the
+official M4 "Comb" of SES + Holt + Damped, ETS(A,A,A), seasonal-naive and Naive2) and moves the
+criterion from in-sample one-step error to a **last-`horizon` TRAINING holdout**: every
+candidate is fitted on the first `n - horizon` observations, scored against the held-back tail
+of the TRAINING series (never a test window — the function signature has no such argument),
+then refitted on the full series for the shipped forecast.
+
+That criterion change can flip the answer, and the flip is the point. On a 36-point series
+built from a 30-point upward trend followed by a 6-point plateau, the in-sample criterion
+(dominated by the 30-point trend body) picks Damped; the training-holdout pool sees the
+plateau and picks Naive2 instead — and on a constructed continuation of the plateau (never an
+input to either call), the holdout pick's error comes in more than 5x smaller (measured about
+31x in the suite):
+
+```python
+y = ([10.0 + 2.0 * t for t in range(30)]
+     + [68.2, 67.9, 68.1, 67.8, 68.0, 68.1])          # trend body, then a plateau
+
+report = runtime.execute("forecasting.pool", "pool_holdout_report", [y, y, 1, 6])["result"]
+report["n_train"], report["n_fit"]     # 36, 30 -- u = n - horizon, the truncated fit size
+
+pool_fc = runtime.execute("forecasting.pool", "pool_holdout_forecast",
+                          [y, y, 1, 6, 0, 0])["result"]     # mode 0 = POOL_MODE_SELECT
+pool_fc["chosen_candidate"]            # 7 -- naive2
+
+insample = runtime.execute("forecasting.select", "select_best_fitted", [y, 6])["result"]
+insample["chosen_method_id"]           # 5 -- FC_METHOD_ETS_AAN (Damped)
+```
+
+The fit-refit split shows up in the report's own numbers: naive2's holdout row is exactly
+`68.0` at every step (the last value of the truncated 30-point window, `y[29]`), while its
+full row is exactly `68.1` (the last value of the whole 36-point series, `y[35]`) — two
+different numbers only a genuine fit-on-prefix, refit-on-full implementation produces. On this
+non-seasonal call (`period = 1`), the two seasonal-only candidates — ETS(A,A,A) and
+seasonal-naive — are excluded as `seasonal_period_invalid`, with `holdout_mae = -1.0`, never a
+silent zero-weight inclusion.
+
+The no-leakage discipline is checked the same way `origin_select`'s is: on a pure 13-point
+trend (the M4-Yearly minimum shape, `u = 7` training points against `horizon = 6`), a test
+window that collapsed to zero would reward SES (holdout MAE > 10) or Naive2 (> 10) — but
+`pool` has no test-window argument through which such a future could arrive, and the training
+data supports exactly one answer: Holt, whose holdout MAE on the trend tail is exactly `0.0`,
+taking the ENTIRE inverse-MAE weight when `pool_holdout_forecast` is asked to blend rather than
+select (`weights[HOLT] == 1.0`, reported as that one candidate rather than a one-member
+"combination").
+
+`pool_blend_flat` is the arithmetic split out on its own — four modes (hard select,
+inverse-MAE, equal-weight mean, per-step median) over an already-computed report, so a caller
+comparing modes pays for one report and many blends. Ties still break to the lower (simpler)
+index; an exact holdout fit still takes the whole weight, split evenly among however many
+candidates hit it exactly (on a seasonal series with an exactly reproducible pattern, five of
+the eight candidates land at MAE `0.0` and split the inverse-MAE weight into exact fifths,
+while the three whose fit is merely Nelder-Mead-close, not bit-exact, weigh `0.0`); and a pool
+of one survivor is reported as that candidate, whatever mode was asked for, because a mean of
+one thing is not a combination. `pool_candidate_name` and `pool_mode_name` turn the pool-local
+indices and blend modes into names (`"naive2"`, `"inverse_mae"`, ...) — loud
+(`"unknown_candidate"` / `"unknown_mode"`) on an out-of-range index rather than blank.
 
 ## Requested, run and refused are three different numbers
 

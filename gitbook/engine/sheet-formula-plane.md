@@ -261,6 +261,84 @@ r["status"]   # 1301 — SHEET_ERR_BAD_MAGIC
   not a benchmark result against another tool. [Benchmarks](../benchmarks/overview.md) covers
   this repository's rules for pages that do make that kind of claim.
 
+## The modules
+
+`sheet.api` is the only module the two examples above ever call directly. The other five sit
+underneath it, in the order a workbook actually passes through them: load, parse each formula,
+recalculate, and along the way address cells and coerce values.
+
+| Module | What it does |
+| --- | --- |
+| `sheet.api` | the two public entry points, `sheet_eval_cell` and `sheet_recalc_report` — everything else in this family runs underneath one of those two calls |
+| `sheet.grid` | `load_workbook`: parses the tab-separated text format into a `Workbook` (parallel arrays of cell state), refusing a malformed line, an out-of-range sheet index or a duplicate cell by name instead of indexing on it |
+| `sheet.formula` | `tokenize` and `parse_formula`: turns one formula's text into a flat `FNode` tree, resolving function names to ids and refusing unsupported grammar (structured references, external links, range unions) as a named `NK_UNSUP` node rather than a guess |
+| `sheet.engine` | `recalc_workbook`: the demand-driven topological walk over that tree, cell by cell, with an explicit stack instead of machine recursion, named cycle detection, and a charged operation budget |
+| `sheet.refs` | A1-style reference arithmetic — `parse_a1_cell`, `parse_ref_text`, `a1_of`, `pack_coord` — the row/column addressing every other module above calls into |
+| `sheet.values` | the typed `CellValue` (numbers, text, bools, the seven classic Excel errors, plus the engine-internal PENDING/CYCLE/UNSUP/ARRAY kinds) and its coercion, comparison and number-formatting rules |
+
+**`sheet.formula`** tokenizes and parses one formula's text — the same parser that produces the
+`SUM(A1:A2)` tree in this page's first example. It gets Excel's two documented precedence traps
+right: unary minus binds tighter than `^` (`-2^2` parses as `(-2)^2` = 4, not `-4`), and `^` is
+left-associative (`2^3^2` parses as `(2^3)^2` = 64, not `2^(3^2)` = 512) — both verified against
+real Excel behavior in `test_sheet_formula.mojo`. A formula the parser cannot represent — a
+structured `Table[Column]` reference, an external `[1]Sheet1!A1` workbook link, a
+parenthesized range union `(A1:A5,B1:B5)` — never crashes and never produces a half-built tree:
+it becomes a single `NK_UNSUP` node carrying the reason (`STRUCTURED_REF`, `EXTERNAL_REF`,
+`RANGE_UNION`), which is exactly what surfaces the recalculated cell into this page's
+`unsupported` bucket.
+
+**`sheet.engine`** is what `sheet_recalc_report` actually runs. It walks the dependency graph
+demand-first — a cell's evaluation pushes its own unresolved dependencies onto an explicit
+`List[Int]` stack rather than recursing, because a real corpus formula chain can run hundreds of
+cells deep (`test_sheet_engine.mojo` builds a 398-cell chain by hand and checks the engine
+reports `max_chain >= 398`). Every node evaluated, cell scanned or array element materialized
+decrements a caller-supplied `budget_ops`; a workbook too large to finish inside its budget stops
+with status `1321` (`RECALC_BUDGET`) and an honest `not_evaluated` count instead of running past
+what the caller charged for — the same test drives a 398-cell chain with a budget of only 50 and
+confirms it stops partway, then reruns with the default budget and gets all 398 cells exactly
+right. A shared formula (Excel's "fill down" optimization, one stored tree serving many cells) is
+re-run per follower cell with only its RELATIVE reference parts shifted: a master at `C1` storing
+`A1+$B$1` produces followers at `C2`/`C3` that evaluate to `A2+$B$1` and `A3+$B$1` — `$B$1` never
+moves because it is absolute — which is exactly the 101/102/103 result
+`test_sheet_engine.mojo` checks by hand.
+
+**`sheet.grid`** owns the `Workbook` model `sheet.engine` and `sheet.refs` both read: sheet
+names, and one set of parallel arrays per cell (`c_sheet`, `c_coord`, `c_kind`, `c_num`,
+`c_text`, `c_err`, plus the formula-tree fields `c_froot`/`c_ftype`/`c_ftext`) rather than one
+struct per cell. `load_workbook` is the only thing that parses the tab-separated text format this
+page's "workbook text format" section documents, including the `G` line for shared-formula
+followers — 69.5% of all formula cells across this plane's benchmark corpora carry no stored
+formula text of their own and are recalculated purely from their master's shifted tree. Loading
+is refusal-first and allocation is capped (`MAX_WB_CELLS` cells, `MAX_WB_NODES` formula nodes):
+past either limit, or on a malformed line, an out-of-range sheet index, a bad A1 reference or a
+duplicate cell address, the load refuses with one of the `SHEET_ERR_*` status codes in the table
+above rather than building a partially-indexed workbook.
+
+**`sheet.refs`** is the reference arithmetic every other module addresses cells through. Excel's
+grid is 1,048,576 rows by 16,384 columns (`A` through `XFD`); internally both are 0-based and pack
+into one `Int` as `row * 16384 + col`, which stays exact in a `Float64` too. `parse_a1_cell`
+handles the single-cell form, preserving each `$` as a separate relative/absolute flag bit —
+`test_sheet_refs.mojo` checks `$B$7` parses to row 6, column 1, both parts absolute — and
+`col_name` round-trips the documented edges exactly: column 0 is `A`, 25 is `Z`, 26 is `AA`, and
+16383 is `XFD`. `parse_ref_text` handles the fuller grammar `INDIRECT` needs — quoted sheet names,
+ranges, whole columns — the same test file confirms `'P&L 2024'!$A$1:B10` parses to sheet `P&L
+2024`, rows 0-9, columns 0-1. An off-grid or malformed reference (`A0`, `XFE1`, `A1048577`,
+`$$A1`) fails rather than wrapping onto the grid.
+
+**`sheet.values`** defines the `CellValue` every formula ultimately evaluates to, and the
+coercion rules that convert between kinds the way Excel does. Beyond the four visible kinds
+(number, text, bool, and the seven classic errors — `#NULL!`, `#DIV/0!`, `#VALUE!`, `#REF!`,
+`#NAME?`, `#NUM!`, `#N/A`) it defines four engine-internal ones — `RANGE`, `ARRAY`,
+`PENDING` and `CYCLE` — that never reach a caller directly but are how `sheet.engine` tracks an
+unresolved reference, a materialized range, a cell still being computed, and a cell on a named
+cycle. Its `num_to_text` implements Excel's own display conversion (round to 15 significant
+digits, plain notation between 1e-4 and 1e21, scientific outside it) so a recalculated number can
+be compared byte-for-byte against a cached string: `test_sheet_refs.mojo` checks
+`num_to_text(1.0/3.0)` is exactly `"0.333333333333333"` and `num_to_text(1e21)` is `"1E+21"`, and
+separately asserts the 15-digit rounding is *not* one ulp off in the other direction — a mutation
+guard on the formatter itself. It also holds the wildcard matching (`*`, `?`, `~`-escaped
+literals) that `COUNTIF`/`SUMIF`-family criteria parse through `sheet.engine`.
+
 ## See also
 
 * [Runtime library catalog](runtime-library-catalog.md) — every module and function, including `sheet.api`, `sheet.engine`, `sheet.formula`, `sheet.grid`, `sheet.refs` and `sheet.values` above.
