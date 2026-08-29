@@ -10,10 +10,12 @@ import hashlib
 import math
 import json
 import os
+import secrets
+from collections import OrderedDict
 from functools import lru_cache
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from apps.api_server.services import llm_provider_service
 from apps.api_server.services.runtime_library_service import (
@@ -413,6 +415,9 @@ async def create_utility_response(
     model_id: str,
     inputs: list[str],
     dimensions: int,
+    tools: list[dict[str, object]] | None = None,
+    tool_choice: object | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> tuple[LLMModelDescriptor, str, list[UtilityResponseOutputItem], int]:
     from apps.api_server.services import llm_api_service as _facade
     descriptor = _facade.get_llm_model_descriptor(model_id)
@@ -423,10 +428,21 @@ async def create_utility_response(
 
     if provider_config is not None and "chat_completions" in descriptor.capabilities:
         completion_ids: list[str] = []
+        # Forward tool-calling params only when the caller actually set them, so every existing
+        # call site downstream (including test doubles that monkeypatch create_chat_completion
+        # with a fixed signature) keeps working unchanged when a request never mentions tools.
+        _tool_kwargs: dict[str, object] = {}
+        if tools:
+            _tool_kwargs["tools"] = tools
+        if tool_choice is not None:
+            _tool_kwargs["tool_choice"] = tool_choice
+        if parallel_tool_calls is not None:
+            _tool_kwargs["parallel_tool_calls"] = parallel_tool_calls
         for index, text in enumerate(inputs):
             _, completion = await _facade.create_chat_completion(
                 model_id=model_id,
                 messages=[{"role": "user", "content": text}],
+                **_tool_kwargs,
             )
             completion_ids.append(completion.completion_id)
             total_tokens += completion.prompt_tokens + completion.completion_tokens
@@ -440,6 +456,8 @@ async def create_utility_response(
                     embedding=None,
                     provider=completion.provider,
                     provider_attempts=completion.provider_attempts,
+                    tool_calls=completion.tool_calls,
+                    finish_reason=completion.finish_reason,
                 )
             )
         return (
@@ -505,6 +523,169 @@ async def create_utility_response(
         f"Model '{model_id}' does not support responses.",
         {"model": model_id, "required_capability": "tokenize_or_embeddings"},
     )
+
+
+# Track C1a (responses protocol core): previous_response_id continuation. Deliberately IN-MEMORY,
+# SINGLE-PROCESS ONLY -- a real, documented limitation (see ResponsesRequest.previous_response_id's
+# docstring and the GitBook responses guide), not a hidden gap. It does not survive a process
+# restart and a follow-up request will not find history stored by a different worker/replica.
+# Bounded with a simple LRU-style cap so a long-running process doesn't grow this dict forever.
+_RESPONSE_HISTORY_MAX_ENTRIES = 512
+_response_history_store: "OrderedDict[str, list[dict[str, Any]]]" = OrderedDict()
+
+
+def _store_response_history(response_id: str, messages: list[dict[str, Any]]) -> None:
+    _response_history_store[response_id] = messages
+    _response_history_store.move_to_end(response_id)
+    while len(_response_history_store) > _RESPONSE_HISTORY_MAX_ENTRIES:
+        _response_history_store.popitem(last=False)
+
+
+def _load_response_history(previous_response_id: str) -> list[dict[str, Any]]:
+    try:
+        messages = _response_history_store[previous_response_id]
+    except KeyError:
+        raise LLMAPIError(
+            "previous_response_id_not_found",
+            (
+                f"No in-memory conversation history found for previous_response_id "
+                f"'{previous_response_id}'."
+            ),
+            {
+                "previous_response_id": previous_response_id,
+                "limitation": (
+                    "previous_response_id continuation is held in the serving process's memory "
+                    "only -- it does not survive a process restart and is not visible to a "
+                    "different worker/replica than the one that produced it."
+                ),
+            },
+        ) from None
+    return list(messages)
+
+
+def _new_conversation_response_id() -> str:
+    return f"resp_{secrets.token_hex(12)}"
+
+
+def _messages_from_typed_input_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build a Chat-Completions-shaped message list from a validated typed OpenResponses input
+    array. Mirrors Chat Completions' own message shape exactly (role/content, assistant
+    tool_calls, tool role + tool_call_id) so it can be handed straight to create_chat_completion
+    -- this is deliberately the simplest, most direct analog to that existing message list."""
+    messages: list[dict[str, Any]] = []
+    for item in items:
+        item_type = item.get("type")
+        if item_type == "message":
+            content = item.get("content")
+            if isinstance(content, list):
+                content = "".join(
+                    str(part.get("text", "")) for part in content if isinstance(part, dict)
+                )
+            messages.append({"role": item["role"], "content": content})
+        elif item_type == "function_call":
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": item["call_id"],
+                            "type": "function",
+                            "function": {
+                                "name": item["name"],
+                                "arguments": item["arguments"],
+                            },
+                        }
+                    ],
+                }
+            )
+        elif item_type == "function_call_output":
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": item["output"],
+                    "tool_call_id": item["call_id"],
+                }
+            )
+        else:
+            raise LLMAPIError(
+                "invalid_provider_request",
+                f"Unsupported response input item type '{item_type}'.",
+                {"type": item_type},
+            )
+    return messages
+
+
+async def create_utility_conversation_response(
+    *,
+    model_id: str,
+    items: list[dict[str, Any]],
+    tools: list[dict[str, object]] | None = None,
+    tool_choice: object | None = None,
+    parallel_tool_calls: bool | None = None,
+    previous_response_id: str | None = None,
+) -> tuple[LLMModelDescriptor, str, list[UtilityResponseOutputItem], int]:
+    """The typed-input-array path: unlike create_utility_response's per-string independent
+    completions, this treats `items` as ONE multi-turn conversation (optionally continuing
+    `previous_response_id`'s stored history) and produces exactly one output item, directly
+    analogous to a single Chat Completions turn."""
+    from apps.api_server.services import llm_api_service as _facade
+    descriptor = _facade.get_llm_model_descriptor(model_id)
+    _require_model_capability(
+        descriptor,
+        capability="chat_completions",
+        operation="typed multi-turn responses",
+    )
+
+    prior_messages = _load_response_history(previous_response_id) if previous_response_id else []
+    new_messages = _messages_from_typed_input_items(items)
+    full_messages = prior_messages + new_messages
+
+    _tool_kwargs: dict[str, object] = {}
+    if tools:
+        _tool_kwargs["tools"] = tools
+    if tool_choice is not None:
+        _tool_kwargs["tool_choice"] = tool_choice
+    if parallel_tool_calls is not None:
+        _tool_kwargs["parallel_tool_calls"] = parallel_tool_calls
+
+    _, completion = await _facade.create_chat_completion(
+        model_id=model_id,
+        messages=full_messages,
+        **_tool_kwargs,
+    )
+
+    assistant_message: dict[str, Any] = {"role": "assistant", "content": completion.content}
+    if completion.tool_calls:
+        assistant_message["tool_calls"] = [
+            {
+                "id": tool_call.id,
+                "type": "function",
+                "function": {
+                    "name": tool_call.function.name,
+                    "arguments": tool_call.function.arguments,
+                },
+            }
+            for tool_call in completion.tool_calls
+        ]
+
+    response_id = _new_conversation_response_id()
+    _store_response_history(response_id, full_messages + [assistant_message])
+
+    total_tokens = completion.prompt_tokens + completion.completion_tokens
+    output_item = UtilityResponseOutputItem(
+        index=0,
+        item_type="text",
+        text=completion.content,
+        tokens=None,
+        token_count=completion.completion_tokens,
+        embedding=None,
+        provider=completion.provider,
+        provider_attempts=completion.provider_attempts,
+        tool_calls=completion.tool_calls,
+        finish_reason=completion.finish_reason,
+    )
+    return descriptor, response_id, [output_item], total_tokens
 
 
 async def create_chat_completion(

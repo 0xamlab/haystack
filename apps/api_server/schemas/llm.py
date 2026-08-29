@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -439,14 +439,70 @@ class EmbeddingsResponse(BaseModel):
     usage: EmbeddingUsageResponse
 
 
+class ResponseInputTextPart(BaseModel):
+    type: Literal["input_text"] = "input_text"
+    text: str
+
+
+class ResponseInputMessageItem(BaseModel):
+    type: Literal["message"] = "message"
+    role: Literal["user", "assistant", "system", "developer"]
+    content: str | list[ResponseInputTextPart] = Field(
+        ...,
+        description=(
+            "Message content: a plain string, or a list of input_text parts (concatenated in "
+            "order)."
+        ),
+    )
+
+
+class ResponseInputFunctionCallItem(BaseModel):
+    type: Literal["function_call"] = "function_call"
+    call_id: str = Field(
+        ...,
+        description="Identifier this call is answered by in a later function_call_output item.",
+    )
+    name: str
+    arguments: str = Field(
+        ...,
+        description="JSON-encoded call arguments (a string, per the OpenAI wire shape).",
+    )
+
+
+class ResponseInputFunctionCallOutputItem(BaseModel):
+    type: Literal["function_call_output"] = "function_call_output"
+    call_id: str = Field(
+        ...,
+        description="Matches the call_id of the function_call item this output answers.",
+    )
+    output: str = Field(
+        ...,
+        description="The tool's result as a string. JSON-encode structured results yourself.",
+    )
+
+
+ResponseInputItem = Annotated[
+    ResponseInputMessageItem | ResponseInputFunctionCallItem | ResponseInputFunctionCallOutputItem,
+    Field(discriminator="type"),
+]
+
+
 class ResponsesRequest(BaseModel):
     model: str = Field(
         default="text.tokenizer",
         description="Utility model identifier from GET /v1/models.",
     )
-    input: str | list[str] = Field(
+    input: str | list[str] | list[dict[str, Any]] = Field(
         ...,
-        description="One UTF-8 string or a list of UTF-8 strings processed by the selected utility model.",
+        description=(
+            "Either the legacy shape -- one UTF-8 string, or a list of UTF-8 strings each "
+            "processed as an INDEPENDENT single-turn request against the selected model -- or a "
+            "typed OpenResponses-style input array (items shaped "
+            "{\"type\": \"message\" | \"function_call\" | \"function_call_output\", ...}) processed "
+            "as ONE multi-turn conversation. The two shapes are never mixed: a list is classified "
+            "as typed only when every item is an object carrying a \"type\" key, otherwise it is "
+            "treated as the legacy list of independent strings."
+        ),
     )
     dimensions: int = Field(
         default=64,
@@ -458,14 +514,55 @@ class ResponsesRequest(BaseModel):
         default=False,
         description="When true, return Server-Sent Events with deterministic response output events.",
     )
+    tools: list[ChatCompletionToolDef] | None = Field(
+        default=None,
+        description=(
+            "Function tools the model may call. Forwarded to provider-backed chat models that "
+            "support tool calling; unsupported on the deterministic tokenizer utility model and "
+            "on algenta_local."
+        ),
+    )
+    tool_choice: Literal["auto", "none", "required"] | ChatCompletionNamedToolChoice | None = Field(
+        default=None,
+        description="Controls whether/which tool the model must call. Ignored unless 'tools' is set.",
+    )
+    parallel_tool_calls: bool | None = Field(
+        default=None,
+        description=(
+            "Hint to allow/disallow multiple tool calls in one turn. Best-effort: honored where the "
+            "provider's API exposes an equivalent knob, otherwise ignored."
+        ),
+    )
+    previous_response_id: str | None = Field(
+        default=None,
+        description=(
+            "Continue a prior typed-input-array conversation: the id of an earlier /v1/responses "
+            "call whose message history (including any tool calls/results) is prepended before "
+            "this call's input items. Only valid together with the typed input-array shape. "
+            "LIMITATION: this history is held in the serving process's memory only -- it does not "
+            "survive a process restart and will not be found if a later request lands on a "
+            "different worker/replica than the one that served the original call."
+        ),
+    )
 
 
 class ResponseOutputContent(BaseModel):
     type: Literal["tokenization", "embedding", "text"]
-    text: str
+    text: str | None = None
     tokens: list[str] | None = None
     token_count: int
     embedding: list[float] | None = None
+    tool_calls: list[ChatCompletionToolCall] | None = Field(
+        default=None,
+        description="Tool calls the model made this turn, present when finish_reason is 'tool_calls'.",
+    )
+    finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] | None = Field(
+        default=None,
+        description=(
+            "Present for chat/provider-backed text turns; mirrors Chat Completions' finish_reason. "
+            "Null for tokenization/embedding output, where the concept does not apply."
+        ),
+    )
 
 
 class ResponseOutputItem(BaseModel):

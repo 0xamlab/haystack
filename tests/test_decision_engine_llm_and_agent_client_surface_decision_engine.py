@@ -616,3 +616,39 @@ def test_decision_engine_agent_step_result_accepts_legacy_agent_step_shape() -> 
     assert run.steps[0].rationale == "Search is the lowest-risk first step."
 
 
+
+
+def test_decision_engine_responses_forwards_tools_and_previous_response_id(monkeypatch) -> None:
+    """Track C1a: .responses()/.stream_responses() must forward tools/tool_choice/
+    parallel_tool_calls/previous_response_id, and accept a typed OpenResponses-style input
+    array, without disturbing the legacy str/list[str] call shape (see the other test in this
+    file, which keeps calling client.responses(["..."], model=...) with none of these set)."""
+    client = DecisionEngineClient(api_key="de_test", base_url="http://localhost:8000")
+    seen: list[tuple[str, str, dict[str, object]]] = []
+
+    def _fake_request(method: str, path: str, **kwargs):
+        seen.append((method, path, kwargs))
+        return _fake_payload_for_path(path)
+
+    monkeypatch.setattr(client, "_request", _fake_request)
+
+    client.responses(
+        [{"type": "message", "role": "user", "content": "What is the weather in Paris?"}],
+        model="provider.gpt-4o-mini",
+        tools=[{"type": "function", "function": {"name": "get_weather"}}],
+        tool_choice="auto",
+        parallel_tool_calls=False,
+        previous_response_id="resp_prior",
+    )
+
+    method, path, kwargs = seen[-1]
+    assert method == "POST"
+    assert path == "/v1/responses"
+    body = kwargs["json"]
+    assert body["input"] == [
+        {"type": "message", "role": "user", "content": "What is the weather in Paris?"}
+    ]
+    assert body["tools"] == [{"type": "function", "function": {"name": "get_weather"}}]
+    assert body["tool_choice"] == "auto"
+    assert body["parallel_tool_calls"] is False
+    assert body["previous_response_id"] == "resp_prior"

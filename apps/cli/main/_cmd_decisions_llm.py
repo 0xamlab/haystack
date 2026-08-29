@@ -763,6 +763,20 @@ def cmd_llm_responses(request_path: str, format: str = "table", *, stream: bool 
     print(f"Model:          {data.get('model')}")
     print(f"Status:         {data.get('status')}")
     print(f"Output items:   {len(data.get('output', []))}")
+    for item in data.get("output", []):
+        content = (item.get("content") or [{}])[0]
+        if not isinstance(content, dict):
+            continue
+        tool_calls = content.get("tool_calls") or []
+        if tool_calls:
+            print(f"  - item #{item.get('index')}: tool_calls={len(tool_calls)}")
+            for tool_call in tool_calls:
+                function = tool_call.get("function", {})
+                print(
+                    f"      {tool_call.get('id')}: {function.get('name')}({function.get('arguments')})"
+                )
+        elif content.get("text") is not None:
+            print(f"  - item #{item.get('index')}: {content.get('text')}")
     print(
         "Usage:          "
         f"prompt={usage.get('prompt_tokens')} total={usage.get('total_tokens')}\n"

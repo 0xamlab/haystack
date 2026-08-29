@@ -302,7 +302,10 @@ To continue the conversation, append the assistant's `tool_calls` message and a 
 
 ## The unified response envelope
 
-`POST /v1/responses` runs the same models behind one envelope. `input` is a single string or a list of strings; the response carries `output` items and `usage`. It also supports `stream: true`.
+`POST /v1/responses` runs the same models behind one envelope. The response carries `output` items and `usage`, and supports `stream: true`. `input` accepts either of two shapes, which are never mixed:
+
+- **Legacy shape** — a single string, or a list of strings. Each string is an INDEPENDENT single-turn request against the model; a list of N strings makes N separate completions in one call, not a conversation. This is unchanged from before and is what every example below without `tools`/`previous_response_id` uses.
+- **Typed shape** — a list of OpenResponses-style items, each an object with a `type`: `message` (`{"type": "message", "role": "user"|"assistant"|"system"|"developer", "content": "..."}`), `function_call` (an assistant tool call, mirroring `tool_calls` on a Chat Completions message), or `function_call_output` (a tool's result, mirroring a `role: "tool"` message). A typed array is processed as ONE multi-turn conversation, exactly like a Chat Completions `messages` list. The engine classifies a list as typed the moment every item is an object with a `type` key; anything else falls back to the legacy shape.
 
 {% tabs %}
 {% tab title="cURL" %}
@@ -346,6 +349,108 @@ de llm responses request.json --stream
 {% endtabs %}
 
 The `200` response is a `response` object with `status: "completed"`, an `output` array, and `usage`.
+
+### Tool calling and multi-turn conversations
+
+Pass `tools`/`tool_choice`/`parallel_tool_calls` together with the typed input-array shape to run a real multi-turn conversation with tool calling — the same knobs, translation, and per-backend support matrix as [chat completions' tool calling](#tool-calling) above. A tool-call-only turn returns `content[0].text: null` alongside a populated `content[0].tool_calls` and `finish_reason: "tool_calls"`. As with chat completions, `stream: true` together with a turn that calls a tool returns `422 model_capability_unsupported` rather than dropping the tool call from the SSE stream.
+
+To continue the conversation, send only the NEW turn's items (a `function_call_output` answering the prior tool call, or a new `message`) and set `previous_response_id` to the `id` from the prior call — the engine prepends that call's stored history for you:
+
+{% tabs %}
+{% tab title="cURL" %}
+```bash
+# Turn 1: the model asks to call get_weather.
+curl -sS -X POST "$ALGENTA_API_URL/v1/responses" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "provider.openai:gpt-4o",
+    "input": [{"type": "message", "role": "user", "content": "What is the weather in Paris?"}],
+    "tools": [{
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
+      }
+    }],
+    "tool_choice": "auto"
+  }'
+# -> {"id": "resp_...", "output": [{"content": [{"tool_calls": [{"id": "call_abc123", ...}], "finish_reason": "tool_calls"}]}]}
+
+# Turn 2: continue with the tool's result -- only the new item, plus previous_response_id.
+curl -sS -X POST "$ALGENTA_API_URL/v1/responses" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "provider.openai:gpt-4o",
+    "input": [{"type": "function_call_output", "call_id": "call_abc123", "output": "15C, partly cloudy"}],
+    "previous_response_id": "resp_..."
+  }'
+```
+{% endtab %}
+
+{% tab title="Python" %}
+```python
+first = client.responses(
+    [{"type": "message", "role": "user", "content": "What is the weather in Paris?"}],
+    model="provider.openai:gpt-4o",
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "parameters": {
+                "type": "object",
+                "properties": {"location": {"type": "string"}},
+                "required": ["location"],
+            },
+        },
+    }],
+    tool_choice="auto",
+)
+call = first.output[0].content[0].tool_calls[0]
+
+second = client.responses(
+    [{"type": "function_call_output", "call_id": call.id, "output": "15C, partly cloudy"}],
+    model="provider.openai:gpt-4o",
+    previous_response_id=first.id,
+)
+print(second.output[0].content[0].text)
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```typescript
+const first = await client.responses({
+  model: "provider.openai:gpt-4o",
+  input: [{ type: "message", role: "user", content: "What is the weather in Paris?" }],
+  tools: [{
+    type: "function",
+    function: {
+      name: "get_weather",
+      parameters: {
+        type: "object",
+        properties: { location: { type: "string" } },
+        required: ["location"],
+      },
+    },
+  }],
+  tool_choice: "auto",
+});
+const call = first.output[0].content[0].tool_calls![0];
+
+const second = await client.responses({
+  model: "provider.openai:gpt-4o",
+  input: [{ type: "function_call_output", call_id: call.id, output: "15C, partly cloudy" }],
+  previous_response_id: first.id,
+});
+console.log(second.output[0].content[0].text);
+```
+{% endtab %}
+{% endtabs %}
+
+{% hint style="warning" %}
+**`previous_response_id` is in-memory and single-process.** The prior turn's history is held only in the memory of the Algenta process that served it — it does not survive a process restart, and a follow-up request will not find it if load balancing routes it to a different worker or replica than the one that answered the first call. Self-hosted single-process deployments and short-lived scripts are fine; a multi-replica production deployment should treat this as ephemeral and pass the full typed input array itself (including prior `message`/`function_call`/`function_call_output` items) instead of relying on `previous_response_id` across requests that may land on different workers.
+{% endhint %}
 
 ## Tokenize and count tokens
 

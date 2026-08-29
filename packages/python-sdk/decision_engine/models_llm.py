@@ -219,10 +219,12 @@ class ResponseOutputContentResult(BaseModel):
     model_config = ConfigDict(extra="allow", defer_build=True)
 
     type: Literal["tokenization", "embedding", "text"]
-    text: str
+    text: str | None = None
     tokens: list[str] | None = None
     token_count: int
     embedding: list[float] | None = None
+    tool_calls: list[ChatCompletionToolCallResult] | None = None
+    finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] | None = None
 
 
 class ResponseOutputItemResult(BaseModel):

@@ -7801,10 +7801,13 @@ paths:
       tags:
       - LLM API
       summary: Run the unified model response envelope
-      description: Runs the selected model and returns a unified response envelope.
+      description: 'Runs the selected model and returns a unified response envelope.
         Tokenizer-backed and lexical-embedding utility models remain deterministic,
         while configured provider-backed chat and embedding models are routed through
-        the provider service when advertised in GET /v1/models.
+        the provider service when advertised in GET /v1/models. `input` also accepts
+        a typed OpenResponses-style array (items shaped {type: message|function_call|function_call_output,
+        ...}) for a real multi-turn conversation with optional tool calling and previous_response_id
+        continuation.'
       operationId: responses_v1_responses_post
       requestBody:
         content:
@@ -21765,7 +21768,9 @@ components:
           - text
           title: Type
         text:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Text
         tokens:
           anyOf:
@@ -21784,10 +21789,31 @@ components:
             type: array
           - type: 'null'
           title: Embedding
+        tool_calls:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ChatCompletionToolCall'
+            type: array
+          - type: 'null'
+          title: Tool Calls
+          description: Tool calls the model made this turn, present when finish_reason
+            is 'tool_calls'.
+        finish_reason:
+          anyOf:
+          - type: string
+            enum:
+            - stop
+            - tool_calls
+            - length
+            - content_filter
+          - type: 'null'
+          title: Finish Reason
+          description: Present for chat/provider-backed text turns; mirrors Chat Completions'
+            finish_reason. Null for tokenization/embedding output, where the concept
+            does not apply.
       type: object
       required:
       - type
-      - text
       - token_count
       title: ResponseOutputContent
     ResponseOutputItem:
@@ -21847,9 +21873,19 @@ components:
           - items:
               type: string
             type: array
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
           title: Input
-          description: One UTF-8 string or a list of UTF-8 strings processed by the
-            selected utility model.
+          description: 'Either the legacy shape -- one UTF-8 string, or a list of
+            UTF-8 strings each processed as an INDEPENDENT single-turn request against
+            the selected model -- or a typed OpenResponses-style input array (items
+            shaped {"type": "message" | "function_call" | "function_call_output",
+            ...}) processed as ONE multi-turn conversation. The two shapes are never
+            mixed: a list is classified as typed only when every item is an object
+            carrying a "type" key, otherwise it is treated as the legacy list of independent
+            strings.'
         dimensions:
           type: integer
           maximum: 4096.0
@@ -21864,6 +21900,48 @@ components:
           description: When true, return Server-Sent Events with deterministic response
             output events.
           default: false
+        tools:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ChatCompletionToolDef'
+            type: array
+          - type: 'null'
+          title: Tools
+          description: Function tools the model may call. Forwarded to provider-backed
+            chat models that support tool calling; unsupported on the deterministic
+            tokenizer utility model and on algenta_local.
+        tool_choice:
+          anyOf:
+          - type: string
+            enum:
+            - auto
+            - none
+            - required
+          - $ref: '#/components/schemas/ChatCompletionNamedToolChoice'
+          - type: 'null'
+          title: Tool Choice
+          description: Controls whether/which tool the model must call. Ignored unless
+            'tools' is set.
+        parallel_tool_calls:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Parallel Tool Calls
+          description: 'Hint to allow/disallow multiple tool calls in one turn. Best-effort:
+            honored where the provider''s API exposes an equivalent knob, otherwise
+            ignored.'
+        previous_response_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Previous Response Id
+          description: 'Continue a prior typed-input-array conversation: the id of
+            an earlier /v1/responses call whose message history (including any tool
+            calls/results) is prepended before this call''s input items. Only valid
+            together with the typed input-array shape. LIMITATION: this history is
+            held in the serving process''s memory only -- it does not survive a process
+            restart and will not be found if a later request lands on a different
+            worker/replica than the one that served the original call.'
       type: object
       required:
       - input

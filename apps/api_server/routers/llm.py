@@ -5,8 +5,9 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
@@ -30,6 +31,7 @@ from apps.api_server.schemas.llm import (
     LLMModelListResponse,
     LLMModelResponse,
     ProviderAttemptResponse,
+    ResponseInputItem,
     ResponseOutputContent,
     ResponseOutputItem,
     RerankRequest,
@@ -47,6 +49,7 @@ from apps.api_server.services.llm_api_service import (
     LLMAPIError,
     count_text_tokens,
     create_text_embeddings,
+    create_utility_conversation_response,
     create_utility_response,
     embedding_similarity_score,
     list_llm_model_descriptors,
@@ -86,6 +89,8 @@ def _llm_api_http_exception(exc: Exception, request: Request) -> HTTPException:
         if exc.code == "model_not_supported":
             status_code = 404
         elif exc.code == "artifact_not_found":
+            status_code = 404
+        elif exc.code == "previous_response_id_not_found":
             status_code = 404
         elif exc.code == "payment_required":  # managed-LLM monthly spend cap reached (D3)
             status_code = 402
@@ -286,6 +291,17 @@ async def _responses_stream(
     provider_model_id: str | None,
     provider_attempts: list[ProviderAttemptResponse],
 ) -> AsyncIterator[str]:
+    # Design note (Track C1a): a tool-call output item flows through the SAME
+    # "response.output_item.done" event as any other finished item, with tool_calls/finish_reason
+    # populated on its content -- there is no separate "response.function_call.done"-style event.
+    # This is the simplest option consistent with the existing 3-event vocabulary: that event
+    # already means "an item finished", and a tool-call item IS a finished item, just like Chat
+    # Completions' own non-streaming tool-calls response reuses the ordinary completion envelope
+    # rather than a parallel shape. In practice this path is also never exercised by a real SSE
+    # stream yet: stream=true with tool_calls present is refused before this generator ever runs
+    # (matching Track C2's identical restriction on /v1/chat/completions), so this is documented
+    # forward-compatibility rather than a live combination.
+
     yield _sse_data(
         {
             "type": "response.created",
@@ -651,6 +667,38 @@ async def count_tokens(
     )
 
 
+_RESPONSE_INPUT_ITEMS_ADAPTER: TypeAdapter[list[ResponseInputItem]] = TypeAdapter(
+    list[ResponseInputItem]
+)
+
+
+def _is_typed_response_input(raw_input: object) -> bool:
+    # A list of dicts can only ever be an attempt at the typed OpenResponses input-array shape --
+    # the legacy shape is str | list[str], and a dict item never validates as a str. Whether each
+    # dict actually carries a well-formed "type" (message/function_call/function_call_output) is
+    # then checked precisely by _RESPONSE_INPUT_ITEMS_ADAPTER, which raises a clean, specific
+    # validation error rather than this classifier silently guessing wrong.
+    return isinstance(raw_input, list) and len(raw_input) > 0 and isinstance(raw_input[0], dict)
+
+
+def _response_output_tool_calls(
+    tool_calls: object,
+) -> list[ChatCompletionToolCall] | None:
+    if not tool_calls:
+        return None
+    return [
+        ChatCompletionToolCall(
+            id=tool_call.id,
+            type="function",
+            function={
+                "name": tool_call.function.name,
+                "arguments": tool_call.function.arguments,
+            },
+        )
+        for tool_call in tool_calls
+    ]
+
+
 @router.post(
     "/v1/responses",
     response_model=ResponsesResponse,
@@ -667,7 +715,10 @@ async def count_tokens(
         "Runs the selected model and returns a unified response envelope. "
         "Tokenizer-backed and lexical-embedding utility models remain deterministic, while "
         "configured provider-backed chat and embedding models are routed through the provider "
-        "service when advertised in GET /v1/models."
+        "service when advertised in GET /v1/models. `input` also accepts a typed "
+        "OpenResponses-style array (items shaped {type: message|function_call|"
+        "function_call_output, ...}) for a real multi-turn conversation with optional tool "
+        "calling and previous_response_id continuation."
     ),
 )
 async def responses(
@@ -681,15 +732,76 @@ async def responses(
         auth=auth,
         redis_client=redis_client,
     )
-    inputs = [payload.input] if isinstance(payload.input, str) else payload.input
-    try:
-        descriptor, response_id, outputs, total_tokens = await create_utility_response(
-            model_id=payload.model,
-            inputs=inputs,
-            dimensions=payload.dimensions,
+
+    is_typed_input = _is_typed_response_input(payload.input)
+
+    if payload.previous_response_id is not None and not is_typed_input:
+        raise _llm_api_http_exception(
+            LLMAPIError(
+                "invalid_provider_request",
+                "previous_response_id is only supported with the typed input-array shape.",
+                {"model": payload.model},
+            ),
+            request,
         )
+
+    # Track C1a: tools/tool_choice/parallel_tool_calls are forwarded ONLY when the caller
+    # actually set them (same convention Track C2 established for /v1/chat/completions), so
+    # every existing call site downstream (including test doubles with a fixed signature) keeps
+    # working unchanged when a request never mentions tools.
+    _tool_kwargs: dict[str, object] = {}
+    if payload.tools:
+        _tool_kwargs["tools"] = [tool.model_dump(exclude_none=True) for tool in payload.tools]
+    if payload.tool_choice is not None:
+        _tool_kwargs["tool_choice"] = (
+            payload.tool_choice.model_dump(exclude_none=True)
+            if isinstance(payload.tool_choice, BaseModel)
+            else payload.tool_choice
+        )
+    if payload.parallel_tool_calls is not None:
+        _tool_kwargs["parallel_tool_calls"] = payload.parallel_tool_calls
+
+    try:
+        if is_typed_input:
+            try:
+                typed_items = _RESPONSE_INPUT_ITEMS_ADAPTER.validate_python(payload.input)
+            except ValidationError as exc:
+                prefixed_errors = [
+                    {**error, "loc": ("body", "input", *error.get("loc", ()))}
+                    for error in exc.errors()
+                ]
+                raise RequestValidationError(prefixed_errors, body=payload.input) from exc
+            descriptor, response_id, outputs, total_tokens = await create_utility_conversation_response(
+                model_id=payload.model,
+                items=[item.model_dump(exclude_none=True) for item in typed_items],
+                previous_response_id=payload.previous_response_id,
+                **_tool_kwargs,
+            )
+        else:
+            inputs = [payload.input] if isinstance(payload.input, str) else payload.input
+            descriptor, response_id, outputs, total_tokens = await create_utility_response(
+                model_id=payload.model,
+                inputs=inputs,
+                dimensions=payload.dimensions,
+                **_tool_kwargs,
+            )
     except (LLMAPIError, MojoLibraryError) as exc:
         raise _llm_api_http_exception(exc, request) from exc
+
+    if payload.stream and any(getattr(item, "tool_calls", None) for item in outputs):
+        # True per-backend streaming of tool_calls deltas is a deliberately separate follow-up
+        # (matching Track C2's identical restriction on /v1/chat/completions) -- refuse rather
+        # than silently dropping the tool_calls the caller asked for into an SSE stream that
+        # can't carry them.
+        raise _llm_api_http_exception(
+            LLMAPIError(
+                "model_capability_unsupported",
+                "Streaming is not yet supported for a response that calls tools; set stream=false.",
+                {"model": descriptor.model_id, "required_capability": "streaming_tool_calls"},
+            ),
+            request,
+        )
+
     response_items = [
         ResponseOutputItem(
             id=f"{response_id}_item_{item.index}",
@@ -704,6 +816,8 @@ async def responses(
                     tokens=item.tokens,
                     token_count=item.token_count,
                     embedding=item.embedding,
+                    tool_calls=_response_output_tool_calls(getattr(item, "tool_calls", None)),
+                    finish_reason=getattr(item, "finish_reason", None),
                 )
             ],
         )

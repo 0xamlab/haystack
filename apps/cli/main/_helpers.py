@@ -387,7 +387,14 @@ def _render_response_stream_table(payload: dict[str, Any]) -> str:
         output_index = payload.get("output_index")
         content = (item.get("content") or [{}])[0]
         if isinstance(content, dict):
-            if content.get("text") is not None:
+            tool_calls = content.get("tool_calls") or []
+            if tool_calls:
+                calls_summary = ", ".join(
+                    f"{tc.get('function', {}).get('name')}({tc.get('function', {}).get('arguments')})"
+                    for tc in tool_calls
+                )
+                rendered = f"tool_calls=[{calls_summary}]"
+            elif content.get("text") is not None:
                 rendered = content.get("text")
             elif content.get("token_count") is not None:
                 rendered = f"tokens={content.get('token_count')}"

@@ -178,11 +178,55 @@ export interface ArtifactBridgeResolveResponse {
   resolved_path?: string | null;
 }
 
+export interface ResponseInputTextPart {
+  type: "input_text";
+  text: string;
+}
+
+export interface ResponseInputMessageItem {
+  type: "message";
+  role: "user" | "assistant" | "system" | "developer";
+  content: string | ResponseInputTextPart[];
+}
+
+export interface ResponseInputFunctionCallItem {
+  type: "function_call";
+  call_id: string;
+  name: string;
+  arguments: string;
+}
+
+export interface ResponseInputFunctionCallOutputItem {
+  type: "function_call_output";
+  call_id: string;
+  output: string;
+}
+
+export type ResponseInputItem =
+  | ResponseInputMessageItem
+  | ResponseInputFunctionCallItem
+  | ResponseInputFunctionCallOutputItem;
+
 export interface ResponsesRequest {
   model?: string;
-  input: string | string[];
+  /**
+   * Either the legacy shape -- one UTF-8 string, or a list of UTF-8 strings each processed as
+   * an INDEPENDENT single-turn request -- or a typed OpenResponses-style input array processed
+   * as ONE multi-turn conversation. A list is treated as typed only when every item is an
+   * object carrying a "type" key; otherwise it is the legacy list of independent strings.
+   */
+  input: string | string[] | ResponseInputItem[];
   dimensions?: number;
   stream?: boolean;
+  tools?: ChatCompletionToolDef[];
+  tool_choice?: ChatCompletionToolChoice;
+  parallel_tool_calls?: boolean;
+  /**
+   * Continue a prior typed-input-array conversation. Only valid together with the typed
+   * input-array shape. LIMITATION: this history is held in the serving process's memory only
+   * -- it does not survive a process restart and is not visible to a different worker/replica.
+   */
+  previous_response_id?: string;
 }
 
 export interface EmbeddingsRequest {

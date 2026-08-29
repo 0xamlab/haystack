@@ -216,6 +216,50 @@ async def test_llm_handlers_forward_payloads(
     assert body == {"path": expected_path, "ok": True}
 
 
+async def test_responses_handler_forwards_tools_and_typed_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected_json = {
+        "input": [
+            {"type": "message", "role": "user", "content": "What is the weather in Paris?"}
+        ],
+        "model": "provider.gpt-4o-mini",
+        "dimensions": 64,
+        "tools": [{"type": "function", "function": {"name": "get_weather"}}],
+        "tool_choice": "auto",
+        "parallel_tool_calls": False,
+        "previous_response_id": "resp_prior",
+    }
+
+    async def _fake_api(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+        assert method == "POST"
+        assert path == "/v1/responses"
+        assert kwargs == {"json": expected_json}
+        return {"id": "resp_new", "object": "response"}
+
+    monkeypatch.setattr(llm, "api", _fake_api)
+
+    body = json.loads(
+        await llm.responses_handler(
+            {
+                "input": [
+                    {
+                        "type": "message",
+                        "role": "user",
+                        "content": "What is the weather in Paris?",
+                    }
+                ],
+                "model": "provider.gpt-4o-mini",
+                "tools": [{"type": "function", "function": {"name": "get_weather"}}],
+                "tool_choice": "auto",
+                "parallel_tool_calls": False,
+                "previous_response_id": "resp_prior",
+            }
+        )
+    )
+    assert body == {"id": "resp_new", "object": "response"}
+
+
 async def test_plan_decision_handler_forwards_request(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = {"mode": "auto", "scenario": {"variables": {"revenue": {"low": 1, "high": 2}}}}
 

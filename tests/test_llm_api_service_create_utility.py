@@ -300,6 +300,8 @@ async def test_create_utility_response_for_provider_chat_returns_text_items(monk
                     outcome="selected",
                 ),
             ),
+            tool_calls=None,
+            finish_reason="stop",
         ),
         llm_api_service.UtilityResponseOutputItem(
             index=1,
@@ -325,6 +327,8 @@ async def test_create_utility_response_for_provider_chat_returns_text_items(monk
                     outcome="selected",
                 ),
             ),
+            tool_calls=None,
+            finish_reason="stop",
         ),
     ]
 

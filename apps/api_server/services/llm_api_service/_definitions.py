@@ -120,12 +120,18 @@ class GeneratedEmbedding:
 class UtilityResponseOutputItem:
     index: int
     item_type: Literal["tokenization", "embedding", "text"]
-    text: str
+    text: str | None
     tokens: list[str] | None
     token_count: int
     embedding: list[float] | None
     provider: ProviderExecutionMetadata | None = None
     provider_attempts: tuple[ProviderAttemptRecord, ...] = field(default_factory=tuple)
+    # Track C1a (responses protocol core): tool calling. None for every existing non-tool caller
+    # (tokenization, embeddings, and any chat completion with no tool_use/function_call/tool_calls
+    # in it) -- they never set these fields, so they pick up these defaults and their JSON wire
+    # shape is byte-for-byte unchanged.
+    tool_calls: tuple[ChatCompletionToolCall, ...] | None = None
+    finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] | None = None
 
 
 @dataclass(frozen=True)

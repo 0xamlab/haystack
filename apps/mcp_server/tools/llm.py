@@ -105,8 +105,14 @@ CHAT_COMPLETIONS_SPEC: dict[str, Any] = {
 RESPONSES_SPEC: dict[str, Any] = {
     "name": "responses",
     "description": (
-        "Run the unified Algenta utility response surface over deterministic tokenization "
-        "or lexical embeddings."
+        "Run the unified Algenta utility response surface: deterministic tokenization/"
+        "embeddings, or (for provider-backed chat models) a chat response with optional "
+        "function/tool calling. `input` accepts a plain string, a list of independent strings "
+        "(each processed as its own single-turn request), or a typed OpenResponses-style input "
+        "array (items shaped {type: message|function_call|function_call_output, ...}) processed "
+        "as ONE multi-turn conversation. `previous_response_id` continues a prior typed-array "
+        "conversation -- state is held in the Algenta server process's memory only, so it does "
+        "not survive a process restart or a different worker/replica."
     ),
     "inputSchema": {
         "type": "object",
@@ -117,9 +123,60 @@ RESPONSES_SPEC: dict[str, Any] = {
                 "oneOf": [
                     {"type": "string"},
                     {"type": "array", "items": {"type": "string"}},
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["type"],
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": ["message", "function_call", "function_call_output"],
+                                },
+                            },
+                        },
+                    },
                 ]
             },
             "dimensions": {"type": "integer", "default": 64, "minimum": 1, "maximum": 4096},
+            "tools": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["type", "function"],
+                    "properties": {
+                        "type": {"type": "string", "enum": ["function"]},
+                        "function": {
+                            "type": "object",
+                            "required": ["name"],
+                            "properties": {
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "parameters": {"type": "object"},
+                            },
+                        },
+                    },
+                },
+            },
+            "tool_choice": {
+                "oneOf": [
+                    {"type": "string", "enum": ["auto", "none", "required"]},
+                    {
+                        "type": "object",
+                        "required": ["type", "function"],
+                        "properties": {
+                            "type": {"type": "string", "enum": ["function"]},
+                            "function": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {"name": {"type": "string"}},
+                            },
+                        },
+                    },
+                ]
+            },
+            "parallel_tool_calls": {"type": "boolean"},
+            "previous_response_id": {"type": "string"},
         },
         "additionalProperties": False,
     },
@@ -251,15 +308,20 @@ async def chat_completions_handler(arguments: dict[str, Any]) -> str:
 
 
 async def responses_handler(arguments: dict[str, Any]) -> str:
-    result = await api(
-        "POST",
-        "/v1/responses",
-        json={
-            "input": arguments["input"],
-            "model": arguments.get("model", "text.tokenizer"),
-            "dimensions": int(arguments.get("dimensions", 64)),
-        },
-    )
+    body: dict[str, Any] = {
+        "input": arguments["input"],
+        "model": arguments.get("model", "text.tokenizer"),
+        "dimensions": int(arguments.get("dimensions", 64)),
+    }
+    if "tools" in arguments:
+        body["tools"] = arguments["tools"]
+    if "tool_choice" in arguments:
+        body["tool_choice"] = arguments["tool_choice"]
+    if "parallel_tool_calls" in arguments:
+        body["parallel_tool_calls"] = bool(arguments["parallel_tool_calls"])
+    if "previous_response_id" in arguments:
+        body["previous_response_id"] = arguments["previous_response_id"]
+    result = await api("POST", "/v1/responses", json=body)
     return json.dumps(result, indent=2)
 
 

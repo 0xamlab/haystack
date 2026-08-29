@@ -170,30 +170,46 @@ class _AsyncLLMMixin:
 
     async def responses(
         self,
-        input_value: str | list[str],
+        input_value: str | list[str] | list[dict[str, Any]],
         *,
         model: str = "text.tokenizer",
         dimensions: int = 64,
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        parallel_tool_calls: bool | None = None,
+        previous_response_id: str | None = None,
     ) -> ResponsesResult:
         return await _llm_surface_module().responses(
             self,
             input_value,
             model=model,
             dimensions=dimensions,
+            tools=tools,
+            tool_choice=tool_choice,
+            parallel_tool_calls=parallel_tool_calls,
+            previous_response_id=previous_response_id,
         )
 
     def stream_responses(
         self,
-        input_value: str | list[str],
+        input_value: str | list[str] | list[dict[str, Any]],
         *,
         model: str = "text.tokenizer",
         dimensions: int = 64,
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        parallel_tool_calls: bool | None = None,
+        previous_response_id: str | None = None,
     ) -> AsyncIterator[ResponseStreamEventResult]:
         return _llm_surface_module().stream_responses(
             self,
             input_value,
             model=model,
             dimensions=dimensions,
+            tools=tools,
+            tool_choice=tool_choice,
+            parallel_tool_calls=parallel_tool_calls,
+            previous_response_id=previous_response_id,
         )
 
     async def embeddings(

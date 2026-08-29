@@ -715,4 +715,81 @@ describe("DecisionEngineClient — supports_b", () => {
       expect(fetchMock.mock.calls[1]?.[0]).toBe("https://example.test/v1/artifacts/resolve");
       expect(fetchMock.mock.calls[9]?.[0]).toBe("https://example.test/v1/decisions/plan");
     });
+
+  it("responses() forwards a typed input array, tools, and previous_response_id", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "resp_ts_contract",
+            object: "response",
+            status: "completed",
+            model: "provider.gpt-4o-mini",
+            provider_backend: "openai_compatible",
+            provider_model_id: "provider.gpt-4o-mini",
+            provider_attempts: [],
+            output: [
+              {
+                id: "resp_ts_contract_item_0",
+                object: "response.output",
+                index: 0,
+                provider_backend: "openai_compatible",
+                provider_model_id: "provider.gpt-4o-mini",
+                provider_attempts: [],
+                content: [
+                  {
+                    type: "text",
+                    text: null,
+                    tokens: null,
+                    token_count: 0,
+                    embedding: null,
+                    tool_calls: [
+                      {
+                        id: "call_ts_1",
+                        type: "function",
+                        function: { name: "get_weather", arguments: '{"location":"Paris"}' },
+                      },
+                    ],
+                    finish_reason: "tool_calls",
+                  },
+                ],
+              },
+            ],
+            usage: { prompt_tokens: 20, total_tokens: 28 },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new DecisionEngineClient({
+      apiKey: "de_test_123",
+      baseUrl: "https://example.test",
+      maxRetries: 0,
+      timeout: 1_000,
+    });
+
+    const response = await client.responses({
+      model: "provider.gpt-4o-mini",
+      input: [{ type: "message", role: "user", content: "What is the weather in Paris?" }],
+      tools: [{ type: "function", function: { name: "get_weather" } }],
+      tool_choice: "auto",
+      previous_response_id: "resp_prior",
+    });
+
+    expect(response.output[0]?.content[0]?.text).toBeNull();
+    expect(response.output[0]?.content[0]?.finish_reason).toBe("tool_calls");
+    expect(response.output[0]?.content[0]?.tool_calls?.[0]?.function.name).toBe("get_weather");
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.input).toEqual([
+      { type: "message", role: "user", content: "What is the weather in Paris?" },
+    ]);
+    expect(body.tools).toEqual([{ type: "function", function: { name: "get_weather" } }]);
+    expect(body.tool_choice).toBe("auto");
+    expect(body.previous_response_id).toBe("resp_prior");
+    expect(body.stream).toBe(false);
+  });
 });

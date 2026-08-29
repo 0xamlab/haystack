@@ -133,28 +133,65 @@ def stream_chat_completions(
     )
 
 
+def _responses_tool_kwargs(
+    *,
+    tools: list[dict[str, Any]] | None,
+    tool_choice: str | dict[str, Any] | None,
+    parallel_tool_calls: bool | None,
+    previous_response_id: str | None,
+) -> dict[str, Any]:
+    extra: dict[str, Any] = {}
+    if tools is not None:
+        extra["tools"] = tools
+    if tool_choice is not None:
+        extra["tool_choice"] = tool_choice
+    if parallel_tool_calls is not None:
+        extra["parallel_tool_calls"] = parallel_tool_calls
+    if previous_response_id is not None:
+        extra["previous_response_id"] = previous_response_id
+    return extra
+
+
 async def responses(
     client: AsyncDecisionEngineClient,
-    input_value: str | list[str],
+    input_value: str | list[str] | list[dict[str, Any]],
     *,
     model: str = "text.tokenizer",
     dimensions: int = 64,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+    parallel_tool_calls: bool | None = None,
+    previous_response_id: str | None = None,
 ) -> Any:
     return await _request_model(
         client,
         "POST",
         "/v1/responses",
         "ResponsesResult",
-        json_body={"model": model, "input": input_value, "dimensions": dimensions},
+        json_body={
+            "model": model,
+            "input": input_value,
+            "dimensions": dimensions,
+            **_responses_tool_kwargs(
+                tools=tools,
+                tool_choice=tool_choice,
+                parallel_tool_calls=parallel_tool_calls,
+                previous_response_id=previous_response_id,
+            ),
+        },
     )
 
 
 def stream_responses(
     client: AsyncDecisionEngineClient,
-    input_value: str | list[str],
+    input_value: str | list[str] | list[dict[str, Any]],
     *,
     model: str = "text.tokenizer",
     dimensions: int = 64,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+    parallel_tool_calls: bool | None = None,
+    previous_response_id: str | None = None,
 ) -> AsyncIterator[Any]:
     return _stream_model(
         client,
@@ -166,6 +203,12 @@ def stream_responses(
             "input": input_value,
             "dimensions": dimensions,
             "stream": True,
+            **_responses_tool_kwargs(
+                tools=tools,
+                tool_choice=tool_choice,
+                parallel_tool_calls=parallel_tool_calls,
+                previous_response_id=previous_response_id,
+            ),
         },
     )
 

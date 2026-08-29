@@ -468,10 +468,12 @@ export interface EmbeddingsResponse {
 
 export interface ResponseOutputContent {
   type: "tokenization" | "embedding" | "text";
-  text: string;
+  text: string | null;
   tokens?: string[] | null;
   token_count: number;
   embedding?: number[] | null;
+  tool_calls?: ChatCompletionToolCall[] | null;
+  finish_reason?: "stop" | "tool_calls" | "length" | "content_filter" | null;
 }
 
 export interface ResponseOutputItem {

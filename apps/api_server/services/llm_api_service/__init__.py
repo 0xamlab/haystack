@@ -67,4 +67,8 @@ from apps.api_server.services.llm_api_service._creation import (  # noqa: E402, 
     _response_id_from_chat_completion_ids,
     _unique_provider_metadata,
     _deterministic_chat_completion_id,
+    _messages_from_typed_input_items,
+    _store_response_history,
+    _load_response_history,
+    _new_conversation_response_id,
 )
