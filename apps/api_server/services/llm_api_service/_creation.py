@@ -515,6 +515,9 @@ async def create_chat_completion(
     temperature: float | None = None,
     top_p: float | None = None,
     seed: int | None = None,
+    tools: list[dict[str, object]] | None = None,
+    tool_choice: object | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> tuple[LLMModelDescriptor, ChatCompletionResult]:
     from apps.api_server.services import llm_api_service as _facade
     descriptor = _facade.get_llm_model_descriptor(model_id)
@@ -528,7 +531,14 @@ async def create_chat_completion(
         # Parity gap 2 (2026-08-10): the local Apple-Silicon GPU engine. Not an HTTP provider --
         # executed directly through algenta.inference.decode(); sampling parameters apply to this
         # backend (remote providers keep their server-side defaults until their payload builders
-        # grow parameter pass-through).
+        # grow parameter pass-through). Tool calling on the local engine is a separate track (C3) --
+        # refuse honestly rather than silently answering without ever looking at the tools.
+        if tools:
+            raise LLMAPIError(
+                "model_capability_unsupported",
+                f"Model '{model_id}' (backend 'algenta_local') does not support tool calling.",
+                {"model": model_id, "backend": "algenta_local", "required_capability": "tool_calling"},
+            )
         return descriptor, await llm_provider_service.execute_local_chat_completion(
             config=provider_config,
             messages=messages,
@@ -538,17 +548,31 @@ async def create_chat_completion(
             seed=seed,
         )
     if provider_config is not None:
-        # Forward the output budget only when set, so callers/stubs that don't expect
-        # the kwarg are unaffected (None == provider default).
+        # Forward the output budget/tool-calling params only when set, so callers/stubs that
+        # don't expect the kwarg are unaffected (None/absent == unchanged prior behavior).
         _output_budget = (
             {} if max_output_tokens is None else {"max_output_tokens": max_output_tokens}
         )
+        _tool_kwargs: dict[str, object] = {}
+        if tools:
+            _tool_kwargs["tools"] = tools
+        if tool_choice is not None:
+            _tool_kwargs["tool_choice"] = tool_choice
+        if parallel_tool_calls is not None:
+            _tool_kwargs["parallel_tool_calls"] = parallel_tool_calls
         return descriptor, await llm_provider_service.routed_provider_chat_completion(
             model_id=model_id,
             messages=messages,
             **_output_budget,
+            **_tool_kwargs,
         )
 
+    if tools:
+        raise LLMAPIError(
+            "model_capability_unsupported",
+            f"Model '{model_id}' does not support tool calling.",
+            {"model": model_id, "required_capability": "tool_calling"},
+        )
     serialized_messages: list[dict[str, str]] = []
     prompt_tokens = 0
     for message in messages:

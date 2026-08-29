@@ -129,9 +129,22 @@ class UtilityResponseOutputItem:
 
 
 @dataclass(frozen=True)
+class ChatCompletionToolCallFunction:
+    name: str
+    arguments: str
+
+
+@dataclass(frozen=True)
+class ChatCompletionToolCall:
+    id: str
+    function: ChatCompletionToolCallFunction
+    type: Literal["function"] = "function"
+
+
+@dataclass(frozen=True)
 class ChatCompletionResult:
     completion_id: str
-    content: str
+    content: str | None
     prompt_tokens: int
     completion_tokens: int
     provider: ProviderExecutionMetadata | None = None
@@ -139,6 +152,12 @@ class ChatCompletionResult:
     # AR-OPT-1: Anthropic prompt-cache token split (0 when caching is unused/unsupported).
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
+    # Track C2 (2026-08): tool-calling. tool_calls is None for every existing non-tool caller
+    # (algenta_local, the tokenizer fallback, and any provider response with no tool_use/
+    # function_call/tool_calls in it) -- they never set these fields, so they pick up these
+    # defaults and their JSON wire shape is byte-for-byte unchanged.
+    tool_calls: tuple[ChatCompletionToolCall, ...] | None = None
+    finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] = "stop"
 
 
 @dataclass(frozen=True)

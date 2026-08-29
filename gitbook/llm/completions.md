@@ -19,7 +19,7 @@ You need:
 
 ## Chat completions
 
-Send an ordered `messages` transcript. Each message has a `role` (`system`, `user`, `assistant`, or `developer`) and `content`.
+Send an ordered `messages` transcript. Each message has a `role` (`system`, `user`, `assistant`, `developer`, or `tool`) and `content`.
 
 {% tabs %}
 {% tab title="cURL" %}
@@ -164,6 +164,141 @@ de llm chat request.json --stream
 ```
 {% endtab %}
 {% endtabs %}
+
+## Tool calling
+
+Pass `tools` (a list of function definitions) on a provider-backed model and the assistant message can answer with `tool_calls` instead of (or alongside) `content`. `finish_reason` is `"tool_calls"` whenever the model called one; a request that never sets `tools` keeps returning `finish_reason: "stop"` exactly as before. `tool_choice` (`"auto"`, `"required"`, `"none"`, or `{"type": "function", "function": {"name": "..."}}`) and `parallel_tool_calls` are optional. Non-streaming only for now — pass `stream: true` together with `tools` and the engine returns `422 model_capability_unsupported` rather than silently dropping the tool call from the SSE stream.
+
+{% tabs %}
+{% tab title="cURL" %}
+```bash
+curl -sS -X POST "$ALGENTA_API_URL/v1/chat/completions" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "provider.openai:gpt-4o",
+    "messages": [{"role": "user", "content": "What is the weather in Paris?"}],
+    "tools": [{
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a location.",
+        "parameters": {
+          "type": "object",
+          "properties": {"location": {"type": "string"}},
+          "required": ["location"]
+        }
+      }
+    }],
+    "tool_choice": "auto"
+  }'
+```
+{% endtab %}
+
+{% tab title="Python" %}
+```python
+result = client.chat_completions(
+    [{"role": "user", "content": "What is the weather in Paris?"}],
+    model="provider.openai:gpt-4o",
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a location.",
+            "parameters": {
+                "type": "object",
+                "properties": {"location": {"type": "string"}},
+                "required": ["location"],
+            },
+        },
+    }],
+    tool_choice="auto",
+)
+for tool_call in result.choices[0].message.tool_calls or []:
+    print(tool_call.function.name, tool_call.function.arguments)
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```typescript
+const result = await client.chatCompletions({
+  model: "provider.openai:gpt-4o",
+  messages: [{ role: "user", content: "What is the weather in Paris?" }],
+  tools: [{
+    type: "function",
+    function: {
+      name: "get_weather",
+      description: "Get the current weather for a location.",
+      parameters: {
+        type: "object",
+        properties: { location: { type: "string" } },
+        required: ["location"],
+      },
+    },
+  }],
+  tool_choice: "auto",
+});
+for (const toolCall of result.choices[0].message.tool_calls ?? []) {
+  console.log(toolCall.function.name, toolCall.function.arguments);
+}
+```
+{% endtab %}
+{% endtabs %}
+
+The assistant message carries `tool_calls` instead of (or alongside) text, and the arguments are always a JSON-encoded string (`function.arguments`), matching the OpenAI wire shape regardless of which backend actually served the request:
+
+```json title="chat-completion-tool-calls.json"
+{
+  "id": "chatcmpl_...",
+  "object": "chat.completion",
+  "model": "provider.openai:gpt-4o",
+  "provider_backend": "openai",
+  "provider_model_id": "provider.openai:gpt-4o",
+  "provider_attempts": [{"provider_backend": "openai", "provider_model_id": "provider.openai:gpt-4o", "outcome": "selected", "error_code": null}],
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {"name": "get_weather", "arguments": "{\"location\":\"Paris\"}"}
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {"prompt_tokens": 24, "completion_tokens": 18, "total_tokens": 42}
+}
+```
+
+To continue the conversation, append the assistant's `tool_calls` message and a `role: "tool"` message carrying the result (`tool_call_id` must match the call it answers):
+
+```json title="tool-result-followup.json"
+{
+  "model": "provider.openai:gpt-4o",
+  "messages": [
+    {"role": "user", "content": "What is the weather in Paris?"},
+    {"role": "assistant", "content": null, "tool_calls": [{"id": "call_abc123", "type": "function", "function": {"name": "get_weather", "arguments": "{\"location\":\"Paris\"}"}}]},
+    {"role": "tool", "tool_call_id": "call_abc123", "content": "15C, partly cloudy"}
+  ]
+}
+```
+
+### Per-backend tool-calling support
+
+| Backend | Tools | `tool_choice` |
+|---|---|---|
+| `openai`, `openai_compatible`, `groq`, `xai`, `mistral` | Full — forwarded verbatim | `"auto"`, `"required"`, `"none"`, or a named-function choice |
+| `anthropic` | Full — translated to Claude's `tool_use`/`tool_result` blocks | Same set, translated to Claude's `tool_choice` |
+| `google_genai` | Full — translated to `functionDeclarations`; Gemini assigns no call id, so the engine synthesizes one | Same set, translated to `functionCallingConfig` |
+| `cohere` | Full | `"auto"` and `"required"`/`"none"` only — forcing one named function returns `422 model_capability_unsupported` (Cohere's Chat v2 API has no per-function forcing) |
+| `ollama` | Full | `"auto"` only — forcing `"required"`/`"none"`/a named function returns `422 model_capability_unsupported` (`/api/chat` has no request-side forcing knob) |
+| `algenta_local`, `text.tokenizer` | Not supported — `422 model_capability_unsupported` | — |
 
 ## The unified response envelope
 

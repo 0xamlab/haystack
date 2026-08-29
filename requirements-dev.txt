@@ -78,6 +78,10 @@ pandas==2.3.3
 
 # Anthropic SDK (used in tests)
 anthropic==0.94.1
+# OpenAI SDK (used in tests: a real client-SDK contract test drives the /v1/chat/completions
+# tool-calling round trip through httpx.ASGITransport, so the wire shape is checked against the
+# actual openai package's response models, not just our own assertions)
+openai==1.82.0
 huggingface_hub==0.33.0              # HF artifact bridge live checks
 
 # gRPC / protobuf (used in apps/runtime)

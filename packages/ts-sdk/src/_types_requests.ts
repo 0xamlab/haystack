@@ -99,15 +99,50 @@ export interface ExpertSimulateRequest {
 
 export type SimulateRequest = AutoSimulateRequest | ExpertSimulateRequest;
 
-export interface ChatCompletionInputMessage {
-  role: "system" | "user" | "assistant" | "developer";
-  content: string;
+export interface ChatCompletionToolCallFunction {
+  name: string;
+  arguments: string;
 }
+
+export interface ChatCompletionToolCall {
+  id: string;
+  type: "function";
+  function: ChatCompletionToolCallFunction;
+}
+
+export interface ChatCompletionInputMessage {
+  role: "system" | "user" | "assistant" | "developer" | "tool";
+  content?: string | null;
+  tool_calls?: ChatCompletionToolCall[];
+  tool_call_id?: string;
+  name?: string;
+}
+
+export interface ChatCompletionToolFunctionDef {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+  strict?: boolean;
+}
+
+export interface ChatCompletionToolDef {
+  type: "function";
+  function: ChatCompletionToolFunctionDef;
+}
+
+export type ChatCompletionToolChoice =
+  | "auto"
+  | "none"
+  | "required"
+  | { type: "function"; function: { name: string } };
 
 export interface ChatCompletionsRequest {
   model?: string;
   messages: ChatCompletionInputMessage[];
   stream?: boolean;
+  tools?: ChatCompletionToolDef[];
+  tool_choice?: ChatCompletionToolChoice;
+  parallel_tool_calls?: boolean;
 }
 
 export interface TokenizeRequest {

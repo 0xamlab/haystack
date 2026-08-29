@@ -9,6 +9,25 @@ from typing import Any
 from algenta.client._helpers import _sdk_payload_to_plain_data, _cloud_get  # noqa: F401
 
 
+def _chat_completions_tool_kwargs(
+    *,
+    tools: list[dict[str, Any]] | None,
+    tool_choice: str | dict[str, Any] | None,
+    parallel_tool_calls: bool | None,
+) -> dict[str, Any]:
+    # Forward tool-calling params only when the caller actually set them, so existing
+    # callers/stubs (including test doubles with a fixed `chat_completions(messages, *, model)`
+    # signature) that never mention tools are unaffected.
+    extra: dict[str, Any] = {}
+    if tools is not None:
+        extra["tools"] = tools
+    if tool_choice is not None:
+        extra["tool_choice"] = tool_choice
+    if parallel_tool_calls is not None:
+        extra["parallel_tool_calls"] = parallel_tool_calls
+    return extra
+
+
 class _LLMMixin:
     def tokenize(self, text: str, *, model: str = "text.tokenizer") -> Any:
         return self._sdk_client().tokenize(text, model=model)
@@ -18,19 +37,37 @@ class _LLMMixin:
 
     def chat_completions(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         model: str = "text.tokenizer",
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        parallel_tool_calls: bool | None = None,
     ) -> Any:
-        return self._sdk_client().chat_completions(messages, model=model)
+        return self._sdk_client().chat_completions(
+            messages,
+            model=model,
+            **_chat_completions_tool_kwargs(
+                tools=tools, tool_choice=tool_choice, parallel_tool_calls=parallel_tool_calls
+            ),
+        )
 
     def stream_chat_completions(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         model: str = "text.tokenizer",
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        parallel_tool_calls: bool | None = None,
     ) -> Any:
-        return self._sdk_client().stream_chat_completions(messages, model=model)
+        return self._sdk_client().stream_chat_completions(
+            messages,
+            model=model,
+            **_chat_completions_tool_kwargs(
+                tools=tools, tool_choice=tool_choice, parallel_tool_calls=parallel_tool_calls
+            ),
+        )
 
     def responses(
         self,

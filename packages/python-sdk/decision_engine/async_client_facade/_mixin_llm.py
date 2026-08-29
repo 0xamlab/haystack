@@ -134,19 +134,39 @@ class _AsyncLLMMixin:
 
     async def chat_completions(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         model: str = "text.tokenizer",
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        parallel_tool_calls: bool | None = None,
     ) -> ChatCompletionsResult:
-        return await _llm_surface_module().chat_completions(self, messages, model=model)
+        return await _llm_surface_module().chat_completions(
+            self,
+            messages,
+            model=model,
+            tools=tools,
+            tool_choice=tool_choice,
+            parallel_tool_calls=parallel_tool_calls,
+        )
 
     def stream_chat_completions(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         model: str = "text.tokenizer",
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | dict[str, Any] | None = None,
+        parallel_tool_calls: bool | None = None,
     ) -> AsyncIterator[ChatCompletionsStreamChunkResult]:
-        return _llm_surface_module().stream_chat_completions(self, messages, model=model)
+        return _llm_surface_module().stream_chat_completions(
+            self,
+            messages,
+            model=model,
+            tools=tools,
+            tool_choice=tool_choice,
+            parallel_tool_calls=parallel_tool_calls,
+        )
 
     async def responses(
         self,

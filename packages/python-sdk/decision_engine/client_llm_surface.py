@@ -68,33 +68,68 @@ def resolve_artifact_bridge(
     )
 
 
+def _chat_completions_tool_kwargs(
+    *,
+    tools: list[dict[str, Any]] | None,
+    tool_choice: str | dict[str, Any] | None,
+    parallel_tool_calls: bool | None,
+) -> dict[str, Any]:
+    extra: dict[str, Any] = {}
+    if tools is not None:
+        extra["tools"] = tools
+    if tool_choice is not None:
+        extra["tool_choice"] = tool_choice
+    if parallel_tool_calls is not None:
+        extra["parallel_tool_calls"] = parallel_tool_calls
+    return extra
+
+
 def chat_completions(
     client: DecisionEngineClient,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     *,
     model: str = "text.tokenizer",
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> Any:
     return _request_model(
         client,
         "POST",
         "/v1/chat/completions",
         "ChatCompletionsResult",
-        json_body={"model": model, "messages": messages},
+        json_body={
+            "model": model,
+            "messages": messages,
+            **_chat_completions_tool_kwargs(
+                tools=tools, tool_choice=tool_choice, parallel_tool_calls=parallel_tool_calls
+            ),
+        },
     )
 
 
 def stream_chat_completions(
     client: DecisionEngineClient,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     *,
     model: str = "text.tokenizer",
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> Iterator[Any]:
     return _stream_model(
         client,
         "POST",
         "/v1/chat/completions",
         "ChatCompletionsStreamChunkResult",
-        json_body={"model": model, "messages": messages, "stream": True},
+        json_body={
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            **_chat_completions_tool_kwargs(
+                tools=tools, tool_choice=tool_choice, parallel_tool_calls=parallel_tool_calls
+            ),
+        },
     )
 
 

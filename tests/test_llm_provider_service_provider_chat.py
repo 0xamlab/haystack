@@ -739,3 +739,575 @@ async def test_provider_chat_completion_maps_cohere_payload(monkeypatch) -> None
     assert result.provider.provider_model_id == "provider.command-a"
 
 
+# ─── Track C2: tool calling ────────────────────────────────────────────────
+
+_GET_WEATHER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a location.",
+        "parameters": {
+            "type": "object",
+            "properties": {"location": {"type": "string"}},
+            "required": ["location"],
+        },
+    },
+}
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_maps_openai_compatible_tool_calls(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.gpt-4o-mini",
+        backend="openai_compatible",
+        base_url="https://provider.test/v1",
+        upstream_model="gpt-4o-mini",
+        api_key_env="OPENAI_API_KEY",
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            assert url == "https://provider.test/v1/chat/completions"
+            # The shared OpenAI-shaped branch (openai/openai_compatible/groq/xai/mistral)
+            # forwards tools/tool_choice/parallel_tool_calls straight through, verbatim.
+            assert json == {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+                "stream": False,
+                "tools": [_GET_WEATHER_TOOL],
+                "tool_choice": "auto",
+                "parallel_tool_calls": False,
+            }
+            return httpx.Response(
+                200,
+                json={
+                    "id": "chatcmpl_tool_123",
+                    "choices": [
+                        {
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_abc123",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "get_weather",
+                                            "arguments": '{"location":"Paris"}',
+                                        },
+                                    }
+                                ],
+                            },
+                            "finish_reason": "tool_calls",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 12, "completion_tokens": 8},
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+
+    result = await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+        tools=[_GET_WEATHER_TOOL],
+        tool_choice="auto",
+        parallel_tool_calls=False,
+    )
+
+    assert result.content is None
+    assert result.finish_reason == "tool_calls"
+    assert result.tool_calls is not None
+    assert len(result.tool_calls) == 1
+    tool_call = result.tool_calls[0]
+    assert tool_call.id == "call_abc123"
+    assert tool_call.type == "function"
+    assert tool_call.function.name == "get_weather"
+    assert tool_call.function.arguments == '{"location":"Paris"}'
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_maps_anthropic_tool_use_round_trip(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.claude-sonnet",
+        backend="anthropic",
+        base_url="https://api.anthropic.com/v1",
+        upstream_model="claude-3-5-sonnet-latest",
+        api_key_env="ANTHROPIC_API_KEY",
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "ak-test")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            assert url == "https://api.anthropic.com/v1/messages"
+            # A prior assistant tool_use turn + its tool_result reply translate into Anthropic's
+            # content-block-array shape; the plain user turn keeps its bare-string shape exactly
+            # as before this change (non-tool requests stay byte-identical).
+            assert json == {
+                "model": "claude-3-5-sonnet-latest",
+                "messages": [
+                    {"role": "user", "content": "What's the weather in Paris?"},
+                    {
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "toolu_1",
+                                "name": "get_weather",
+                                "input": {"location": "Paris"},
+                            }
+                        ],
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "toolu_1",
+                                "content": "15C, cloudy",
+                            }
+                        ],
+                    },
+                ],
+                "max_tokens": 512,
+                "tools": [
+                    {
+                        "name": "get_weather",
+                        "description": "Get the current weather for a location.",
+                        "input_schema": _GET_WEATHER_TOOL["function"]["parameters"],
+                    }
+                ],
+                "tool_choice": {"type": "any"},
+            }
+            return httpx.Response(
+                200,
+                json={
+                    "id": "msg_tool_followup",
+                    "content": [{"type": "text", "text": "It's 15C and cloudy in Paris."}],
+                    "stop_reason": "end_turn",
+                    "usage": {"input_tokens": 20, "output_tokens": 9},
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+
+    result = await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[
+            {"role": "user", "content": "What's the weather in Paris?"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "toolu_1",
+                        "type": "function",
+                        "function": {"name": "get_weather", "arguments": '{"location":"Paris"}'},
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": "toolu_1", "content": "15C, cloudy"},
+        ],
+        tools=[_GET_WEATHER_TOOL],
+        tool_choice="required",
+    )
+
+    assert result.content == "It's 15C and cloudy in Paris."
+    assert result.finish_reason == "stop"
+    assert result.tool_calls is None
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_maps_anthropic_tool_use_response(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.claude-sonnet",
+        backend="anthropic",
+        base_url="https://api.anthropic.com/v1",
+        upstream_model="claude-3-5-sonnet-latest",
+        api_key_env="ANTHROPIC_API_KEY",
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "ak-test")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            del url, json, headers
+            return httpx.Response(
+                200,
+                json={
+                    "id": "msg_tool_1",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "toolu_1",
+                            "name": "get_weather",
+                            "input": {"location": "Paris"},
+                        }
+                    ],
+                    "stop_reason": "tool_use",
+                    "usage": {"input_tokens": 14, "output_tokens": 6},
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+
+    result = await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+        tools=[_GET_WEATHER_TOOL],
+    )
+
+    assert result.content is None
+    assert result.finish_reason == "tool_calls"
+    assert result.tool_calls is not None
+    tool_call = result.tool_calls[0]
+    assert tool_call.id == "toolu_1"
+    assert tool_call.function.name == "get_weather"
+    assert json.loads(tool_call.function.arguments) == {"location": "Paris"}
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_anthropic_disables_parallel_tool_use(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.claude-sonnet",
+        backend="anthropic",
+        base_url="https://api.anthropic.com/v1",
+        upstream_model="claude-3-5-sonnet-latest",
+        api_key_env="ANTHROPIC_API_KEY",
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "ak-test")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            del url, headers
+            assert json["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": True}
+            return httpx.Response(
+                200,
+                json={
+                    "id": "msg_1",
+                    "content": [{"type": "text", "text": "ok"}],
+                    "usage": {"input_tokens": 1, "output_tokens": 1},
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+
+    await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[{"role": "user", "content": "hi"}],
+        tools=[_GET_WEATHER_TOOL],
+        parallel_tool_calls=False,
+    )
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_maps_google_genai_function_call(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.gemini-flash",
+        backend="google_genai",
+        base_url="https://generativelanguage.googleapis.com/v1beta",
+        upstream_model="gemini-2.5-flash",
+        api_key_env="GEMINI_API_KEY",
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("GEMINI_API_KEY", "gm-test")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            del url, headers
+            assert json == {
+                "contents": [
+                    {"role": "user", "parts": [{"text": "What's the weather in Paris?"}]},
+                ],
+                "tools": [
+                    {
+                        "functionDeclarations": [
+                            {
+                                "name": "get_weather",
+                                "description": "Get the current weather for a location.",
+                                "parameters": _GET_WEATHER_TOOL["function"]["parameters"],
+                            }
+                        ]
+                    }
+                ],
+                "toolConfig": {
+                    "functionCallingConfig": {
+                        "mode": "ANY",
+                        "allowedFunctionNames": ["get_weather"],
+                    }
+                },
+            }
+            return httpx.Response(
+                200,
+                json={
+                    "responseId": "gemini-tool-1",
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [
+                                    {"functionCall": {"name": "get_weather", "args": {"location": "Paris"}}}
+                                ]
+                            }
+                        }
+                    ],
+                    "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 6},
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+
+    result = await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+        tools=[_GET_WEATHER_TOOL],
+        tool_choice={"type": "function", "function": {"name": "get_weather"}},
+    )
+
+    assert result.content is None
+    assert result.finish_reason == "tool_calls"
+    assert result.tool_calls is not None
+    tool_call = result.tool_calls[0]
+    assert tool_call.id == "call_gemini-tool-1_0"
+    assert tool_call.function.name == "get_weather"
+    assert json.loads(tool_call.function.arguments) == {"location": "Paris"}
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_maps_ollama_tool_calls(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.ollama-gemma3",
+        backend="ollama",
+        base_url="http://localhost:11434",
+        upstream_model="gemma3",
+        api_key_env=None,
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            assert url == "http://localhost:11434/api/chat"
+            assert json == {
+                "model": "gemma3",
+                "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+                "stream": False,
+                "tools": [_GET_WEATHER_TOOL],
+            }
+            return httpx.Response(
+                200,
+                json={
+                    "id": "chat_ollama_tool_1",
+                    "message": {
+                        "content": "",
+                        "tool_calls": [
+                            {"function": {"name": "get_weather", "arguments": {"location": "Paris"}}}
+                        ],
+                    },
+                    "prompt_eval_count": 9,
+                    "eval_count": 5,
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+    monkeypatch.setattr(egress_guard, "enforce_egress", allow_egress_for_test)
+
+    result = await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+        tools=[_GET_WEATHER_TOOL],
+    )
+
+    assert result.content is None
+    assert result.finish_reason == "tool_calls"
+    assert result.tool_calls is not None
+    tool_call = result.tool_calls[0]
+    assert tool_call.id == "call_chat_ollama_tool_1_0"
+    assert tool_call.function.name == "get_weather"
+    assert json.loads(tool_call.function.arguments) == {"location": "Paris"}
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_ollama_rejects_forced_tool_choice(monkeypatch) -> None:
+    """Ollama's native /api/chat has no request-side knob to force tool use -- tools are always
+    offered "auto". Honest 422 rather than silently ignoring the caller's forcing intent."""
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.ollama-gemma3",
+        backend="ollama",
+        base_url="http://localhost:11434",
+        upstream_model="gemma3",
+        api_key_env=None,
+        description="Provider-backed chat model.",
+        capabilities=("chat_completions",),
+    )
+
+    with pytest.raises(LLMAPIError) as exc_info:
+        await llm_provider_service.provider_chat_completion(
+            config=config,
+            messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+            tools=[_GET_WEATHER_TOOL],
+            tool_choice="required",
+        )
+    assert exc_info.value.code == "model_capability_unsupported"
+    assert exc_info.value.details["required_capability"] == "tool_choice_forced"
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_maps_cohere_tool_calls_required(monkeypatch) -> None:
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.command-a",
+        backend="cohere",
+        base_url="https://api.cohere.com",
+        upstream_model="command-a-03-2025",
+        api_key_env="COHERE_API_KEY",
+        description="Provider-backed Cohere chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("COHERE_API_KEY", "co-test")
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
+            assert url == "https://api.cohere.com/v2/chat"
+            assert json == {
+                "model": "command-a-03-2025",
+                "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+                "stream": False,
+                "tools": [_GET_WEATHER_TOOL],
+                "tool_choice": "REQUIRED",
+            }
+            return httpx.Response(
+                200,
+                json={
+                    "id": "cohere-chat-tool-1",
+                    "finish_reason": "TOOL_CALL",
+                    "message": {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": "cohere_call_1",
+                                "type": "function",
+                                "function": {
+                                    "name": "get_weather",
+                                    "arguments": '{"location":"Paris"}',
+                                },
+                            }
+                        ],
+                    },
+                    "meta": {"tokens": {"input_tokens": 13, "output_tokens": 7}},
+                },
+            )
+
+    monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+
+    result = await llm_provider_service.provider_chat_completion(
+        config=config,
+        messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+        tools=[_GET_WEATHER_TOOL],
+        tool_choice="required",
+    )
+
+    assert result.content is None
+    assert result.finish_reason == "tool_calls"
+    assert result.tool_calls is not None
+    tool_call = result.tool_calls[0]
+    assert tool_call.id == "cohere_call_1"
+    assert tool_call.function.name == "get_weather"
+    assert tool_call.function.arguments == '{"location":"Paris"}'
+
+
+@pytest.mark.anyio
+async def test_provider_chat_completion_cohere_rejects_named_tool_choice(monkeypatch) -> None:
+    """Cohere v2's tool_choice is REQUIRED/NONE only -- it cannot force one named function the
+    way OpenAI/Anthropic/Gemini can. Honest 422 rather than silently dropping the constraint."""
+    config = llm_provider_service.ProviderModelConfig(
+        model_id="provider.command-a",
+        backend="cohere",
+        base_url="https://api.cohere.com",
+        upstream_model="command-a-03-2025",
+        api_key_env="COHERE_API_KEY",
+        description="Provider-backed Cohere chat model.",
+        capabilities=("chat_completions",),
+    )
+    monkeypatch.setenv("COHERE_API_KEY", "co-test")
+
+    with pytest.raises(LLMAPIError) as exc_info:
+        await llm_provider_service.provider_chat_completion(
+            config=config,
+            messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+            tools=[_GET_WEATHER_TOOL],
+            tool_choice={"type": "function", "function": {"name": "get_weather"}},
+        )
+    assert exc_info.value.code == "model_capability_unsupported"
+    assert exc_info.value.details["required_capability"] == "tool_choice_named_function"
+
+

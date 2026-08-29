@@ -201,9 +201,62 @@ class ArtifactBridgeResolveResponse(BaseModel):
     resolved_path: str | None = None
 
 
+class ChatCompletionToolCallFunction(BaseModel):
+    name: str
+    arguments: str = Field(
+        ...,
+        description="JSON-encoded arguments for the function call (a string, per the OpenAI wire shape).",
+    )
+
+
+class ChatCompletionToolCall(BaseModel):
+    id: str
+    type: Literal["function"] = "function"
+    function: ChatCompletionToolCallFunction
+
+
 class ChatCompletionInputMessage(BaseModel):
-    role: Literal["system", "user", "assistant", "developer"]
-    content: str = Field(..., description="UTF-8 message content.")
+    role: Literal["system", "user", "assistant", "developer", "tool"]
+    content: str | None = Field(
+        default=None,
+        description="UTF-8 message content. May be omitted/null on an assistant message that only calls tools.",
+    )
+    tool_calls: list[ChatCompletionToolCall] | None = Field(
+        default=None,
+        description="Tool calls requested by a prior assistant turn (assistant role only).",
+    )
+    tool_call_id: str | None = Field(
+        default=None,
+        description="The id of the tool call this message answers (tool role only).",
+    )
+    name: str | None = Field(
+        default=None,
+        description="Optional participant name, echoed by some clients on any role.",
+    )
+
+
+class ChatCompletionToolFunctionDef(BaseModel):
+    name: str
+    description: str | None = None
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="JSON Schema object describing the function's parameters.",
+    )
+    strict: bool | None = None
+
+
+class ChatCompletionToolDef(BaseModel):
+    type: Literal["function"] = "function"
+    function: ChatCompletionToolFunctionDef
+
+
+class ChatCompletionToolChoiceFunctionName(BaseModel):
+    name: str
+
+
+class ChatCompletionNamedToolChoice(BaseModel):
+    type: Literal["function"] = "function"
+    function: ChatCompletionToolChoiceFunctionName
 
 
 class ChatCompletionsRequest(BaseModel):
@@ -219,6 +272,25 @@ class ChatCompletionsRequest(BaseModel):
     stream: bool = Field(
         default=False,
         description="When true, return Server-Sent Events with deterministic completion chunks.",
+    )
+    tools: list[ChatCompletionToolDef] | None = Field(
+        default=None,
+        description=(
+            "Function tools the model may call. Forwarded to provider-backed chat models that "
+            "support tool calling; unsupported on the deterministic tokenizer utility model and "
+            "on algenta_local."
+        ),
+    )
+    tool_choice: Literal["auto", "none", "required"] | ChatCompletionNamedToolChoice | None = Field(
+        default=None,
+        description="Controls whether/which tool the model must call. Ignored unless 'tools' is set.",
+    )
+    parallel_tool_calls: bool | None = Field(
+        default=None,
+        description=(
+            "Hint to allow/disallow multiple tool calls in one turn. Best-effort: honored where the "
+            "provider's API exposes an equivalent knob, otherwise ignored."
+        ),
     )
     max_tokens: int | None = Field(
         default=None,
@@ -257,12 +329,16 @@ class ChatCompletionsRequest(BaseModel):
 
 class ChatCompletionOutputMessage(BaseModel):
     role: Literal["assistant"] = "assistant"
-    content: str
+    content: str | None = None
+    tool_calls: list[ChatCompletionToolCall] | None = Field(
+        default=None,
+        description="Tool calls the model made this turn, present when finish_reason is 'tool_calls'.",
+    )
 
 
 class ChatCompletionChoice(BaseModel):
     index: int
-    finish_reason: Literal["stop"] = "stop"
+    finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] = "stop"
     message: ChatCompletionOutputMessage
 
 

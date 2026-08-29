@@ -164,9 +164,23 @@ async def _execute_router_chat_completion(
     messages: list[dict[str, str]],
     timeout_seconds: float | None = None,
     seen: tuple[str, ...] = (),
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: Any | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> Any:
     from apps.api_server.services import llm_provider_service as _facade_module
     from apps.api_server.services.llm_api_service import LLMAPIError, ProviderAttemptRecord
+
+    # Forward tool-calling params only when the caller actually set them, so existing
+    # callers/stubs (including test doubles with a fixed signature) that never mention tools
+    # are unaffected.
+    _tool_kwargs: dict[str, Any] = {}
+    if tools:
+        _tool_kwargs["tools"] = tools
+    if tool_choice is not None:
+        _tool_kwargs["tool_choice"] = tool_choice
+    if parallel_tool_calls is not None:
+        _tool_kwargs["parallel_tool_calls"] = parallel_tool_calls
 
     if model_id in seen:
         cycle = " -> ".join((*seen, model_id))
@@ -188,6 +202,7 @@ async def _execute_router_chat_completion(
             config=config,
             messages=messages,
             timeout_seconds=timeout_seconds,
+            **_tool_kwargs,
         )
 
     route_timeout_seconds = _provider_timeout_override_for_route(
@@ -222,6 +237,7 @@ async def _execute_router_chat_completion(
                 messages=messages,
                 timeout_seconds=effective_timeout_seconds,
                 seen=(*seen, model_id),
+                **_tool_kwargs,
             )
             if attempt_records:
                 provider = getattr(result, "provider", None)

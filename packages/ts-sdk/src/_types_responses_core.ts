@@ -2,7 +2,13 @@
 
 // Auto-split from types.ts. Cross-file type references use `import type`.
 import type { CAPABILITY_PLANE_CONTRACT, PRIMARY_DATA_QUERY_CONTRACT } from "./contract.js";
-import type { AgentRunAction, AgentRunPendingAction, AgentRunStatus, SimulateRequest } from "./_types_requests.js";
+import type {
+  AgentRunAction,
+  AgentRunPendingAction,
+  AgentRunStatus,
+  ChatCompletionToolCall,
+  SimulateRequest,
+} from "./_types_requests.js";
 
 export interface MetricsSummary {
   expected_value: number;
@@ -382,12 +388,13 @@ export interface CountTokensResponse {
 
 export interface ChatCompletionOutputMessage {
   role: "assistant";
-  content: string;
+  content: string | null;
+  tool_calls?: ChatCompletionToolCall[] | null;
 }
 
 export interface ChatCompletionChoice {
   index: number;
-  finish_reason: "stop";
+  finish_reason: "stop" | "tool_calls" | "length" | "content_filter";
   message: ChatCompletionOutputMessage;
 }
 

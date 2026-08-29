@@ -188,6 +188,7 @@ def test_chat_completions_route_returns_deterministic_assistant_message(monkeypa
                 "message": {
                     "role": "assistant",
                     "content": '{"model":"text.tokenizer","token_count":2,"tokens":["alpha","beta"]}',
+                    "tool_calls": None,
                 },
             }
         ],
@@ -306,5 +307,240 @@ def test_chat_completions_route_streams_sse_chunks(monkeypatch) -> None:
     assert '"role":"assistant"' in response.text
     assert '"content":"deterministic utility' in response.text
     assert "data: [DONE]" in response.text
+
+
+# ─── Track C2: tool calling ────────────────────────────────────────────────
+
+
+def test_chat_completions_route_forwards_tools_and_returns_tool_calls(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def _fake_chat_completion(
+        *,
+        model_id: str,
+        messages: list[dict[str, object]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+        tools: list[dict[str, object]] | None = None,
+        tool_choice: object | None = None,
+        parallel_tool_calls: bool | None = None,
+    ):
+        captured["messages"] = messages
+        captured["tools"] = tools
+        captured["tool_choice"] = tool_choice
+        captured["parallel_tool_calls"] = parallel_tool_calls
+        return _provider_chat_model_descriptor(), SimpleNamespace(
+            completion_id="chatcmpl_tool_route_123",
+            content=None,
+            prompt_tokens=10,
+            completion_tokens=6,
+            provider=SimpleNamespace(
+                provider_backend="openai_compatible",
+                provider_model_id="provider.gpt-4o-mini",
+            ),
+            provider_attempts=[],
+            tool_calls=(
+                SimpleNamespace(
+                    id="call_abc123",
+                    type="function",
+                    function=SimpleNamespace(name="get_weather", arguments='{"location":"Paris"}'),
+                ),
+            ),
+            finish_reason="tool_calls",
+        )
+
+    monkeypatch.setattr(llm_router, "_enforce_llm_api_rate_limit", _noop_rate_limit)
+    monkeypatch.setattr(llm_router, "create_chat_completion", _fake_chat_completion)
+    app.dependency_overrides[get_current_org] = _fake_auth
+    app.dependency_overrides[get_redis] = lambda: object()
+    try:
+        with SyncASGIClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "provider.gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+                    "tools": [
+                        {
+                            "type": "function",
+                            "function": {
+                                "name": "get_weather",
+                                "description": "Get the current weather.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                },
+                            },
+                        }
+                    ],
+                    "tool_choice": "auto",
+                    "parallel_tool_calls": False,
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert captured["tools"] == [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the current weather.",
+                "parameters": {"type": "object", "properties": {"location": {"type": "string"}}},
+            },
+        }
+    ]
+    assert captured["tool_choice"] == "auto"
+    assert captured["parallel_tool_calls"] is False
+    body = response.json()
+    assert body["choices"][0]["finish_reason"] == "tool_calls"
+    message = body["choices"][0]["message"]
+    assert message["content"] is None
+    assert message["tool_calls"] == [
+        {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {"name": "get_weather", "arguments": '{"location":"Paris"}'},
+        }
+    ]
+
+
+def test_chat_completions_route_forwards_tool_role_messages(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def _fake_chat_completion(
+        *,
+        model_id: str,
+        messages: list[dict[str, object]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+        tools: list[dict[str, object]] | None = None,
+        tool_choice: object | None = None,
+        parallel_tool_calls: bool | None = None,
+    ):
+        captured["messages"] = messages
+        return _tokenizer_model_descriptor(), SimpleNamespace(
+            completion_id="chatcmpl_followup_123",
+            content="It's 15C and cloudy.",
+            prompt_tokens=4,
+            completion_tokens=6,
+            provider=None,
+            provider_attempts=[],
+            tool_calls=None,
+            finish_reason="stop",
+        )
+
+    monkeypatch.setattr(llm_router, "_enforce_llm_api_rate_limit", _noop_rate_limit)
+    monkeypatch.setattr(llm_router, "create_chat_completion", _fake_chat_completion)
+    app.dependency_overrides[get_current_org] = _fake_auth
+    app.dependency_overrides[get_redis] = lambda: object()
+    try:
+        with SyncASGIClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "text.tokenizer",
+                    "messages": [
+                        {"role": "user", "content": "What's the weather in Paris?"},
+                        {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call_abc123",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "get_weather",
+                                        "arguments": '{"location":"Paris"}',
+                                    },
+                                }
+                            ],
+                        },
+                        {"role": "tool", "tool_call_id": "call_abc123", "content": "15C, cloudy"},
+                    ],
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert captured["messages"] == [
+        {"role": "user", "content": "What's the weather in Paris?"},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_abc123",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location":"Paris"}'},
+                }
+            ],
+        },
+        {"role": "tool", "content": "15C, cloudy", "tool_call_id": "call_abc123"},
+    ]
+
+
+def test_chat_completions_route_rejects_streaming_with_tool_calls(monkeypatch) -> None:
+    async def _fake_chat_completion(
+        *,
+        model_id: str,
+        messages: list[dict[str, object]],
+        max_output_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+        tools: list[dict[str, object]] | None = None,
+        tool_choice: object | None = None,
+        parallel_tool_calls: bool | None = None,
+    ):
+        return _provider_chat_model_descriptor(), SimpleNamespace(
+            completion_id="chatcmpl_stream_tool_123",
+            content=None,
+            prompt_tokens=10,
+            completion_tokens=6,
+            provider=None,
+            provider_attempts=[],
+            tool_calls=(
+                SimpleNamespace(
+                    id="call_abc123",
+                    type="function",
+                    function=SimpleNamespace(name="get_weather", arguments="{}"),
+                ),
+            ),
+            finish_reason="tool_calls",
+        )
+
+    monkeypatch.setattr(llm_router, "_enforce_llm_api_rate_limit", _noop_rate_limit)
+    monkeypatch.setattr(llm_router, "create_chat_completion", _fake_chat_completion)
+    app.dependency_overrides[get_current_org] = _fake_auth
+    app.dependency_overrides[get_redis] = lambda: object()
+    try:
+        with SyncASGIClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "provider.gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+                    "tools": [
+                        {
+                            "type": "function",
+                            "function": {"name": "get_weather", "parameters": {"type": "object"}},
+                        }
+                    ],
+                    "stream": True,
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "model_capability_unsupported"
 
 

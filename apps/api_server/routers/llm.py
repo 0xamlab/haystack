@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
@@ -16,6 +17,7 @@ from apps.api_server.schemas.llm import (
     ChatCompletionsResponse,
     ChatCompletionChoice,
     ChatCompletionOutputMessage,
+    ChatCompletionToolCall,
     ChatCompletionUsage,
     CountTokensRequest,
     CountTokensResponse,
@@ -478,20 +480,78 @@ async def chat_completions(
         auth=auth,
         redis_client=redis_client,
     )
+    # Track C2 (2026-08): non-streaming tool calling. tools/tool_choice/parallel_tool_calls are
+    # forwarded ONLY when the caller actually set them, so every existing call site downstream
+    # (including test doubles that monkeypatch create_chat_completion with a fixed signature)
+    # keeps working unchanged when a request never mentions tools.
+    _tool_kwargs: dict[str, object] = {}
+    if payload.tools:
+        _tool_kwargs["tools"] = [tool.model_dump(exclude_none=True) for tool in payload.tools]
+    if payload.tool_choice is not None:
+        _tool_kwargs["tool_choice"] = (
+            payload.tool_choice.model_dump(exclude_none=True)
+            if isinstance(payload.tool_choice, BaseModel)
+            else payload.tool_choice
+        )
+    if payload.parallel_tool_calls is not None:
+        _tool_kwargs["parallel_tool_calls"] = payload.parallel_tool_calls
     try:
         descriptor, completion = await create_chat_completion(
             model_id=payload.model,
             messages=[
-                {"role": message.role, "content": message.content}
+                {
+                    "role": message.role,
+                    "content": message.content,
+                    **(
+                        {"tool_calls": [tc.model_dump(exclude_none=True) for tc in message.tool_calls]}
+                        if message.tool_calls
+                        else {}
+                    ),
+                    **({"tool_call_id": message.tool_call_id} if message.tool_call_id else {}),
+                    **({"name": message.name} if message.name else {}),
+                }
                 for message in payload.messages
             ],
             max_output_tokens=payload.max_tokens,
             temperature=payload.temperature,
             top_p=payload.top_p,
             seed=payload.seed,
+            **_tool_kwargs,
         )
     except (LLMAPIError, MojoLibraryError) as exc:
         raise _llm_api_http_exception(exc, request) from exc
+    # getattr(..., default): existing test doubles for create_chat_completion predate tool-calling
+    # and return a SimpleNamespace without these two fields -- the real ChatCompletionResult
+    # dataclass always has them (default finish_reason="stop", tool_calls=None).
+    completion_tool_calls = getattr(completion, "tool_calls", None)
+    completion_finish_reason = getattr(completion, "finish_reason", "stop")
+    if payload.stream and completion_tool_calls:
+        # True per-backend streaming of tool_calls deltas is a deliberately separate follow-up
+        # (Track C2 scope is non-streaming tool calling only) -- refuse rather than silently
+        # dropping the tool_calls the caller asked for into an SSE stream that can't carry them.
+        raise _llm_api_http_exception(
+            LLMAPIError(
+                "model_capability_unsupported",
+                "Streaming is not yet supported for a completion that calls tools; set stream=false.",
+                {"model": descriptor.model_id, "required_capability": "streaming_tool_calls"},
+            ),
+            request,
+        )
+    response_tool_calls = (
+        [
+            ChatCompletionToolCall(
+                id=tool_call.id,
+                type="function",
+                function={
+                    "name": tool_call.function.name,
+                    "arguments": tool_call.function.arguments,
+                },
+            )
+            for tool_call in completion_tool_calls
+        ]
+        if completion_tool_calls
+        else None
+    )
     response = ChatCompletionsResponse(
         id=completion.completion_id,
         model=descriptor.model_id,
@@ -501,7 +561,11 @@ async def chat_completions(
         choices=[
             ChatCompletionChoice(
                 index=0,
-                message=ChatCompletionOutputMessage(content=completion.content),
+                finish_reason=completion_finish_reason,
+                message=ChatCompletionOutputMessage(
+                    content=completion.content,
+                    tool_calls=response_tool_calls,
+                ),
             )
         ],
         usage=ChatCompletionUsage(
@@ -515,7 +579,7 @@ async def chat_completions(
             _chat_completion_stream(
                 completion_id=completion.completion_id,
                 model_id=descriptor.model_id,
-                content=completion.content,
+                content=completion.content or "",
                 provider_backend=response.provider_backend,
                 provider_model_id=response.provider_model_id,
                 provider_attempts=response.provider_attempts,

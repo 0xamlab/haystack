@@ -729,7 +729,13 @@ def cmd_llm_chat(request_path: str, format: str = "table", *, stream: bool = Fal
     print(f"\nCompletion ID:  {data.get('id')}")
     print(f"Model:          {data.get('model')}")
     print(f"Finish reason:  {choice.get('finish_reason')}")
-    print(f"Assistant:      {message.get('content', '')}")
+    print(f"Assistant:      {message.get('content') or ''}")
+    tool_calls = message.get("tool_calls") or []
+    if tool_calls:
+        print(f"Tool calls:     {len(tool_calls)}")
+        for tool_call in tool_calls:
+            function = tool_call.get("function", {})
+            print(f"  - {tool_call.get('id')}: {function.get('name')}({function.get('arguments')})")
     print(
         "Usage:          "
         f"prompt={usage.get('prompt_tokens')} "

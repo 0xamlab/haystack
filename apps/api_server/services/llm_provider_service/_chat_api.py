@@ -156,6 +156,9 @@ async def provider_chat_completion(
     messages: list[dict[str, str]],
     timeout_seconds: float | None = None,
     max_output_tokens: int | None = None,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: Any | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> Any:
     # D3 managed-LLM (no-op unless this call resolves to the platform's pooled key): fail closed
     # before the call if the org is over its monthly managed spend cap, then meter the cost after.
@@ -168,7 +171,12 @@ async def provider_chat_completion(
         config=config,
         path=_provider_chat_path(config),
         payload=_provider_chat_payload(
-            config=config, messages=messages, max_output_tokens=max_output_tokens
+            config=config,
+            messages=messages,
+            max_output_tokens=max_output_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
+            parallel_tool_calls=parallel_tool_calls,
         ),
         timeout_seconds=(
             timeout_seconds
@@ -197,9 +205,23 @@ async def routed_provider_chat_completion(
     model_id: str,
     messages: list[dict[str, str]],
     max_output_tokens: int | None = None,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: Any | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> Any:
     from apps.api_server.services import llm_provider_service as _facade_module
     from apps.api_server.services.llm_api_service import LLMAPIError, ProviderAttemptRecord
+
+    # Forward tool-calling params only when the caller actually set them, so existing
+    # callers/stubs (including test doubles with a fixed signature) that never mention tools
+    # are unaffected.
+    _tool_kwargs: dict[str, Any] = {}
+    if tools:
+        _tool_kwargs["tools"] = tools
+    if tool_choice is not None:
+        _tool_kwargs["tool_choice"] = tool_choice
+    if parallel_tool_calls is not None:
+        _tool_kwargs["parallel_tool_calls"] = parallel_tool_calls
 
     router_config = _facade_module.get_configured_provider_model(model_id)
     if (
@@ -213,6 +235,7 @@ async def routed_provider_chat_completion(
         return await _facade_module._execute_router_chat_completion(
             model_id=model_id,
             messages=messages,
+            **_tool_kwargs,
         )
     targets = _facade_module.get_provider_route_targets(
         model_id=model_id,
@@ -255,6 +278,7 @@ async def routed_provider_chat_completion(
                 messages=messages,
                 timeout_seconds=route_timeout_seconds,
                 **_output_budget,
+                **_tool_kwargs,
             )
             if attempt_records:
                 return _set_provider_attempts(

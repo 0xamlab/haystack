@@ -164,11 +164,169 @@ def _provider_model_resource(config: ProviderModelConfig) -> str:
     return f"models/{config.upstream_model}"
 
 
+def _tool_call_arguments_object(function: dict[str, Any]) -> dict[str, Any]:
+    """A tool_call's function.arguments is always a JSON string on our own wire shape (matching
+    OpenAI); some backends (anthropic input, gemini args, ollama arguments) want it back as a
+    parsed object. Malformed/empty arguments degrade to {} rather than failing the whole request --
+    the provider surfaces its own error if it truly needed a well-formed payload."""
+    raw = function.get("arguments")
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _openai_tool_to_anthropic(tool: dict[str, Any]) -> dict[str, Any]:
+    function = tool["function"]
+    return {
+        "name": function["name"],
+        "description": function.get("description") or "",
+        "input_schema": function.get("parameters") or {"type": "object", "properties": {}},
+    }
+
+
+def _anthropic_tool_choice(
+    tool_choice: Any,
+    *,
+    parallel_tool_calls: bool | None,
+) -> dict[str, Any] | None:
+    if tool_choice is None or tool_choice == "auto":
+        choice: dict[str, Any] = {"type": "auto"}
+    elif tool_choice == "required":
+        choice = {"type": "any"}
+    elif tool_choice == "none":
+        choice = {"type": "none"}
+    elif isinstance(tool_choice, dict):
+        choice = {"type": "tool", "name": tool_choice.get("function", {}).get("name")}
+    else:
+        return None
+    if parallel_tool_calls is False:
+        choice["disable_parallel_tool_use"] = True
+    return choice
+
+
+def _anthropic_messages_from_openai(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Translate OpenAI-shaped user/assistant/tool messages into Anthropic's message array.
+    Plain text-only user/assistant turns keep their EXACT prior shape (bare string content) so
+    non-tool requests stay byte-identical to before this change; only tool-calling turns grow
+    Anthropic's content-block-array shape (assistant tool_use blocks, user tool_result blocks,
+    with consecutive tool_result messages merged into one user turn, as Anthropic requires)."""
+    entries: list[dict[str, Any]] = []
+    for message in messages:
+        role = message.get("role")
+        if role == "user":
+            entries.append({"role": "user", "content": message.get("content") or ""})
+        elif role == "assistant":
+            tool_calls = message.get("tool_calls") or []
+            if not tool_calls:
+                entries.append({"role": "assistant", "content": message.get("content") or ""})
+                continue
+            blocks: list[dict[str, Any]] = []
+            content = message.get("content")
+            if content:
+                blocks.append({"type": "text", "text": content})
+            for tool_call in tool_calls:
+                function = tool_call["function"]
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": tool_call["id"],
+                        "name": function["name"],
+                        "input": _tool_call_arguments_object(function),
+                    }
+                )
+            entries.append({"role": "assistant", "content": blocks})
+        elif role == "tool":
+            block = {
+                "type": "tool_result",
+                "tool_use_id": message.get("tool_call_id", ""),
+                "content": message.get("content") or "",
+            }
+            if entries and entries[-1]["role"] == "user" and isinstance(entries[-1]["content"], list):
+                entries[-1]["content"].append(block)
+            else:
+                entries.append({"role": "user", "content": [block]})
+        # system/developer/unrecognized roles: dropped here (system is folded into the top-level
+        # "system" prompt block by the caller before this helper ever sees the message list).
+    return entries
+
+
+def _gemini_function_declarations(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": tool["function"]["name"],
+            "description": tool["function"].get("description") or "",
+            "parameters": tool["function"].get("parameters") or {"type": "object", "properties": {}},
+        }
+        for tool in tools
+    ]
+
+
+def _gemini_tool_config(tool_choice: Any) -> dict[str, Any] | None:
+    if tool_choice is None or tool_choice == "auto":
+        return None
+    if tool_choice == "required":
+        return {"functionCallingConfig": {"mode": "ANY"}}
+    if tool_choice == "none":
+        return {"functionCallingConfig": {"mode": "NONE"}}
+    if isinstance(tool_choice, dict):
+        name = tool_choice.get("function", {}).get("name")
+        return {
+            "functionCallingConfig": {
+                "mode": "ANY",
+                "allowedFunctionNames": [name] if name else [],
+            }
+        }
+    return None
+
+
+def _gemini_function_name_for_tool_call_id(
+    messages: list[dict[str, Any]],
+    tool_call_id: str | None,
+) -> str:
+    if not tool_call_id:
+        return ""
+    for message in messages:
+        if message.get("role") != "assistant":
+            continue
+        for tool_call in message.get("tool_calls") or []:
+            if tool_call.get("id") == tool_call_id:
+                return str(tool_call["function"]["name"])
+    return ""
+
+
+def _ollama_messages_with_tools(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ollama's native /api/chat wants tool_calls.function.arguments as a parsed OBJECT (not the
+    OpenAI JSON-string convention our own wire shape uses), and has no notion of a tool_call id --
+    it correlates a tool-role reply to the preceding call positionally/by name."""
+    result: list[dict[str, Any]] = []
+    for message in messages:
+        entry: dict[str, Any] = {"role": message.get("role"), "content": message.get("content") or ""}
+        if message.get("role") == "assistant" and message.get("tool_calls"):
+            entry["tool_calls"] = [
+                {
+                    "function": {
+                        "name": tool_call["function"]["name"],
+                        "arguments": _tool_call_arguments_object(tool_call["function"]),
+                    }
+                }
+                for tool_call in message["tool_calls"]
+            ]
+        result.append(entry)
+    return result
+
+
 def _provider_chat_payload(
     *,
     config: ProviderModelConfig,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     max_output_tokens: int | None = None,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: Any | None = None,
+    parallel_tool_calls: bool | None = None,
 ) -> dict[str, Any]:
     from apps.api_server.services.llm_api_service import LLMAPIError
 
@@ -178,11 +336,7 @@ def _provider_chat_payload(
             for message in messages
             if message.get("role") == "system"
         ]
-        anthropic_messages = [
-            {"role": message["role"], "content": message["content"]}
-            for message in messages
-            if message.get("role") in {"user", "assistant"}
-        ]
+        anthropic_messages = _anthropic_messages_from_openai(messages)
         if not anthropic_messages:
             raise LLMAPIError(
                 "invalid_provider_request",
@@ -207,13 +361,37 @@ def _provider_chat_payload(
                     "cache_control": {"type": "ephemeral"},
                 }
             ]
+        if tools:
+            payload["tools"] = [_openai_tool_to_anthropic(tool) for tool in tools]
+            choice = _anthropic_tool_choice(tool_choice, parallel_tool_calls=parallel_tool_calls)
+            if choice is not None:
+                payload["tool_choice"] = choice
         return payload
     if config.backend == "ollama":
-        return {
+        if tools and tool_choice not in (None, "auto"):
+            # Ollama's native /api/chat has no request-side knob to force/forbid tool use --
+            # tools are always offered "auto" and the model decides. Say so rather than silently
+            # ignoring the caller's forcing intent.
+            raise LLMAPIError(
+                "model_capability_unsupported",
+                (
+                    f"Provider backend 'ollama' does not support tool_choice='{tool_choice}' on "
+                    "/api/chat; only the default automatic tool selection is supported."
+                ),
+                {
+                    "model": config.model_id,
+                    "backend": config.backend,
+                    "required_capability": "tool_choice_forced",
+                },
+            )
+        payload = {
             "model": config.upstream_model,
-            "messages": messages,
+            "messages": _ollama_messages_with_tools(messages) if tools else messages,
             "stream": False,
         }
+        if tools:
+            payload["tools"] = tools
+        return payload
     if config.backend == "google_genai":
         system_messages = [
             str(message["content"])
@@ -226,20 +404,48 @@ def _provider_chat_payload(
             if role == "system":
                 continue
             if role == "assistant":
-                gemini_role = "model"
-            elif role == "user":
-                gemini_role = "user"
-            else:
-                raise LLMAPIError(
-                    "invalid_provider_request",
-                    f"Provider-backed model '{config.model_id}' does not support role '{role}'.",
-                    {"model": config.model_id, "backend": config.backend, "role": role},
+                tool_calls = message.get("tool_calls") or []
+                parts: list[dict[str, Any]] = []
+                content = message.get("content")
+                if content:
+                    parts.append({"text": content})
+                for tool_call in tool_calls:
+                    function = tool_call["function"]
+                    parts.append(
+                        {
+                            "functionCall": {
+                                "name": function["name"],
+                                "args": _tool_call_arguments_object(function),
+                            }
+                        }
+                    )
+                if not parts:
+                    parts.append({"text": ""})
+                content_items.append({"role": "model", "parts": parts})
+                continue
+            if role == "user":
+                content_items.append({"role": "user", "parts": [{"text": message.get("content") or ""}]})
+                continue
+            if role == "tool":
+                name = _gemini_function_name_for_tool_call_id(messages, message.get("tool_call_id"))
+                content_items.append(
+                    {
+                        "role": "function",
+                        "parts": [
+                            {
+                                "functionResponse": {
+                                    "name": name,
+                                    "response": {"result": message.get("content") or ""},
+                                }
+                            }
+                        ],
+                    }
                 )
-            content_items.append(
-                {
-                    "role": gemini_role,
-                    "parts": [{"text": message["content"]}],
-                }
+                continue
+            raise LLMAPIError(
+                "invalid_provider_request",
+                f"Provider-backed model '{config.model_id}' does not support role '{role}'.",
+                {"model": config.model_id, "backend": config.backend, "role": role},
             )
         if not content_items:
             raise LLMAPIError(
@@ -252,16 +458,48 @@ def _provider_chat_payload(
             payload["systemInstruction"] = {
                 "parts": [{"text": "\n".join(system_messages)}],
             }
+        if tools:
+            payload["tools"] = [{"functionDeclarations": _gemini_function_declarations(tools)}]
+            tool_config = _gemini_tool_config(tool_choice)
+            if tool_config is not None:
+                payload["toolConfig"] = tool_config
         return payload
     if config.backend == "cohere":
-        return {
+        payload = {
             "model": config.upstream_model,
             "messages": messages,
             "stream": False,
         }
-    return {
+        if tools:
+            payload["tools"] = tools
+            if tool_choice is not None and tool_choice != "auto":
+                if isinstance(tool_choice, dict):
+                    # Cohere v2's tool_choice is REQUIRED/NONE only -- it cannot force one named
+                    # function the way OpenAI/Anthropic/Gemini can.
+                    raise LLMAPIError(
+                        "model_capability_unsupported",
+                        (
+                            "Provider backend 'cohere' does not support forcing a specific named "
+                            "tool via tool_choice; only 'auto', 'required', and 'none' are supported."
+                        ),
+                        {
+                            "model": config.model_id,
+                            "backend": config.backend,
+                            "required_capability": "tool_choice_named_function",
+                        },
+                    )
+                payload["tool_choice"] = "REQUIRED" if tool_choice == "required" else "NONE"
+        return payload
+    payload = {
         "model": config.upstream_model,
         "messages": messages,
         "stream": False,
     }
+    if tools:
+        payload["tools"] = tools
+        if tool_choice is not None:
+            payload["tool_choice"] = tool_choice
+        if parallel_tool_calls is not None:
+            payload["parallel_tool_calls"] = parallel_tool_calls
+    return payload
 

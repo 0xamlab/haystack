@@ -13119,7 +13119,11 @@ components:
           title: Index
         finish_reason:
           type: string
-          const: stop
+          enum:
+          - stop
+          - tool_calls
+          - length
+          - content_filter
           title: Finish Reason
           default: stop
         message:
@@ -13138,16 +13142,53 @@ components:
           - user
           - assistant
           - developer
+          - tool
           title: Role
         content:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Content
-          description: UTF-8 message content.
+          description: UTF-8 message content. May be omitted/null on an assistant
+            message that only calls tools.
+        tool_calls:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ChatCompletionToolCall'
+            type: array
+          - type: 'null'
+          title: Tool Calls
+          description: Tool calls requested by a prior assistant turn (assistant role
+            only).
+        tool_call_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tool Call Id
+          description: The id of the tool call this message answers (tool role only).
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          description: Optional participant name, echoed by some clients on any role.
       type: object
       required:
       - role
-      - content
       title: ChatCompletionInputMessage
+    ChatCompletionNamedToolChoice:
+      properties:
+        type:
+          type: string
+          const: function
+          title: Type
+          default: function
+        function:
+          $ref: '#/components/schemas/ChatCompletionToolChoiceFunctionName'
+      type: object
+      required:
+      - function
+      title: ChatCompletionNamedToolChoice
     ChatCompletionOutputMessage:
       properties:
         role:
@@ -13156,12 +13197,101 @@ components:
           title: Role
           default: assistant
         content:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Content
+        tool_calls:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ChatCompletionToolCall'
+            type: array
+          - type: 'null'
+          title: Tool Calls
+          description: Tool calls the model made this turn, present when finish_reason
+            is 'tool_calls'.
+      type: object
+      title: ChatCompletionOutputMessage
+    ChatCompletionToolCall:
+      properties:
+        id:
+          type: string
+          title: Id
+        type:
+          type: string
+          const: function
+          title: Type
+          default: function
+        function:
+          $ref: '#/components/schemas/ChatCompletionToolCallFunction'
       type: object
       required:
-      - content
-      title: ChatCompletionOutputMessage
+      - id
+      - function
+      title: ChatCompletionToolCall
+    ChatCompletionToolCallFunction:
+      properties:
+        name:
+          type: string
+          title: Name
+        arguments:
+          type: string
+          title: Arguments
+          description: JSON-encoded arguments for the function call (a string, per
+            the OpenAI wire shape).
+      type: object
+      required:
+      - name
+      - arguments
+      title: ChatCompletionToolCallFunction
+    ChatCompletionToolChoiceFunctionName:
+      properties:
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - name
+      title: ChatCompletionToolChoiceFunctionName
+    ChatCompletionToolDef:
+      properties:
+        type:
+          type: string
+          const: function
+          title: Type
+          default: function
+        function:
+          $ref: '#/components/schemas/ChatCompletionToolFunctionDef'
+      type: object
+      required:
+      - function
+      title: ChatCompletionToolDef
+    ChatCompletionToolFunctionDef:
+      properties:
+        name:
+          type: string
+          title: Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        parameters:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Parameters
+          description: JSON Schema object describing the function's parameters.
+        strict:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Strict
+      type: object
+      required:
+      - name
+      title: ChatCompletionToolFunctionDef
     ChatCompletionUsage:
       properties:
         prompt_tokens:
@@ -13199,6 +13329,36 @@ components:
           description: When true, return Server-Sent Events with deterministic completion
             chunks.
           default: false
+        tools:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ChatCompletionToolDef'
+            type: array
+          - type: 'null'
+          title: Tools
+          description: Function tools the model may call. Forwarded to provider-backed
+            chat models that support tool calling; unsupported on the deterministic
+            tokenizer utility model and on algenta_local.
+        tool_choice:
+          anyOf:
+          - type: string
+            enum:
+            - auto
+            - none
+            - required
+          - $ref: '#/components/schemas/ChatCompletionNamedToolChoice'
+          - type: 'null'
+          title: Tool Choice
+          description: Controls whether/which tool the model must call. Ignored unless
+            'tools' is set.
+        parallel_tool_calls:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Parallel Tool Calls
+          description: 'Hint to allow/disallow multiple tool calls in one turn. Best-effort:
+            honored where the provider''s API exposes an equivalent knob, otherwise
+            ignored.'
         max_tokens:
           anyOf:
           - type: integer

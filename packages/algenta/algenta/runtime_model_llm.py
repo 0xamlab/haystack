@@ -410,17 +410,62 @@ class ArtifactBridgeResolveOutput:
 
 
 @dataclass(frozen=True)
+class ChatCompletionToolCallFunctionOutput:
+    name: str
+    arguments: str
+
+    @classmethod
+    def from_api(cls, payload: Any) -> ChatCompletionToolCallFunctionOutput:
+        context = "chat_completions.message.tool_calls.item.function"
+        data = coerce_payload_mapping(payload)
+        return cls(
+            name=_require_string(data, "name", context),
+            arguments=_require_string(data, "arguments", context),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return jsonable(asdict(self))
+
+
+@dataclass(frozen=True)
+class ChatCompletionToolCallOutput:
+    id: str
+    type: str
+    function: ChatCompletionToolCallFunctionOutput
+
+    @classmethod
+    def from_api(cls, payload: Any) -> ChatCompletionToolCallOutput:
+        context = "chat_completions.message.tool_calls.item"
+        data = coerce_payload_mapping(payload)
+        return cls(
+            id=_require_string(data, "id", context),
+            type=_require_string(data, "type", context),
+            function=ChatCompletionToolCallFunctionOutput.from_api(data.get("function")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return jsonable(asdict(self))
+
+
+@dataclass(frozen=True)
 class ChatCompletionMessageOutput:
     role: str
-    content: str
+    content: str | None
+    tool_calls: list[ChatCompletionToolCallOutput] = field(default_factory=list)
 
     @classmethod
     def from_api(cls, payload: Any) -> ChatCompletionMessageOutput:
         context = "chat_completions.message"
         data = coerce_payload_mapping(payload)
+        raw_tool_calls = data.get("tool_calls") or []
+        if not isinstance(raw_tool_calls, list):
+            raise TypeError(f"{context}.tool_calls must be a list.")
         return cls(
             role=_require_string(data, "role", context),
-            content=_require_string(data, "content", context),
+            # A tool-calling assistant turn may carry content: null (message text is optional
+            # when the model only calls tools) -- required elsewhere, optional only here.
+            content=_optional_string(data, "content", context),
+            tool_calls=[ChatCompletionToolCallOutput.from_api(item) for item in raw_tool_calls],
         )
 
     def to_dict(self) -> dict[str, Any]:
