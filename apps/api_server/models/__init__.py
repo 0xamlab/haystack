@@ -48,6 +48,7 @@ from .identity_org_link import IdentityOrgLink
 from .job import Job, JobStatus, WebhookStatus
 from .llm_usage_record import USD_MICROS, LLMKeyType, LLMUsageRecord
 from .model_registry import ModelArtifact, ModelVersion, ValidationStatus
+from .oidc_principal import OidcPrincipalMapping
 from .organization import Organization, OrgPlan, OrgStatus
 from .simulation_run import ExecutionType, RunStatus, SimulationMode, SimulationRun
 from .team_invite import InviteStatus, TeamInvite
@@ -132,4 +133,6 @@ __all__ = [
     # Entra identity
     "EntraPrincipalMapping",
     "IdentityOrgLink",
+    # Generic OIDC identity
+    "OidcPrincipalMapping",
 ]

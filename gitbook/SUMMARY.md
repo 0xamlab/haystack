@@ -191,6 +191,10 @@
 * [Sign in with Microsoft Entra](integrations/microsoft/entra-sso.md)
 * [Deploy the decision gateway to your Azure](integrations/azure/gateway.md)
 
+## Identity providers
+
+* [Sign in with a generic OIDC provider](integrations/identity/generic-oidc.md)
+
 ## Deploy & Operate
 
 * [Self-hosting](self-hosting.md)

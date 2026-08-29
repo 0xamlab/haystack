@@ -80,10 +80,8 @@ from apps.runtime_manifest._internal_helpers import (
     _raw_runtime_dict_key,
     _raw_runtime_payload,
     _read_json,
-    _runtime_deployment_mode_value,
     _sha256_bytes,
     _sha256_file,
-    _try_runtime_deployment_mode,
     _validated_runtime_manifest_for_surface,
 )
 from apps.runtime_manifest._builders import *  # noqa: F401, F403
@@ -160,16 +158,16 @@ def load_runtime_manifest(
         "maturity": _raw_runtime_payload(maturity),
         "policy_snapshot": _raw_runtime_payload(_build_policy_snapshot()),
         "schema_snapshot": _raw_runtime_payload(_build_schema_snapshot()),
-        "deployment_mode": deployment_mode,
+        "deployment_mode": publicize_runtime_deployment_mode(deployment_mode),
+        "deployment_mode_raw": deployment_mode,
         "deployment_modes": {
-            "current": deployment_mode,
+            "current": publicize_runtime_deployment_mode(deployment_mode),
             "supported_modes": [
                 "saas",
                 "vpc",
                 "self_hosted",
                 "air_gapped",
                 "hybrid_provider",
-                "local_dev_daemon",
             ],
             "rule": (
                 "Current deployment mode is environment-derived or explicitly supplied "
@@ -389,8 +387,15 @@ def build_runtime_release_validation(
     manifest: RuntimeManifestResponse | None = None,
 ) -> RuntimeReleaseValidationResponse:
     effective_manifest = manifest or get_runtime_manifest()
-    deployment_mode = _try_runtime_deployment_mode(effective_manifest.deployment_mode)
-    deployment_mode_raw = _runtime_deployment_mode_value(effective_manifest.deployment_mode)
+    deployment_mode_raw = effective_manifest.deployment_mode_raw
+    try:
+        deployment_mode: RuntimeDeploymentModePublic | None = publicize_runtime_deployment_mode(
+            deployment_mode_raw
+        )
+    except ValueError:
+        # An unsupported/foreign mode (e.g. injected via direct attribute assignment, which
+        # Pydantic does not re-validate) — deployment_mode_validated correctly fails closed below.
+        deployment_mode = None
     module_names = _enum_values([module.name for module in effective_manifest.modules])
     invariant_names = {entry.name for entry in effective_manifest.system_invariants}
     typed_failure_codes = {entry.code for entry in effective_manifest.typed_failures}

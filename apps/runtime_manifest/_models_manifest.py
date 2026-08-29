@@ -90,7 +90,11 @@ class RuntimeManifestResponse(RuntimeManifestBaseModel):
     maturity: dict[RuntimeModuleId, RuntimeMaturity] = Field(default_factory=dict)
     policy_snapshot: SnapshotReference
     schema_snapshot: SnapshotReference
-    deployment_mode: RuntimeDeploymentMode
+    deployment_mode: RuntimeDeploymentModePublic
+    # The true, unpublicized deployment mode string (e.g. "local_dev_daemon") — a diagnostic
+    # field, never advertised as an enum in the schema, kept ONLY so downstream consumers (e.g.
+    # release validation) can still report it even though `deployment_mode` above is publicized.
+    deployment_mode_raw: str
     deployment_modes: DeploymentModes
     shipping_contract: ShippingContractSummary
     benchmark_discovery_lane: BenchmarkDiscoveryLane

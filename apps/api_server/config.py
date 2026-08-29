@@ -187,6 +187,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("ALGENTA_ENTRA_AUTO_PROVISION"),
     )
 
+    # Generic OIDC (Okta/Auth0/Keycloak/any standards-compliant provider). Same auto-provision
+    # shape as Entra's, above: OFF by default (admin-provisioned model); a hosted/turnkey
+    # deployment sets this true. One org per OIDC issuer (shared) when auto-provisioning.
+    oidc_auto_provision: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ALGENTA_OIDC_AUTO_PROVISION"),
+    )
+
     @computed_field  # type: ignore[misc]
     @property
     def cors_origins_list(self) -> list[str]:
@@ -253,6 +261,7 @@ class Settings(BaseSettings):
             entra_configured=bool(
                 (self.entra_tenant_id or "").strip() and (self.entra_audience or "").strip()
             ),
+            oidc_jwks_url=self.oidc_jwks_url,
         )
 
     # ─── Database ─────────────────────────────────────────────────────────────
@@ -449,6 +458,30 @@ class Settings(BaseSettings):
     entra_allowed_client_apps: str | None = Field(
         default=None,
         validation_alias=AliasChoices("ALGENTA_ENTRA_ALLOWED_CLIENT_APPS"),
+    )
+
+    # ─── Generic OIDC (Okta/Auth0/Keycloak/any standards-compliant provider) ─────
+    # Inert unless issuer + audience + JWKS URL are all set. Unlike Entra (one fixed host, many
+    # tenants), the issuer here already IS the tenant/realm identity — see
+    # services/oidc_auth.py's module docstring for why that removes the need for a separate
+    # tenant allowlist.
+    oidc_issuer: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_OIDC_ISSUER"),
+    )
+    oidc_audience: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_OIDC_AUDIENCE"),
+    )
+    oidc_jwks_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_OIDC_JWKS_URL"),
+    )
+    # Comma-separated client application ids (azp/client_id) allowed to present tokens.
+    # Empty = any client app under the configured issuer.
+    oidc_allowed_client_apps: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_OIDC_ALLOWED_CLIENT_APPS"),
     )
 
     # ─── Cloud Provider Credentials (for per-org deployment provisioning) ──────

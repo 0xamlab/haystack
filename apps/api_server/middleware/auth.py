@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api_server.db.session import get_db
 from apps.api_server.models.organization import OrgStatus
 from apps.api_server.models.user import UserStatus
-from apps.api_server.services import entra_auth
+from apps.api_server.services import entra_auth, oidc_auth
 from apps.api_server.services.auth_service import (
     AuthContext,
     consume_auth_session_dirty,
@@ -41,6 +41,11 @@ _ENTRA_FORBIDDEN_CODES = frozenset(
     {"principal_not_mapped", "tenant_not_allowed", "client_app_not_allowed", "wrong_resource_token"}
 )
 
+# Generic-OIDC equivalent. No tenant allowlist (the issuer IS the tenant boundary) and no
+# forbidden-resource-audience list (a single configured audience, not Entra's app-id-URI set),
+# so this set is narrower than Entra's.
+_OIDC_FORBIDDEN_CODES = frozenset({"principal_not_mapped", "client_app_not_allowed"})
+
 
 async def _verify_entra_bearer(raw_key: str, db: AsyncSession, request: Request) -> AuthContext:
     """Verify an Entra bearer and resolve it to an AuthContext, or raise the right HTTP error."""
@@ -64,6 +69,35 @@ async def _verify_entra_bearer(raw_key: str, db: AsyncSession, request: Request)
             detail={
                 "error": {
                     "code": f"entra_{exc.code}",
+                    "message": exc.message,
+                    "request_id": request_id,
+                }
+            },
+        ) from exc
+
+
+async def _verify_oidc_bearer(raw_key: str, db: AsyncSession, request: Request) -> AuthContext:
+    """Verify a generic-OIDC bearer and resolve it to an AuthContext, or raise the right HTTP error."""
+
+    from apps.api_server.services.oidc_org_resolver import resolve_oidc_principal
+
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        principal = await oidc_auth.verify_oidc_token(raw_key)
+        return await resolve_oidc_principal(principal, db)
+    except oidc_auth.OidcAuthError as exc:
+        if exc.code in oidc_auth.SERVICE_ERROR_CODES:
+            status = 503
+        elif exc.code in _OIDC_FORBIDDEN_CODES:
+            status = 403
+        else:
+            status = 401
+        logger.info("oidc_auth_rejected", code=exc.code, status=status)
+        raise HTTPException(
+            status_code=status,
+            detail={
+                "error": {
+                    "code": f"oidc_{exc.code}",
                     "message": exc.message,
                     "request_id": request_id,
                 }
@@ -125,6 +159,33 @@ async def get_current_org(
                         "code": "workspace_scope_not_permitted",
                         "message": (
                             "An Entra identity's workspace is derived from its provisioned "
+                            "mapping; X-Workspace-Id is not permitted."
+                        ),
+                        "request_id": getattr(request.state, "request_id", None),
+                    }
+                },
+            )
+        request.state.org_id = ctx["org_id"]
+        return ctx
+
+    # GENERIC OIDC (Okta/Auth0/Keycloak/...): same fail-closed shape as Entra above — when the
+    # gateway is OIDC-configured AND the bearer's (unverified) issuer matches the configured
+    # issuer exactly, this is the ONLY verifier tried. The workspace comes from the provisioned
+    # principal mapping, never from headers (is_platform=False also blocks X-Workspace-Id).
+    if oidc_auth.oidc_configured() and oidc_auth.looks_like_oidc_token(raw_key):
+        ctx = await _verify_oidc_bearer(raw_key, db, request)
+        _enforce_account_status(ctx, request)
+        _hdrs = getattr(request, "headers", None)
+        if _hdrs is not None and (_hdrs.get("X-Workspace-Id") or "").strip():
+            # The workspace is DERIVED from the principal mapping; an OIDC caller may never
+            # select one. Reject explicitly (same posture as Entra) — never ignore.
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": {
+                        "code": "workspace_scope_not_permitted",
+                        "message": (
+                            "An OIDC identity's workspace is derived from its provisioned "
                             "mapping; X-Workspace-Id is not permitted."
                         ),
                         "request_id": getattr(request.state, "request_id", None),

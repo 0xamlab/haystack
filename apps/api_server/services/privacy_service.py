@@ -11,7 +11,7 @@ from apps.api_server.config import get_settings
 from apps.api_server.db.session import AsyncSessionLocal
 from apps.api_server.models.audit_event import AuditAction, AuditEvent
 from apps.api_server.services.audit_service import write_audit_event
-from apps.privacy_policy import EgressDecision
+from apps.privacy_policy import EgressDecision, publicize_deployment_mode
 
 PRIVACY_RESOURCE_TYPE = "privacy_egress"
 
@@ -109,7 +109,9 @@ async def list_egress_events(
                 "decision": metadata.get("decision", "deny"),
                 "reason": metadata.get("reason", ""),
                 "timestamp": event.created_at,
-                "deployment_mode": metadata.get("deployment_mode", get_settings().privacy_policy.deployment_mode),
+                "deployment_mode": publicize_deployment_mode(
+                    metadata.get("deployment_mode", get_settings().privacy_policy.deployment_mode)
+                ),
                 "service_name": metadata.get("service_name", "api-server"),
                 "request_id": metadata.get("request_id"),
             }
@@ -158,7 +160,7 @@ async def get_privacy_report(*, org_id: uuid.UUID) -> dict[str, Any]:
                 last_algenta_owned_egress_at = created_at
 
     return {
-        "deployment_mode": policy.deployment_mode,
+        "deployment_mode": publicize_deployment_mode(policy.deployment_mode),
         "algenta_cloud_enabled": policy.algenta_cloud_enabled,
         "vendor_telemetry_enabled": policy.vendor_telemetry_enabled,
         "customer_connector_egress_enabled": policy.customer_connector_egress_enabled,

@@ -99,6 +99,7 @@ class RuntimeManifestResult(RuntimeManifestResultBaseModel):
     policy_snapshot: RuntimeSnapshotReferenceResult
     schema_snapshot: RuntimeSnapshotReferenceResult
     deployment_mode: RuntimeDeploymentModeResult
+    deployment_mode_raw: str
     deployment_modes: RuntimeDeploymentModesResult
     shipping_contract: RuntimeShippingContractSummaryResult
     benchmark_discovery_lane: RuntimeBenchmarkDiscoveryLaneResult

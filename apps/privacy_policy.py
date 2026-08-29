@@ -25,11 +25,14 @@ DeploymentMode = Literal[
     "hybrid_provider",
     "local_dev_daemon",
 ]
-
-#: Real customer deployments never report `local_dev_daemon` (this codebase's own is-development
-#: default). Runtime validation of DeploymentMode is untouched; this is only for narrowing what a
-#: public-facing Pydantic field's OpenAPI schema documents as the supported enum.
-PUBLIC_DEPLOYMENT_MODES: list[str] = [
+# The subset of DeploymentMode safe to advertise in the PUBLIC OpenAPI schema / API responses.
+# "local_dev_daemon" is a real, settable ALGENTA_DEPLOYMENT_MODE value (an engineer's local dev
+# loop), but it's a runtime-lifecycle implementation detail, not a customer-facing deployment
+# topology — publishing it in the public contract leaks internal plumbing. Use
+# publicize_deployment_mode() at every response boundary instead of this type directly (a
+# json_schema_extra enum override alone only fixes the schema's stated shape, not the live value
+# a running local_dev_daemon gateway would still return).
+PublicDeploymentMode = Literal[
     "saas",
     "vpc",
     "self_hosted",
@@ -147,6 +150,14 @@ class PrivacyPolicy:
             }
         )
         return payload
+
+
+def publicize_deployment_mode(mode: DeploymentMode | str) -> PublicDeploymentMode:
+    """Map an internal DeploymentMode to the subset safe for a public response. Every value
+    passes through unchanged except "local_dev_daemon", which reports as "self_hosted" — the
+    closest real customer-facing topology to an engineer's local dev loop. Call this at every
+    response boundary that reuses DeploymentMode; never expose the raw value directly."""
+    return "self_hosted" if mode == "local_dev_daemon" else mode  # type: ignore[return-value]
 
 
 @dataclass(frozen=True)
@@ -290,6 +301,7 @@ def build_privacy_policy(
     agent_core_url: object | None = None,
     supabase_url: object | None = None,
     entra_configured: object | None = None,
+    oidc_jwks_url: object | None = None,
     base_url_fallback: str | None = None,
 ) -> PrivacyPolicy:
     mode = _normalized_mode(deployment_mode)
@@ -393,6 +405,20 @@ def build_privacy_policy(
         if entra_jwks_host not in effective_allowlist:
             effective_allowlist.append(entra_jwks_host)
 
+    # Same self-host trust for a generic OIDC identity provider (Okta/Auth0/Keycloak/...): unlike
+    # Entra's fixed login.microsoftonline.com, the JWKS host is operator-configured
+    # (ALGENTA_OIDC_JWKS_URL) — so it's handled like agent_core_url/supabase_url above, not a
+    # hardcoded constant. Without this, an operator who sets ALGENTA_OIDC_* still has to
+    # separately add their IdP's JWKS host to ALGENTA_EGRESS_ALLOWLIST or every OIDC token 503s
+    # with an opaque "jwks_unreachable (egress policy)".
+    if oidc_jwks_url:
+        try:
+            oidc_jwks_host = parse_egress_destination(str(oidc_jwks_url)).host
+        except PrivacyConfigurationError:
+            oidc_jwks_host = ""
+        if oidc_jwks_host and oidc_jwks_host not in effective_allowlist:
+            effective_allowlist.append(oidc_jwks_host)
+
     policy = PrivacyPolicy(
         deployment_mode=mode,
         disable_cloud=effective_disable_cloud,
@@ -438,6 +464,7 @@ def policy_from_environment(
         egress_allowlist=_env(mapping, "ALGENTA_EGRESS_ALLOWLIST"),
         agent_core_url=_env(mapping, "ALGENTA_AGENT_CORE_URL"),
         supabase_url=_env(mapping, "SUPABASE_URL") or _env(mapping, "NEXT_PUBLIC_SUPABASE_URL"),
+        oidc_jwks_url=_env(mapping, "ALGENTA_OIDC_JWKS_URL"),
         base_url_fallback=base_url_fallback,
     )
 

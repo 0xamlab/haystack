@@ -566,7 +566,7 @@ class RuntimeReleaseValidationResponse(RuntimeManifestBaseModel):
     theorem_statement: str
     valid_release: StrictBool
     conditions: list[ReleaseConditionEvaluation] = Field(default_factory=list)
-    deployment_mode: RuntimeDeploymentMode | None = None
+    deployment_mode: RuntimeDeploymentModePublic | None = None
     deployment_mode_raw: str
     manifest_digest: str
     signature: ManifestSignature

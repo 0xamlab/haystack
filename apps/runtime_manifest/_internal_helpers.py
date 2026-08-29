@@ -213,7 +213,7 @@ def _deployment_mode() -> str:
 
 
 def _runtime_deployment_mode_value(value: object) -> str:
-    if isinstance(value, RuntimeDeploymentMode):
+    if isinstance(value, (RuntimeDeploymentMode, RuntimeDeploymentModePublic)):
         return value.value
     return str(value)
 

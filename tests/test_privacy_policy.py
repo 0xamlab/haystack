@@ -203,6 +203,20 @@ def test_entra_jwks_host_auto_allowlisted_when_configured() -> None:
     assert "login.microsoftonline.com" not in off.egress_allowlist
 
 
+def test_oidc_jwks_host_auto_allowlisted_when_configured() -> None:
+    # Unlike Entra's fixed host, the OIDC JWKS host is operator-configured (ALGENTA_OIDC_JWKS_URL)
+    # — auto-allowlist exactly that host, same self-host-trust pattern as agent_core_url/supabase_url.
+    policy = build_privacy_policy(
+        deployment_mode="self_hosted",
+        oidc_jwks_url="https://idp.example.com/realms/acme/protocol/openid-connect/certs",
+    )
+    assert "idp.example.com" in policy.egress_allowlist
+    assert policy.allow_outbound_network is False  # general egress stays closed
+    # NOT added when OIDC is unconfigured — no needless egress surface.
+    off = build_privacy_policy(deployment_mode="self_hosted", oidc_jwks_url=None)
+    assert "idp.example.com" not in off.egress_allowlist
+
+
 def test_supabase_host_merges_with_explicit_allowlist_without_duplicates() -> None:
     policy = build_privacy_policy(
         deployment_mode="self_hosted",

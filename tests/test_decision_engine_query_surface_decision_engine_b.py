@@ -27,7 +27,7 @@ def test_decision_engine_client_get_runtime_release_validation_returns_typed_res
     assert isinstance(validation, RuntimeReleaseValidationResult)
     assert validation.valid_release is True
     assert validation.conditions[0].condition is RuntimeReleaseConditionResult.manifest_listed
-    assert validation.deployment_mode is RuntimeDeploymentModeResult.local_dev_daemon
+    assert validation.deployment_mode is RuntimeDeploymentModeResult.self_hosted
     assert validation.deployment_mode_raw == "local_dev_daemon"
     assert validation.signature.scope is RuntimeSignatureScopeResult.control_plane_hmac_v1
 

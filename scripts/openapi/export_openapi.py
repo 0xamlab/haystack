@@ -68,7 +68,19 @@ def build_openapi_schema() -> dict[str, Any]:
     # file has always had. A JSON round-trip normalizes that away by rebuilding fresh, unshared
     # objects -- exactly the normalization the old curl-based pipeline got for free by
     # serializing the schema to HTTP JSON and parsing it back on the other end.
-    return json.loads(json.dumps(schema))
+    schema = json.loads(json.dumps(schema))
+    # apps/mcp_server's router is assembled behind a try/except that recovers from a failed
+    # primary construction attempt (see server.py's create_fastapi_router docstring: /mcp/tools
+    # is "always" mounted even when the rest of the MCP transport can't build cleanly). Which
+    # attempt succeeds is not reliably the same between two otherwise-identical processes, so
+    # /mcp/tools's position among the OTHER mcp routes has been observed to vary run-to-run even
+    # with nothing else different -- caught by the CI openapi-check gate reporting a pure
+    # reordering (no content change) diff. A byte-diff gate can't tolerate an incidentally-ordered
+    # dict, so canonicalize it here rather than chase the non-determinism's root cause inside the
+    # MCP transport, which is unrelated to what this script's job is.
+    if isinstance(schema.get("paths"), dict):
+        schema["paths"] = dict(sorted(schema["paths"].items()))
+    return schema
 
 
 def validate_schema(schema: dict[str, Any]) -> None:

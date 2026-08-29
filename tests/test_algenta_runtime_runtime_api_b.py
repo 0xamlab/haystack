@@ -161,8 +161,8 @@ def test_runtime_api_mode_get_runtime_manifest_uses_typed_output(
         manifest.feature_flag_channels[0]
         is RuntimeFeatureFlagChannel.http_api_feature_flag
     )
-    assert manifest.deployment_mode is RuntimeDeploymentMode.local_dev_daemon
-    assert manifest.deployment_modes.current is RuntimeDeploymentMode.local_dev_daemon
+    assert manifest.deployment_mode is RuntimeDeploymentMode.self_hosted
+    assert manifest.deployment_modes.current is RuntimeDeploymentMode.self_hosted
     assert manifest.deployment_modes.supported_modes[0] is RuntimeDeploymentMode.saas
     assert manifest.benchmarking.classes[0].code is RuntimeBenchmarkClassCode.microkernel_latency
     assert any(
@@ -238,7 +238,7 @@ def test_runtime_api_mode_get_runtime_manifest_uses_typed_output(
         is RuntimeFeatureFlagEndpoint.libraries
     )
     assert manifest.to_dict()["supported_channels"][0] == "python_sdk"
-    assert manifest.to_dict()["deployment_mode"] == "local_dev_daemon"
+    assert manifest.to_dict()["deployment_mode"] == "self_hosted"
     assert manifest.to_dict()["maturity"]["bpe_tokenizer"] == "channel_covered"
 
 
@@ -400,7 +400,7 @@ def test_runtime_api_mode_get_runtime_release_validation_uses_typed_output(
     assert isinstance(validation, RuntimeReleaseValidationOutput)
     assert validation.valid_release is True
     assert validation.conditions[0].condition is RuntimeReleaseCondition.manifest_listed
-    assert validation.deployment_mode is RuntimeDeploymentMode.local_dev_daemon
+    assert validation.deployment_mode is RuntimeDeploymentMode.self_hosted
     assert validation.deployment_mode_raw == "local_dev_daemon"
     assert validation.conditions[0].evidence_paths[0] == "/v1/runtime/manifest"
 

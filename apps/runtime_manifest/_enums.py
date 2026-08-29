@@ -102,6 +102,31 @@ class RuntimeDeploymentMode(str, Enum):
         return json_schema
 
 
+class RuntimeDeploymentModePublic(str, Enum):
+    """The subset of RuntimeDeploymentMode safe to advertise in the PUBLIC OpenAPI schema —
+    excludes RuntimeDeploymentMode's own internal-only development-loop member, a runtime-
+    lifecycle implementation detail rather than a customer-facing deployment topology. Use
+    publicize_runtime_deployment_mode() at every response boundary."""
+
+    saas = "saas"
+    vpc = "vpc"
+    self_hosted = "self_hosted"
+    air_gapped = "air_gapped"
+    hybrid_provider = "hybrid_provider"
+
+
+def publicize_runtime_deployment_mode(
+    mode: "RuntimeDeploymentMode | str",
+) -> RuntimeDeploymentModePublic:
+    """Map an internal RuntimeDeploymentMode to the public subset. Every value passes through
+    unchanged except local_dev_daemon, which reports as self_hosted — the closest real
+    customer-facing topology to an engineer's local dev loop."""
+    value = mode.value if isinstance(mode, RuntimeDeploymentMode) else str(mode)
+    if value == "local_dev_daemon":
+        return RuntimeDeploymentModePublic.self_hosted
+    return RuntimeDeploymentModePublic(value)
+
+
 class RuntimeLayer(str, Enum):
     mojo_llm_runtime_core = "mojo_llm_runtime_core"
     python_compatibility_ring = "python_compatibility_ring"

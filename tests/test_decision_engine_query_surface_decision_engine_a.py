@@ -508,8 +508,8 @@ def test_decision_engine_client_get_runtime_manifest_returns_typed_result(monkey
         is RuntimeFeatureFlagChannelResult.http_api_feature_flag
     )
     assert isinstance(manifest.deployment_mode, RuntimeDeploymentModeResult)
-    assert manifest.deployment_mode is RuntimeDeploymentModeResult.local_dev_daemon
-    assert manifest.deployment_modes.current is RuntimeDeploymentModeResult.local_dev_daemon
+    assert manifest.deployment_mode is RuntimeDeploymentModeResult.self_hosted
+    assert manifest.deployment_modes.current is RuntimeDeploymentModeResult.self_hosted
     assert manifest.deployment_modes.supported_modes[0] is RuntimeDeploymentModeResult.saas
     assert (
         manifest.benchmarking.classes[0].code
@@ -604,7 +604,7 @@ def test_decision_engine_client_get_runtime_manifest_returns_typed_result(monkey
         is RuntimeFeatureFlagEndpointResult.libraries
     )
     assert manifest.model_dump(mode="json")["supported_channels"][0] == "python_sdk"
-    assert manifest.model_dump(mode="json")["deployment_mode"] == "local_dev_daemon"
+    assert manifest.model_dump(mode="json")["deployment_mode"] == "self_hosted"
     assert manifest.model_dump(mode="json")["maturity"]["bpe_tokenizer"] == "channel_covered"
 
 

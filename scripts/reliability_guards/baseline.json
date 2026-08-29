@@ -56,6 +56,8 @@
     "apps/api_server/services/job_service.py :: select(Job) without a tenant scope :: result = await db.execute(select(Job).where(Job.id == job_id))",
     "apps/api_server/services/job_service.py :: select(SimulationRun) without a tenant scope :: result = await db.execute(",
     "apps/api_server/services/job_service.py :: select(SimulationRun) without a tenant scope :: run_result = await db.execute(select(SimulationRun).where(SimulationRun.id == job.run_id))",
+    "apps/api_server/services/oidc_org_resolver.py :: select(OidcPrincipalMapping) without a tenant scope :: mapping = (",
+    "apps/api_server/services/oidc_org_resolver.py :: select(OidcPrincipalMapping) without a tenant scope :: row = (",
     "apps/api_server/services/repository_job_service.py :: select(Job) without a tenant scope :: job = (",
     "apps/api_server/services/user_service.py :: select(User) without a tenant scope :: result = await db.execute("
   ],

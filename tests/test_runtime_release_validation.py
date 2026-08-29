@@ -24,8 +24,10 @@ def test_runtime_release_validation_passes_for_current_signed_manifest() -> None
         ReleaseCondition.deployment_mode_validated,
     ]
     assert all(entry.satisfied for entry in validation.conditions)
+    # The dev-only "local_dev_daemon" mode is publicized to "self_hosted" for the typed field;
+    # the raw diagnostic field still carries the true underlying value.
     assert validation.deployment_mode is not None
-    assert validation.deployment_mode.value == "local_dev_daemon"
+    assert validation.deployment_mode.value == "self_hosted"
     assert validation.deployment_mode_raw == "local_dev_daemon"
 
 
@@ -110,7 +112,7 @@ def test_runtime_release_validation_fails_when_policy_contract_is_missing() -> N
 
 def test_runtime_release_validation_fails_when_active_deployment_mode_is_unsupported() -> None:
     manifest = get_runtime_manifest().model_copy(deep=True)
-    manifest.deployment_mode = "shadow_realm"
+    manifest.deployment_mode_raw = "shadow_realm"
 
     validation = build_runtime_release_validation(manifest)
     deployment_condition = next(

@@ -344,8 +344,8 @@ class ImmediateImplementationPR(RuntimeManifestBaseModel):
 
 
 class DeploymentModes(RuntimeManifestBaseModel):
-    current: RuntimeDeploymentMode
-    supported_modes: list[RuntimeDeploymentMode] = Field(default_factory=list)
+    current: RuntimeDeploymentModePublic
+    supported_modes: list[RuntimeDeploymentModePublic] = Field(default_factory=list)
     rule: str
 
 

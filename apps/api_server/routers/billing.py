@@ -145,10 +145,8 @@ async def public_plans(request: Request, app: str | None = None) -> dict[str, An
     pricing stays possible only on the shared engine's own non-brand host, which is where a
     multi-brand portal belongs. `?app=<own brand>` remains valid so existing callers keep working.
 
-    An unregistered `app` is rejected rather than answered with an empty plan list under a 200, which
-    read as "this brand has no paid tiers" instead of "no such brand" — and, because the brand string
-    was passed straight into the Stripe catalogue cache, an unbounded number of distinct values each
-    bought a permanent cache entry and a live Stripe call from an unauthenticated endpoint.
+    An unregistered `app` is rejected with an error rather than an empty plan list under a 200, so
+    the response distinguishes "this brand has no paid tiers" from "no such brand".
     """
     from apps.api_server.services.stripe_catalog import list_plans
 

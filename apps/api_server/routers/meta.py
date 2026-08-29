@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any, Callable, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from apps.api_server.config import SettingsProxy
 from apps.api_server.middleware.auth import AuthContext, get_current_org
@@ -17,12 +17,12 @@ from apps.api_server.services.privacy_service import (
     list_egress_events,
 )
 from apps.privacy_policy import (
-    PUBLIC_DEPLOYMENT_MODES,
-    DeploymentMode,
     EgressClass,
     EgressDecisionValue,
     MeteringMode,
+    PublicDeploymentMode,
     TelemetryMode,
+    publicize_deployment_mode,
 )
 from apps.platform_contract import (
     PlatformContractManifestError,
@@ -82,7 +82,7 @@ class AdminPrivacyRegistryResponse(BaseModel):
 
 
 class AdminEgressPolicyResponse(BaseModel):
-    deployment_mode: DeploymentMode = Field(json_schema_extra={"enum": PUBLIC_DEPLOYMENT_MODES})
+    deployment_mode: PublicDeploymentMode
     disable_cloud: bool
     disable_telemetry: bool
     telemetry_mode: TelemetryMode
@@ -114,7 +114,7 @@ class AdminEgressLogEntry(BaseModel):
     decision: EgressDecisionValue
     reason: str
     timestamp: datetime
-    deployment_mode: DeploymentMode = Field(json_schema_extra={"enum": PUBLIC_DEPLOYMENT_MODES})
+    deployment_mode: PublicDeploymentMode
     service_name: str
     request_id: str | None = None
 
@@ -128,7 +128,7 @@ class AdminEgressLogResponse(BaseModel):
 
 
 class AdminPrivacyReportResponse(BaseModel):
-    deployment_mode: DeploymentMode = Field(json_schema_extra={"enum": PUBLIC_DEPLOYMENT_MODES})
+    deployment_mode: PublicDeploymentMode
     algenta_cloud_enabled: bool
     vendor_telemetry_enabled: bool
     customer_connector_egress_enabled: bool

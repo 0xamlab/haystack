@@ -8,11 +8,11 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from apps.api_server.config import get_settings
 from apps.api_server.middleware.auth import AuthContext, get_current_org
-from apps.privacy_policy import PUBLIC_DEPLOYMENT_MODES, DeploymentMode
+from apps.privacy_policy import PublicDeploymentMode, publicize_deployment_mode
 
 # In-memory node registry (replace with DB table for persistence across restarts)
 _registered_nodes: dict[str, dict[str, Any]] = {}
@@ -40,7 +40,7 @@ class NodeInfo(BaseModel):
 
 
 class InfrastructureResponse(BaseModel):
-    deployment_mode: DeploymentMode = Field(json_schema_extra={"enum": PUBLIC_DEPLOYMENT_MODES})
+    deployment_mode: PublicDeploymentMode
     engine_version: str
     api_version: str
     nodes: list[NodeInfo]
@@ -118,7 +118,7 @@ async def get_infrastructure(
     nodes = [primary] + registered
 
     return InfrastructureResponse(
-        deployment_mode=settings.privacy_policy.deployment_mode,
+        deployment_mode=publicize_deployment_mode(settings.privacy_policy.deployment_mode),
         engine_version=engine_version,
         api_version="1.0.0",
         nodes=nodes,

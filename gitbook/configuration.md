@@ -35,6 +35,11 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_ENTRA_TENANT_ID` | — | — | — |
 | `ALGENTA_MANAGED_LLM` | `False` | — | Enable the pooled managed-LLM provider key (multi-tenant SaaS). |
 | `ALGENTA_METERING_MODE` | — | — | Execution-record destination. Self-hosted Algenta defaults to local_audit; control_plane_sync is for explicitly configured managed deployments. |
+| `ALGENTA_OIDC_ALLOWED_CLIENT_APPS` | — | — | — |
+| `ALGENTA_OIDC_AUDIENCE` | — | — | — |
+| `ALGENTA_OIDC_AUTO_PROVISION` | `False` | — | — |
+| `ALGENTA_OIDC_ISSUER` | — | — | — |
+| `ALGENTA_OIDC_JWKS_URL` | — | — | — |
 | `ALGENTA_PRODUCT` | — | — | Edition this deployment presents (e.g. algenta): scopes the MCP tool set and which product /billing/plans prices. |
 | `ALGENTA_REGISTRY_READ_TOKEN` | — | — | — |
 | `ALGENTA_REGISTRY_URL` | `ghcr.io` | — | — |

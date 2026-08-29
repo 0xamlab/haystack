@@ -499,7 +499,7 @@ async def github_install_callback(
 @router.get(
     "/github/app/setup",
     summary="GitHub App post-install success page",
-    include_in_schema=False,
+    include_in_schema=False,  # a codna-branded HTML redirect target, not an Algenta API operation
 )
 async def github_app_setup(installation_id: int) -> HTMLResponse:
     """Dependency-free post-install landing page.

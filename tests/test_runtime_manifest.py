@@ -12,7 +12,7 @@ from apps.runtime_manifest import (
     RuntimeBenchmarkBaseline,
     RuntimeBenchmarkClassCode,
     RuntimeBenchmarkMetric,
-    RuntimeDeploymentMode,
+    RuntimeDeploymentModePublic,
     RuntimeEvaluationDimension,
     RuntimeEvaluationMethod,
     RuntimeExecutionStateField,
@@ -424,9 +424,12 @@ def test_runtime_manifest_signature_release_theorem_and_openapi_route_are_stable
     assert manifest_a.signature.signature_hex == manifest_b.signature.signature_hex
     assert manifest_a.signature.algorithm == "hmac-sha256"
     assert manifest_a.signature.key_id == "runtime-manifest-signing-v1"
-    assert manifest_a.deployment_mode is RuntimeDeploymentMode.local_dev_daemon
-    assert manifest_a.deployment_modes.current is RuntimeDeploymentMode.local_dev_daemon
-    assert manifest_a.deployment_modes.supported_modes[0] is RuntimeDeploymentMode.saas
+    # The dev-only "local_dev_daemon" mode is publicized to its closest customer-facing
+    # topology ("self_hosted") before it ever reaches this response — see
+    # apps/runtime_manifest/_enums.py::publicize_runtime_deployment_mode.
+    assert manifest_a.deployment_mode is RuntimeDeploymentModePublic.self_hosted
+    assert manifest_a.deployment_modes.current is RuntimeDeploymentModePublic.self_hosted
+    assert manifest_a.deployment_modes.supported_modes[0] is RuntimeDeploymentModePublic.saas
     assert manifest_a.supported_channels[0] is RuntimeSupportedChannel.python_sdk
     assert manifest_a.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannel.bundled_worker
     assert (
