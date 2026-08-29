@@ -1,0 +1,31 @@
+apiVersion: v2
+name: algenta
+description: >-
+  Algenta self-hosted decision and governed data/query runtime (API + bundled
+  engine) for Kubernetes. Charts the same two-container topology shipped by
+  infra/docker/docker-compose.selfhosted.yml: a horizontally-scalable API
+  server and a single-instance engine (Celery worker + Mojo runtime + agent
+  runtime, sharing one filesystem contract).
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.27.0-0"
+home: https://algenta.ai
+sources:
+  - https://github.com/thyn-ai/algenta
+keywords:
+  - algenta
+  - decision-engine
+  - simulation
+  - mojo
+  - self-hosted
+maintainers:
+  - name: Algenta
+    url: https://algenta.ai
+icon: https://algenta.ai/favicon.svg
+annotations:
+  # No bundled Postgres/Redis/MinIO chart *dependencies* are declared here on purpose — see
+  # README.md "Why minimal in-chart templates instead of Bitnami subcharts". The optional
+  # bundled services below are this chart's own templates (templates/bundled/*), gated by
+  # postgresql.enabled / redis.enabled / minio.enabled, not `dependencies:` entries.
+  category: Infrastructure

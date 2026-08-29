@@ -1,0 +1,141 @@
+{{- /*
+Minimal, single-replica, trial-grade MinIO (single-drive standalone mode) — see
+postgresql.yaml's header note. Bucket creation (the `mc mb` step docker-compose.selfhosted.yml
+does via its minio-setup service) is left to an operator step / your own Job — this template
+only starts the server, since a chart-owned bucket-provisioning Job needs its own set of
+RBAC/Job-completion tradeoffs that are out of scope for a trial-grade bundled dependency.
+*/ -}}
+{{- if .Values.minio.enabled }}
+{{- $fullname := include "algenta.fullname" . -}}
+{{- $secretName := printf "%s-minio" $fullname -}}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $secretName -}}
+{{- $rootPassword := .Values.minio.rootPassword -}}
+{{- if not $rootPassword -}}
+  {{- if $existing -}}
+    {{- $rootPassword = index $existing.data "root-password" | b64dec -}}
+  {{- else -}}
+    {{- $rootPassword = randAlphaNum 24 -}}
+  {{- end -}}
+{{- end -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "minio") | nindent 4 }}
+type: Opaque
+stringData:
+  root-user: {{ .Values.minio.rootUser | quote }}
+  root-password: {{ $rootPassword | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-minio
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "minio") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: api
+      name: api
+    - port: 9001
+      targetPort: console
+      name: console
+  selector:
+    {{- include "algenta.selectorLabels" (dict "root" $ "component" "minio") | nindent 4 }}
+---
+{{- if .Values.minio.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-minio
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "minio") | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.minio.persistence.size }}
+  {{- if .Values.minio.persistence.storageClassName }}
+  storageClassName: {{ .Values.minio.persistence.storageClassName }}
+  {{- end }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-minio
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "minio") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "algenta.selectorLabels" (dict "root" $ "component" "minio") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "algenta.labels" (dict "root" $ "component" "minio") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image }}
+          args: ["server", "/data", "--console-address", ":9001"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: api
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: root-user
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: root-password
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          {{- if .Values.minio.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ $fullname }}-minio
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

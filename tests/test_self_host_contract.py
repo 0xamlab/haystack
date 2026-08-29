@@ -207,9 +207,17 @@ def test_advanced_operator_docs_cover_backup_warning_troubleshooting_and_support
 | API + Bundled Engine | ✅ Supported |
 | Backup/Restore | ✅ Supported |
 | SDK usage | ⚠️ Best effort / secondary |
-| Kubernetes | ❌ Not supported |
+| Kubernetes | ✅ Supported (Helm chart — see below) |
 | UI/Portal | ❌ Not included |"""
     assert expected_table in support
+    # Kubernetes support is real (infra/helm/algenta), not a bare status flip — the doc must
+    # state the same conditions the chart itself enforces (multi-writer acknowledgement,
+    # engine single-instance, amd64/x86-64-v3 only), and must not overclaim what is out of
+    # scope (cosign chart signing is not yet implemented).
+    assert "infra/helm/algenta" in support
+    assert "single-instance" in support
+    assert "ARM64 is not supported" in support
+    assert "Chart signing (cosign) is not yet implemented" in support
 
 
 def test_auth_and_sdk_docs_are_secondary_to_running_service() -> None:

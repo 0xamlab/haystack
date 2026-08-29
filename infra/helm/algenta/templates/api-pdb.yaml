@@ -1,0 +1,21 @@
+{{- /*
+No PodDisruptionBudget for engine: a PDB bounds VOLUNTARY disruption across a set of
+replicas, and the engine is pinned to exactly 1 replica (see engine-deployment.yaml) — a
+PDB with minAvailable=1 over a single-replica workload would simply block ALL voluntary
+evictions of that one Pod (node drains, cluster-autoscaler scale-down), which is a
+node-ops footgun, not a real availability guarantee. There is nothing for a PDB to spread
+here.
+*/ -}}
+{{- if and .Values.api.enabled .Values.api.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "algenta.fullname" . }}-api
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "api") | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.api.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "algenta.selectorLabels" (dict "root" $ "component" "api") | nindent 6 }}
+{{- end }}

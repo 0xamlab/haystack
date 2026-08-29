@@ -994,6 +994,218 @@ jobs:
         if: always()
         run: docker rmi "$SMOKE_IMAGE_TAG" >/dev/null 2>&1 || true
 
+  # ── Helm chart: lint + template + kubeconform (no cluster, no registry creds) ──────────────
+  # Mirrors api-image-mojo-smoke's shape: PR-triggered, validation-only, no push. Two values
+  # overlays exercise the chart's two mutually-exclusive shapes (bundled deps + multi-replica
+  # API + every optional feature on; external-dependency default) so both branches of
+  # templates/_helpers.tpl's algenta.validateValues render at least once.
+  helm-lint:
+    name: Helm chart lint
+    runs-on: [self-hosted, az-ephemeral]
+    needs: test
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up helm + kubeconform
+        uses: yokawasa/action-setup-kube-tools@b16d49b2c459d33cf9d4c300a220ef0bcdbc730a # v0.14.0
+        with:
+          setup-tools: |
+            helm
+            kubeconform
+          helm: "3.20.1"
+          kubeconform: "0.7.0"
+
+      - name: helm lint (bundled-deps + multi-replica + every optional feature)
+        run: helm lint infra/helm/algenta -f infra/helm/algenta/ci/values-lint.yaml
+
+      - name: helm lint (external-dependency default shape)
+        run: helm lint infra/helm/algenta -f infra/helm/algenta/ci/values-lint-external.yaml
+
+      - name: helm template + kubeconform (bundled-deps overlay)
+        run: |
+          helm template algenta infra/helm/algenta -f infra/helm/algenta/ci/values-lint.yaml \
+            | kubeconform -strict -summary -kubernetes-version 1.29.0 -
+
+      - name: helm template + kubeconform (external-dependency overlay)
+        run: |
+          helm template algenta infra/helm/algenta -f infra/helm/algenta/ci/values-lint-external.yaml \
+            | kubeconform -strict -summary -kubernetes-version 1.29.0 -
+
+      # Negative tests: the values.schema.json / algenta.validateValues guards documented in
+      # README.md must actually fire, not just exist. `helm template` exiting non-zero is the
+      # PASS condition for every case below.
+      - name: Guard — engine.replicaCount must reject anything but 1
+        run: |
+          if helm template infra/helm/algenta --set api.image.tag=x --set engine.image.tag=x \
+               --set engine.replicaCount=2 >/tmp/out.yaml 2>/tmp/err.txt; then
+            echo "::error::engine.replicaCount=2 should have been rejected" >&2
+            cat /tmp/err.txt >&2
+            exit 1
+          fi
+          grep -q "must be 1" /tmp/err.txt
+
+      - name: Guard — api.replicaCount>1 requires RWX + acknowledgement
+        run: |
+          if helm template infra/helm/algenta --set api.image.tag=x --set engine.image.tag=x \
+               --set api.replicaCount=3 --set config.apiPublicBaseUrl=http://x \
+               --set externalDatabase.host=h --set externalDatabase.existingSecret=s \
+               --set externalRedis.host=h \
+               --set externalObjectStore.endpointUrl=http://x --set externalObjectStore.existingSecret=s \
+               >/tmp/out.yaml 2>/tmp/err.txt; then
+            echo "::error::api.replicaCount=3 without the RWX acknowledgement should have been rejected" >&2
+            cat /tmp/err.txt >&2
+            exit 1
+          fi
+          grep -q "ReadWriteMany" /tmp/err.txt
+
+      - name: Guard — external and bundled Postgres cannot both be enabled
+        run: |
+          if helm template infra/helm/algenta --set api.image.tag=x --set engine.image.tag=x \
+               --set postgresql.enabled=true --set config.apiPublicBaseUrl=http://x \
+               --set externalDatabase.host=h --set externalDatabase.existingSecret=s \
+               --set externalRedis.host=h \
+               --set externalObjectStore.endpointUrl=http://x --set externalObjectStore.existingSecret=s \
+               >/tmp/out.yaml 2>/tmp/err.txt; then
+            echo "::error::externalDatabase.enabled + postgresql.enabled both true should have been rejected" >&2
+            cat /tmp/err.txt >&2
+            exit 1
+          fi
+          grep -q "pick exactly one Postgres source" /tmp/err.txt
+
+  # ── Helm chart: real kind-cluster install smoke test ───────────────────────────────────────
+  # PR-triggered. Builds the REAL API image the same way api-image-mojo-smoke already does
+  # (local build, no push, no registry creds beyond the default GITHUB_TOKEN reading the
+  # public-within-org mojo base image) and installs this chart against it in a disposable kind
+  # cluster. Does NOT build or load the engine image — see
+  # infra/helm/algenta/ci/values-kind-smoke.yaml and infra/helm/algenta/README.md ("What was
+  # and was not verified with a real kind cluster") for exactly why, and what that leaves
+  # untested.
+  helm-kind-smoke:
+    name: Helm chart kind install smoke
+    runs-on: [self-hosted, az-ephemeral]
+    needs: test
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+    env:
+      SMOKE_IMAGE_TAG: algenta-api-kind-smoke:${{ github.run_id }}-${{ github.run_attempt }}
+      KIND_CLUSTER: algenta-helm-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Identical build to api-image-mojo-smoke's own step — see that job's comment for why
+      # --platform linux/amd64 + DOCKER_BUILDKIT=1 is required on this arm64 runner fleet.
+      - name: Build API image locally
+        run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t "$SMOKE_IMAGE_TAG" .
+
+      - name: Set up helm
+        uses: yokawasa/action-setup-kube-tools@b16d49b2c459d33cf9d4c300a220ef0bcdbc730a # v0.14.0
+        with:
+          setup-tools: |
+            helm
+          helm: "3.20.1"
+
+      - name: Create kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER }}
+          version: v0.31.0
+          kubectl_version: v1.35.0
+
+      - name: Load API image into kind
+        run: kind load docker-image "$SMOKE_IMAGE_TAG" --name "$KIND_CLUSTER"
+
+      - name: helm install (bundled Postgres/Redis/MinIO, engine disabled — see the overlay's header)
+        run: |
+          helm install algenta-smoke infra/helm/algenta \
+            -f infra/helm/algenta/ci/values-kind-smoke.yaml \
+            --set api.image.repository="${SMOKE_IMAGE_TAG%%:*}" \
+            --set api.image.tag="${SMOKE_IMAGE_TAG##*:}" \
+            --set api.image.pullPolicy=Never \
+            --wait --timeout 8m
+
+      # Only runs when the install above failed to reach Ready in time — prints exactly what
+      # was stuck (pending/crashlooping Pod, OOMKilled container, failing probe) instead of
+      # leaving a bare "context deadline exceeded" as the only diagnostic, which is what the
+      # first run of this job left behind.
+      - name: Diagnose a failed install
+        if: failure()
+        run: |
+          echo "::group::kubectl get pods"
+          kubectl get pods -o wide || true
+          echo "::endgroup::"
+          echo "::group::kubectl describe pods"
+          kubectl describe pods || true
+          echo "::endgroup::"
+          echo "::group::api container logs (current + previous, if crashed)"
+          kubectl logs -l app.kubernetes.io/component=api --all-containers --tail=300 || true
+          kubectl logs -l app.kubernetes.io/component=api --all-containers --tail=300 --previous || true
+          echo "::endgroup::"
+          echo "::group::events"
+          kubectl get events --sort-by=.lastTimestamp | tail -60 || true
+          echo "::endgroup::"
+
+      # Two prior attempts at this job both left the api Pod stuck at readiness 503 with NO
+      # exception ever logged (apps/api_server/main.py's health_ready() catches Exception
+      # silently, by design, so it "reports, never raises" -- but that also means it never
+      # tells an operator WHY). Reproducing the same DB check inside the live container, with
+      # a real traceback, is the only way to see the actual cause instead of guessing again.
+      #
+      # infra/helm/algenta/ci/kind_smoke_check_db.py is a real, left-aligned .py file (read
+      # via `cat`, not embedded as multi-line `python -c "..."` in this YAML block) --
+      # deliberately, after an earlier version of this exact step broke YAML's
+      # literal-block-scalar parsing by putting Python continuation lines at column 0. See
+      # this workflow's own "Blast-radius test selection" step for the same lesson learned
+      # previously about one-line vs multi-line embedded Python.
+      - name: Deep-dive DB connectivity from inside the api Pod
+        if: failure()
+        run: |
+          POD=$(kubectl get pods -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}' || true)
+          if [ -z "$POD" ]; then
+            echo "::warning::no api Pod found to exec into"
+            exit 0
+          fi
+          echo "::group::resolved environment inside the api container (secrets redacted)"
+          kubectl exec "$POD" -- env | sort | sed -E 's/(PASSWORD|SECRET|TOKEN|KEY)=.*/\1=***REDACTED***/' || true
+          echo "::endgroup::"
+          echo "::group::DNS + TCP reachability to the bundled Postgres Service"
+          kubectl exec "$POD" -- python3 -c "import socket; print('resolved:', socket.gethostbyname('algenta-smoke-postgresql'))" || echo "DNS resolution failed"
+          kubectl exec "$POD" -- python3 -c "import socket; s=socket.create_connection(('algenta-smoke-postgresql', 5432), timeout=5); print('TCP connect: OK'); s.close()" || echo "TCP connect failed"
+          echo "::endgroup::"
+          echo "::group::live reproduction of the readiness DB check, with a real traceback"
+          kubectl exec "$POD" -- python3 -c "$(cat infra/helm/algenta/ci/kind_smoke_check_db.py)" || true
+          echo "::endgroup::"
+
+      - name: Assert /v1/health and /v1/health/ready return 200 through the api Service
+        run: |
+          kubectl run algenta-smoke-curl --rm -i --restart=Never --image=curlimages/curl:8.11.1 -- \
+            sh -c '
+              set -eu
+              echo "liveness:"; curl -sf --max-time 10 http://algenta-smoke-api:8000/v1/health; echo
+              echo "readiness:"; curl -sf --max-time 10 http://algenta-smoke-api:8000/v1/health/ready; echo
+            '
+
+      - name: helm test
+        run: helm test algenta-smoke --logs
+
+      - name: Tear down (release disk on this shared fleet)
+        if: always()
+        run: |
+          helm uninstall algenta-smoke 2>/dev/null || true
+          kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
+          docker rmi "$SMOKE_IMAGE_TAG" >/dev/null 2>&1 || true
+
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker
@@ -1198,6 +1410,61 @@ jobs:
       - name: Remove per-run buildx builder
         if: always()
         run: docker buildx rm "ci-${{ github.run_id }}" 2>/dev/null || true
+
+  # ── Package + push the Helm chart as an OCI artifact ───────────────────────
+  # Separate job (not a step in `build`) so this chart's own package/push never adds to
+  # `build`'s already-tight disk budget (see that job's "Reclaim disk" steps and their
+  # comments) — a fresh runner for this job sidesteps that failure class entirely rather than
+  # needing a fourth reclaim step. Runs only after `build` succeeds (needs: build), same
+  # push-to-main-only gating, and only once helm-lint would have passed on this same content
+  # (this job re-lints before packaging — belt and suspenders, cheap relative to the rest of
+  # `build`).
+  helm-oci-push:
+    name: Package + push Helm chart (OCI)
+    runs-on: [self-hosted, az-ephemeral]
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up helm
+        uses: yokawasa/action-setup-kube-tools@b16d49b2c459d33cf9d4c300a220ef0bcdbc730a # v0.14.0
+        with:
+          setup-tools: |
+            helm
+          helm: "3.20.1"
+
+      - name: helm lint (sanity check before packaging)
+        run: |
+          helm lint infra/helm/algenta -f infra/helm/algenta/ci/values-lint.yaml
+          helm lint infra/helm/algenta -f infra/helm/algenta/ci/values-lint-external.yaml
+
+      # Chart.yaml's version stays a plain SemVer the maintainer bumps deliberately (matching
+      # "no manual release pushes" — chart version bumps are a normal PR, not a release
+      # ceremony); the pushed OCI tag adds +git.<sha> build metadata instead of mutating
+      # Chart.yaml on every main push, so the chart's own version history stays meaningful
+      # while every push is still individually retrievable by digest or by this suffix.
+      - name: Package chart
+        id: package
+        run: |
+          CHART_VERSION=$(grep -m1 '^version:' infra/helm/algenta/Chart.yaml | awk '{print $2}')
+          FULL_VERSION="${CHART_VERSION}+git.$(git rev-parse --short HEAD)"
+          helm package infra/helm/algenta --version "$FULL_VERSION" --app-version "$FULL_VERSION" --destination /tmp/helm-package
+          echo "full_version=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry (helm registry login)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Push chart as an OCI artifact
+        run: helm push "/tmp/helm-package/algenta-${{ steps.package.outputs.full_version }}.tgz" "oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/charts"
+
+      - name: Reclaim disk (packaged chart + local OCI layer cache)
+        if: always()
+        run: rm -rf /tmp/helm-package ~/.cache/helm 2>/dev/null || true
 
   # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
   # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into

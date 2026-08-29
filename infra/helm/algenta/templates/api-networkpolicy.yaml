@@ -1,0 +1,55 @@
+{{- if and .Values.api.enabled .Values.api.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "algenta.fullname" . }}-api
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "api") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "algenta.selectorLabels" (dict "root" $ "component" "api") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        # Same-namespace traffic (other Pods in this release/namespace) is always allowed.
+        - podSelector: {}
+        {{- range .Values.api.networkPolicy.allowIngressFromNamespaceLabels }}
+        - namespaceSelector:
+            matchLabels:
+              {{ .name }}: {{ .values | first | quote }}
+        {{- end }}
+      ports:
+        - port: http
+          protocol: TCP
+  egress:
+    # DNS is required for Service-name and external-hostname resolution.
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- if .Values.engine.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "algenta.selectorLabels" (dict "root" $ "component" "engine") | nindent 14 }}
+      ports:
+        - port: agent-core
+          protocol: TCP
+    {{- end }}
+    # Postgres / Redis / S3-compatible object store: these are frequently OUTSIDE the
+    # cluster (external-first default — see values.yaml), and their addresses are not known
+    # to this chart ahead of time, so egress is deliberately left open to any destination
+    # here rather than guessed at (and silently broken the moment an operator points
+    # externalDatabase.host at a managed instance). Tighten this with your own, endpoint-aware
+    # NetworkPolicy (or a CNI-level egress rule) once you know your external addresses — this
+    # rule is a starting point (blocks unrelated in-cluster east-west traffic, allows
+    # everything else), not a complete lockdown.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+{{- end }}

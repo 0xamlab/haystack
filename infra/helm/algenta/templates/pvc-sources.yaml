@@ -1,0 +1,24 @@
+{{- include "algenta.validateValues" . -}}
+{{/* Only render a PVC when this chart owns it — an existingClaim means the operator
+     manages the PVC (and its underlying PV/StorageClass) outside this release. */}}
+{{- if and .Values.persistence.sources.enabled (not .Values.persistence.sources.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "algenta.fullname" . }}-sources
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "sources") | nindent 4 }}
+  {{- with .Values.persistence.sources.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.sources.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.sources.size }}
+  {{- if .Values.persistence.sources.storageClassName }}
+  storageClassName: {{ .Values.persistence.sources.storageClassName }}
+  {{- end }}
+{{- end }}

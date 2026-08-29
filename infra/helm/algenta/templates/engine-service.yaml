@@ -1,0 +1,20 @@
+{{- if .Values.engine.enabled }}
+# ClusterIP only — never a public entry point. The engine's agent-core sidecar is reached
+# solely from the api Deployment (over ALGENTA_AGENT_CORE_URL), mirroring
+# fly.engine.toml's own "NOT public — no http_service" note for the hosted deployment.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "algenta.fullname" . }}-engine
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "engine") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.engine.service.port }}
+      targetPort: agent-core
+      protocol: TCP
+      name: agent-core
+  selector:
+    {{- include "algenta.selectorLabels" (dict "root" $ "component" "engine") | nindent 4 }}
+{{- end }}

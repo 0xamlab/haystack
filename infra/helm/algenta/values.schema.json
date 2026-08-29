@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Algenta Helm chart values",
+  "type": "object",
+  "required": ["api", "engine", "persistence"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "imageRegistry": { "type": "string" },
+        "imagePullSecrets": { "type": "array" },
+        "clusterDomain": { "type": "string" }
+      }
+    },
+    "api": {
+      "type": "object",
+      "required": ["replicaCount", "image"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default 1 — see values.yaml's api.replicaCount comment. Raising this above 1 requires persistence.sources.accessMode=ReadWriteMany and persistence.sources.acknowledgeMultiWriterRisk=true, enforced below."
+        },
+        "image": {
+          "type": "object",
+          "required": ["tag"],
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "description": "REQUIRED. No floating-tag default is provided on purpose — mirrors ALGENTA_IMAGE_TAG:? in docker-compose.selfhosted.yml and tests/test_image_pin_guard.py."
+            },
+            "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+          }
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+            "port": { "type": "integer" }
+          }
+        },
+        "autoscaling": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "minReplicas": { "type": "integer", "minimum": 1 },
+            "maxReplicas": { "type": "integer", "minimum": 1 },
+            "targetCPUUtilizationPercentage": { "type": ["integer", "string"] },
+            "targetMemoryUtilizationPercentage": { "type": ["integer", "string"] }
+          }
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "minAvailable": { "type": ["integer", "string"] }
+          }
+        }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "required": ["replicaCount", "image"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicaCount": {
+          "const": 1,
+          "description": "HARD CEILING, not a default. The engine bundles a Celery worker + Mojo runtime + agent runtime sharing one RWO volume — confirmed single-instance-only by Dockerfile.engine.prod, fly.engine.toml, and .github/workflows/deploy.yml. This value may only ever be 1; templates/engine-deployment.yaml also hardcodes strategy.type=Recreate as a second, independent guard."
+        },
+        "image": {
+          "type": "object",
+          "required": ["tag"],
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string", "minLength": 1 },
+            "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+          }
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "port": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["sources"],
+      "properties": {
+        "sources": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "size": { "type": "string" },
+            "storageClassName": { "type": "string" },
+            "accessMode": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteMany"] },
+            "acknowledgeMultiWriterRisk": { "type": "boolean" },
+            "existingClaim": { "type": "string" }
+          }
+        }
+      }
+    },
+    "externalDatabase": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "url": { "type": "string" },
+        "urlSync": { "type": "string" },
+        "host": { "type": "string" },
+        "port": { "type": "integer" },
+        "database": { "type": "string" },
+        "username": { "type": "string" },
+        "existingSecret": { "type": "string" },
+        "existingSecretPasswordKey": { "type": "string" }
+      }
+    },
+    "externalRedis": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "url": { "type": "string" },
+        "host": { "type": "string" },
+        "port": { "type": "integer" },
+        "database": { "type": "integer" },
+        "existingSecret": { "type": "string" },
+        "existingSecretPasswordKey": { "type": "string" }
+      }
+    },
+    "externalObjectStore": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "endpointUrl": { "type": "string" },
+        "bucketName": { "type": "string" },
+        "region": { "type": "string" },
+        "accessKeyId": { "type": "string" },
+        "existingSecret": { "type": "string" },
+        "existingSecretAccessKeyIdKey": { "type": "string" },
+        "existingSecretSecretAccessKeyKey": { "type": "string" }
+      }
+    },
+    "postgresql": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "minio": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "existingSecret": { "type": "string" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "api.replicaCount > 1 requires ReadWriteMany + an explicit multi-writer acknowledgement. See values.yaml's api.replicaCount and persistence.sources comments for why.",
+      "if": {
+        "properties": {
+          "api": {
+            "properties": {
+              "replicaCount": { "type": "integer", "minimum": 2 }
+            },
+            "required": ["replicaCount"]
+          }
+        },
+        "required": ["api"]
+      },
+      "then": {
+        "properties": {
+          "persistence": {
+            "properties": {
+              "sources": {
+                "properties": {
+                  "accessMode": { "const": "ReadWriteMany" },
+                  "acknowledgeMultiWriterRisk": { "const": true }
+                },
+                "required": ["accessMode", "acknowledgeMultiWriterRisk"]
+              }
+            },
+            "required": ["sources"]
+          }
+        },
+        "required": ["persistence"]
+      }
+    },
+    {
+      "description": "api.autoscaling.maxReplicas > 1 falls under the same multi-writer rule as a static replicaCount > 1 — the HPA can drive the Deployment past 1 replica just as directly.",
+      "if": {
+        "properties": {
+          "api": {
+            "properties": {
+              "autoscaling": {
+                "properties": {
+                  "enabled": { "const": true },
+                  "maxReplicas": { "type": "integer", "minimum": 2 }
+                },
+                "required": ["enabled", "maxReplicas"]
+              }
+            },
+            "required": ["autoscaling"]
+          }
+        },
+        "required": ["api"]
+      },
+      "then": {
+        "properties": {
+          "persistence": {
+            "properties": {
+              "sources": {
+                "properties": {
+                  "accessMode": { "const": "ReadWriteMany" },
+                  "acknowledgeMultiWriterRisk": { "const": true }
+                },
+                "required": ["accessMode", "acknowledgeMultiWriterRisk"]
+              }
+            },
+            "required": ["sources"]
+          }
+        },
+        "required": ["persistence"]
+      }
+    }
+  ]
+}

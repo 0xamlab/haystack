@@ -1,0 +1,150 @@
+{{- include "algenta.validateValues" . -}}
+{{- if .Values.engine.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "algenta.fullname" . }}-engine
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "engine") | nindent 4 }}
+  annotations:
+    algenta.ai/single-instance: "true"
+spec:
+  # HARDCODED to the schema-pinned value (see values.schema.json / _helpers.tpl
+  # algenta.validateValues) — never templated from a variable that could drift.
+  replicas: 1
+  # Recreate, not RollingUpdate: the engine mounts an RWO PersistentVolumeClaim
+  # (persistence.sources) that a second, briefly-overlapping Pod during a rolling update
+  # would fail to attach on most CSI drivers — and even where it wouldn't fail outright,
+  # two engine Pods racing on the same shared-filesystem contract (Dockerfile.engine.prod's
+  # own words) is exactly the failure mode fly.engine.toml and deploy.yml both guard
+  # against with `flyctl scale count 1`. Recreate guarantees the old Pod fully terminates
+  # (and releases the volume) before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "algenta.selectorLabels" (dict "root" $ "component" "engine") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "algenta.labels" (dict "root" $ "component" "engine") | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "algenta.engineServiceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.engine.podSecurityContext | nindent 8 }}
+      containers:
+        - name: engine
+          image: {{ include "algenta.image" (dict "root" $ "image" .Values.engine.image "component" "engine") }}
+          imagePullPolicy: {{ .Values.engine.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.engine.securityContext | nindent 12 }}
+          ports:
+            - name: agent-core
+              containerPort: 8787
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "algenta.fullname" . }}-config
+            - secretRef:
+                name: {{ include "algenta.secretName" . }}
+            {{- with .Values.engine.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            {{- include "algenta.env.appConfig" . | nindent 12 }}
+            {{- include "algenta.env.datastores" . | nindent 12 }}
+            - name: AGENT_CORE_HOST
+              value: "0.0.0.0"
+            - name: AGENT_CORE_PORT
+              value: "8787"
+            - name: AGENT_CORE_MAX_CONCURRENCY
+              value: {{ .Values.config.agentCoreMaxConcurrency | quote }}
+            - name: AGENT_CORE_REQUIRE_AUTH
+              value: {{ .Values.config.agentCoreRequireAuth | ternary "1" "0" | quote }}
+            - name: CELERY_CONCURRENCY
+              value: {{ .Values.config.celeryConcurrency | quote }}
+            # Loopback: the worker in THIS container calls the agent-core sidecar co-located
+            # in the SAME container/Pod, not the api Service — matching
+            # docker-compose.selfhosted.yml's engine.environment.ALGENTA_AGENT_CORE_URL.
+            - name: ALGENTA_AGENT_CORE_URL
+              value: "http://127.0.0.1:8787"
+            - name: ALGENTA_AGENT_CORE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "algenta.secretName" . }}
+                  key: AGENT_CORE_AUTH_TOKEN
+            {{- if .Values.config.agentProvider }}
+            - name: ALGENTA_AGENT_PROVIDER
+              value: {{ .Values.config.agentProvider | quote }}
+            {{- end }}
+            {{- if .Values.config.agentModel }}
+            - name: ALGENTA_AGENT_MODEL
+              value: {{ .Values.config.agentModel | quote }}
+            {{- end }}
+            {{- with .Values.engine.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          # Only /health is confirmed to exist on the engine's agent-core sidecar (no
+          # separate deep/shallow pair like the api's /v1/health vs /v1/health/ready) — the
+          # same route is wired to both probes deliberately, not an oversight.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: agent-core
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: agent-core
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: agent-core
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          resources:
+            {{- toYaml .Values.engine.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.persistence.sources.enabled }}
+            - name: sources
+              mountPath: /home/app/.algenta
+            {{- end }}
+      {{- with .Values.engine.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.engine.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.engine.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.persistence.sources.enabled }}
+        - name: sources
+          persistentVolumeClaim:
+            claimName: {{ include "algenta.sourcesClaimName" . }}
+        {{- end }}
+{{- end }}

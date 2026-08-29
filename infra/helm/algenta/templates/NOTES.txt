@@ -1,0 +1,54 @@
+Algenta ({{ .Chart.Name }} {{ .Chart.Version }}, app {{ .Chart.AppVersion }}) has been installed
+into namespace {{ .Release.Namespace }} as release {{ .Release.Name }}.
+
+{{- if .Values.api.enabled }}
+
+API server:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "algenta.fullname" . }}-api {{ .Values.api.service.port }}:{{ .Values.api.service.port }}
+  curl http://localhost:{{ .Values.api.service.port }}/v1/health
+  curl http://localhost:{{ .Values.api.service.port }}/v1/health/ready
+{{- end }}
+
+{{- if .Values.engine.enabled }}
+
+Engine (Celery worker + Mojo runtime + agent runtime, single instance by design — do not
+scale engine.replicaCount past 1, see values.yaml):
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=engine
+{{- end }}
+
+{{- if gt (int .Values.api.replicaCount) 1 }}
+
+NOTE: api.replicaCount is {{ .Values.api.replicaCount }}. You have acknowledged the
+persistence.sources multi-writer tradeoff (accessMode=ReadWriteMany +
+acknowledgeMultiWriterRisk=true) — confirm your StorageClass is genuinely ReadWriteMany-capable
+if you use the dataset-upload / /v1/data feature. See README.md.
+{{- end }}
+
+{{- if not .Values.api.ingress.enabled }}
+
+No Ingress is configured (api.ingress.enabled=false). Use port-forward above, or set
+api.ingress.* to expose the API through your cluster's ingress controller.
+{{- end }}
+
+{{- if or .Values.postgresql.enabled .Values.redis.enabled .Values.minio.enabled }}
+
+Bundled dependenc{{ if or (and .Values.postgresql.enabled .Values.redis.enabled) (and .Values.postgresql.enabled .Values.minio.enabled) (and .Values.redis.enabled .Values.minio.enabled) }}ies{{ else }}y{{ end }} enabled for this release:
+{{- if .Values.postgresql.enabled }}
+  - postgresql (trial-grade — see README.md before using this in production)
+{{- end }}
+{{- if .Values.redis.enabled }}
+  - redis (trial-grade)
+{{- end }}
+{{- if .Values.minio.enabled }}
+  - minio (trial-grade; the results bucket is NOT auto-created — see
+    templates/bundled/minio.yaml's header note, and either create it manually with `mc mb`
+    or point RESULT_STORAGE_ENABLED/S3_BUCKET_NAME at a bucket that already exists)
+{{- end }}
+{{- end }}
+
+Run `helm test {{ .Release.Name }} -n {{ .Release.Namespace }}` for a basic post-install
+smoke check (api readiness + engine health, when enabled).
+
+Full field reference, the sources_data/replica-count tradeoff, the engine single-instance
+constraint, the Mojo/CPU architecture requirement, and what this chart does NOT yet do
+(cosign chart signing) are documented in this chart's README.md.

@@ -1,0 +1,27 @@
+# Second `helm lint` / `helm template` overlay: exercises the EXTERNAL-dependency default
+# path (externalDatabase/externalRedis/externalObjectStore all enabled, nothing bundled),
+# which is this chart's actual out-of-the-box default posture. values-lint.yaml in this same
+# directory covers the opposite (bundled) branch plus the multi-replica/autoscaling/ingress/
+# networkPolicy/metrics paths — between the two, every major conditional branch renders at
+# least once in CI.
+api:
+  image:
+    tag: "git-0000000"
+engine:
+  image:
+    tag: "git-0000000"
+
+externalDatabase:
+  enabled: true
+  host: postgres.example.internal
+  existingSecret: algenta-external-database
+externalRedis:
+  enabled: true
+  host: redis.example.internal
+externalObjectStore:
+  enabled: true
+  endpointUrl: "https://s3.example.com"
+  existingSecret: algenta-external-objectstore
+
+config:
+  apiPublicBaseUrl: "https://algenta.example.com"

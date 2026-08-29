@@ -1,0 +1,148 @@
+{{- include "algenta.validateValues" . -}}
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "algenta.fullname" . }}-api
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "api") | nindent 4 }}
+spec:
+{{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "algenta.selectorLabels" (dict "root" $ "component" "api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "algenta.labels" (dict "root" $ "component" "api") | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.api.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.api.metrics.port | quote }}
+        prometheus.io/path: {{ .Values.api.metrics.path | quote }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "algenta.apiServiceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.api.podSecurityContext | nindent 8 }}
+      {{- with .Values.api.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- range . }}
+        - {{- toYaml . | nindent 10 }}
+          labelSelector:
+            matchLabels:
+              {{- include "algenta.selectorLabels" (dict "root" $ "component" "api") | nindent 14 }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: api
+          image: {{ include "algenta.image" (dict "root" $ "image" .Values.api.image "component" "api") }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.api.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "algenta.fullname" . }}-config
+            - secretRef:
+                name: {{ include "algenta.secretName" . }}
+            {{- with .Values.api.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            {{- include "algenta.env.appConfig" . | nindent 12 }}
+            {{- include "algenta.env.datastores" . | nindent 12 }}
+            # The engine's agent-core sidecar, reached over the engine's ClusterIP Service
+            # (not loopback — that only makes sense from inside the engine Pod itself; see
+            # engine-deployment.yaml for that side).
+            - name: ALGENTA_AGENT_CORE_URL
+              value: {{ printf "http://%s-engine:%d" (include "algenta.fullname" .) (int .Values.engine.service.port) | quote }}
+            - name: ALGENTA_AGENT_CORE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "algenta.secretName" . }}
+                  key: AGENT_CORE_AUTH_TOKEN
+            {{- if .Values.api.metrics.enabled }}
+            {{- if .Values.api.metrics.existingSecret }}
+            - name: METRICS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.metrics.existingSecret }}
+                  key: {{ .Values.api.metrics.existingSecretKey }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.api.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          # Liveness: the CHEAP route (apps/api_server/routers/meta.py::/v1/health). It must
+          # never depend on DB/Redis so a transient datastore blip does not get this Pod
+          # killed and restarted for no reason.
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Readiness: the DEEP route (apps/api_server/main.py::/v1/health/ready), which
+          # pings the DB (critical, 503s readiness on failure) and Redis (optional, reported
+          # but never fails readiness) — see that route's own docstring. This is what
+          # correctly gates traffic away from a Pod whose DB connection is down.
+          readinessProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.persistence.sources.enabled }}
+            - name: sources
+              mountPath: /home/app/.algenta
+            {{- end }}
+      {{- with .Values.api.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.persistence.sources.enabled }}
+        - name: sources
+          persistentVolumeClaim:
+            claimName: {{ include "algenta.sourcesClaimName" . }}
+        {{- end }}
+{{- end }}

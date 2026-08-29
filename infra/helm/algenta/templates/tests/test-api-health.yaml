@@ -1,0 +1,44 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "algenta.fullname" . }}-test-api-health
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "test") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    # before-hook-creation ONLY -- NOT hook-succeeded. Confirmed live: `helm test --logs`
+    # races Helm's own hook-succeeded deletion (it deletes the Pod the instant the test
+    # succeeds, before `--logs` gets a chance to fetch anything), reproducibly failing with
+    # `unable to get pod logs ... pods "..." not found` even though the test itself passed.
+    # before-hook-creation still cleans up the previous run's Pod before this one starts, so
+    # nothing accumulates release-over-release -- it just no longer races its OWN successful
+    # run's own log fetch.
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      command:
+        - sh
+        - -c
+        - |
+          set -eu
+          echo "Checking liveness: /v1/health"
+          curl -sf --max-time 10 "http://{{ include "algenta.fullname" . }}-api:{{ .Values.api.service.port }}/v1/health"
+          echo
+          echo "Checking readiness: /v1/health/ready"
+          curl -sf --max-time 10 "http://{{ include "algenta.fullname" . }}-api:{{ .Values.api.service.port }}/v1/health/ready"
+          echo
+          echo "api-health test passed"
+{{- end }}

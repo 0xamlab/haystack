@@ -1,0 +1,104 @@
+# Values overlay for the kind-based install smoke test (.github/workflows/ci.yml's
+# `helm-kind-smoke` job). See that job's own comments and README.md "What the kind smoke
+# test does and does NOT cover" for the full explanation.
+#
+# engine.enabled=false here, deliberately: building a real engine image needs
+# infra/docker/Dockerfile.engine.prod's private ghcr.io/thyn-ai/codna/sidecar base image +
+# CODNA_GHCR_READ_TOKEN, neither available to a PR-triggered, no-registry-credential
+# validation job — mirroring the same boundary the existing api-image-mojo-smoke job
+# already respects for the engine image (it also only builds the API image). Deploying an
+# engine Pod with a placeholder image would just sit in ImagePullBackOff forever and add no
+# real coverage, so this smoke test covers the api Deployment end-to-end against real
+# bundled Postgres/Redis/MinIO, and stops there. engine.image.tag is still set (rather than
+# left as the chart default's empty string) purely to satisfy values.schema.json's
+# unconditional `required: [tag]` on the engine image block.
+api:
+  image:
+    repository: algenta-api-kind-smoke
+    tag: "smoke"
+    pullPolicy: Never
+  # NOT trimmed down like the bundled deps below — the real api image runs
+  # `uvicorn --workers 2` (Dockerfile.api.prod's CMD), and EACH worker process starts its own
+  # MojoWorkerPool (apps/api_server/main.py's lifespan), so this container can run up to
+  # 2 x config.mojoMaxConcurrent Mojo subprocess workers concurrently. A first attempt at this
+  # overlay copied the bundled-dependency-style tiny limits (500m CPU / 512Mi memory) and the
+  # Pod never became Ready inside `--wait --timeout 5m` — almost certainly OOM-thrashing under
+  # this CI fleet's amd64-on-arm64 emulation. Kept close to the chart's own production
+  # defaults instead; config.mojoMaxConcurrent below is also turned down for this smoke test
+  # to reduce worker-process count further.
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+engine:
+  enabled: false
+  image:
+    tag: "unbuilt"
+
+persistence:
+  sources:
+    size: 1Gi
+
+postgresql:
+  enabled: true
+  persistence:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+redis:
+  enabled: true
+  persistence:
+    size: 512Mi
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+minio:
+  enabled: true
+  persistence:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+externalDatabase:
+  enabled: false
+externalRedis:
+  enabled: false
+externalObjectStore:
+  enabled: false
+
+config:
+  apiPublicBaseUrl: "http://localhost:8000"
+  resultStorageEnabled: false
+  mojoMaxConcurrent: 1
+  # THE actual pool-size knob (see values.yaml's config.mojoPoolSize comment) — a first
+  # attempt at this overlay set mojoMaxConcurrent above and left this unset, which does
+  # nothing: apps/api_server/compute/mojo_pool.py reads MOJO_POOL_SIZE, not
+  # MOJO_MAX_CONCURRENT (that field is defined in apps/api_server/config.py but not read
+  # anywhere). Confirmed live: with this unset, the pool defaulted to
+  # max(1, os.cpu_count() - 1) = 7 PER uvicorn worker (2 workers = 14 Mojo subprocesses) on
+  # the CI runner's node, against a 2 CPU / 2Gi Pod limit — the api Pod never passed its
+  # readiness probe (DB check timing out under CPU starvation) and the first two attempts at
+  # this job both hit `helm install --wait`'s deadline. 1 keeps this smoke test's footprint
+  # proportionate to its own resources.requests/limits above.
+  mojoPoolSize: "1"
+
+secrets:
+  jwtSecret: "kind-smoke-test-not-for-production"
+  algentaConfigEncryptionKey: "kind-smoke-test-not-for-production-32chars"

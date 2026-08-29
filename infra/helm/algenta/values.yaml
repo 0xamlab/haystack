@@ -1,0 +1,497 @@
+# Default values for the Algenta chart.
+# This chart deploys the SAME two-container topology as
+# infra/docker/docker-compose.selfhosted.yml:
+#   - api    : FastAPI server (horizontally scalable, with one real caveat — read below)
+#   - engine : Celery worker + bundled Mojo runtime + agent runtime, ONE container
+#              (built from Dockerfile.engine.prod). This is genuinely single-instance;
+#              see engine.replicaCount below. There is no separate "worker" workload —
+#              Dockerfile.worker.prod exists but is not part of the shipped self-host
+#              topology this chart follows.
+#
+# Full field reference and the reasoning behind every non-obvious default lives in
+# README.md next to this file. Read it before changing replica counts or persistence
+# settings — several of them exist because of a documented, real constraint, not caution
+# for its own sake.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Global
+# Standard Helm name overrides — see templates/_helpers.tpl (algenta.name / algenta.fullname).
+nameOverride: ""
+fullnameOverride: ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+global:
+  # Overridable per-workload below (api.image.repository / engine.image.repository).
+  imageRegistry: ghcr.io/thyn-ai/algenta
+  # Every image pull secret name listed here is attached to every workload's pod spec.
+  imagePullSecrets: []
+  # Cluster DNS suffix, only needed if your cluster does not use the "cluster.local" default.
+  clusterDomain: cluster.local
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API server
+# ─────────────────────────────────────────────────────────────────────────────
+api:
+  enabled: true
+
+  # ── Replica count — READ BEFORE CHANGING ────────────────────────────────
+  # Default is 1, not because the API is stateful, but because of ONE real, currently
+  # unresolved constraint: apps/api_server/services/source_registry.py (the dataset-upload
+  # registry backing ALGENTA_SOURCES_DIR) does plain pathlib.Path file I/O against
+  # persistence.sources's PVC — no S3/object-store awareness, unlike Repository
+  # Intelligence artifacts (which HAVE migrated to S3, opt-in via ALGENTA_RI_OBJECT_STORE=s3).
+  # Multiple API replicas writing to that one dataset registry over a ReadWriteOnce (RWO)
+  # volume is unsafe (concurrent writers, no locking). This chart will NOT let you set
+  # replicaCount > 1 unless you also set persistence.sources.accessMode: ReadWriteMany AND
+  # persistence.sources.acknowledgeMultiWriterRisk: true — enforced both by
+  # values.schema.json and by a template guard (templates/_helpers.tpl "algenta.validateValues").
+  #
+  # If your cluster has no ReadWriteMany-capable StorageClass, OR you never use the
+  # dataset-upload / /v1/data feature, do not scale this past 1.
+  replicaCount: 1
+
+  image:
+    # Falls back to "<global.imageRegistry>/api" when unset.
+    repository: ""
+    # REQUIRED. Mirrors the compose file's ALGENTA_IMAGE_TAG:? — a chart with an empty tag
+    # would silently resolve to Helm's own default (often latest-like), which this project
+    # explicitly refuses to ship (tests/test_image_pin_guard.py enforces the same rule for
+    # docker-compose.selfhosted.yml). Pin to a `git-<sha>` tag or a digest.
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  # HPA-able by default in the sense that the chart supports it — actual autoscaling stays
+  # off until you opt in, and scaling is bounded by the same RWO/RWX caveat above (the HPA's
+  # own maxReplicas is schema-capped only when persistence.sources allows multi-writer).
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: ""
+
+  podDisruptionBudget:
+    # Engine has no PDB (see engine section) — a PDB cannot help a single-instance workload;
+    # it only prevents *voluntary* evictions from taking down every replica at once, and the
+    # API is the workload with >1 replica in the first place.
+    enabled: true
+    minAvailable: 1
+
+  # Off by default: only useful once replicaCount/autoscaling.maxReplicas > 1.
+  topologySpreadConstraints: []
+  # Example (uncomment and adjust maxSkew/topologyKey for your cluster):
+  # topologySpreadConstraints:
+  #   - maxSkew: 1
+  #     topologyKey: kubernetes.io/hostname
+  #     whenUnsatisfiable: ScheduleAnywhere
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  # /metrics exists (apps/api_server/main.py) and is scrape-able, but it is NOT an open
+  # Prometheus endpoint: it 403s any request that is neither loopback nor carrying a matching
+  # `X-Metrics-Secret` header (see apps/api_server/main.py's `metrics` route). Setting
+  # api.metrics.enabled=true adds prometheus.io/* scrape annotations to the Service, but a
+  # scrape from a DIFFERENT pod (any real Prometheus) still needs api.metrics.secretRef
+  # configured AND your scrape config/ServiceMonitor sending that same value back as the
+  # `X-Metrics-Secret` header (prometheus-operator ServiceMonitor: spec.endpoints[].headers,
+  # available since prometheus-operator >= v0.68). Annotations alone do not make this work —
+  # see README.md "Prometheus scraping" for the full explanation before relying on this.
+  metrics:
+    enabled: false
+    port: 8000
+    path: /metrics
+    # Name of a Secret (existingSecret pattern) with key `metrics-secret` holding the value
+    # the app must see in METRICS_SECRET / the X-Metrics-Secret header. Leave empty to leave
+    # METRICS_SECRET unset (in which case /metrics is loopback-only — safe, but unscrapeable
+    # from outside the pod).
+    existingSecret: ""
+    existingSecretKey: metrics-secret
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: algenta.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    # - secretName: algenta-tls
+    #   hosts:
+    #     - algenta.example.com
+
+  networkPolicy:
+    enabled: false
+    # Namespace selector allowed to reach the API on its service port (e.g. an ingress
+    # controller's namespace). Empty means "allow from anywhere in the cluster" is NOT
+    # applied automatically — see templates/api-networkpolicy.yaml for the exact default
+    # (same-namespace + explicitly-labelled ingress namespaces only).
+    allowIngressFromNamespaceLabels: []
+    # - name: kubernetes.io/metadata.name
+    #   values: ["ingress-nginx"]
+
+  podSecurityContext:
+    runAsNonRoot: true
+    # MUST match the "app" user's real uid/gid in infra/docker/Dockerfile.api.prod
+    # (groupadd/useradd --system, no explicit --uid/--gid -> the base image's next free
+    # SYSTEM uid, verified as 999:999 via `id`/`/etc/passwd` inside the built image -- not
+    # portable-convention 1000). A mismatch here doesn't fail the container: it starts, passes
+    # liveness, and then fails every DB-touching request, because /home/app is mode 0700
+    # owned 999:999 and the process can't read it as uid 1000 -- asyncpg's default SSL
+    # certificate lookup under $HOME raises a bare PermissionError, which the readiness
+    # endpoint reports only as "db":"down" with no logged exception. Reproduced and confirmed
+    # live in a real kind cluster: `ssl=False` connects fine; runAsUser matching the image's
+    # real uid fixes the default (sslmode=prefer) path too. If Dockerfile.api.prod ever pins
+    # an explicit --uid/--gid, update these to match -- don't let the two silently drift.
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    # The API writes to /home/app/.algenta (the sources PVC below) and needs a writable
+    # /tmp for normal Python/uvicorn operation; a fully read-only rootfs would need an
+    # emptyDir mounted over /tmp as well (left as an operator override — see README) rather
+    # than assumed here, since the app was not audited for every incidental write path.
+    capabilities:
+      drop:
+        - ALL
+
+  # Extra environment variables merged in verbatim (list form: [{name, value|valueFrom}]).
+  extraEnv: []
+  extraEnvFrom: []
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Engine (Celery worker + bundled Mojo runtime + agent runtime — ONE container)
+# ─────────────────────────────────────────────────────────────────────────────
+engine:
+  enabled: true
+
+  # HARD CEILING, not a suggestion. Confirmed multiple independent ways in the source repo:
+  #   - Dockerfile.engine.prod's own header: "must run in one container"
+  #   - fly.engine.toml: "keep count at 1 ... Do NOT scale >1 (one volume, one Machine)"
+  #   - .github/workflows/deploy.yml enforces `flyctl scale count 1` at deploy time
+  #   - gitbook/self-hosting.md has an explicit danger callout about this
+  # This is NOT something the MCP-statelessness work elsewhere in this codebase changed —
+  # that work is API-layer only. values.schema.json pins this to the literal value 1
+  # (not just a max) and templates/engine-deployment.yaml hardcodes strategy.type=Recreate
+  # regardless of this value, so even a forced/edited values file cannot produce a rolling
+  # update that double-runs two engine Pods against the same RWO volume.
+  replicaCount: 1
+
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  service:
+    port: 8787
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+
+  networkPolicy:
+    enabled: false
+    # By default (see templates/engine-networkpolicy.yaml) only Pods matching the api
+    # selector in this same release may reach the engine's port.
+
+  podSecurityContext:
+    runAsNonRoot: true
+    # MUST match the "app" user's real uid/gid in infra/docker/Dockerfile.engine.prod
+    # (groupadd/useradd --system, no explicit --uid/--gid -> the base image's next free
+    # SYSTEM uid, verified as 999:999 via `id`/`/etc/passwd` inside the built image -- not
+    # portable-convention 1000). See the api block's identical note above for the full
+    # failure mode this was reproduced against (a uid mismatch here doesn't fail the
+    # container -- it starts and passes liveness, then fails any $HOME-touching operation
+    # with a bare, unlogged PermissionError). If Dockerfile.engine.prod ever pins an
+    # explicit --uid/--gid, update these to match -- don't let the two silently drift.
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  extraEnv: []
+  extraEnvFrom: []
+
+  # Mojo builds in this repo are pinned to x86-64-v3 (AVX2/FMA/BMI2) and linux/amd64 only —
+  # ARM64 is explicitly unsupported. A plain arch nodeSelector guarantees the ISA FAMILY, not
+  # the microarchitecture level; see README.md "Mojo / CPU architecture requirement" for the
+  # stronger Node Feature Discovery based gate this chart deliberately does not hardcode.
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  tolerations: []
+  affinity: {}
+
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared persistence — the sources_data volume from docker-compose.selfhosted.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# In compose, ONE named volume ("sources_data") is mounted at /home/app/.algenta on BOTH
+# the api and engine containers. That single root holds two logically different things:
+#   - ALGENTA_SOURCES_DIR (.../sources)  — the dataset-upload registry (source_registry.py):
+#     plain pathlib file I/O, the real multi-writer hazard described under api.replicaCount.
+#   - ALGENTA_RUNTIME_DIR (.../runtime)  — device identity/license/audit/metering state
+#     (apps/runtime/*), read by BOTH api and engine process code paths.
+# This chart mirrors that exactly: ONE PersistentVolumeClaim, mounted at /home/app/.algenta
+# on the engine Pod (always, when engine.enabled) and on every api Pod (when
+# persistence.sources.enabled, which is the default). This is deliberate, not incidental:
+# sharing the volume is what gives every api replica and the engine the SAME device identity
+# and the SAME dataset registry, which is the property you want. The tradeoff is the
+# multi-writer hazard above once api.replicaCount > 1.
+persistence:
+  sources:
+    enabled: true
+    size: 20Gi
+    storageClassName: ""
+    # ReadWriteOnce is safe by DEFAULT because api.replicaCount defaults to 1 — but note that
+    # Kubernetes' RWO is a single-NODE constraint, not a single-Pod one: it is only guaranteed
+    # safe here if the api Pod and the engine Pod land on the SAME node (true automatically on
+    # a genuinely single-node cluster; on a multi-node cluster either add node affinity pinning
+    # both workloads together, or use a ReadWriteMany-capable StorageClass). See README.md.
+    accessMode: ReadWriteOnce
+    # Required to be explicitly true when api.replicaCount > 1 (schema + template guard both
+    # enforce this). It exists so scaling the API is a deliberate, informed act, never an
+    # accidental one — set it only once you have confirmed EITHER (a) your StorageClass is
+    # genuinely ReadWriteMany-capable and mounted from a driver that supports concurrent
+    # writers, OR (b) you do not use the dataset-upload / /v1/data feature at all.
+    acknowledgeMultiWriterRisk: false
+    annotations: {}
+    # Set to reuse a PVC you already created/manage outside this chart.
+    existingClaim: ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Secrets — never baked into the chart. Either let the chart create one Secret from the
+# values below (fine for a quick trial; the values still end up in `helm get values` /
+# your values file, so treat that file itself as sensitive), or point at a Secret you
+# manage externally (existingSecret pattern, same idea Bitnami charts use) — recommended
+# for anything beyond a trial, e.g. populated by an External Secrets Operator / Sealed
+# Secrets / Vault injector.
+# ─────────────────────────────────────────────────────────────────────────────
+secrets:
+  # Name of an existing Kubernetes Secret holding ALL of the keys below. When set, this
+  # chart creates NO Secret object of its own and every key must already exist on the
+  # named Secret (see README.md for the exact key names, or templates/secret.yaml's
+  # comment block for the authoritative list).
+  existingSecret: ""
+
+  # Only used when existingSecret is empty. Leave a value empty to omit that key from the
+  # generated Secret entirely (the app treats a missing env var the same as an empty one
+  # for every optional field here).
+  jwtSecret: ""
+  webhookSigningSecret: ""
+  algentaConfigEncryptionKey: ""
+  algentaEngineApiKey: ""
+  algentaApiKey: ""
+  agentCoreAuthToken: ""
+  anthropicApiKey: ""
+  stripeSecretKey: ""
+  stripeWebhookSecret: ""
+  smtpPassword: ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# External dependencies — Postgres / Redis / S3-compatible object store
+# ─────────────────────────────────────────────────────────────────────────────
+# EXTERNAL-FIRST BY DEFAULT, per the ecosystem partnership plan's own stated preference.
+# The app layer already takes these as plain env vars with no hardcoded compose-network
+# hostnames (apps/api_server/config.py: database_url, database_url_sync, redis_url,
+# s3_endpoint_url, s3_bucket_name, s3_access_key_id, s3_secret_access_key, s3_region) — what
+# did NOT exist anywhere before this chart is a deployment-artifact-level toggle between
+# "bring your own managed instance" and "bundle a minimal one for a quick trial". Exactly
+# one of externalDatabase.enabled / postgresql.enabled should be true at a time (same for
+# redis/minio) — the template guard in _helpers.tpl fails the render if both or neither are
+# enabled, rather than silently picking one.
+externalDatabase:
+  enabled: true
+  # Full URL takes precedence when set (e.g. to pass through IAM-auth query params your
+  # managed Postgres needs); otherwise it is composed from the discrete fields below.
+  url: ""
+  urlSync: ""
+  host: ""
+  port: 5432
+  database: algenta
+  username: algenta
+  # Name of a Secret containing the password (existingSecret pattern — never set a plaintext
+  # password directly in values for anything beyond a local trial).
+  existingSecret: ""
+  existingSecretPasswordKey: password
+
+externalRedis:
+  enabled: true
+  url: ""
+  host: ""
+  port: 6379
+  # Empty database index 0 default, matching REDIS_URL's default path in config.py.
+  database: 0
+  existingSecret: ""
+  existingSecretPasswordKey: password
+
+externalObjectStore:
+  enabled: true
+  endpointUrl: ""
+  bucketName: algenta-results
+  region: us-east-1
+  accessKeyId: ""
+  existingSecret: ""
+  existingSecretAccessKeyIdKey: access-key-id
+  existingSecretSecretAccessKeyKey: secret-access-key
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bundled dependencies — OFF by default; minimal in-chart templates, not full upstream
+# subcharts. See README.md "Why minimal in-chart templates instead of Bitnami subcharts"
+# for the tradeoff. Meant for a quick trial / CI smoke test, not production — production
+# operators should point at a real managed Postgres/Redis/S3 via the external* blocks above.
+# ─────────────────────────────────────────────────────────────────────────────
+postgresql:
+  enabled: false
+  image: "postgres:16-alpine"
+  database: algenta
+  username: algenta
+  # Auto-generated into the release's own Secret when left empty (see
+  # templates/bundled/postgresql.yaml). Set explicitly to pin it (e.g. for a reproducible
+  # CI smoke test).
+  password: ""
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+redis:
+  enabled: false
+  image: "redis:7-alpine"
+  persistence:
+    enabled: true
+    size: 4Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+minio:
+  enabled: false
+  image: "minio/minio:RELEASE.2025-04-22T22-12-26Z"
+  rootUser: algenta_minio
+  rootPassword: ""
+  bucketName: algenta-results
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Application configuration (non-secret) — mirrors docker-compose.selfhosted.yml's env
+# blocks for api/engine. Anything security- or credential-shaped lives under secrets.* or
+# external*.*existingSecret above instead.
+# ─────────────────────────────────────────────────────────────────────────────
+config:
+  apiEnv: production
+  logLevel: info
+  corsOrigins: "http://localhost:3000,http://localhost:8000"
+  apiKeyPrefix: "de_live_"
+  apiKeyTestPrefix: "de_test_"
+  mojoTimeoutSeconds: 30
+  # mojo_max_concurrent (apps/api_server/config.py) is defined but not read anywhere else in
+  # this codebase as of this chart's writing — kept here only for parity with
+  # docker-compose.selfhosted.yml's MOJO_MAX_CONCURRENT. It is NOT the pool-size knob; see
+  # mojoPoolSize below for the one that actually matters under a CPU limit.
+  mojoMaxConcurrent: 4
+  # MOJO_POOL_SIZE — READ BEFORE DEPLOYING TO A REAL CLUSTER. Left empty by default, which
+  # means apps/api_server/compute/mojo_pool.py applies ITS OWN default:
+  # max(1, os.cpu_count() - 1). Confirmed live during this chart's own kind-cluster testing:
+  # os.cpu_count() reads the NODE's total CPU count, not this container's cpu limit/cgroup
+  # quota — on an 8-vCPU node this spawns 7 Mojo subprocess workers PER uvicorn worker
+  # (Dockerfile.api.prod runs `--workers 2`, so 14 total), which oversubscribes and can
+  # starve/OOM a Pod with a much smaller api.resources.limits.cpu. Set this explicitly to a
+  # value that fits your actual api.resources.limits.cpu (e.g. limits.cpu - 1, floor 1) —
+  # this chart cannot compute that for you reliably (Helm renders before the container ever
+  # sees its own cgroup), so it is deliberately left as an operator decision rather than a
+  # default that would work on some node sizes and silently misbehave on others.
+  mojoPoolSize: ""
+  runtimeFallbackMode: deny
+  resultStorageEnabled: true
+  emailFrom: "noreply@algenta.local"
+  smtpHost: ""
+  smtpPort: 587
+  smtpUsername: ""
+  # ALGENTA_DEPLOYMENT_MODE: self_hosted is this chart's default target — see
+  # apps/privacy_policy.py / gitbook/self-hosting.md for the full deployment-mode contract
+  # (self_hosted / saas / air_gapped).
+  deploymentMode: self_hosted
+  disableCloud: true
+  disableTelemetry: true
+  telemetryMode: local_audit
+  meteringMode: local_audit
+  allowOutboundNetwork: false
+  # Must be set to the externally-reachable URL of the api Service/Ingress for
+  # device-binding headers and any user-facing links the API generates to be correct —
+  # left empty here deliberately so it must be set per-install, matching how
+  # docker-compose.selfhosted.yml also requires it.
+  apiPublicBaseUrl: ""
+  # ALGENTA_AGENT_PROVIDER / ALGENTA_AGENT_MODEL — passed through to the engine's bundled
+  # agent runtime. Empty by default (the runtime's own defaults apply).
+  agentProvider: ""
+  agentModel: ""
+  agentCoreMaxConcurrency: 8
+  agentCoreRequireAuth: true
+  celeryConcurrency: 2
+
+# Values consumed only by templates/tests/ (helm test), not part of the deployed release.
+tests:
+  image: "curlimages/curl:8.11.1"

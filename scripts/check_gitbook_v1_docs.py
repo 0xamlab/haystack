@@ -24,7 +24,7 @@ EXPECTED_SUPPORT_BOUNDARIES = """| Area | Status |
 | API + Bundled Engine | ✅ Supported |
 | Backup/Restore | ✅ Supported |
 | SDK usage | ⚠️ Best effort / secondary |
-| Kubernetes | ❌ Not supported |
+| Kubernetes | ✅ Supported (Helm chart — see below) |
 | UI/Portal | ❌ Not included |"""
 
 

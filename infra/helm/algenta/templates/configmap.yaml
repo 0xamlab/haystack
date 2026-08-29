@@ -1,0 +1,24 @@
+{{- include "algenta.validateValues" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "algenta.fullname" . }}-config
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "config") | nindent 4 }}
+data:
+  # api-only in docker-compose.selfhosted.yml, but harmless as an unused env var on the
+  # engine container too — kept in one shared ConfigMap for simplicity (both api and
+  # engine consume it via envFrom).
+  CORS_ORIGINS: {{ .Values.config.corsOrigins | quote }}
+  API_KEY_PREFIX: {{ .Values.config.apiKeyPrefix | quote }}
+  API_KEY_TEST_PREFIX: {{ .Values.config.apiKeyTestPrefix | quote }}
+  MOJO_TIMEOUT_SECONDS: {{ .Values.config.mojoTimeoutSeconds | quote }}
+  MOJO_MAX_CONCURRENT: {{ .Values.config.mojoMaxConcurrent | quote }}
+  {{- if .Values.config.mojoPoolSize }}
+  # See values.yaml's config.mojoPoolSize comment before changing this.
+  MOJO_POOL_SIZE: {{ .Values.config.mojoPoolSize | quote }}
+  {{- end }}
+  EMAIL_FROM: {{ .Values.config.emailFrom | quote }}
+  SMTP_HOST: {{ .Values.config.smtpHost | quote }}
+  SMTP_PORT: {{ .Values.config.smtpPort | quote }}
+  SMTP_USERNAME: {{ .Values.config.smtpUsername | quote }}

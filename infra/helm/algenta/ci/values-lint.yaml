@@ -1,0 +1,44 @@
+# Values overlay for `helm lint` / `helm template` validation in CI (no live cluster
+# involved — see .github/workflows/ci.yml's `helm-lint` job). Only fills in the fields the
+# schema requires (image tags) and turns on every optional feature at least once so the
+# render is exercised, including the bundled dependencies and the api.replicaCount>1
+# multi-writer acknowledgement path.
+api:
+  replicaCount: 2
+  image:
+    tag: "git-0000000"
+  autoscaling:
+    enabled: true
+  ingress:
+    enabled: true
+  networkPolicy:
+    enabled: true
+  metrics:
+    enabled: true
+
+engine:
+  image:
+    tag: "git-0000000"
+  networkPolicy:
+    enabled: true
+
+persistence:
+  sources:
+    accessMode: ReadWriteMany
+    acknowledgeMultiWriterRisk: true
+
+postgresql:
+  enabled: true
+redis:
+  enabled: true
+minio:
+  enabled: true
+externalDatabase:
+  enabled: false
+externalRedis:
+  enabled: false
+externalObjectStore:
+  enabled: false
+
+config:
+  apiPublicBaseUrl: "https://algenta.example.com"

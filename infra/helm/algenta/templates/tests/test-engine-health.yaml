@@ -1,0 +1,36 @@
+{{- if .Values.engine.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "algenta.fullname" . }}-test-engine-health
+  labels:
+    {{- include "algenta.labels" (dict "root" $ "component" "test") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    # See templates/tests/test-api-health.yaml's identical comment -- before-hook-creation
+    # ONLY, not hook-succeeded, or `helm test --logs` races Helm's own post-success deletion.
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      command:
+        - sh
+        - -c
+        - |
+          set -eu
+          echo "Checking engine: /health (only endpoint confirmed to exist on the agent-core sidecar)"
+          curl -sf --max-time 10 "http://{{ include "algenta.fullname" . }}-engine:{{ .Values.engine.service.port }}/health"
+          echo
+          echo "engine-health test passed"
+{{- end }}
