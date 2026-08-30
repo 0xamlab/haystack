@@ -44,6 +44,19 @@
 * [KV-cache and generation kernels](engine/kv-cache-and-autoregressive-generation-kernels.md)
 * [Multimodal and inference operations](engine/multimodal-and-inference-operations-kernels.md)
 
+## Numerical & mathematical computing
+
+* [Core linear algebra](engine/core-linear-algebra-kernels.md)
+* [Sparse structures & tensor primitives](engine/sparse-and-tensor-kernels.md)
+* [Probability distributions & dependence](engine/probability-distributions-and-dependence-kernels.md)
+* [Statistical computing](engine/statistical-computing-kernels.md)
+* [Calculus & differential equations](engine/calculus-and-differential-equation-kernels.md)
+* [Polynomial, root-finding & number theory](engine/polynomial-root-finding-and-number-theory-kernels.md)
+* [Combinatorics, convex optimization & scipy-compat](engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md)
+* [Signal transforms & processing](engine/signal-transforms-and-processing-kernels.md)
+* [Dimensionality, information theory & complex systems](engine/dimensionality-information-theory-and-complex-systems-kernels.md)
+* [Quantum computing & formal logic](engine/quantum-computing-and-formal-logic-kernels.md)
+
 ## Machine learning
 
 * [Time-series model selection](engine/ml-model-selection.md)

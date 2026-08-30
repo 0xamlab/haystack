@@ -3126,6 +3126,78 @@
         "validation": "command_inventory"
       },
       {
+        "bytes": 606,
+        "language": "python",
+        "line": 19,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "e665bd218201761dd5d2acae51d170302ce2700d731b54957a8746d2199ea85f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 456,
+        "language": "python",
+        "line": 65,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "830e66cbd247cfed4c176506b0bf1ee9680091cec2f11f3578ef91f22cdc2848",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 563,
+        "language": "python",
+        "line": 104,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "137e6a1ff0e9bb8957cca312a616785f19c8be3839ba89838afdb6bda45f2bfb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 468,
+        "language": "python",
+        "line": 158,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "0a2bd6e67121c70d37e74040e7561ed6d3bd3de1cb0d1d9cc3a9efb33c6cb8c6",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 247,
+        "language": "python",
+        "line": 177,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "dd081217dfc7f3436c5ac3db87a7c606e54c7e0a8b08f985c55436966233001d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 502,
+        "language": "python",
+        "line": 212,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "35f715a121e7bc5c4bafd0b7bba34330a304a93c0143f8b82cddde35d0e42b05",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 155,
+        "language": "python",
+        "line": 229,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "6ef0bca2b53cafb8cdae4d4594acd8807b4d800490a3effd0188e20ea98b2905",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 347,
+        "language": "python",
+        "line": 241,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "41af950282200991725d960b7241472e93b9f5957bb4601a1c3627c877471bc3",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 171,
+        "language": "python",
+        "line": 257,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "sha256": "f6d17a75ae5320cebb6e4a199b13647a24d4f4a151b530e3b657cf83f1b11937",
+        "validation": "parsed"
+      },
+      {
         "bytes": 334,
         "language": "python",
         "line": 16,
@@ -3734,6 +3806,62 @@
         "validation": "parsed"
       },
       {
+        "bytes": 590,
+        "language": "python",
+        "line": 23,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "1ba4e8743b2a3dd81a0eb9fd00775a9fe2a499f25c2cd4610a77da72e6b4d69c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 300,
+        "language": "python",
+        "line": 149,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "808143275a3e20f81542b360f96c4189d1570646169140b5101dcff916b5b4d8",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 149,
+        "language": "python",
+        "line": 164,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "8b2a9165c4980e791aa7ffb000880b4b8764bfb9531dd75b04348c491d021e5e",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 166,
+        "language": "python",
+        "line": 176,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "8be1852756955707839ea0fcb2b775172336810a85c309036e5e1edd7b6aef02",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 93,
+        "language": "python",
+        "line": 185,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "2f36f51dc2f10b9a94e8cbd4b8bc3b15104ed366ba5a560ab6c25d5c82d97b40",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 310,
+        "language": "python",
+        "line": 194,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "515d8fdde89cf5facecd322d2608ab2976503857b3d6b8f2ffa98a566f5820ba",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 134,
+        "language": "python",
+        "line": 207,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "sha256": "30f9f1f01a72e97cad562165aafc72b77038fbaae33ef2a0a21ab6bef2d7c25b",
+        "validation": "parsed"
+      },
+      {
         "bytes": 397,
         "language": "python",
         "line": 17,
@@ -3779,6 +3907,14 @@
         "line": 16,
         "path": "engine/contest-strategy.md",
         "sha256": "13b716f2a362171ce86f24954623e1d1f014658e8cc052a09399f8d9c5232e25",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 506,
+        "language": "python",
+        "line": 23,
+        "path": "engine/core-linear-algebra-kernels.md",
+        "sha256": "3bf87ce26e55fc1bf1a6e0b8a765646185b7316eceb271592c2943f0f1cf90fd",
         "validation": "parsed"
       },
       {
@@ -4003,6 +4139,54 @@
         "line": 13,
         "path": "engine/degradation-state.md",
         "sha256": "6136c238f912f5f1cd2c3e8d3730e0eb0808bd729264d8d19a62513eac88ff42",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 511,
+        "language": "python",
+        "line": 19,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "sha256": "a5a6ade9aacd7bb358fc54cccf70da2285d711719e21ae9fa38a18c7d97b762c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 437,
+        "language": "python",
+        "line": 93,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "sha256": "db2d351cb15f00380b90a40c65a2db47a89c23ea8a8456be1ddae7703b86af11",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 321,
+        "language": "python",
+        "line": 163,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "sha256": "b3ca8ccc6dfdb8794a486ce493c6abbfd6d25cf8553c7969e58d2fb6ffb9cedc",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 746,
+        "language": "python",
+        "line": 227,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "sha256": "81d6d5377e7dbda92c37d115579fbaa2cb3ea78c9e352a76de4978a7e2322249",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 245,
+        "language": "python",
+        "line": 261,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "sha256": "63a1a5078bc192b3f86596a9d2a3419935f4715efe17a9fa343efe89a672df30",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 487,
+        "language": "python",
+        "line": 310,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "sha256": "e3cdab5819bb07723cef03bbaa77f498a5eb5410558bc772726c948e9f25d935",
         "validation": "parsed"
       },
       {
@@ -5822,6 +6006,22 @@
         "validation": "parsed"
       },
       {
+        "bytes": 549,
+        "language": "python",
+        "line": 21,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "sha256": "6458172c7ff699b9b5a86d94ec5a07e9025db9d2107b5b1a6d0b75e8841e1cdf",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 609,
+        "language": "python",
+        "line": 25,
+        "path": "engine/probability-distributions-and-dependence-kernels.md",
+        "sha256": "ee4cb57433e228d77fde6ce187d77062ae54c3ce802ecce7e75e4c2ea7261a3d",
+        "validation": "parsed"
+      },
+      {
         "bytes": 659,
         "language": "python",
         "line": 17,
@@ -5931,6 +6131,46 @@
         "line": 168,
         "path": "engine/program-execution-scoring.md",
         "sha256": "198d2300a333796e6e1d7bd631850dcda7ee56bace76de7a6d26282a83abd88c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 411,
+        "language": "python",
+        "line": 30,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "sha256": "e6d45003c4a76d828cbeeff13d9fb996d7666e9848841b776456bef5aa474fab",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 544,
+        "language": "python",
+        "line": 65,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "sha256": "26fa3a2d1e2908cc523612c97cce178de5612c2a5a9983840967d4825ca4aa29",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 526,
+        "language": "python",
+        "line": 169,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "sha256": "0c23dd78b60c0347726e99238bedaf4479aadee1b0eaa7857502c1dfeebfed4d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 615,
+        "language": "python",
+        "line": 200,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "sha256": "7e1db7b675551b52d845fcefffc6c9489add2173d3d4cee0aefa3c0116fc1e14",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 367,
+        "language": "python",
+        "line": 238,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "sha256": "c02ef156843d5d79cd83f72234ae61470cf953fb7fd9a810eeb87ebd2f3cf4f2",
         "validation": "parsed"
       },
       {
@@ -6382,6 +6622,62 @@
         "validation": "parsed"
       },
       {
+        "bytes": 532,
+        "language": "python",
+        "line": 25,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "d524f8eca0539022ced8529920051172e1fca84357f06c2d42d171f7af797656",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 469,
+        "language": "python",
+        "line": 80,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "0c5093a513e74d209d78f6a1dba818a17b102227487ebeca03d3fca198c263de",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 506,
+        "language": "python",
+        "line": 116,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "2d9e79169e9062961f88173bde5a96993d2dea67c7e9b9654b7ef9ae9a290cf3",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 538,
+        "language": "python",
+        "line": 131,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "af02b19e38a4fc9b963f41ac5975913114315c1167e6a843db3c16161ba1a7b1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 376,
+        "language": "python",
+        "line": 143,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "beda0954f180c77f650a27ad2ecdf9d7513a8aa3b1d4178fb92bebbfe715d1b1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 862,
+        "language": "python",
+        "line": 232,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "656f400473ed622eccc95acd9570a1ee41899087d64ccb713cc86cc7948638b1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 886,
+        "language": "python",
+        "line": 315,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "sha256": "e46076d985a91c377306c8017fa8efe6276903acb71ad3961e3988e8c91eada0",
+        "validation": "parsed"
+      },
+      {
         "bytes": 565,
         "language": "python",
         "line": 19,
@@ -6534,6 +6830,46 @@
         "validation": "parsed"
       },
       {
+        "bytes": 510,
+        "language": "python",
+        "line": 21,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "sha256": "98a12a4f9063ec05bd8e5d682e45cb111827ec0285d7907e430125184eb6abcb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 404,
+        "language": "",
+        "line": 73,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "sha256": "ccafb4733c90208220c0d1798996c2a686f5f0d276699f716015bf7972e8a87f",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 373,
+        "language": "",
+        "line": 111,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "sha256": "d3565b59befbcd858fa0b9a744ab256f9d14bf7ff545244841e4d3946451e3b9",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 478,
+        "language": "",
+        "line": 150,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "sha256": "11aa23e460e26e71a8e052c6f6958feed830fba775a38b6085a85b6134589319",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 459,
+        "language": "",
+        "line": 184,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "sha256": "cc11a6d1a34c96a5ad148c56441807b8cfbbeb87e98f5e19707c3c1251011a2d",
+        "validation": "static_inventory"
+      },
+      {
         "bytes": 595,
         "language": "python",
         "line": 20,
@@ -6611,6 +6947,38 @@
         "line": 286,
         "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
         "sha256": "b8b6267ac22ccfcb929da3d0ebdc78b7d4ac8f158f6753fd577a51873470cff0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 660,
+        "language": "python",
+        "line": 18,
+        "path": "engine/statistical-computing-kernels.md",
+        "sha256": "97bd19cfd41c94b80acfc1c4425c28c68ba47439a8f3d1ff042a04f6904836ff",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 284,
+        "language": "python",
+        "line": 72,
+        "path": "engine/statistical-computing-kernels.md",
+        "sha256": "c1f9f27ff1d3c283cd7089b7a2f03e9a797723688e84d7313fc0609c9ec85cf0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 195,
+        "language": "python",
+        "line": 114,
+        "path": "engine/statistical-computing-kernels.md",
+        "sha256": "0602cc1f6264419c9038fe3c13207b2e2821835a942dace409f0edbb8a1b90ff",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 417,
+        "language": "python",
+        "line": 182,
+        "path": "engine/statistical-computing-kernels.md",
+        "sha256": "1584637cfd6515146ac96dfc748b20f3f2a2d46ad749f2ed429521ebf19cf3c4",
         "validation": "parsed"
       },
       {
@@ -35141,1403 +35509,1463 @@
         "kind": "internal",
         "line": 49,
         "path": "SUMMARY.md",
-        "target": "engine/ml-model-selection.md"
+        "target": "engine/core-linear-algebra-kernels.md"
       },
       {
         "kind": "internal",
         "line": 50,
         "path": "SUMMARY.md",
-        "target": "engine/ml-model-comparison.md"
+        "target": "engine/sparse-and-tensor-kernels.md"
       },
       {
         "kind": "internal",
         "line": 51,
         "path": "SUMMARY.md",
-        "target": "engine/ml-calibration.md"
+        "target": "engine/probability-distributions-and-dependence-kernels.md"
       },
       {
         "kind": "internal",
         "line": 52,
         "path": "SUMMARY.md",
-        "target": "engine/ml-tensor2d.md"
+        "target": "engine/statistical-computing-kernels.md"
       },
       {
         "kind": "internal",
         "line": 53,
         "path": "SUMMARY.md",
-        "target": "engine/ml-sequence-cells.md"
+        "target": "engine/calculus-and-differential-equation-kernels.md"
       },
       {
         "kind": "internal",
         "line": 54,
         "path": "SUMMARY.md",
-        "target": "engine/ml-sequence-training.md"
+        "target": "engine/polynomial-root-finding-and-number-theory-kernels.md"
       },
       {
         "kind": "internal",
         "line": 55,
         "path": "SUMMARY.md",
-        "target": "engine/ml-serialization.md"
+        "target": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md"
       },
       {
         "kind": "internal",
         "line": 56,
         "path": "SUMMARY.md",
-        "target": "engine/ml-gradient-boosting.md"
+        "target": "engine/signal-transforms-and-processing-kernels.md"
       },
       {
         "kind": "internal",
         "line": 57,
         "path": "SUMMARY.md",
-        "target": "engine/ml-mixture-models.md"
+        "target": "engine/dimensionality-information-theory-and-complex-systems-kernels.md"
       },
       {
         "kind": "internal",
         "line": 58,
         "path": "SUMMARY.md",
-        "target": "engine/ml-hmm.md"
-      },
-      {
-        "kind": "internal",
-        "line": 59,
-        "path": "SUMMARY.md",
-        "target": "engine/ml-imbalance.md"
-      },
-      {
-        "kind": "internal",
-        "line": 60,
-        "path": "SUMMARY.md",
-        "target": "engine/ml-ensembles.md"
-      },
-      {
-        "kind": "internal",
-        "line": 61,
-        "path": "SUMMARY.md",
-        "target": "engine/ml-conformal.md"
+        "target": "engine/quantum-computing-and-formal-logic-kernels.md"
       },
       {
         "kind": "internal",
         "line": 62,
         "path": "SUMMARY.md",
-        "target": "engine/ml-explainability.md"
+        "target": "engine/ml-model-selection.md"
       },
       {
         "kind": "internal",
         "line": 63,
         "path": "SUMMARY.md",
-        "target": "engine/ml-gaussian-processes.md"
+        "target": "engine/ml-model-comparison.md"
       },
       {
         "kind": "internal",
         "line": 64,
         "path": "SUMMARY.md",
-        "target": "engine/ml-automl.md"
+        "target": "engine/ml-calibration.md"
       },
       {
         "kind": "internal",
         "line": 65,
         "path": "SUMMARY.md",
-        "target": "engine/ml-pipelines.md"
+        "target": "engine/ml-tensor2d.md"
       },
       {
         "kind": "internal",
         "line": 66,
         "path": "SUMMARY.md",
-        "target": "engine/ml-linear-models.md"
+        "target": "engine/ml-sequence-cells.md"
       },
       {
         "kind": "internal",
         "line": 67,
         "path": "SUMMARY.md",
-        "target": "engine/ml-eigendecomposition.md"
+        "target": "engine/ml-sequence-training.md"
       },
       {
         "kind": "internal",
         "line": 68,
         "path": "SUMMARY.md",
-        "target": "engine/ml-arima.md"
+        "target": "engine/ml-serialization.md"
       },
       {
         "kind": "internal",
         "line": 69,
         "path": "SUMMARY.md",
-        "target": "engine/ml-feature-hashing.md"
+        "target": "engine/ml-gradient-boosting.md"
       },
       {
         "kind": "internal",
         "line": 70,
         "path": "SUMMARY.md",
-        "target": "engine/ml-pls.md"
+        "target": "engine/ml-mixture-models.md"
       },
       {
         "kind": "internal",
         "line": 71,
         "path": "SUMMARY.md",
-        "target": "engine/ml-svm.md"
+        "target": "engine/ml-hmm.md"
       },
       {
         "kind": "internal",
         "line": 72,
         "path": "SUMMARY.md",
-        "target": "engine/ml-chain-greeks.md"
+        "target": "engine/ml-imbalance.md"
       },
       {
         "kind": "internal",
         "line": 73,
         "path": "SUMMARY.md",
-        "target": "engine/ml-classical-algorithms.md"
+        "target": "engine/ml-ensembles.md"
       },
       {
         "kind": "internal",
         "line": 74,
         "path": "SUMMARY.md",
-        "target": "engine/autograd-and-training-stability-kernels.md"
+        "target": "engine/ml-conformal.md"
       },
       {
         "kind": "internal",
         "line": 75,
         "path": "SUMMARY.md",
-        "target": "engine/lora-distillation-and-weight-loading-kernels.md"
+        "target": "engine/ml-explainability.md"
       },
       {
         "kind": "internal",
         "line": 76,
         "path": "SUMMARY.md",
-        "target": "engine/mixture-of-experts-and-routing-kernels.md"
+        "target": "engine/ml-gaussian-processes.md"
       },
       {
         "kind": "internal",
         "line": 77,
         "path": "SUMMARY.md",
-        "target": "engine/model-lifecycle-and-interop-kernels.md"
+        "target": "engine/ml-automl.md"
       },
       {
         "kind": "internal",
         "line": 78,
         "path": "SUMMARY.md",
-        "target": "engine/sequence-and-state-space-model-kernels.md"
+        "target": "engine/ml-pipelines.md"
       },
       {
         "kind": "internal",
         "line": 79,
         "path": "SUMMARY.md",
-        "target": "engine/rlhf-and-generative-training-kernels.md"
+        "target": "engine/ml-linear-models.md"
       },
       {
         "kind": "internal",
         "line": 80,
         "path": "SUMMARY.md",
-        "target": "engine/feedback-loops-and-feature-engineering-kernels.md"
+        "target": "engine/ml-eigendecomposition.md"
+      },
+      {
+        "kind": "internal",
+        "line": 81,
+        "path": "SUMMARY.md",
+        "target": "engine/ml-arima.md"
+      },
+      {
+        "kind": "internal",
+        "line": 82,
+        "path": "SUMMARY.md",
+        "target": "engine/ml-feature-hashing.md"
+      },
+      {
+        "kind": "internal",
+        "line": 83,
+        "path": "SUMMARY.md",
+        "target": "engine/ml-pls.md"
       },
       {
         "kind": "internal",
         "line": 84,
         "path": "SUMMARY.md",
-        "target": "engine/optimization.md"
+        "target": "engine/ml-svm.md"
       },
       {
         "kind": "internal",
         "line": 85,
         "path": "SUMMARY.md",
-        "target": "engine/optimization-model-formulation.md"
+        "target": "engine/ml-chain-greeks.md"
       },
       {
         "kind": "internal",
         "line": 86,
         "path": "SUMMARY.md",
-        "target": "engine/optimization-heuristics.md"
+        "target": "engine/ml-classical-algorithms.md"
       },
       {
         "kind": "internal",
         "line": 87,
         "path": "SUMMARY.md",
-        "target": "engine/discrete-event-simulation.md"
+        "target": "engine/autograd-and-training-stability-kernels.md"
       },
       {
         "kind": "internal",
         "line": 88,
         "path": "SUMMARY.md",
-        "target": "engine/strategy-simulation.md"
+        "target": "engine/lora-distillation-and-weight-loading-kernels.md"
       },
       {
         "kind": "internal",
         "line": 89,
         "path": "SUMMARY.md",
-        "target": "engine/contest-strategy.md"
+        "target": "engine/mixture-of-experts-and-routing-kernels.md"
       },
       {
         "kind": "internal",
         "line": 90,
         "path": "SUMMARY.md",
-        "target": "engine/reproducible-search.md"
+        "target": "engine/model-lifecycle-and-interop-kernels.md"
       },
       {
         "kind": "internal",
         "line": 91,
         "path": "SUMMARY.md",
-        "target": "engine/degradation-state.md"
+        "target": "engine/sequence-and-state-space-model-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 95,
+        "line": 92,
         "path": "SUMMARY.md",
-        "target": "engine/forecasting.md"
+        "target": "engine/rlhf-and-generative-training-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 96,
+        "line": 93,
         "path": "SUMMARY.md",
-        "target": "engine/ml-esrnn.md"
+        "target": "engine/feedback-loops-and-feature-engineering-kernels.md"
       },
       {
         "kind": "internal",
         "line": 97,
         "path": "SUMMARY.md",
-        "target": "engine/forecast-scoring.md"
+        "target": "engine/optimization.md"
       },
       {
         "kind": "internal",
         "line": 98,
         "path": "SUMMARY.md",
-        "target": "engine/statistical-inference.md"
+        "target": "engine/optimization-model-formulation.md"
       },
       {
         "kind": "internal",
         "line": 99,
         "path": "SUMMARY.md",
-        "target": "engine/causal-inference.md"
+        "target": "engine/optimization-heuristics.md"
       },
       {
         "kind": "internal",
         "line": 100,
         "path": "SUMMARY.md",
-        "target": "engine/survival-analysis.md"
+        "target": "engine/discrete-event-simulation.md"
       },
       {
         "kind": "internal",
         "line": 101,
         "path": "SUMMARY.md",
-        "target": "engine/evaluation-calibration.md"
+        "target": "engine/strategy-simulation.md"
       },
       {
         "kind": "internal",
         "line": 102,
         "path": "SUMMARY.md",
-        "target": "engine/program-execution-scoring.md"
+        "target": "engine/contest-strategy.md"
       },
       {
         "kind": "internal",
-        "line": 106,
+        "line": 103,
         "path": "SUMMARY.md",
-        "target": "engine/sparse-and-graph.md"
+        "target": "engine/reproducible-search.md"
       },
       {
         "kind": "internal",
-        "line": 107,
+        "line": 104,
         "path": "SUMMARY.md",
-        "target": "engine/retrieval.md"
+        "target": "engine/degradation-state.md"
       },
       {
         "kind": "internal",
         "line": 108,
         "path": "SUMMARY.md",
-        "target": "engine/data-quality.md"
+        "target": "engine/forecasting.md"
       },
       {
         "kind": "internal",
         "line": 109,
         "path": "SUMMARY.md",
-        "target": "engine/geospatial.md"
+        "target": "engine/ml-esrnn.md"
       },
       {
         "kind": "internal",
         "line": 110,
         "path": "SUMMARY.md",
-        "target": "engine/streaming-sketches.md"
+        "target": "engine/forecast-scoring.md"
       },
       {
         "kind": "internal",
         "line": 111,
         "path": "SUMMARY.md",
-        "target": "engine/streaming-windows.md"
+        "target": "engine/statistical-inference.md"
       },
       {
         "kind": "internal",
         "line": 112,
         "path": "SUMMARY.md",
-        "target": "engine/columnar-queries.md"
+        "target": "engine/causal-inference.md"
       },
       {
         "kind": "internal",
         "line": 113,
         "path": "SUMMARY.md",
-        "target": "engine/sheet-formula-plane.md"
+        "target": "engine/survival-analysis.md"
       },
       {
         "kind": "internal",
         "line": 114,
         "path": "SUMMARY.md",
-        "target": "engine/text-processing-kernels.md"
+        "target": "engine/evaluation-calibration.md"
       },
       {
         "kind": "internal",
         "line": 115,
         "path": "SUMMARY.md",
-        "target": "engine/vector-ranking-kernels.md"
+        "target": "engine/program-execution-scoring.md"
       },
       {
         "kind": "internal",
-        "line": 116,
+        "line": 119,
         "path": "SUMMARY.md",
-        "target": "engine/graph-based-reasoning-kernels.md"
+        "target": "engine/sparse-and-graph.md"
       },
       {
         "kind": "internal",
         "line": 120,
         "path": "SUMMARY.md",
-        "target": "engine/solid-earth-geophysics-kernels.md"
+        "target": "engine/retrieval.md"
       },
       {
         "kind": "internal",
         "line": 121,
         "path": "SUMMARY.md",
-        "target": "engine/surface-processes-and-geomorphology-kernels.md"
+        "target": "engine/data-quality.md"
       },
       {
         "kind": "internal",
         "line": 122,
         "path": "SUMMARY.md",
-        "target": "engine/hydrology-and-water-systems-kernels.md"
+        "target": "engine/geospatial.md"
       },
       {
         "kind": "internal",
         "line": 123,
         "path": "SUMMARY.md",
-        "target": "engine/historical-geology-and-paleoclimate-kernels.md"
+        "target": "engine/streaming-sketches.md"
       },
       {
         "kind": "internal",
         "line": 124,
         "path": "SUMMARY.md",
-        "target": "engine/speleology-mineralogy-and-geochemistry-kernels.md"
+        "target": "engine/streaming-windows.md"
       },
       {
         "kind": "internal",
         "line": 125,
         "path": "SUMMARY.md",
-        "target": "engine/cartography-and-planetary-cosmic-sciences-kernels.md"
+        "target": "engine/columnar-queries.md"
       },
       {
         "kind": "internal",
         "line": 126,
         "path": "SUMMARY.md",
-        "target": "engine/atmospheric-chemistry-and-climate-kernels.md"
+        "target": "engine/sheet-formula-plane.md"
       },
       {
         "kind": "internal",
-        "line": 130,
+        "line": 127,
         "path": "SUMMARY.md",
-        "target": "engine/acoustics-optics-and-radiative-materials-kernels.md"
+        "target": "engine/text-processing-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 131,
+        "line": 128,
         "path": "SUMMARY.md",
-        "target": "engine/structural-and-construction-materials-kernels.md"
+        "target": "engine/vector-ranking-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 132,
+        "line": 129,
         "path": "SUMMARY.md",
-        "target": "engine/corrosion-and-electrochemical-materials-kernels.md"
+        "target": "engine/graph-based-reasoning-kernels.md"
       },
       {
         "kind": "internal",
         "line": 133,
         "path": "SUMMARY.md",
-        "target": "engine/thermal-and-energy-materials-kernels.md"
+        "target": "engine/solid-earth-geophysics-kernels.md"
       },
       {
         "kind": "internal",
         "line": 134,
         "path": "SUMMARY.md",
-        "target": "engine/advanced-nano-and-plasma-materials-kernels.md"
+        "target": "engine/surface-processes-and-geomorphology-kernels.md"
       },
       {
         "kind": "internal",
         "line": 135,
         "path": "SUMMARY.md",
-        "target": "engine/process-and-organic-materials-science-kernels.md"
+        "target": "engine/hydrology-and-water-systems-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 136,
+        "path": "SUMMARY.md",
+        "target": "engine/historical-geology-and-paleoclimate-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 137,
+        "path": "SUMMARY.md",
+        "target": "engine/speleology-mineralogy-and-geochemistry-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 138,
+        "path": "SUMMARY.md",
+        "target": "engine/cartography-and-planetary-cosmic-sciences-kernels.md"
       },
       {
         "kind": "internal",
         "line": 139,
         "path": "SUMMARY.md",
-        "target": "concepts/engine.md"
-      },
-      {
-        "kind": "internal",
-        "line": 140,
-        "path": "SUMMARY.md",
-        "target": "concepts/decision-service.md"
-      },
-      {
-        "kind": "internal",
-        "line": 141,
-        "path": "SUMMARY.md",
-        "target": "concepts/governed-data.md"
-      },
-      {
-        "kind": "internal",
-        "line": 142,
-        "path": "SUMMARY.md",
-        "target": "concepts/capability-plane.md"
+        "target": "engine/atmospheric-chemistry-and-climate-kernels.md"
       },
       {
         "kind": "internal",
         "line": 143,
         "path": "SUMMARY.md",
-        "target": "concepts/simulation-models.md"
+        "target": "engine/acoustics-optics-and-radiative-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 144,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-memory.md"
+        "target": "engine/structural-and-construction-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 145,
         "path": "SUMMARY.md",
-        "target": "concepts/execution-ownership.md"
+        "target": "engine/corrosion-and-electrochemical-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 146,
         "path": "SUMMARY.md",
-        "target": "concepts/deployment-modes.md"
+        "target": "engine/thermal-and-energy-materials-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 150,
+        "line": 147,
         "path": "SUMMARY.md",
-        "target": "guides/first-query.md"
+        "target": "engine/advanced-nano-and-plasma-materials-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 151,
+        "line": 148,
         "path": "SUMMARY.md",
-        "target": "guides/local-query-groupby.md"
+        "target": "engine/process-and-organic-materials-science-kernels.md"
       },
       {
         "kind": "internal",
         "line": 152,
         "path": "SUMMARY.md",
-        "target": "guides/run-a-decision.md"
+        "target": "concepts/engine.md"
       },
       {
         "kind": "internal",
         "line": 153,
         "path": "SUMMARY.md",
-        "target": "guides/governed-decisions.md"
+        "target": "concepts/decision-service.md"
       },
       {
         "kind": "internal",
         "line": 154,
         "path": "SUMMARY.md",
-        "target": "guides/renewal-capacity-allocation.md"
+        "target": "concepts/governed-data.md"
       },
       {
         "kind": "internal",
         "line": 155,
         "path": "SUMMARY.md",
-        "target": "guides/simulate.md"
+        "target": "concepts/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 156,
         "path": "SUMMARY.md",
-        "target": "guides/what-if.md"
+        "target": "concepts/simulation-models.md"
       },
       {
         "kind": "internal",
         "line": 157,
         "path": "SUMMARY.md",
-        "target": "guides/recommend-and-score.md"
+        "target": "concepts/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 158,
         "path": "SUMMARY.md",
-        "target": "guides/governed-query.md"
+        "target": "concepts/execution-ownership.md"
       },
       {
         "kind": "internal",
         "line": 159,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory.md"
-      },
-      {
-        "kind": "internal",
-        "line": 160,
-        "path": "SUMMARY.md",
-        "target": "guides/decision-memory-api.md"
-      },
-      {
-        "kind": "internal",
-        "line": 161,
-        "path": "SUMMARY.md",
-        "target": "guides/execution-policy.md"
-      },
-      {
-        "kind": "internal",
-        "line": 162,
-        "path": "SUMMARY.md",
-        "target": "guides/connect-data.md"
+        "target": "concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
         "line": 163,
         "path": "SUMMARY.md",
-        "target": "guides/instant-map.md"
+        "target": "guides/first-query.md"
       },
       {
         "kind": "internal",
         "line": 164,
         "path": "SUMMARY.md",
-        "target": "guides/capabilities.md"
+        "target": "guides/local-query-groupby.md"
       },
       {
         "kind": "internal",
         "line": 165,
         "path": "SUMMARY.md",
-        "target": "guides/capability-bindings.md"
+        "target": "guides/run-a-decision.md"
       },
       {
         "kind": "internal",
         "line": 166,
         "path": "SUMMARY.md",
-        "target": "guides/external-mcp.md"
+        "target": "guides/governed-decisions.md"
       },
       {
         "kind": "internal",
         "line": 167,
         "path": "SUMMARY.md",
-        "target": "guides/agent-runs.md"
+        "target": "guides/renewal-capacity-allocation.md"
       },
       {
         "kind": "internal",
         "line": 168,
         "path": "SUMMARY.md",
-        "target": "guides/async-jobs.md"
+        "target": "guides/simulate.md"
       },
       {
         "kind": "internal",
         "line": 169,
         "path": "SUMMARY.md",
-        "target": "guides/repository-intelligence.md"
+        "target": "guides/what-if.md"
       },
       {
         "kind": "internal",
         "line": 170,
         "path": "SUMMARY.md",
-        "target": "guides/repository-fix.md"
+        "target": "guides/recommend-and-score.md"
       },
       {
         "kind": "internal",
         "line": 171,
         "path": "SUMMARY.md",
-        "target": "guides/security-analysis.md"
+        "target": "guides/governed-query.md"
       },
       {
         "kind": "internal",
         "line": 172,
         "path": "SUMMARY.md",
-        "target": "guides/triggers.md"
+        "target": "guides/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 173,
         "path": "SUMMARY.md",
-        "target": "guides/webhooks.md"
+        "target": "guides/decision-memory-api.md"
       },
       {
         "kind": "internal",
         "line": 174,
         "path": "SUMMARY.md",
-        "target": "guides/byok.md"
+        "target": "guides/execution-policy.md"
       },
       {
         "kind": "internal",
         "line": 175,
         "path": "SUMMARY.md",
-        "target": "guides/device-binding.md"
+        "target": "guides/connect-data.md"
       },
       {
         "kind": "internal",
         "line": 176,
         "path": "SUMMARY.md",
-        "target": "guides/air-gapped.md"
+        "target": "guides/instant-map.md"
       },
       {
         "kind": "internal",
         "line": 177,
         "path": "SUMMARY.md",
-        "target": "guides/ci-cd.md"
+        "target": "guides/capabilities.md"
       },
       {
         "kind": "internal",
         "line": 178,
         "path": "SUMMARY.md",
-        "target": "guides/run-qwen3-decode.md"
+        "target": "guides/capability-bindings.md"
       },
       {
         "kind": "internal",
         "line": 179,
         "path": "SUMMARY.md",
-        "target": "guides/run-qwen3-family-inference.md"
+        "target": "guides/external-mcp.md"
+      },
+      {
+        "kind": "internal",
+        "line": 180,
+        "path": "SUMMARY.md",
+        "target": "guides/agent-runs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 181,
+        "path": "SUMMARY.md",
+        "target": "guides/async-jobs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 182,
+        "path": "SUMMARY.md",
+        "target": "guides/repository-intelligence.md"
       },
       {
         "kind": "internal",
         "line": 183,
         "path": "SUMMARY.md",
-        "target": "llm/models.md"
+        "target": "guides/repository-fix.md"
       },
       {
         "kind": "internal",
         "line": 184,
         "path": "SUMMARY.md",
-        "target": "llm/completions.md"
+        "target": "guides/security-analysis.md"
       },
       {
         "kind": "internal",
         "line": 185,
         "path": "SUMMARY.md",
-        "target": "llm/embeddings.md"
+        "target": "guides/triggers.md"
+      },
+      {
+        "kind": "internal",
+        "line": 186,
+        "path": "SUMMARY.md",
+        "target": "guides/webhooks.md"
+      },
+      {
+        "kind": "internal",
+        "line": 187,
+        "path": "SUMMARY.md",
+        "target": "guides/byok.md"
+      },
+      {
+        "kind": "internal",
+        "line": 188,
+        "path": "SUMMARY.md",
+        "target": "guides/device-binding.md"
       },
       {
         "kind": "internal",
         "line": 189,
         "path": "SUMMARY.md",
-        "target": "sdk/python.md"
+        "target": "guides/air-gapped.md"
       },
       {
         "kind": "internal",
         "line": 190,
         "path": "SUMMARY.md",
-        "target": "sdk/python/overview.md"
+        "target": "guides/ci-cd.md"
       },
       {
         "kind": "internal",
         "line": 191,
         "path": "SUMMARY.md",
-        "target": "sdk/python/simulations-and-queries.md"
+        "target": "guides/run-qwen3-decode.md"
       },
       {
         "kind": "internal",
         "line": 192,
         "path": "SUMMARY.md",
-        "target": "sdk/python/decisions-and-products.md"
-      },
-      {
-        "kind": "internal",
-        "line": 193,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/connectors-and-data.md"
-      },
-      {
-        "kind": "internal",
-        "line": 194,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/repositories.md"
-      },
-      {
-        "kind": "internal",
-        "line": 195,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/llm.md"
+        "target": "guides/run-qwen3-family-inference.md"
       },
       {
         "kind": "internal",
         "line": 196,
         "path": "SUMMARY.md",
-        "target": "sdk/python/agent-runs.md"
+        "target": "llm/models.md"
       },
       {
         "kind": "internal",
         "line": 197,
         "path": "SUMMARY.md",
-        "target": "sdk/python/jobs-triggers-capabilities.md"
+        "target": "llm/completions.md"
       },
       {
         "kind": "internal",
         "line": 198,
         "path": "SUMMARY.md",
-        "target": "sdk/python/account-and-control-plane.md"
-      },
-      {
-        "kind": "internal",
-        "line": 199,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript.md"
-      },
-      {
-        "kind": "internal",
-        "line": 200,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 201,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/simulations-and-queries.md"
+        "target": "llm/embeddings.md"
       },
       {
         "kind": "internal",
         "line": 202,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/decisions-and-products.md"
+        "target": "sdk/python.md"
       },
       {
         "kind": "internal",
         "line": 203,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/llm.md"
+        "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
         "line": 204,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/connectors-and-data.md"
+        "target": "sdk/python/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 205,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/repositories.md"
+        "target": "sdk/python/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 206,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/agent-runs.md"
+        "target": "sdk/python/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 207,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/jobs-triggers-capabilities.md"
+        "target": "sdk/python/repositories.md"
       },
       {
         "kind": "internal",
         "line": 208,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/account-and-control-plane.md"
+        "target": "sdk/python/llm.md"
       },
       {
         "kind": "internal",
         "line": 209,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp.md"
+        "target": "sdk/python/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 210,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp-registry.md"
+        "target": "sdk/python/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 211,
         "path": "SUMMARY.md",
-        "target": "sdk/tool-discovery.md"
+        "target": "sdk/python/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 212,
         "path": "SUMMARY.md",
-        "target": "sdk/testing.md"
+        "target": "sdk/typescript.md"
       },
       {
         "kind": "internal",
         "line": 213,
         "path": "SUMMARY.md",
-        "target": "cli.md"
+        "target": "sdk/typescript/overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 214,
+        "path": "SUMMARY.md",
+        "target": "sdk/typescript/simulations-and-queries.md"
+      },
+      {
+        "kind": "internal",
+        "line": 215,
+        "path": "SUMMARY.md",
+        "target": "sdk/typescript/decisions-and-products.md"
+      },
+      {
+        "kind": "internal",
+        "line": 216,
+        "path": "SUMMARY.md",
+        "target": "sdk/typescript/llm.md"
       },
       {
         "kind": "internal",
         "line": 217,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/overview.md"
+        "target": "sdk/typescript/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 218,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/data.md"
+        "target": "sdk/typescript/repositories.md"
       },
       {
         "kind": "internal",
         "line": 219,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/connectors.md"
+        "target": "sdk/typescript/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 220,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/query.md"
+        "target": "sdk/typescript/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 221,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/repository-intelligence.md"
+        "target": "sdk/typescript/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 222,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/llm.md"
+        "target": "sdk/mcp.md"
       },
       {
         "kind": "internal",
         "line": 223,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/capability-plane.md"
+        "target": "sdk/mcp-registry.md"
       },
       {
         "kind": "internal",
         "line": 224,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/decisions.md"
+        "target": "sdk/tool-discovery.md"
       },
       {
         "kind": "internal",
         "line": 225,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/jobs-and-triggers.md"
+        "target": "sdk/testing.md"
       },
       {
         "kind": "internal",
         "line": 226,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/agent-runs.md"
+        "target": "cli.md"
       },
       {
         "kind": "internal",
-        "line": 227,
+        "line": 230,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/control-plane.md"
+        "target": "mcp-tools/overview.md"
       },
       {
         "kind": "internal",
-        "line": 228,
+        "line": 231,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/account-and-meta.md"
+        "target": "mcp-tools/data.md"
       },
       {
         "kind": "internal",
         "line": 232,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/overview.md"
+        "target": "mcp-tools/connectors.md"
       },
       {
         "kind": "internal",
         "line": 233,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/copilot-teams.md"
+        "target": "mcp-tools/query.md"
       },
       {
         "kind": "internal",
         "line": 234,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/excel.md"
+        "target": "mcp-tools/repository-intelligence.md"
       },
       {
         "kind": "internal",
         "line": 235,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/entra-sso.md"
+        "target": "mcp-tools/llm.md"
       },
       {
         "kind": "internal",
         "line": 236,
         "path": "SUMMARY.md",
-        "target": "integrations/azure/gateway.md"
+        "target": "mcp-tools/capability-plane.md"
+      },
+      {
+        "kind": "internal",
+        "line": 237,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/decisions.md"
+      },
+      {
+        "kind": "internal",
+        "line": 238,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/jobs-and-triggers.md"
+      },
+      {
+        "kind": "internal",
+        "line": 239,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 240,
         "path": "SUMMARY.md",
-        "target": "integrations/identity/generic-oidc.md"
+        "target": "mcp-tools/control-plane.md"
       },
       {
         "kind": "internal",
-        "line": 244,
+        "line": 241,
         "path": "SUMMARY.md",
-        "target": "self-hosting.md"
+        "target": "mcp-tools/account-and-meta.md"
       },
       {
         "kind": "internal",
         "line": 245,
         "path": "SUMMARY.md",
-        "target": "configuration.md"
+        "target": "integrations/microsoft/overview.md"
       },
       {
         "kind": "internal",
         "line": 246,
         "path": "SUMMARY.md",
-        "target": "operate/monitoring.md"
+        "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
         "line": 247,
         "path": "SUMMARY.md",
-        "target": "operate/byok-kms.md"
+        "target": "integrations/microsoft/excel.md"
       },
       {
         "kind": "internal",
         "line": 248,
         "path": "SUMMARY.md",
-        "target": "operate/device-key-store.md"
+        "target": "integrations/microsoft/entra-sso.md"
       },
       {
         "kind": "internal",
         "line": 249,
         "path": "SUMMARY.md",
-        "target": "operate/privacy-egress.md"
-      },
-      {
-        "kind": "internal",
-        "line": 250,
-        "path": "SUMMARY.md",
-        "target": "operate/teams-rbac.md"
-      },
-      {
-        "kind": "internal",
-        "line": 251,
-        "path": "SUMMARY.md",
-        "target": "operate/deployments-and-nodes.md"
-      },
-      {
-        "kind": "internal",
-        "line": 252,
-        "path": "SUMMARY.md",
-        "target": "licensing.md"
+        "target": "integrations/azure/gateway.md"
       },
       {
         "kind": "internal",
         "line": 253,
         "path": "SUMMARY.md",
-        "target": "billing.md"
+        "target": "integrations/identity/generic-oidc.md"
       },
       {
         "kind": "internal",
         "line": 257,
         "path": "SUMMARY.md",
-        "target": "trust/overview.md"
+        "target": "self-hosting.md"
       },
       {
         "kind": "internal",
         "line": 258,
         "path": "SUMMARY.md",
-        "target": "trust/governed-execution.md"
+        "target": "configuration.md"
       },
       {
         "kind": "internal",
         "line": 259,
         "path": "SUMMARY.md",
-        "target": "trust/data-boundaries.md"
+        "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
         "line": 260,
         "path": "SUMMARY.md",
-        "target": "trust/audit-and-evidence.md"
+        "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
         "line": 261,
         "path": "SUMMARY.md",
-        "target": "trust/identity-and-access.md"
+        "target": "operate/device-key-store.md"
       },
       {
         "kind": "internal",
         "line": 262,
         "path": "SUMMARY.md",
-        "target": "trust/capability-status.md"
+        "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
         "line": 263,
         "path": "SUMMARY.md",
-        "target": "trust/protocol-compatibility.md"
+        "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
         "line": 264,
         "path": "SUMMARY.md",
-        "target": "trust/architecture.md"
+        "target": "operate/deployments-and-nodes.md"
       },
       {
         "kind": "internal",
         "line": 265,
         "path": "SUMMARY.md",
-        "target": "trust/evidence-walkthrough.md"
+        "target": "licensing.md"
       },
       {
         "kind": "internal",
         "line": 266,
         "path": "SUMMARY.md",
-        "target": "trust/security-questionnaire.md"
+        "target": "billing.md"
       },
       {
         "kind": "internal",
-        "line": 267,
+        "line": 270,
         "path": "SUMMARY.md",
-        "target": "trust/supply-chain.md"
+        "target": "trust/overview.md"
       },
       {
         "kind": "internal",
-        "line": 268,
+        "line": 271,
         "path": "SUMMARY.md",
-        "target": "trust/threat-model.md"
+        "target": "trust/governed-execution.md"
       },
       {
         "kind": "internal",
-        "line": 269,
+        "line": 272,
         "path": "SUMMARY.md",
-        "target": "trust/support-policy.md"
+        "target": "trust/data-boundaries.md"
       },
       {
         "kind": "internal",
         "line": 273,
         "path": "SUMMARY.md",
-        "target": "api/overview.md"
+        "target": "trust/audit-and-evidence.md"
       },
       {
         "kind": "internal",
         "line": 274,
         "path": "SUMMARY.md",
-        "target": "api/reference.md"
+        "target": "trust/identity-and-access.md"
       },
       {
         "kind": "internal",
         "line": 275,
         "path": "SUMMARY.md",
-        "target": "api/streaming.md"
+        "target": "trust/capability-status.md"
       },
       {
         "kind": "internal",
         "line": 276,
         "path": "SUMMARY.md",
-        "target": "api/explorer.md"
+        "target": "trust/protocol-compatibility.md"
       },
       {
         "kind": "internal",
         "line": 277,
         "path": "SUMMARY.md",
-        "target": "api/errors.md"
+        "target": "trust/architecture.md"
       },
       {
         "kind": "internal",
         "line": 278,
         "path": "SUMMARY.md",
-        "target": "api/stability.md"
+        "target": "trust/evidence-walkthrough.md"
       },
       {
         "kind": "internal",
         "line": 279,
         "path": "SUMMARY.md",
-        "target": "api/rate-limits.md"
+        "target": "trust/security-questionnaire.md"
       },
       {
         "kind": "internal",
-        "line": 283,
+        "line": 280,
         "path": "SUMMARY.md",
-        "target": "connectors/overview.md"
+        "target": "trust/supply-chain.md"
       },
       {
         "kind": "internal",
-        "line": 284,
+        "line": 281,
         "path": "SUMMARY.md",
-        "target": "connectors/databases.md"
+        "target": "trust/threat-model.md"
       },
       {
         "kind": "internal",
-        "line": 285,
+        "line": 282,
         "path": "SUMMARY.md",
-        "target": "connectors/reference.md"
+        "target": "trust/support-policy.md"
       },
       {
         "kind": "internal",
         "line": 286,
         "path": "SUMMARY.md",
-        "target": "connectors/snowflake.md"
+        "target": "api/overview.md"
       },
       {
         "kind": "internal",
         "line": 287,
         "path": "SUMMARY.md",
-        "target": "connectors/bigquery.md"
+        "target": "api/reference.md"
       },
       {
         "kind": "internal",
         "line": 288,
         "path": "SUMMARY.md",
-        "target": "connectors/clickhouse.md"
+        "target": "api/streaming.md"
       },
       {
         "kind": "internal",
         "line": 289,
         "path": "SUMMARY.md",
-        "target": "connectors/postgres.md"
+        "target": "api/explorer.md"
       },
       {
         "kind": "internal",
         "line": 290,
         "path": "SUMMARY.md",
-        "target": "connectors/oracle.md"
+        "target": "api/errors.md"
       },
       {
         "kind": "internal",
         "line": 291,
         "path": "SUMMARY.md",
-        "target": "connectors/mysql.md"
+        "target": "api/stability.md"
       },
       {
         "kind": "internal",
         "line": 292,
         "path": "SUMMARY.md",
-        "target": "connectors/mssql.md"
-      },
-      {
-        "kind": "internal",
-        "line": 293,
-        "path": "SUMMARY.md",
-        "target": "connectors/sqlite.md"
-      },
-      {
-        "kind": "internal",
-        "line": 294,
-        "path": "SUMMARY.md",
-        "target": "connectors/redshift.md"
-      },
-      {
-        "kind": "internal",
-        "line": 295,
-        "path": "SUMMARY.md",
-        "target": "connectors/s3.md"
+        "target": "api/rate-limits.md"
       },
       {
         "kind": "internal",
         "line": 296,
         "path": "SUMMARY.md",
-        "target": "connectors/gcs.md"
+        "target": "connectors/overview.md"
       },
       {
         "kind": "internal",
         "line": 297,
         "path": "SUMMARY.md",
-        "target": "connectors/azure-blob.md"
+        "target": "connectors/databases.md"
       },
       {
         "kind": "internal",
         "line": 298,
         "path": "SUMMARY.md",
-        "target": "connectors/redis.md"
+        "target": "connectors/reference.md"
       },
       {
         "kind": "internal",
         "line": 299,
         "path": "SUMMARY.md",
-        "target": "connectors/neo4j.md"
+        "target": "connectors/snowflake.md"
       },
       {
         "kind": "internal",
         "line": 300,
         "path": "SUMMARY.md",
-        "target": "connectors/elasticsearch.md"
+        "target": "connectors/bigquery.md"
       },
       {
         "kind": "internal",
         "line": 301,
         "path": "SUMMARY.md",
-        "target": "connectors/files.md"
+        "target": "connectors/clickhouse.md"
       },
       {
         "kind": "internal",
         "line": 302,
         "path": "SUMMARY.md",
-        "target": "connectors/code-repositories.md"
+        "target": "connectors/postgres.md"
       },
       {
         "kind": "internal",
         "line": 303,
         "path": "SUMMARY.md",
-        "target": "connectors/rest-api.md"
+        "target": "connectors/oracle.md"
+      },
+      {
+        "kind": "internal",
+        "line": 304,
+        "path": "SUMMARY.md",
+        "target": "connectors/mysql.md"
+      },
+      {
+        "kind": "internal",
+        "line": 305,
+        "path": "SUMMARY.md",
+        "target": "connectors/mssql.md"
+      },
+      {
+        "kind": "internal",
+        "line": 306,
+        "path": "SUMMARY.md",
+        "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
         "line": 307,
         "path": "SUMMARY.md",
-        "target": "benchmarks/overview.md"
+        "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
         "line": 308,
         "path": "SUMMARY.md",
-        "target": "benchmarks/compute-kernels.md"
+        "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
         "line": 309,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-kernel-benchmarks.md"
+        "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
         "line": 310,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-llm-throughput.md"
+        "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
         "line": 311,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-llm-serving.md"
+        "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
         "line": 312,
         "path": "SUMMARY.md",
-        "target": "benchmarks/attention.md"
+        "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
         "line": 313,
         "path": "SUMMARY.md",
-        "target": "benchmarks/normalization.md"
+        "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
         "line": 314,
         "path": "SUMMARY.md",
-        "target": "benchmarks/feed-forward.md"
+        "target": "connectors/files.md"
       },
       {
         "kind": "internal",
         "line": 315,
         "path": "SUMMARY.md",
-        "target": "benchmarks/code-retrieval.md"
+        "target": "connectors/code-repositories.md"
       },
       {
         "kind": "internal",
         "line": 316,
         "path": "SUMMARY.md",
-        "target": "benchmarks/dataframe-groupby.md"
-      },
-      {
-        "kind": "internal",
-        "line": 317,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/sort.md"
-      },
-      {
-        "kind": "internal",
-        "line": 318,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/top-k.md"
-      },
-      {
-        "kind": "internal",
-        "line": 319,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/graph-betweenness.md"
+        "target": "connectors/rest-api.md"
       },
       {
         "kind": "internal",
         "line": 320,
         "path": "SUMMARY.md",
-        "target": "benchmarks/survival-analysis.md"
+        "target": "benchmarks/overview.md"
       },
       {
         "kind": "internal",
         "line": 321,
         "path": "SUMMARY.md",
-        "target": "benchmarks/least-squares-accuracy.md"
+        "target": "benchmarks/compute-kernels.md"
       },
       {
         "kind": "internal",
         "line": 322,
         "path": "SUMMARY.md",
-        "target": "benchmarks/forecasting-joint-axis.md"
+        "target": "benchmarks/nvidia-kernel-benchmarks.md"
       },
       {
         "kind": "internal",
         "line": 323,
         "path": "SUMMARY.md",
-        "target": "benchmarks/finqa-exact-execution.md"
+        "target": "benchmarks/nvidia-llm-throughput.md"
       },
       {
         "kind": "internal",
         "line": 324,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-inference-overview.md"
+        "target": "benchmarks/nvidia-llm-serving.md"
       },
       {
         "kind": "internal",
         "line": 325,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-prefill-throughput.md"
+        "target": "benchmarks/attention.md"
       },
       {
         "kind": "internal",
         "line": 326,
         "path": "SUMMARY.md",
-        "target": "benchmarks/decode-throughput.md"
+        "target": "benchmarks/normalization.md"
       },
       {
         "kind": "internal",
         "line": 327,
         "path": "SUMMARY.md",
-        "target": "benchmarks/batched-decode-throughput.md"
+        "target": "benchmarks/feed-forward.md"
       },
       {
         "kind": "internal",
         "line": 328,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-tool-calling-uplift.md"
+        "target": "benchmarks/code-retrieval.md"
+      },
+      {
+        "kind": "internal",
+        "line": 329,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/dataframe-groupby.md"
+      },
+      {
+        "kind": "internal",
+        "line": 330,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 331,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/top-k.md"
       },
       {
         "kind": "internal",
         "line": 332,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/graph-betweenness.md"
       },
       {
         "kind": "internal",
         "line": 333,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "benchmarks/survival-analysis.md"
       },
       {
         "kind": "internal",
         "line": 334,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "benchmarks/least-squares-accuracy.md"
       },
       {
         "kind": "internal",
         "line": 335,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "benchmarks/forecasting-joint-axis.md"
       },
       {
         "kind": "internal",
         "line": 336,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/finqa-exact-execution.md"
+      },
+      {
+        "kind": "internal",
+        "line": 337,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 338,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 339,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 340,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 341,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 345,
+        "path": "SUMMARY.md",
+        "target": "troubleshooting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 346,
+        "path": "SUMMARY.md",
+        "target": "help/glossary.md"
+      },
+      {
+        "kind": "internal",
+        "line": 347,
+        "path": "SUMMARY.md",
+        "target": "help/quick-reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 348,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 349,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -39327,6 +39755,18 @@
       },
       {
         "kind": "internal",
+        "line": 302,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 305,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 210,
         "path": "engine/capabilities.md",
         "target": "runtime-libraries.md"
@@ -39471,6 +39911,48 @@
       },
       {
         "kind": "internal",
+        "line": 106,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "optimization-heuristics.md"
+      },
+      {
+        "kind": "internal",
+        "line": 118,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "optimization.md#assignment-and-knowing-the-matching-is-optimal"
+      },
+      {
+        "kind": "internal",
+        "line": 125,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "optimization-heuristics.md#a-certified-minimiser-and-a-measured-gap-when-there-is-none"
+      },
+      {
+        "kind": "internal",
+        "line": 144,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "optimization.md"
+      },
+      {
+        "kind": "internal",
+        "line": 350,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "optimization.md"
+      },
+      {
+        "kind": "internal",
+        "line": 352,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "optimization-heuristics.md"
+      },
+      {
+        "kind": "internal",
+        "line": 354,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 197,
         "path": "engine/compression-kernels.md",
         "target": "attention-kernels.md"
@@ -39498,6 +39980,30 @@
         "line": 102,
         "path": "engine/contest-strategy.md",
         "target": "forecast-scoring.md"
+      },
+      {
+        "kind": "internal",
+        "line": 121,
+        "path": "engine/core-linear-algebra-kernels.md",
+        "target": "ml-eigendecomposition.md"
+      },
+      {
+        "kind": "internal",
+        "line": 239,
+        "path": "engine/core-linear-algebra-kernels.md",
+        "target": "capabilities.md"
+      },
+      {
+        "kind": "internal",
+        "line": 263,
+        "path": "engine/core-linear-algebra-kernels.md",
+        "target": "ml-eigendecomposition.md"
+      },
+      {
+        "kind": "internal",
+        "line": 265,
+        "path": "engine/core-linear-algebra-kernels.md",
+        "target": "gemm-kernels.md"
       },
       {
         "kind": "anchor",
@@ -39563,6 +40069,24 @@
         "kind": "internal",
         "line": 81,
         "path": "engine/degradation-state.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 122,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "target": "ml-eigendecomposition.md"
+      },
+      {
+        "kind": "internal",
+        "line": 353,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
+        "target": "ml-eigendecomposition.md"
+      },
+      {
+        "kind": "internal",
+        "line": 356,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
         "target": "runtime-library-catalog.md"
       },
       {
@@ -40545,6 +41069,54 @@
       },
       {
         "kind": "internal",
+        "line": 231,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 233,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 237,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "target": "optimization.md"
+      },
+      {
+        "kind": "internal",
+        "line": 242,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 243,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "target": "optimization.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 114,
+        "path": "engine/probability-distributions-and-dependence-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 250,
+        "path": "engine/probability-distributions-and-dependence-kernels.md",
+        "target": "statistical-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 252,
+        "path": "engine/probability-distributions-and-dependence-kernels.md",
+        "target": "discrete-event-simulation.md"
+      },
+      {
+        "kind": "internal",
         "line": 294,
         "path": "engine/process-and-organic-materials-science-kernels.md",
         "target": "ml-classical-algorithms.md"
@@ -40584,6 +41156,18 @@
         "line": 217,
         "path": "engine/program-execution-scoring.md",
         "target": "capabilities.md"
+      },
+      {
+        "kind": "internal",
+        "line": 272,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 273,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
+        "target": "mixture-of-experts-and-routing-kernels.md"
       },
       {
         "kind": "internal",
@@ -40880,6 +41464,60 @@
         "target": "forecasting.md"
       },
       {
+        "kind": "internal",
+        "line": 18,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 228,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 260,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "feedback-loops-and-feature-engineering-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 290,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "forecasting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 295,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "ml-arima.md"
+      },
+      {
+        "kind": "internal",
+        "line": 368,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "forecasting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 368,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "ml-arima.md"
+      },
+      {
+        "kind": "internal",
+        "line": 369,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 371,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
         "kind": "anchor",
         "line": 64,
         "path": "engine/solid-earth-geophysics-kernels.md",
@@ -40917,6 +41555,30 @@
       },
       {
         "kind": "internal",
+        "line": 61,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "target": "sparse-and-graph.md"
+      },
+      {
+        "kind": "internal",
+        "line": 128,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "target": "ml-tensor2d.md"
+      },
+      {
+        "kind": "internal",
+        "line": 228,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "target": "sparse-and-graph.md"
+      },
+      {
+        "kind": "internal",
+        "line": 229,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "target": "tensorx-kernels.md"
+      },
+      {
+        "kind": "internal",
         "line": 332,
         "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
         "target": "acoustics-optics-and-radiative-materials-kernels.md"
@@ -40931,6 +41593,24 @@
         "kind": "internal",
         "line": 336,
         "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 152,
+        "path": "engine/statistical-computing-kernels.md",
+        "target": "statistical-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 225,
+        "path": "engine/statistical-computing-kernels.md",
+        "target": "statistical-inference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 226,
+        "path": "engine/statistical-computing-kernels.md",
         "target": "runtime-library-catalog.md"
       },
       {
@@ -45279,17 +45959,17 @@
         "term": "algenta"
       },
       {
-        "line": 177,
+        "line": 190,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 212,
+        "line": 225,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 232,
+        "line": 245,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
@@ -47324,6 +48004,11 @@
         "term": "algenta"
       },
       {
+        "line": 20,
+        "path": "engine/calculus-and-differential-equation-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 17,
         "path": "engine/capabilities.md",
         "term": "algenta"
@@ -47394,6 +48079,11 @@
         "term": "algenta"
       },
       {
+        "line": 24,
+        "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 18,
         "path": "engine/compression-kernels.md",
         "term": "algenta"
@@ -47401,6 +48091,11 @@
       {
         "line": 17,
         "path": "engine/contest-strategy.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
+        "path": "engine/core-linear-algebra-kernels.md",
         "term": "algenta"
       },
       {
@@ -47421,6 +48116,11 @@
       {
         "line": 14,
         "path": "engine/degradation-state.md",
+        "term": "algenta"
+      },
+      {
+        "line": 20,
+        "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
         "term": "algenta"
       },
       {
@@ -47589,6 +48289,16 @@
         "term": "algenta"
       },
       {
+        "line": 22,
+        "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 26,
+        "path": "engine/probability-distributions-and-dependence-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 18,
         "path": "engine/process-and-organic-materials-science-kernels.md",
         "term": "algenta"
@@ -47596,6 +48306,11 @@
       {
         "line": 22,
         "path": "engine/program-execution-scoring.md",
+        "term": "algenta"
+      },
+      {
+        "line": 31,
+        "path": "engine/quantum-computing-and-formal-logic-kernels.md",
         "term": "algenta"
       },
       {
@@ -47714,6 +48429,11 @@
         "term": "algenta"
       },
       {
+        "line": 26,
+        "path": "engine/signal-transforms-and-processing-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 20,
         "path": "engine/solid-earth-geophysics-kernels.md",
         "term": "algenta"
@@ -47724,8 +48444,23 @@
         "term": "algenta"
       },
       {
+        "line": 22,
+        "path": "engine/sparse-and-tensor-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 21,
         "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
+        "path": "engine/statistical-computing-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 67,
+        "path": "engine/statistical-computing-kernels.md",
         "term": "algenta"
       },
       {
@@ -58509,8 +59244,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 265,
-      "links": 265,
+      "internal_links": 275,
+      "links": 275,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -60273,6 +61008,31 @@
       "shell_commands": 4
     },
     {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/calculus-and-differential-equation-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 8,
       "command_counts": {
         "destructive_mutation": 0,
@@ -60423,6 +61183,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "engine/combinatorics-convex-optimization-and-scipy-compat-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 5,
       "command_counts": {
         "destructive_mutation": 0,
@@ -60462,6 +61247,31 @@
       "internal_links": 2,
       "links": 2,
       "path": "engine/contest-strategy.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "engine/core-linear-algebra-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -60562,6 +61372,31 @@
       "internal_links": 2,
       "links": 2,
       "path": "engine/degradation-state.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/dimensionality-information-theory-and-complex-systems-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -61873,6 +62708,56 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "engine/polynomial-root-finding-and-number-theory-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 3,
+      "path": "engine/probability-distributions-and-dependence-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 11,
       "command_counts": {
         "destructive_mutation": 0,
@@ -61912,6 +62797,31 @@
       "internal_links": 5,
       "links": 5,
       "path": "engine/program-execution-scoring.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/quantum-computing-and-formal-logic-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -62148,6 +63058,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 9,
+      "links": 9,
+      "path": "engine/signal-transforms-and-processing-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 10,
       "command_counts": {
         "destructive_mutation": 0,
@@ -62198,6 +63133,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "engine/sparse-and-tensor-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 10,
       "command_counts": {
         "destructive_mutation": 0,
@@ -62214,6 +63174,31 @@
       "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
       "product_claims": {
         "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/statistical-computing-kernels.md",
+      "product_claims": {
+        "algenta": 2,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -65157,7 +66142,7 @@
     "source_paths": 230
   },
   "snippets": {
-    "code_fences": 1633,
+    "code_fences": 1679,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 857,
@@ -65171,7 +66156,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1188,
+    "claim_mentions": 1199,
     "command_execution_percent": 100.0,
     "commands_classified": 857,
     "commands_executed": 67,
@@ -65179,22 +66164,22 @@
     "endpoint_mentions": 2430,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1720,
+    "links_checked": 1772,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 266,
+    "pages_checked": 276,
     "shell_syntax_validation_percent": 100.0,
     "skips": 791,
-    "snippets_checked": 1633,
+    "snippets_checked": 1679,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7828,
+    "source_items_inventoried": 7937,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1188,
-    "code_fences": 1633,
+    "claim_mentions": 1199,
+    "code_fences": 1679,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
@@ -65206,18 +66191,18 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 790,
-    "internal_links": 1655,
-    "links": 1720,
-    "pages": 266,
+    "internal_links": 1706,
+    "links": 1772,
+    "pages": 276,
     "product_claims": {
-      "algenta": 1178,
+      "algenta": 1189,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 10
     },
-    "public_pages": 265,
+    "public_pages": 275,
     "requires_environment_commands": 390,
     "runnable_commands": 67,
     "safe_static_commands": 67,
@@ -65226,7 +66211,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 791,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7828,
+    "source_items_inventoried": 7937,
     "static_only_commands": 80,
     "static_or_guarded_commands": 790,
     "unexecuted_runnable_commands": 0,

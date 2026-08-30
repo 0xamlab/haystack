@@ -47,9 +47,23 @@ magnetism, metallurgy, semiconductors, cryogenics, cryology, thermodynamics, bat
 wind_energy, photovoltaics, nanotechnology, plasma_physics, tribology, tribochemistry, antenna,
 brewing, fermentation, food_science, perfumery, paper_science, wood_science, textile, and
 combustion -- bringing the count to 317 of 643 real modules (49%), with 326 modules still
-undocumented by narrative beyond their generated table row.
+undocumented by narrative beyond their generated table row. The A6 batch-6 pass (2026-08-30, 10
+new family pages, not a formatting fix) then closed 48 more previously-undocumented modules
+spanning core linear algebra -- linalg, linalg_ext, matrix_decomp, matrix_ops -- sparse and tensor
+structures -- sparse, sparse_vector, tensor, tensor_ops -- probability distributions and
+dependence -- distributions, distribution_fit, probability, copula, correlation -- statistical
+computing -- stats, stats_bootstrap, stochastic -- calculus and differential equations --
+interpolate, integrate, ode, pde -- polynomial/root-finding/number theory -- polynomial,
+root_finding, number_theory -- combinatorics, convex optimization, and scipy-compatibility --
+combinatorial, convex, linear_programming, sampling, scipy_optimize_ops, scipy_stats_ops --
+signal transforms and processing -- fft, spectral, wavelet, transform, signal_processing, series --
+dimensionality, information theory, and complex systems -- dimensions, dimensionality,
+information_theory, special_functions, chaos, cellular_automata -- and quantum computing and
+formal logic -- quantum, quantum_computing, boolean_algebra, category_theory, formal_logic,
+fuzzy_logic, logic_circuit -- bringing the count to 365 of 643 real modules (57%), with 278
+modules still undocumented by narrative beyond their generated table row.
 
-WHY THIS SCRIPT DOES NOT GATE ON THE 326 GAP. That gap is a documentation-writing backlog, not a
+WHY THIS SCRIPT DOES NOT GATE ON THE 278 GAP. That gap is a documentation-writing backlog, not a
 regression -- something a CI check can flag but cannot itself close, and gating hard on it would
 either block every unrelated PR immediately or get disabled at the first annoyance (the same trap
 `scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
@@ -61,7 +75,7 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (326 modules, as of writing) rather than hiding it inside a passing
+  3. Prints the honest gap (278 modules, as of writing) rather than hiding it inside a passing
      check -- `--json` includes it explicitly under "undocumented_by_narrative".
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
@@ -134,10 +148,10 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (317,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-5 pass
-# added 13 new family pages' worth of module tables (68 modules) on top of the prior floor of 247.
-DOCUMENTED_FLOOR = 315
+# Set from the actual measured count under the precise "Module table, first cell only" rule (365,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-6 pass
+# added 10 new family pages' worth of module tables (48 modules) on top of the prior floor of 315.
+DOCUMENTED_FLOOR = 363
 
 
 def real_modules() -> set[str]:
