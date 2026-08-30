@@ -84,9 +84,25 @@ graph kernels -- exactnum.eft, exactnum.lstsq, graph.algorithms, graph.weighted 
 and resident-context kernels -- lossk.contract, lossk.cross_entropy, residentk.contract,
 residentk.probe -- and retrieval fusion and signal kernels -- retrieval.fuse, retrieval.score,
 signal.dsp, signal.filter -- bringing the count to 435 of 643 real modules (68%), with 208 modules
-still undocumented by narrative beyond their generated table row.
+still undocumented by narrative beyond their generated table row. The A6 batch-9 pass (2026-08-30,
+11 new family pages, not a formatting fix) then closed 58 more previously-undocumented modules
+spanning data structures and algorithms -- heap, queue_ds, trie, sorting, set_ops -- bit-level and
+hashing -- bitops, checksum, perceptual_hash, bloom_counting, counter_rng -- caching and
+persistence -- cache, database, persistence, memory_system -- encoding and cryptography --
+encoding, encryption_modes, cryptanalysis, blockchain -- networking and social-graph analytics --
+network_protocol, network_analysis, social_network, distributed_collectives -- reliability and
+observability -- fault_tolerance, observability, logging.logger, reliability, robustness --
+scheduling and rate-limiting -- scheduler_ops, scheduling_algo, latency_optimizer, token_bucket,
+execution_planner -- governance and workflow -- petri_net, privacy, security_governance,
+sustainability, workflow_engine -- utility and control primitives -- dependency, allocation,
+anomaly, constraint, control, differentiate -- system I/O and serialization -- env,
+filepath.pathlib, net.url, random_utils, serialization.msgpack, structs.containers -- and
+streaming/structured-output/time -- streaming.windows, structured_output, time_zone, units,
+datetime, pattern, protocol, compiler_theory, agent_runtime -- bringing the count to 493 of 643
+real modules (77%), with 150 modules still undocumented by narrative beyond their generated table
+row.
 
-WHY THIS SCRIPT DOES NOT GATE ON THE 208 GAP. That gap is a documentation-writing backlog, not a
+WHY THIS SCRIPT DOES NOT GATE ON THE 150 GAP. That gap is a documentation-writing backlog, not a
 regression -- something a CI check can flag but cannot itself close, and gating hard on it would
 either block every unrelated PR immediately or get disabled at the first annoyance (the same trap
 `scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
@@ -98,7 +114,7 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (208 modules, as of writing) rather than hiding it inside a passing
+  3. Prints the honest gap (150 modules, as of writing) rather than hiding it inside a passing
      check -- `--json` includes it explicitly under "undocumented_by_narrative".
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
@@ -171,10 +187,10 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (435,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-8 pass
-# added 11 new family pages' worth of module tables (44 modules) on top of the prior floor of 389.
-DOCUMENTED_FLOOR = 433
+# Set from the actual measured count under the precise "Module table, first cell only" rule (493,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-9 pass
+# added 11 new family pages' worth of module tables (58 modules) on top of the prior floor of 433.
+DOCUMENTED_FLOOR = 491
 
 
 def real_modules() -> set[str]:

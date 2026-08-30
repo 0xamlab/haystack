@@ -132,6 +132,20 @@
 * [Vector ranking kernels](engine/vector-ranking-kernels.md)
 * [Graph-based reasoning](engine/graph-based-reasoning-kernels.md)
 
+## Systems & infrastructure kernels
+
+* [Data structures and algorithms kernels](engine/data-structures-and-algorithms-kernels.md)
+* [Bit-level and hashing kernels](engine/bit-level-and-hashing-kernels.md)
+* [Caching and persistence kernels](engine/caching-and-persistence-kernels.md)
+* [Encoding and cryptography kernels](engine/encoding-and-cryptography-kernels.md)
+* [Networking and social graph kernels](engine/networking-and-social-graph-kernels.md)
+* [Reliability and observability kernels](engine/reliability-and-observability-kernels.md)
+* [Scheduling and rate-limiting kernels](engine/scheduling-and-rate-limiting-kernels.md)
+* [Governance and workflow kernels](engine/governance-and-workflow-kernels.md)
+* [Utility and control primitive kernels](engine/utility-and-control-primitive-kernels.md)
+* [System I/O and serialization kernels](engine/system-io-and-serialization-kernels.md)
+* [Streaming, structured output, and time kernels](engine/streaming-structured-output-and-time-kernels.md)
+
 ## Vision & media processing
 
 * [Image feature and quality kernels](engine/image-feature-and-quality-kernels.md)
