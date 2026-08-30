@@ -129,6 +129,8 @@
 * [Columnar queries](engine/columnar-queries.md)
 * [Spreadsheet formula plane](engine/sheet-formula-plane.md)
 * [Text processing kernels](engine/text-processing-kernels.md)
+* [Text processing and tokenization kernels](engine/text-processing-and-tokenization-kernels.md)
+* [Text similarity and pattern matching kernels](engine/text-similarity-and-pattern-matching-kernels.md)
 * [Vector ranking kernels](engine/vector-ranking-kernels.md)
 * [Graph-based reasoning](engine/graph-based-reasoning-kernels.md)
 
@@ -199,6 +201,15 @@
 * [Industrial fluid power & energy systems kernels](engine/industrial-fluid-power-and-energy-systems-kernels.md)
 * [Transportation & hazard-safety kernels](engine/transportation-and-hazard-safety-kernels.md)
 * [Manufacturing & craft engineering kernels](engine/manufacturing-and-craft-engineering-kernels.md)
+
+## Finance, business & economics
+
+* [Accounting, actuarial, insurance & pension kernels](engine/accounting-and-actuarial-kernels.md)
+* [Auction & market mechanism kernels](engine/auction-and-market-mechanism-kernels.md)
+* [Macroeconomic indicators & currency kernels](engine/macroeconomic-indicators-and-currency-kernels.md)
+* [Risk, supply-chain & logistics kernels](engine/risk-supply-chain-and-logistics-kernels.md)
+* [Business operations & real-estate kernels](engine/business-operations-and-real-estate-kernels.md)
+* [Collectibles, gaming & sports analytics kernels](engine/collectibles-gaming-and-sports-analytics-kernels.md)
 
 ## Concepts
 
