@@ -1206,20 +1206,27 @@ jobs:
           kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
           docker rmi "$SMOKE_IMAGE_TAG" >/dev/null 2>&1 || true
 
-  # ── Build Docker image ────────────────────────────────────────────────────
-  build:
-    name: Build & Push Docker
+  # ── Build Docker images ───────────────────────────────────────────────────
+  # THREE SEPARATE JOBS, not three sequential builds crammed into one job on one runner's disk.
+  # That original shape needed `docker builder/image prune` between images (#950), then again
+  # before the Engine image's own SBOM scan specifically (#954), then clearing syft's own /tmp
+  # stereoscope cache too (#963) -- three rounds of "reclaim one more thing" in one week is the
+  # actual signal: patching the symptom after each new disk sink surfaces doesn't end, because the
+  # real problem is architectural, not a missing prune call. `helm-oci-push` right below already
+  # states the correct fix for this whole failure class in its own pre-existing comment: "a fresh
+  # runner for this job sidesteps that failure class entirely rather than needing a fourth reclaim
+  # step." Applying that same principle to the image builds themselves -- one job per image, each
+  # on its own `[self-hosted, az-ephemeral]` VM -- means no image's build+push+scan ever shares a
+  # disk with another's, so there is nothing to accumulate and nothing left to prune. No
+  # `docker builder/image prune` step appears anywhere below, and none should ever need to again.
+  build-api:
+    name: Build & Push Docker (API image)
     runs-on: [self-hosted, az-ephemeral]
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
-    # `secrets` cannot be used in `if:` conditionals, but `env` (which may read secrets) can.
-    # Map the codna pull token here so the engine-image steps can gate on env.CODNA_TOKEN.
-    env:
-      CODNA_TOKEN: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -1235,11 +1242,11 @@ jobs:
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
           driver: docker-container
-          # Per-run builder: a reused docker-container builder kept a stale buildkit auth state
-          # and pulled ghcr.io/thyn-ai/algenta/mojo ANONYMOUSLY mid-job (401) even though the
-          # login step had succeeded minutes earlier in the same job. A fresh buildkit per run
-          # always sees this run's docker config; the teardown step below removes it.
-          name: ci-${{ github.run_id }}
+          # Per-run, per-image builder: a reused docker-container builder kept a stale buildkit
+          # auth state and pulled ghcr.io/thyn-ai/algenta/mojo ANONYMOUSLY mid-job (401) even
+          # though the login step had succeeded minutes earlier in the same job. A fresh buildkit
+          # per run always sees this run's docker config; the teardown step below removes it.
+          name: ci-${{ github.run_id }}-api
 
       - name: Extract metadata for API image
         id: meta-api
@@ -1281,19 +1288,36 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Three images get built+pushed+re-pulled-for-scanning in this ONE job on ONE runner, and
-      # nothing reclaims disk between them -- the local build cache/layers for an image already
-      # pushed (registry cache handles cross-run reuse via cache-to/cache-from above) are dead
-      # weight for the rest of the job. Left unreclaimed, this accumulates across all three images
-      # and their scans until the largest build (Engine, which bundles the agent-core sidecar) hits
-      # `ResourceExhausted: ... no space left on device` -- reproduced live on two consecutive main
-      # pushes. `docker builder prune` clears buildx cache; `docker image prune` drops the
-      # now-unneeded local copies of images already pushed and scanned.
-      - name: Reclaim disk before the next image build
+      # See the setup step's comment above.
+      - name: Remove per-run buildx builder
         if: always()
-        run: |
-          docker builder prune --all --force || true
-          docker image prune --all --force || true
+        run: docker buildx rm "ci-${{ github.run_id }}-api" 2>/dev/null || true
+
+  build-worker:
+    name: Build & Push Docker (Worker image)
+    runs-on: [self-hosted, az-ephemeral]
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker-container
+          # See build-api's identical step for why this is per-run and per-image.
+          name: ci-${{ github.run_id }}-worker
 
       - name: Extract metadata for Worker image
         id: meta-worker
@@ -1327,13 +1351,38 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
-      # See the identical step after the API image's scan above -- same reason, before the
-      # largest of the three builds (Engine, which bundles the agent-core sidecar).
-      - name: Reclaim disk before the next image build
+      - name: Remove per-run buildx builder
         if: always()
-        run: |
-          docker builder prune --all --force || true
-          docker image prune --all --force || true
+        run: docker buildx rm "ci-${{ github.run_id }}-worker" 2>/dev/null || true
+
+  build-engine:
+    name: Build & Push Docker (Engine image)
+    runs-on: [self-hosted, az-ephemeral]
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    # `secrets` cannot be used in `if:` conditionals, but `env` (which may read secrets) can.
+    env:
+      CODNA_TOKEN: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker-container
+          # See build-api's identical step for why this is per-run and per-image.
+          name: ci-${{ github.run_id }}-engine
 
       # The published Algenta engine encapsulates the async worker, Mojo binary, and agent runtime.
       # Its internal base is private, so a missing read token must fail the release rather than
@@ -1375,19 +1424,7 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2,mode=max,compression=zstd
 
-      # See the identical steps after the API/Worker images' own scans (PR #950) -- that fix
-      # pruned BEFORE each build but never after the Engine build (the largest of the three, since
-      # it bundles the agent-core sidecar) and before ITS OWN scan. Reproduced live: the build
-      # itself now succeeds, but syft/grype's re-pull of the freshly-built Engine image for
-      # scanning then hit the exact same `no space left on device` -- the Engine build's own local
-      # layers had refilled the disk the two earlier prunes had freed.
-      - name: Reclaim disk before the Engine image's own SBOM scan
-        if: always()
-        run: |
-          docker builder prune --all --force || true
-          docker image prune --all --force || true
-
-      # CODNA_TOKEN, NOT GITHUB_TOKEN. Live failure on the first real run (the build job only
+      # CODNA_TOKEN, NOT GITHUB_TOKEN. Live failure the first time this ran (this job only
       # triggers on push to main, so this could not be caught pre-merge): GITHUB_TOKEN pulling
       # ghcr.io/thyn-ai/algenta/engine got `permission_denied: read_package` / MANIFEST_UNKNOWN --
       # the reasoning that it would have the same read access as api/worker (same repo, same
@@ -1405,24 +1442,21 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ env.CODNA_TOKEN }}
 
-      # The per-run docker-container builder (see setup step) must not survive the run: a reused
-      # buildkit kept stale registry-auth state and pulled mojo anonymously (401) mid-job.
       - name: Remove per-run buildx builder
         if: always()
-        run: docker buildx rm "ci-${{ github.run_id }}" 2>/dev/null || true
+        run: docker buildx rm "ci-${{ github.run_id }}-engine" 2>/dev/null || true
 
   # ── Package + push the Helm chart as an OCI artifact ───────────────────────
-  # Separate job (not a step in `build`) so this chart's own package/push never adds to
-  # `build`'s already-tight disk budget (see that job's "Reclaim disk" steps and their
-  # comments) — a fresh runner for this job sidesteps that failure class entirely rather than
-  # needing a fourth reclaim step. Runs only after `build` succeeds (needs: build), same
-  # push-to-main-only gating, and only once helm-lint would have passed on this same content
-  # (this job re-lints before packaging — belt and suspenders, cheap relative to the rest of
-  # `build`).
+  # Separate job (not a step in any build-* job) so this chart's own package/push never shares a
+  # disk with an image build — the same fresh-runner-per-unit-of-work principle the three build-*
+  # jobs above now also follow. Runs only after all three image builds succeed (needs: [...]),
+  # same push-to-main-only gating, and only once helm-lint would have passed on this same content
+  # (this job re-lints before packaging — belt and suspenders, cheap relative to the rest of the
+  # build jobs).
   helm-oci-push:
     name: Package + push Helm chart (OCI)
     runs-on: [self-hosted, az-ephemeral]
-    needs: build
+    needs: [build-api, build-worker, build-engine]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
@@ -1469,14 +1503,15 @@ jobs:
   # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
   # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into
   # the Fly registry and `flyctl deploy` codna-api, whose release_command applies alembic migrations.
-  # Runs only after the image is pushed (needs: build) and only on a push to main — never on PRs.
+  # Runs only after all three images are pushed (needs: [build-api, build-worker, build-engine])
+  # and only on a push to main — never on PRs.
   #
   # The CONTROL PLANE deploys automatically too — see the deploy-control-plane job below. Only the
   # ENGINE (codna-engine) and tag-pinned/one-off deploys still go through the manual deploy.yml.
   deploy:
     name: Deploy to Fly (codna-api)
     runs-on: [self-hosted, az-ephemeral]
-    needs: build
+    needs: [build-api, build-worker, build-engine]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
@@ -1537,8 +1572,9 @@ jobs:
   # live on codna-api but absent from the hostname the Telys CLI actually calls. A merged
   # /v1/products/{product}/whoami endpoint 404'd in production as a result.
   #
-  # DELIBERATELY A SEPARATE JOB, not another step in `deploy`: it depends on `build`, NOT on
-  # `deploy`. If the codna-api deploy fails, the control plane must still get the new image —
+  # DELIBERATELY A SEPARATE JOB, not another step in `deploy`: it depends on the three build-*
+  # jobs, NOT on `deploy`. If the codna-api deploy fails, the control plane must still get the new
+  # image —
   # otherwise a flaky engine-image check silently reintroduces exactly the drift this job exists
   # to prevent.
   #
@@ -1552,7 +1588,7 @@ jobs:
   deploy-control-plane:
     name: Deploy to Fly (algenta-control-plane)
     runs-on: [self-hosted, az-ephemeral]
-    needs: build
+    needs: [build-api, build-worker, build-engine]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
