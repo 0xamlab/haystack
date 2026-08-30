@@ -125,12 +125,38 @@ and sports analytics kernels -- museum, numismatics, lottery, sports_analytics -
 and tokenization kernels -- linguistics, nlp, sentiment, bpe_tokenizer -- and text similarity and
 pattern-matching kernels -- string_distance, regex_engine, vector_similarity -- bringing the count
 to 577 of 643 real modules (90%), with 66 modules still undocumented by narrative beyond their
-generated table row.
+generated table row. The A6 batch-12 pass (2026-08-30, 14 new family pages, not a formatting
+fix, and the last batch this track planned) then closed the remaining 66 previously-undocumented
+modules spanning A/B testing and causal inference -- ab_testing, causal, decision_analysis,
+decision_ml_fusion, hypothesis -- Bayesian methods, calibration, and clustering metrics --
+bayesian, bayesian_inference, calibration, clustering_metrics -- regression and classification --
+regression, regression_tree, svm_kernel, loss_functions -- reinforcement learning and stochastic
+simulation -- reinforcement, kalman, reservoir, sketch -- retrieval, recommendation, and ranking --
+rag_retrieval, recommender, rerank_eval, embeddings, scoring -- evaluation, survival, and
+psychometric kernels -- survival, stat_tests, metrics_agg, psychometrics, interval --
+general-purpose optimization -- optimization_constrained, optimization_meta, optimize,
+optimizer_full -- time-series decomposition and queueing -- time_series_decompose, queueing --
+continuum and structural mechanics -- physics, fluid, structural, soil_mechanics, soil_science,
+rheology -- geometry and simulation physics -- geometry, game_physics, kinetics, topology --
+materials analysis and spectroscopy -- materials, chromatography, spectroscopy, water_chemistry,
+timber -- Earth, electrical, and neurophysics -- earth, electrical, neurophysics -- neural network
+primitives and data-pipeline kernels -- activations, cellular, column_rank, data_pipeline,
+pipeline, pandas_groupby, numpy_ops, gpu_kernels, graph_algorithms, simulation, audio -- and
+humanities and social science -- archaeology, ergonomics, forensics, music_theory -- bringing the
+count to 643 of 643 real modules (100%), with 0 modules undocumented by narrative beyond their
+generated table row, as measured by this script's own precise "Module table, first cell only"
+rule at the time this paragraph was written. This closes the narrative-documentation backlog the
+A6 track existed to work through: every real runtime module now has a page someone wrote prose
+on, not merely a generated index row. That does not mean the corpus is now permanently at 643/643
+-- the contract will keep growing as new kernels ship, and this script's floor-and-diff mechanism
+(not a hardcoded 643) is what keeps the next gap honest rather than assuming today's full count
+is eternal.
 
-WHY THIS SCRIPT DOES NOT GATE ON THE 66 GAP. That gap is a documentation-writing backlog, not a
-regression -- something a CI check can flag but cannot itself close, and gating hard on it would
-either block every unrelated PR immediately or get disabled at the first annoyance (the same trap
-`scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
+WHY THIS SCRIPT DOES NOT GATE ON THE UNDOCUMENTED GAP. Even at zero, that gap is a
+documentation-writing backlog, not a regression -- something a CI check can flag but cannot itself
+close, and gating hard on it would either block every unrelated PR immediately (the moment a new
+real module ships ahead of its narrative page) or get disabled at the first annoyance (the same
+trap `scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
 script instead:
   1. Verifies every module a narrative page CLAIMS to document is a REAL module in
      runtime_library_contract.json -- a hard, zero-tolerance check. A page referencing a
@@ -139,8 +165,10 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (66 modules, as of writing) rather than hiding it inside a passing
-     check -- `--json` includes it explicitly under "undocumented_by_narrative".
+  3. Prints the honest gap (0 modules, as of the A6 batch-12 pass) rather than hiding it inside a
+     passing check -- `--json` includes it explicitly under "undocumented_by_narrative", so the
+     day a new module ships without a narrative page, this number moves off zero visibly instead
+     of silently.
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
 anywhere". The convention every multi-module family page in this corpus actually uses (verified
@@ -212,10 +240,13 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (577,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-11 pass
-# added 8 new family pages' worth of module tables (32 modules) on top of the prior floor of 543.
-DOCUMENTED_FLOOR = 575
+# Set from the actual measured count under the precise "Module table, first cell only" rule (643,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-12 pass
+# added 14 new family pages' worth of module tables (66 modules) on top of the prior floor of 575 --
+# this is the last planned A6 batch, and 643 is every real module in runtime_library_contract.json
+# as of this measurement, so the margin below it is purely a wobble buffer, not headroom for a
+# known-remaining backlog.
+DOCUMENTED_FLOOR = 641
 
 
 def real_modules() -> set[str]:

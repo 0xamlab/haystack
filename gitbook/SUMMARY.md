@@ -45,6 +45,7 @@
 * [KV-cache and generation kernels](engine/kv-cache-and-autoregressive-generation-kernels.md)
 * [Multimodal and inference operations](engine/multimodal-and-inference-operations-kernels.md)
 * [Loss functions and resident-context kernels](engine/loss-functions-and-resident-context-kernels.md)
+* [Neural network primitives and data-pipeline kernels](engine/neural-network-primitives-and-data-pipeline-kernels.md)
 
 ## Numerical & mathematical computing
 
@@ -59,12 +60,14 @@
 * [Signal transforms & processing](engine/signal-transforms-and-processing-kernels.md)
 * [Dimensionality, information theory & complex systems](engine/dimensionality-information-theory-and-complex-systems-kernels.md)
 * [Quantum computing & formal logic](engine/quantum-computing-and-formal-logic-kernels.md)
+* [Geometry and simulation-physics kernels](engine/geometry-and-simulation-physics-kernels.md)
 
 ## Machine learning
 
 * [Time-series model selection](engine/ml-model-selection.md)
 * [Statistical model comparison](engine/ml-model-comparison.md)
 * [Probability calibration](engine/ml-calibration.md)
+* [Bayesian methods, calibration, and clustering metrics](engine/bayesian-methods-and-calibration-kernels.md)
 * [Dense 2D matrices (Matrix2D)](engine/ml-tensor2d.md)
 * [LSTM and GRU cells](engine/ml-sequence-cells.md)
 * [LSTM sequence training (BPTT)](engine/ml-sequence-training.md)
@@ -87,6 +90,7 @@
 * [Trainable SVM classifier (simplified SMO)](engine/ml-svm.md)
 * [Batched chain greeks](engine/ml-chain-greeks.md)
 * [Classical ML algorithms](engine/ml-classical-algorithms.md)
+* [Regression and classification kernels](engine/regression-and-classification-kernels.md)
 * [Autograd and training stability](engine/autograd-and-training-stability-kernels.md)
 * [LoRA adapters, checkpoint loading & distillation](engine/lora-distillation-and-weight-loading-kernels.md)
 * [Mixture-of-experts and routing](engine/mixture-of-experts-and-routing-kernels.md)
@@ -100,20 +104,25 @@
 * [Optimization & decision programs](engine/optimization.md)
 * [Optimization benchmark plane](engine/optimization-model-formulation.md)
 * [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
+* [General-purpose optimization kernels](engine/optimization-suite-kernels.md)
 * [Discrete-event simulation & queueing](engine/discrete-event-simulation.md)
 * [Strategy comparison & simulation](engine/strategy-simulation.md)
 * [Contest simulation & service timing](engine/contest-strategy.md)
 * [Reproducible evolutionary search](engine/reproducible-search.md)
+* [Reinforcement learning and stochastic simulation kernels](engine/reinforcement-learning-and-stochastic-simulation-kernels.md)
 * [Asset degradation state](engine/degradation-state.md)
 
 ## Time series & statistics
 
 * [Forecasting and backtesting](engine/forecasting.md)
 * [ES-RNN residual correction](engine/ml-esrnn.md)
+* [Time-series decomposition and queueing kernels](engine/time-series-decomposition-and-queueing-kernels.md)
 * [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
 * [Statistical inference](engine/statistical-inference.md)
+* [A/B testing and causal inference kernels](engine/ab-testing-and-causal-inference-kernels.md)
 * [Causal inference](engine/causal-inference.md)
 * [Survival analysis](engine/survival-analysis.md)
+* [Evaluation, survival, and psychometric kernels](engine/ml-evaluation-survival-and-psychometric-kernels.md)
 * [Evaluation & calibration gates](engine/evaluation-calibration.md)
 * [Program execution & scoring](engine/program-execution-scoring.md)
 
@@ -122,6 +131,7 @@
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)
 * [Retrieval & ranking](engine/retrieval.md)
 * [Retrieval fusion and signal kernels](engine/retrieval-fusion-and-signal-kernels.md)
+* [Retrieval, recommendation and ranking kernels](engine/retrieval-recommendation-and-ranking-kernels.md)
 * [Data quality & feature hygiene](engine/data-quality.md)
 * [Geospatial indexing & joins](engine/geospatial.md)
 * [Streaming sketches](engine/streaming-sketches.md)
@@ -167,15 +177,18 @@
 * [Speleology, mineralogy & geochemistry](engine/speleology-mineralogy-and-geochemistry-kernels.md)
 * [Cartography, planetary & cosmic sciences](engine/cartography-and-planetary-cosmic-sciences-kernels.md)
 * [Atmospheric chemistry, climate & meteorology](engine/atmospheric-chemistry-and-climate-kernels.md)
+* [Earth, electrical, and neurophysics kernels](engine/earth-electrical-and-neurophysics-kernels.md)
 
 ## Physical & materials science
 
 * [Acoustics, optics & radiative materials](engine/acoustics-optics-and-radiative-materials-kernels.md)
 * [Structural & construction materials](engine/structural-and-construction-materials-kernels.md)
+* [Continuum and structural mechanics kernels](engine/continuum-and-structural-mechanics-kernels.md)
 * [Corrosion & electrochemical materials](engine/corrosion-and-electrochemical-materials-kernels.md)
 * [Thermal, cryogenic & energy materials](engine/thermal-and-energy-materials-kernels.md)
 * [Nanoscale, plasma & surface-contact engineering](engine/advanced-nano-and-plasma-materials-kernels.md)
 * [Process & organic-materials science](engine/process-and-organic-materials-science-kernels.md)
+* [Materials analysis and spectroscopy kernels](engine/materials-analysis-and-spectroscopy-kernels.md)
 
 ## Medical & health sciences
 
@@ -210,6 +223,10 @@
 * [Risk, supply-chain & logistics kernels](engine/risk-supply-chain-and-logistics-kernels.md)
 * [Business operations & real-estate kernels](engine/business-operations-and-real-estate-kernels.md)
 * [Collectibles, gaming & sports analytics kernels](engine/collectibles-gaming-and-sports-analytics-kernels.md)
+
+## Humanities & social sciences
+
+* [Humanities and social science kernels](engine/humanities-and-social-science-kernels.md)
 
 ## Concepts
 
