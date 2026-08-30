@@ -2910,6 +2910,142 @@
         "validation": "parsed"
       },
       {
+        "bytes": 565,
+        "language": "python",
+        "line": 16,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "952a2982ccb4f13fb0ae6c7370a489fefa84dd6ab8fdc3613172b2a78e230387",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 84,
+        "language": "python",
+        "line": 78,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "cbece88f9dd55ee5790e5fda6b450fd4cab2e181f6482bd720088da5d9f19aba",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 172,
+        "language": "python",
+        "line": 83,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "7f149bccb1998729a31212ab38b53541ecf40ac7cd8cd72ad6ef540417687a9d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 234,
+        "language": "python",
+        "line": 98,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "fe1cb5cb5e1fb3ddd7f0730e46ba1f66adc911306781eb1c9ec5cdfe1d763a15",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 173,
+        "language": "python",
+        "line": 107,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "58c73a9f9cc7dd95e945a4c2902647f2449b59169340ad295395e2d9194378b5",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 243,
+        "language": "python",
+        "line": 127,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "bd2daa84028f3f67e7ee283b962e3ddf7d7ba676e366a75aae65987362728994",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 159,
+        "language": "python",
+        "line": 148,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "aa8f795fa3686629f6be6f37b28bdeaa125696f6571c33601a313bbf5c566ec5",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 167,
+        "language": "python",
+        "line": 156,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "19c7533bdcd57373c9ed5dd714bcc3392708d632f3cc289713ff11cf933bb391",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 357,
+        "language": "python",
+        "line": 170,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "180391a829f98453db89770cd399a48f501a070372cf827f344cb12392e428a0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 451,
+        "language": "python",
+        "line": 201,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "sha256": "3f78afd544affe84af976fea212313c76499e87c79f08add3ab017a3a238287a",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 393,
+        "language": "python",
+        "line": 28,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "1e09d205dc96ad0c5741af9bf7c7c8b7bda8d9ceb42cc34e1f45b6c92fbed55d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 207,
+        "language": "python",
+        "line": 57,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "39f3fbe0d835413489ef4d2a76d3e17ca0707cdc1d7c52d8ec9b89e666406bab",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 395,
+        "language": "python",
+        "line": 66,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "8ab7d4f9d069b3d1b7058514fd63e2584ba5311ef9271c4c17a6d0021e201dbf",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 245,
+        "language": "python",
+        "line": 90,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "475060dfd047b1f22d1124f4776b0797fde804561350f21209f860dc4d4c6756",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 559,
+        "language": "python",
+        "line": 120,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "b9d13fe91521826b7f11f2321768b7db9435358d8e28cedaf76f2b2feeeb5943",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 457,
+        "language": "python",
+        "line": 140,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "79c0e277f41d7bfbacbd4b2d501ed19d5a0c975396a62bd8bd7461ea15cdd694",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 321,
+        "language": "python",
+        "line": 160,
+        "path": "engine/agricultural-production-kernels.md",
+        "sha256": "b1e1b35e536448b99dd6aff0317f4d000dec10ee9363b7ae94175e8ceeeb0a2f",
+        "validation": "parsed"
+      },
+      {
         "bytes": 587,
         "language": "python",
         "line": 27,
@@ -3155,6 +3291,14 @@
         "line": 209,
         "path": "engine/bit-level-and-hashing-kernels.md",
         "sha256": "d7b54ea22c82c21debb44b39195f61b156ad57adae4543188ce65b2c828a7663",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 488,
+        "language": "python",
+        "line": 19,
+        "path": "engine/building-and-facility-systems-kernels.md",
+        "sha256": "ae7090e2dd00fa42737a569372c41d8f37b74eb429d93710d5f63978049c296e",
         "validation": "parsed"
       },
       {
@@ -4566,6 +4710,78 @@
         "validation": "parsed"
       },
       {
+        "bytes": 582,
+        "language": "python",
+        "line": 21,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "a63542f62930606c598c94f2546786d107b06d4dc1ea86ebd8fca2959cbadddd",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 97,
+        "language": "",
+        "line": 77,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "8c203d27e22289c429a02b5dba0032fe6befd340f899bc80e6c39b6df3c10d48",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 290,
+        "language": "python",
+        "line": 119,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "bcdd2905b0465a23ddf20bb924cefb400a4bc2a5ae054023cf2ddd7b574065f0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 362,
+        "language": "python",
+        "line": 149,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "26d8379f502b114f61e752230e28f9d5b37a8b61bc110c4016bfc468d2f8a96c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 221,
+        "language": "python",
+        "line": 186,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "81b42dfa87086f0b307b643a093a10feeaee50455e5ea9c616a9b0add0f7f5eb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 517,
+        "language": "python",
+        "line": 214,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "11a72f68ae6a5336a9b3857415258726bae09f70ab3951d04ee4ed1c1830eea1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 319,
+        "language": "python",
+        "line": 243,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "8532c372ffa40582004610bba6d46b40f0b8b03829032c17b3056a13f4122154",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 319,
+        "language": "python",
+        "line": 276,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "46032fd5b92b1ffe978fe4dc931e2cd3a33a14f49e9875aa0095f1c25fbb8444",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 42,
+        "language": "",
+        "line": 289,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "sha256": "f8f980ba19bed4ada20d64788ef8b2520eda24eff7092d00d5472262ab4c1061",
+        "validation": "static_inventory"
+      },
+      {
         "bytes": 706,
         "language": "python",
         "line": 29,
@@ -5550,6 +5766,14 @@
         "validation": "static_inventory"
       },
       {
+        "bytes": 554,
+        "language": "python",
+        "line": 10,
+        "path": "engine/industrial-fluid-power-and-energy-systems-kernels.md",
+        "sha256": "29ecdca06b2a15b2287eea2ade0851d6c67bb229e252e5bf7ac91ffe14575083",
+        "validation": "parsed"
+      },
+      {
         "bytes": 352,
         "language": "python",
         "line": 227,
@@ -5707,6 +5931,54 @@
         "line": 201,
         "path": "engine/loss-functions-and-resident-context-kernels.md",
         "sha256": "29449613ef3dde9a74af89c7343cdd3f8637424230c698445fdbc40bd10bcde4",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 368,
+        "language": "python",
+        "line": 20,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "sha256": "c79b735bbef1281b07467047463c8f35392e47be145e260b7784d32d0a7eca66",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 492,
+        "language": "python",
+        "line": 47,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "sha256": "ee49c5474a564786ac43704fc41dbceb53a6e6237e9240ffac3b3aecd4056b88",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 384,
+        "language": "python",
+        "line": 91,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "sha256": "f7c20e29c41d33d27189c101e809f0a157af11331781a0056abec4cd218a340d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 463,
+        "language": "python",
+        "line": 123,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "sha256": "d83ef9516590ee988bb3e1411142538b48efe746b31e0c4cc139d7694e2f8bff",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 356,
+        "language": "python",
+        "line": 165,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "sha256": "ef64b6760f55e1646a408896195d517489825ff3cb904b33b3c9c90a4921388a",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 311,
+        "language": "python",
+        "line": 200,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "sha256": "42a780385b62827e80fa869ed19ae3ea571a9b65e4f7e7a13be02829184c1c50",
         "validation": "parsed"
       },
       {
@@ -6084,6 +6356,54 @@
         "path": "engine/model-support-matrix.md",
         "sha256": "221c6500f4aed76785430ba0c7b71f9918bc46b989358d278a65382863001187",
         "validation": "command_inventory"
+      },
+      {
+        "bytes": 458,
+        "language": "python",
+        "line": 19,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "sha256": "3a27f44ff524532bb89d8d7d30bae112318c7fd503a0688e8ea57017a627cad0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 889,
+        "language": "python",
+        "line": 79,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "sha256": "21eb0976dbb0303b96df5b2b3f9c232887687dff58abba36ed0156ee73ae7127",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 827,
+        "language": "python",
+        "line": 105,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "sha256": "4f8d45838303aa12db6ddc5f07be4f460fc3e85ae79b2e414de7b564aabdaabb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 508,
+        "language": "python",
+        "line": 133,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "sha256": "54949d2e072c3f5e3e82e8de8a64485c03f5136e6af8b4de16898025505ba410",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 616,
+        "language": "python",
+        "line": 156,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "sha256": "51d29e9dc6186b3ae39766e4a69b075202e0d0938b5eddf124b7b13399870ac7",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 774,
+        "language": "python",
+        "line": 195,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "sha256": "5e98ba644f57305f52f9e71bb635e68ce73acc1dc667f5b06149e711f8753d92",
+        "validation": "parsed"
       },
       {
         "bytes": 408,
@@ -6587,6 +6907,14 @@
         "line": 438,
         "path": "engine/optimization.md",
         "sha256": "ce38db465e2a2a32efe0f64f1e2a2a21da8f252918487b008305da65643cf76f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 895,
+        "language": "python",
+        "line": 18,
+        "path": "engine/paleobiology-and-archaeobotany-kernels.md",
+        "sha256": "faa75921a43161c6541bc6e1e05e17120ea4d12fd5804aaecf3116316e43be86",
         "validation": "parsed"
       },
       {
@@ -7628,6 +7956,14 @@
         "path": "engine/sparse-and-tensor-kernels.md",
         "sha256": "cc11a6d1a34c96a5ad148c56441807b8cfbbeb87e98f5e19707c3c1251011a2d",
         "validation": "static_inventory"
+      },
+      {
+        "bytes": 451,
+        "language": "python",
+        "line": 20,
+        "path": "engine/specialty-agriculture-and-aquaculture-kernels.md",
+        "sha256": "c281929c584cffc905287a460193513a36e086d0bfbc4979410031b3b9bd9bed",
+        "validation": "parsed"
       },
       {
         "bytes": 595,
@@ -8747,6 +9083,14 @@
         "line": 244,
         "path": "engine/transformer-blocks-and-normalization-reference-kernels.md",
         "sha256": "ced68ad655bb648f631c5ac7d61feaa5132b126a5c63e6dd1370438d6aa70699",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 525,
+        "language": "python",
+        "line": 19,
+        "path": "engine/transportation-and-hazard-safety-kernels.md",
+        "sha256": "dd3147ed94d53d8e3ef9e35d18d5fdbc7c53fa8a2313cfae7ab26b526bde84b8",
         "validation": "parsed"
       },
       {
@@ -37107,971 +37451,1031 @@
         "kind": "internal",
         "line": 189,
         "path": "SUMMARY.md",
-        "target": "concepts/engine.md"
+        "target": "engine/agricultural-production-kernels.md"
       },
       {
         "kind": "internal",
         "line": 190,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-service.md"
+        "target": "engine/specialty-agriculture-and-aquaculture-kernels.md"
       },
       {
         "kind": "internal",
         "line": 191,
         "path": "SUMMARY.md",
-        "target": "concepts/governed-data.md"
+        "target": "engine/molecular-and-cell-biology-kernels.md"
       },
       {
         "kind": "internal",
         "line": 192,
         "path": "SUMMARY.md",
-        "target": "concepts/capability-plane.md"
+        "target": "engine/ecology-and-organismal-biology-kernels.md"
       },
       {
         "kind": "internal",
         "line": 193,
         "path": "SUMMARY.md",
-        "target": "concepts/simulation-models.md"
+        "target": "engine/paleobiology-and-archaeobotany-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 194,
+        "line": 197,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-memory.md"
+        "target": "engine/aerospace-and-autonomous-systems-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 195,
+        "line": 198,
         "path": "SUMMARY.md",
-        "target": "concepts/execution-ownership.md"
+        "target": "engine/building-and-facility-systems-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 196,
+        "line": 199,
         "path": "SUMMARY.md",
-        "target": "concepts/deployment-modes.md"
+        "target": "engine/industrial-fluid-power-and-energy-systems-kernels.md"
       },
       {
         "kind": "internal",
         "line": 200,
         "path": "SUMMARY.md",
-        "target": "guides/first-query.md"
+        "target": "engine/transportation-and-hazard-safety-kernels.md"
       },
       {
         "kind": "internal",
         "line": 201,
         "path": "SUMMARY.md",
-        "target": "guides/local-query-groupby.md"
-      },
-      {
-        "kind": "internal",
-        "line": 202,
-        "path": "SUMMARY.md",
-        "target": "guides/run-a-decision.md"
-      },
-      {
-        "kind": "internal",
-        "line": 203,
-        "path": "SUMMARY.md",
-        "target": "guides/governed-decisions.md"
-      },
-      {
-        "kind": "internal",
-        "line": 204,
-        "path": "SUMMARY.md",
-        "target": "guides/renewal-capacity-allocation.md"
+        "target": "engine/manufacturing-and-craft-engineering-kernels.md"
       },
       {
         "kind": "internal",
         "line": 205,
         "path": "SUMMARY.md",
-        "target": "guides/simulate.md"
+        "target": "concepts/engine.md"
       },
       {
         "kind": "internal",
         "line": 206,
         "path": "SUMMARY.md",
-        "target": "guides/what-if.md"
+        "target": "concepts/decision-service.md"
       },
       {
         "kind": "internal",
         "line": 207,
         "path": "SUMMARY.md",
-        "target": "guides/recommend-and-score.md"
+        "target": "concepts/governed-data.md"
       },
       {
         "kind": "internal",
         "line": 208,
         "path": "SUMMARY.md",
-        "target": "guides/governed-query.md"
+        "target": "concepts/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 209,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory.md"
+        "target": "concepts/simulation-models.md"
       },
       {
         "kind": "internal",
         "line": 210,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory-api.md"
+        "target": "concepts/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 211,
         "path": "SUMMARY.md",
-        "target": "guides/execution-policy.md"
+        "target": "concepts/execution-ownership.md"
       },
       {
         "kind": "internal",
         "line": 212,
         "path": "SUMMARY.md",
-        "target": "guides/connect-data.md"
-      },
-      {
-        "kind": "internal",
-        "line": 213,
-        "path": "SUMMARY.md",
-        "target": "guides/instant-map.md"
-      },
-      {
-        "kind": "internal",
-        "line": 214,
-        "path": "SUMMARY.md",
-        "target": "guides/capabilities.md"
-      },
-      {
-        "kind": "internal",
-        "line": 215,
-        "path": "SUMMARY.md",
-        "target": "guides/capability-bindings.md"
+        "target": "concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
         "line": 216,
         "path": "SUMMARY.md",
-        "target": "guides/external-mcp.md"
+        "target": "guides/first-query.md"
       },
       {
         "kind": "internal",
         "line": 217,
         "path": "SUMMARY.md",
-        "target": "guides/agent-runs.md"
+        "target": "guides/local-query-groupby.md"
       },
       {
         "kind": "internal",
         "line": 218,
         "path": "SUMMARY.md",
-        "target": "guides/async-jobs.md"
+        "target": "guides/run-a-decision.md"
       },
       {
         "kind": "internal",
         "line": 219,
         "path": "SUMMARY.md",
-        "target": "guides/repository-intelligence.md"
+        "target": "guides/governed-decisions.md"
       },
       {
         "kind": "internal",
         "line": 220,
         "path": "SUMMARY.md",
-        "target": "guides/repository-fix.md"
+        "target": "guides/renewal-capacity-allocation.md"
       },
       {
         "kind": "internal",
         "line": 221,
         "path": "SUMMARY.md",
-        "target": "guides/security-analysis.md"
+        "target": "guides/simulate.md"
       },
       {
         "kind": "internal",
         "line": 222,
         "path": "SUMMARY.md",
-        "target": "guides/triggers.md"
+        "target": "guides/what-if.md"
       },
       {
         "kind": "internal",
         "line": 223,
         "path": "SUMMARY.md",
-        "target": "guides/webhooks.md"
+        "target": "guides/recommend-and-score.md"
       },
       {
         "kind": "internal",
         "line": 224,
         "path": "SUMMARY.md",
-        "target": "guides/byok.md"
+        "target": "guides/governed-query.md"
       },
       {
         "kind": "internal",
         "line": 225,
         "path": "SUMMARY.md",
-        "target": "guides/device-binding.md"
+        "target": "guides/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 226,
         "path": "SUMMARY.md",
-        "target": "guides/air-gapped.md"
+        "target": "guides/decision-memory-api.md"
       },
       {
         "kind": "internal",
         "line": 227,
         "path": "SUMMARY.md",
-        "target": "guides/ci-cd.md"
+        "target": "guides/execution-policy.md"
       },
       {
         "kind": "internal",
         "line": 228,
         "path": "SUMMARY.md",
-        "target": "guides/run-qwen3-decode.md"
+        "target": "guides/connect-data.md"
       },
       {
         "kind": "internal",
         "line": 229,
         "path": "SUMMARY.md",
-        "target": "guides/run-qwen3-family-inference.md"
+        "target": "guides/instant-map.md"
+      },
+      {
+        "kind": "internal",
+        "line": 230,
+        "path": "SUMMARY.md",
+        "target": "guides/capabilities.md"
+      },
+      {
+        "kind": "internal",
+        "line": 231,
+        "path": "SUMMARY.md",
+        "target": "guides/capability-bindings.md"
+      },
+      {
+        "kind": "internal",
+        "line": 232,
+        "path": "SUMMARY.md",
+        "target": "guides/external-mcp.md"
       },
       {
         "kind": "internal",
         "line": 233,
         "path": "SUMMARY.md",
-        "target": "llm/models.md"
+        "target": "guides/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 234,
         "path": "SUMMARY.md",
-        "target": "llm/completions.md"
+        "target": "guides/async-jobs.md"
       },
       {
         "kind": "internal",
         "line": 235,
         "path": "SUMMARY.md",
-        "target": "llm/embeddings.md"
+        "target": "guides/repository-intelligence.md"
+      },
+      {
+        "kind": "internal",
+        "line": 236,
+        "path": "SUMMARY.md",
+        "target": "guides/repository-fix.md"
+      },
+      {
+        "kind": "internal",
+        "line": 237,
+        "path": "SUMMARY.md",
+        "target": "guides/security-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 238,
+        "path": "SUMMARY.md",
+        "target": "guides/triggers.md"
       },
       {
         "kind": "internal",
         "line": 239,
         "path": "SUMMARY.md",
-        "target": "sdk/python.md"
+        "target": "guides/webhooks.md"
       },
       {
         "kind": "internal",
         "line": 240,
         "path": "SUMMARY.md",
-        "target": "sdk/python/overview.md"
+        "target": "guides/byok.md"
       },
       {
         "kind": "internal",
         "line": 241,
         "path": "SUMMARY.md",
-        "target": "sdk/python/simulations-and-queries.md"
+        "target": "guides/device-binding.md"
       },
       {
         "kind": "internal",
         "line": 242,
         "path": "SUMMARY.md",
-        "target": "sdk/python/decisions-and-products.md"
+        "target": "guides/air-gapped.md"
       },
       {
         "kind": "internal",
         "line": 243,
         "path": "SUMMARY.md",
-        "target": "sdk/python/connectors-and-data.md"
+        "target": "guides/ci-cd.md"
       },
       {
         "kind": "internal",
         "line": 244,
         "path": "SUMMARY.md",
-        "target": "sdk/python/repositories.md"
+        "target": "guides/run-qwen3-decode.md"
       },
       {
         "kind": "internal",
         "line": 245,
         "path": "SUMMARY.md",
-        "target": "sdk/python/llm.md"
-      },
-      {
-        "kind": "internal",
-        "line": 246,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/agent-runs.md"
-      },
-      {
-        "kind": "internal",
-        "line": 247,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/jobs-triggers-capabilities.md"
-      },
-      {
-        "kind": "internal",
-        "line": 248,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/account-and-control-plane.md"
+        "target": "guides/run-qwen3-family-inference.md"
       },
       {
         "kind": "internal",
         "line": 249,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript.md"
+        "target": "llm/models.md"
       },
       {
         "kind": "internal",
         "line": 250,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/overview.md"
+        "target": "llm/completions.md"
       },
       {
         "kind": "internal",
         "line": 251,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/simulations-and-queries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 252,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/decisions-and-products.md"
-      },
-      {
-        "kind": "internal",
-        "line": 253,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/llm.md"
-      },
-      {
-        "kind": "internal",
-        "line": 254,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/connectors-and-data.md"
+        "target": "llm/embeddings.md"
       },
       {
         "kind": "internal",
         "line": 255,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/repositories.md"
+        "target": "sdk/python.md"
       },
       {
         "kind": "internal",
         "line": 256,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/agent-runs.md"
+        "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
         "line": 257,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/jobs-triggers-capabilities.md"
+        "target": "sdk/python/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 258,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/account-and-control-plane.md"
+        "target": "sdk/python/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 259,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp.md"
+        "target": "sdk/python/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 260,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp-registry.md"
+        "target": "sdk/python/repositories.md"
       },
       {
         "kind": "internal",
         "line": 261,
         "path": "SUMMARY.md",
-        "target": "sdk/tool-discovery.md"
+        "target": "sdk/python/llm.md"
       },
       {
         "kind": "internal",
         "line": 262,
         "path": "SUMMARY.md",
-        "target": "sdk/testing.md"
+        "target": "sdk/python/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 263,
         "path": "SUMMARY.md",
-        "target": "cli.md"
+        "target": "sdk/python/jobs-triggers-capabilities.md"
+      },
+      {
+        "kind": "internal",
+        "line": 264,
+        "path": "SUMMARY.md",
+        "target": "sdk/python/account-and-control-plane.md"
+      },
+      {
+        "kind": "internal",
+        "line": 265,
+        "path": "SUMMARY.md",
+        "target": "sdk/typescript.md"
+      },
+      {
+        "kind": "internal",
+        "line": 266,
+        "path": "SUMMARY.md",
+        "target": "sdk/typescript/overview.md"
       },
       {
         "kind": "internal",
         "line": 267,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/overview.md"
+        "target": "sdk/typescript/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 268,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/data.md"
+        "target": "sdk/typescript/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 269,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/connectors.md"
+        "target": "sdk/typescript/llm.md"
       },
       {
         "kind": "internal",
         "line": 270,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/query.md"
+        "target": "sdk/typescript/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 271,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/repository-intelligence.md"
+        "target": "sdk/typescript/repositories.md"
       },
       {
         "kind": "internal",
         "line": 272,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/llm.md"
+        "target": "sdk/typescript/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 273,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/capability-plane.md"
+        "target": "sdk/typescript/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 274,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/decisions.md"
+        "target": "sdk/typescript/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 275,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/jobs-and-triggers.md"
+        "target": "sdk/mcp.md"
       },
       {
         "kind": "internal",
         "line": 276,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/agent-runs.md"
+        "target": "sdk/mcp-registry.md"
       },
       {
         "kind": "internal",
         "line": 277,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/control-plane.md"
+        "target": "sdk/tool-discovery.md"
       },
       {
         "kind": "internal",
         "line": 278,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/account-and-meta.md"
+        "target": "sdk/testing.md"
       },
       {
         "kind": "internal",
-        "line": 282,
+        "line": 279,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/overview.md"
+        "target": "cli.md"
       },
       {
         "kind": "internal",
         "line": 283,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/copilot-teams.md"
+        "target": "mcp-tools/overview.md"
       },
       {
         "kind": "internal",
         "line": 284,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/excel.md"
+        "target": "mcp-tools/data.md"
       },
       {
         "kind": "internal",
         "line": 285,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/entra-sso.md"
+        "target": "mcp-tools/connectors.md"
       },
       {
         "kind": "internal",
         "line": 286,
         "path": "SUMMARY.md",
-        "target": "integrations/azure/gateway.md"
+        "target": "mcp-tools/query.md"
+      },
+      {
+        "kind": "internal",
+        "line": 287,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/repository-intelligence.md"
+      },
+      {
+        "kind": "internal",
+        "line": 288,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/llm.md"
+      },
+      {
+        "kind": "internal",
+        "line": 289,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 290,
         "path": "SUMMARY.md",
-        "target": "integrations/identity/generic-oidc.md"
+        "target": "mcp-tools/decisions.md"
+      },
+      {
+        "kind": "internal",
+        "line": 291,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/jobs-and-triggers.md"
+      },
+      {
+        "kind": "internal",
+        "line": 292,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/agent-runs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 293,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/control-plane.md"
       },
       {
         "kind": "internal",
         "line": 294,
         "path": "SUMMARY.md",
-        "target": "self-hosting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 295,
-        "path": "SUMMARY.md",
-        "target": "configuration.md"
-      },
-      {
-        "kind": "internal",
-        "line": 296,
-        "path": "SUMMARY.md",
-        "target": "operate/monitoring.md"
-      },
-      {
-        "kind": "internal",
-        "line": 297,
-        "path": "SUMMARY.md",
-        "target": "operate/byok-kms.md"
+        "target": "mcp-tools/account-and-meta.md"
       },
       {
         "kind": "internal",
         "line": 298,
         "path": "SUMMARY.md",
-        "target": "operate/device-key-store.md"
+        "target": "integrations/microsoft/overview.md"
       },
       {
         "kind": "internal",
         "line": 299,
         "path": "SUMMARY.md",
-        "target": "operate/privacy-egress.md"
+        "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
         "line": 300,
         "path": "SUMMARY.md",
-        "target": "operate/teams-rbac.md"
+        "target": "integrations/microsoft/excel.md"
       },
       {
         "kind": "internal",
         "line": 301,
         "path": "SUMMARY.md",
-        "target": "operate/deployments-and-nodes.md"
+        "target": "integrations/microsoft/entra-sso.md"
       },
       {
         "kind": "internal",
         "line": 302,
         "path": "SUMMARY.md",
-        "target": "licensing.md"
+        "target": "integrations/azure/gateway.md"
       },
       {
         "kind": "internal",
-        "line": 303,
+        "line": 306,
         "path": "SUMMARY.md",
-        "target": "billing.md"
-      },
-      {
-        "kind": "internal",
-        "line": 307,
-        "path": "SUMMARY.md",
-        "target": "trust/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 308,
-        "path": "SUMMARY.md",
-        "target": "trust/governed-execution.md"
-      },
-      {
-        "kind": "internal",
-        "line": 309,
-        "path": "SUMMARY.md",
-        "target": "trust/data-boundaries.md"
+        "target": "integrations/identity/generic-oidc.md"
       },
       {
         "kind": "internal",
         "line": 310,
         "path": "SUMMARY.md",
-        "target": "trust/audit-and-evidence.md"
+        "target": "self-hosting.md"
       },
       {
         "kind": "internal",
         "line": 311,
         "path": "SUMMARY.md",
-        "target": "trust/identity-and-access.md"
+        "target": "configuration.md"
       },
       {
         "kind": "internal",
         "line": 312,
         "path": "SUMMARY.md",
-        "target": "trust/capability-status.md"
+        "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
         "line": 313,
         "path": "SUMMARY.md",
-        "target": "trust/protocol-compatibility.md"
+        "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
         "line": 314,
         "path": "SUMMARY.md",
-        "target": "trust/architecture.md"
+        "target": "operate/device-key-store.md"
       },
       {
         "kind": "internal",
         "line": 315,
         "path": "SUMMARY.md",
-        "target": "trust/evidence-walkthrough.md"
+        "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
         "line": 316,
         "path": "SUMMARY.md",
-        "target": "trust/security-questionnaire.md"
+        "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
         "line": 317,
         "path": "SUMMARY.md",
-        "target": "trust/supply-chain.md"
+        "target": "operate/deployments-and-nodes.md"
       },
       {
         "kind": "internal",
         "line": 318,
         "path": "SUMMARY.md",
-        "target": "trust/threat-model.md"
+        "target": "licensing.md"
       },
       {
         "kind": "internal",
         "line": 319,
         "path": "SUMMARY.md",
-        "target": "trust/support-policy.md"
+        "target": "billing.md"
       },
       {
         "kind": "internal",
         "line": 323,
         "path": "SUMMARY.md",
-        "target": "api/overview.md"
+        "target": "trust/overview.md"
       },
       {
         "kind": "internal",
         "line": 324,
         "path": "SUMMARY.md",
-        "target": "api/reference.md"
+        "target": "trust/governed-execution.md"
       },
       {
         "kind": "internal",
         "line": 325,
         "path": "SUMMARY.md",
-        "target": "api/streaming.md"
+        "target": "trust/data-boundaries.md"
       },
       {
         "kind": "internal",
         "line": 326,
         "path": "SUMMARY.md",
-        "target": "api/explorer.md"
+        "target": "trust/audit-and-evidence.md"
       },
       {
         "kind": "internal",
         "line": 327,
         "path": "SUMMARY.md",
-        "target": "api/errors.md"
+        "target": "trust/identity-and-access.md"
       },
       {
         "kind": "internal",
         "line": 328,
         "path": "SUMMARY.md",
-        "target": "api/stability.md"
+        "target": "trust/capability-status.md"
       },
       {
         "kind": "internal",
         "line": 329,
         "path": "SUMMARY.md",
-        "target": "api/rate-limits.md"
+        "target": "trust/protocol-compatibility.md"
+      },
+      {
+        "kind": "internal",
+        "line": 330,
+        "path": "SUMMARY.md",
+        "target": "trust/architecture.md"
+      },
+      {
+        "kind": "internal",
+        "line": 331,
+        "path": "SUMMARY.md",
+        "target": "trust/evidence-walkthrough.md"
+      },
+      {
+        "kind": "internal",
+        "line": 332,
+        "path": "SUMMARY.md",
+        "target": "trust/security-questionnaire.md"
       },
       {
         "kind": "internal",
         "line": 333,
         "path": "SUMMARY.md",
-        "target": "connectors/overview.md"
+        "target": "trust/supply-chain.md"
       },
       {
         "kind": "internal",
         "line": 334,
         "path": "SUMMARY.md",
-        "target": "connectors/databases.md"
+        "target": "trust/threat-model.md"
       },
       {
         "kind": "internal",
         "line": 335,
         "path": "SUMMARY.md",
-        "target": "connectors/reference.md"
-      },
-      {
-        "kind": "internal",
-        "line": 336,
-        "path": "SUMMARY.md",
-        "target": "connectors/snowflake.md"
-      },
-      {
-        "kind": "internal",
-        "line": 337,
-        "path": "SUMMARY.md",
-        "target": "connectors/bigquery.md"
-      },
-      {
-        "kind": "internal",
-        "line": 338,
-        "path": "SUMMARY.md",
-        "target": "connectors/clickhouse.md"
+        "target": "trust/support-policy.md"
       },
       {
         "kind": "internal",
         "line": 339,
         "path": "SUMMARY.md",
-        "target": "connectors/postgres.md"
+        "target": "api/overview.md"
       },
       {
         "kind": "internal",
         "line": 340,
         "path": "SUMMARY.md",
-        "target": "connectors/oracle.md"
+        "target": "api/reference.md"
       },
       {
         "kind": "internal",
         "line": 341,
         "path": "SUMMARY.md",
-        "target": "connectors/mysql.md"
+        "target": "api/streaming.md"
       },
       {
         "kind": "internal",
         "line": 342,
         "path": "SUMMARY.md",
-        "target": "connectors/mssql.md"
+        "target": "api/explorer.md"
       },
       {
         "kind": "internal",
         "line": 343,
         "path": "SUMMARY.md",
-        "target": "connectors/sqlite.md"
+        "target": "api/errors.md"
       },
       {
         "kind": "internal",
         "line": 344,
         "path": "SUMMARY.md",
-        "target": "connectors/redshift.md"
+        "target": "api/stability.md"
       },
       {
         "kind": "internal",
         "line": 345,
         "path": "SUMMARY.md",
-        "target": "connectors/s3.md"
-      },
-      {
-        "kind": "internal",
-        "line": 346,
-        "path": "SUMMARY.md",
-        "target": "connectors/gcs.md"
-      },
-      {
-        "kind": "internal",
-        "line": 347,
-        "path": "SUMMARY.md",
-        "target": "connectors/azure-blob.md"
-      },
-      {
-        "kind": "internal",
-        "line": 348,
-        "path": "SUMMARY.md",
-        "target": "connectors/redis.md"
+        "target": "api/rate-limits.md"
       },
       {
         "kind": "internal",
         "line": 349,
         "path": "SUMMARY.md",
-        "target": "connectors/neo4j.md"
+        "target": "connectors/overview.md"
       },
       {
         "kind": "internal",
         "line": 350,
         "path": "SUMMARY.md",
-        "target": "connectors/elasticsearch.md"
+        "target": "connectors/databases.md"
       },
       {
         "kind": "internal",
         "line": 351,
         "path": "SUMMARY.md",
-        "target": "connectors/files.md"
+        "target": "connectors/reference.md"
       },
       {
         "kind": "internal",
         "line": 352,
         "path": "SUMMARY.md",
-        "target": "connectors/code-repositories.md"
+        "target": "connectors/snowflake.md"
       },
       {
         "kind": "internal",
         "line": 353,
         "path": "SUMMARY.md",
-        "target": "connectors/rest-api.md"
+        "target": "connectors/bigquery.md"
+      },
+      {
+        "kind": "internal",
+        "line": 354,
+        "path": "SUMMARY.md",
+        "target": "connectors/clickhouse.md"
+      },
+      {
+        "kind": "internal",
+        "line": 355,
+        "path": "SUMMARY.md",
+        "target": "connectors/postgres.md"
+      },
+      {
+        "kind": "internal",
+        "line": 356,
+        "path": "SUMMARY.md",
+        "target": "connectors/oracle.md"
       },
       {
         "kind": "internal",
         "line": 357,
         "path": "SUMMARY.md",
-        "target": "benchmarks/overview.md"
+        "target": "connectors/mysql.md"
       },
       {
         "kind": "internal",
         "line": 358,
         "path": "SUMMARY.md",
-        "target": "benchmarks/compute-kernels.md"
+        "target": "connectors/mssql.md"
       },
       {
         "kind": "internal",
         "line": 359,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-kernel-benchmarks.md"
+        "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
         "line": 360,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-llm-throughput.md"
+        "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
         "line": 361,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-llm-serving.md"
+        "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
         "line": 362,
         "path": "SUMMARY.md",
-        "target": "benchmarks/attention.md"
+        "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
         "line": 363,
         "path": "SUMMARY.md",
-        "target": "benchmarks/normalization.md"
+        "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
         "line": 364,
         "path": "SUMMARY.md",
-        "target": "benchmarks/feed-forward.md"
+        "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
         "line": 365,
         "path": "SUMMARY.md",
-        "target": "benchmarks/code-retrieval.md"
+        "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
         "line": 366,
         "path": "SUMMARY.md",
-        "target": "benchmarks/dataframe-groupby.md"
+        "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
         "line": 367,
         "path": "SUMMARY.md",
-        "target": "benchmarks/sort.md"
+        "target": "connectors/files.md"
       },
       {
         "kind": "internal",
         "line": 368,
         "path": "SUMMARY.md",
-        "target": "benchmarks/top-k.md"
+        "target": "connectors/code-repositories.md"
       },
       {
         "kind": "internal",
         "line": 369,
         "path": "SUMMARY.md",
-        "target": "benchmarks/graph-betweenness.md"
-      },
-      {
-        "kind": "internal",
-        "line": 370,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/survival-analysis.md"
-      },
-      {
-        "kind": "internal",
-        "line": 371,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/least-squares-accuracy.md"
-      },
-      {
-        "kind": "internal",
-        "line": 372,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/forecasting-joint-axis.md"
+        "target": "connectors/rest-api.md"
       },
       {
         "kind": "internal",
         "line": 373,
         "path": "SUMMARY.md",
-        "target": "benchmarks/finqa-exact-execution.md"
+        "target": "benchmarks/overview.md"
       },
       {
         "kind": "internal",
         "line": 374,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-inference-overview.md"
+        "target": "benchmarks/compute-kernels.md"
       },
       {
         "kind": "internal",
         "line": 375,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-prefill-throughput.md"
+        "target": "benchmarks/nvidia-kernel-benchmarks.md"
       },
       {
         "kind": "internal",
         "line": 376,
         "path": "SUMMARY.md",
-        "target": "benchmarks/decode-throughput.md"
+        "target": "benchmarks/nvidia-llm-throughput.md"
       },
       {
         "kind": "internal",
         "line": 377,
         "path": "SUMMARY.md",
-        "target": "benchmarks/batched-decode-throughput.md"
+        "target": "benchmarks/nvidia-llm-serving.md"
       },
       {
         "kind": "internal",
         "line": 378,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-tool-calling-uplift.md"
+        "target": "benchmarks/attention.md"
+      },
+      {
+        "kind": "internal",
+        "line": 379,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/normalization.md"
+      },
+      {
+        "kind": "internal",
+        "line": 380,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/feed-forward.md"
+      },
+      {
+        "kind": "internal",
+        "line": 381,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/code-retrieval.md"
       },
       {
         "kind": "internal",
         "line": 382,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/dataframe-groupby.md"
       },
       {
         "kind": "internal",
         "line": 383,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "benchmarks/sort.md"
       },
       {
         "kind": "internal",
         "line": 384,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "benchmarks/top-k.md"
       },
       {
         "kind": "internal",
         "line": 385,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "benchmarks/graph-betweenness.md"
       },
       {
         "kind": "internal",
         "line": 386,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/survival-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 387,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/least-squares-accuracy.md"
+      },
+      {
+        "kind": "internal",
+        "line": 388,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/forecasting-joint-axis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 389,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/finqa-exact-execution.md"
+      },
+      {
+        "kind": "internal",
+        "line": 390,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 391,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 392,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 393,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 394,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 398,
+        "path": "SUMMARY.md",
+        "target": "troubleshooting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 399,
+        "path": "SUMMARY.md",
+        "target": "help/glossary.md"
+      },
+      {
+        "kind": "internal",
+        "line": 400,
+        "path": "SUMMARY.md",
+        "target": "help/quick-reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 401,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 402,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -40777,6 +41181,42 @@
       },
       {
         "kind": "internal",
+        "line": 13,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "target": "mixture-of-experts-and-routing-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 199,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "target": "attention-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 240,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "target": "mixture-of-experts-and-routing-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 242,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 200,
+        "path": "engine/agricultural-production-kernels.md",
+        "target": "atmospheric-chemistry-and-climate-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 202,
+        "path": "engine/agricultural-production-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 145,
         "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
         "target": "runtime-library-catalog.md"
@@ -40942,6 +41382,18 @@
         "line": 284,
         "path": "engine/bit-level-and-hashing-kernels.md",
         "target": "video-quality-and-accessibility-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 191,
+        "path": "engine/building-and-facility-systems-kernels.md",
+        "target": "hydrology-and-water-systems-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 193,
+        "path": "engine/building-and-facility-systems-kernels.md",
+        "target": "runtime-library-catalog.md"
       },
       {
         "kind": "internal",
@@ -41410,6 +41862,24 @@
         "line": 203,
         "path": "engine/document-vision-kernels.md",
         "target": "capabilities.md"
+      },
+      {
+        "kind": "internal",
+        "line": 297,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "target": "mixture-of-experts-and-routing-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 347,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "target": "epidemiology-and-disease-dynamics-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 349,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "target": "runtime-library-catalog.md"
       },
       {
         "kind": "internal",
@@ -41941,6 +42411,18 @@
       },
       {
         "kind": "internal",
+        "line": 113,
+        "path": "engine/industrial-fluid-power-and-energy-systems-kernels.md",
+        "target": "thermal-and-energy-materials-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 113,
+        "path": "engine/industrial-fluid-power-and-energy-systems-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 17,
         "path": "engine/kernel-inventory.md",
         "target": "model-support-matrix.md"
@@ -42058,6 +42540,18 @@
         "line": 282,
         "path": "engine/loss-functions-and-resident-context-kernels.md",
         "target": "autograd-and-training-stability-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 233,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "target": "process-and-organic-materials-science-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 235,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "target": "runtime-library-catalog.md"
       },
       {
         "kind": "internal",
@@ -42463,6 +42957,18 @@
       },
       {
         "kind": "internal",
+        "line": 243,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "target": "immunology-hematology-and-virology-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 245,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 278,
         "path": "engine/multimodal-and-inference-operations-kernels.md",
         "target": "llm-inference-kernels.md"
@@ -42633,6 +43139,18 @@
         "kind": "internal",
         "line": 489,
         "path": "engine/optimization.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 188,
+        "path": "engine/paleobiology-and-archaeobotany-kernels.md",
+        "target": "historical-geology-and-paleoclimate-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 190,
+        "path": "engine/paleobiology-and-archaeobotany-kernels.md",
         "target": "runtime-library-catalog.md"
       },
       {
@@ -43255,6 +43773,18 @@
       },
       {
         "kind": "internal",
+        "line": 268,
+        "path": "engine/specialty-agriculture-and-aquaculture-kernels.md",
+        "target": "hydrology-and-water-systems-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 270,
+        "path": "engine/specialty-agriculture-and-aquaculture-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 332,
         "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
         "target": "acoustics-optics-and-radiative-materials-kernels.md"
@@ -43629,6 +44159,24 @@
         "kind": "internal",
         "line": 285,
         "path": "engine/transformer-blocks-and-normalization-reference-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 186,
+        "path": "engine/transportation-and-hazard-safety-kernels.md",
+        "target": "pharmacology-and-toxicology-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 246,
+        "path": "engine/transportation-and-hazard-safety-kernels.md",
+        "target": "pharmacology-and-toxicology-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 248,
+        "path": "engine/transportation-and-hazard-safety-kernels.md",
         "target": "runtime-library-catalog.md"
       },
       {
@@ -47755,17 +48303,17 @@
         "term": "algenta"
       },
       {
-        "line": 227,
+        "line": 243,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 262,
+        "line": 278,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 282,
+        "line": 298,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
@@ -49730,6 +50278,16 @@
         "term": "algenta"
       },
       {
+        "line": 17,
+        "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 29,
+        "path": "engine/agricultural-production-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 28,
         "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
         "term": "algenta"
@@ -49752,6 +50310,11 @@
       {
         "line": 20,
         "path": "engine/bit-level-and-hashing-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 20,
+        "path": "engine/building-and-facility-systems-kernels.md",
         "term": "algenta"
       },
       {
@@ -49970,6 +50533,11 @@
         "term": "algenta"
       },
       {
+        "line": 22,
+        "path": "engine/ecology-and-organismal-biology-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 30,
         "path": "engine/encoding-and-cryptography-kernels.md",
         "term": "algenta"
@@ -50095,6 +50663,11 @@
         "term": "algenta"
       },
       {
+        "line": 11,
+        "path": "engine/industrial-fluid-power-and-energy-systems-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 225,
         "path": "engine/kernel-inventory.md",
         "term": "algenta"
@@ -50130,6 +50703,11 @@
         "term": "algenta"
       },
       {
+        "line": 21,
+        "path": "engine/manufacturing-and-craft-engineering-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 18,
         "path": "engine/mixture-of-experts-and-routing-kernels.md",
         "term": "algenta"
@@ -50152,6 +50730,11 @@
       {
         "line": 19,
         "path": "engine/model-lifecycle-and-interop-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 20,
+        "path": "engine/molecular-and-cell-biology-kernels.md",
         "term": "algenta"
       },
       {
@@ -50187,6 +50770,11 @@
       {
         "line": 14,
         "path": "engine/optimization.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
+        "path": "engine/paleobiology-and-archaeobotany-kernels.md",
         "term": "algenta"
       },
       {
@@ -50401,6 +50989,11 @@
       },
       {
         "line": 21,
+        "path": "engine/specialty-agriculture-and-aquaculture-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 21,
         "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
         "term": "algenta"
       },
@@ -50507,6 +51100,11 @@
       {
         "line": 24,
         "path": "engine/transformer-blocks-and-normalization-reference-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 20,
+        "path": "engine/transportation-and-hazard-safety-kernels.md",
         "term": "algenta"
       },
       {
@@ -61240,8 +61838,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 303,
-      "links": 303,
+      "internal_links": 313,
+      "links": 313,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -62915,6 +63513,56 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "engine/aerospace-and-autonomous-systems-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/agricultural-production-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
       "internal_links": 3,
       "links": 3,
       "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
@@ -63018,6 +63666,31 @@
       "internal_links": 10,
       "links": 10,
       "path": "engine/bit-level-and-hashing-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/building-and-facility-systems-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -63629,6 +64302,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/ecology-and-organismal-biology-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 5,
       "command_counts": {
         "destructive_mutation": 0,
@@ -64115,6 +64813,31 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/industrial-fluid-power-and-energy-systems-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
       "internal_links": 1,
       "links": 1,
       "path": "engine/kernel-inventory.md",
@@ -64218,6 +64941,31 @@
       "internal_links": 6,
       "links": 6,
       "path": "engine/loss-functions-and-resident-context-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/manufacturing-and-craft-engineering-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -64979,6 +65727,31 @@
       "shell_commands": 7
     },
     {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/molecular-and-cell-biology-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 10,
       "command_counts": {
         "destructive_mutation": 0,
@@ -65143,6 +65916,31 @@
       "internal_links": 4,
       "links": 4,
       "path": "engine/optimization.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/paleobiology-and-archaeobotany-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -65729,6 +66527,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/specialty-agriculture-and-aquaculture-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 10,
       "command_counts": {
         "destructive_mutation": 0,
@@ -66118,6 +66941,31 @@
       "internal_links": 7,
       "links": 7,
       "path": "engine/transformer-blocks-and-normalization-reference-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/transportation-and-hazard-safety-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -68838,7 +69686,7 @@
     "source_paths": 230
   },
   "snippets": {
-    "code_fences": 1794,
+    "code_fences": 1837,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 857,
@@ -68852,7 +69700,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1239,
+    "claim_mentions": 1249,
     "command_execution_percent": 100.0,
     "commands_classified": 857,
     "commands_executed": 67,
@@ -68860,22 +69708,22 @@
     "endpoint_mentions": 2432,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1915,
+    "links_checked": 1949,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 304,
+    "pages_checked": 314,
     "shell_syntax_validation_percent": 100.0,
     "skips": 791,
-    "snippets_checked": 1794,
+    "snippets_checked": 1837,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 8237,
+    "source_items_inventoried": 8324,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1239,
-    "code_fences": 1794,
+    "claim_mentions": 1249,
+    "code_fences": 1837,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
@@ -68887,18 +69735,18 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 790,
-    "internal_links": 1847,
-    "links": 1915,
-    "pages": 304,
+    "internal_links": 1881,
+    "links": 1949,
+    "pages": 314,
     "product_claims": {
-      "algenta": 1226,
+      "algenta": 1236,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 13
     },
-    "public_pages": 303,
+    "public_pages": 313,
     "requires_environment_commands": 390,
     "runnable_commands": 67,
     "safe_static_commands": 67,
@@ -68907,7 +69755,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 791,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 8237,
+    "source_items_inventoried": 8324,
     "static_only_commands": 80,
     "static_or_guarded_commands": 790,
     "unexecuted_runnable_commands": 0,

@@ -184,6 +184,22 @@
 * [Biomedical, biomechanics, and psychoacoustics kernels](engine/biomedical-engineering-kernels.md)
 * [Nutrition and veterinary science kernels](engine/nutrition-and-veterinary-science-kernels.md)
 
+## Biology & agricultural sciences
+
+* [Agricultural production kernels](engine/agricultural-production-kernels.md)
+* [Specialty agriculture & aquaculture kernels](engine/specialty-agriculture-and-aquaculture-kernels.md)
+* [Molecular & cell biology kernels](engine/molecular-and-cell-biology-kernels.md)
+* [Ecology & organismal biology kernels](engine/ecology-and-organismal-biology-kernels.md)
+* [Paleobiology & archaeobotany kernels](engine/paleobiology-and-archaeobotany-kernels.md)
+
+## Engineering & industrial systems
+
+* [Aerospace & autonomous systems kernels](engine/aerospace-and-autonomous-systems-kernels.md)
+* [Building & facility systems kernels](engine/building-and-facility-systems-kernels.md)
+* [Industrial fluid power & energy systems kernels](engine/industrial-fluid-power-and-energy-systems-kernels.md)
+* [Transportation & hazard-safety kernels](engine/transportation-and-hazard-safety-kernels.md)
+* [Manufacturing & craft engineering kernels](engine/manufacturing-and-craft-engineering-kernels.md)
+
 ## Concepts
 
 * [How the engine works](concepts/engine.md)
