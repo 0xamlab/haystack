@@ -172,3 +172,9 @@ scripts/.deploy.env
 # Per-run generated adaptive-CodeQL differential configs (written inside the workspace
 # because codeql-action/init refuses configs outside it).
 .codeql-scope/
+
+# Track C1 conformance CI: a PINNED, ephemeral checkout of the upstream
+# openresponses/openresponses compliance CLI (see .github/workflows/ci.yml's
+# openresponses-conformance job). Never vendored into this repo -- checked out fresh at a
+# pinned commit SHA on every CI run and discarded with the runner.
+.openresponses-conformance/
