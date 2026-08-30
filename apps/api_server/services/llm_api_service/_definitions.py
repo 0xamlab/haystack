@@ -81,6 +81,12 @@ class LLMModelDescriptor:
     provider_auth_configured: bool = False
     chat_provider_auth_configured: bool = False
     embedding_provider_auth_configured: bool = False
+    # Track C2 (real per-backend streaming, 2026-08): truthful, per-model streaming capability.
+    # "synthetic" for every non-provider (tokenizer/embedding-similarity) model and every
+    # provider-backed model whose backend has no real streaming normalizer yet -- never silently
+    # claimed as "passthrough" without one. See llm_provider_service._features.
+    streaming_mode: Literal["passthrough", "synthetic"] = "synthetic"
+    supported_parameters: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -491,6 +497,7 @@ def list_llm_model_descriptors() -> tuple[LLMModelDescriptor, ...]:
             {"cause": str(exc)},
         ) from exc
 
+    from apps.api_server.services.llm_provider_service import _features as _streaming_features
     from apps.api_server.services.llm_provider_service._discovery import is_discovery_entry
 
     for provider_config in provider_configs:
@@ -595,6 +602,12 @@ def list_llm_model_descriptors() -> tuple[LLMModelDescriptor, ...]:
                         capability="embeddings",
                     )
                 ),
+                streaming_mode=_streaming_features.resolved_streaming_mode_for_model(
+                    provider_config.model_id
+                ),
+                supported_parameters=_streaming_features.resolved_supported_parameters_for_model(
+                    provider_config.model_id
+                ),
             )
         )
 
@@ -610,6 +623,7 @@ async def list_provider_discovered_descriptors() -> tuple["LLMModelDescriptor", 
     import os
 
     from apps.api_server.services import llm_provider_service
+    from apps.api_server.services.llm_provider_service import _features as _streaming_features
     from apps.api_server.services.llm_provider_service._discovery import (
         discover_provider_models,
         discovered_model_id,
@@ -629,6 +643,10 @@ async def list_provider_discovered_descriptors() -> tuple["LLMModelDescriptor", 
         auth_env = (entry.api_key_env,) if entry.api_key_env else ()
         auth_ok = entry.api_key_env is None or bool(os.environ.get(entry.api_key_env, "").strip())
         header_names = tuple(name for name, _ in entry.header_envs)
+        entry_streaming_mode = _streaming_features.streaming_mode_for_backend(entry.backend)
+        entry_supported_parameters = _streaming_features.supported_parameters_for_backend(
+            entry.backend
+        )
         for model in models:
             endpoints = ["/v1/models"]
             if "chat_completions" in entry.capabilities:
@@ -661,6 +679,8 @@ async def list_provider_discovered_descriptors() -> tuple["LLMModelDescriptor", 
                     provider_auth_configured=auth_ok,
                     chat_provider_auth_configured=auth_ok,
                     embedding_provider_auth_configured=auth_ok,
+                    streaming_mode=entry_streaming_mode,
+                    supported_parameters=entry_supported_parameters,
                 )
             )
     return tuple(out)

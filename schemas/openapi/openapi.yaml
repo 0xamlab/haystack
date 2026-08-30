@@ -18128,6 +18128,25 @@ components:
           title: Bridge Artifact Backends
           description: Detected optional artifact/cache bridge backends available
             in the current checkout.
+        streaming_mode:
+          type: string
+          enum:
+          - passthrough
+          - synthetic
+          title: Streaming Mode
+          description: Truthful streaming capability for this model. 'passthrough'
+            means stream=true returns the upstream's own incremental chunks as they
+            are generated; 'synthetic' means stream=true still returns valid SSE,
+            but the content is produced by one buffered call and sliced into fixed-size
+            chunks afterward.
+          default: synthetic
+        supported_parameters:
+          items:
+            type: string
+          type: array
+          title: Supported Parameters
+          description: Chat-completions request parameters this model's backend actually
+            honors.
         available:
           type: boolean
           title: Available

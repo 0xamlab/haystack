@@ -8,8 +8,8 @@ import smtplib
 import socket
 import uuid
 import urllib.request
-from collections.abc import Callable, Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Callable, Iterator, Mapping
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -362,6 +362,47 @@ async def async_http_request(
         return await _dispatch(client)
     async with httpx.AsyncClient(**(client_kwargs or {})) as managed_client:
         return await _dispatch(managed_client)
+
+
+@asynccontextmanager
+async def async_http_stream(
+    *,
+    method: str,
+    url: str,
+    surface: str,
+    service_name: str = "api-server",
+    policy_destination: str | None = None,
+    explicit_configured: bool = False,
+    egress_class: EgressClass | None = None,
+    audit_context: EgressAuditContext | None = None,
+    client: httpx.AsyncClient | None = None,
+    client_kwargs: dict[str, Any] | None = None,
+    **request_kwargs: Any,
+) -> AsyncIterator[httpx.Response]:
+    """Streaming counterpart to async_http_request: the identical enforce_egress() gate (same
+    SSRF checks, same audit logging) runs before any socket opens, but the response body is never
+    buffered — httpx's own streaming client (`client.stream(...)`) is used so the caller can
+    iterate response bytes/lines as the upstream produces them.
+
+    Yields the still-open httpx.Response inside the `async with` block; the caller reads it via
+    `response.aiter_bytes()` / `response.aiter_lines()` (and `response.aread()` if it needs the
+    full body, e.g. to report an error payload) before the block exits, at which point the
+    underlying connection is released."""
+    await enforce_egress(
+        policy_destination or url,
+        surface=surface,
+        service_name=service_name,
+        explicit_configured=explicit_configured,
+        egress_class=egress_class,
+        audit_context=audit_context,
+    )
+    if client is not None:
+        async with client.stream(method, url, **request_kwargs) as response:
+            yield response
+        return
+    async with httpx.AsyncClient(**(client_kwargs or {})) as managed_client:
+        async with managed_client.stream(method, url, **request_kwargs) as response:
+            yield response
 
 
 def sync_http_request(

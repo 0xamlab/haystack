@@ -148,6 +148,19 @@ class LLMModelResponse(BaseModel):
         default_factory=list,
         description="Detected optional artifact/cache bridge backends available in the current checkout.",
     )
+    streaming_mode: Literal["passthrough", "synthetic"] = Field(
+        default="synthetic",
+        description=(
+            "Truthful streaming capability for this model. 'passthrough' means stream=true "
+            "returns the upstream's own incremental chunks as they are generated; 'synthetic' "
+            "means stream=true still returns valid SSE, but the content is produced by one "
+            "buffered call and sliced into fixed-size chunks afterward."
+        ),
+    )
+    supported_parameters: list[str] = Field(
+        default_factory=list,
+        description="Chat-completions request parameters this model's backend actually honors.",
+    )
     available: bool
 
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from typing import Any, Callable
@@ -208,6 +209,42 @@ def _provider_auth_headers(config: ProviderModelConfig) -> dict[str, str]:
     return headers
 
 
+def _raise_for_provider_error_status(
+    *,
+    config: ProviderModelConfig,
+    status_code: int,
+    detail: Any,
+) -> None:
+    """Shared HTTP-status -> typed LLMAPIError mapping for both the buffered (_provider_post_json)
+    and streaming (_provider_post_json_stream) provider call paths -- kept as one function so the
+    two paths can never silently drift apart on what counts as retryable vs terminal."""
+    from apps.api_server.services.llm_api_service import LLMAPIError
+
+    if status_code == 429:
+        raise LLMAPIError(
+            "provider_rate_limited",
+            f"Provider backend rate limited model '{config.model_id}'.",
+            {"model": config.model_id, "status_code": status_code, "response": detail},
+        )
+    if status_code in {401, 403}:
+        raise LLMAPIError(
+            "provider_authentication_failed",
+            f"Provider backend rejected credentials for model '{config.model_id}'.",
+            {"model": config.model_id, "status_code": status_code, "response": detail},
+        )
+    if 400 <= status_code < 500:
+        raise LLMAPIError(
+            "invalid_provider_request",
+            f"Provider backend rejected the request for model '{config.model_id}'.",
+            {"model": config.model_id, "status_code": status_code, "response": detail},
+        )
+    raise LLMAPIError(
+        "provider_backend_error",
+        f"Provider backend returned HTTP {status_code} for model '{config.model_id}'.",
+        {"model": config.model_id, "status_code": status_code, "response": detail},
+    )
+
+
 async def _provider_post_json(
     *,
     config: ProviderModelConfig,
@@ -261,28 +298,8 @@ async def _provider_post_json(
             detail = response.json()
         except Exception:
             detail = response.text
-        if response.status_code == 429:
-            raise LLMAPIError(
-                "provider_rate_limited",
-                f"Provider backend rate limited model '{config.model_id}'.",
-                {"model": config.model_id, "status_code": response.status_code, "response": detail},
-            )
-        if response.status_code in {401, 403}:
-            raise LLMAPIError(
-                "provider_authentication_failed",
-                f"Provider backend rejected credentials for model '{config.model_id}'.",
-                {"model": config.model_id, "status_code": response.status_code, "response": detail},
-            )
-        if 400 <= response.status_code < 500:
-            raise LLMAPIError(
-                "invalid_provider_request",
-                f"Provider backend rejected the request for model '{config.model_id}'.",
-                {"model": config.model_id, "status_code": response.status_code, "response": detail},
-            )
-        raise LLMAPIError(
-            "provider_backend_error",
-            f"Provider backend returned HTTP {response.status_code} for model '{config.model_id}'.",
-            {"model": config.model_id, "status_code": response.status_code, "response": detail},
+        _raise_for_provider_error_status(
+            config=config, status_code=response.status_code, detail=detail
         )
 
     try:
@@ -300,6 +317,89 @@ async def _provider_post_json(
             {"model": config.model_id, "backend": config.backend},
         )
     return data
+
+
+# Track C2 (real per-backend streaming, 2026-08): backends with a real SSE normalizer in
+# _streaming.py -- re-exported here from the single source of truth (llm_provider_service._features)
+# so _provider_post_json_stream's normalizer choice can never silently drift from what
+# GET /v1/models (and the router's streaming-mode gate) advertise as "passthrough".
+from apps.api_server.services.llm_provider_service._features import (
+    PASSTHROUGH_STREAMING_BACKENDS as _STREAM_NORMALIZED_BACKENDS,
+)
+
+
+async def _provider_post_json_stream(
+    *,
+    config: ProviderModelConfig,
+    path: str,
+    payload: dict[str, Any],
+    timeout_seconds: float,
+) -> AsyncIterator[dict[str, Any]]:
+    """Streaming counterpart to _provider_post_json: the SAME egress gate + typed HTTP-status
+    error mapping, but opens the connection via egress_guard.async_http_stream and yields
+    normalized per-backend stream-event dicts (see _streaming.py) as the upstream produces them --
+    never buffers the full response body. Only meaningful for config.backend in
+    _STREAM_NORMALIZED_BACKENDS; the caller (provider_chat_completion_stream) is responsible for
+    only invoking this for a passthrough-capable backend -- enforced defensively below too, so a
+    future caller mistake fails loudly instead of silently parsing a non-openai-shaped,
+    non-anthropic body with the wrong normalizer."""
+    from apps.api_server.services import egress_guard
+    from apps.api_server.services.egress_guard import EgressPolicyDeniedError
+    from apps.api_server.services.llm_api_service import LLMAPIError
+    from apps.api_server.services.llm_provider_service._streaming import (
+        parse_anthropic_stream,
+        parse_openai_shaped_stream,
+    )
+
+    assert config.backend in _STREAM_NORMALIZED_BACKENDS, (
+        f"_provider_post_json_stream called for non-passthrough backend '{config.backend}'"
+    )
+    try:
+        async with egress_guard.async_http_stream(
+            method="POST",
+            url=f"{config.base_url}{path}",
+            surface="llm_provider_post_stream",
+            egress_class="customer_connector",
+            explicit_configured=True,
+            headers=_provider_auth_headers(config),
+            json=payload,
+            client_kwargs={"timeout": timeout_seconds},
+        ) as response:
+            if response.status_code >= 400:
+                body = await response.aread()
+                detail: Any
+                try:
+                    detail = json.loads(body.decode("utf-8", errors="replace"))
+                except (TypeError, ValueError):
+                    detail = body.decode("utf-8", errors="replace")
+                _raise_for_provider_error_status(
+                    config=config, status_code=response.status_code, detail=detail
+                )
+            normalizer = (
+                parse_anthropic_stream
+                if config.backend == "anthropic"
+                else parse_openai_shaped_stream
+            )
+            async for event in normalizer(response.aiter_lines()):
+                yield event
+    except EgressPolicyDeniedError as exc:
+        raise LLMAPIError(
+            "egress_denied",
+            f"Provider egress denied by privacy policy for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise LLMAPIError(
+            "provider_timeout",
+            f"Provider backend timed out for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise LLMAPIError(
+            "backend_unavailable",
+            f"Provider backend is unavailable for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
 
 
 async def _provider_get_json(

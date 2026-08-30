@@ -92,6 +92,8 @@ def test_llm_models_route_lists_truthful_tokenizer_catalog(monkeypatch) -> None:
             "bridge_auth_configured": True,
             "bridge_tokenizer_backends": ["tiktoken", "sentencepiece"],
             "bridge_artifact_backends": ["safetensors", "huggingface_hub"],
+            "streaming_mode": "synthetic",
+            "supported_parameters": [],
             "available": True,
         }
     ]
@@ -213,5 +215,54 @@ def test_llm_models_route_surfaces_router_target_metadata(monkeypatch) -> None:
     assert payload["data"][0]["provider_auth_configured"] is True
     assert payload["data"][0]["chat_provider_auth_configured"] is True
     assert payload["data"][0]["embedding_provider_auth_configured"] is False
+
+
+def test_llm_models_route_reports_streaming_mode_truthfully(monkeypatch) -> None:
+    """Track C2 (real per-backend streaming): GET /v1/models over the REAL provider-config
+    resolution path (not a hand-mocked descriptor) -- a passthrough-capable backend (openai)
+    reports "passthrough", a deliberately-deferred backend (ollama) reports "synthetic"."""
+    import json
+
+    from apps.api_server.services import llm_provider_service
+
+    monkeypatch.setattr(llm_router, "_enforce_llm_api_rate_limit", _noop_rate_limit)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv(
+        "ALGENTA_LLM_PROVIDER_MODELS_JSON",
+        json.dumps(
+            [
+                {
+                    "id": "provider.openai-gpt-4o-mini",
+                    "backend": "openai",
+                    "base_url": "https://api.openai.com/v1",
+                    "model_name": "gpt-4o-mini",
+                    "api_key_env": "OPENAI_API_KEY",
+                    "capabilities": ["chat_completions"],
+                },
+                {
+                    "id": "provider.ollama-gemma3",
+                    "backend": "ollama",
+                    "base_url": "http://localhost:11434",
+                    "model_name": "gemma3",
+                    "capabilities": ["chat_completions"],
+                },
+            ]
+        ),
+    )
+    llm_provider_service.load_provider_model_configs.cache_clear()
+    app.dependency_overrides[get_current_org] = _fake_auth
+    app.dependency_overrides[get_redis] = lambda: object()
+    try:
+        with SyncASGIClient(app) as client:
+            response = client.get("/v1/models")
+    finally:
+        app.dependency_overrides.clear()
+        llm_provider_service.load_provider_model_configs.cache_clear()
+
+    assert response.status_code == 200
+    by_id = {row["id"]: row for row in response.json()["data"]}
+    assert by_id["provider.openai-gpt-4o-mini"]["streaming_mode"] == "passthrough"
+    assert "stream" in by_id["provider.openai-gpt-4o-mini"]["supported_parameters"]
+    assert by_id["provider.ollama-gemma3"]["streaming_mode"] == "synthetic"
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import AsyncIterator
 from typing import Annotated
 
@@ -17,6 +18,7 @@ from apps.api_server.schemas.llm import (
     ChatCompletionsRequest,
     ChatCompletionsResponse,
     ChatCompletionChoice,
+    ChatCompletionInputMessage,
     ChatCompletionOutputMessage,
     ChatCompletionToolCall,
     ChatCompletionUsage,
@@ -42,6 +44,8 @@ from apps.api_server.schemas.llm import (
     TokenizeRequest,
     TokenizeResponse,
 )
+from apps.api_server.services import llm_provider_service
+from apps.api_server.services.llm_provider_service import _features as llm_streaming_features
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.llm_api_service import (
     create_chat_completion,
@@ -281,6 +285,170 @@ async def _chat_completion_stream(
     yield _sse_data("[DONE]")
 
 
+# ─── Track C2 (real per-backend streaming, 2026-08) ────────────────────────────────────────────
+#
+# Real passthrough streaming activates only when the request carries no `tools` -- a model can
+# only ever emit tool_calls when `tools` was set, so gating on its absence means the "streaming +
+# tool_calls" combination this router still refuses below (see chat_completions()) can never
+# actually arise through this path; it keeps that existing, tested contract intact while adding
+# real incremental delivery for the common (no-tool-calling) case. The per-backend normalizers
+# already parse tool-call deltas correctly (see _streaming.py + its golden-fixture tests) so
+# wiring streamed tool-calls end-to-end through this router is a natural, self-contained
+# follow-up, not a rewrite.
+
+
+def _serialize_chat_completion_messages(
+    messages: list[ChatCompletionInputMessage],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "role": message.role,
+            "content": message.content,
+            **(
+                {"tool_calls": [tc.model_dump(exclude_none=True) for tc in message.tool_calls]}
+                if message.tool_calls
+                else {}
+            ),
+            **({"tool_call_id": message.tool_call_id} if message.tool_call_id else {}),
+            **({"name": message.name} if message.name else {}),
+        }
+        for message in messages
+    ]
+
+
+def _passthrough_stream_event_delta(event: dict[str, object]) -> dict[str, object] | None:
+    delta: dict[str, object] = {}
+    content = event.get("content")
+    if content:
+        delta["content"] = content
+    tool_calls = event.get("tool_calls")
+    if tool_calls:
+        delta["tool_calls"] = tool_calls
+    return delta or None
+
+
+async def _chat_completion_stream_passthrough(
+    *,
+    completion_id: str,
+    model_id: str,
+    provider_backend: str,
+    provider_model_id: str,
+    provider_attempts: list[ProviderAttemptResponse],
+    first_event: dict[str, object] | None,
+    remaining_events: AsyncIterator[dict[str, object]],
+) -> AsyncIterator[str]:
+    """Real counterpart to _chat_completion_stream: consumes the already-primed normalized event
+    stream directly (see _passthrough_chat_completion_stream_response) instead of slicing a fully
+    generated string. Emits the EXACT SAME three-phase SSE framing (role-announce chunk, N
+    content/tool_call delta chunks, terminal finish_reason chunk, [DONE]) so existing consumers
+    see no format change -- only real incremental timing."""
+    provider_attempts_payload = [item.model_dump(mode="json") for item in provider_attempts]
+    yield _sse_data(
+        {
+            "id": completion_id,
+            "object": "chat.completion.chunk",
+            "model": model_id,
+            "provider_backend": provider_backend,
+            "provider_model_id": provider_model_id,
+            "provider_attempts": provider_attempts_payload,
+            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
+        }
+    )
+
+    finish_reason = "stop"
+
+    async def _events() -> AsyncIterator[dict[str, object]]:
+        if first_event is not None:
+            yield first_event
+        async for event in remaining_events:
+            yield event
+
+    async for event in _events():
+        event_finish_reason = event.get("finish_reason")
+        if event_finish_reason:
+            finish_reason = event_finish_reason
+        delta = _passthrough_stream_event_delta(event)
+        if delta:
+            yield _sse_data(
+                {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "model": model_id,
+                    "provider_backend": provider_backend,
+                    "provider_model_id": provider_model_id,
+                    "provider_attempts": provider_attempts_payload,
+                    "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
+                }
+            )
+
+    yield _sse_data(
+        {
+            "id": completion_id,
+            "object": "chat.completion.chunk",
+            "model": model_id,
+            "provider_backend": provider_backend,
+            "provider_model_id": provider_model_id,
+            "provider_attempts": provider_attempts_payload,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
+        }
+    )
+    yield _sse_data("[DONE]")
+
+
+async def _passthrough_chat_completion_stream_response(
+    *,
+    payload: ChatCompletionsRequest,
+    request: Request,
+) -> StreamingResponse:
+    """Resolves the model's real streaming target, opens the real upstream connection, and PRIMES
+    it (awaits the first normalized event) before ever constructing the StreamingResponse -- so a
+    pre-stream failure (bad config, auth rejected, egress denied, immediate non-2xx status)
+    surfaces as a normal JSON error with the correct HTTP status code, exactly like the
+    non-streaming path, instead of a broken/truncated SSE response. Only a genuine failure that
+    happens AFTER the connection is already open and producing chunks ends the SSE stream early."""
+    messages = _serialize_chat_completion_messages(payload.messages)
+    try:
+        target_config, event_stream = (
+            await llm_provider_service.routed_provider_chat_completion_stream(
+                model_id=payload.model,
+                messages=messages,
+                max_output_tokens=payload.max_tokens,
+            )
+        )
+        event_iterator = event_stream.__aiter__()
+        try:
+            first_event: dict[str, object] | None = await event_iterator.__anext__()
+        except StopAsyncIteration:
+            first_event = None
+    except (LLMAPIError, MojoLibraryError) as exc:
+        raise _llm_api_http_exception(exc, request) from exc
+
+    completion_id = (
+        (first_event.get("id") if first_event else None)
+        or f"chatcmpl_stream_{uuid.uuid4().hex}"
+    )
+    provider_attempts = [
+        ProviderAttemptResponse(
+            provider_backend=target_config.backend,
+            provider_model_id=target_config.model_id,
+            outcome="selected",
+            error_code=None,
+        )
+    ]
+    return StreamingResponse(
+        _chat_completion_stream_passthrough(
+            completion_id=str(completion_id),
+            model_id=payload.model,
+            provider_backend=target_config.backend,
+            provider_model_id=target_config.model_id,
+            provider_attempts=provider_attempts,
+            first_event=first_event,
+            remaining_events=event_iterator,
+        ),
+        media_type="text/event-stream",
+    )
+
+
 async def _responses_stream(
     *,
     response_id: str,
@@ -291,6 +459,17 @@ async def _responses_stream(
     provider_model_id: str | None,
     provider_attempts: list[ProviderAttemptResponse],
 ) -> AsyncIterator[str]:
+    # Scope note (Track C2, 2026-08): /v1/responses stream=true stays on this SAME
+    # buffered-then-chunked path unconditionally -- including for a model whose
+    # /v1/chat/completions requests now get REAL passthrough streaming (see
+    # _passthrough_chat_completion_stream_response above). Its event vocabulary
+    # (response.created/response.output_item.done/response.completed) is structurally
+    # different from chat.completion.chunk, it can legally emit MULTIPLE independent completions
+    # per legacy list input, and it has no per-backend normalizer of its own -- wiring real
+    # streaming through it is a deliberately separate, later piece of work, not attempted here.
+    # GET /v1/models' streaming_mode flag describes chat-completions streaming capability only;
+    # it is not a claim about this endpoint.
+    #
     # Design note (Track C1a): a tool-call output item flows through the SAME
     # "response.output_item.done" event as any other finished item, with tool_calls/finish_reason
     # populated on its content -- there is no separate "response.function_call.done"-style event.
@@ -414,6 +593,8 @@ async def list_models(
                 bridge_auth_configured=descriptor.bridge_auth_configured,
                 bridge_tokenizer_backends=list(descriptor.bridge_tokenizer_backends),
                 bridge_artifact_backends=list(descriptor.bridge_artifact_backends),
+                streaming_mode=descriptor.streaming_mode,
+                supported_parameters=list(descriptor.supported_parameters),
                 available=descriptor.available,
             )
             for descriptor in descriptors
@@ -496,6 +677,18 @@ async def chat_completions(
         auth=auth,
         redis_client=redis_client,
     )
+    # Track C2 (real per-backend streaming, 2026-08): a streaming request with no tools, against
+    # a model whose real, resolved backend has a real per-backend SSE normalizer, gets REAL
+    # incremental streaming -- the upstream's own bytes are parsed and forwarded chunk-by-chunk as
+    # they arrive, never buffered first. See the "Track C2" comment above
+    # _chat_completion_stream_passthrough for why this is gated on "no tools".
+    if payload.stream and not payload.tools:
+        streaming_mode = llm_streaming_features.resolved_streaming_mode_for_model(payload.model)
+        if streaming_mode == "passthrough":
+            return await _passthrough_chat_completion_stream_response(
+                payload=payload,
+                request=request,
+            )
     # Track C2 (2026-08): non-streaming tool calling. tools/tool_choice/parallel_tool_calls are
     # forwarded ONLY when the caller actually set them, so every existing call site downstream
     # (including test doubles that monkeypatch create_chat_completion with a fixed signature)
@@ -514,20 +707,7 @@ async def chat_completions(
     try:
         descriptor, completion = await create_chat_completion(
             model_id=payload.model,
-            messages=[
-                {
-                    "role": message.role,
-                    "content": message.content,
-                    **(
-                        {"tool_calls": [tc.model_dump(exclude_none=True) for tc in message.tool_calls]}
-                        if message.tool_calls
-                        else {}
-                    ),
-                    **({"tool_call_id": message.tool_call_id} if message.tool_call_id else {}),
-                    **({"name": message.name} if message.name else {}),
-                }
-                for message in payload.messages
-            ],
+            messages=_serialize_chat_completion_messages(payload.messages),
             max_output_tokens=payload.max_tokens,
             temperature=payload.temperature,
             top_p=payload.top_p,
