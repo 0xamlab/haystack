@@ -982,12 +982,51 @@ jobs:
       # bare az-ephemeral VM has no unzip on PATH ("Unable to locate executable file: unzip"),
       # which fails the step in 13s before bun is ever on PATH. Same
       # command-v-then-apt-get-install shape as docs-audit.yml's "Ensure python3.14 present".
+      #
+      # The apt-get fallback above ALSO fails here (confirmed live, run 33329930120 on main and
+      # 33335077011 on a PR, byte-identical: "E: Could not open lock file
+      # /var/lib/apt/lists/lock - open (13: Permission denied)") -- this runner pool has no
+      # passwordless sudo configured (the same constraint this file's setup-python comment
+      # already documents for macOS runners), so `sudo -n true` fails, SUDO falls back to
+      # empty, and apt-get then runs as a non-root user that cannot touch the apt lock file.
+      # Fixing that needs a runner-image change (owner action, out of this repo). Until then,
+      # write a real `unzip` onto PATH with no root and no new dependency: actions/toolkit's
+      # own extractZip() (what setup-bun uses) only ever runs `unzip -o [-q] <file>` with cwd
+      # already set to the destination directory (verified against actions/toolkit's real
+      # source, packages/tool-cache/src/tool-cache.ts's extractZipNix) -- a shim backed by
+      # Python's stdlib zipfile module, extracting into the cwd, is a complete, not partial,
+      # implementation of that exact call shape, not a guess at unzip's full CLI.
       - name: Ensure unzip present (setup-bun needs it to extract the release archive)
         run: |
           command -v unzip >/dev/null 2>&1 && exit 0
           if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then SUDO=sudo; else SUDO=; fi
-          $SUDO apt-get update -qq
-          $SUDO apt-get install -y -qq unzip
+          if $SUDO apt-get update -qq && $SUDO apt-get install -y -qq unzip; then
+            exit 0
+          fi
+          echo "::notice::apt-get unzip install unavailable on this runner (no passwordless sudo) -- installing a stdlib-zipfile-backed unzip shim onto PATH instead"
+          mkdir -p "${RUNNER_TEMP}/unzip-shim"
+          cat > "${RUNNER_TEMP}/unzip-shim/unzip" <<'SHIM'
+          #!/usr/bin/env bash
+          # Minimal unzip shim: this runner has no working apt/sudo, so there is no real unzip
+          # binary. Implements exactly the call shape actions/toolkit's extractZip() uses
+          # (`unzip -o [-q] <file>`, cwd already set to the destination) via Python's stdlib
+          # zipfile module -- see this repo's ci.yml for the full explanation.
+          set -euo pipefail
+          archive=""
+          for arg in "$@"; do
+            case "$arg" in
+              -*) : ;;
+              *) archive="$arg" ;;
+            esac
+          done
+          if [ -z "$archive" ]; then
+            echo "unzip-shim: no archive argument given" >&2
+            exit 1
+          fi
+          exec python3 -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(".")' "$archive"
+          SHIM
+          chmod +x "${RUNNER_TEMP}/unzip-shim/unzip"
+          echo "${RUNNER_TEMP}/unzip-shim" >> "${GITHUB_PATH}"
 
       - name: Set up bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
