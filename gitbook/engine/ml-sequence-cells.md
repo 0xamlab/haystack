@@ -14,6 +14,10 @@ models, using the standard formulations: LSTM gates i,f,g,o with
 complements `nn_layers.mojo`, which has dense layers/activations but no
 recurrence.
 
+| Module | What it does |
+| --- | --- |
+| `seq_nn` | LSTM and GRU single-step recurrent cell forward and backward passes, plus seeded Xavier parameter initialisation — zero Python imports. |
+
 ## Functions
 
 | Function | What it does |

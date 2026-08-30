@@ -12,6 +12,12 @@ slicing) with a row-major `List[Float64]` store plus the core products,
 and complements `tensor.mojo` (1D `Tensor1D`) and `linalg.mojo`
 (solvers/decompositions).
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `tensor2d` | the dense row-major `Matrix2D` type — matmul, matvec, transpose, add, scale and row/column slicing over a flat `List[Float64]` store, with zero Python imports |
+
 ## Functions
 
 | Function | What it does |

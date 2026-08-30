@@ -12,6 +12,12 @@ split-conformal regression core of **mapie** / **nonconformist** with zero
 Python imports — deterministic (heapsort quantile, no RNG) and sub-millisecond
 for calibration sets up to ~10k scores.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `conformal` | split-conformal prediction intervals with finite-sample coverage guarantees — calibrates on held-out residuals and reports `pred ± q` with coverage ≥ 1 − alpha under exchangeability — replacing the split-conformal regression core of **mapie** / **nonconformist** |
+
 ## Functions
 
 | Function | What it does |

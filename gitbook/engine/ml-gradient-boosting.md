@@ -13,6 +13,12 @@ Depth-limited greedy variance-reduction splits, residual fitting, shrinkage
 feature matrix with an O(m log m) prefix-sum split search. Zero Python
 imports.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `gbdt` | Gradient-boosted regression trees with exact SSE-gain splits, subsampling and shrinkage, replacing `xgboost.XGBRegressor` / `lightgbm.LGBMRegressor` / `sklearn.ensemble.GradientBoostingRegressor` for tabular regression. |
+
 ## Functions
 
 | Function | What it does |

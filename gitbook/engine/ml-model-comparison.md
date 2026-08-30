@@ -9,6 +9,12 @@ description: Paired bootstrap CIs, exact McNemar and Diebold-Mariano tests that 
 with uncertainty, not a single point estimate. Comparing two accuracy
 scalars answers nothing; these tests answer "is the difference real?"
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `model_compare` | Paired bootstrap CIs, exact McNemar and Diebold-Mariano tests that decide whether a candidate model is genuinely better than the champion. |
+
 ## Functions
 
 | Function | What it does |

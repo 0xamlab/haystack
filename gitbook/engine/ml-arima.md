@@ -13,6 +13,13 @@ diagnostics only; this module actually estimates coefficients. Model
 convention matches statsmodels (positive θ on lagged innovations), with
 the sample mean μ handled internally.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `arima` | fits AR(p) and MA(q) coefficients in pure Mojo — Yule-Walker/Durbin-Levinson AR estimation, innovations-algorithm MA estimation, CSS log-likelihood scoring, and order-d differencing/undifferencing |
+| `timeseries_stats` | ACF/PACF and ADF diagnostics plus rolling mean/std, exponential smoothing and Holt linear trend — describes a series, does not fit AR/MA coefficients |
+
 ## Functions
 
 | Function | What it does |

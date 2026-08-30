@@ -12,6 +12,12 @@ sklearn's `HashingVectorizer`). Hashing is seeded 64-bit FNV-1a with a
 hash-derived sign, so colliding features cancel in expectation instead of
 biasing a bucket upward (Weinberger et al. 2009 hashing trick).
 
+## The module
+
+| Module | What it does |
+| --- | --- |
+| `feature_hashing` | seeded 64-bit FNV-1a hashing trick — bucket + sign per feature name, dense row assembly, and a birthday-bound collision-rate estimate, fully deterministic and pure Mojo |
+
 ## Functions
 
 | Function | What it does |

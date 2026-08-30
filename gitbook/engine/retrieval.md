@@ -39,6 +39,12 @@ provenance(result).why("a")
 #  score 0.803993."
 ```
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `vector_search` | ANN index math (HNSW, IVF, PQ, LSH) and rank-quality metrics (recall@k, MRR, beam search) underlying the `dense` backend's approximate-nearest-neighbour index |
+
 ## A backend that is not available raises. It never returns an empty result
 
 This is the most useful thing on this page, so it comes first.

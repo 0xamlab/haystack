@@ -11,6 +11,12 @@ pure Mojo: seeded k-means++ initialization, log-space E-step
 (log-sum-exp), variance-floored M-step, and BIC for choosing the number of
 components. Zero Python imports.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `mixture_models` | Gaussian mixture models fit by log-space EM — seeded k-means++ initialization, log-sum-exp E-step, variance-floored M-step, and BIC for choosing the number of components — replacing `sklearn.mixture.GaussianMixture` (diagonal covariance) |
+
 ## Functions
 
 | Function | What it does |

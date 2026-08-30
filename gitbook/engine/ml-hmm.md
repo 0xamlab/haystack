@@ -12,6 +12,12 @@ this kernel adds hidden states with discrete emissions — log-space
 forward/backward inference, Viterbi decoding, and Baum–Welch (EM)
 parameter estimation.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `hmm` | discrete-emission hidden Markov models in pure Mojo — log-space forward/backward likelihood, Viterbi decoding, and Baum–Welch (EM) training — replacing hmmlearn's `MultinomialHMM` and pomegranate discrete HMMs |
+
 ## Functions
 
 | Function | What it does |

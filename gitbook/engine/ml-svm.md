@@ -13,6 +13,12 @@ xorshift64 RNG. Labels must be in {−1.0, +1.0}; X is a flat row-major
 matrix. It complements `svm_kernel.mojo` (kernel functions only) but is
 fully self-contained.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `svm_solver` | Trains soft-margin SVM classifiers (linear or RBF kernel) via simplified SMO and predicts labels from the fitted model — fit, decision function, and single/batch predict. |
+
 ## Functions
 
 | Function | What it does |

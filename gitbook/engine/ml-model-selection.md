@@ -13,6 +13,12 @@ splitters never do.
 All functions run natively in the Mojo engine (zero Python imports,
 deterministic, seeded where applicable).
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `model_selection` | leakage-free cross-validation splitters for sequential data — walk-forward, purged, k-fold and temporal splits that respect time ordering instead of leaking the future into training the way random k-fold does |
+
 ## Functions
 
 | Function | What it does |

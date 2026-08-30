@@ -61,6 +61,7 @@ taking it on trust.
 | `strategy.policy` | the flat policy encoding — constant, threshold, tabular and mixed — with the arity computed from the environment so a policy the environment cannot evaluate is refused, not scored |
 | `strategy.equilibrium` | pure and mixed equilibria, exploitability, adaptive play, and dominated actions, each carrying whether it is exact or approximate |
 | `strategy.contract` | the status vocabulary, the ceilings, the work budget, the named random-number streams and the coordinate assignment — the shared refusals, callable on their own so you can validate a request before sending it |
+| `game_theory` | the closed-form 2x2 equilibrium and dominated-strategy solver that `strategy.equilibrium` calls directly whenever an exact answer exists, so nothing iterates where it doesn't have to |
 
 ## Common random numbers, and why the variance drops
 

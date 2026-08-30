@@ -14,6 +14,12 @@ equations behind closed-form OLS/ridge degrade. It complements
 `regression.mojo` (closed-form OLS/ridge) and `linear_models.mojo`
 (iterative logistic / elastic-net).
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `pls` | NIPALS PLS1 regression for a single response vector — fit, predict, and R², stable on collinear or wide (p > n) feature matrices where closed-form OLS/ridge degrade. |
+
 ## Functions
 
 | Function | What it does |

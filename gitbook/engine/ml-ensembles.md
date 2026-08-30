@@ -12,6 +12,13 @@ operates on flat prediction matrices so any model type can feed it, and
 complements `voting`, which is social choice theory and unrelated to
 model ensembling.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `ensembles` | Combines predictions from multiple models — weighted/majority voting, weighted regression blending, and closed-form ridge stacking — replacing sklearn.ensemble's `VotingClassifier`, `VotingRegressor`, and `StackingRegressor`. |
+| `voting` | Social choice theory: plurality, Borda, and Condorcet winners, D'Hondt/Sainte-Laguë and Droop/Hare apportionment, and the Banzhaf power index — unrelated to model ensembling despite the name. |
+
 ## Functions
 
 | Function | What it does |

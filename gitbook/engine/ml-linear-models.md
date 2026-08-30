@@ -13,6 +13,12 @@ with iterative fits: L2-regularized logistic regression via damped Newton
 cyclic coordinate descent with exact soft-thresholding. Fully deterministic
 — there is no RNG anywhere in the kernel.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `linear_models` | L2-regularized logistic regression via damped Newton (IRLS) with backtracking line search, and elastic-net linear regression via cyclic coordinate descent with exact soft-thresholding — replacing `sklearn.linear_model`'s `LogisticRegression`/`ElasticNet`/`Lasso` and statsmodels `Logit` |
+
 ## Functions
 
 | Function | What it does |

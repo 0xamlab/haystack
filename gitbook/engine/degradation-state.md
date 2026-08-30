@@ -26,6 +26,12 @@ state = runtime.execute(
 runtime.execute("degradation_state", "pace_predict", [state, 30.0])["result"]  # project to age 30
 ```
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `degradation_state` | Two-state Kalman filter for an asset's decaying performance against usage age, with wear clamping, load correction for a depleting resource, and a fitted non-linear end-of-life cliff. |
+
 ## Functions
 
 | Function | What it does |

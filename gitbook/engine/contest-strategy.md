@@ -35,6 +35,12 @@ board["v"][7]   # recommended option
 board["v"][8]   # verdict: 0 STAY, 1 RECOMMENDED, 2 INCONCLUSIVE
 ```
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `contest_strategy` | Simulates the whole field of competitors forward under common random numbers to compare service-timing options, returning simultaneous confidence intervals and an explicit abstain verdict. |
+
 ## Functions
 
 | Function | What it does |

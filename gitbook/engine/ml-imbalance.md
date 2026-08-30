@@ -13,6 +13,12 @@ synthetic minority oversampling by interpolation between nearest minority
 neighbors, seeded random over/under-sampling to the majority/minority
 count, and inverse-frequency class weights.
 
+## The module
+
+| Module | What it does |
+| --- | --- |
+| `imbalance` | SMOTE (1-D and n-D), seeded random over/under-sampling, and balanced inverse-frequency class weights for skewed classification datasets, fully deterministic per seed |
+
 ## Functions
 
 | Function | What it does |

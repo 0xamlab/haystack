@@ -14,6 +14,12 @@ It is callback-free by design: every function returns a **schedule** (plain
 data) that the caller executes however it likes — local train loops, remote
 workers, anything.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `automl` | budget-allocation schedules for hyperparameter search — successive halving (Jamieson & Talwalkar 2016), Hyperband (Li et al. 2018), and Latin-hypercube random search — replacing `sklearn.model_selection.HalvingRandomSearchCV`'s halving arithmetic and `scipy.stats.qmc.LatinHypercube`-style sampling |
+
 ## Functions
 
 | Function | What it does |

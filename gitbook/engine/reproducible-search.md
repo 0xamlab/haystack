@@ -28,6 +28,13 @@ for gen in range(30):
 best = runtime.execute("evolutionary_search", "ga_best", [pop, fitness, 2])["result"]
 ```
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `evolutionary_search` | counter-based, addressable genetic optimiser — every draw is a pure function of its coordinates, so a run replays bit-exactly on any machine and any core count |
+| `genetic` | the process-seeded genetic optimiser for one-off searches — same population/selection/mutation loop, but a run cannot be replayed |
+
 ## Functions
 
 | Function | What it does |

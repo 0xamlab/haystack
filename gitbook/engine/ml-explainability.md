@@ -13,6 +13,12 @@ KernelSHAP coalition-weighting machinery. It replaces `sklearn.inspection`
 the caller evaluates its own model and passes flat metric / prediction
 arrays; this kernel only aggregates and generates seeded coalition designs.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `explainability` | model-agnostic attributions over precomputed prediction grids — permutation importance, partial dependence/ICE, and KernelSHAP coalition-weighting — replacing `sklearn.inspection`'s `permutation_importance`/`partial_dependence` and `shap.KernelExplainer`'s coalition design |
+
 ## Functions
 
 | Function | What it does |

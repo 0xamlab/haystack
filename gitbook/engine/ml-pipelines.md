@@ -14,6 +14,12 @@ encoded by integer id, fitted per-column statistics are flattened into one
 on row-major matrices, fitting each step on the output of the previous
 steps (sklearn `Pipeline.fit` semantics).
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `pipelines` | fit/transform/inverse preprocessing pipelines -- standardize, min-max, log1p, clip, and median-impute steps encoded by integer id and replayed deterministically from one flattened, fitted spec, with exact inverses where the step supports one -- replacing `sklearn.pipeline.Pipeline` composed with `sklearn.preprocessing` |
+
 ## Functions
 
 | Function | What it does |

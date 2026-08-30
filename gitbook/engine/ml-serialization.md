@@ -12,6 +12,12 @@ persists the string to a file, KV store, or receipt log. Unlike rounded
 decimal formatting, `weights_from_string(weights_to_string(...))`
 reproduces every Float64 bit for bit. Zero Python imports.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `serialization_io` | bit-exact Float64 weight serialization to a versioned string and back — replacing pickle / json / numpy.save weight dumps, with `weights_from_string(weights_to_string(...))` reproducing every bit |
+
 ## Functions
 
 | Function | What it does |

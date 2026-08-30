@@ -10,6 +10,13 @@ of strikes and expiries — in a single call, vectorizing the Black-Scholes
 math across hardware SIMD lanes. It replaces per-contract scalar pricing
 loops where call overhead and scalar transcendentals dominate.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `option_greeks_batch` | SIMD-batched Black-Scholes price, delta, gamma, vega and theta for an entire option chain in one call |
+| `option_pricing` | the scalar Black-Scholes, binomial-tree, greeks and implied-volatility functions that `option_greeks_batch` is verified to match to 1e-9 |
+
 ## Functions
 
 | Function | What it does |

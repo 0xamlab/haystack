@@ -146,6 +146,11 @@ clamps to a 4-bit grid instead of `quantization.quantize_symmetric`'s hardcoded 
 16-level NF4 codebook itself (fixed normal-distribution quantiles, not a formula — level 0 is
 `-1.0`, level 7 is `0.0`, level 15 is `1.0`).
 
+| Module | What it does |
+| --- | --- |
+| `quantization` | the frozen symmetric/asymmetric INT8 quantize/dequantize math — scale and zero-point construction, round-trip error, the hardcoded ±127 clamp, and `int4_pack_error`, the oracle `tensorx.pack`'s 4-bit code producer is checked against |
+| `quantization_stack` | the frozen calibration layer above it — absmax/percentile calibration, AWQ/SmoothQuant/GPTQ scales, bitsandbytes double quantization, dynamic KV-cache INT8 scale, and the BF16/FP16 round-trip and overflow checks `tensorx.pack` reuses rather than re-deriving |
+
 ```python
 codes = [-8, 7, 0, -1, 3]
 runtime.execute("tensorx.pack", "pack_int4", [codes, 5])["result"]["bytes"]

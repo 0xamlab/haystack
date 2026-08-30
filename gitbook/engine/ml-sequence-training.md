@@ -12,6 +12,10 @@ Python imports. It replaces torch/keras LSTM training loops (`nn.LSTM` +
 Adam + `clip_grad_norm_`) for small univariate/low-dimensional sequence
 forecasting, and is fully deterministic given the seed.
 
+| Module | What it does |
+| --- | --- |
+| `seq_training` | Full BPTT training loop for a 1-layer LSTM + linear head: sliding-window dataset construction, MSE loss, global-norm gradient clipping, and a locally implemented Adam optimizer. |
+
 ## Functions
 
 | Function | What it does |

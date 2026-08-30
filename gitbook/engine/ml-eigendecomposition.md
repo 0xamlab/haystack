@@ -11,6 +11,12 @@ replacing `numpy.linalg.eigh` and `numpy.linalg.svd` (thin, tall case).
 It lifts the 2×2 cap of `matrix_decomp.eigen_2x2` to symmetric n ≤ 200
 using the cyclic Jacobi rotation method.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `eigen_full` | full eigendecomposition of symmetric N×N matrices and thin SVD of tall matrices via cyclic Jacobi rotation, lifting the 2×2 cap of `matrix_decomp.eigen_2x2` to symmetric n ≤ 200 — replacing `numpy.linalg.eigh` and `numpy.linalg.svd` (thin, tall case) |
+
 ## Functions
 
 | Function | What it does |

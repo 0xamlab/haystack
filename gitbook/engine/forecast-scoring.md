@@ -21,6 +21,13 @@ runtime.execute("forecast_metrics", "brier_score", [probs, outcomes])["result"]
 runtime.execute("forecast_metrics", "brier_skill_score", [probs, outcomes, base])["result"]
 ```
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `forecast_metrics` | aggregate probabilistic-forecast scoring — Brier score, Brier skill score, calibration error, reliability bins, and the Murphy decomposition that splits reliability from resolution |
+| `ml_metrics_extended` | per-term metric contributions (`brier_score_term`, `calibration_ece_term`, and ranking/classification terms) for composing your own aggregations, rather than the packaged decomposition `forecast_metrics` provides |
+
 ## Functions
 
 | Function | What it does |

@@ -13,6 +13,12 @@ nu = 1.5 kernels) and basic GPy usage, with zero Python imports. Fitting is
 deterministic and O(n³) — sub-millisecond up to n ≈ 200, with n ≈ 2000 the
 practical exact-GP cap.
 
+## The modules
+
+| Module | What it does |
+| --- | --- |
+| `gaussian_process` | exact zero-mean Gaussian process regression on flat row-major feature matrices — covariance construction, own Cholesky factorization, posterior mean/variance, log marginal likelihood — replacing `sklearn.gaussian_process`'s `GaussianProcessRegressor` (RBF / Matern nu=1.5) and basic GPy usage |
+
 ## Functions
 
 | Function | What it does |
