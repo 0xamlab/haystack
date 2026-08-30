@@ -22,9 +22,21 @@ gbdt, model_compare, seq_nn, seq_training, serialization_io, option_greeks_batch
 pipelines, propensity, vector_search, forecast_metrics, ml_metrics_extended, degradation_state,
 contest_strategy, evolutionary_search, genetic, game_theory, quantization, and quantization_stack
 -- bringing the count to 199 of 643 real modules (31%), with 444 modules still undocumented by
-narrative beyond their generated table row.
+narrative beyond their generated table row. The A6 batch-4 pass (2026-08-29, 12 new family pages,
+not a formatting fix) then closed 50 more previously-undocumented modules across autograd_graph,
+autograd_ops, gradient_descent, training_stability, numerical_stability, lora_adapters,
+weight_loader, distillation, mixture_of_experts, moe_production, moe_routing, model_router,
+cost_router, kv_cache, paged_kv_cache, llm_sampling, generation_loop, speculative_decoding,
+continuous_batching, model_abi, model_interop, model_parallel, model_serialization, seq2_trainer,
+state_space_models, stateful_runtime, transformer_attention, sparse_attention, flash_attention,
+positional_encoding, transformer_blocks, normalization_layers, nn_layers, fused_kernels, rlhf_dpo,
+diffusion_models, contrastive_learning, online_learning, multi_objective, multimodal,
+inference_engine, inference_cost_latency, inference_security, graph_compiler, graph_decision,
+hybrid_reasoning, data_feedback_loop, evaluation_feedback, feature_engineering, and
+feature_selection -- bringing the count to 249 of 643 real modules (39%), with 394 modules still
+undocumented by narrative beyond their generated table row.
 
-WHY THIS SCRIPT DOES NOT GATE ON THE 481 GAP. That gap is a documentation-writing backlog, not a
+WHY THIS SCRIPT DOES NOT GATE ON THE 394 GAP. That gap is a documentation-writing backlog, not a
 regression -- something a CI check can flag but cannot itself close, and gating hard on it would
 either block every unrelated PR immediately or get disabled at the first annoyance (the same trap
 `scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
@@ -36,7 +48,7 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (444 modules, as of writing) rather than hiding it inside a passing
+  3. Prints the honest gap (394 modules, as of writing) rather than hiding it inside a passing
      check -- `--json` includes it explicitly under "undocumented_by_narrative".
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
@@ -109,11 +121,10 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (199,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-3 pass
-# closed the table-row gap for 37 already-prose-documented modules (a formatting fix, not new
-# content) on top of the prior floor of 160.
-DOCUMENTED_FLOOR = 197
+# Set from the actual measured count under the precise "Module table, first cell only" rule (249,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-4 pass
+# added 12 new family pages' worth of module tables (50 modules) on top of the prior floor of 197.
+DOCUMENTED_FLOOR = 247
 
 
 def real_modules() -> set[str]:

@@ -39,6 +39,10 @@
 * [GEMM kernels](engine/gemm-kernels.md)
 * [GPU acceleration kernels](engine/gpu-acceleration-kernels.md)
 * [LLM inference kernels](engine/llm-inference-kernels.md)
+* [Attention variant kernels](engine/transformer-attention-variant-kernels.md)
+* [Transformer blocks and normalization](engine/transformer-blocks-and-normalization-reference-kernels.md)
+* [KV-cache and generation kernels](engine/kv-cache-and-autoregressive-generation-kernels.md)
+* [Multimodal and inference operations](engine/multimodal-and-inference-operations-kernels.md)
 
 ## Machine learning
 
@@ -67,6 +71,13 @@
 * [Trainable SVM classifier (simplified SMO)](engine/ml-svm.md)
 * [Batched chain greeks](engine/ml-chain-greeks.md)
 * [Classical ML algorithms](engine/ml-classical-algorithms.md)
+* [Autograd and training stability](engine/autograd-and-training-stability-kernels.md)
+* [LoRA adapters, checkpoint loading & distillation](engine/lora-distillation-and-weight-loading-kernels.md)
+* [Mixture-of-experts and routing](engine/mixture-of-experts-and-routing-kernels.md)
+* [Model lifecycle and interop](engine/model-lifecycle-and-interop-kernels.md)
+* [Sequence and state-space models](engine/sequence-and-state-space-model-kernels.md)
+* [RLHF and generative training](engine/rlhf-and-generative-training-kernels.md)
+* [Feedback loops and feature engineering](engine/feedback-loops-and-feature-engineering-kernels.md)
 
 ## Optimization & simulation
 
@@ -102,6 +113,7 @@
 * [Spreadsheet formula plane](engine/sheet-formula-plane.md)
 * [Text processing kernels](engine/text-processing-kernels.md)
 * [Vector ranking kernels](engine/vector-ranking-kernels.md)
+* [Graph-based reasoning](engine/graph-based-reasoning-kernels.md)
 
 ## Concepts
 
