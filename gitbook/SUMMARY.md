@@ -115,6 +115,25 @@
 * [Vector ranking kernels](engine/vector-ranking-kernels.md)
 * [Graph-based reasoning](engine/graph-based-reasoning-kernels.md)
 
+## Earth & planetary sciences
+
+* [Solid-Earth geophysics](engine/solid-earth-geophysics-kernels.md)
+* [Surface processes & geomorphology](engine/surface-processes-and-geomorphology-kernels.md)
+* [Hydrology & water systems](engine/hydrology-and-water-systems-kernels.md)
+* [Historical geology & paleoclimate](engine/historical-geology-and-paleoclimate-kernels.md)
+* [Speleology, mineralogy & geochemistry](engine/speleology-mineralogy-and-geochemistry-kernels.md)
+* [Cartography, planetary & cosmic sciences](engine/cartography-and-planetary-cosmic-sciences-kernels.md)
+* [Atmospheric chemistry, climate & meteorology](engine/atmospheric-chemistry-and-climate-kernels.md)
+
+## Physical & materials science
+
+* [Acoustics, optics & radiative materials](engine/acoustics-optics-and-radiative-materials-kernels.md)
+* [Structural & construction materials](engine/structural-and-construction-materials-kernels.md)
+* [Corrosion & electrochemical materials](engine/corrosion-and-electrochemical-materials-kernels.md)
+* [Thermal, cryogenic & energy materials](engine/thermal-and-energy-materials-kernels.md)
+* [Nanoscale, plasma & surface-contact engineering](engine/advanced-nano-and-plasma-materials-kernels.md)
+* [Process & organic-materials science](engine/process-and-organic-materials-science-kernels.md)
+
 ## Concepts
 
 * [How the engine works](concepts/engine.md)

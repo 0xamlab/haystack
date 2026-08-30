@@ -2774,6 +2774,222 @@
         "validation": "parsed"
       },
       {
+        "bytes": 571,
+        "language": "python",
+        "line": 18,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "sha256": "760f0e694dd964cdf4976740cec7ef922a58abcdace7244187bd755422323e8b",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 189,
+        "language": "python",
+        "line": 86,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "sha256": "0df3c63894b7500648bd22f353efdab1bb3499b672fdfa09fd3f7666eeb7c04e",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 174,
+        "language": "python",
+        "line": 103,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "sha256": "fe2fc50ea3a559c1e53442265b8cdea2834165d2ba11b963f36ebfde5ca3d51c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 350,
+        "language": "python",
+        "line": 122,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "sha256": "2201470753bcd4434a6ea3ad1fbd9bfcbcfddfa03aaae8bf31eaa09acbd7dd29",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 350,
+        "language": "python",
+        "line": 134,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "sha256": "b94fd9004be5115c1ff6e5d878b75a4e4f6b7b71f995f9e65a13872aab019432",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 743,
+        "language": "python",
+        "line": 16,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "338b04d6dc5998e76469da80ef19216109dce7a41f27bef77e9b4448929900d1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 210,
+        "language": "python",
+        "line": 54,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "253f9c2fdbbab493df6c968402bf2b90aeb21e12a5b7ec06dd0cccca732cd0ef",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 501,
+        "language": "python",
+        "line": 62,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "dce389990e8ba1cd6897c6e29f7111b2dd1ddbade861c263ac8a89d563e5865d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 177,
+        "language": "python",
+        "line": 80,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "b7c6625e25985d56c80d342f450efa7930f2323d91d8799853f7ee7417d96827",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 531,
+        "language": "python",
+        "line": 94,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "c6604c3e5c48fff8fdf9cca1aa2a7827b7fb2e41d1751204fbe96d4d90f24667",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 251,
+        "language": "python",
+        "line": 127,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "9f8e63db4e7be3cc4ccee995a99ad3f081b1babb4186e0e06e64741680d87e58",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 715,
+        "language": "python",
+        "line": 139,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "5dd3e2a4a1fda544699a99d998d2799a9a99e9bc2cdfdfba1d274252d5f879a1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 959,
+        "language": "python",
+        "line": 156,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "42e78b4506ad7bdd92a8920d15f2b27f79675b2f90395b36a416ca7e629b54cd",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 232,
+        "language": "python",
+        "line": 200,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "30fe26fa5059651b0792592e3ea3b0e543770927d55e632f72bc8949fb5eb5b5",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 400,
+        "language": "python",
+        "line": 213,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "2400590fd8372d27b6a4cd9b14f995ef61400d146d4faa778d01af993cb645ba",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 603,
+        "language": "python",
+        "line": 224,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "24f39b7b8b4cab6e01944679e2b19ca096630abb15be01801b706d7c6e6a0b3b",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 1463,
+        "language": "python",
+        "line": 246,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "sha256": "cf5b340985a0764fccc12f1ce9394ae67c1b5993a2d01c7697fe705596b3f6ba",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 587,
+        "language": "python",
+        "line": 27,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "33f336eed508b7e7eb1b158012165f0998974add0716b5b843ab8ff0ccb3c705",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 103,
+        "language": "python",
+        "line": 73,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "688be66aab104ae6d1d03956d7f7f0fb9fc34f08777457e5ed0229675cf8886c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 249,
+        "language": "python",
+        "line": 82,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "0d72ac006b1c61fadd67274638ab7f6843de1fbb6adb17049eb0e96522ea1717",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 566,
+        "language": "python",
+        "line": 101,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "54d8e04b3d16b2b45376f3c7ef3d31e62723f7e2886e731c0453e656e70387df",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 249,
+        "language": "python",
+        "line": 123,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "fc95c8af1e72f1fd9d55ef996f434cf2b8d4d6e4503abad6d85520abb992aac5",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 252,
+        "language": "python",
+        "line": 163,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "47a17184523ac4b49b9dc5d42aba11df4ef32c089b0bebd6ae3b078b0efe8573",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 181,
+        "language": "python",
+        "line": 176,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "4cfdb0863fc8d479c7defe6333159972b5e49cb7874eef1a71009ad6dc5d2305",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 470,
+        "language": "python",
+        "line": 200,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "397348a1e8c3995807ebfa64a51dc7c2df9c40e6546ba4ab3de918ed3af16a33",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 85,
+        "language": "python",
+        "line": 221,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "92e67596f61b56dd129ba00e21dd15ac188d5a9cf1a85fea19de0a37ee0acc8c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 218,
+        "language": "python",
+        "line": 238,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "sha256": "a51d27265e64d1010debc8f11385244cae5379321b59df4492ddacdfa96782d9",
+        "validation": "parsed"
+      },
+      {
         "bytes": 384,
         "language": "python",
         "line": 15,
@@ -2971,6 +3187,174 @@
         "line": 178,
         "path": "engine/capabilities.md",
         "sha256": "e05e01ae73c66d07da0ab390de43dca532f3c4e33530621eaac336770288bea0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 707,
+        "language": "python",
+        "line": 24,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "1e1333cb252c7dc4fdaf10ab64242db773f5c7234744250f4bc726e8984a400a",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 484,
+        "language": "python",
+        "line": 59,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "48ac4cab475a87f74f4a40873b35c20d96acd8669a35cd33a45493f7db243477",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 352,
+        "language": "python",
+        "line": 74,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "0f132a6d221d86c5a48ad438761557b234f6a3eccc3cbc7c4156fc7bd198830f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 293,
+        "language": "python",
+        "line": 88,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "9462db81b84cd401726abb2a962140ec4702b91a84d8a4efb2e41c44a2ec3752",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 167,
+        "language": "python",
+        "line": 114,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "cfc9fa72742abc137ca0fa01c23f47c95636b6c1583954ebce429c1c307ab6af",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 153,
+        "language": "python",
+        "line": 128,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "326f00245323c20480e6f70cd4c672e73fa360b3aef829c715cfe6475a69c454",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 330,
+        "language": "python",
+        "line": 154,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "00e2786f8aa689a28958403d31bc3adda241a069e660ca12e7b125e959eda456",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 319,
+        "language": "python",
+        "line": 165,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "fa3ce52d25d528e6d8e2a7597fbea1d58e5cda07d0750055a1631239cef0d08d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 181,
+        "language": "python",
+        "line": 174,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "981c2798c380c7d9faa747e7ca04bc1516cbce2d053588076a2fbafad5ab6b0c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 137,
+        "language": "python",
+        "line": 183,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "16d56defbf27172278f0852a7efc7d38f09c3837f2c4701700c3873920033dc9",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 393,
+        "language": "python",
+        "line": 194,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "698d9190445ffa03b6b3804ff1df552633572016deff34101fc72b07de7103be",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 175,
+        "language": "python",
+        "line": 208,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "420c3573d13fffb1acd9c65fa18eeab906c79de55ead7a87e410005734043acf",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 148,
+        "language": "python",
+        "line": 215,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "93599b33e64afddcae3fc34987ebc33e9418665cf630bec795717f437c4ae158",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 301,
+        "language": "python",
+        "line": 224,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "e58232b0398a1d968cb203bda7579b511c4b2f7637d61c695d7700ca8c804d84",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 328,
+        "language": "python",
+        "line": 234,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "67cf64a9f94f970a72ba719073885cc8684d19434f247243a5a4116052dbd55c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 169,
+        "language": "python",
+        "line": 244,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "30bbd73f28520b1f0d0edaac3a02e84849321f49c164948283a65941b74d1b6b",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 201,
+        "language": "python",
+        "line": 256,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "d1c291e460d71b7d441c09104d0f59b58f122b61ae7f470acc546b8622575891",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 170,
+        "language": "python",
+        "line": 271,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "a7e6ddc6fc0258e2d49d68ed9ddd02773953e71902607f47a433cf63a4b0e2b1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 185,
+        "language": "python",
+        "line": 279,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "80ef6ec9564e5a4c6c4b7fcc94cbd7aa5f48630a95437421a23468ea65e6e789",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 134,
+        "language": "python",
+        "line": 288,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "caa055eabf21a0931fe247e9115ab6be8de8147ed9345af7aa6fc56d0ab0b70f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 156,
+        "language": "python",
+        "line": 298,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "sha256": "7f648f4c7da64e2d4ac6588b1d27d1ef5923c1208f7455b3ad218d95a243ed75",
         "validation": "parsed"
       },
       {
@@ -3395,6 +3779,86 @@
         "line": 16,
         "path": "engine/contest-strategy.md",
         "sha256": "13b716f2a362171ce86f24954623e1d1f014658e8cc052a09399f8d9c5232e25",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 582,
+        "language": "python",
+        "line": 19,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "70571e6795505b227de3b7d73c1941585e2f2cd932373a93933efb33bede4309",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 305,
+        "language": "python",
+        "line": 62,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "3841bfde437a78fddcf872eead4a7089a2cbe0107f50b3280dca799131cc0c15",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 394,
+        "language": "python",
+        "line": 82,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "75d14313a9989a3b44c48f1ba4e8de69230c4879c7500780a5d0ef2659dc6185",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 417,
+        "language": "python",
+        "line": 105,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "190674f11e4fae69797ad1a596c4ecab2d511df8ffc2edb52a92250e741f5ddb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 752,
+        "language": "python",
+        "line": 126,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "150c60a2426fa1d46458e45538b6b2a4038ed11cc81820445476bf5d6b177494",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 565,
+        "language": "python",
+        "line": 144,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "debeb9d98b44646aac7484e1141bc9bf692e0c70147156a254247f097a5fea8d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 443,
+        "language": "python",
+        "line": 160,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "4219831c0ca8999fd86fe4b015ca57fa85ad68f6e61f2e6c86f56f7d23abfeba",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 521,
+        "language": "python",
+        "line": 174,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "418cc3b1ee8ed1c51de08d67f234599b7965aca59bc068834a09fccce09576d2",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 403,
+        "language": "python",
+        "line": 190,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "a18c950eba7ead52c9e47f9ce2fb4e10573aa7a77eb02921348f4756f45e80e3",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 553,
+        "language": "python",
+        "line": 205,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "sha256": "b0e77b2b0ee499df6cb5578a5736c9e7419dfea2a57322e621c5828171763b29",
         "validation": "parsed"
       },
       {
@@ -4204,6 +4668,166 @@
         "path": "engine/health.md",
         "sha256": "18f2b6e0871f491eaaf6bd6d231625ca19bc9bb31c3a3e026a44127d5e87e66c",
         "validation": "command_inventory"
+      },
+      {
+        "bytes": 659,
+        "language": "python",
+        "line": 17,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "4d562fa3857d02773c679b7e1dc05e911bbf437284d29d8a20e788b1ee827508",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 416,
+        "language": "python",
+        "line": 68,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "ee01898941babb12bad5d4c5eb7ed778781338f0068825152e525d4091446c31",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 575,
+        "language": "python",
+        "line": 99,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "1a0a512d9475f5f75b05156700769eb0ebdc878ea2bdc1db41fc7572872490d7",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 606,
+        "language": "python",
+        "line": 126,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "2bb0799a1016718bd5e8e17557c953e1120272279d8a5f046326ab35a5b50382",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 668,
+        "language": "python",
+        "line": 149,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "af31a87a5d1a29f7c323a62d237868291b586eb77e153ede719ea79325c4b072",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 429,
+        "language": "python",
+        "line": 181,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "aa4a2127f56e8b1d24bea0b6d7edc21f55b7a733d92c99b01cf101ed47e55951",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 427,
+        "language": "python",
+        "line": 196,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "sha256": "f42a2210680556cfb4b55700a405f5ada19b5b0f2a494b18ea09dd3a6f62a79b",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 629,
+        "language": "python",
+        "line": 23,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "ba9dde112a90309682c814eac373ac2374254caf864e09ec10e90db41656651e",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 217,
+        "language": "python",
+        "line": 83,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "f88a6dba9dd703cb84217554e064c4371c1f68d1d3a1dde97fa7a87f74fe3b5e",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 195,
+        "language": "python",
+        "line": 94,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "0a2380d8795652de1f9c0eed57e50c5fe9bd22f3dc50af18068d6d20ac0d953d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 121,
+        "language": "python",
+        "line": 103,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "a9d70a0bb422e9ca065920639d7546be1b0504d534a0cb26acce281790a927f3",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 169,
+        "language": "python",
+        "line": 112,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "dd59e66bd8769d24b290854b89896ce70e66b0d1fdbea4fe48c69c6bca563e3d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 328,
+        "language": "python",
+        "line": 122,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "9589bf4315070093e08b6c52e45eb0276c8529326b0a71c9382673d6a7303a03",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 245,
+        "language": "python",
+        "line": 133,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "9296f5b3bcf7c73b606208836b7bf7ad59e051c382f2e5fb8d9ca32d572c821d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 165,
+        "language": "python",
+        "line": 144,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "c8261aca28bfda8444ad9927e55e58bd74c6fa32be0c23a3b71f9f639b284d63",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 351,
+        "language": "python",
+        "line": 168,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "0c2e860e8919dea47fb36dadd9d8bab78b53f6db31f4461070bd0c27a8164dbe",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 157,
+        "language": "python",
+        "line": 187,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "190e49134363d7cccb13102420da6409d04672def69cb56533c05981c1563596",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 106,
+        "language": "python",
+        "line": 199,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "97f3fba9c15acc8bedaed9f7ed33da6ebbc942d92c3b20581844fc1bb0d7d520",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 321,
+        "language": "python",
+        "line": 213,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "2f9b45c86054baa9d2509e0fcc960878808ef8e126a64c9f1c3d82aba3eea9e2",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 362,
+        "language": "python",
+        "line": 225,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "sha256": "e2c9de4ed0bec06a0a49f4e553ea766a8a5beb6f7c3344435d09a1dc365c4631",
+        "validation": "parsed"
       },
       {
         "bytes": 352,
@@ -5198,6 +5822,94 @@
         "validation": "parsed"
       },
       {
+        "bytes": 659,
+        "language": "python",
+        "line": 17,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "50d483fd384518b1f4c5b197e6c883a24f8e78c727bff7fb3a86d1af66e8db44",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 189,
+        "language": "python",
+        "line": 55,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "28c0fa13b30ef50d5a18754c845d9fe0859e6617821bebda58683e72d161c91d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 257,
+        "language": "python",
+        "line": 72,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "29e14569eca786a196144b291f589b29d5efbd8a8fdd9acb5dc2cecec1e67265",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 544,
+        "language": "python",
+        "line": 84,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "93582f6d985e981d555772d0cddc17421d8febc5c04ec7865f479bfce8b71ad6",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 400,
+        "language": "python",
+        "line": 120,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "0112f03f5c4581beff5b21d6cb1b8a908577ec6336d74b2f071ff51ef2fb1376",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 140,
+        "language": "python",
+        "line": 137,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "3107b27ceca2f471c9b0feba4240e93a068579c2f78be9a414d5905cd473f892",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 325,
+        "language": "python",
+        "line": 158,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "708959bb7b1ca869fec6af11c9d03b5b2c28b797ee7b4b9f040a85011c40dabb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 454,
+        "language": "python",
+        "line": 180,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "632231dc391d6264f0312c0011bcc5492a6ee817ecd5a56da6a5255fb1c11119",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 334,
+        "language": "python",
+        "line": 203,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "ea01d4b3257f2710a8056bdcd975a629dd0951ccbdf750f25a30e4ef18087c98",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 244,
+        "language": "python",
+        "line": 232,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "ad7c18c4fa82fb4062335959e25935dee9b99896f8590a67f05656b68877b1b0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 248,
+        "language": "python",
+        "line": 251,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "sha256": "7abc0255f97216d4e828d65c603c3083bff8849ff0ac920ec485808ceef2b852",
+        "validation": "parsed"
+      },
+      {
         "bytes": 823,
         "language": "python",
         "line": 21,
@@ -5670,6 +6382,86 @@
         "validation": "parsed"
       },
       {
+        "bytes": 565,
+        "language": "python",
+        "line": 19,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "ec95d6c0989c49f15e0499ab01f1d9b0da69ab63daf8ce9011cf39def112fbd2",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 477,
+        "language": "python",
+        "line": 50,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "be9060750dd4471be3fd532a608e8e485c24dbbedeb6bdc25309b362e68a7f5b",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 284,
+        "language": "python",
+        "line": 74,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "84c43318e86b79efcd29749db45591f813ec4b3d7a6a9d3d0cbbc48b1fe952f4",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 309,
+        "language": "python",
+        "line": 84,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "83d6536cb8387860fd37b1f0c27057eb4fcc8243f6e555875288b464b4765eae",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 376,
+        "language": "python",
+        "line": 101,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "a996168dc4e059ce4359a411cdeee1aa3d6ae104d19a88a9345e547fdb82cdea",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 199,
+        "language": "python",
+        "line": 142,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "833c061647ba7119fec66ec57a0de7af0d57f8d10611ddaf6e5736909bf45b5f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 432,
+        "language": "python",
+        "line": 158,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "42a70464206fbe4271f0e10f35a3a8fa313b292eec8430e86be810536fbb87a7",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 172,
+        "language": "python",
+        "line": 181,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "9c1605a23aab44fd4ed77f22fa60b7b6270015747ec5b3f3ad6ea363bfa94729",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 254,
+        "language": "python",
+        "line": 189,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "5ddd98d767ad0b5b0b3ef443cbce3b4200ec4b2d6d86f96917e946327e1ef5df",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 618,
+        "language": "python",
+        "line": 218,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "sha256": "4a18eee6b428dcf012db89a60ae4807629d50d6c6fc44591e001110220865719",
+        "validation": "parsed"
+      },
+      {
         "bytes": 414,
         "language": "python",
         "line": 12,
@@ -5739,6 +6531,86 @@
         "line": 197,
         "path": "engine/sparse-and-graph.md",
         "sha256": "65592695773cd51fe6f292a8046fde5a11526273637b9326177d50c28db20e1d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 595,
+        "language": "python",
+        "line": 20,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "b529c49562254cfa0c9637c8ccad18a7227ec547d05e2c6035bb1535ed40cf59",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 113,
+        "language": "python",
+        "line": 62,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "f5784bb354b4f6694f5f7220d17b370c5364826b7b2271a4efc33ba8bd708355",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 94,
+        "language": "python",
+        "line": 79,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "7406386475e87a8aa13d3ca113bd88bfc9ae4defcbdfa6e7132105f0a2d2055e",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 549,
+        "language": "python",
+        "line": 115,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "99db87a1f393901c40a8a05f3f29f86781233b99106ae8cadb48208f18ab7868",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 1198,
+        "language": "python",
+        "line": 164,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "4c3d9068a6ffa89389db24de4b239a2f971ad4163181e14d15601784b398f818",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 103,
+        "language": "python",
+        "line": 224,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "940da0f117f977fd21c7547fda4d75f31ec979641ae2a710cbe7db7caee4b8b7",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 113,
+        "language": "python",
+        "line": 236,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "c1c38359372cf433e053e4326d90736a84c0d7a249875df352f08e18e2e331ce",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 105,
+        "language": "python",
+        "line": 250,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "2d8089a185a32a4b502806076fd377c9e503bcbd1915ccfacb1ed323da57f831",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 104,
+        "language": "python",
+        "line": 274,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "0e2cff7ac103aa2671a5744790469b153567e874c476527aeae2f49dfc7382a1",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 185,
+        "language": "python",
+        "line": 286,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "sha256": "b8b6267ac22ccfcb929da3d0ebdc78b7d4ac8f158f6753fd577a51873470cff0",
         "validation": "parsed"
       },
       {
@@ -6062,6 +6934,222 @@
         "validation": "parsed"
       },
       {
+        "bytes": 350,
+        "language": "python",
+        "line": 17,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "427042b881419a27090950ea3a60532bb395d60d258ea368608f5d0e22dbb18a",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 285,
+        "language": "python",
+        "line": 45,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "6e42872d84c5ffb436099c522b163aec1d724c0c25c79fb6932d4b59fbed6d0d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 372,
+        "language": "python",
+        "line": 62,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "8a7f649216c273044427ad9975ef5282428eed83e02e2bda3f0f9003840ea6ed",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 202,
+        "language": "python",
+        "line": 74,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "f7773ed3cf54b91a0c4d2ccba1f5eaa4b5a6e7ecf47d7c59998f9c095e8e87a6",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 386,
+        "language": "python",
+        "line": 85,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "a7e5ccc6c6ce7f1a4d3ac61941441c63f7193be58beab39e2cf82a54649686cc",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 167,
+        "language": "python",
+        "line": 98,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "2ef32768c11e9257f68dd60084da3ba2e9875b859c5377cc786479ceb1a5b782",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 309,
+        "language": "python",
+        "line": 108,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "c1ce25ab8375a84fc9cb7b5647673b50b587b5ae28b0f2ef66389d9348c742b0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 499,
+        "language": "python",
+        "line": 120,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "b99b1f8594342ead57c88caacb6eeb5d6274a64029734fec82859a4af00ba6d9",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 637,
+        "language": "python",
+        "line": 137,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "5370cbe7d033a5700bfe6c11e9492a160ca7090d1f68a040f125ea2addf99ed8",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 544,
+        "language": "python",
+        "line": 162,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "aa563acbf79383011bd510238e4af4f45339397350ea3169ea1b83edb9f7da46",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 337,
+        "language": "python",
+        "line": 178,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "392d6356402ae6d75d0e5b91b752643ed2a1f5e8045506c07b2c7cb3b6e4b162",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 192,
+        "language": "python",
+        "line": 190,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "e05ffb3c16a0b984ff299b79fae56bef3dcc6a9882dc6aacd01b8bc0a03b0e7d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 500,
+        "language": "python",
+        "line": 205,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "e6f5a37e7bdb3be7a893005543325f2227c69e41441709788395d60ce10acaec",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 161,
+        "language": "python",
+        "line": 220,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "9bc377bf5e9f2e033dbabf87963eaee687f34ad1f58d0a3cae61fab90f93379f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 298,
+        "language": "python",
+        "line": 229,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "c1f90b152c3ab4e483a52ed2ebb318d3fd18770f1a63bd393f7949364ae91f3c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 196,
+        "language": "python",
+        "line": 245,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "ea05f2a23171f6821cbf235c0dd6ef8ab7a98d3320c6c558a9cf35271a501680",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 339,
+        "language": "python",
+        "line": 257,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "40ade0a37ce5524b195a492a441f2d1692c9c346beaa41650dc4e14baf931d90",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 172,
+        "language": "python",
+        "line": 269,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "sha256": "7c012c9208a6bdc486c0d745ed4c385487a5dbe776cf88903fb8598eaca572f5",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 447,
+        "language": "python",
+        "line": 16,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "c57c14b5792d25fc2aaad4cfa0e27dcc81e65db24e232d3849cae8fbb9479a30",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 910,
+        "language": "python",
+        "line": 95,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "a23f5491855b9ab6ab311dd0ffa9d8be8053913c69a063d2dd8afc5c2d4f2e12",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 1113,
+        "language": "python",
+        "line": 117,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "91795272493cd64a0523b6c6155376d7663483604d330e0376ce0aed91c2996d",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 1155,
+        "language": "python",
+        "line": 158,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "e1277735bfc7bf28f1cb6b730bd25f59b300018bf0bef990b65c13cc7273b02b",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 776,
+        "language": "python",
+        "line": 184,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "46d1afbce915ee9b357b4127a6cccd9b792d8bf4201f438cf70dd2b663b30b73",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 1928,
+        "language": "python",
+        "line": 214,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "b057aaf6cb45574e7340e667a9ede9b7617fad8bfee0acb15592ad182a34c207",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 360,
+        "language": "python",
+        "line": 269,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "e25570d87f6fb3a7b532399a4e1a1b0a5d055334ced79f53144f26e97683c2ab",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 1176,
+        "language": "python",
+        "line": 282,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "07b0f478d529712c8d96878b4bb7d3f1ebf13ba6096522fae63d7b404e9027cf",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 532,
+        "language": "python",
+        "line": 303,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "sha256": "122c3c145986e11ffd0b51304eeaeed9aef9be2e004f6ae03b1441bccc6d5560",
+        "validation": "parsed"
+      },
+      {
         "bytes": 721,
         "language": "python",
         "line": 17,
@@ -6195,6 +7283,86 @@
         "line": 190,
         "path": "engine/text-processing-kernels.md",
         "sha256": "9dae3fe62ef26d11ba5f3614c53e27f1713bfd85eaf42e24c18300aeef493a42",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 426,
+        "language": "python",
+        "line": 18,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "6ac5e33392912fa704fc3aacabe0005aa2d188cd5c0ce769768cabbede5f4a1c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 399,
+        "language": "python",
+        "line": 60,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "90b680c1cf9c9635f4a3da4aee43be9011f085e5d36940a5cf9e6913c3df22c3",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 501,
+        "language": "python",
+        "line": 103,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "c6e847a31415c5d57bbb0b8914d05505603f127de3ec02ac1ef2df192d0a1200",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 405,
+        "language": "python",
+        "line": 115,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "5773e25f3bb4193087fae708882ae4809934acdb830a39cd55883ea4c7966feb",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 355,
+        "language": "python",
+        "line": 127,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "f8eb42d633443efca80d7550466de1705ddc7ef5feef72ec41f6dac235da9eb3",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 264,
+        "language": "python",
+        "line": 139,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "d4f05f94229928f5a36f07795ebb2548112902a9faea0a73c700c6bb802708f7",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 151,
+        "language": "python",
+        "line": 147,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "eac61214b69229049e214604917f3e7171e27bdcc2f3d47686f54065d6506b0f",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 610,
+        "language": "python",
+        "line": 155,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "6835015bfcfe6a924c05fb9582a6fd9c6aa88e269012e6717619277cadcf1d40",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 487,
+        "language": "python",
+        "line": 171,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "105268cdcb8b08dabdc3daccded10e56e19d4bdc82f0dbf017d6bca7f7178789",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 335,
+        "language": "python",
+        "line": 190,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "sha256": "00f99a10c5caa6970298fc8bd3c1142a965bd411c41db8be63c57833f3a2851c",
         "validation": "parsed"
       },
       {
@@ -34327,971 +35495,1049 @@
         "kind": "internal",
         "line": 120,
         "path": "SUMMARY.md",
-        "target": "concepts/engine.md"
+        "target": "engine/solid-earth-geophysics-kernels.md"
       },
       {
         "kind": "internal",
         "line": 121,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-service.md"
+        "target": "engine/surface-processes-and-geomorphology-kernels.md"
       },
       {
         "kind": "internal",
         "line": 122,
         "path": "SUMMARY.md",
-        "target": "concepts/governed-data.md"
+        "target": "engine/hydrology-and-water-systems-kernels.md"
       },
       {
         "kind": "internal",
         "line": 123,
         "path": "SUMMARY.md",
-        "target": "concepts/capability-plane.md"
+        "target": "engine/historical-geology-and-paleoclimate-kernels.md"
       },
       {
         "kind": "internal",
         "line": 124,
         "path": "SUMMARY.md",
-        "target": "concepts/simulation-models.md"
+        "target": "engine/speleology-mineralogy-and-geochemistry-kernels.md"
       },
       {
         "kind": "internal",
         "line": 125,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-memory.md"
+        "target": "engine/cartography-and-planetary-cosmic-sciences-kernels.md"
       },
       {
         "kind": "internal",
         "line": 126,
         "path": "SUMMARY.md",
-        "target": "concepts/execution-ownership.md"
+        "target": "engine/atmospheric-chemistry-and-climate-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 127,
+        "line": 130,
         "path": "SUMMARY.md",
-        "target": "concepts/deployment-modes.md"
+        "target": "engine/acoustics-optics-and-radiative-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 131,
         "path": "SUMMARY.md",
-        "target": "guides/first-query.md"
+        "target": "engine/structural-and-construction-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 132,
         "path": "SUMMARY.md",
-        "target": "guides/local-query-groupby.md"
+        "target": "engine/corrosion-and-electrochemical-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 133,
         "path": "SUMMARY.md",
-        "target": "guides/run-a-decision.md"
+        "target": "engine/thermal-and-energy-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 134,
         "path": "SUMMARY.md",
-        "target": "guides/governed-decisions.md"
+        "target": "engine/advanced-nano-and-plasma-materials-kernels.md"
       },
       {
         "kind": "internal",
         "line": 135,
         "path": "SUMMARY.md",
-        "target": "guides/renewal-capacity-allocation.md"
-      },
-      {
-        "kind": "internal",
-        "line": 136,
-        "path": "SUMMARY.md",
-        "target": "guides/simulate.md"
-      },
-      {
-        "kind": "internal",
-        "line": 137,
-        "path": "SUMMARY.md",
-        "target": "guides/what-if.md"
-      },
-      {
-        "kind": "internal",
-        "line": 138,
-        "path": "SUMMARY.md",
-        "target": "guides/recommend-and-score.md"
+        "target": "engine/process-and-organic-materials-science-kernels.md"
       },
       {
         "kind": "internal",
         "line": 139,
         "path": "SUMMARY.md",
-        "target": "guides/governed-query.md"
+        "target": "concepts/engine.md"
       },
       {
         "kind": "internal",
         "line": 140,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory.md"
+        "target": "concepts/decision-service.md"
       },
       {
         "kind": "internal",
         "line": 141,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory-api.md"
+        "target": "concepts/governed-data.md"
       },
       {
         "kind": "internal",
         "line": 142,
         "path": "SUMMARY.md",
-        "target": "guides/execution-policy.md"
+        "target": "concepts/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 143,
         "path": "SUMMARY.md",
-        "target": "guides/connect-data.md"
+        "target": "concepts/simulation-models.md"
       },
       {
         "kind": "internal",
         "line": 144,
         "path": "SUMMARY.md",
-        "target": "guides/instant-map.md"
+        "target": "concepts/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 145,
         "path": "SUMMARY.md",
-        "target": "guides/capabilities.md"
+        "target": "concepts/execution-ownership.md"
       },
       {
         "kind": "internal",
         "line": 146,
         "path": "SUMMARY.md",
-        "target": "guides/capability-bindings.md"
-      },
-      {
-        "kind": "internal",
-        "line": 147,
-        "path": "SUMMARY.md",
-        "target": "guides/external-mcp.md"
-      },
-      {
-        "kind": "internal",
-        "line": 148,
-        "path": "SUMMARY.md",
-        "target": "guides/agent-runs.md"
-      },
-      {
-        "kind": "internal",
-        "line": 149,
-        "path": "SUMMARY.md",
-        "target": "guides/async-jobs.md"
+        "target": "concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
         "line": 150,
         "path": "SUMMARY.md",
-        "target": "guides/repository-intelligence.md"
+        "target": "guides/first-query.md"
       },
       {
         "kind": "internal",
         "line": 151,
         "path": "SUMMARY.md",
-        "target": "guides/repository-fix.md"
+        "target": "guides/local-query-groupby.md"
       },
       {
         "kind": "internal",
         "line": 152,
         "path": "SUMMARY.md",
-        "target": "guides/security-analysis.md"
+        "target": "guides/run-a-decision.md"
       },
       {
         "kind": "internal",
         "line": 153,
         "path": "SUMMARY.md",
-        "target": "guides/triggers.md"
+        "target": "guides/governed-decisions.md"
       },
       {
         "kind": "internal",
         "line": 154,
         "path": "SUMMARY.md",
-        "target": "guides/webhooks.md"
+        "target": "guides/renewal-capacity-allocation.md"
       },
       {
         "kind": "internal",
         "line": 155,
         "path": "SUMMARY.md",
-        "target": "guides/byok.md"
+        "target": "guides/simulate.md"
       },
       {
         "kind": "internal",
         "line": 156,
         "path": "SUMMARY.md",
-        "target": "guides/device-binding.md"
+        "target": "guides/what-if.md"
       },
       {
         "kind": "internal",
         "line": 157,
         "path": "SUMMARY.md",
-        "target": "guides/air-gapped.md"
+        "target": "guides/recommend-and-score.md"
       },
       {
         "kind": "internal",
         "line": 158,
         "path": "SUMMARY.md",
-        "target": "guides/ci-cd.md"
+        "target": "guides/governed-query.md"
       },
       {
         "kind": "internal",
         "line": 159,
         "path": "SUMMARY.md",
-        "target": "guides/run-qwen3-decode.md"
+        "target": "guides/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 160,
         "path": "SUMMARY.md",
-        "target": "guides/run-qwen3-family-inference.md"
+        "target": "guides/decision-memory-api.md"
+      },
+      {
+        "kind": "internal",
+        "line": 161,
+        "path": "SUMMARY.md",
+        "target": "guides/execution-policy.md"
+      },
+      {
+        "kind": "internal",
+        "line": 162,
+        "path": "SUMMARY.md",
+        "target": "guides/connect-data.md"
+      },
+      {
+        "kind": "internal",
+        "line": 163,
+        "path": "SUMMARY.md",
+        "target": "guides/instant-map.md"
       },
       {
         "kind": "internal",
         "line": 164,
         "path": "SUMMARY.md",
-        "target": "llm/models.md"
+        "target": "guides/capabilities.md"
       },
       {
         "kind": "internal",
         "line": 165,
         "path": "SUMMARY.md",
-        "target": "llm/completions.md"
+        "target": "guides/capability-bindings.md"
       },
       {
         "kind": "internal",
         "line": 166,
         "path": "SUMMARY.md",
-        "target": "llm/embeddings.md"
+        "target": "guides/external-mcp.md"
+      },
+      {
+        "kind": "internal",
+        "line": 167,
+        "path": "SUMMARY.md",
+        "target": "guides/agent-runs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 168,
+        "path": "SUMMARY.md",
+        "target": "guides/async-jobs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 169,
+        "path": "SUMMARY.md",
+        "target": "guides/repository-intelligence.md"
       },
       {
         "kind": "internal",
         "line": 170,
         "path": "SUMMARY.md",
-        "target": "sdk/python.md"
+        "target": "guides/repository-fix.md"
       },
       {
         "kind": "internal",
         "line": 171,
         "path": "SUMMARY.md",
-        "target": "sdk/python/overview.md"
+        "target": "guides/security-analysis.md"
       },
       {
         "kind": "internal",
         "line": 172,
         "path": "SUMMARY.md",
-        "target": "sdk/python/simulations-and-queries.md"
+        "target": "guides/triggers.md"
       },
       {
         "kind": "internal",
         "line": 173,
         "path": "SUMMARY.md",
-        "target": "sdk/python/decisions-and-products.md"
+        "target": "guides/webhooks.md"
       },
       {
         "kind": "internal",
         "line": 174,
         "path": "SUMMARY.md",
-        "target": "sdk/python/connectors-and-data.md"
+        "target": "guides/byok.md"
       },
       {
         "kind": "internal",
         "line": 175,
         "path": "SUMMARY.md",
-        "target": "sdk/python/repositories.md"
+        "target": "guides/device-binding.md"
       },
       {
         "kind": "internal",
         "line": 176,
         "path": "SUMMARY.md",
-        "target": "sdk/python/llm.md"
+        "target": "guides/air-gapped.md"
       },
       {
         "kind": "internal",
         "line": 177,
         "path": "SUMMARY.md",
-        "target": "sdk/python/agent-runs.md"
+        "target": "guides/ci-cd.md"
       },
       {
         "kind": "internal",
         "line": 178,
         "path": "SUMMARY.md",
-        "target": "sdk/python/jobs-triggers-capabilities.md"
+        "target": "guides/run-qwen3-decode.md"
       },
       {
         "kind": "internal",
         "line": 179,
         "path": "SUMMARY.md",
-        "target": "sdk/python/account-and-control-plane.md"
-      },
-      {
-        "kind": "internal",
-        "line": 180,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript.md"
-      },
-      {
-        "kind": "internal",
-        "line": 181,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 182,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/simulations-and-queries.md"
+        "target": "guides/run-qwen3-family-inference.md"
       },
       {
         "kind": "internal",
         "line": 183,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/decisions-and-products.md"
+        "target": "llm/models.md"
       },
       {
         "kind": "internal",
         "line": 184,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/llm.md"
+        "target": "llm/completions.md"
       },
       {
         "kind": "internal",
         "line": 185,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/connectors-and-data.md"
-      },
-      {
-        "kind": "internal",
-        "line": 186,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/repositories.md"
-      },
-      {
-        "kind": "internal",
-        "line": 187,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/agent-runs.md"
-      },
-      {
-        "kind": "internal",
-        "line": 188,
-        "path": "SUMMARY.md",
-        "target": "sdk/typescript/jobs-triggers-capabilities.md"
+        "target": "llm/embeddings.md"
       },
       {
         "kind": "internal",
         "line": 189,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/account-and-control-plane.md"
+        "target": "sdk/python.md"
       },
       {
         "kind": "internal",
         "line": 190,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp.md"
+        "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
         "line": 191,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp-registry.md"
+        "target": "sdk/python/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 192,
         "path": "SUMMARY.md",
-        "target": "sdk/tool-discovery.md"
+        "target": "sdk/python/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 193,
         "path": "SUMMARY.md",
-        "target": "sdk/testing.md"
+        "target": "sdk/python/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 194,
         "path": "SUMMARY.md",
-        "target": "cli.md"
+        "target": "sdk/python/repositories.md"
+      },
+      {
+        "kind": "internal",
+        "line": 195,
+        "path": "SUMMARY.md",
+        "target": "sdk/python/llm.md"
+      },
+      {
+        "kind": "internal",
+        "line": 196,
+        "path": "SUMMARY.md",
+        "target": "sdk/python/agent-runs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 197,
+        "path": "SUMMARY.md",
+        "target": "sdk/python/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 198,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/overview.md"
+        "target": "sdk/python/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 199,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/data.md"
+        "target": "sdk/typescript.md"
       },
       {
         "kind": "internal",
         "line": 200,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/connectors.md"
+        "target": "sdk/typescript/overview.md"
       },
       {
         "kind": "internal",
         "line": 201,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/query.md"
+        "target": "sdk/typescript/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 202,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/repository-intelligence.md"
+        "target": "sdk/typescript/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 203,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/llm.md"
+        "target": "sdk/typescript/llm.md"
       },
       {
         "kind": "internal",
         "line": 204,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/capability-plane.md"
+        "target": "sdk/typescript/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 205,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/decisions.md"
+        "target": "sdk/typescript/repositories.md"
       },
       {
         "kind": "internal",
         "line": 206,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/jobs-and-triggers.md"
+        "target": "sdk/typescript/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 207,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/agent-runs.md"
+        "target": "sdk/typescript/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 208,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/control-plane.md"
+        "target": "sdk/typescript/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 209,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/account-and-meta.md"
+        "target": "sdk/mcp.md"
+      },
+      {
+        "kind": "internal",
+        "line": 210,
+        "path": "SUMMARY.md",
+        "target": "sdk/mcp-registry.md"
+      },
+      {
+        "kind": "internal",
+        "line": 211,
+        "path": "SUMMARY.md",
+        "target": "sdk/tool-discovery.md"
+      },
+      {
+        "kind": "internal",
+        "line": 212,
+        "path": "SUMMARY.md",
+        "target": "sdk/testing.md"
       },
       {
         "kind": "internal",
         "line": 213,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 214,
-        "path": "SUMMARY.md",
-        "target": "integrations/microsoft/copilot-teams.md"
-      },
-      {
-        "kind": "internal",
-        "line": 215,
-        "path": "SUMMARY.md",
-        "target": "integrations/microsoft/excel.md"
-      },
-      {
-        "kind": "internal",
-        "line": 216,
-        "path": "SUMMARY.md",
-        "target": "integrations/microsoft/entra-sso.md"
+        "target": "cli.md"
       },
       {
         "kind": "internal",
         "line": 217,
         "path": "SUMMARY.md",
-        "target": "integrations/azure/gateway.md"
+        "target": "mcp-tools/overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 218,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/data.md"
+      },
+      {
+        "kind": "internal",
+        "line": 219,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/connectors.md"
+      },
+      {
+        "kind": "internal",
+        "line": 220,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/query.md"
       },
       {
         "kind": "internal",
         "line": 221,
         "path": "SUMMARY.md",
-        "target": "integrations/identity/generic-oidc.md"
+        "target": "mcp-tools/repository-intelligence.md"
+      },
+      {
+        "kind": "internal",
+        "line": 222,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/llm.md"
+      },
+      {
+        "kind": "internal",
+        "line": 223,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/capability-plane.md"
+      },
+      {
+        "kind": "internal",
+        "line": 224,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/decisions.md"
       },
       {
         "kind": "internal",
         "line": 225,
         "path": "SUMMARY.md",
-        "target": "self-hosting.md"
+        "target": "mcp-tools/jobs-and-triggers.md"
       },
       {
         "kind": "internal",
         "line": 226,
         "path": "SUMMARY.md",
-        "target": "configuration.md"
+        "target": "mcp-tools/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 227,
         "path": "SUMMARY.md",
-        "target": "operate/monitoring.md"
+        "target": "mcp-tools/control-plane.md"
       },
       {
         "kind": "internal",
         "line": 228,
         "path": "SUMMARY.md",
-        "target": "operate/byok-kms.md"
-      },
-      {
-        "kind": "internal",
-        "line": 229,
-        "path": "SUMMARY.md",
-        "target": "operate/device-key-store.md"
-      },
-      {
-        "kind": "internal",
-        "line": 230,
-        "path": "SUMMARY.md",
-        "target": "operate/privacy-egress.md"
-      },
-      {
-        "kind": "internal",
-        "line": 231,
-        "path": "SUMMARY.md",
-        "target": "operate/teams-rbac.md"
+        "target": "mcp-tools/account-and-meta.md"
       },
       {
         "kind": "internal",
         "line": 232,
         "path": "SUMMARY.md",
-        "target": "operate/deployments-and-nodes.md"
+        "target": "integrations/microsoft/overview.md"
       },
       {
         "kind": "internal",
         "line": 233,
         "path": "SUMMARY.md",
-        "target": "licensing.md"
+        "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
         "line": 234,
         "path": "SUMMARY.md",
-        "target": "billing.md"
+        "target": "integrations/microsoft/excel.md"
       },
       {
         "kind": "internal",
-        "line": 238,
+        "line": 235,
         "path": "SUMMARY.md",
-        "target": "trust/overview.md"
+        "target": "integrations/microsoft/entra-sso.md"
       },
       {
         "kind": "internal",
-        "line": 239,
+        "line": 236,
         "path": "SUMMARY.md",
-        "target": "trust/governed-execution.md"
+        "target": "integrations/azure/gateway.md"
       },
       {
         "kind": "internal",
         "line": 240,
         "path": "SUMMARY.md",
-        "target": "trust/data-boundaries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 241,
-        "path": "SUMMARY.md",
-        "target": "trust/audit-and-evidence.md"
-      },
-      {
-        "kind": "internal",
-        "line": 242,
-        "path": "SUMMARY.md",
-        "target": "trust/identity-and-access.md"
-      },
-      {
-        "kind": "internal",
-        "line": 243,
-        "path": "SUMMARY.md",
-        "target": "trust/capability-status.md"
+        "target": "integrations/identity/generic-oidc.md"
       },
       {
         "kind": "internal",
         "line": 244,
         "path": "SUMMARY.md",
-        "target": "trust/protocol-compatibility.md"
+        "target": "self-hosting.md"
       },
       {
         "kind": "internal",
         "line": 245,
         "path": "SUMMARY.md",
-        "target": "trust/architecture.md"
+        "target": "configuration.md"
       },
       {
         "kind": "internal",
         "line": 246,
         "path": "SUMMARY.md",
-        "target": "trust/evidence-walkthrough.md"
+        "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
         "line": 247,
         "path": "SUMMARY.md",
-        "target": "trust/security-questionnaire.md"
+        "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
         "line": 248,
         "path": "SUMMARY.md",
-        "target": "trust/supply-chain.md"
+        "target": "operate/device-key-store.md"
       },
       {
         "kind": "internal",
         "line": 249,
         "path": "SUMMARY.md",
-        "target": "trust/threat-model.md"
+        "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
         "line": 250,
         "path": "SUMMARY.md",
-        "target": "trust/support-policy.md"
+        "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
-        "line": 254,
+        "line": 251,
         "path": "SUMMARY.md",
-        "target": "api/overview.md"
+        "target": "operate/deployments-and-nodes.md"
       },
       {
         "kind": "internal",
-        "line": 255,
+        "line": 252,
         "path": "SUMMARY.md",
-        "target": "api/reference.md"
+        "target": "licensing.md"
       },
       {
         "kind": "internal",
-        "line": 256,
+        "line": 253,
         "path": "SUMMARY.md",
-        "target": "api/streaming.md"
+        "target": "billing.md"
       },
       {
         "kind": "internal",
         "line": 257,
         "path": "SUMMARY.md",
-        "target": "api/explorer.md"
+        "target": "trust/overview.md"
       },
       {
         "kind": "internal",
         "line": 258,
         "path": "SUMMARY.md",
-        "target": "api/errors.md"
+        "target": "trust/governed-execution.md"
       },
       {
         "kind": "internal",
         "line": 259,
         "path": "SUMMARY.md",
-        "target": "api/stability.md"
+        "target": "trust/data-boundaries.md"
       },
       {
         "kind": "internal",
         "line": 260,
         "path": "SUMMARY.md",
-        "target": "api/rate-limits.md"
+        "target": "trust/audit-and-evidence.md"
+      },
+      {
+        "kind": "internal",
+        "line": 261,
+        "path": "SUMMARY.md",
+        "target": "trust/identity-and-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 262,
+        "path": "SUMMARY.md",
+        "target": "trust/capability-status.md"
+      },
+      {
+        "kind": "internal",
+        "line": 263,
+        "path": "SUMMARY.md",
+        "target": "trust/protocol-compatibility.md"
       },
       {
         "kind": "internal",
         "line": 264,
         "path": "SUMMARY.md",
-        "target": "connectors/overview.md"
+        "target": "trust/architecture.md"
       },
       {
         "kind": "internal",
         "line": 265,
         "path": "SUMMARY.md",
-        "target": "connectors/databases.md"
+        "target": "trust/evidence-walkthrough.md"
       },
       {
         "kind": "internal",
         "line": 266,
         "path": "SUMMARY.md",
-        "target": "connectors/reference.md"
+        "target": "trust/security-questionnaire.md"
       },
       {
         "kind": "internal",
         "line": 267,
         "path": "SUMMARY.md",
-        "target": "connectors/snowflake.md"
+        "target": "trust/supply-chain.md"
       },
       {
         "kind": "internal",
         "line": 268,
         "path": "SUMMARY.md",
-        "target": "connectors/bigquery.md"
+        "target": "trust/threat-model.md"
       },
       {
         "kind": "internal",
         "line": 269,
         "path": "SUMMARY.md",
-        "target": "connectors/clickhouse.md"
-      },
-      {
-        "kind": "internal",
-        "line": 270,
-        "path": "SUMMARY.md",
-        "target": "connectors/postgres.md"
-      },
-      {
-        "kind": "internal",
-        "line": 271,
-        "path": "SUMMARY.md",
-        "target": "connectors/oracle.md"
-      },
-      {
-        "kind": "internal",
-        "line": 272,
-        "path": "SUMMARY.md",
-        "target": "connectors/mysql.md"
+        "target": "trust/support-policy.md"
       },
       {
         "kind": "internal",
         "line": 273,
         "path": "SUMMARY.md",
-        "target": "connectors/mssql.md"
+        "target": "api/overview.md"
       },
       {
         "kind": "internal",
         "line": 274,
         "path": "SUMMARY.md",
-        "target": "connectors/sqlite.md"
+        "target": "api/reference.md"
       },
       {
         "kind": "internal",
         "line": 275,
         "path": "SUMMARY.md",
-        "target": "connectors/redshift.md"
+        "target": "api/streaming.md"
       },
       {
         "kind": "internal",
         "line": 276,
         "path": "SUMMARY.md",
-        "target": "connectors/s3.md"
+        "target": "api/explorer.md"
       },
       {
         "kind": "internal",
         "line": 277,
         "path": "SUMMARY.md",
-        "target": "connectors/gcs.md"
+        "target": "api/errors.md"
       },
       {
         "kind": "internal",
         "line": 278,
         "path": "SUMMARY.md",
-        "target": "connectors/azure-blob.md"
+        "target": "api/stability.md"
       },
       {
         "kind": "internal",
         "line": 279,
         "path": "SUMMARY.md",
-        "target": "connectors/redis.md"
-      },
-      {
-        "kind": "internal",
-        "line": 280,
-        "path": "SUMMARY.md",
-        "target": "connectors/neo4j.md"
-      },
-      {
-        "kind": "internal",
-        "line": 281,
-        "path": "SUMMARY.md",
-        "target": "connectors/elasticsearch.md"
-      },
-      {
-        "kind": "internal",
-        "line": 282,
-        "path": "SUMMARY.md",
-        "target": "connectors/files.md"
+        "target": "api/rate-limits.md"
       },
       {
         "kind": "internal",
         "line": 283,
         "path": "SUMMARY.md",
-        "target": "connectors/code-repositories.md"
+        "target": "connectors/overview.md"
       },
       {
         "kind": "internal",
         "line": 284,
         "path": "SUMMARY.md",
-        "target": "connectors/rest-api.md"
+        "target": "connectors/databases.md"
+      },
+      {
+        "kind": "internal",
+        "line": 285,
+        "path": "SUMMARY.md",
+        "target": "connectors/reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 286,
+        "path": "SUMMARY.md",
+        "target": "connectors/snowflake.md"
+      },
+      {
+        "kind": "internal",
+        "line": 287,
+        "path": "SUMMARY.md",
+        "target": "connectors/bigquery.md"
       },
       {
         "kind": "internal",
         "line": 288,
         "path": "SUMMARY.md",
-        "target": "benchmarks/overview.md"
+        "target": "connectors/clickhouse.md"
       },
       {
         "kind": "internal",
         "line": 289,
         "path": "SUMMARY.md",
-        "target": "benchmarks/compute-kernels.md"
+        "target": "connectors/postgres.md"
       },
       {
         "kind": "internal",
         "line": 290,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-kernel-benchmarks.md"
+        "target": "connectors/oracle.md"
       },
       {
         "kind": "internal",
         "line": 291,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-llm-throughput.md"
+        "target": "connectors/mysql.md"
       },
       {
         "kind": "internal",
         "line": 292,
         "path": "SUMMARY.md",
-        "target": "benchmarks/nvidia-llm-serving.md"
+        "target": "connectors/mssql.md"
       },
       {
         "kind": "internal",
         "line": 293,
         "path": "SUMMARY.md",
-        "target": "benchmarks/attention.md"
+        "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
         "line": 294,
         "path": "SUMMARY.md",
-        "target": "benchmarks/normalization.md"
+        "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
         "line": 295,
         "path": "SUMMARY.md",
-        "target": "benchmarks/feed-forward.md"
+        "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
         "line": 296,
         "path": "SUMMARY.md",
-        "target": "benchmarks/code-retrieval.md"
+        "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
         "line": 297,
         "path": "SUMMARY.md",
-        "target": "benchmarks/dataframe-groupby.md"
+        "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
         "line": 298,
         "path": "SUMMARY.md",
-        "target": "benchmarks/sort.md"
+        "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
         "line": 299,
         "path": "SUMMARY.md",
-        "target": "benchmarks/top-k.md"
+        "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
         "line": 300,
         "path": "SUMMARY.md",
-        "target": "benchmarks/graph-betweenness.md"
+        "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
         "line": 301,
         "path": "SUMMARY.md",
-        "target": "benchmarks/survival-analysis.md"
+        "target": "connectors/files.md"
       },
       {
         "kind": "internal",
         "line": 302,
         "path": "SUMMARY.md",
-        "target": "benchmarks/least-squares-accuracy.md"
+        "target": "connectors/code-repositories.md"
       },
       {
         "kind": "internal",
         "line": 303,
         "path": "SUMMARY.md",
-        "target": "benchmarks/forecasting-joint-axis.md"
-      },
-      {
-        "kind": "internal",
-        "line": 304,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/finqa-exact-execution.md"
-      },
-      {
-        "kind": "internal",
-        "line": 305,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/llm-inference-overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 306,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/llm-prefill-throughput.md"
+        "target": "connectors/rest-api.md"
       },
       {
         "kind": "internal",
         "line": 307,
         "path": "SUMMARY.md",
-        "target": "benchmarks/decode-throughput.md"
+        "target": "benchmarks/overview.md"
       },
       {
         "kind": "internal",
         "line": 308,
         "path": "SUMMARY.md",
-        "target": "benchmarks/batched-decode-throughput.md"
+        "target": "benchmarks/compute-kernels.md"
       },
       {
         "kind": "internal",
         "line": 309,
         "path": "SUMMARY.md",
-        "target": "benchmarks/llm-tool-calling-uplift.md"
+        "target": "benchmarks/nvidia-kernel-benchmarks.md"
+      },
+      {
+        "kind": "internal",
+        "line": 310,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/nvidia-llm-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 311,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/nvidia-llm-serving.md"
+      },
+      {
+        "kind": "internal",
+        "line": 312,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/attention.md"
       },
       {
         "kind": "internal",
         "line": 313,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/normalization.md"
       },
       {
         "kind": "internal",
         "line": 314,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "benchmarks/feed-forward.md"
       },
       {
         "kind": "internal",
         "line": 315,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "benchmarks/code-retrieval.md"
       },
       {
         "kind": "internal",
         "line": 316,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "benchmarks/dataframe-groupby.md"
       },
       {
         "kind": "internal",
         "line": 317,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/sort.md"
+      },
+      {
+        "kind": "internal",
+        "line": 318,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/top-k.md"
+      },
+      {
+        "kind": "internal",
+        "line": 319,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/graph-betweenness.md"
+      },
+      {
+        "kind": "internal",
+        "line": 320,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/survival-analysis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 321,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/least-squares-accuracy.md"
+      },
+      {
+        "kind": "internal",
+        "line": 322,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/forecasting-joint-axis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 323,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/finqa-exact-execution.md"
+      },
+      {
+        "kind": "internal",
+        "line": 324,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-inference-overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 325,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-prefill-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 326,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 327,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/batched-decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 328,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 332,
+        "path": "SUMMARY.md",
+        "target": "troubleshooting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 333,
+        "path": "SUMMARY.md",
+        "target": "help/glossary.md"
+      },
+      {
+        "kind": "internal",
+        "line": 334,
+        "path": "SUMMARY.md",
+        "target": "help/quick-reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 335,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 336,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -37948,6 +39194,72 @@
         "target": "../guides/first-query.md"
       },
       {
+        "kind": "anchor",
+        "line": 80,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 174,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 181,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "target": "catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 182,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 51,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "anchor",
+        "line": 290,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 322,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 324,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 145,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 265,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "target": "geospatial.md"
+      },
+      {
+        "kind": "internal",
+        "line": 267,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
         "kind": "internal",
         "line": 154,
         "path": "engine/attention-kernels.md",
@@ -38042,6 +39354,18 @@
         "line": 214,
         "path": "engine/capabilities.md",
         "target": "../benchmarks/llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 340,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "target": "geospatial.md"
+      },
+      {
+        "kind": "internal",
+        "line": 342,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "target": "runtime-library-catalog.md"
       },
       {
         "kind": "internal",
@@ -38174,6 +39498,24 @@
         "line": 102,
         "path": "engine/contest-strategy.md",
         "target": "forecast-scoring.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 118,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 275,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 276,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
+        "target": "catalog.md"
       },
       {
         "kind": "internal",
@@ -38552,6 +39894,36 @@
         "line": 68,
         "path": "engine/health.md",
         "target": "../operate/monitoring.md"
+      },
+      {
+        "kind": "internal",
+        "line": 242,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "target": "geospatial.md"
+      },
+      {
+        "kind": "internal",
+        "line": 243,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 76,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 273,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "target": "geospatial.md"
+      },
+      {
+        "kind": "internal",
+        "line": 275,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "target": "runtime-library-catalog.md"
       },
       {
         "kind": "internal",
@@ -39173,6 +40545,18 @@
       },
       {
         "kind": "internal",
+        "line": 294,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 296,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 101,
         "path": "engine/program-execution-scoring.md",
         "target": "../benchmarks/finqa-exact-execution.md"
@@ -39496,6 +40880,24 @@
         "target": "forecasting.md"
       },
       {
+        "kind": "anchor",
+        "line": 64,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 255,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "target": "geospatial.md"
+      },
+      {
+        "kind": "internal",
+        "line": 257,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
         "kind": "internal",
         "line": 216,
         "path": "engine/sparse-and-graph.md",
@@ -39511,6 +40913,24 @@
         "kind": "internal",
         "line": 218,
         "path": "engine/sparse-and-graph.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 332,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "target": "acoustics-optics-and-radiative-materials-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 333,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
+        "target": "structural-and-construction-materials-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 336,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
         "target": "runtime-library-catalog.md"
       },
       {
@@ -39605,6 +41025,48 @@
       },
       {
         "kind": "internal",
+        "line": 328,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "target": "corrosion-and-electrochemical-materials-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 329,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 93,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "target": "#verification"
+      },
+      {
+        "kind": "internal",
+        "line": 327,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "target": "ml-classical-algorithms.md"
+      },
+      {
+        "kind": "internal",
+        "line": 328,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "target": "mixture-of-experts-and-routing-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 337,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "target": "geospatial.md"
+      },
+      {
+        "kind": "internal",
+        "line": 338,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 179,
         "path": "engine/survival-analysis.md",
         "target": "evaluation-calibration.md"
@@ -39649,6 +41111,18 @@
         "kind": "internal",
         "line": 228,
         "path": "engine/text-processing-kernels.md",
+        "target": "catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 254,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
+        "target": "runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 255,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
         "target": "catalog.md"
       },
       {
@@ -43805,17 +45279,17 @@
         "term": "algenta"
       },
       {
-        "line": 158,
+        "line": 177,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 193,
+        "line": 212,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 213,
+        "line": 232,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
@@ -45770,6 +47244,21 @@
         "term": "algenta"
       },
       {
+        "line": 19,
+        "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 17,
+        "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 28,
+        "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 16,
         "path": "engine/attention-kernels.md",
         "term": "algenta"
@@ -45850,6 +47339,11 @@
         "term": "algenta"
       },
       {
+        "line": 25,
+        "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 3,
         "path": "engine/catalog.md",
         "term": "algenta"
@@ -45907,6 +47401,11 @@
       {
         "line": 17,
         "path": "engine/contest-strategy.md",
+        "term": "algenta"
+      },
+      {
+        "line": 20,
+        "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
         "term": "algenta"
       },
       {
@@ -46000,6 +47499,16 @@
         "term": "algenta"
       },
       {
+        "line": 18,
+        "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
+        "path": "engine/hydrology-and-water-systems-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 225,
         "path": "engine/kernel-inventory.md",
         "term": "algenta"
@@ -46077,6 +47586,11 @@
       {
         "line": 14,
         "path": "engine/optimization.md",
+        "term": "algenta"
+      },
+      {
+        "line": 18,
+        "path": "engine/process-and-organic-materials-science-kernels.md",
         "term": "algenta"
       },
       {
@@ -46200,8 +47714,18 @@
         "term": "algenta"
       },
       {
+        "line": 20,
+        "path": "engine/solid-earth-geophysics-kernels.md",
+        "term": "algenta"
+      },
+      {
         "line": 13,
         "path": "engine/sparse-and-graph.md",
+        "term": "algenta"
+      },
+      {
+        "line": 21,
+        "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
         "term": "algenta"
       },
       {
@@ -46231,6 +47755,16 @@
       },
       {
         "line": 18,
+        "path": "engine/structural-and-construction-materials-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 17,
+        "path": "engine/surface-processes-and-geomorphology-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 18,
         "path": "engine/survival-analysis.md",
         "term": "algenta"
       },
@@ -46242,6 +47776,11 @@
       {
         "line": 17,
         "path": "engine/text-processing-kernels.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
+        "path": "engine/thermal-and-energy-materials-kernels.md",
         "term": "algenta"
       },
       {
@@ -56970,8 +58509,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 252,
-      "links": 252,
+      "internal_links": 265,
+      "links": 265,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -58584,6 +60123,81 @@
       "shell_commands": 16
     },
     {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 4,
+      "path": "engine/acoustics-optics-and-radiative-materials-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 12,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 4,
+      "path": "engine/advanced-nano-and-plasma-materials-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/atmospheric-chemistry-and-climate-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 6,
       "command_counts": {
         "destructive_mutation": 0,
@@ -58675,6 +60289,31 @@
       "path": "engine/capabilities.md",
       "product_claims": {
         "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 21,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/cartography-and-planetary-cosmic-sciences-kernels.md",
+      "product_claims": {
+        "algenta": 1,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -58823,6 +60462,31 @@
       "internal_links": 2,
       "links": 2,
       "path": "engine/contest-strategy.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 3,
+      "path": "engine/corrosion-and-electrochemical-materials-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -59182,6 +60846,56 @@
         "mission": 0
       },
       "shell_commands": 2
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/historical-geology-and-paleoclimate-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 3,
+      "path": "engine/hydrology-and-water-systems-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
     },
     {
       "code_fences": 1,
@@ -60159,6 +61873,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 11,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/process-and-organic-materials-science-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 3,
       "command_counts": {
         "destructive_mutation": 0,
@@ -60409,6 +62148,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 3,
+      "path": "engine/solid-earth-geophysics-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 9,
       "command_counts": {
         "destructive_mutation": 0,
@@ -60423,6 +62187,31 @@
       "internal_links": 3,
       "links": 3,
       "path": "engine/sparse-and-graph.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/speleology-mineralogy-and-geochemistry-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -60534,6 +62323,56 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 18,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/structural-and-construction-materials-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 5,
+      "path": "engine/surface-processes-and-geomorphology-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 4,
       "command_counts": {
         "destructive_mutation": 0,
@@ -60598,6 +62437,31 @@
       "internal_links": 2,
       "links": 2,
       "path": "engine/text-processing-kernels.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/thermal-and-energy-materials-kernels.md",
       "product_claims": {
         "algenta": 1,
         "codna": 0,
@@ -63293,7 +65157,7 @@
     "source_paths": 230
   },
   "snippets": {
-    "code_fences": 1487,
+    "code_fences": 1633,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 857,
@@ -63307,7 +65171,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1175,
+    "claim_mentions": 1188,
     "command_execution_percent": 100.0,
     "commands_classified": 857,
     "commands_executed": 67,
@@ -63315,22 +65179,22 @@
     "endpoint_mentions": 2430,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1669,
+    "links_checked": 1720,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 253,
+    "pages_checked": 266,
     "shell_syntax_validation_percent": 100.0,
     "skips": 791,
-    "snippets_checked": 1487,
+    "snippets_checked": 1633,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7618,
+    "source_items_inventoried": 7828,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1175,
-    "code_fences": 1487,
+    "claim_mentions": 1188,
+    "code_fences": 1633,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
@@ -63342,18 +65206,18 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 790,
-    "internal_links": 1611,
-    "links": 1669,
-    "pages": 253,
+    "internal_links": 1655,
+    "links": 1720,
+    "pages": 266,
     "product_claims": {
-      "algenta": 1165,
+      "algenta": 1178,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 10
     },
-    "public_pages": 252,
+    "public_pages": 265,
     "requires_environment_commands": 390,
     "runnable_commands": 67,
     "safe_static_commands": 67,
@@ -63362,7 +65226,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 791,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 7618,
+    "source_items_inventoried": 7828,
     "static_only_commands": 80,
     "static_or_guarded_commands": 790,
     "unexecuted_runnable_commands": 0,
