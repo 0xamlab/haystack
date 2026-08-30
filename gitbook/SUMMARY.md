@@ -147,6 +147,15 @@
 * [Nanoscale, plasma & surface-contact engineering](engine/advanced-nano-and-plasma-materials-kernels.md)
 * [Process & organic-materials science](engine/process-and-organic-materials-science-kernels.md)
 
+## Medical & health sciences
+
+* [Clinical specialty kernels](engine/clinical-specialty-kernels.md)
+* [Immunology, hematology, and virology kernels](engine/immunology-hematology-and-virology-kernels.md)
+* [Pharmacology and toxicology kernels](engine/pharmacology-and-toxicology-kernels.md)
+* [Epidemiology and disease dynamics kernels](engine/epidemiology-and-disease-dynamics-kernels.md)
+* [Biomedical, biomechanics, and psychoacoustics kernels](engine/biomedical-engineering-kernels.md)
+* [Nutrition and veterinary science kernels](engine/nutrition-and-veterinary-science-kernels.md)
+
 ## Concepts
 
 * [How the engine works](concepts/engine.md)

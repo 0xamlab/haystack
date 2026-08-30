@@ -61,7 +61,16 @@ dimensionality, information theory, and complex systems -- dimensions, dimension
 information_theory, special_functions, chaos, cellular_automata -- and quantum computing and
 formal logic -- quantum, quantum_computing, boolean_algebra, category_theory, formal_logic,
 fuzzy_logic, logic_circuit -- bringing the count to 365 of 643 real modules (57%), with 278
-modules still undocumented by narrative beyond their generated table row.
+modules still undocumented by narrative beyond their generated table row. The A6 batch-7 pass
+(2026-08-30, 6 new family pages, not a formatting fix) then closed 26 more previously-undocumented
+modules spanning clinical specialties -- cardiology, dentistry, endocrinology, nephrology,
+ophthalmology, orthodontics, pulmonology -- immunology, hematology, and virology -- immunology,
+hematology, virology, cytology, cytometry -- pharmacology and toxicology -- pharmacokinetics,
+pharmacology, neuropharmacology, toxicokinetics, toxicology, dosimetry -- epidemiology and disease
+dynamics -- epidemiology, etiology, epigenetics -- biomedical engineering -- biomedical,
+biomechanics, psychoacoustics -- and nutrition and veterinary science -- nutrition, veterinary --
+bringing the count to 391 of 643 real modules (61%), with 252 modules still undocumented by
+narrative beyond their generated table row.
 
 WHY THIS SCRIPT DOES NOT GATE ON THE 278 GAP. That gap is a documentation-writing backlog, not a
 regression -- something a CI check can flag but cannot itself close, and gating hard on it would
@@ -75,7 +84,7 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (278 modules, as of writing) rather than hiding it inside a passing
+  3. Prints the honest gap (252 modules, as of writing) rather than hiding it inside a passing
      check -- `--json` includes it explicitly under "undocumented_by_narrative".
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
@@ -148,10 +157,10 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (365,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-6 pass
-# added 10 new family pages' worth of module tables (48 modules) on top of the prior floor of 315.
-DOCUMENTED_FLOOR = 363
+# Set from the actual measured count under the precise "Module table, first cell only" rule (391,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-7 pass
+# added 6 new family pages' worth of module tables (26 modules) on top of the prior floor of 363.
+DOCUMENTED_FLOOR = 389
 
 
 def real_modules() -> set[str]:
