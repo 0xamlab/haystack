@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
 from apps.api_server.schemas.llm import (
@@ -33,6 +35,8 @@ from apps.api_server.schemas.llm import (
     LLMModelListResponse,
     LLMModelResponse,
     ProviderAttemptResponse,
+    ResponseCapabilityApproval,
+    ResponseInputCapabilityApprovalContinuationItem,
     ResponseInputItem,
     ResponseOutputContent,
     ResponseOutputItem,
@@ -47,18 +51,29 @@ from apps.api_server.schemas.llm import (
 from apps.api_server.services import llm_provider_service
 from apps.api_server.services.llm_provider_service import _features as llm_streaming_features
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.capability_plane import (
+    CapabilityExecutionRequest,
+    CapabilityPlaneError,
+    ExecutionSessionStatus,
+    execute_capability_service,
+    list_capabilities_service,
+)
 from apps.api_server.services.llm_api_service import (
     create_chat_completion,
     resolve_artifact_bridge,
     LLMAPIError,
+    clear_pending_capability_approval,
     count_text_tokens,
     create_text_embeddings,
     create_utility_conversation_response,
     create_utility_response,
     embedding_similarity_score,
+    finalize_capability_approval_conversation,
     list_llm_model_descriptors,
     list_provider_discovered_descriptors,
+    load_pending_capability_approval,
     rerank_embeddings,
+    store_pending_capability_approval,
     tokenize_text,
 )
 from apps.api_server.services.quota_service import check_rate_limit
@@ -458,6 +473,7 @@ async def _responses_stream(
     provider_backend: str | None,
     provider_model_id: str | None,
     provider_attempts: list[ProviderAttemptResponse],
+    approval: ResponseCapabilityApproval | None = None,
 ) -> AsyncIterator[str]:
     # Scope note (Track C2, 2026-08): /v1/responses stream=true stays on this SAME
     # buffered-then-chunked path unconditionally -- including for a model whose
@@ -495,6 +511,29 @@ async def _responses_stream(
             },
         }
     )
+    if approval is not None:
+        # Track C1 (human-approval pause/resume): "response.approval_required" is the first new
+        # distinct SSE event type since the original 3. Documented forward-compatibility ONLY,
+        # exactly like the tool_calls note above -- stream=true combined with a capability call
+        # that resolves to approval_required is refused (model_capability_unsupported) before
+        # this generator ever runs, so this branch is not reachable through the live router
+        # today. It still ends the stream cleanly: no fake response.completed follows a pause.
+        yield _sse_data(
+            {
+                "type": "response.approval_required",
+                "response": {
+                    "id": response_id,
+                    "object": "response",
+                    "status": "approval_required",
+                    "model": model_id,
+                    "plan_id": approval.plan_id,
+                    "plan_hash": approval.plan_hash,
+                    "message": approval.message,
+                },
+            }
+        )
+        yield _sse_data("[DONE]")
+        return
     for item in items:
         yield _sse_data(
             {
@@ -879,6 +918,256 @@ def _response_output_tool_calls(
     ]
 
 
+# ── Track C1 (human-approval pause/resume) ─────────────────────────────────────────────────
+#
+# execute_capability_tools=True (opt-in, default False -- zero behavior change otherwise) lets
+# /v1/responses execute a model tool call server-side when its name resolves to a capability in
+# the org's OWN capability_plane catalog, by calling execute_capability_service directly -- the
+# SAME Python function POST /v1/capabilities/execute calls (never an internal HTTP round-trip,
+# never a re-implementation of catalog listing/execution). This reuses Track C1b's existing,
+# already-tested approval gate verbatim:
+#   - approval_required=False capabilities execute immediately (the common case).
+#   - approval_required=True capabilities pause on response.approval_required with a real
+#     plan_id/plan_hash, exactly like calling POST /v1/capabilities/execute directly would.
+#   - HARD SECURITY INVARIANT: nothing below ever calls the capability_plane approval service
+#     function that backs POST /v1/capability-executions/{plan_id}/approve. Approval only ever
+#     happens through a human hitting that separate, credentialed HTTP endpoint
+#     (dependencies=[Depends(require_verified_email)]) -- the model can never approve its own
+#     pending plan. (Proven mechanically, not just asserted here, by
+#     tests/test_llm_responses_capability_approval.py's static reference check.)
+
+
+async def _match_capability_for_tool_call(
+    db: AsyncSessionDep,
+    auth: AuthContext,
+    tool_call: object,
+) -> object | None:
+    """Resolve a model tool call's name against the org's own catalog by calling the existing
+    capability_plane listing service directly (the same one GET /v1/capabilities calls) --
+    never a re-implementation of catalog listing/matching."""
+    name = getattr(getattr(tool_call, "function", None), "name", None)
+    if not name:
+        return None
+    catalog = await list_capabilities_service(db, auth)
+    for entry in catalog:
+        if entry.name == name or entry.capability_id == name:
+            return entry
+    return None
+
+
+def _capability_tool_call_arguments(tool_call: object) -> dict[str, object]:
+    raw = getattr(getattr(tool_call, "function", None), "arguments", None)
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return {"_raw_arguments": raw}
+    return parsed if isinstance(parsed, dict) else {"value": parsed}
+
+
+def _annotated_capability_output_item(
+    item: object,
+    *,
+    capability_id: str,
+    capability_status: str,
+    capability_output: dict[str, object] | None = None,
+    capability_error: dict[str, object] | None = None,
+) -> object:
+    """Duck-typed copy of `item` (a real UtilityResponseOutputItem, or a test SimpleNamespace --
+    the router is the only place that constructs this, so both must work) with its tool call
+    resolved: the original tool_calls are cleared -- the call has now been handled server-side,
+    whether it succeeded, failed, or is paused on approval -- and the real capability_* fields
+    are attached instead."""
+    return SimpleNamespace(
+        index=item.index,
+        item_type=getattr(item, "item_type", None),
+        text=getattr(item, "text", None),
+        tokens=getattr(item, "tokens", None),
+        token_count=getattr(item, "token_count", 0),
+        embedding=getattr(item, "embedding", None),
+        provider=getattr(item, "provider", None),
+        provider_attempts=getattr(item, "provider_attempts", ()),
+        tool_calls=None,
+        finish_reason=getattr(item, "finish_reason", None),
+        capability_id=capability_id,
+        capability_status=capability_status,
+        capability_output=capability_output,
+        capability_error=capability_error,
+    )
+
+
+async def _apply_capability_tool_execution(
+    *,
+    db: AsyncSessionDep,
+    auth: AuthContext,
+    response_id: str,
+    outputs: list,
+) -> tuple[list, ResponseCapabilityApproval | None]:
+    """Intercepts the FIRST tool call in the response whose name resolves to a real capability
+    and executes it server-side (see module note above). Deliberately intercepts at most ONE
+    tool call per response -- a model turn with multiple simultaneous capability-resolved tool
+    calls is a documented scope cut for this pass. Every item whose first tool call does not
+    resolve to a real capability -- or every item once one tool call has already been
+    intercepted -- passes through completely unchanged, so a caller whose tools never match a
+    real capability sees zero behavior change versus before this feature existed."""
+    approval: ResponseCapabilityApproval | None = None
+    annotated: list = []
+    intercepted = False
+    for item in outputs:
+        tool_calls = getattr(item, "tool_calls", None)
+        if intercepted or not tool_calls:
+            annotated.append(item)
+            continue
+        tool_call = tool_calls[0]
+        capability = await _match_capability_for_tool_call(db, auth, tool_call)
+        if capability is None:
+            annotated.append(item)
+            continue
+        intercepted = True
+        arguments = _capability_tool_call_arguments(tool_call)
+        try:
+            exec_response = await execute_capability_service(
+                db,
+                auth,
+                CapabilityExecutionRequest(capability_id=capability.capability_id, input=arguments),
+            )
+        except CapabilityPlaneError as exc:
+            annotated.append(
+                _annotated_capability_output_item(
+                    item,
+                    capability_id=capability.capability_id,
+                    capability_status="failed",
+                    capability_error={"code": exc.code, "message": exc.message},
+                )
+            )
+            continue
+        if exec_response.status == ExecutionSessionStatus.STARTED:
+            # approval_required (Track C1b's existing gate): mint the pause, remember exactly
+            # how to resume it once a human approves the plan out-of-band.
+            store_pending_capability_approval(
+                response_id,
+                capability_id=capability.capability_id,
+                plan_id=exec_response.plan_id,
+                plan_hash=exec_response.plan_hash or "",
+                tool_call_id=getattr(tool_call, "id", "") or "",
+            )
+            approval = ResponseCapabilityApproval(
+                plan_id=exec_response.plan_id,
+                plan_hash=exec_response.plan_hash or "",
+                message=(
+                    f"Approve via POST /v1/capability-executions/{exec_response.plan_id}/approve, "
+                    "then resend this request with previous_response_id set to this response's id "
+                    'and a single {"type": "capability_approval_continuation", "plan_id": '
+                    f'"{exec_response.plan_id}"}} input item to complete it.'
+                ),
+            )
+            annotated.append(
+                _annotated_capability_output_item(
+                    item,
+                    capability_id=capability.capability_id,
+                    capability_status="approval_required",
+                )
+            )
+            continue
+        succeeded = exec_response.status == ExecutionSessionStatus.SUCCEEDED
+        annotated.append(
+            _annotated_capability_output_item(
+                item,
+                capability_id=capability.capability_id,
+                capability_status="succeeded" if succeeded else "failed",
+                capability_output=exec_response.output,
+                capability_error=exec_response.error,
+            )
+        )
+    return annotated, approval
+
+
+async def _resume_capability_approval(
+    *,
+    db: AsyncSessionDep,
+    auth: AuthContext,
+    request: Request,
+    model_id: str,
+    previous_response_id: str,
+    plan_id: str,
+) -> ResponsesResponse:
+    """Resumes a response paused on response.approval_required. Never calls the capability_plane
+    approval service function -- approval already happened, out-of-band, through the separate
+    credentialed HTTP endpoint; this only calls execute_capability_service again with plan_id
+    set, exactly as a human-approved second POST /v1/capabilities/execute call would. If the
+    plan isn't actually approved yet (still pending, rejected, or expired), this returns the
+    SAME approval_required pause, never a fake success."""
+    pending = load_pending_capability_approval(previous_response_id)
+    if pending is None or pending["plan_id"] != plan_id:
+        raise _llm_api_http_exception(
+            LLMAPIError(
+                "invalid_provider_request",
+                (
+                    f"previous_response_id '{previous_response_id}' has no pending capability "
+                    f"approval for plan_id '{plan_id}'."
+                ),
+                {"previous_response_id": previous_response_id, "plan_id": plan_id},
+            ),
+            request,
+        )
+
+    try:
+        exec_response = await execute_capability_service(
+            db,
+            auth,
+            CapabilityExecutionRequest(capability_id=pending["capability_id"], plan_id=plan_id),
+        )
+    except CapabilityPlaneError as exc:
+        # Still pending / rejected / expired -- surface the SAME pause, never a fake success.
+        approval = ResponseCapabilityApproval(
+            plan_id=plan_id,
+            plan_hash=pending["plan_hash"],
+            message=(
+                f"This capability execution plan is not yet approved ({exc.code}: {exc.message}). "
+                f"Approve via POST /v1/capability-executions/{plan_id}/approve, then resend this "
+                "same request again."
+            ),
+        )
+        return ResponsesResponse(
+            id=previous_response_id,
+            status="approval_required",
+            model=model_id,
+            output=[],
+            usage=EmbeddingUsageResponse(prompt_tokens=0, total_tokens=0),
+            approval_required=approval,
+        )
+
+    clear_pending_capability_approval(previous_response_id)
+    new_response_id = finalize_capability_approval_conversation(
+        previous_response_id=previous_response_id,
+        tool_call_id=pending["tool_call_id"],
+        capability_output=exec_response.output,
+    )
+    succeeded = exec_response.status == ExecutionSessionStatus.SUCCEEDED
+    output_item = ResponseOutputItem(
+        id=f"{new_response_id}_item_0",
+        index=0,
+        content=[
+            ResponseOutputContent(
+                type="text",
+                token_count=0,
+                capability_id=pending["capability_id"],
+                capability_status="succeeded" if succeeded else "failed",
+                capability_output=exec_response.output,
+                capability_error=exec_response.error,
+            )
+        ],
+    )
+    return ResponsesResponse(
+        id=new_response_id,
+        status="completed",
+        model=model_id,
+        output=[output_item],
+        usage=EmbeddingUsageResponse(prompt_tokens=0, total_tokens=0),
+    )
+
+
 @router.post(
     "/v1/responses",
     response_model=ResponsesResponse,
@@ -906,6 +1195,7 @@ async def responses(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     redis_client: Annotated[object, Depends(get_redis)],
+    db: AsyncSessionDep,
 ) -> ResponsesResponse | StreamingResponse:
     await _enforce_llm_api_rate_limit(
         request=request,
@@ -941,6 +1231,12 @@ async def responses(
     if payload.parallel_tool_calls is not None:
         _tool_kwargs["parallel_tool_calls"] = payload.parallel_tool_calls
 
+    # Track C1: set only when execute_capability_tools=True intercepted a tool call that
+    # resolved to a capability whose catalog entry required approval -- None (the overwhelming
+    # common case, and the ENTIRE case for every caller who never set execute_capability_tools)
+    # means zero change to the response shape below.
+    approval_info: ResponseCapabilityApproval | None = None
+
     try:
         if is_typed_input:
             try:
@@ -951,12 +1247,79 @@ async def responses(
                     for error in exc.errors()
                 ]
                 raise RequestValidationError(prefixed_errors, body=payload.input) from exc
+
+            # Track C1 resume path: a capability_approval_continuation item resumes a response
+            # that previously paused on response.approval_required. It must be the ONLY item
+            # (the plan already carries what was proposed -- there is nothing else to
+            # re-supply) and previous_response_id must reference the exact paused response it
+            # belongs to.
+            continuation_items = [
+                item
+                for item in typed_items
+                if isinstance(item, ResponseInputCapabilityApprovalContinuationItem)
+            ]
+            if continuation_items:
+                if len(typed_items) > 1:
+                    raise _llm_api_http_exception(
+                        LLMAPIError(
+                            "invalid_provider_request",
+                            "A capability_approval_continuation input item must be the only "
+                            "item in the request.",
+                            {"model": payload.model},
+                        ),
+                        request,
+                    )
+                if payload.previous_response_id is None:
+                    raise _llm_api_http_exception(
+                        LLMAPIError(
+                            "invalid_provider_request",
+                            "capability_approval_continuation requires previous_response_id set "
+                            "to the paused response it resumes.",
+                            {"model": payload.model},
+                        ),
+                        request,
+                    )
+                if payload.stream:
+                    # Matching Track C1a's own streaming-tool_calls restriction: real-time
+                    # streaming of the resume/execute step is a deliberate, separate follow-up.
+                    raise _llm_api_http_exception(
+                        LLMAPIError(
+                            "model_capability_unsupported",
+                            "Streaming is not yet supported for a "
+                            "capability_approval_continuation request; set stream=false.",
+                            {
+                                "model": payload.model,
+                                "required_capability": "streaming_tool_calls",
+                            },
+                        ),
+                        request,
+                    )
+                return await _resume_capability_approval(
+                    db=db,
+                    auth=auth,
+                    request=request,
+                    model_id=payload.model,
+                    previous_response_id=payload.previous_response_id,
+                    plan_id=continuation_items[0].plan_id,
+                )
+
             descriptor, response_id, outputs, total_tokens = await create_utility_conversation_response(
                 model_id=payload.model,
                 items=[item.model_dump(exclude_none=True) for item in typed_items],
                 previous_response_id=payload.previous_response_id,
                 **_tool_kwargs,
             )
+            if payload.execute_capability_tools:
+                # Deliberate scope cut: capability-tool interception only runs on this typed
+                # conversation path, where tool calling + previous_response_id continuation
+                # already coherently live -- the legacy list[str] independent-completions path
+                # (below) never stores conversation history for a pause to resume against.
+                outputs, approval_info = await _apply_capability_tool_execution(
+                    db=db,
+                    auth=auth,
+                    response_id=response_id,
+                    outputs=outputs,
+                )
         else:
             inputs = [payload.input] if isinstance(payload.input, str) else payload.input
             descriptor, response_id, outputs, total_tokens = await create_utility_response(
@@ -968,11 +1331,16 @@ async def responses(
     except (LLMAPIError, MojoLibraryError) as exc:
         raise _llm_api_http_exception(exc, request) from exc
 
-    if payload.stream and any(getattr(item, "tool_calls", None) for item in outputs):
+    if payload.stream and (
+        approval_info is not None or any(getattr(item, "tool_calls", None) for item in outputs)
+    ):
         # True per-backend streaming of tool_calls deltas is a deliberately separate follow-up
         # (matching Track C2's identical restriction on /v1/chat/completions) -- refuse rather
         # than silently dropping the tool_calls the caller asked for into an SSE stream that
-        # can't carry them.
+        # can't carry them. Track C1 extends this SAME restriction to a capability call that
+        # resolved to approval_required: streaming the pause itself is a deliberate, separate
+        # scope cut (see _responses_stream's own forward-compatible approval-event support,
+        # which this refusal keeps unreachable through the live router today).
         raise _llm_api_http_exception(
             LLMAPIError(
                 "model_capability_unsupported",
@@ -998,6 +1366,10 @@ async def responses(
                     embedding=item.embedding,
                     tool_calls=_response_output_tool_calls(getattr(item, "tool_calls", None)),
                     finish_reason=getattr(item, "finish_reason", None),
+                    capability_id=getattr(item, "capability_id", None),
+                    capability_status=getattr(item, "capability_status", None),
+                    capability_output=getattr(item, "capability_output", None),
+                    capability_error=getattr(item, "capability_error", None),
                 )
             ],
         )
@@ -1023,12 +1395,14 @@ async def responses(
     )
     response = ResponsesResponse(
         id=response_id,
+        status="approval_required" if approval_info is not None else "completed",
         model=descriptor.model_id,
         provider_backend=provider_backend,
         provider_model_id=provider_model_id,
         provider_attempts=provider_attempts,
         output=response_items,
         usage=usage,
+        approval_required=approval_info,
     )
     if payload.stream:
         return StreamingResponse(

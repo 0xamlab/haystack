@@ -13,7 +13,7 @@ import os
 from functools import lru_cache
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from apps.api_server.services import llm_provider_service
 from apps.api_server.services.runtime_library_service import (
@@ -138,6 +138,14 @@ class UtilityResponseOutputItem:
     # shape is byte-for-byte unchanged.
     tool_calls: tuple[ChatCompletionToolCall, ...] | None = None
     finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] | None = None
+    # Track C1 (human-approval pause/resume): set only by the /v1/responses router's own
+    # capability-tool interception (execute_capability_tools=True) when this item's first tool
+    # call resolved to a real capability. None for every existing caller/path -- their JSON wire
+    # shape is byte-for-byte unchanged.
+    capability_id: str | None = None
+    capability_status: Literal["succeeded", "failed", "approval_required"] | None = None
+    capability_output: dict[str, Any] | None = None
+    capability_error: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

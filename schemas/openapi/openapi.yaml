@@ -21927,6 +21927,37 @@ components:
       - metric_column
       - schema_revision
       title: ResolvedPlan
+    ResponseCapabilityApproval:
+      properties:
+        plan_id:
+          type: string
+          title: Plan Id
+        plan_hash:
+          type: string
+          title: Plan Hash
+        message:
+          type: string
+          title: Message
+          description: Human-facing instructions for approving and then resuming this
+            response.
+      type: object
+      required:
+      - plan_id
+      - plan_hash
+      - message
+      title: ResponseCapabilityApproval
+      description: 'Track C1 (human-approval pause/resume): mirrors CapabilityExecutionResponse''s
+        own
+
+        plan_id/plan_hash pair for the capability-plane execution plan this response
+        is paused on.
+
+        Approval happens ONLY through the separate, credentialed POST
+
+        /v1/capability-executions/{plan_id}/approve endpoint -- never through this
+        response, this
+
+        request, or any other LLM/MCP-driven code path.'
     ResponseOutputContent:
       properties:
         type:
@@ -21980,6 +22011,42 @@ components:
           description: Present for chat/provider-backed text turns; mirrors Chat Completions'
             finish_reason. Null for tokenization/embedding output, where the concept
             does not apply.
+        capability_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Capability Id
+          description: 'Track C1: set only when execute_capability_tools=True resolved
+            this item''s tool call to a real capability in the org''s own catalog.
+            Omitted from the response entirely for every existing caller (execute_capability_tools
+            defaults to False) -- see this model''s _serialize_omitting_unset_capability_fields.'
+        capability_status:
+          anyOf:
+          - type: string
+            enum:
+            - succeeded
+            - failed
+            - approval_required
+          - type: 'null'
+          title: Capability Status
+          description: Outcome of the server-side capability execution this tool call
+            was routed to. Omitted unless capability_id is set.
+        capability_output:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Capability Output
+          description: The capability's real output (CapabilityExecutionResponse.output)
+            when capability_status == 'succeeded'. Omitted otherwise.
+        capability_error:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Capability Error
+          description: The capability's real error (CapabilityExecutionResponse.error)
+            when capability_status == 'failed'. Omitted otherwise.
       type: object
       required:
       - type
@@ -22116,6 +22183,24 @@ components:
             held in the serving process''s memory only -- it does not survive a process
             restart and will not be found if a later request lands on a different
             worker/replica than the one that served the original call.'
+        execute_capability_tools:
+          type: boolean
+          title: Execute Capability Tools
+          description: 'Track C1 (human-approval pause/resume), OPT-IN and OFF by
+            default. When true, a model tool call in the typed-input-array conversation
+            path whose name resolves to a capability in this org''s own GET /v1/capabilities
+            catalog is executed server-side (via the same execute_capability_service
+            that POST /v1/capabilities/execute calls) instead of being returned as
+            an inert tool_call for the caller to run themselves. A capability whose
+            catalog entry sets approval_required=True pauses the response instead
+            of executing (status=''approval_required'', see ResponsesResponse.approval_required)
+            until a human approves the pending plan through the separate, credentialed
+            POST /v1/capability-executions/{plan_id}/approve endpoint -- this option
+            can never approve a plan itself. Resume the paused response with previous_response_id
+            set to it and a single {type: capability_approval_continuation, plan_id:
+            ...} input item. Default false means zero behavior change for every existing
+            caller.'
+          default: false
       type: object
       required:
       - input
@@ -22132,7 +22217,9 @@ components:
           default: response
         status:
           type: string
-          const: completed
+          enum:
+          - completed
+          - approval_required
           title: Status
           default: completed
         model:
@@ -22166,6 +22253,14 @@ components:
           title: Output
         usage:
           $ref: '#/components/schemas/EmbeddingUsageResponse'
+        approval_required:
+          anyOf:
+          - $ref: '#/components/schemas/ResponseCapabilityApproval'
+          - type: 'null'
+          description: 'Track C1: set only when status == ''approval_required'' --
+            this response is paused awaiting a human''s decision on a pending capability_plane
+            execution plan. Omitted from the response entirely (not merely null) for
+            every existing caller (execute_capability_tools defaults to False).'
       type: object
       required:
       - id

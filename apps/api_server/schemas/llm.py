@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 
 class LLMModelResponse(BaseModel):
@@ -500,8 +500,33 @@ class ResponseInputFunctionCallOutputItem(BaseModel):
     )
 
 
+class ResponseInputCapabilityApprovalContinuationItem(BaseModel):
+    """Track C1 (human-approval pause/resume): resumes a response that paused on
+    response.approval_required because its capability-plane execution plan required approval.
+
+    Carries no input of its own -- the plan already carries what was originally proposed (see
+    apps.api_server.services.capability_plane._execution._propose_capability_execution). Must be
+    the ONLY item in the input array, and previous_response_id must reference the exact paused
+    response this plan_id belongs to. A human approves the plan out-of-band first, via the
+    separate, credentialed POST /v1/capability-executions/{plan_id}/approve endpoint -- never
+    through this item or any other LLM-driven code path.
+    """
+
+    type: Literal["capability_approval_continuation"] = "capability_approval_continuation"
+    plan_id: str = Field(
+        ...,
+        description=(
+            "The plan_id from a prior response's approval_required pause. Send this only after "
+            "a human has approved the plan via POST /v1/capability-executions/{plan_id}/approve."
+        ),
+    )
+
+
 ResponseInputItem = Annotated[
-    ResponseInputMessageItem | ResponseInputFunctionCallItem | ResponseInputFunctionCallOutputItem,
+    ResponseInputMessageItem
+    | ResponseInputFunctionCallItem
+    | ResponseInputFunctionCallOutputItem
+    | ResponseInputCapabilityApprovalContinuationItem,
     Field(discriminator="type"),
 ]
 
@@ -569,6 +594,24 @@ class ResponsesRequest(BaseModel):
             "different worker/replica than the one that served the original call."
         ),
     )
+    execute_capability_tools: bool = Field(
+        default=False,
+        description=(
+            "Track C1 (human-approval pause/resume), OPT-IN and OFF by default. When true, a "
+            "model tool call in the typed-input-array conversation path whose name resolves to a "
+            "capability in this org's own GET /v1/capabilities catalog is executed server-side "
+            "(via the same execute_capability_service that POST /v1/capabilities/execute calls) "
+            "instead of being returned as an inert tool_call for the caller to run themselves. A "
+            "capability whose catalog entry sets approval_required=True pauses the response "
+            "instead of executing (status='approval_required', see ResponsesResponse."
+            "approval_required) until a human approves the pending plan through the separate, "
+            "credentialed POST /v1/capability-executions/{plan_id}/approve endpoint -- this "
+            "option can never approve a plan itself. Resume the paused response with "
+            "previous_response_id set to it and a single "
+            "{type: capability_approval_continuation, plan_id: ...} input item. Default false "
+            "means zero behavior change for every existing caller."
+        ),
+    )
 
 
 class ResponseOutputContent(BaseModel):
@@ -588,6 +631,61 @@ class ResponseOutputContent(BaseModel):
             "Null for tokenization/embedding output, where the concept does not apply."
         ),
     )
+    capability_id: str | None = Field(
+        default=None,
+        description=(
+            "Track C1: set only when execute_capability_tools=True resolved this item's tool "
+            "call to a real capability in the org's own catalog. Omitted from the response "
+            "entirely for every existing caller (execute_capability_tools defaults to False) --"
+            " see this model's _serialize_omitting_unset_capability_fields."
+        ),
+    )
+    capability_status: Literal["succeeded", "failed", "approval_required"] | None = Field(
+        default=None,
+        description=(
+            "Outcome of the server-side capability execution this tool call was routed to. "
+            "Omitted unless capability_id is set."
+        ),
+    )
+    capability_output: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "The capability's real output (CapabilityExecutionResponse.output) when "
+            "capability_status == 'succeeded'. Omitted otherwise."
+        ),
+    )
+    capability_error: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "The capability's real error (CapabilityExecutionResponse.error) when "
+            "capability_status == 'failed'. Omitted otherwise."
+        ),
+    )
+
+    @model_serializer(mode="wrap")
+    def _serialize_omitting_unset_capability_fields(self, handler: object):
+        """Track A5 "additive fields only" discipline, made airtight: these four Track C1 fields
+        are entirely ABSENT from the wire shape (not merely null) whenever unset, so every
+        existing caller -- everyone who never sets execute_capability_tools=True, which is the
+        overwhelming default -- gets a byte-identical response to before this change existed.
+        Proven by tests/test_llm_api_router_responses_route.py, run completely unmodified.
+        Every OTHER optional field on this model (tokens, embedding, tool_calls, finish_reason,
+        ...) keeps its pre-existing behavior of always serializing, null or not -- only these
+        four brand-new fields get this treatment.
+
+        Deliberately UNANNOTATED return type: a `-> dict[str, Any]` annotation here makes
+        pydantic advertise this model's *entire* OpenAPI/JSON schema as a bare
+        `{type: object, additionalProperties: true}` blob (it takes the wrap-serializer's return
+        annotation as gospel for schema generation and discards the field-level schema below) --
+        confirmed by direct comparison of this model's own __pydantic_core_schema__ with/without
+        the annotation. Leaving the return type off keeps the full per-field schema in
+        schemas/openapi/openapi.yaml with zero change to runtime behavior (Python never enforces
+        return annotations)."""
+        data = handler(self)  # type: ignore[operator]
+        for key in ("capability_id", "capability_status", "capability_output", "capability_error"):
+            if getattr(self, key) is None:
+                data.pop(key, None)
+        return data
 
 
 class ResponseOutputItem(BaseModel):
@@ -609,10 +707,25 @@ class ResponseOutputItem(BaseModel):
     content: list[ResponseOutputContent]
 
 
+class ResponseCapabilityApproval(BaseModel):
+    """Track C1 (human-approval pause/resume): mirrors CapabilityExecutionResponse's own
+    plan_id/plan_hash pair for the capability-plane execution plan this response is paused on.
+    Approval happens ONLY through the separate, credentialed POST
+    /v1/capability-executions/{plan_id}/approve endpoint -- never through this response, this
+    request, or any other LLM/MCP-driven code path."""
+
+    plan_id: str
+    plan_hash: str
+    message: str = Field(
+        ...,
+        description="Human-facing instructions for approving and then resuming this response.",
+    )
+
+
 class ResponsesResponse(BaseModel):
     id: str
     object: Literal["response"] = "response"
-    status: Literal["completed"] = "completed"
+    status: Literal["completed", "approval_required"] = "completed"
     model: str
     provider_backend: str | None = Field(
         default=None,
@@ -628,6 +741,27 @@ class ResponsesResponse(BaseModel):
     )
     output: list[ResponseOutputItem]
     usage: EmbeddingUsageResponse
+    approval_required: ResponseCapabilityApproval | None = Field(
+        default=None,
+        description=(
+            "Track C1: set only when status == 'approval_required' -- this response is paused "
+            "awaiting a human's decision on a pending capability_plane execution plan. Omitted "
+            "from the response entirely (not merely null) for every existing caller "
+            "(execute_capability_tools defaults to False)."
+        ),
+    )
+
+    @model_serializer(mode="wrap")
+    def _serialize_omitting_unset_approval_required(self, handler: object):
+        """Same byte-identical-for-existing-callers guarantee as ResponseOutputContent's own
+        serializer above, for this one brand-new top-level field. Also deliberately
+        UNANNOTATED return type -- see _serialize_omitting_unset_capability_fields's docstring
+        for why: a `-> dict[str, Any]` annotation collapses this model's OpenAPI schema to a
+        bare additionalProperties blob."""
+        data = handler(self)  # type: ignore[operator]
+        if self.approval_required is None:
+            data.pop("approval_required", None)
+        return data
 
 
 class EmbeddingSimilarityRequest(BaseModel):

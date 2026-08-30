@@ -567,6 +567,67 @@ def _new_conversation_response_id() -> str:
     return f"resp_{secrets.token_hex(12)}"
 
 
+# Track C1 (human-approval pause/resume): maps a response_id that paused on
+# response.approval_required to the capability_id + capability-plane plan metadata + originating
+# tool_call_id needed to resume it once a human approves the plan out-of-band (via the separate,
+# credentialed POST /v1/capability-executions/{plan_id}/approve endpoint -- never through this
+# store or any code path here). Same documented in-memory/single-process/LRU-bounded limitation
+# as _response_history_store above.
+_PENDING_CAPABILITY_APPROVAL_MAX_ENTRIES = 512
+_pending_capability_approval_store: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
+
+
+def store_pending_capability_approval(
+    response_id: str,
+    *,
+    capability_id: str,
+    plan_id: str,
+    plan_hash: str,
+    tool_call_id: str,
+) -> None:
+    _pending_capability_approval_store[response_id] = {
+        "capability_id": capability_id,
+        "plan_id": plan_id,
+        "plan_hash": plan_hash,
+        "tool_call_id": tool_call_id,
+    }
+    _pending_capability_approval_store.move_to_end(response_id)
+    while len(_pending_capability_approval_store) > _PENDING_CAPABILITY_APPROVAL_MAX_ENTRIES:
+        _pending_capability_approval_store.popitem(last=False)
+
+
+def load_pending_capability_approval(response_id: str) -> dict[str, Any] | None:
+    return _pending_capability_approval_store.get(response_id)
+
+
+def clear_pending_capability_approval(response_id: str) -> None:
+    _pending_capability_approval_store.pop(response_id, None)
+
+
+def finalize_capability_approval_conversation(
+    *,
+    previous_response_id: str,
+    tool_call_id: str,
+    capability_output: dict[str, Any] | None,
+) -> str:
+    """After a paused capability execution plan is approved and actually executed, fold the real
+    tool result into the paused response's stored conversation history -- as a `tool` message
+    matching the original tool_call_id, the exact same shape _messages_from_typed_input_items
+    builds for an ordinary function_call_output item -- and store it under a NEW response_id so
+    the conversation stays chainable exactly like any other turn."""
+    prior_messages = _load_response_history(previous_response_id)
+    tool_message = {
+        "role": "tool",
+        "content": json.dumps(
+            capability_output or {}, separators=(",", ":"), ensure_ascii=True
+        ),
+        "tool_call_id": tool_call_id,
+    }
+    response_id = _new_conversation_response_id()
+    _store_response_history(response_id, prior_messages + [tool_message])
+    return response_id
+
+
 def _messages_from_typed_input_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build a Chat-Completions-shaped message list from a validated typed OpenResponses input
     array. Mirrors Chat Completions' own message shape exactly (role/content, assistant
