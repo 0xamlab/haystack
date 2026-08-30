@@ -70,9 +70,23 @@ pharmacology, neuropharmacology, toxicokinetics, toxicology, dosimetry -- epidem
 dynamics -- epidemiology, etiology, epigenetics -- biomedical engineering -- biomedical,
 biomechanics, psychoacoustics -- and nutrition and veterinary science -- nutrition, veterinary --
 bringing the count to 391 of 643 real modules (61%), with 252 modules still undocumented by
-narrative beyond their generated table row.
+narrative beyond their generated table row. The A6 batch-8 pass (2026-08-30, 11 new family pages,
+not a formatting fix) then closed 44 more previously-undocumented modules spanning image feature
+and quality kernels -- image_features, image_quality, image_similarity, image_regions -- image
+transform and morphology kernels -- image_morphology, image_ops, image_resize, image_palette --
+color science -- color, color_check, color_science -- document vision and layout kernels --
+document_layout, document_vision -- video quality and accessibility kernels -- video_accessibility,
+video_color, video_quality, video_similarity -- video content and scene kernels -- video_features,
+video_gate, video_ops, video_regions, video_storyboard, vision_gate -- ranging and remote-sensing
+kernels -- lidar, lidar_mapping, radar -- config and data-parsing kernels -- config.toml_parser,
+config.yaml_parser, data.csv_parser, data.dataframe, json.parser, json.writer -- exact numerics and
+graph kernels -- exactnum.eft, exactnum.lstsq, graph.algorithms, graph.weighted -- loss functions
+and resident-context kernels -- lossk.contract, lossk.cross_entropy, residentk.contract,
+residentk.probe -- and retrieval fusion and signal kernels -- retrieval.fuse, retrieval.score,
+signal.dsp, signal.filter -- bringing the count to 435 of 643 real modules (68%), with 208 modules
+still undocumented by narrative beyond their generated table row.
 
-WHY THIS SCRIPT DOES NOT GATE ON THE 278 GAP. That gap is a documentation-writing backlog, not a
+WHY THIS SCRIPT DOES NOT GATE ON THE 208 GAP. That gap is a documentation-writing backlog, not a
 regression -- something a CI check can flag but cannot itself close, and gating hard on it would
 either block every unrelated PR immediately or get disabled at the first annoyance (the same trap
 `scripts/reliability_guards`' `baselined=True` ratchet exists to avoid for code guards). This
@@ -84,7 +98,7 @@ script instead:
   2. Reports the narrative-documented module count against a floor -- so the documented set
      cannot silently SHRINK (a narrative page's module table quietly losing rows) even though
      growing it is out of this script's scope.
-  3. Prints the honest gap (252 modules, as of writing) rather than hiding it inside a passing
+  3. Prints the honest gap (208 modules, as of writing) rather than hiding it inside a passing
      check -- `--json` includes it explicitly under "undocumented_by_narrative".
 
 WHY THE MATCHING RULE IS "first cell of a table headed exactly 'Module', not any backtick token
@@ -157,10 +171,10 @@ NON_NARRATIVE_PAGES = frozenset(
 # Below this, something broke the extraction itself (a page lost its module table, or the contract
 # shrank unexpectedly) rather than the backlog merely staying constant. Not a target to defend --
 # raise it when a new page's table lands; a real regression is not the way to close the gap to it.
-# Set from the actual measured count under the precise "Module table, first cell only" rule (391,
-# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-7 pass
-# added 6 new family pages' worth of module tables (26 modules) on top of the prior floor of 363.
-DOCUMENTED_FLOOR = 389
+# Set from the actual measured count under the precise "Module table, first cell only" rule (435,
+# see the module docstring's KNOWN UNDERCOUNT note) with a small margin, after the A6 batch-8 pass
+# added 11 new family pages' worth of module tables (44 modules) on top of the prior floor of 389.
+DOCUMENTED_FLOOR = 433
 
 
 def real_modules() -> set[str]:

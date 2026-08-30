@@ -31,6 +31,7 @@
 ## Compute & kernel primitives
 
 * [Data integrity and encoding](engine/data-integrity-and-encoding.md)
+* [Config and data-parsing kernels](engine/config-and-data-parsing-kernels.md)
 * [Compression kernels](engine/compression-kernels.md)
 * [Tensor buffer primitives](engine/tensorx-kernels.md)
 * [Normalization kernels](engine/normalization-kernels.md)
@@ -43,10 +44,12 @@
 * [Transformer blocks and normalization](engine/transformer-blocks-and-normalization-reference-kernels.md)
 * [KV-cache and generation kernels](engine/kv-cache-and-autoregressive-generation-kernels.md)
 * [Multimodal and inference operations](engine/multimodal-and-inference-operations-kernels.md)
+* [Loss functions and resident-context kernels](engine/loss-functions-and-resident-context-kernels.md)
 
 ## Numerical & mathematical computing
 
 * [Core linear algebra](engine/core-linear-algebra-kernels.md)
+* [Exact numerics and graph kernels](engine/exact-numerics-and-graph-kernels.md)
 * [Sparse structures & tensor primitives](engine/sparse-and-tensor-kernels.md)
 * [Probability distributions & dependence](engine/probability-distributions-and-dependence-kernels.md)
 * [Statistical computing](engine/statistical-computing-kernels.md)
@@ -118,6 +121,7 @@
 
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)
 * [Retrieval & ranking](engine/retrieval.md)
+* [Retrieval fusion and signal kernels](engine/retrieval-fusion-and-signal-kernels.md)
 * [Data quality & feature hygiene](engine/data-quality.md)
 * [Geospatial indexing & joins](engine/geospatial.md)
 * [Streaming sketches](engine/streaming-sketches.md)
@@ -127,6 +131,16 @@
 * [Text processing kernels](engine/text-processing-kernels.md)
 * [Vector ranking kernels](engine/vector-ranking-kernels.md)
 * [Graph-based reasoning](engine/graph-based-reasoning-kernels.md)
+
+## Vision & media processing
+
+* [Image feature and quality kernels](engine/image-feature-and-quality-kernels.md)
+* [Image transform and morphology kernels](engine/image-transform-and-morphology-kernels.md)
+* [Color science kernels](engine/color-science-kernels.md)
+* [Document vision and layout kernels](engine/document-vision-kernels.md)
+* [Video quality and accessibility kernels](engine/video-quality-and-accessibility-kernels.md)
+* [Video content and scene kernels](engine/video-content-and-scene-kernels.md)
+* [Ranging and remote-sensing kernels](engine/ranging-and-remote-sensing-kernels.md)
 
 ## Earth & planetary sciences
 
