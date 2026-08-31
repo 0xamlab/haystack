@@ -35,6 +35,7 @@
 //     the same property, not a stand-in for the multi-replica LB proof.
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createInterface } from "node:readline";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +49,15 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const LAUNCHER_SCRIPT = path.join(REPO_ROOT, "scripts", "run_repo_python.sh");
 const SERVER_ENTRY = path.join(REPO_ROOT, "tests", "_mcp_ts_conformance_server.py");
+
+// This suite needs the full engine monorepo context around packages/ts-sdk -- scripts/
+// run_repo_python.sh, tests/_mcp_ts_conformance_server.py, the real apps.api_server FastAPI app,
+// a migrated Postgres database, and mojo_env/pixi.toml. That context exists here in
+// thyn-ai/algenta, but sync-public-sdk.yml mirrors ONLY packages/python-sdk, packages/ts-sdk, and
+// examples/ out to the public thyn-ai/algenta-sdk repo -- so in that mirror LAUNCHER_SCRIPT and
+// SERVER_ENTRY simply don't exist. Skip cleanly there instead of failing on ENOENT/timeout, the
+// same self-skip shape tests/test_mcp_multi_replica_lb.py already uses for its own infra gate.
+const HAS_ENGINE_MONOREPO_CONTEXT = existsSync(LAUNCHER_SCRIPT) && existsSync(SERVER_ENTRY);
 
 const SERVER_BOOT_TIMEOUT_MS = 90_000;
 const SERVER_STOP_TIMEOUT_MS = 15_000;
@@ -205,7 +215,9 @@ async function connectLegacySse(
   return client;
 }
 
-describe("official @modelcontextprotocol/sdk TypeScript client vs. Algenta's real MCP server", () => {
+describe.skipIf(!HAS_ENGINE_MONOREPO_CONTEXT)(
+  "official @modelcontextprotocol/sdk TypeScript client vs. Algenta's real MCP server",
+  () => {
   let server: LiveServer;
 
   beforeAll(async () => {
