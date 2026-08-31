@@ -78,7 +78,7 @@ def test_mojo_rank_server_handles_control_messages() -> None:
                 time.sleep(0.01)
 
         with sock:
-            assert _recv_frame(sock) == {"status": "ready"}
+            assert _recv_frame(sock).get("status") == "ready"  # additive handshake fields (e.g. resident_max_d_model)
             assert _send_frame(sock, {"type": "ping"}) == {"status": "ok"}
 
             init_result = _send_frame(

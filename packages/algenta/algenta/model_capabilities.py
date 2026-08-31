@@ -105,6 +105,7 @@ STRUCTURAL_FACT_RANGES: dict[str, str] = {
     "rope_class": "plain (rope_theta only) or llama3-scaled (rope_scaling rope_type='llama3') or explicit per-pair factors (a GGUF rope_freqs.weight)",
     "rope_theta": "a positive number",
     "attention_scale": "1/sqrt(head_dim) (a query_pre_attn_scalar different from head_dim changes the scale and is refused)",
+    "num_experts": "none (dense FFN only; no kernel implements mixture-of-experts routing)",
 }
 
 # Per-hardware-family fact ranges: the SAME model facts can be supported on one
@@ -302,6 +303,7 @@ class ModelFacts:
     query_pre_attn_scalar: int | None = None
     partial_rotary_factor: float | None = None
     dual_theta_rope: bool = False
+    num_experts: int | None = None
     eos_token_id: Any = None
     probed: bool = False
     family: str = "qwen3_llama"
@@ -331,6 +333,7 @@ class ModelFacts:
             "query_pre_attn_scalar",
             "partial_rotary_factor",
             "dual_theta_rope",
+            "num_experts",
             "eos_token_id",
             "probed",
             "family",
@@ -446,6 +449,25 @@ def extract_facts_from_config(config: dict[str, Any]) -> ModelFacts:
     if isinstance(prf, int | float) and not isinstance(prf, bool) and 0 < float(prf) < 1.0:
         facts = replace(facts, partial_rotary_factor=float(prf))
 
+    # Mixture-of-experts: a fact of routed/sparse FFN architectures (Mixtral, DeepSeek-V2/V3,
+    # Qwen-MoE, ...), covering every naming convention those families actually ship under.
+    # These configs typically ALSO declare ordinary hidden_size/num_hidden_layers/etc (often for
+    # a nominal or shared-expert path), so the structural-field presence check alone would not
+    # catch one -- it must be checked as its own fact, the same way sliding_window/layer_types
+    # are, or a MoE checkpoint would silently run as if every expert weight were the whole FFN
+    # (fluent, wrong math, never refused).
+    for key in (
+        "num_experts",
+        "num_local_experts",
+        "n_routed_experts",
+        "moe_num_experts",
+        "num_experts_per_tok",
+    ):
+        value = config.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 1:
+            facts = replace(facts, num_experts=value)
+            break
+
     return facts
 
 
@@ -538,6 +560,14 @@ def refusals_for_facts(
         refuse("num_hidden_layers", facts.num_hidden_layers, STRUCTURAL_FACT_RANGES["num_hidden_layers"], "resident session layer ceiling")
     if ok_vocab and facts.vocab_size > (1 << 21):
         refuse("vocab_size", facts.vocab_size, STRUCTURAL_FACT_RANGES["vocab_size"], "resident session vocabulary ceiling")
+    if facts.num_experts is not None:
+        refuse(
+            "num_experts",
+            facts.num_experts,
+            STRUCTURAL_FACT_RANGES["num_experts"],
+            "no kernel implements expert routing; every dispatch runs one dense FFN per token, "
+            "which silently ignores every non-selected expert's weights -- refused, never ignored",
+        )
 
     # Family dispatch: the qwen3/llama hazard gates and the gemma3 capability
     # profile judge the SAME fact fields against different declared ranges. A

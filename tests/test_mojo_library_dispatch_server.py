@@ -134,7 +134,7 @@ def test_mojo_server_dispatches_runtime_library_execute_requests() -> None:
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.connect(str(socket_path))
-            assert _recv_frame(sock) == {"status": "ready"}
+            assert _recv_frame(sock).get("status") == "ready"  # additive handshake fields (e.g. resident_max_d_model)
 
             response = _send_frame(sock, payload)
             assert "error" not in response
@@ -161,7 +161,7 @@ def test_mojo_server_dispatches_vector_dot_runtime_library_request() -> None:
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.connect(str(socket_path))
-            assert _recv_frame(sock) == {"status": "ready"}
+            assert _recv_frame(sock).get("status") == "ready"  # additive handshake fields (e.g. resident_max_d_model)
 
             response = _send_frame(sock, payload)
             assert "error" not in response
@@ -199,7 +199,7 @@ def test_mojo_server_wire_grammar_keeps_float_lists_element_aligned() -> None:
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.connect(str(socket_path))
-            assert _recv_frame(sock) == {"status": "ready"}
+            assert _recv_frame(sock).get("status") == "ready"  # additive handshake fields (e.g. resident_max_d_model)
 
             response = _send_frame(sock, payload)
             assert "error" not in response
@@ -399,7 +399,7 @@ def _dispatch_runtime_call(
     function_spec, payload = build_runtime_library_worker_request(module_name, function_name, args)
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
         sock.connect(str(socket_path))
-        assert _recv_frame(sock) == {"status": "ready"}
+        assert _recv_frame(sock).get("status") == "ready"  # additive handshake fields (e.g. resident_max_d_model)
         response = _send_frame(sock, payload)
     assert "error" not in response
     return parse_runtime_library_worker_response(

@@ -93,11 +93,13 @@ __all__ = [
     "InferenceError",
     "InferenceResult",
     "BatchedInferenceResult",
+    "StreamedToken",
     "UnsupportedArchitectureError",
     "prepare_model_checkpoint",
     "prepare_model_checkpoint_from_gguf",
     "decode",
     "decode_batched",
+    "decode_stream",
 ]
 
 _MODULE_NAME = "metaldispatch.qwen3_prefill_decode"
@@ -2170,6 +2172,310 @@ def decode(
             else None
         ),
     )
+
+
+@dataclass(frozen=True)
+class StreamedToken:
+    """One token yielded by `decode_stream()`.
+
+    `text_delta` is the incremental text this ONE new token decodes to -- set only when a
+    tokenizer is in play (`messages`/`prompt_text` input), `None` for `prompt_token_ids` input,
+    matching `InferenceResult.generated_text`'s own "only when a tokenizer was loaded" convention.
+    """
+
+    token_id: int
+    text_delta: str | None
+    position: int
+    done: bool
+    stopped_on_eos: bool
+
+
+def decode_stream(
+    *,
+    checkpoint_dir: str | Path,
+    prompt_token_ids: list[int] | None = None,
+    prompt_text: str | None = None,
+    messages: list[dict] | None = None,
+    tools: list[dict] | None = None,
+    max_new_tokens: int = 16,
+    use_msl_parity_all_roles: bool = True,
+    use_native_grouped_fa_attn_no_mirror: bool = True,
+    converted_checkpoint_dir: str | Path | None = None,
+    temperature: float = 0.0,
+    timeout: float = 60.0,
+) -> Iterator[StreamedToken]:
+    """Real, token-by-token streaming twin of `decode()` -- same inputs, same resolved GPU
+    execution plan, same token sequence for the same prompt + params, delivered one token at a
+    time instead of all at once. `decode()` itself is completely untouched by this function; the
+    validation and tokenization logic below intentionally mirrors (not calls) the corresponding
+    section of `decode()`, since this function's scope -- see below -- is a real subset of
+    `decode()`'s own, not the same set of inputs forwarded through a shared helper.
+
+    Unlike `decode()`, this takes no `runtime: MojoRuntime` parameter: the wire messages this
+    drives (`qwen3_decode_open`/`_next`/`_close`) are bespoke, connection-scoped operations reached
+    directly through `algenta.native.worker` -- exactly like `algenta.session.open_dataset`/
+    `stream_chunks` -- not `library_execute` capability calls a `MojoRuntime.execute(module,
+    function, args)` would route through.
+
+    Scope narrower than `decode()`, deliberately (the full account is in `mojo/engine/
+    algenta_runtime/qwen3_decode_session.mojo`'s module docstring):
+    * GREEDY ONLY -- `temperature` must be 0 (the default). `temperature > 0` raises
+      `InferenceError("sampling_not_supported_in_stream", ...)` rather than silently running
+      greedy, or silently running the sampled path with no way to stream its per-step RNG/penalty
+      state (which this function's session registry does not carry).
+    * HuggingFace checkpoint directories only -- a GGUF file path raises
+      `InferenceError("gguf_not_supported_in_stream", ...)`; call `decode()` for GGUF checkpoints.
+    * No caller-facing `max_ctx` guard -- the resident session always sizes its own context from
+      `len(prompt_token_ids) + max_new_tokens` (bucketed to a power of two on the Mojo side), so
+      there is no one-shot-call-only ceiling to mirror here.
+
+    CRITICAL correctness property, not a nicety: the underlying GPU session is closed in a
+    `finally` block, so a caller that stops iterating before the last token (an early `break`, an
+    HTTP client disconnecting mid-stream) still releases the session instead of leaking it -- proven
+    by this function's own abandonment test (partially consume, drop the generator, confirm a fresh
+    session opens and generates correctly right afterward -- impossible if the abandoned one were
+    still holding the connection's one resident-session slot).
+    """
+    if temperature > 0.0:
+        raise InferenceError(
+            "sampling_not_supported_in_stream",
+            "decode_stream() only implements the greedy (temperature=0) code path; sampled"
+            " streaming is a separate, not-yet-built follow-up. Call decode() for temperature > 0.",
+        )
+
+    provided = sum(value is not None for value in (prompt_token_ids, prompt_text, messages))
+    if provided != 1:
+        raise InferenceError(
+            "invalid_arguments",
+            "pass exactly one of prompt_token_ids, prompt_text, or messages",
+        )
+    if tools is not None and messages is None:
+        raise InferenceError(
+            "invalid_arguments",
+            "tools is only valid alongside messages -- it is rendered into the prompt by the "
+            "chat template, which prompt_text/prompt_token_ids bypass entirely",
+        )
+
+    gguf_file = _gguf_checkpoint_file(checkpoint_dir)
+    if gguf_file is not None:
+        raise InferenceError(
+            "gguf_not_supported_in_stream",
+            f"{gguf_file} is a GGUF file; decode_stream() supports HuggingFace checkpoint "
+            "directories only. Call decode() for GGUF checkpoints.",
+        )
+
+    # Run the SAME comprehensive, fact-based architecture gate prepare_model_checkpoint() uses,
+    # unconditionally -- not only on the code path that actually converts. A caller that already
+    # has a converted_checkpoint_dir (or a cached one from a prior call) would otherwise skip this
+    # entirely, trusting an old manifest's shape forever even if the config it came from declares
+    # a fact no kernel implements (e.g. a mixture-of-experts routing field): "ignoring an
+    # unimplemented fact runs fluent-but-wrong math" (_validate_architecture's own words) is
+    # exactly the failure mode this call exists to prevent, on every entry into this function, not
+    # just the first.
+    _config_path = Path(checkpoint_dir) / "config.json"
+    if not _config_path.is_file():
+        raise InferenceError(
+            "checkpoint_not_found",
+            f"{checkpoint_dir} does not look like a HuggingFace checkpoint snapshot: "
+            f"{_config_path.name} is missing.",
+        )
+    _config = _normalize_config(json.loads(_config_path.read_text(encoding="utf-8")))
+    _is_gemma3 = _config.get("model_type") == "gemma3_text"
+    if _is_gemma3:
+        _config = _gemma3_prepare_config(_config, Path(checkpoint_dir))
+    _validate_architecture(Path(checkpoint_dir), _config, config_source=str(_config_path))
+    if not _is_gemma3:
+        _validate_rope_scaling(_config, config_source=str(_config_path))
+
+    # _validate_architecture above is backend-agnostic by design (conversion serves every
+    # backend). This path only ever runs on the metal resident session, so also run the
+    # backend-aware gate -- family membership, q/k/v bias availability, and the THEORETICAL
+    # metal staging-tier ceiling (any shipped tier, not necessarily the one THIS binary was
+    # built with) -- so a model metal can never run on ANY tier is refused here, with the
+    # real reason, rather than reaching the Mojo layer at all.
+    from algenta.model_capabilities import extract_facts_from_config, refusals_for_facts
+
+    _facts = extract_facts_from_config(_config)
+    # probed=True to match _validate_architecture's exact convention above: the probe-only
+    # facts (attention_bias, qk_norm) are never populated by extract_facts_from_config() from a
+    # config alone, so this cannot let a real hazard through -- it only keeps this check's
+    # behavior consistent with the gate immediately above it rather than introducing a second,
+    # differently-tuned variant of the same call.
+    _refusals = refusals_for_facts(_facts, backend="metal", probed=True, enforce_backend=True)
+    if _refusals:
+        raise InferenceError(
+            "unsupported_architecture",
+            f"{checkpoint_dir} {_config_path.name}: " + "; ".join(r.message() for r in _refusals),
+        )
+
+    # Narrower than the theoretical check above: THIS SPECIFIC worker binary's own compiled
+    # staging tier, self-reported in its ready handshake (a value fixed at build time by
+    # -D ALGENTA_STAGE_6144 or its absence, never runtime-detected -- see main.mojo). A model
+    # can pass the theoretical metal-family check above (needs <=6144) yet still exceed the
+    # tier THIS particular binary shipped with (e.g. the default 3072 build) -- refuse that
+    # here, by name and by number, instead of a build-time specialization failing deep inside
+    # a Metal preflight with a bare status code.
+    from algenta.model_capabilities import stage_needed
+    from algenta.native import worker as _native_worker
+    from algenta.native.loader import _fallback_mode
+
+    _needed = stage_needed(_facts)
+    if _needed is not None:
+        try:
+            _tier = _native_worker.handshake(
+                module_name=_MODULE_NAME, require_verified=_fallback_mode() != "allow",
+            ).get("resident_max_d_model")
+        except _native_worker.NativeWorkerUnavailable:
+            _tier = None
+        if isinstance(_tier, int) and _needed > _tier:
+            raise InferenceError(
+                "stage_needed_exceeds_compiled_tier",
+                f"{checkpoint_dir} needs a staging tier of at least {_needed} "
+                "(max(hidden_size, num_attention_heads*head_dim, intermediate_size)), but this "
+                f"worker binary was compiled with a staging ceiling of {_tier} "
+                "(RESIDENT_MAX_D_MODEL, fixed by -D ALGENTA_STAGE_6144 at build time). Rebuild "
+                "the worker with a larger staging tier to run this model.",
+            )
+
+    tokenizer = None
+    if messages is not None:
+        if not isinstance(messages, list) or not messages:
+            raise InferenceError(
+                "invalid_arguments",
+                f"messages must be a non-empty list of message dicts, got {messages!r}",
+            )
+        from algenta.chat_template import ChatTemplateError, apply_chat_template
+        from algenta.tokenizer import load_tokenizer
+
+        try:
+            prompt_text = apply_chat_template(checkpoint_dir, messages, tools=tools)
+        except ChatTemplateError as exc:
+            raise InferenceError("unsupported_chat_template", str(exc)) from exc
+        tokenizer = load_tokenizer(checkpoint_dir)
+        prompt_token_ids = tokenizer.encode(prompt_text, add_special_tokens=True)
+    elif prompt_text is not None:
+        if not isinstance(prompt_text, str) or not prompt_text:
+            raise InferenceError(
+                "invalid_arguments", f"prompt_text must be a non-empty str, got {prompt_text!r}"
+            )
+        from algenta.tokenizer import load_tokenizer
+
+        tokenizer = load_tokenizer(checkpoint_dir)
+        prompt_token_ids = tokenizer.encode(prompt_text, add_special_tokens=True)
+    if not isinstance(prompt_token_ids, list) or not prompt_token_ids:
+        raise InferenceError(
+            "invalid_arguments", "the prompt must tokenize to at least one token id"
+        )
+
+    if (
+        not isinstance(max_new_tokens, int) or isinstance(max_new_tokens, bool)
+        or max_new_tokens < 1
+    ):
+        raise InferenceError(
+            "invalid_arguments", f"max_new_tokens must be a positive int, got {max_new_tokens!r}"
+        )
+
+    if converted_checkpoint_dir is not None:
+        resolved_dir = Path(converted_checkpoint_dir)
+        if not (resolved_dir / "manifest.json").is_file() or not (
+            resolved_dir / "weights.blob"
+        ).is_file():
+            raise InferenceError(
+                "checkpoint_not_found",
+                f"{resolved_dir} has no manifest.json/weights.blob; convert it first with "
+                "prepare_model_checkpoint(), or omit converted_checkpoint_dir to convert "
+                "automatically.",
+            )
+    else:
+        # Same conversion cache decode() uses (parity gap 2): one conversion per checkpoint,
+        # reused across many prompts/sessions.
+        cache_dir = Path(checkpoint_dir) / _CONVERSION_CACHE_DIRNAME
+        if (cache_dir / "manifest.json").is_file() and (cache_dir / "weights.blob").is_file():
+            resolved_dir = cache_dir
+        else:
+            resolved_dir = prepare_model_checkpoint(
+                checkpoint_dir, prompt_token_ids, out_dir=cache_dir
+            )
+
+    from algenta.native.loader import _fallback_mode
+    from algenta.qwen3_decode_session import (
+        Qwen3DecodeSessionError,
+        close_qwen3_decode_session,
+        open_qwen3_decode_session,
+        step_qwen3_decode_session,
+    )
+
+    require_verified = _fallback_mode() != "allow"
+    routing_module = _MODULE_NAME  # see that module's own docstring on why this is a no-op for
+    # actual shard selection today (algenta_runtime.* is excluded from the shard inventory) and
+    # kept anyway for a consistent, self-documenting call shape.
+
+    try:
+        handle = open_qwen3_decode_session(
+            str(resolved_dir),
+            list(prompt_token_ids),
+            max_new_tokens=max_new_tokens,
+            routing_module=routing_module,
+            timeout=timeout,
+            require_verified=require_verified,
+            use_native_grouped_fa_attn_no_mirror=use_native_grouped_fa_attn_no_mirror,
+            use_msl_parity_all_roles=use_msl_parity_all_roles,
+        )
+    except Qwen3DecodeSessionError as exc:
+        raise InferenceError(exc.code, str(exc)) from exc
+
+    # Decoding one token id in isolation drops cross-token spacing state a SentencePiece-style
+    # tokenizer (Llama family) tracks between tokens -- a lone token decodes with no leading
+    # space, even when the same id decodes WITH one as part of a longer sequence (a BPE-style
+    # tokenizer like Qwen3's bakes the space into the token's own text and has no such state,
+    # which is why this was never caught by the Qwen3-only test suite). The correct, standard
+    # streaming-tokenizer pattern: decode the WHOLE sequence generated so far on every step and
+    # take the suffix past what was already emitted, matching e.g. HuggingFace's
+    # TextIteratorStreamer.
+    generated_ids: list[int] = []
+    emitted_text = ""
+
+    try:
+        while True:
+            try:
+                step = step_qwen3_decode_session(
+                    handle,
+                    routing_module=routing_module,
+                    timeout=timeout,
+                    require_verified=require_verified,
+                )
+            except Qwen3DecodeSessionError as exc:
+                raise InferenceError(exc.code, str(exc)) from exc
+
+            token_id = int(step["token_id"])
+            text_delta: str | None = None
+            if tokenizer is not None:
+                generated_ids.append(token_id)
+                full_text = tokenizer.decode(generated_ids)
+                text_delta = full_text[len(emitted_text) :]
+                emitted_text = full_text
+            yield StreamedToken(
+                token_id=token_id,
+                text_delta=text_delta,
+                position=int(step["position"]),
+                done=bool(step["done"]),
+                stopped_on_eos=bool(step["stopped_on_eos"]),
+            )
+            if step["done"]:
+                break
+    finally:
+        # Runs on normal completion, on an early break/return in the caller's loop, and on the
+        # caller's generator being garbage-collected without being fully consumed -- the ONE path
+        # that must never leak the resident GPU session (see this function's own docstring).
+        try:
+            close_qwen3_decode_session(
+                handle, routing_module=routing_module, timeout=timeout,
+                require_verified=require_verified,
+            )
+        except Qwen3DecodeSessionError:
+            # The connection may already be gone, or the session already closed by an earlier
+            # path through this same block -- a leaked handle dies with the connection either way.
+            pass
 
 
 @dataclass(frozen=True)

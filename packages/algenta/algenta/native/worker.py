@@ -315,7 +315,11 @@ class _WorkerSession:
                     "The bundled Algenta runtime did not become ready."
                 ) from last_error
             ready = _recv_frame(client)
-            if ready != {"status": "ready"}:
+            # Field-specific, not exact-equality: the handshake is additive (e.g.
+            # resident_max_d_model, added so a caller can know this worker's compiled staging
+            # tier before ever dispatching to it), so an exact {"status": "ready"} match would
+            # break on the first new field ever added to it.
+            if not isinstance(ready, dict) or ready.get("status") != "ready":
                 client.close()
                 raise NativeWorkerUnavailable(
                     "The bundled Algenta runtime returned an invalid startup response."
@@ -335,6 +339,12 @@ class _WorkerSession:
         self._client = client
         self._temp_dir = temp_dir
         self._log_handle = log_handle
+        # Whatever this worker's ready handshake declared about itself (e.g.
+        # resident_max_d_model, this specific binary's compiled decode-session staging
+        # ceiling) -- exposed so a caller can refuse a too-large model with a precise,
+        # actionable message before ever dispatching to it, instead of a build-time
+        # specialization failing deep inside a Metal preflight.
+        self._handshake = ready if isinstance(ready, dict) else {}
 
     def execute(self, request: dict[str, Any], timeout: float) -> dict[str, Any]:
         with self._lock:
@@ -675,6 +685,21 @@ def ensure_ready(
 ) -> None:
     resolution = require_worker(require_verified=require_verified)
     _session_for(resolution).ensure_ready(timeout)
+
+
+def handshake(
+    *, module_name: str | None = None, require_verified: bool = False
+) -> dict[str, Any]:
+    """What the worker that owns `module_name` (the default worker if omitted) declared about
+    itself in its startup handshake -- e.g. `resident_max_d_model`, this specific binary's
+    compiled decode-session staging ceiling. Starts the worker if it is not already running
+    (the same resolution `execute()` uses), so this can be called before ever dispatching a real
+    request, to refuse a too-large model with a precise reason instead of a build-time
+    specialization failing deep inside a Metal preflight."""
+    resolution = require_worker(module_name=module_name, require_verified=require_verified)
+    session = _session_for(resolution)
+    session.ensure_ready(_STARTUP_TIMEOUT_SECONDS)
+    return dict(session._handshake)
 
 
 def shutdown() -> None:

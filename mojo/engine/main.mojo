@@ -27,6 +27,7 @@ from net.unix_socket import (
     send_frame, recv_frame,
 )
 from json.parser import json_get_string
+from residentk.contract import RESIDENT_MAX_D_MODEL
 
 # Engine imports
 from engines.monte_carlo   import run_monte_carlo
@@ -57,6 +58,7 @@ from algenta_runtime.pipeline import run_pipeline_execute
 from algenta_runtime.query import run_query
 from algenta_runtime.session import ResidentDatasets
 from algenta_runtime.stream import ResidentStreams
+from algenta_runtime.qwen3_decode_session import Qwen3DecodeSessions
 
 
 def _run_raw(raw: String) raises -> String:
@@ -135,14 +137,24 @@ def run_server_loop(socket_path: String) raises:
     # exits, so a handle can never outlive the connection that opened it.
     var resident_datasets = ResidentDatasets()
     var resident_streams = ResidentStreams()
+    # Track C3: resident, step-by-step Qwen3 GPU decode sessions -- same connection-scoped
+    # lifetime rule as the two registries above (created here, dropped when this loop exits).
+    var qwen3_decode_sessions = Qwen3DecodeSessions()
     var keep_running = True
     while keep_running:
         var conn_fd = libc_accept(server_fd)
         if conn_fd < 0:
             continue
 
-        # Send ready handshake
-        send_frame(conn_fd, '{"status":"ready"}')
+        # Send ready handshake -- additive fields only, see native/worker.py's field-specific
+        # (not exact-equality) read of this frame. resident_max_d_model lets a caller know this
+        # specific binary's compiled decode-session staging ceiling before ever dispatching to
+        # it (Track C3): a value fixed by build-time specialization (-D ALGENTA_STAGE_6144),
+        # never runtime-detected, so a caller must ask, not guess.
+        send_frame(
+            conn_fd,
+            '{"status":"ready","resident_max_d_model":' + String(RESIDENT_MAX_D_MODEL) + '}',
+        )
 
         while True:
             var raw = recv_frame(conn_fd)
@@ -191,6 +203,12 @@ def run_server_loop(socket_path: String) raises:
                 response = resident_streams.next_from_json(raw, resident_datasets)
             elif msg_type == "stream_close":
                 response = resident_streams.close_from_json(raw)
+            elif msg_type == "qwen3_decode_open":
+                response = qwen3_decode_sessions.open_from_json(raw)
+            elif msg_type == "qwen3_decode_next":
+                response = qwen3_decode_sessions.next_from_json(raw)
+            elif msg_type == "qwen3_decode_close":
+                response = qwen3_decode_sessions.close_from_json(raw)
             else:
                 try:
                     response = _run_raw(raw)
