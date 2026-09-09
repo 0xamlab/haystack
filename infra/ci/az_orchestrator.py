@@ -123,22 +123,24 @@ VM_VCPU = {
 }
 MAX_CONCURRENCY = int(os.environ.get("AZ_ORCH_MAX", "20"))
 # Blacksmith-style warm capacity: pre-booted registered runners so jobs are picked up
-# in seconds; drained to WARM_FLOOR (never 0) after IDLE_DRAIN_S without queue/busy activity.
-# The floor exists so the FIRST job after any quiet period still gets warm-pool pickup speed
-# instead of paying a full cold boot -- a burst-only pool (drain to 0) makes every post-idle
-# job slow, not just excess capacity beyond real demand.
-# Sized against real demand, not a round number. ONE pull request fires 3-4 jobs here
-# (CI/CD + sdk-audit + codeql), so a pool of 2 guaranteed that most of every PR paid a full
-# cold boot -- measured 2026-08-27T01:33Z: 7 jobs queued, 3 runners online, 5 VMs created in
-# the same minute and none registered for ~3 minutes. That IS the flakiness; nothing was
-# stuck, everything was waiting for Ubuntu to boot.
+# in seconds instead of paying a full cold boot; drained to WARM_FLOOR after IDLE_DRAIN_S
+# without queue/busy activity. A non-zero floor buys dispatch speed at the cost of paying
+# full on-demand Standard_D8s_v5 price ($0.434/hr each, AZ_ORCH_SPOT is off by default and
+# not enabled here) for idle capacity around the clock, whether or not any job ever arrives
+# to use it.
 #
-# 6 warm x 8 vCPU (Standard_D8s_v5) = 48 vCPU held steady. Live quota at the time of this
-# change: 108 of 350 regional vCPUs used, so this fits with room for MAX_CONCURRENCY bursts
-# on top. The floor rises with it: after a quiet period the first PR should still find a
-# warm runner, which is the whole point of a floor.
-WARM_MIN = int(os.environ.get("AZ_ORCH_WARM", "6"))
-WARM_FLOOR = min(WARM_MIN, int(os.environ.get("AZ_ORCH_WARM_FLOOR", "3")))
+# DEFAULTS TO ZERO, DELIBERATELY (owner decision, 2026-09-09): cold start on the first job
+# after a quiet period is an accepted tradeoff here -- standing idle capacity billed 24/7 for
+# bursty, intermittent CI usage is not. This previously defaulted to WARM_MIN=6/WARM_FLOOR=3
+# (48 vCPU held steady around the clock) with no cost figure attached to justify that size;
+# the live deployment had already been hand-tuned down to WARM_MIN=1/WARM_FLOOR=1 via the
+# AZ_ORCH_WARM/AZ_ORCH_WARM_FLOOR env overrides on ci-orch's own /etc/az-orchestrator.env
+# before this change, which still meant one Standard_D8s_v5 running continuously. If warm
+# capacity is wanted again later, set AZ_ORCH_WARM/AZ_ORCH_WARM_FLOOR explicitly with the
+# real dollar cost of the chosen floor stated alongside, not folded silently into "the point
+# of a floor."
+WARM_MIN = int(os.environ.get("AZ_ORCH_WARM", "0"))
+WARM_FLOOR = min(WARM_MIN, int(os.environ.get("AZ_ORCH_WARM_FLOOR", "0")))
 IDLE_DRAIN_S = int(os.environ.get("AZ_ORCH_IDLE_DRAIN_S", "600"))
 WARM_PREFIX = "ci-warm-"
 # Azure Compute Gallery image version, REPLICATED to every region in REGIONS. This replaces
