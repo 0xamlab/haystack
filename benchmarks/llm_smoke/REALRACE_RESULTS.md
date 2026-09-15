@@ -17332,3 +17332,46 @@ RAG-4096 subsection RETRACTED from gitbook pending re-race with ~/adj/build/v1_c
 H200 C=50 (both open-loop arms) and decode c=1 (stock) used G3_STREAM-on arms and STAND.
 Re-race in progress (agent on H200). Prevention: gate scripts must compare a key the driver
 actually emits; arm-rebuild scripts must pin every comptime flag of the validated arm.
+
+---
+
+## 7B pp1024/RAG-4096 FRONT vs TRT-LLM (2026-09-15, A100, PR #983 levers)
+
+Per-lever A/B (20-run medians, interleaved, clocks 1410 verified, gates G0 16/16 + G1 64/64
+on every arm; baseline bracket drift 0.16%):
+| arm | flags over shipped TC arm | pp256 tok/s | pp1024 tok/s | rel-IQR pp1024 | gen256 |
+|---|---|---|---|---|---|
+| f0 baseline | — | 10,708.3 / 10,727.6 (two runs) | 12,464.5 / 12,445.5 | 0.55-0.72% | 82.81-82.88 |
+| f1 | SM1P | 10,562.1 | 12,401.5 | 0.81% | 82.83 |
+| f2 | F16NORM | 10,849.5 | 12,575.1 | 0.80% | 82.78 |
+| f3 | F16MLP | 11,384.3 | 13,100.1 | 0.05% | 82.67 |
+| f4 | all three | 11,372.6 | 13,224.9 | 0.11% | 82.83 |
+| c8 (ADOPTED) | all three + CTX8192 | 11,376.6 | 13,219.0 | 0.06% | 82.85 |
+Adopted deltas: pp256 +6.1%, pp1024 +6.1%, decode invariant. Per-lever: F16MLP +5.1%,
+F16NORM +0.9%, SM1P refuted (-0.5% alone / +0.0% combined; its traffic model was wrong —
+4 KB score rows walked 3x are L2-served), CTX8192 free (+0.05%).
+
+Re-race vs freshly re-served TRT-LLM 1.2.1 (re-serve reproduced stored battery 0.5%/0.16%/0.06%):
+| cell | algenta c8 | TRT-LLM | ratio | prior |
+|---|---|---|---|---|
+| pp256 | 11,376.6 (22.50 ms) | 7,151.3 (35.80 ms) | 1.591x WIN | 1.371x |
+| pp1024 | 13,219.0 (77.47 ms) | 14,285.9 (71.68 ms) | 0.925x LOSS | 0.876x |
+| RAG-4096 p0/p1/p2 | 11,619/11,631/11,636 (352.5/352.2/352.0 ms) | 15,118.3 (270.93 ms) | 0.769x LOSS | ABSENT |
+| decode c1 gen256 | 82.85 | 78.999 | 1.049x WIN | 1.048x |
+| C=50 agg | ABSENT (7B batched serve unwired) | 980.9 | — | — |
+
+Per-layer nsys decomposition (per pp1024 request, GPU busy): ours 74.18 ms (96% of wall)
+vs theirs 62.35 ms (87% of device step). Deltas: attention +8.38 ms (5 unfused passes
+materializing [28,1024,1024] f32 scores = 117 MB/layer vs one fmha_v2 causal sm80 kernel at
+2.44 ms), SwiGLU +2.47 (exp at ~171 lane-cycles), bias+RoPE+KV fusion +1.98, last-A convert
++0.82, norms +0.22; algenta wins projection GEMMs -2.72 (53.03 vs 55.75) and host -6.04.
+Net +5.79 ms wall. RAG-4096: attention scales 10x (sum n_keys 10240) = 69.4 ms = 20% of wall;
+4x/10x scaling model predicted 349.1 ms vs 352.5 measured (0.9%).
+Refuted with numbers: f16 KV twin <=0.11 ms; prefill CUDA graphs (GPU busy 98.8/98.7/98.3%);
+2x512 chunking (+1.2 ms loss; GEMM efficiency 178->151 TF/s at m 1024->256).
+Next levers ranked (front3 open): fused causal flash HMMA attention (the +8.38 ms), fast exp
+in SwiGLU epilogue, bias+RoPE+KV single-pass fusion, causal row-blocking.
+Caveats: SM1P isolated effect at RAG-4096 not measured (RAG arm carries all three levers);
+the c8 6-prompt battery log was truncated by a duplicate watcher process (fixture/chat_0/
+chat_4 + final GATE PASS preserved; chat_1-3 PASS observed live before overwrite); in-container
+nsys needed one manual re-injection of pp1024 requests (profiled restart beat the --delay).
