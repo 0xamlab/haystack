@@ -409,6 +409,69 @@ extern "C" int64_t tc_shim_gemm_f16_32c_async(const void* a_f32, const void* w_f
     return 0;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// PRE-STAGED-A ENTRIES (7B pp1024/RAG round, 2026-09-15) — the A-convert elimination.
+// tc_shim_gemm_f16_32c converts its f32 A into the caller's f16 scratch on EVERY call: at
+// m=1024 that is 6 bytes of global traffic per A element per GEMM (4 GEMM roles/layer, the
+// widest being down_proj's m*d_ff = 19.4M elements), i.e. ~182 MB/layer = ~5.1 GB over the
+// 28-layer pp1024 prefill — pure redundant memory traffic, because the PRODUCER of that A
+// (the rmsnorm rows kernel, the SwiGLU epilogue, the attention unpack) wrote the f32 one
+// instruction earlier and could have written the f16 directly, at the identical rounded
+// value. These two entries take A ALREADY f16 and skip the conversion; the producer-side
+// f16 write is the Mojo half of the same lever (-D ALGENTA_7B_PF_F16NORM / _F16MLP).
+// Compute mode is UNCHANGED (f16 A/B, CUBLAS_COMPUTE_32F): _16c only moves the C dtype, the
+// accumulator stays f32, so the C rounding point is the epilogue's, exactly as a downstream
+// f32->f16 convert would have rounded it. g_noseam is honoured identically.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+extern "C" int64_t tc_shim_gemm_f16_32c_pre(const void* a16, const void* w_f16,
+                                           int64_t M, int64_t K, int64_t N,
+                                           void* c_f32, int64_t accum) {
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f16, CUDA_R_16F, (int)K,
+        a16, CUDA_R_16F, (int)K,
+        &beta,
+        c_f32, CUDA_R_32F, (int)N,
+        CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    if (g_noseam) return 0;
+    cudaError_t e = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// The f16-C twin: same HMMA + f32 accumulator, C written as CUDA_R_16F. This is the gate/up
+// GEMM's output under -D ALGENTA_7B_PF_F16MLP — the [m, 2*d_ff] result is 155 MB at m=1024
+// in f32 and 77 MB in f16, and the SwiGLU epilogue then reads it back, so the dtype halves
+// BOTH legs of the largest single non-GEMM traffic term in the layer. NOT bit-identical to
+// the f32-C path (the SwiGLU inputs are rounded to f16 first) — the token-identity gate is
+// what decides it, which is why it is its own entry and its own build flag.
+extern "C" int64_t tc_shim_gemm_f16_16c_pre(const void* a16, const void* w_f16,
+                                           int64_t M, int64_t K, int64_t N,
+                                           void* c_f16, int64_t accum) {
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f16, CUDA_R_16F, (int)K,
+        a16, CUDA_R_16F, (int)K,
+        &beta,
+        c_f16, CUDA_R_16F, (int)N,
+        CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    if (g_noseam) return 0;
+    cudaError_t e = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
 // Fallback ladder rung 2 (only if the 32F-acc token gates ever fail): TF32 with a beta
 // select — f32 weights DIRECTLY (zero dual residency), ASSIGN (beta 0) or ACCUMULATE
 // (beta 1) into the f32 residual.

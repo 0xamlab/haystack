@@ -21,7 +21,10 @@ the prefill-race prompt, and the gen64/gen256 decode seed.
 
 Usage (on the VM, system python3 with numpy + transformers):
     python benchmarks/llm_smoke/nvidia_race/prepare_qwen25_7b_checkpoint.py \
-        ~/models/Qwen2.5-7B-Instruct [/tmp/w7b/ckpt]
+        ~/models/Qwen2.5-7B-Instruct [/tmp/w7b/ckpt] [--backend=cuda|metal]
+
+`--backend` defaults to `cuda` -- this is the CUDA lane's converter and Qwen2.5 carries q/k/v
+projection biases, which the "metal" fact gates (the SDK door's default) refuse. See `main()`.
 """
 
 import json
@@ -83,12 +86,36 @@ def _chat_ids(tokenizer, user_text: str) -> list:
     return [int(t) for t in ids_list]
 
 
+_USAGE = "<hf-checkpoint-dir> [out-dir] [--backend=cuda|metal]"
+
+
 def main() -> int:
-    if len(sys.argv) < 2:
-        print(f"usage: {sys.argv[0]} <hf-checkpoint-dir> [out-dir]", file=sys.stderr)
+    # `--backend` selects which backend's fact gates `prepare_model_checkpoint` applies, and it
+    # DEFAULTS TO "cuda" here because this script IS the CUDA 7B-lane converter (everything it
+    # writes is read by `qwen25_7b_p3_graph_cuda`, whose driver refuses a checkpoint without
+    # `attention_bias=1`). `prepare_model_checkpoint`'s own default is "metal" -- the SDK door's
+    # default -- and the Metal descriptor tables do NOT apply a q/k/v projection bias, so its
+    # tensor probe REFUSES a bias-carrying Qwen2.5 snapshot outright. Converting the 7B CUDA
+    # checkpoint therefore has to name the backend explicitly; without this the run dies on the
+    # bias fact before it writes a blob.
+    positional = []
+    backend = "cuda"
+    for arg in sys.argv[1:]:
+        if arg.startswith("--backend="):
+            backend = arg.split("=", 1)[1]
+        elif arg.startswith("--"):
+            print(f"usage: {sys.argv[0]} {_USAGE}", file=sys.stderr)
+            return 2
+        else:
+            positional.append(arg)
+    if backend not in ("cuda", "metal") or not positional:
+        print(f"usage: {sys.argv[0]} {_USAGE}", file=sys.stderr)
         return 2
-    checkpoint_dir = Path(sys.argv[1]).expanduser()
-    out_dir = Path(sys.argv[2]).expanduser() if len(sys.argv) > 2 else Path("/tmp/w7b/ckpt")
+    checkpoint_dir = Path(positional[0]).expanduser()
+    out_dir = (
+        Path(positional[1]).expanduser() if len(positional) > 1 else Path("/tmp/w7b/ckpt")
+    )
+    print(f"[prepare_qwen25_7b] backend fact gates = {backend!r}")
 
     from transformers import AutoTokenizer
 
@@ -141,7 +168,9 @@ def main() -> int:
         print(f"[prepare_qwen25_7b] chat prompt ({entry['n_tokens']} tok): "
               f"{entry['role_prompt'][:60]}...")
 
-    out = prepare_model_checkpoint(checkpoint_dir, fixture_ids, out_dir=out_dir)
+    out = prepare_model_checkpoint(
+        checkpoint_dir, fixture_ids, out_dir=out_dir, backend=backend
+    )
     manifest_path = out / "manifest.json"
     blob_path = out / "weights.blob"
     if not manifest_path.is_file() or not blob_path.is_file():

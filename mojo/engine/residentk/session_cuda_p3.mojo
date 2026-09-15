@@ -232,14 +232,20 @@ from residentk.tc_shim_bridge import (
     _tc_last_error,
     _tc_stage_f32_to_f16,
     _tc_gemm_dispatch,
+    _tc_gemm_f16_32c_pre,
+    _tc_gemm_f16_16c_pre,
     _tc_bgemm_f16_async,
     _tc_attn_softmax_mask_async,
     _tc_dequant_packed3_f16_dense,
     _pf_swiglu_rows_kernel,
 )
 from residentk.kernels_prefill_gemma3 import (
+    _SM1P_MAX_KEYS,
     _pf_q_pack_hm_f16,
     _pf_attn_unpack_hm_f32,
+    _pf_attn_softmax_mask_1p,
+    _pf_rmsnorm_rows_f16_kernel,
+    _pf_swiglu_rows_f16_kernel,
 )
 from std.time import perf_counter_ns
 
@@ -264,6 +270,45 @@ f32->f16 K/V staging only amortize from this tile row count up. The crossover is
 gemma3 round's measured fact (m >= 256 wins, m = 160 loses on H100); the 7B round re-
 validates it on the A100 by A/B (this constant IS the measured fact — a different
 crossover lands as a different constant with its own measurement note)."""
+
+
+# ── FRONT-1 prefill levers (2026-09-15): the three memory-traffic flags the A100 pp1024
+#    layer decomposition named. ALL THREE default OFF, all three are gated inside the
+#    `use_tc` branch of `_prefill_tc` (so the sub-threshold JIT-dequant plan, the f32
+#    session, the decode chain and every flag-off build are byte-unmodified), and each is
+#    independently A/B'd + token-gated — they are separable because they cut different
+#    traffic terms:
+#
+#    ALGENTA_7B_PF_SM1P    the TC attention's masked softmax runs
+#                          `_pf_attn_softmax_mask_1p` (one bounded f32 read of the score
+#                          row cached in shared memory + one f16 write) instead of the
+#                          shim's 3-pass/full-width kernel. Same predicate, same recurrence,
+#                          elementwise-identical P. Runtime-guarded by
+#                          `n_keys <= _SM1P_MAX_KEYS` (4096) — wider rows keep the shim
+#                          kernel, so a long-context tile degrades instead of overflowing.
+#    ALGENTA_7B_PF_F16NORM both rmsnorm row kernels write an f16 twin `pf_xn16` and the
+#                          qkv / gate-up GEMMs take it as a PRE-STAGED A
+#                          (`_tc_gemm_f16_32c_pre`), deleting the shim's per-call
+#                          f32->f16 convert pass over [m, d_model]. Bit-identical by
+#                          construction: the f16 written here is the same rounding of the
+#                          same f32 the convert kernel would have produced.
+#    ALGENTA_7B_PF_F16MLP  the gate/up GEMM writes f16 C (`_tc_gemm_f16_16c_pre`),
+#                          `_pf_swiglu_rows_f16_kernel` combines it into the f16 A the
+#                          down_proj GEMM consumes directly. NOT bit-identical (the
+#                          epilogue's inputs round to f16 at the GEMM instead of after it)
+#                          — the token-identity gate decides it.
+comptime PF_SM1P_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_SM1P"]()
+comptime PF_F16NORM_B1: Bool = (
+    TC_SHIM_BUILD and TC_ACC_MODE == 0
+    and is_defined["ALGENTA_7B_PF_F16NORM"]()
+)
+comptime PF_F16MLP_B1: Bool = (
+    TC_SHIM_BUILD and TC_ACC_MODE == 0 and is_defined["ALGENTA_7B_PF_F16MLP"]()
+)
+"""The pre-staged-A shim entries (`_tc_gemm_f16_32c_pre` / `_16c_pre`) implement mode 0's
+compute only (f16 A/B, COMPUTE_32F), so the two f16-input flags additionally require
+`TC_ACC_MODE == 0` — a rebuild onto a fallback rung silently keeps the ladder's own
+dispatch instead of dropping the rung's f32 weight path."""
 
 
 # ── the three packed3 decode twins ─────────────────────────────────────────────
@@ -1802,6 +1847,12 @@ struct _CudaResidentQwen3P3(Movable):
     var pf_tc_k16: DeviceBuffer[DType.float16]
     var pf_tc_v16: DeviceBuffer[DType.float16]
 
+    # f16 pre-norm twin (-D ALGENTA_7B_PF_F16NORM): the `[rows, d_model]` f16 the two
+    # rmsnorm row kernels write and the qkv / gate-up GEMMs read as a pre-staged A. Real
+    # size only under the flag (in `_tc_alloc`'s headroom try, beside the rest of the TC
+    # scratch); a 1-element placeholder otherwise, so a flag-off build allocates nothing.
+    var pf_xn16: DeviceBuffer[DType.float16]
+
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -1905,6 +1956,7 @@ struct _CudaResidentQwen3P3(Movable):
         self.pf_tc_o32 = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
         self.pf_tc_k16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_xn16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.tc_staged = -1
         @parameter
         if TC_SHIM_BUILD:
@@ -1957,6 +2009,13 @@ struct _CudaResidentQwen3P3(Movable):
             self.f32.max_ctx * self.f32.h_kv * self.f32.d_head)
         self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
             self.f32.max_ctx * self.f32.h_kv * self.f32.d_head)
+        @parameter
+        if PF_F16NORM_B1:
+            # the f16 pre-norm twin: rows * d_model halves (7.3 MB at the 7B shapes) —
+            # inside the same headroom try as everything else here, so a tight device
+            # demotes the whole TC plan cleanly rather than half-allocating it.
+            self.pf_xn16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
+                rows * d_model)
 
     def device_name(self) raises -> String:
         return self.f32.device_name()
@@ -2234,27 +2293,47 @@ struct _CudaResidentQwen3P3(Movable):
 
                     if use_tc:
                         # ══ TC LAYER PLAN ══
-                        # 1 ── rmsnorm(input_layernorm) over every row (native)
-                        self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
-                            self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
-                            lw.ln1.unsafe_ptr(),
-                            Int64(self.f32.d_model), self.f32.eps, Int64(m),
-                            grid_dim=m, block_dim=_TG,
-                        )
+                        # 1 ── rmsnorm(input_layernorm) over every row (native; under
+                        #      -D ALGENTA_7B_PF_F16NORM it writes the f16 twin `pf_xn16`
+                        #      that step 2 then takes as a pre-staged A)
+                        @parameter
+                        if PF_F16NORM_B1:
+                            self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_f16_kernel](
+                                self.pf_xn16.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                                lw.ln1.unsafe_ptr(),
+                                Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                                grid_dim=m, block_dim=_TG,
+                            )
+                        else:
+                            self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                                self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                                lw.ln1.unsafe_ptr(),
+                                Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                                grid_dim=m, block_dim=_TG,
+                            )
                         # 2 ── qkv ASSIGN through the TC seam (the ctx.synchronize() seam:
                         #      drain Mojo's stream, the shim stream-syncs before returning;
                         #      NOSEAM drops both halves — legacy-stream ordering instead)
                         @parameter
                         if not TC_NOSEAM:
                             self.f32.ctx.synchronize()
-                        var r = _tc_gemm_dispatch(
-                            Int(self.f32.pf_xn.unsafe_ptr()),
-                            Int(self.w16_qkv[layer].unsafe_ptr()),
-                            Int(lw.w_qkv.unsafe_ptr())
-                            if self.f32.skip_f32_projections != 1 else 0,
-                            m, self.f32.d_model, n_qkv,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.f32.pf_qkv.unsafe_ptr()), 0)
+                        var r = 0
+                        @parameter
+                        if PF_F16NORM_B1:
+                            r = _tc_gemm_f16_32c_pre(
+                                Int(self.pf_xn16.unsafe_ptr()),
+                                Int(self.w16_qkv[layer].unsafe_ptr()),
+                                m, self.f32.d_model, n_qkv,
+                                Int(self.f32.pf_qkv.unsafe_ptr()), 0)
+                        else:
+                            r = _tc_gemm_dispatch(
+                                Int(self.f32.pf_xn.unsafe_ptr()),
+                                Int(self.w16_qkv[layer].unsafe_ptr()),
+                                Int(lw.w_qkv.unsafe_ptr())
+                                if self.f32.skip_f32_projections != 1 else 0,
+                                m, self.f32.d_model, n_qkv,
+                                Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.f32.pf_qkv.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                         # 2b ── 7B-lane attention bias (native, before RoPE)
@@ -2342,14 +2421,33 @@ struct _CudaResidentQwen3P3(Movable):
                                 return _StepOut(-1, 0.0, issued,
                                                 RESIDENT_ERR_LAUNCH_FAILED)
                             # (iv) causal masked softmax -> P f16 (window=0: the 7B
-                            #      family is full-context causal, no sliding layers)
-                            ra = _tc_attn_softmax_mask_async(
-                                Int(self.pf_tc_scores.unsafe_ptr()),
-                                Int(self.pf_tc_p16.unsafe_ptr()),
-                                n_keys_tc, m, self.f32.h_q, pos, 0)
-                            if ra != 0:
-                                return _StepOut(-1, 0.0, issued,
-                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            #      family is full-context causal, no sliding layers).
+                            #      -D ALGENTA_7B_PF_SM1P swaps in the single-read Mojo
+                            #      kernel: each row's valid prefix is read ONCE into
+                            #      threadgroup shared memory and max/sum/normalize all run
+                            #      off that copy (the shim kernel walks the full row three
+                            #      times), at the identical mask predicate and values.
+                            #      Runtime-guarded: a row wider than the shared cache keeps
+                            #      the shim kernel rather than overflowing it.
+                            var sm1p = False
+                            @parameter
+                            if PF_SM1P_B1:
+                                sm1p = n_keys_tc <= _SM1P_MAX_KEYS
+                            if sm1p:
+                                self.f32.ctx.enqueue_function[_pf_attn_softmax_mask_1p](
+                                    self.pf_tc_scores.unsafe_ptr(),
+                                    self.pf_tc_p16.unsafe_ptr(),
+                                    Int64(n_keys_tc), Int64(m), Int64(pos), Int64(0),
+                                    grid_dim=self.f32.h_q * m, block_dim=_TG,
+                                )
+                            else:
+                                ra = _tc_attn_softmax_mask_async(
+                                    Int(self.pf_tc_scores.unsafe_ptr()),
+                                    Int(self.pf_tc_p16.unsafe_ptr()),
+                                    n_keys_tc, m, self.f32.h_q, pos, 0)
+                                if ra != 0:
+                                    return _StepOut(-1, 0.0, issued,
+                                                    RESIDENT_ERR_LAUNCH_FAILED)
                             # (v) PV: out[h_kv, g*m, d] = P @ V, batched over KV heads
                             ra = _tc_bgemm_f16_async(
                                 Int(self.pf_tc_p16.unsafe_ptr()),
@@ -2445,44 +2543,103 @@ struct _CudaResidentQwen3P3(Movable):
                             Int(self.f32.pf_hidden.unsafe_ptr()), 1)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
-                        # 6 ── rmsnorm(post_attention_layernorm) (native)
-                        self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
-                            self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
-                            lw.ln2.unsafe_ptr(),
-                            Int64(self.f32.d_model), self.f32.eps, Int64(m),
-                            grid_dim=m, block_dim=_TG,
-                        )
-                        # 7 ── gate/up ASSIGN through the TC seam + native SwiGLU epilogue
+                        # 6 ── rmsnorm(post_attention_layernorm) (native; f16 twin under
+                        #      -D ALGENTA_7B_PF_F16NORM, feeding step 7 as a pre-staged A)
+                        @parameter
+                        if PF_F16NORM_B1:
+                            self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_f16_kernel](
+                                self.pf_xn16.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                                lw.ln2.unsafe_ptr(),
+                                Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                                grid_dim=m, block_dim=_TG,
+                            )
+                        else:
+                            self.f32.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                                self.f32.pf_xn.unsafe_ptr(), self.f32.pf_hidden.unsafe_ptr(),
+                                lw.ln2.unsafe_ptr(),
+                                Int64(self.f32.d_model), self.f32.eps, Int64(m),
+                                grid_dim=m, block_dim=_TG,
+                            )
+                        # 7 ── gate/up ASSIGN through the TC seam + native SwiGLU epilogue.
+                        #      Under -D ALGENTA_7B_PF_F16MLP the GEMM writes its
+                        #      [m, 2*d_ff] result as f16 into `tc_c16` (mode 0's unused
+                        #      rung-2 scratch, already sized rows*max_n >= rows*2*d_ff) and
+                        #      the epilogue combines f16 -> the f16 A in `tc_a16` that step
+                        #      8 consumes directly: three full-tile passes over the widest
+                        #      activation in the layer become one f16 write + one f16 read.
                         @parameter
                         if not TC_NOSEAM:
                             self.f32.ctx.synchronize()
-                        r = _tc_gemm_dispatch(
-                            Int(self.f32.pf_xn.unsafe_ptr()),
-                            Int(self.w16_gu[layer].unsafe_ptr()),
-                            Int(lw.w_gu.unsafe_ptr())
-                            if self.f32.skip_f32_projections != 1 else 0,
-                            m, self.f32.d_model, 2 * self.f32.d_ff,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.tc_gu.unsafe_ptr()), 0)
+                        @parameter
+                        if PF_F16NORM_B1 and PF_F16MLP_B1:
+                            r = _tc_gemm_f16_16c_pre(
+                                Int(self.pf_xn16.unsafe_ptr()),
+                                Int(self.w16_gu[layer].unsafe_ptr()),
+                                m, self.f32.d_model, 2 * self.f32.d_ff,
+                                Int(self.tc_c16.unsafe_ptr()), 0)
+                        elif PF_F16NORM_B1:
+                            r = _tc_gemm_f16_32c_pre(
+                                Int(self.pf_xn16.unsafe_ptr()),
+                                Int(self.w16_gu[layer].unsafe_ptr()),
+                                m, self.f32.d_model, 2 * self.f32.d_ff,
+                                Int(self.tc_gu.unsafe_ptr()), 0)
+                        elif PF_F16MLP_B1:
+                            # no f16 norm twin: stage A explicitly (the shim's own convert,
+                            # just issued from here so the C dtype can stay f16)
+                            r = _tc_stage_f32_to_f16(
+                                Int(self.f32.pf_xn.unsafe_ptr()),
+                                Int(self.tc_a16.unsafe_ptr()), m * self.f32.d_model)
+                            if r == 0:
+                                r = _tc_gemm_f16_16c_pre(
+                                    Int(self.tc_a16.unsafe_ptr()),
+                                    Int(self.w16_gu[layer].unsafe_ptr()),
+                                    m, self.f32.d_model, 2 * self.f32.d_ff,
+                                    Int(self.tc_c16.unsafe_ptr()), 0)
+                        else:
+                            r = _tc_gemm_dispatch(
+                                Int(self.f32.pf_xn.unsafe_ptr()),
+                                Int(self.w16_gu[layer].unsafe_ptr()),
+                                Int(lw.w_gu.unsafe_ptr())
+                                if self.f32.skip_f32_projections != 1 else 0,
+                                m, self.f32.d_model, 2 * self.f32.d_ff,
+                                Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.tc_gu.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
-                        self.f32.ctx.enqueue_function[_pf_swiglu_rows_kernel](
-                            self.f32.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
-                            Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
-                            grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
-                        )
+                        @parameter
+                        if PF_F16MLP_B1:
+                            self.f32.ctx.enqueue_function[_pf_swiglu_rows_f16_kernel](
+                                self.tc_a16.unsafe_ptr(), self.tc_c16.unsafe_ptr(),
+                                Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
+                                grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
+                            )
+                        else:
+                            self.f32.ctx.enqueue_function[_pf_swiglu_rows_kernel](
+                                self.f32.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
+                                Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
+                                grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
+                            )
                         # 8 ── down_proj ACCUMULATE into the residual through the TC seam
                         @parameter
                         if not TC_NOSEAM:
                             self.f32.ctx.synchronize()
-                        r = _tc_gemm_dispatch(
-                            Int(self.f32.pf_act.unsafe_ptr()),
-                            Int(self.w16_down[layer].unsafe_ptr()),
-                            Int(lw.w_down.unsafe_ptr())
-                            if self.f32.skip_f32_projections != 1 else 0,
-                            m, self.f32.d_ff, self.f32.d_model,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                        @parameter
+                        if PF_F16MLP_B1:
+                            # A is already the f16 the epilogue wrote — no convert pass
+                            r = _tc_gemm_f16_32c_pre(
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.w16_down[layer].unsafe_ptr()),
+                                m, self.f32.d_ff, self.f32.d_model,
+                                Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                        else:
+                            r = _tc_gemm_dispatch(
+                                Int(self.f32.pf_act.unsafe_ptr()),
+                                Int(self.w16_down[layer].unsafe_ptr()),
+                                Int(lw.w_down.unsafe_ptr())
+                                if self.f32.skip_f32_projections != 1 else 0,
+                                m, self.f32.d_ff, self.f32.d_model,
+                                Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.f32.pf_hidden.unsafe_ptr()), 1)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                         issued += 8

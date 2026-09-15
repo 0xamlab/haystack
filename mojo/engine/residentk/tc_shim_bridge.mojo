@@ -213,6 +213,52 @@ def _tc_gemm_f16_32c_async(a: Int, w16: Int, m: Int, k: Int, n: Int, a16: Int, c
         return -1
 
 
+def _tc_gemm_f16_32c_pre(a16: Int, w16: Int, m: Int, k: Int, n: Int, c32: Int,
+                        accum: Int) -> Int:
+    """`C[M,N](f32) = A[M,K](ALREADY f16) @ W[N,K](f16)^T`, COMPUTE_32F, beta by `accum` —
+    `_tc_gemm_f16_32c` MINUS its per-call f32->f16 A conversion. The caller asserts A is
+    f16 by having its PRODUCER kernel write f16 in the first place (the `-D
+    ALGENTA_7B_PF_F16NORM` / `_F16MLP` levers: the rmsnorm rows kernel and the SwiGLU
+    epilogue write the f16 the shim would otherwise have produced from their f32, at the
+    identical rounded value, saving 6 bytes of global traffic per A element per GEMM).
+    Honours the shim's NOSEAM mode exactly like `_tc_gemm_f16_32c` (no internal sync when
+    the shim is bound to the legacy stream; the caller's bracketing synchronize() discipline
+    is unchanged). 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_32c_pre", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c32),
+              Int64(accum))
+        )
+    else:
+        return -1
+
+
+def _tc_gemm_f16_16c_pre(a16: Int, w16: Int, m: Int, k: Int, n: Int, c16: Int,
+                        accum: Int) -> Int:
+    """The f16-C twin of `_tc_gemm_f16_32c_pre`: A already f16, W f16, HMMA with an f32
+    ACCUMULATOR (COMPUTE_32F) but C written as f16. Used for the gate/up GEMM under `-D
+    ALGENTA_7B_PF_F16MLP`, where the `[m, 2*d_ff]` result is read straight back by the
+    SwiGLU epilogue — halving both the write and the read of the layer's largest non-GEMM
+    traffic term (155 MB -> 77 MB at m=1024, d_ff=18944). NOT bit-identical to the f32-C
+    path (the epilogue's inputs round to f16 at the GEMM epilogue instead of after it), so
+    it carries its own build flag and its own token-identity gate. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_16c_pre", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c16),
+              Int64(accum))
+        )
+    else:
+        return -1
+
+
 def _tc_last_error() -> Int:
     """The shim's last recorded error (raw cudaError_t/cublasStatus_t, or a negative
     shim-defined class) — diagnostics when a wrapper returns non-zero."""

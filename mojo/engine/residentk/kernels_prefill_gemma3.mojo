@@ -77,7 +77,7 @@ from max.gpu import barrier
 from max.gpu.memory import AddressSpace
 from std.math import exp, sqrt, tanh
 from std.memory import stack_allocation
-from std.gpu.primitives.warp import sum as _warp_sum
+from std.gpu.primitives.warp import shuffle_xor as _shuffle_xor, sum as _warp_sum
 from residentk.contract import RESIDENT_MAX_HEAD_DIM
 from residentk.kernels_prefill_f32_v2 import (
     _G2_BM,
@@ -1977,3 +1977,199 @@ def _pf_attn_unpack_hm_f32(
     var r = rem // d_head
     var e = rem % d_head
     attn[r * (h_q * d_head) + h * d_head + e] = o32[idx]
+
+
+# ── FRONT-1 prefill levers (2026-09-15, the pp1024 / RAG-4096 gap round) ─────────────────
+#
+# The A100 pp1024 layer decomposition (nsys, m=1024 one-pass, 28 layers) put the TC
+# attention's masked softmax at the TOP of the non-GEMM memory-traffic table: the shim's
+# `_attn_softmax_mask_kernel` walks each score row THREE times (max pass, sum pass,
+# normalize pass) over the FULL `n_keys` width, so at m=1024 it moves 3 x 117 MB of f32
+# scores + 59 MB of f16 P per layer = 411 MB/layer = 11.5 GB across the prefill, ~7 ms of
+# the 82 ms wall. Two independent facts make that traffic reducible without touching the
+# maths:
+#
+#   * the row is only ~half valid — row `p` of a one-pass tile at `pos_base=0` attends keys
+#     `0 .. p`, so looping to the row's own `qpos` instead of `n_keys` halves the reads;
+#   * one global read suffices — cache the valid prefix in threadgroup shared memory (a
+#     comptime-bounded 4096-float row = 16 KB/block, 8 blocks/SM at 256 threads, no
+#     occupancy loss) and run max/sum/normalize off the cached copy, writing the exp'd
+#     value back into the same slot so `exp` is evaluated ONCE per element instead of twice.
+#
+# Result: 1 bounded f32 read + 1 full f16 write per row (~117 MB/layer) — the same values,
+# the same online-free three-stage softmax recurrence, ~3.5x less traffic. `_SM1P_MAX_KEYS`
+# is the dispatch-side contract: rows wider than that stay on the shim kernel (the caller
+# checks it at runtime, so a long-context tile degrades rather than overflows shared).
+
+
+comptime _SM1P_MAX_KEYS: Int = 4096
+"""Shared-memory row cache capacity for `_pf_attn_softmax_mask_1p` (floats, so 16 KB of the
+A100's 48 KB static shared budget per block). The session dispatches the kernel only when
+`n_keys <= _SM1P_MAX_KEYS` and keeps the shim's 3-pass kernel above that — a runtime check
+because `n_keys = pos + m` grows with the chunk index of a multi-chunk prefill."""
+
+
+def _pf_attn_softmax_mask_1p(
+    s32: _FP, p16: _HP, n_keys_i64: Int64, m_rows_i64: Int64, pos_base_i64: Int64,
+    window_i64: Int64,
+):
+    """Single-read masked causal(+window) softmax over one score row -> f16 attention
+    weights. Row `r` = query head `r / m_rows`, tile position `p = r % m_rows`, global
+    position `qpos = pos_base + p`; key `j` is attended iff `j <= qpos` AND (`window <= 0`
+    OR `j >= qpos + 1 - window`) — the shim kernel's predicate, verbatim, so the two are
+    drop-in equivalents and the f16 P they produce is elementwise identical for the same
+    f32 scores.
+
+    `grid_dim = h_q * m_rows`, `block_dim = _TG`. REQUIRES `n_keys <= _SM1P_MAX_KEYS`
+    (checked at the dispatch site)."""
+    var n_keys = Int(n_keys_i64)
+    var m_rows = Int(m_rows_i64)
+    var pos_base = Int(pos_base_i64)
+    var window = Int(window_i64)
+    var row = Int(block_idx.x)
+    var p = row % m_rows
+    var qpos = pos_base + p
+    var lo = 0
+    if window > 0:
+        lo = qpos + 1 - window
+    if lo < 0:
+        lo = 0
+    var hi = qpos
+    if hi > n_keys - 1:
+        hi = n_keys - 1
+    var count = hi - lo + 1
+    if count < 0:
+        count = 0
+    var tid = Int(thread_idx.x)
+    var base = row * n_keys
+
+    var rowc = stack_allocation[
+        _SM1P_MAX_KEYS, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var red = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+
+    # ── pass 1: cache the valid prefix in shared, track this thread's partial max ──
+    var mx = Float32(-1.0e30)
+    var j = tid
+    while j < count:
+        var v = s32[base + lo + j]
+        rowc[j] = v
+        if v > mx:
+            mx = v
+        j += _TG
+    # warp max via the same shuffle_xor ladder `residentk.kernels`' argmax uses
+    var off = UInt32(_LANES // 2)
+    while off > 0:
+        var other = _shuffle_xor(mx, off)
+        if other > mx:
+            mx = other
+        off //= 2
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    if lane == 0:
+        red[sub] = mx
+    barrier()
+    # 8 shared reads per thread, every thread computes the block max itself (no broadcast)
+    var row_max = Float32(-1.0e30)
+    for g in range(_SUBS):
+        if red[g] > row_max:
+            row_max = red[g]
+    # `red` is reused for the sum below — every thread must have consumed the max first.
+    barrier()
+
+    # ── pass 2: exp(v - max) INTO the cached slot + this thread's partial sum ──
+    var sum = Float32(0.0)
+    j = tid
+    while j < count:
+        var e = exp(rowc[j] - row_max)
+        rowc[j] = e
+        sum += e
+        j += _TG
+    var sum_group = _warp_sum(sum)
+    if lane == 0:
+        red[sub] = sum_group
+    barrier()
+    var row_sum = Float32(0.0)
+    for g in range(_SUBS):
+        row_sum += red[g]
+    var inv = Float32(0.0)
+    if row_sum > 0.0:
+        inv = Float32(1.0) / row_sum
+
+    # ── pass 3: normalize from shared, write the FULL row in absolute key order — the
+    #    masked keys (below `lo` for a windowed layer, above `hi` for the causal tail) get
+    #    an exact zero, which is what the PV GEMM must see for the keys this query does not
+    #    attend. Absolute indexing keeps the windowed case (lo > 0) inside the row. ──
+    j = tid
+    while j < n_keys:
+        var v = Float32(0.0)
+        var rel = j - lo
+        if rel >= 0 and rel < count:
+            v = rowc[rel] * inv
+        p16[base + j] = Float16(v)
+        j += _TG
+
+
+def _pf_rmsnorm_rows_f16_kernel(
+    xn16: _HP, x: _FP, gamma: _FP, k_i64: Int64, eps: Float32, m_rows_i64: Int64,
+):
+    """`residentk.kernels._pf_rmsnorm_rows_kernel` with an f16 output — the producer half of
+    the A-convert elimination (`-D ALGENTA_7B_PF_F16NORM`): the TC projection GEMM converts
+    this f32 row block to f16 on every call anyway, so writing the f16 here removes one full
+    read+write pass over `[m, d_model]` per norm per layer and lands on the IDENTICAL rounded
+    value (f32 arithmetic in-kernel, one f32->f16 rounding at the store, exactly the
+    rounding the shim's convert kernel would have applied to the same f32).
+
+    Same grid/block contract as the f32 twin: `grid_dim = m_rows`, `block_dim = _TG`, the
+    same two-level SIMD-group sum-of-squares reduction."""
+    var k = Int(k_i64)
+    var m_rows = Int(m_rows_i64)
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var m = Int(block_idx.x)
+    if m >= m_rows:
+        return
+    var row = m * k
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[row + i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xn16[row + s] = Float16(x[row + s] * inv * gamma[s])
+        s += _TG
+
+
+def _pf_swiglu_rows_f16_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64: Int64):
+    """`residentk.tc_shim_bridge._pf_swiglu_rows_kernel` with BOTH operands f16 — the
+    epilogue half of `-D ALGENTA_7B_PF_F16MLP`: the gate/up GEMM writes its `[m, 2*d_ff]`
+    result as f16 C and this combine reads that f16 and writes the f16 A the down_proj GEMM
+    consumes directly (no shim convert pass). Same `swish(gate) * up` expression and the same
+    f32 intermediate arithmetic as the f32 twin; the difference is where the operands are
+    rounded, which is why the lever carries its own token-identity gate.
+
+    `act16[row, j] = swish(gu16[row, j]) * gu16[row, n_ff + j]` over `m * n_ff` outputs.
+    Grid: `ceil(m * n_ff / _TG)`, block `_TG`."""
+    var total = Int(total_i64)
+    var n_ff = Int(n_ff_i64)
+    var i = Int(block_idx.x) * Int(block_dim.x) + Int(thread_idx.x)
+    if i < total:
+        var row = i // n_ff
+        var j = i - row * n_ff
+        var g = Float32(gu16[row * 2 * n_ff + j])
+        var u = Float32(gu16[row * 2 * n_ff + n_ff + j])
+        act16[i] = Float16((g / (1.0 + exp(-g))) * u)

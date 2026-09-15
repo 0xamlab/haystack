@@ -37,7 +37,7 @@ Usage (A100, sm_80, GPU-idle):
 """
 
 from std.math import sqrt
-from std.sys import argv, exit, has_accelerator
+from std.sys import argv, exit, has_accelerator, is_defined
 from std.time import perf_counter_ns
 from json.parser import (
     json_get_array,
@@ -58,9 +58,21 @@ from residentk.session import _resident_preflight
 from residentk.session_cuda import CUDA_SESSION_BUILD, _CudaResidentQwen3
 from residentk.session_cuda_p3_graph import _CudaResidentQwen3P3Graph
 
-comptime MAX_CTX: Int = 1600
+comptime MAX_CTX: Int = 8192 if is_defined["ALGENTA_7B_CTX8192"]() else 1600
 """The 256-token fixture + the gen256 tail (256 + 256 = 512) with headroom, PLUS the pp1024
-measurement cell (a 1024-token prefill prompt + its gen tail must fit: 1024 + 256 = 1280)."""
+measurement cell (a 1024-token prefill prompt + its gen tail must fit: 1024 + 256 = 1280).
+
+`-D ALGENTA_7B_CTX8192` (DEFAULT OFF) raises this to 8192 — the long-context arm that makes
+the RAG-4096 cell runnable at all: at 1600 the driver's own `--prompt-ids` guard
+(`len > MAX_CTX - 256`) refuses any prompt over 1344 tokens, so a 4096-token RAG prompt has
+no legal path through this driver. The context length is a DRIVER constant, not a session
+one: `max_ctx` reaches `_CudaResidentQwen3P3Graph` (and through it the f32 KV cache, the
+RoPE table and the TC attention scratch, all sized off it) as a plain constructor argument,
+so the flag changes sizing only — no kernel and no dispatch path is conditional on it. Cost
+at the 7B shapes: the f32 KV cache grows 0.18 -> 0.94 GB and the TC attention scratch
+(`[h_q, rows, max_ctx]` scores f32 + P f16) 0.28 -> 1.41 GB, inside the same VRAM headroom
+try the dual residency already rides — a device that cannot hold it demotes to the native
+chain exactly as before, it does not fail."""
 
 comptime G0_TOKENS: Int = 16
 comptime G1_STEPS: Int = 64
@@ -69,6 +81,13 @@ comptime N_RUNS: Int = 20
 comptime WARMUP: Int = 1
 comptime IQR_TOLERANCE: Float64 = 0.05
 comptime OUTLIER_DEVIATION: Float64 = 0.10
+
+comptime _LONG_TARGET: Int = 1024
+"""Target prompt length of the long-prefill cell. The cell repeats the fixture
+`_LONG_TARGET // n_prompt` times (4x for the 256-token fixture = the historical
+"prefill1024" cell) and is skipped when that quotient is 1, i.e. when the prompt already
+meets or exceeds the target -- so a `--prompt-ids` RAG run measures its own length once in
+the primary cell instead of repeating itself past MAX_CTX."""
 
 
 def _check_resident(status: Int, ctx: String) raises:
@@ -511,25 +530,38 @@ def main() raises:
                 + String(pf_stats.median) + "\n"
 
             # ── MEASURE: prefill1024 (the race prompt repeated x4 — prefill throughput is
-            #    content-agnostic; the MAX_CTX sizing covers 1024 + headroom) ──
-            var long_ids = List[Int](capacity=4 * n_prompt)
-            for rep in range(4):
-                for i in range(n_prompt):
-                    long_ids.append(race_ids[i])
-            var warmL = sg.prefill(_copy_ids(long_ids))
-            _check_resident(warmL.status, "warmup prefill1024")
-            var pf1024_samples = List[Float64]()
-            for r in range(runs):
-                var b0 = perf_counter_ns()
-                var pfL = sg.prefill(_copy_ids(long_ids))
-                _check_resident(pfL.status, "bench prefill1024")
-                var b1 = perf_counter_ns()
-                pf1024_samples.append(Float64(4 * n_prompt) / (_ms(b1 - b0) / 1000.0))
-            var pf1024_stats = _cell_stats(pf1024_samples)
-            print("prefill1024: median", pf1024_stats.median, "tok/s | IQR",
-                  pf1024_stats.rel_iqr * 100.0, "% | outliers", pf1024_stats.n_outliers,
-                  "|", "PASS" if pf1024_stats.passes else "FLAG")
-            report = report + "prefill1024_tok_s=" + String(pf1024_stats.median) + "\n"
+            #    content-agnostic). The repetition count is DERIVED from the 1024-token
+            #    target and MAX_CTX rather than hardcoded at 4: with `--prompt-ids` longer
+            #    than the fixture (the RAG-4096 cell) a fixed x4 would build a 16384-token
+            #    prompt and run the KV cache the session was sized for off its own end. When
+            #    the fixture is already >= the target the cell is SKIPPED (the primary
+            #    `prefill<n_prompt>` cell above IS the long-prefill measurement then), so
+            #    the fixture path's cell set is unchanged: 256 -> prefill256 + prefill1024.
+            var long_reps = _LONG_TARGET // n_prompt
+            if long_reps * n_prompt > MAX_CTX:
+                long_reps = MAX_CTX // n_prompt
+            if long_reps > 1:
+                var long_ids = List[Int](capacity=long_reps * n_prompt)
+                for rep in range(long_reps):
+                    for i in range(n_prompt):
+                        long_ids.append(race_ids[i])
+                var n_long = long_reps * n_prompt
+                var warmL = sg.prefill(_copy_ids(long_ids))
+                _check_resident(warmL.status, "warmup prefill-long")
+                var pf1024_samples = List[Float64]()
+                for r in range(runs):
+                    var b0 = perf_counter_ns()
+                    var pfL = sg.prefill(_copy_ids(long_ids))
+                    _check_resident(pfL.status, "bench prefill-long")
+                    var b1 = perf_counter_ns()
+                    pf1024_samples.append(Float64(n_long) / (_ms(b1 - b0) / 1000.0))
+                var pf1024_stats = _cell_stats(pf1024_samples)
+                print("prefill" + String(n_long) + ": median", pf1024_stats.median,
+                      "tok/s | IQR", pf1024_stats.rel_iqr * 100.0, "% | outliers",
+                      pf1024_stats.n_outliers, "|",
+                      "PASS" if pf1024_stats.passes else "FLAG")
+                report = report + "prefill" + String(n_long) + "_tok_s=" \
+                    + String(pf1024_stats.median) + "\n"
 
             var depths = List[Int]()
             depths.append(64)
