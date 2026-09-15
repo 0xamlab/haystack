@@ -17308,3 +17308,27 @@ batched serve wiring).
   only engine-side timing source.
 - max_input_len defaults 1024 with no CLI flag — would silently reject RAG-4096; caught by
   preflight probe.
+
+---
+
+## INCIDENT 2026-09-15 — gemma RAG-4096 cells VOID (wrong arm), published H100 win retracted
+
+Adjudication (~/trtllm/gemma_arm_adjudication.json on trtllm-gemma-us-west1-c): the gemma
+ctx8192 arm used by the H100 a2a RAG-4096 win (6,148 tok/s) and the H200 column prefill/RAG
+cells was rebuilt by ~/a2a/run_algenta_rag.sh:38 WITHOUT -D ALGENTA_G3_STREAM;
+session_cuda_gemma3_f16.mojo:127 derives G3_STREAM from TC_SHIM_BUILD and is_defined, so the
+arm ran the TC seam with streaming OFF. Against a cache-free fp32 transformers oracle it
+DIVERGES-HARD at index 0 on 5/6 prompts (margins 1.40/1.91/3.07 on val550/rag4096/pp1024) and
+matches only short32 (below TC_MIN_M=128, never enters the seam). G3_STREAM-ON arms match
+64/64 on every prompt. 2x2 bisect (MAX_CTX x G3_STREAM, builds ~/adj/build/v1|v2|v3):
+v1(8192+STREAM) token-identical to stock on all 5 shared prompts; v2(8192,-STREAM) reproduces
+the bad arm on 6/6; v3(4096+STREAM) reproduces stock => MAX_CTX innocent, G3_STREAM the cause.
+The bad arm is also 2-12% SLOWER, so it understated algenta.
+Root cause of the vacuous validation: run_algenta_rag.sh:58 and summarize_a2a.py:192 compare
+key `tokens`, which the driver never emits (it emits `generated`) => tokens_equal=true
+unconditionally (value stored in ~/a2a/gemma_h100_a2a.json .rag4096.validation).
+CONSEQUENCES: H200 pp256 0.285x / pp1024 0.525x / RAG-4096 0.666x VOID; published H100
+RAG-4096 subsection RETRACTED from gitbook pending re-race with ~/adj/build/v1_ctx8192_stream;
+H200 C=50 (both open-loop arms) and decode c=1 (stock) used G3_STREAM-on arms and STAND.
+Re-race in progress (agent on H200). Prevention: gate scripts must compare a key the driver
+actually emits; arm-rebuild scripts must pin every comptime flag of the validated arm.

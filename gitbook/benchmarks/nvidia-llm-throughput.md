@@ -113,17 +113,6 @@ quantization class on both sides, open-loop arrivals, greedy decoding, prompt ca
 disabled on every engine that has it, CUDA graphs enabled on every engine that has them,
 clocks pinned at 1410 MHz, drift armor <= 0.15%.
 
-### Gemma 3 27B — 4096-token RAG prefill (H100)
-
-| Engine | TTFT (ms) | Prefill tok/s |
-|---|---|---|
-| algenta (TC prefill attention) | 666 | 6,148 |
-| llama-server F16 | 925 | 4,430 |
-| llama-server Q8\_0 | 1,675 | 2,445 |
-
-Speedup at 4096-token RAG prefill: 1.39x vs llama-server at equal full precision, 2.51x vs
-llama-server Q8\_0.
-
 ### Gemma 3 27B — time-to-first-token under C=50 open-loop load (H100)
 
 | Engine | TTFT p50 (ms) |
