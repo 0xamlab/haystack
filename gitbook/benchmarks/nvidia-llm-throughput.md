@@ -1,6 +1,6 @@
 ---
 icon: gauge-high
-description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — Qwen3-0.6B and Qwen2.5-7B prefill and decode against llama.cpp, vLLM and SGLang, with methodology.
+description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — Qwen3-0.6B and Qwen2.5-7B prefill and decode against llama.cpp, vLLM, SGLang and TensorRT-LLM, with methodology.
 ---
 
 # NVIDIA LLM throughput
@@ -145,6 +145,23 @@ llama-server at equal precision.
 
 Equal-quantization (int8 vs int8) prefill speedup: 2.40x / 2.43x at 256 / 1024 tokens,
 with greedy first-token identity verified against the fp32 oracle on both engines.
+
+### Qwen2.5-7B — prefill and decode vs TensorRT-LLM (A100)
+
+Same-session re-measurement against TensorRT-LLM 1.2.1 (NVCR release container, PyTorch
+backend, bfloat16 weights, Hugging Face checkpoint loaded directly, KV-cache and prefix
+block reuse disabled, CUDA graphs at engine defaults). Engine-internal timings on both
+sides (no HTTP layer); clocks pinned at 1410 MHz; greedy decoding; token counts verified
+server-side; median of 20 runs (Algenta) / 7 runs (TensorRT-LLM); rel-IQR <= 4.7% on all
+cells; greedy continuations match the fp32 oracle on both engines.
+
+| Engine | Prefill 256 tok/s | Decode tok/s (gen=256) |
+| --- | --- | --- |
+| Algenta (packed3, cuBLAS tensor-core prefill + tensor-core attention) | 10,751 | 82.8 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 7,846 | 79.0 |
+
+Prefill speedup at 256 tokens: 1.37x vs TensorRT-LLM. Decode speedup (gen=256): 1.05x vs
+TensorRT-LLM.
 
 ## Scope
 

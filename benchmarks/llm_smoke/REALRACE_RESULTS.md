@@ -17249,3 +17249,62 @@ ignore_eos (TTFT unaffected).
 gemma-27b F16 (54 GB) cannot fit A100-40GB: no A100 gemma F16 anchor exists; historical
 "A100 RAG" wins on record are the qwen2.5-7B lane. External critique's "A100+H100 RAG"
 attribution conflates lanes.
+
+---
+
+## TENSORRT-LLM COLUMN — Qwen2.5-7B A100 (2026-09-15)
+
+Opponent: TensorRT-LLM 1.2.1 (NVCR release container, torch 2.10.0a0 nv25.12, TensorRT
+10.14.1.48, CUDA 13.1), pytorch backend, HF checkpoint direct (no engine build), bf16
+14.19 GB, chunked_prefill=False, max_batch 64 / max_input 4352 / max_seq 8192. KV/prefix
+block reuse: 1.2.1 DEFAULTS ARE ON (enable_block_reuse / enable_partial_reuse /
+copy_on_partial_reuse) — all three explicitly false here; verified via resolved args,
+executor log cache_reuse=False, and RAG order-effect spread 0.28%. CUDA graphs ON at
+defaults = generation-only (prefill gets no graph). Clocks 1410 pinned+verified; greedy;
+token counts verified server-side via usage.prompt_tokens. Basis: server-device timings
+(engine-internal both sides); client numbers kept as audit.
+
+### TRT-LLM column (3 warmup + 7 measured; rel-IQR srv)
+| cell | client TTFT ms | client tok/s | server device ms | server tok/s | rel-IQR |
+|---|---|---|---|---|---|
+| pp256 | 35.67 | 7,176 | 32.63 | 7,846 | 4.65% |
+| pp1024 | 72.24 | 14,175 | 72.04 | 14,214 | 0.21% |
+| RAG-4096 #0/#1/#2 | 271.1/272.4/272.4 | ~15,050 | 270.14/270.49/270.89 | 15,162/15,143/15,120 | <=0.26% |
+| decode c1 gen256 | — | 79.65 | 12.651 ms/tok | 79.04 | 0.13% (n=765) |
+| C=50 open-loop 500x550/256 | TTFT p50 1,918.5 / p99 2,153.7 ms | agg 980.94 tok/s, 500/50 ok | | | |
+
+### algenta within-battery (TC arm, 20 runs/cell, bracketed; G0 16/16 + G1 64/64 PASS)
+pp256 10,719.25 / 10,751.29 (drift +0.30%); pp1024 12,436.85 / 12,442.46 (+0.05%);
+decode c1 gen256 82.83 / 82.71 (-0.14%). Reproduces 2026-08-26 a2a within +0.9%.
+RAG-4096 ABSENT (driver MAX_CTX=1600). C=50 ABSENT (7B batched serve not wired).
+
+### Ratios (algenta ÷ TRT-LLM, server-device)
+pp256 1.366x WIN (published). decode c1 1.048x WIN (published).
+pp1024 0.875x LOSS (ledger; optimization front open 2026-09-15: layer autopsy + flag-gated
+levers, agent running). RAG-4096 + C=50: gaps, engineering fronts open (ctx8192 arm,
+batched serve wiring).
+
+### Integrity notes (anomalies diagnosed before reporting)
+1. pp256 non-linearity (7,846 vs 14,214 vs 15,162 tok/s): length sweep shows TTFT flat
+   ~33.5 ms for n=1..256 then rising — ~30 ms engine-side context-phase floor; engine work
+   OVERLAPS the floor at short n (device 32.63 vs client 35.67 = constant 3 ms gap), so
+   additive subtraction invalid; both bases reported, ratios use server-device.
+2. Position artifact ruled out: pp256 re-measured isolated / after-rag / after-pp1024 /
+   reversed order — spread 4.15%, no contamination (the llama.cpp f_keep class of bug).
+3. Decode corroborated client vs server (0.8% apart); 12.651 ms/tok = ~73% of the 9.2 ms
+   bf16 weight-bandwidth roof — same per-iter host cost in both phases.
+4. First-pass parser defects found+fixed (docker stream concatenation window drift;
+   sched=0 bookkeeping iterations pooled; fixed 10-per-cell name list mis-attributed) —
+   re-parsed same logs, no GPU work repeated.
+5. B3 throttle: clocks dipped 1290 MHz @ 411.9 W under sustained C=50 (prior enterprise_bench
+   recorded 1305 MHz @ 463 W) — applies to any engine in that cell; cell internally fair.
+6. Variance: worst 4.65% (pp256, = ±1.5 ms jitter on a 33 ms measurement); all else <=1.12%.
+
+### Escalations
+- main's prepare_qwen25_7b_checkpoint.py defaults backend="metal" whose attention_bias fact
+  range (0,) rejects Qwen2.5 q/k/v biases -> fresh-checkpoint regen broken for CUDA lane
+  (used ~/w7b tree; fix queued in optimization-front PR).
+- TRT-LLM 1.2.1 /metrics returns empty even with all perf flags; print_iter_log:true is the
+  only engine-side timing source.
+- max_input_len defaults 1024 with no CLI flag — would silently reject RAG-4096; caught by
+  preflight probe.
