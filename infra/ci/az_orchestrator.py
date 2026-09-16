@@ -63,6 +63,8 @@ import threading
 import time
 import urllib.request
 
+import yaml  # gate on rendered cloud-init: see render_userdata(). Present on ci-orch's python3.
+
 RG = os.environ.get("AZURE_RESOURCE_GROUP", os.environ.get("AZURE_RG", "thyn-ci"))
 SUB = os.environ["AZURE_SUBSCRIPTION_ID"]
 TENANT = os.environ["AZURE_TENANT_ID"]
@@ -92,9 +94,34 @@ PREWARM_PUSH_BRANCHES = {
     b.strip() for b in os.environ.get("AZ_ORCH_PREWARM_BRANCHES", "main").split(",") if b.strip()
 }
 MAX_AGE_S = 90 * 60
-# stock-image boot runs apt-get (docker.io) + runner download: 3-6min is normal,
-# so a 3min orphan sweep was killing VMs mid-bootstrap (runners never registered).
-ORPHAN_AGE_S = 10 * 60
+# ONE boot window for every reap rule. A worker is presumed to be booting -- and therefore
+# untouched by the sweep -- until it is this old, whatever its power state reads as.
+#
+# Sized against the slowest first boot, not a round number. Golden-image path measured live
+# 2026-09-16 on a Standard_D8s_v5 in centralus: tier0 apt repair 23s, runner re-download ~7s,
+# config.sh ~14s -- ~55s of bootstrap after cloud-init. The stock-image path runs apt-get
+# (docker-ce) + deadsnakes + NodeSource + the runner download and needs 3-6min, so 720s covers
+# it with margin and stays well inside MAX_AGE_S.
+#
+# Why it also governs STOPPED workers, reversing the earlier "reap a stopped VM at once" rule:
+# that rule assumed stopped-means-finished, and during the 2026-09-16 outage the assumption
+# became a churn engine. Every worker self-powered-off ~55s into its own bootstrap (see
+# RUNNER_UPGRADE_SH), so the sweep reaped it, the reconcile loop provisioned a replacement,
+# that one died the same way, and the plane spun at roughly one VM per queued job per 90s --
+# 7 dead workers plus their leaked NICs inside an hour, every ARM delete racing the next
+# create (NicInUse). Holding a corpse for 720s costs 8 vCPU of quota; recreating one every 90s
+# costs the whole plane. A stopped-but-never-registered VM is now left alone inside the window
+# and reaped at its far edge, which bounds churn at one generation of workers per boot window
+# no matter what is broken underneath.
+BOOT_GRACE_S = 720
+# Kept as a name because the reap rules below and their tests read better with it. DERIVED so
+# the two windows cannot drift apart again: a 720s stopped-grace is a silent no-op while the
+# unregistered rule still fires at 600s, which is what the hot-patch this replaced did.
+ORPHAN_AGE_S = BOOT_GRACE_S
+# How long delete_vm() waits for the compute resource to disappear before it touches the NIC.
+# See delete_vm(): ARM deletes are async and a NIC delete issued too early fails NicInUse and
+# leaks the NIC. Measured 2026-08-26: 21s from virtualMachines/delete Started to Succeeded.
+VM_DELETE_WAIT_S = 60
 # Ordered by REALIZED capacity, not nominal preference. Two live facts drive this
 # (measured 2026-08-25 across eastus/eastus2/centralus/westus2):
 #   1. The F-series is quota-clean but CAPACITY-RESTRICTED in every region we use --
@@ -471,6 +498,12 @@ def family(size):
     return "standarddsv4family"
 
 
+# Fallback actions/runner version for the stock-image bootstrap when the boot-time
+# releases/latest lookup fails. This is the version PROVEN to register against the live org on
+# 2026-09-16 (config.sh rc=0, "Runner successfully added"), and it is a floor, not a target:
+# both bootstrap paths resolve the current release at boot and only fall back to this.
+RUNNER_PIN = "2.337.0"
+
 SSH_PUB = ""
 for _p in ("/opt/ci/worker_key.pub", os.path.expanduser("~/.ssh/id_ed25519.pub")):
     try:
@@ -571,7 +604,17 @@ write_files:
       docker pull postgres:16-alpine >/dev/null 2>&1 || true
       docker pull docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0 >/dev/null 2>&1 || true
       docker pull quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z >/dev/null 2>&1 || true
-      curl -m 120 -o /tmp/runner.tar.gz -LsS https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
+      # Resolve the runner version at BOOT, with the pin below only as a fallback. A version
+      # hardcoded in this template is the same time bomb as one baked into the image: GitHub
+      # enforces a registration floor and moves it without notice, and a runner below it cannot
+      # register at all -- which is what took the whole plane dark on 2026-09-16 when the floor
+      # moved to 2.329.0 over an image baking 2.327.1. See CLOUD_INIT_FAST's runner-upgrade
+      # block for the post-mortem. The fallback stays so a GitHub API outage cannot make the
+      # stock path undownloadable; it is the floor we last PROVED registers, not a preference.
+      RUNNER_VERSION=$(curl -s -m 20 https://api.github.com/repos/actions/runner/releases/latest | python3 -c "import json,sys;print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null)
+      [ -n "$RUNNER_VERSION" ] || RUNNER_VERSION=__RUNNER_PIN__
+      log "runner-version=$RUNNER_VERSION"
+      curl -m 180 -o /tmp/runner.tar.gz -LsS "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
       log "runner-dl rc=$?"
       mkdir -p /opt/runner && tar -xzf /tmp/runner.tar.gz -C /opt/runner
       RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/__ORG__/actions/runners/registration-token)
@@ -594,15 +637,56 @@ runcmd:
 """
 
 
-def write_ci_file(name):
-    with open(f"{STATE}/{name}.yml", "w") as f:
-        f.write(
-            CLOUD_INIT.replace("__SSH_PUB__", SSH_PUB)
-            .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
-            .replace("__ORG__", ORG)
-            .replace("__RUNNERGROUP__", RUNNER_GROUP)
-            .replace("__VMNAME__", name)
+def render_userdata(template, name, path):
+    """Render one worker's cloud-init document and GATE it before ARM ever sees it.
+
+    Two failure modes, both of which have already cost this plane:
+
+    1. INVALID YAML. A bare runcmd line containing `-H "Authorization: Bearer ..."` carries a
+       `: ` (colon+space), which is illegal in a YAML plain scalar. cloud-init parse-aborts and
+       runcmd NEVER runs, so every worker provisions as a no-op VM: it boots, does nothing, gets
+       swept ten minutes later, and nothing anywhere says why. The bootstrap lives in a
+       write_files block scalar (block scalars permit colons) behind a single runcmd line, and
+       this gate is what proves the document still parses AFTER substitution -- the template
+       parsing is not enough, because the substituted values are what carry the colons.
+    2. NON-ASCII. customData is latin-1 transported, so one em-dash in the payload fails the
+       ARM PUT mid-deploy. Checked here rather than only in deploy_orchestrator.sh because the
+       payload is assembled per worker and the token/name/group values are not static.
+
+    Parsing alone is not sufficient: a document can be perfectly valid YAML and still have lost
+    the bootstrap, which is failure mode 1 wearing a different hat. Hence the structural checks.
+    """
+    doc = (
+        template.replace("__SSH_PUB__", SSH_PUB)
+        .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
+        .replace("__ORG__", ORG)
+        .replace("__RUNNERGROUP__", RUNNER_GROUP)
+        .replace("__VMNAME__", name)
+        .replace("__RUNNER_PIN__", RUNNER_PIN)
+    )
+    non_ascii = sorted({c for c in doc if ord(c) > 127})
+    if non_ascii:
+        raise ValueError(
+            f"userdata for {name} is not ASCII ({non_ascii[:5]!r}): cloud-init customData is "
+            f"latin-1 transported, so the ARM PUT would fail mid-deploy"
         )
+    parsed = yaml.safe_load(doc) or {}  # raises on the colon-in-a-plain-scalar class of breakage
+    written = {f.get("path"): f.get("content", "") for f in parsed.get("write_files", [])}
+    runcmd = parsed.get("runcmd") or []
+    if not any("/root/bootstrap.sh" in str(c) for c in runcmd):
+        raise ValueError(
+            f"userdata for {name} parses but runcmd={runcmd!r} never invokes /root/bootstrap.sh "
+            f"-- the worker would boot, do nothing, and be swept as an orphan"
+        )
+    if not written.get("/root/bootstrap.sh", "").strip():
+        raise ValueError(f"userdata for {name} parses but /root/bootstrap.sh came out empty")
+    with open(path, "w") as f:
+        f.write(doc)
+    return path
+
+
+def write_ci_file(name):
+    return render_userdata(CLOUD_INIT, name, f"{STATE}/{name}.yml")
 
 
 def subnet_id(region, vnet, subnet):
@@ -620,9 +704,57 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/bash
+      # NO `set -e`, deliberately. Every step below is either a best-effort repair or the
+      # registration attempt itself, and the two things that must always happen are that
+      # config.sh is reached and that whatever happened on the way is reported. Aborting early
+      # is how a 54-second config.sh failure became a nine-hour undiagnosable outage on
+      # 2026-09-16: the VM powered itself off, wrote nothing anywhere, and the only observable
+      # was an Azure power state.
       TOK="__GH_TOKEN__"
-      RT=$(curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/__ORG__/actions/runners/registration-token)
-      TOKEN=$(echo "$RT" | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null)
+      BOOT_T0=$(date +%s)
+      log(){ echo "T=$(date +%s) +$(( $(date +%s) - BOOT_T0 ))s $*" | tee -a /root/boot.log; }
+      up(){ python3 - <<PY
+      import json,urllib.request
+      try:
+          gid=open("/root/gist.id").read().strip()
+          content=open("/root/boot.log").read()[-4000:]
+          req=urllib.request.Request("https://api.github.com/gists/"+gid,method="PATCH",
+           data=json.dumps({"files":{"boot.log":{"content":content}}}).encode(),
+           headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
+          urllib.request.urlopen(req,timeout=30)
+      except Exception:
+          pass
+      PY
+      }
+      # The fast path had NO telemetry at all until 2026-09-16 -- that is the whole reason the
+      # outage below took hours. CLOUD_INIT (the stock-image path) has always PATCHed
+      # /root/boot.log to a per-worker private gist; the golden path, which is the path every
+      # real worker takes, wrote nothing, so /root/boot.log was empty on every corpse and read
+      # as "bootstrap never ran" when in fact it ran to completion and failed at config.sh.
+      log "fast-bootstrap-start vm=__VMNAME__"
+      GIST=$(python3 - <<PY
+      import json,urllib.request
+      try:
+          req=urllib.request.Request("https://api.github.com/gists",method="POST",
+           data=json.dumps({"public":False,"files":{"boot.log":{"content":"init"}}}).encode(),
+           headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
+          print(json.load(urllib.request.urlopen(req,timeout=30))["id"])
+      except Exception as e:
+          print("ERR-%s"%e)
+      PY
+      )
+      echo "$GIST" > /root/gist.id
+      log "gist=$GIST"
+      up
+      # ---- stage: token-fetch ----
+      get_token(){ curl -s -m 30 -X POST -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" https://api.github.com/orgs/__ORG__/actions/runners/registration-token | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])" 2>/dev/null; }
+      TOKEN=$(get_token)
+      TOK_RC=$?
+      # The LENGTH, never the value: this file is PATCHed to a gist. len=0 is the distinction
+      # that matters (fetch failed vs parse failed vs succeeded) and the one the old bootstrap
+      # threw away by writing nothing.
+      log "token-fetch rc=$TOK_RC len=${#TOKEN}"
+      up
       # The GOLDEN IMAGE predates two things the retired Mac fleet provided and that repos moved
       # here by the org-wide RUNNER_LABELS still expect. Reasserted per boot because patching
       # CLOUD_INIT alone would never reach a golden-image VM -- and that IS the normal path now.
@@ -647,6 +779,7 @@ write_files:
       # The cost is real and bounded: ~20-40s before a new VM joins the pool, which affects cold
       # provisions and warm-pool refill, not warm hits (those VMs are already registered).
       # Recapturing the golden image deletes this whole block and the cost with it.
+      log "repair-start"
       (
         # One `command -v <tool>` per tool, deliberately not a loop over "$t": the contract test
         # greps for exactly that literal per tier0 entry, so a loop would satisfy the shell while
@@ -669,11 +802,119 @@ write_files:
       # Every timeout above is bounded, so a network failure degrades to "tool still missing"
       # rather than wedging the boot. A job that then needs the tool fails naming it, which is
       # what the workflow-side guards are for -- silence is the thing to avoid, not failure.
+      # The paths, not the exit codes, are what get reported: an install can exit 0 and still
+      # leave the binary absent, which is the failure mode this repair exists for.
+      log "repair-done unzip=$(command -v unzip 2>/dev/null || echo MISSING) rsync=$(command -v rsync 2>/dev/null || echo MISSING) gh=$(command -v gh 2>/dev/null || echo MISSING) python=$(command -v python 2>/dev/null || echo MISSING)"
+      up
+      # ---- stage: runner-upgrade ----
+      # GitHub enforces a MINIMUM self-hosted-runner version at REGISTRATION time. Below the
+      # floor, POST /actions/runner-registration answers 404 with a "RUNNER UPDATE REQUIRED"
+      # box, config.sh exits non-zero, run.sh reports "Not configured" and exits, and this
+      # script falls through to `shutdown -h now`. The VM then powers itself off looking
+      # exactly like a worker that finished its job, so the only fleet-visible symptom is
+      # "workers never register" -- with nothing on the worker saying why.
+      #
+      # THAT IS WHAT TOOK THE WHOLE PLANE DOWN ON 2026-09-16. The gallery image bakes
+      # actions/runner 2.327.1 (captured 2026-08-26) and GitHub moved the floor to 2.329.0;
+      # from ~07:00Z every worker died the same way, ~55s into its own bootstrap. Reproduced
+      # verbatim on a live Standard_D8s_v5 created from gallery version 1.0.0 in centralus:
+      #   18:20:52 su - runner -c "/opt/runner/config.sh ..."
+      #   18:21:06 Http response code: NotFound from 'POST .../actions/runner-registration'
+      #   18:21:06 ERROR: Your runner version is out of date and can no longer register.
+      #   18:21:06 The minimum runner version required to register is now 2.329.0.
+      #   18:21:06 An error occurred: Not configured. Run config.(sh/cmd) to configure.
+      #   18:21:06 + shutdown -h now
+      # Upgrading the same VM to 2.337.0 and re-running config.sh registered it immediately
+      # ("Runner successfully added", rc=0), which is the whole of the causal proof.
+      #
+      # A runner version pinned inside a FROZEN image is a time bomb whose fuse GitHub holds,
+      # and recapturing the image only resets the fuse -- today's 2.329.0 is tomorrow's 2.340.
+      # So resolve releases/latest at boot and upgrade in place. Measured on that same worker:
+      # the lookup costs 0.17s and the 226 MB tarball downloads in 1.8s, so the stage is ~8s
+      # against a ~55s bootstrap -- cheap insurance against the fleet going dark again.
+      #
+      # Nothing here can abort the boot. If the lookup or the download fails, the baked runner
+      # stays and config.sh is still attempted, so a GitHub API outage degrades to the previous
+      # behaviour instead of becoming a new failure mode.
+      runner_version(){ ( cd /opt/runner && ./bin/Runner.Listener --version 2>/dev/null | tail -1 ); }
+      HAVE=$(runner_version)
+      WANT=$(curl -s -m 20 https://api.github.com/repos/actions/runner/releases/latest | python3 -c "import json,sys;print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null)
+      # dpkg calls amd64 what the release asset calls x64; arm64 is spelled the same in both.
+      case "$(dpkg --print-architecture 2>/dev/null)" in
+        arm64) RARCH=arm64 ;;
+        *) RARCH=x64 ;;
+      esac
+      UPGRADE_NEEDED=0
+      if [ -n "$WANT" ]; then
+        if [ -z "$HAVE" ]; then
+          UPGRADE_NEEDED=1
+        elif [ "$HAVE" != "$WANT" ]; then
+          # sort -V orders the two versions; if the older of the pair is HAVE, an upgrade is
+          # due. Written with two echos rather than a printf format string on purpose: this
+          # template is a plain (non-raw) Python triple-quoted string, so a literal backslash-n
+          # here would be interpreted by PYTHON as a real newline and split the shell line --
+          # which ends the YAML block scalar and is exactly what render_userdata() gates on.
+          if [ "$( { echo "$HAVE"; echo "$WANT"; } | sort -V | head -1 )" = "$HAVE" ]; then
+            UPGRADE_NEEDED=1
+          fi
+        fi
+      fi
+      if [ "$UPGRADE_NEEDED" = "1" ]; then
+        log "runner-upgrade-start have=${HAVE:-unknown} want=$WANT arch=$RARCH"
+        timeout 300 curl -sL -o /tmp/runner-new.tar.gz "https://github.com/actions/runner/releases/download/v${WANT}/actions-runner-linux-${RARCH}-${WANT}.tar.gz" || log "runner-upgrade download-failed rc=$?"
+        if [ -s /tmp/runner-new.tar.gz ]; then
+          # Extract over the baked tree, then clear any half-written config state so config.sh
+          # starts clean. Safe because this stage always runs BEFORE config.sh.
+          tar -xzf /tmp/runner-new.tar.gz -C /opt/runner || log "runner-upgrade extract-failed rc=$?"
+          rm -f /opt/runner/.runner /opt/runner/.credentials /opt/runner/.credentials_rsaparams /opt/runner/.service 2>/dev/null || true
+        fi
+        rm -f /tmp/runner-new.tar.gz
+      else
+        log "runner-upgrade-skip have=${HAVE:-unknown} want=${WANT:-unresolved}"
+      fi
+      log "runner-upgrade-done now=$(runner_version)"
+      up
+      # ---- stage: config ----
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner
-      su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended"
-      su - runner -c "/opt/runner/run.sh" || true
+      # config.sh output goes to boot.log, and therefore to the gist. That redirect is the
+      # difference between "the fleet is dark" and "the fleet is dark because GitHub says
+      # RUNNER UPDATE REQUIRED" -- the message above was invisible for nine hours purely
+      # because it landed in a cloud-init log nobody reads on a VM that no longer exists.
+      #
+      # Two attempts, and the retry re-fetches the token rather than replaying it: a
+      # registration token is short-lived and may already be spent. Not a loop -- if GitHub is
+      # refusing registration a third attempt will not change the answer, and burning boot
+      # time here only delays the report that says so.
+      CFG_RC=1
+      for attempt in 1 2; do
+        [ -n "$TOKEN" ] || TOKEN=$(get_token)
+        su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended" >>/root/boot.log 2>&1
+        CFG_RC=$?
+        log "config-rc=$CFG_RC attempt=$attempt runner-version=$(runner_version)"
+        up
+        [ "$CFG_RC" = "0" ] && break
+        TOKEN=""
+      done
+      if [ "$CFG_RC" != "0" ]; then
+        # Say what is about to happen and why, THEN let the machine go. A worker that cannot
+        # register will never become useful, and holding it only spends quota -- but powering
+        # off silently is exactly the failure that made this outage undiagnosable.
+        log "config-failed: runner did not register, powering off. Reason is in the config.sh output above."
+        up
+        shutdown -h now || true
+        exit 0
+      fi
+      # ---- stage: run ----
+      # An ephemeral runner exits by itself after its one job, so reaching the shutdown below
+      # with rc=0 is the SUCCESS path, not an error.
+      log "run-started"
+      up
+      su - runner -c "/opt/runner/run.sh"
+      RUN_RC=$?
+      log "run-exited rc=$RUN_RC"
+      up
       shutdown -h now || true
 runcmd:
   - bash /root/bootstrap.sh
@@ -768,15 +1009,10 @@ def _create_vm(name, size, region, vnet, subnet, nic):
     # count lagged VM count so badly under load.
     golden = golden_available()
     if golden:
-        with open(f"{STATE}/{name}.fast.yml", "w") as f:
-            f.write(
-                CLOUD_INIT_FAST.replace("__SSH_PUB__", SSH_PUB)
-                .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
-                .replace("__ORG__", ORG)
-                .replace("__RUNNERGROUP__", RUNNER_GROUP)
-                .replace("__VMNAME__", name)
-            )
-        ci_file = f"{STATE}/{name}.fast.yml"
+        # Gated. render_userdata() refuses to hand back a document that does not parse, is not
+        # ASCII, or lost the bootstrap -- all three of which have shipped on this plane and all
+        # three of which present identically from the outside: a VM that never registers.
+        ci_file = render_userdata(CLOUD_INIT_FAST, name, f"{STATE}/{name}.fast.yml")
         image_ref = {"id": GOLDEN_IMAGE}
     else:
         ci_file = f"{STATE}/{name}.yml"
@@ -856,16 +1092,36 @@ def delete_vm(name, location, reason="unspecified", was_busy=False):
         # appears, this must be loud at the moment of the kill, not inferred 9 minutes later.
         log(f"INFRA-KILL: deleting {name} while BUSY (reason={reason}) -- a job is running on "
             f"it and will fail with an unrelated-looking error in ~9min")
-    for kind, path in (
-        ("vm", vm_path(name)),
-        ("nic", nic_path_for(name, location)),
-    ):
-        try:
-            arm("DELETE", path, api="2022-07-01" if kind != "vm" else "2023-07-01")
-        except Exception as e:
-            # NicInUse/BadRequest is EXPECTED (the NIC delete races the still-attached VM) and
-            # is itself diagnostic, so the reason travels with it instead of reading as noise.
-            log(f"delete {kind} {name} (reason={reason}): {e}")
+    # SEQUENTIAL, not a loop over both: the NIC delete must not be issued until the compute
+    # resource is actually gone. ARM deletes are ASYNC, so firing them back to back fails the
+    # NIC with NicInUse/BadRequest and LEAKS IT -- nothing retries the call, and a leaked NIC
+    # occupies per-region quota indefinitely. That is the 13:23:18.509 line in the autopsy
+    # above, and it is what left seven orphaned NICs behind during the 2026-09-16 churn: every
+    # self-powered-off worker was deleted VM-and-NIC in the same breath, so every one leaked.
+    vm = vm_path(name)
+    try:
+        arm("DELETE", vm, api="2023-07-01")
+    except Exception as e:
+        log(f"delete vm {name} (reason={reason}): {e}")
+    # Bounded, because cleanup() runs on the reconcile thread and a wait per VM would stall the
+    # backstop (webhook dispatch is unaffected -- it runs on its own thread). 60s is generous
+    # against the 21s the 2026-08-26 delete actually took. On timeout the NIC delete is SKIPPED
+    # rather than attempted-and-doomed: the leaked-nic sweep at the end of cleanup() is the
+    # backstop for exactly this, complete with the two-poll _absent_once guard, so skipping
+    # loses nothing but one cycle of latency and avoids an error that reads like a new failure.
+    if not _wait_gone(vm, "2023-07-01", timeout=VM_DELETE_WAIT_S):
+        log(f"delete vm {name} (reason={reason}): still Deleting after {VM_DELETE_WAIT_S}s, "
+            f"leaving the nic to the leaked-nic sweep")
+        return
+    # deleteOption=Delete on the networkProfile means ARM usually cascaded the NIC away with the
+    # VM, so this is normally a no-op that logs nothing rather than a 404 on every teardown.
+    nic = nic_path_for(name, location)
+    if not _exists(nic, "2022-07-01"):
+        return
+    try:
+        arm("DELETE", nic, api="2022-07-01")
+    except Exception as e:
+        log(f"delete nic {name} (reason={reason}): {e}")
 
 
 def nic_path_for(name, region):
@@ -959,34 +1215,35 @@ def cleanup():
         if name in busy:
             continue  # mid-job: let it finish; MAX_AGE_S is a leak guard, not a job timeout
         unregistered = name not in runners
-        # A worker that has ALREADY POWERED OFF is finished or dead -- it can never register, so
-        # ORPHAN_AGE_S buys nothing and costs a lot. That grace window exists purely for a VM
-        # still BOOTING (see ORPHAN_AGE_S's own comment: stock-image boot runs apt-get + the
-        # runner download, 3-6min, and a 3min sweep was killing workers mid-bootstrap). A booting
-        # VM is powerState=running-but-unregistered; a STOPPED one is neither.
+        # ONE boot window, BOOT_GRACE_S, for a worker in ANY power state. Read that constant's
+        # comment for the 2026-09-16 churn that made a stopped-but-young VM protected rather
+        # than an immediate kill; the short version is that "stopped means finished" is only
+        # true when bootstraps succeed, and when they do not, reaping on sight turns a fleet
+        # outage into a provision/delete storm that also leaks a NIC per cycle.
         #
-        # Why it matters: a "stopped" (not deallocated) Azure VM still holds its full vCPU quota.
-        # Measured live 2026-08-26 -- 13 VMs, only 3 registered, 10 stopped; centralus DSv5 at
-        # 96/140 cores with 80 of them held by those 10 corpses, leaving room for 5 workers while
-        # 6 checks sat QUEUED. Deleting them by hand took quota to 8/140 and the orchestrator
-        # provisioned 8 workers within 3 seconds. This is the mechanism behind the recurring
-        # "only 1-3 runners are working" reports, and the earlier warm-pool failures logging
-        # "exceeding approved standardDSv5Family Cores quota".
-        stopped = False
-        if unregistered and age <= ORPHAN_AGE_S:
-            # Ask ONLY inside the window where the answer changes the verdict: past ORPHAN_AGE_S
-            # the rule below already deletes, and a registered VM is by definition alive. Power
-            # state costs one call per VM (see vm_power_state), so it must stay this narrow.
-            stopped = vm_power_state(name) in ("stopped", "deallocated")
-        if stopped or (unregistered and age > ORPHAN_AGE_S) or age > MAX_AGE_S:
-            if stopped:
-                why = "stopped-no-runner"
-            elif unregistered:
-                why = "orphan-no-runner"
-            else:
-                why = "max-age"
-            log(f"deleting {name} (age={int(age)}s, reason={why})")
-            delete_vm(name, location, reason=f"{why} age={int(age)}s", was_busy=name in busy)
+        # The quota cost this accepts is real and bounded: a "stopped" (not deallocated) VM
+        # still holds its full vCPU allocation, so a corpse now pins 8 cores for up to
+        # BOOT_GRACE_S instead of being freed at once. Measured live 2026-08-26 -- 13 VMs, only
+        # 3 registered, 10 stopped; centralus DSv5 at 96/140 cores with 80 of them held by
+        # those 10 corpses, leaving room for 5 workers while 6 checks sat QUEUED. That is the
+        # failure mode being traded against, and it is the cheaper of the two: centralus now
+        # carries 190 total cores, so one generation of corpses inside a 720s window fits,
+        # whereas a delete/create cycle every 90s does not leave the plane standing at all.
+        if not ((unregistered and age > BOOT_GRACE_S) or age > MAX_AGE_S):
+            continue
+        # Power state is asked ONLY for a VM already condemned, and only to LABEL the reason.
+        # It used to be asked for every young unregistered VM each cycle so a stopped one could
+        # be reaped early, which made it one ARM round-trip per young worker per 90s poll for a
+        # verdict that no longer changes anything. Asking here costs one call per deletion.
+        stopped = vm_power_state(name) in ("stopped", "deallocated")
+        if stopped:
+            why = "stopped-no-runner"
+        elif unregistered:
+            why = "orphan-no-runner"
+        else:
+            why = "max-age"
+        log(f"deleting {name} (age={int(age)}s, reason={why})")
+        delete_vm(name, location, reason=f"{why} age={int(age)}s", was_busy=name in busy)
     # leaked nic/pip from failed provisions occupy the per-region PIP quota (limit 20)
     vm_names = {n for n, _, _ in vms}
     with _lock:

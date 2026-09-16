@@ -1,18 +1,29 @@
-"""A worker that has already powered off must be reaped at once, not after ORPHAN_AGE_S.
+"""One boot window (BOOT_GRACE_S) for a worker in ANY power state, and what it costs.
 
-A "stopped" (not deallocated) Azure VM still holds its full vCPU quota, so every finished
-ephemeral worker pinned 8 vCPU for ten more minutes while being useless. Measured live
+HISTORY, because this module used to assert the opposite. The original rule reaped a
+stopped-and-unregistered VM at once, on the reasoning that a powered-off worker can never
+register so the grace window buys nothing. The quota argument for it was real and measured live
 2026-08-26: 13 VMs but only 3 registered runners, 10 of them "VM stopped"; centralus
 standardDSv5Family sat at 96/140 cores with 80 held by those corpses -- room for 5 workers while
 6 checks were QUEUED. Deleting them by hand took quota to 8/140 and the orchestrator provisioned
-8 workers within 3 seconds (journal 18:16:00). Same mechanism produced the earlier warm-pool
-failures logging "exceeding approved standardDSv5Family Cores quota".
+8 workers within 3 seconds (journal 18:16:00).
 
-The ORPHAN_AGE_S grace exists for a DIFFERENT case, named in its own comment: a VM still booting
-(stock-image boot runs apt-get plus the runner download, 3-6 min, and a 3-min sweep was killing
-workers mid-bootstrap). A booting VM is running-but-unregistered. A stopped VM can never
-register, so the grace buys nothing there. These tests pin both halves of that distinction --
-reaping the dead fast must not start reaping the booting.
+It was nonetheless wrong, and 2026-09-16 is the proof. "Stopped means finished" holds only while
+bootstraps succeed. That day GitHub raised the self-hosted-runner registration floor to 2.329.0
+over a golden image baking 2.327.1, so EVERY worker failed config.sh and powered itself off ~55s
+into its own boot. Reaping on sight then turned a fleet outage into a churn engine: the sweep
+deleted the corpse, the reconcile loop provisioned a replacement, that one died identically, and
+the plane ran roughly one VM per queued job per 90s -- 7 dead workers plus 7 leaked NICs inside
+an hour, each ARM delete racing the next create into NicInUse. The operator had to stop the
+service by hand to make it stop.
+
+So the grace now covers stopped workers too, and these tests pin BOTH halves: a young VM is
+untouched whatever its power state reads as, and a VM past the window is reaped whatever its
+power state reads as. The quota cost of holding a corpse for BOOT_GRACE_S is accepted knowingly
+(see the constant's comment for the arithmetic); the churn cost of not holding it is not.
+
+Also pinned: power state is an ARM round-trip per VM, so it is asked ONLY for a VM already
+condemned, purely to label the reason -- never for every young worker on every poll.
 """
 
 from __future__ import annotations
@@ -60,27 +71,62 @@ def _wire(mod, monkeypatch, *, vms, runners=(), busy=(), power=None):
     return deleted
 
 
-def test_stopped_and_unregistered_is_reaped_immediately(monkeypatch):
-    """THE fix. Age 30s, far inside ORPHAN_AGE_S, but powered off -> gone now."""
+def test_a_stopped_worker_inside_the_boot_grace_is_not_reaped(monkeypatch):
+    """THE 2026-09-16 fix. Age 30s and powered off: leave it alone.
+
+    This is the exact state every worker was in during the outage -- config.sh had just been
+    refused for a runner version below GitHub's floor, bootstrap had fallen through to
+    `shutdown -h now`, and the sweep was about to delete it so the loop could build another one
+    that died the same way. Reaping here is what turned a fleet outage into a churn storm.
+    """
     mod = _load(monkeypatch)
     deleted = _wire(mod, monkeypatch,
                     vms=[("ci-az-1-1", 30)], power={"ci-az-1-1": "stopped"})
+    mod.cleanup()
+    assert deleted == [], deleted
+
+
+def test_a_stopped_worker_past_the_boot_grace_is_reaped(monkeypatch):
+    """The other half: the grace bounds the corpse, it does not excuse it.
+
+    A stopped VM still holds its full vCPU allocation, so past BOOT_GRACE_S it has to go or the
+    2026-08-26 quota starvation comes back (80 of 140 cores held by 10 corpses, 6 checks queued).
+    """
+    mod = _load(monkeypatch)
+    age = mod.BOOT_GRACE_S + 1
+    deleted = _wire(mod, monkeypatch,
+                    vms=[("ci-az-1-1", age)], power={"ci-az-1-1": "stopped"})
     mod.cleanup()
     assert [n for n, _ in deleted] == ["ci-az-1-1"], deleted
     assert "stopped-no-runner" in deleted[0][1], deleted[0][1]
 
 
 def test_deallocated_counts_as_stopped(monkeypatch):
-    """Azure reports both; a deallocated VM is equally never coming back."""
+    """Azure reports both; a deallocated VM is labelled the same way once it is reaped."""
     mod = _load(monkeypatch)
     deleted = _wire(mod, monkeypatch,
-                    vms=[("ci-az-1-1", 30)], power={"ci-az-1-1": "deallocated"})
+                    vms=[("ci-az-1-1", mod.BOOT_GRACE_S + 1)],
+                    power={"ci-az-1-1": "deallocated"})
     mod.cleanup()
     assert [n for n, _ in deleted] == ["ci-az-1-1"], deleted
+    assert "stopped-no-runner" in deleted[0][1], deleted[0][1]
+
+
+def test_the_two_reap_windows_cannot_drift_apart(monkeypatch):
+    """ORPHAN_AGE_S is DERIVED from BOOT_GRACE_S, and this is why.
+
+    The incident hot-patch this replaced wrote `stopped and age > 720` next to an unregistered
+    rule that still fired at 600s. The 720 was therefore dead code: every stopped worker is also
+    unregistered, so the 600s rule reaped it first and the grace never applied to anything. A
+    constant that silently does nothing is worse than no constant, so pin the relationship.
+    """
+    mod = _load(monkeypatch)
+    assert mod.ORPHAN_AGE_S == mod.BOOT_GRACE_S == 720
+    assert mod.BOOT_GRACE_S < mod.MAX_AGE_S
 
 
 def test_a_booting_vm_is_still_protected(monkeypatch):
-    """The case ORPHAN_AGE_S exists for: running, not yet registered, young. Reaping this is
+    """The case BOOT_GRACE_S exists for: running, not yet registered, young. Reaping this is
     the regression that killed wave-2 workers mid-bootstrap -- it must NOT come back."""
     mod = _load(monkeypatch)
     deleted = _wire(mod, monkeypatch,
@@ -124,9 +170,15 @@ def test_a_registered_idle_worker_is_not_reaped(monkeypatch):
     assert calls == [], f"power state queried for a registered VM: {calls}"
 
 
-def test_power_state_is_not_queried_past_the_grace_window(monkeypatch):
-    """Past ORPHAN_AGE_S the age rule already deletes, so the extra per-VM call would be pure
-    cost. One call per VM is the only working shape (see vm_power_state), so keep it narrow."""
+def test_power_state_is_queried_only_for_a_condemned_vm(monkeypatch):
+    """One ARM round-trip per DELETION, not one per young worker per poll.
+
+    The old shape asked every young unregistered VM's power state on every 90s cycle, because
+    the answer could reap it early. Now that the answer cannot change the verdict inside the
+    grace, asking there is pure cost -- so it is asked only once a VM is already condemned, and
+    only to label the reason. Both halves are pinned: a young VM costs nothing, a condemned one
+    costs exactly one call.
+    """
     mod = _load(monkeypatch)
     calls: list[str] = []
 
@@ -134,12 +186,13 @@ def test_power_state_is_not_queried_past_the_grace_window(monkeypatch):
         calls.append(n)
         return "running"
 
-    deleted = _wire(mod, monkeypatch, vms=[("ci-az-old", 10_000)])
+    deleted = _wire(mod, monkeypatch,
+                    vms=[("ci-az-young", 120), ("ci-az-old", 10_000)])
     monkeypatch.setattr(mod, "vm_power_state", spy)
     mod.cleanup()
     assert [n for n, _ in deleted] == ["ci-az-old"], deleted
     assert "orphan-no-runner" in deleted[0][1], deleted[0][1]
-    assert calls == [], f"power state queried outside the decision window: {calls}"
+    assert calls == ["ci-az-old"], f"power state queried for a VM inside the grace: {calls}"
 
 
 def test_power_state_parses_the_azure_status_code(monkeypatch):
