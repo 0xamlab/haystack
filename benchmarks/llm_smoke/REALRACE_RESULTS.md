@@ -17439,3 +17439,33 @@ counterpart capture for a true per-layer A/B; (4) same-session TRT-LLM re-serve 
 pp256 CROSS-SESSION label; (5) GEMM-layer dissection against TRT-LLM's nvjet buckets if cells
 remain LOSS. Every lever re-measures all three cells A/B against this round's stored numbers
 (~/trtllm/gemma_rerace/gemma_h200_rerace_final.json).
+
+---
+
+## GEMMA-3-27B H200 LEVER ROUND 2 — host gap root-caused and killed; pp256 FLIPS to WIN (2026-09-16, trtllm-gemma-us-west1-c)
+
+Root cause of round 1's constant ~76-90 ms per-prefill host gap: the gemma arm paid a
+one-time TC init (f32 blob -> f16 weight staging + shim context) PER PREFILL ADMISSION
+instead of once at serve startup. The L3 arm (L3_warminit) hoists it into serve warmup;
+weights stay resident in f16 afterwards. Numerics invariant: ORACLE GATE all_pass=True on
+L3 (G0 16/16 + G1 64/64 on pp256/pp1024/val550, val550 2/2 bit-identical repeats, rag4096
+22/22 + EOS-stop). TRT-LLM RE-SERVED SAME SESSION (41.297 / 110.710 / 425.954 ms — within
+1% of the stored column). Clocks pinned 1410, drift events 0; L3 rel-IQR 0.448% / 0.100% /
+0.143%, spread gates PASS, 0 outliers; L3 warmup runs equal measured (init absent from
+both), and post-run teardown clean (all GPUs 0 MiB).
+
+| cell | v1 ms | L3 ms | L3 vs v1 | TRT-LLM ms | ttft ratio (L3÷TRT) | raw tok/s ratio | verdict |
+|---|---|---|---|---|---|---|---|
+| pp256 | 122.397 | 37.681 | -69.21% | 41.297 | 0.912x | 1.096x | WIN |
+| pp1024 | 193.478 | 121.386 | -37.26% | 110.710 | 1.096x | 0.912x | LOSS |
+| rag4096 | 612.954 | 542.656 | -11.47% | 425.954 | 1.274x | 0.785x | LOSS |
+
+Convention: raw tok/s algenta÷TRT-LLM, >1.0 = WIN; the ttft ratio is its reciprocal.
+Basis note: v1's per-admission init made round-1 TTFTs non-comparable against a
+warm-server opponent; L3 is the apples-to-apples basis (both engines convert/load weights
+once at startup). Round-1 cells stay on record as measured with the then-shipped driver.
+Publication: pp256 WIN held for gitbook until the L3 code lands in a PR (arm is VM-local
+as of this entry); pp1024/rag4096 LOSS ledger-only. RAG-4096 decode remains
+NOT-COMPARABLE (natural EOS 22 tok vs ignore_eos 256). Front continues: fused flash
+attention for the gemma seam (~7-9 ms of the +10.7 ms pp1024 gap), then GEMM dissection
+vs the captured TRT-LLM full-lifetime traces for rag4096.
