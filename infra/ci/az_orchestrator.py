@@ -118,6 +118,14 @@ BOOT_GRACE_S = 720
 # the two windows cannot drift apart again: a 720s stopped-grace is a silent no-op while the
 # unregistered rule still fires at 600s, which is what the hot-patch this replaced did.
 ORPHAN_AGE_S = BOOT_GRACE_S
+# Minimum spacing between the TWO power-state observations that condemn a STOPPED-BUT-REGISTERED
+# worker (see _stopped_twice). RECONCILE_S is 90s, so two consecutive polls are already further
+# apart than this; the floor exists because cleanup() is not contractually reconcile-only -- a
+# second caller (or a test driving two passes back to back) must not be able to convert "one
+# observation" into "two" by being invoked twice inside the same minute. A single instanceView
+# read that returns a stale power state is a real ARM behaviour, and one stale read must never
+# be enough to delete a VM GitHub still lists as a runner.
+STOPPED_CONFIRM_S = 60
 # How long delete_vm() waits for the compute resource to disappear before it touches the NIC.
 # See delete_vm(): ARM deletes are async and a NIC delete issued too early fails NicInUse and
 # leaks the NIC. Measured 2026-08-26: 21s from virtualMachines/delete Started to Succeeded.
@@ -218,6 +226,13 @@ _DELIVERY_TTL_S = 3600
 _inflight = set()
 _inflight_names = set()  # VM names currently being provisioned; cleanup must not reap their nic/pip
 _absent_once = set()  # net-sweep two-poll guard: base seen without a VM once, swept on second sight
+# Stopped-worker two-poll guard, same shape as _absent_once: VM name -> wall time of the FIRST
+# stopped/deallocated sighting of the current streak. A sighting of anything else clears the
+# entry, so only two CONSECUTIVE polls agree can condemn a registered worker (see _stopped_twice).
+# Touched only from cleanup(), which runs on the single reconcile thread -- deliberately no lock,
+# matching _absent_once/_unswept_nics. Pruned each cycle against the live VM set so a name can
+# never accumulate forever.
+_stopped_seen = {}
 # NIC names the sweep could not parse. Log-once set, so an unhandled naming form is reported the
 # first time rather than every 90s poll -- but IS reported, which is what 31 leaked NICs cost.
 _unswept_nics = set()
@@ -420,6 +435,57 @@ def busy_runner_names():
     return {r["name"] for r in all_runners() if r.get("busy")}
 
 
+def delete_runner_registration(name):
+    """Delete this worker's org runner registration BY NAME, ahead of deleting its VM.
+
+    Why the reaper needs this and cannot leave it to _sweep_stale_registrations: that sweep is
+    deliberately conservative -- it only prunes a registration that is offline, not busy, AND has
+    no live VM. A worker being reaped for being stopped-but-registered fails the third condition
+    at the moment of the reap (its VM is still listed), so its registration survives the cycle in
+    which the VM dies and is only collected on some later pass. In the window between, the org
+    runner list still asserts a runner that has no machine behind it. That assertion is what the
+    reaper gap lived on: cleanup() reads `name in runners` as "this worker is alive", so a stale
+    registration kept a corpse out of the unregistered rule for the whole MAX_AGE_S window. The
+    registration goes FIRST so the two facts can never disagree -- the VM is deleted only after
+    GitHub has been told the runner is gone.
+
+    Matched by exact name (the runner registers with --name __VMNAME__, so name is the identity
+    here, not the numeric id, which the caller does not have). Listed through all_runners() rather
+    than a fresh `?per_page=100` call for the reason documented there: a truncated listing is how
+    a busy runner went missing from the busy set once already.
+
+    Returns True when the registration is gone or never existed, False when the delete failed.
+    A False does NOT abort the VM delete -- freeing the quota is the point of the reap, and the
+    failed registration is collected by _sweep_stale_registrations on a later pass once the VM is
+    gone. It is logged loudly either way, because a registration this orchestrator cannot delete
+    is one it also cannot account for."""
+    try:
+        runners = all_runners()
+    except Exception as e:  # noqa: BLE001 -- listing failure must not wedge the reap
+        log(f"registration delete for {name}: listing org runners failed: {e}")
+        return False
+    hits = [r for r in runners if (r.get("name") or "") == name]
+    if not hits:
+        log(f"registration delete for {name}: no org runner by that name, nothing to delete")
+        return True
+    ok = True
+    for r in hits:
+        rid = r.get("id")
+        if rid is None:
+            log(f"registration delete for {name}: runner entry carries no id ({r!r}) -- cannot "
+                f"delete it; _sweep_stale_registrations will retry once the VM is gone")
+            ok = False
+            continue
+        try:
+            gh(f"orgs/{ORG}/actions/runners/{rid}", method="DELETE")
+            log(f"deleted runner registration {name} (id={rid}) BEFORE deleting its VM")
+        except Exception as e:  # noqa: BLE001 -- same reasoning as the listing above
+            ok = False
+            log(f"registration delete for {name} (id={rid}) FAILED: {e} -- the VM is still being "
+                f"reaped, so the registration is left to _sweep_stale_registrations")
+    return ok
+
+
 def live_vms():
     d = arm("GET", f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/virtualMachines")
     out = []
@@ -453,6 +519,40 @@ def vm_power_state(name):
         if code.startswith("PowerState/"):
             return code.split("/", 1)[1]
     return None
+
+
+def _stopped_twice(name, now):
+    """The power state if this VM has been stopped/deallocated on TWO CONSECUTIVE polls at least
+    STOPPED_CONFIRM_S apart; None otherwise (including "unknown", which must never read as
+    stopped -- see vm_power_state).
+
+    Returns the state string rather than a bool so the caller can label the deletion without
+    paying a SECOND instanceView round-trip for the same answer.
+
+    The two-poll shape is the same guard the leaked-nic and leaked-disk sweeps already use
+    (_absent_once), for the same reason: one ARM read is allowed to be wrong, two agreeing reads
+    spaced a minute apart are not. A worker that reboots itself (the bootstrap's
+    `shutdown -h now` is a normal success path, and a job VM can be restarting Docker) can be
+    caught mid-transition by a single sample; deleting a registered runner on one sample is how
+    a healthy worker would get killed between two jobs.
+
+    Streak bookkeeping: any non-stopped sighting CLEARS the entry, so the two observations have
+    to be consecutive rather than merely both-happened-sometime. Nothing is logged on the first
+    sighting beyond that one line, so a candidate costs at most one log line per streak and one
+    per cycle thereafter -- never more than one line per VM per cycle."""
+    state = vm_power_state(name)
+    if state not in ("stopped", "deallocated"):
+        _stopped_seen.pop(name, None)
+        return None
+    first = _stopped_seen.get(name)
+    if first is None:
+        _stopped_seen[name] = now
+        log(f"stopped-but-registered: {name} is {state} (sighting 1/2, confirm on a later poll)")
+        return None
+    if now - first < STOPPED_CONFIRM_S:
+        return None  # too soon to call this a second, independent observation
+    _stopped_seen.pop(name, None)
+    return state
 
 
 def free_vcpus(region):
@@ -696,6 +796,39 @@ def subnet_id(region, vnet, subnet):
     )
 
 
+# ── tier0 repair budget (2026-09-16) ──────────────────────────────────────────────────────────
+# The dpkg-lock wait and the single retry that CLOUD_INIT_FAST's repair block now performs are
+# bounded by these two numbers, and the bound is the whole point: the repair BLOCKS registration
+# (see [notes].repair_blocks_registration in infra/ci/image/manifest.toml), so every second added
+# here is a second of boot latency paid on every cold provision and every warm-pool refill.
+#
+# They are mirrored as LITERALS in the shell rather than substituted into it. CLOUD_INIT_FAST has
+# to stay a plain string constant -- tests/test_az_orchestrator_runner_version_floor.py lifts the
+# two templates straight out of the module AST and asserts both are constants, because that is
+# what proves a worker receives the raw text rather than a reconstruction of it -- and adding a
+# placeholder would break render_userdata's own "no unsubstituted placeholder" gate. So the
+# arithmetic lives here, the numbers live there, and a test pins the two together.
+TIER0_LOCK_WAIT_S = 30      # flock -w on the dpkg frontend lock; once per attempt, two attempts
+TIER0_RETRY_BUDGET_S = 30   # hard ceiling for the whole retry pass, not per package
+TIER0_ADDED_BUDGET_S = 90   # the promise: worst case this hardening ADDS to a boot
+
+
+def tier0_repair_added_s(lock_wait=TIER0_LOCK_WAIT_S, retry=TIER0_RETRY_BUDGET_S):
+    """Worst-case seconds the lock-wait + one-retry hardening ADDS to a worker boot.
+
+    Two bounded lock waits (one before the first install attempt, one before the retry) plus one
+    bounded retry pass. The retry is capped as a PASS, not per package, so a boot missing all
+    three tier0 tools pays the retry budget once and not three times.
+
+    The pre-existing install timeouts (120s for the distro packages, 150s for the gh chain) are
+    deliberately NOT counted: they were already the repair block's worst case before this
+    hardening, so they are not added by it. That is the number to compare against
+    TIER0_ADDED_BUDGET_S, and it is why the promise is expressed as an addition rather than as a
+    total -- a total would have to move every time an install timeout is retuned, and would say
+    nothing about what THIS change cost."""
+    return 2 * lock_wait + retry
+
+
 CLOUD_INIT_FAST = """#cloud-config
 ssh_authorized_keys:
   - __SSH_PUB__
@@ -780,31 +913,115 @@ write_files:
       # provisions and warm-pool refill, not warm hits (those VMs are already registered).
       # Recapturing the golden image deletes this whole block and the cost with it.
       log "repair-start"
+      # ---- the dpkg lock, and why this stage now waits for it ----
+      # Two workers booting in the same minute on 2026-09-16 reported OPPOSITE verdicts for the
+      # SAME gallery image: one had unzip and gh, the other had neither. Both were built from
+      # version 1.0.0, so the image is not the variable -- the boot is. The suspected cause is
+      # contention on /var/lib/dpkg/lock-frontend early in boot: cloud-init runs its own package
+      # work (unattended-upgrades, package-update-before-boot) concurrently with this block, and
+      # an `apt-get install` that loses the lock race exits non-zero in milliseconds. SUSPECTED,
+      # NOT PROVEN -- and that is itself the finding worth recording: the old shape redirected
+      # every attempt to >/dev/null, tried once, and never re-probed, so it could not distinguish
+      # "somebody else held the lock" from "this package does not exist" and reported neither.
+      #
+      # So: wait for the lock, retry once, re-verify every tier0 tool, and NAME anything still
+      # missing. All of it bounded -- see tier0_repair_added_s(), whose arithmetic a test pins to
+      # the literals below: worst case 90s added to a boot, on a stage that already blocks
+      # registration by design.
+      #
+      # `flock -w N <lockfile> true` IS the wait: block until the lock is granted or N seconds
+      # pass, run `true`, release. Best-effort in both directions -- an absent lockfile or a
+      # timed-out wait falls through to the install anyway, because a boot is never gated on a
+      # lock and a tool that is still missing afterwards is named in the verdict below.
+      wait_dpkg_lock(){ flock -w 30 /var/lib/dpkg/lock-frontend true 2>/dev/null || true; }
+      # Seconds left until a deadline, floored at 1. The floor is not decoration: `timeout 0`
+      # means NO timeout in coreutils, so an exhausted budget echoed as 0 would silently unbound
+      # the very step it was capping -- the exact inverse of what this block is for.
+      secs_left(){ d=$(( $1 - $(date +%s) )); [ "$d" -gt 1 ] && echo "$d" || echo 1; }
       (
         # One `command -v <tool>` per tool, deliberately not a loop over "$t": the contract test
         # greps for exactly that literal per tier0 entry, so a loop would satisfy the shell while
-        # leaving the gate blind -- which is the class of hole that let `gh` ship missing.
-        NEED=""
-        command -v unzip >/dev/null 2>&1 || NEED="$NEED unzip"
-        command -v rsync >/dev/null 2>&1 || NEED="$NEED rsync"
-        [ -n "$NEED" ] && timeout 120 sh -c "apt-get update -qq && apt-get install -y -qq $NEED" >/dev/null 2>&1
+        # leaving the gate blind -- which is the class of hole that let `gh` ship missing. Kept as
+        # a function so the probe, the re-verification and the retry all decide from the SAME
+        # per-tool list instead of from three hand-maintained copies of it.
+        tier0_missing(){
+          m=""
+          command -v unzip >/dev/null 2>&1 || m="$m unzip"
+          command -v rsync >/dev/null 2>&1 || m="$m rsync"
+          command -v gh >/dev/null 2>&1 || m="$m gh"
+          echo "$m"
+        }
+        NEED=$(tier0_missing)
+        log "repair-probe missing=${NEED:-none}"
+        # The apt-installable subset. `gh` ships from cli.github.com, not jammy main, so it gets
+        # its own chain below rather than being handed to this install line.
+        PKGS=""
+        case "$NEED" in *unzip*) PKGS="$PKGS unzip" ;; esac
+        case "$NEED" in *rsync*) PKGS="$PKGS rsync" ;; esac
+        # ONE lock wait per attempt, not one per install command. That is a budget constraint,
+        # not a style choice: tier0_repair_added_s() accounts for exactly two waits plus the
+        # retry, and a test counts the call sites in this rendered shell so a third one cannot
+        # be added without the promise being re-stated. Gated on something actually being
+        # missing, because flock on a lock that unattended-upgrades happens to hold would
+        # otherwise cost a boot 30s to repair nothing.
+        if [ -n "$NEED" ]; then
+          wait_dpkg_lock
+        fi
+        if [ -n "$PKGS" ]; then
+          timeout 120 sh -c "apt-get update -qq && apt-get install -y -qq $PKGS" >/dev/null 2>&1
+        fi
         # `gh` is NOT in jammy main -- it ships from cli.github.com, the same third-party-repo
         # pattern the full bootstrap already uses for docker-ce. This one is not hypothetical:
         # codna's auto-release-cli died with `gh: command not found` (exit 127) on the FIRST real
         # release after the fleet went org-wide, which is exactly the event infra/ci/image/
         # manifest.toml predicted when it declared gh tier0. It was declared and apt-installed in
         # CLOUD_INIT, but never repaired HERE -- and CLOUD_INIT never runs on a golden-image VM.
-        if ! command -v gh >/dev/null 2>&1; then
-          timeout 150 sh -c 'curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && apt-get update -qq && apt-get install -y -qq gh' >/dev/null 2>&1
+        case "$NEED" in *gh*)
+          timeout 150 sh -c 'curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && apt-get update -qq && apt-get install -y -qq gh' >/dev/null 2>&1 ;;
+        esac
+        # ---- re-verify, then ONE retry under its own hard ceiling ----
+        # Driven by a re-probe and never by an exit code, because an install can exit 0 and still
+        # leave the binary absent, and can exit non-zero merely because the lock was held. Only
+        # looking at the filesystem again tells those apart.
+        STILL=$(tier0_missing)
+        if [ -n "$STILL" ]; then
+          log "repair-retry still-missing=$STILL lock-wait=done attempt=2of2"
+          RETRY_BY=$(( $(date +%s) + 30 ))
+          wait_dpkg_lock
+          PKGS=""
+          case "$STILL" in *unzip*) PKGS="$PKGS unzip" ;; esac
+          case "$STILL" in *rsync*) PKGS="$PKGS rsync" ;; esac
+          # No `apt-get update` on the retry: the lists are already warm from the first attempt,
+          # and dropping it is what makes a 30s ceiling realistic rather than aspirational.
+          if [ -n "$PKGS" ]; then
+            timeout "$(secs_left "$RETRY_BY")" sh -c "apt-get install -y -qq $PKGS" >/dev/null 2>&1
+          fi
+          # The gh chain keeps its own repo setup, because a first attempt that died at the
+          # keyring curl left no sources.list.d entry for a bare install to succeed against.
+          case "$STILL" in *gh*)
+            timeout "$(secs_left "$RETRY_BY")" sh -c 'curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && apt-get update -qq && apt-get install -y -qq gh' >/dev/null 2>&1 ;;
+          esac
         fi
         touch /var/run/ci-image-repair-done 2>/dev/null || true
       )
-      # Every timeout above is bounded, so a network failure degrades to "tool still missing"
-      # rather than wedging the boot. A job that then needs the tool fails naming it, which is
-      # what the workflow-side guards are for -- silence is the thing to avoid, not failure.
-      # The paths, not the exit codes, are what get reported: an install can exit 0 and still
-      # leave the binary absent, which is the failure mode this repair exists for.
-      log "repair-done unzip=$(command -v unzip 2>/dev/null || echo MISSING) rsync=$(command -v rsync 2>/dev/null || echo MISSING) gh=$(command -v gh 2>/dev/null || echo MISSING) python=$(command -v python 2>/dev/null || echo MISSING)"
+      # ---- per-tool verdicts, uploaded with the rest of boot.log ----
+      # The PATHS, not the exit codes, are what get reported. Every timeout above is bounded, so a
+      # network failure degrades to "tool still missing" rather than wedging the boot -- and a
+      # missing tool is then named here, in the one channel that outlives the VM. A job that needs
+      # it still fails; what it must never do is fail silently, or fail looking like a build bug.
+      V_unzip=OK; command -v unzip >/dev/null 2>&1 || V_unzip=MISSING
+      V_rsync=OK; command -v rsync >/dev/null 2>&1 || V_rsync=MISSING
+      V_gh=OK; command -v gh >/dev/null 2>&1 || V_gh=MISSING
+      V_python=OK; command -v python >/dev/null 2>&1 || V_python=MISSING
+      log "repair-done unzip=$V_unzip rsync=$V_rsync gh=$V_gh python=$V_python"
+      GONE=""
+      [ "$V_unzip" = "MISSING" ] && GONE="$GONE unzip"
+      [ "$V_rsync" = "MISSING" ] && GONE="$GONE rsync"
+      [ "$V_gh" = "MISSING" ] && GONE="$GONE gh"
+      [ "$V_python" = "MISSING" ] && GONE="$GONE python"
+      # A tier0 tool that survived a lock wait AND a retry is a broken guarantee, so it is said
+      # outright and named -- not left for a job to discover as an exit 127 fifty seconds in.
+      [ -n "$GONE" ] && log "repair-incomplete TIER0-STILL-MISSING:$GONE after lock-wait and one retry"
       up
       # ---- stage: runner-upgrade ----
       # GitHub enforces a MINIMUM self-hosted-runner version at REGISTRATION time. Below the
@@ -1229,19 +1446,58 @@ def cleanup():
         # failure mode being traded against, and it is the cheaper of the two: centralus now
         # carries 190 total cores, so one generation of corpses inside a 720s window fits,
         # whereas a delete/create cycle every 90s does not leave the plane standing at all.
-        if not ((unregistered and age > BOOT_GRACE_S) or age > MAX_AGE_S):
+        condemned = (unregistered and age > BOOT_GRACE_S) or age > MAX_AGE_S
+        power = None
+        if not condemned and not unregistered and age > BOOT_GRACE_S:
+            # ── THE STOPPED-BUT-REGISTERED GAP (2026-09-16, the second half of that day) ──
+            # `unregistered` above is the ONLY thing that lets the BOOT_GRACE_S rule fire early,
+            # so a worker that powered itself off AFTER registering was invisible to it: not
+            # unregistered, not yet MAX_AGE_S, therefore `continue` -- and its 8 vCPU stayed
+            # pinned for the full 90 minutes. That is not a corner case, it is the common case
+            # whenever a job ends and the runner exits: the bootstrap's success path IS
+            # `shutdown -h now` on a VM whose registration GitHub still lists. After the
+            # restart burst on 2026-09-16, 15 of 19 VMs were in exactly this state, i.e. 120 of
+            # the subscription's vCPU quota held by corpses with 90 minutes left on the clock
+            # and checks queued behind them.
+            #
+            # The registration is therefore NOT evidence of life, only of a life that started.
+            # Two consecutive stopped sightings past the boot grace are the evidence of death,
+            # and they are what this asks for. Bounded the same way the unregistered rule is:
+            # the grace still applies, so a worker self-powering-off 55s into a broken bootstrap
+            # is held for the whole window and the 2026-09-16 churn storm cannot come back --
+            # this reaps at BOOT_GRACE_S + one poll, not on sight.
+            #
+            # Cost, stated plainly: one instanceView call per REGISTERED worker older than the
+            # boot grace per reconcile cycle, capped by MAX_CONCURRENCY (20). It is asked only
+            # where the answer can change a verdict, which is the rule vm_power_state's own
+            # docstring sets.
+            power = _stopped_twice(name, now)
+            condemned = power is not None
+        if not condemned:
             continue
-        # Power state is asked ONLY for a VM already condemned, and only to LABEL the reason.
-        # It used to be asked for every young unregistered VM each cycle so a stopped one could
-        # be reaped early, which made it one ARM round-trip per young worker per 90s poll for a
-        # verdict that no longer changes anything. Asking here costs one call per deletion.
-        stopped = vm_power_state(name) in ("stopped", "deallocated")
-        if stopped:
+        if power is None:
+            # Power state is asked ONLY for a VM already condemned, and only to LABEL the reason.
+            # It used to be asked for every young unregistered VM each cycle so a stopped one could
+            # be reaped early, which made it one ARM round-trip per young worker per 90s poll for a
+            # verdict that no longer changes anything. Asking here costs one call per deletion.
+            power = vm_power_state(name)
+        stopped = power in ("stopped", "deallocated")
+        if stopped and not unregistered:
+            why = "stopped-registered"
+        elif stopped:
             why = "stopped-no-runner"
         elif unregistered:
             why = "orphan-no-runner"
         else:
             why = "max-age"
+        if not unregistered:
+            # REGISTRATION FIRST, VM SECOND, and both logged. A VM deleted under a live
+            # registration leaves the org asserting a runner that no longer exists, which is the
+            # exact stale fact this rule was blind to; deleting the registration first means the
+            # two can never disagree, and GitHub cannot dispatch to it in the gap. Never reached
+            # for a busy runner -- the busy check above is absolute and stays that way, because
+            # GitHub cancels a job whose runner registration disappears.
+            delete_runner_registration(name)
         log(f"deleting {name} (age={int(age)}s, reason={why})")
         delete_vm(name, location, reason=f"{why} age={int(age)}s", was_busy=name in busy)
     # leaked nic/pip from failed provisions occupy the per-region PIP quota (limit 20)
@@ -1278,6 +1534,12 @@ def cleanup():
     for b in list(_absent_once):
         if b in vm_names or b in protected:
             _absent_once.discard(b)
+    # Same hygiene for the stopped-worker streaks: a name whose VM is gone (reaped this cycle, or
+    # deleted by something else) must not keep an entry, or the dict grows one key per worker
+    # forever and a recycled name would inherit a dead worker's sighting 1/2.
+    for n in list(_stopped_seen):
+        if n not in vm_names and n not in protected:
+            _stopped_seen.pop(n, None)
     d = arm(
         "GET",
         f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Network/networkInterfaces",
