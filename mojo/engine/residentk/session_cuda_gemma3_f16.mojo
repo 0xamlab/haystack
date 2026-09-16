@@ -490,7 +490,88 @@ struct _CudaResidentGemma3F16(Movable):
             return s
         return RESIDENT_OK
 
+    def ensure_tc_ready(mut self) raises -> Int:
+        """Bind the TC shim's cuBLAS handle once, at session-setup time.
+
+        Idempotent: the `tc_ready == 0` guard makes every call after the first a no-op, and the
+        three outcome branches (bound / legacy-bind failed / init failed -> native chain) and
+        their banners are unchanged. `seal()` calls this so a long-lived session binds the handle
+        during setup; `prefill()` still calls it as a fallback for a caller that never seals.
+        """
+        @parameter
+        if TC_SHIM_BUILD:
+            if self.tc_ready == 0:
+                var r = _tc_init()
+                if r == 0:
+                    @parameter
+                    if G3_STREAM:
+                        # bind the handle to the legacy default stream — Mojo's default
+                        # stream is device-ordered against it (legacy_probe.mojo), so
+                        # the async seams below need no host sync at all.
+                        var rb = _tc_use_legacy_stream()
+                        if rb != 0:
+                            self.tc_ready = -1
+                            print("gemma3-f16: legacy-stream binding FAILED, status", rb,
+                                  "last_error:", _tc_last_error(),
+                                  "| prefill stays on the native chain")
+                        else:
+                            self.tc_ready = 1
+                            print("gemma3-f16: TC shim cuBLAS handle BOUND to the LEGACY",
+                                  "stream | G3_STREAM: zero-sync async GemmEx seams")
+                    else:
+                        self.tc_ready = 1
+                        print("gemma3-f16: TC shim cuBLAS handle BOUND | full-tile",
+                              "prefill GEMMs ride the HMMA seam")
+                else:
+                    self.tc_ready = -1
+                    print("gemma3-f16: TC shim init FAILED, status", r,
+                          "last_error:", _tc_last_error(),
+                          "| prefill stays on the native chain")
+        return RESIDENT_OK
+
+    def _prime_prefill_modules(mut self) raises:
+        """Make every CUDA module the prefill path can dispatch resident before the first request.
+
+        CUDA loads modules lazily, so an unprimed session charges the first request for the JIT:
+        on H200 at 1410 MHz, nsys CUPTI runtime records inside the prefill region show 9x
+        `cuModuleLoadDataEx` (31.963 ms) + 12x `cuLibraryLoadData` (15.168 ms) + one 9.300 ms
+        first-launch `cudaLaunchKernel`, against 67.93 ms of GPU idle in a 103.848 ms kernel span
+        -- the idle is fully accounted for by host-side one-time work. Binding the cuBLAS handle
+        alone recovers only ~17 ms of it, because the rest is per-kernel module residency.
+
+        cuBLAS selects a distinct algorithm, and therefore a distinct module, per GEMM shape, so
+        one priming shape does not cover the others. The shapes primed here are the ones the
+        shape-fact gates switch on: `TC_MIN_M` (the HMMA seams engage), 256 (`use_tc_attn`
+        engages), 512, and `G3_PF_TILE` (the full tile that carries a long prompt's bulk).
+        Priming only the full tile measured 56.893 ms for a 256-token first request vs 37.374 ms
+        with the bands primed. `CUDA_MODULE_LOADING=EAGER` is not a substitute: it measured
+        3136.308 ms, because it pulls every module in the image into the first CUDA call.
+
+        The dummy prompts are all-zero token ids (0 is valid). `prefill()` always restarts at
+        pos = 0 and overwrites the same KV slots, so priming leaves no state a real request does
+        not immediately replace, and the generated tokens are discarded.
+        """
+        var shapes = List[Int]()
+        shapes.append(Int(TC_MIN_M))
+        shapes.append(256)
+        shapes.append(512)
+        shapes.append(Int(G3_PF_TILE))
+        for i in range(len(shapes)):
+            var m = shapes[i]
+            if m < 1 or m > self.max_ctx:
+                continue
+            var dummy = List[Int]()
+            for _ in range(m):
+                dummy.append(0)
+            self.prefill(dummy)
+
     def seal(mut self) raises -> Int:
+        # Pay the session's one-time costs here, at setup, so no request is charged for them:
+        # the cuBLAS handle bind, then the lazy per-kernel CUDA module loads.
+        self.ensure_tc_ready()
+        @parameter
+        if CUDA_GEMMA3_BUILD:
+            self._prime_prefill_modules()
         self.ctx.synchronize()
         return RESIDENT_OK
 
@@ -517,35 +598,9 @@ struct _CudaResidentGemma3F16(Movable):
                 if prompt_ids[i] < 0 or prompt_ids[i] >= self.vocab:
                     return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
 
-            @parameter
-            if TC_SHIM_BUILD:
-                if self.tc_ready == 0:
-                    var r = _tc_init()
-                    if r == 0:
-                        @parameter
-                        if G3_STREAM:
-                            # bind the handle to the legacy default stream — Mojo's default
-                            # stream is device-ordered against it (legacy_probe.mojo), so
-                            # the async seams below need no host sync at all.
-                            var rb = _tc_use_legacy_stream()
-                            if rb != 0:
-                                self.tc_ready = -1
-                                print("gemma3-f16: legacy-stream binding FAILED, status", rb,
-                                      "last_error:", _tc_last_error(),
-                                      "| prefill stays on the native chain")
-                            else:
-                                self.tc_ready = 1
-                                print("gemma3-f16: TC shim cuBLAS handle BOUND to the LEGACY",
-                                      "stream | G3_STREAM: zero-sync async GemmEx seams")
-                        else:
-                            self.tc_ready = 1
-                            print("gemma3-f16: TC shim cuBLAS handle BOUND | full-tile",
-                                  "prefill GEMMs ride the HMMA seam")
-                    else:
-                        self.tc_ready = -1
-                        print("gemma3-f16: TC shim init FAILED, status", r,
-                              "last_error:", _tc_last_error(),
-                              "| prefill stays on the native chain")
+            # Idempotent: `seal()` has normally bound the handle already, so this is a no-op for
+            # a sealed session and still covers a caller that never seals.
+            self.ensure_tc_ready()
 
             var n_q = self.h_q * self.d_head
             var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
