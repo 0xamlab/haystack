@@ -152,6 +152,24 @@ cells; greedy continuations match the fp32 oracle on both engines.
 Prefill speedup at 256 tokens: 1.86x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
 1.08x vs TensorRT-LLM. Decode speedup (gen=256): 1.05x vs TensorRT-LLM.
 
+### Gemma 3 27B — prefill vs TensorRT-LLM (H200)
+
+Same-session re-measurement against TensorRT-LLM 1.2.1 (NVCR release container, PyTorch
+backend, bfloat16 weights, Hugging Face checkpoint loaded directly, KV-cache and prefix
+block reuse disabled, CUDA graphs at engine defaults). Engine-internal timings on both
+sides (no HTTP layer); clocks pinned at 1410 MHz; greedy decoding; token counts verified
+server-side; median of 7 runs per engine; rel-IQR <= 0.45% on all cells; greedy
+continuations match the fp32 oracle on both engines (16/16 and 64/64 gates, bit-identical
+repeats). One-time engine initialisation (weight staging and CUDA module priming across
+the dispatch bands) is paid at serve startup on both engines, not per request.
+
+| Engine | Prefill 256 tok/s |
+| --- | --- |
+| Algenta (CUDA tensor-core gemma seam, f16 weights, warm-init staging) | 6,819 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,199 |
+
+Prefill speedup at 256 tokens: 1.10x vs TensorRT-LLM.
+
 ## Scope
 
 * Results are for Qwen3-0.6B-Base and Qwen2.5-7B-Instruct on the pinned toolchain; the
