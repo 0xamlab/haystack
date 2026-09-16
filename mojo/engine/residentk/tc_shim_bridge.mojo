@@ -448,6 +448,79 @@ def _tc_attn_softmax_mask_async(s32: Int, p16: Int, n_keys: Int, m_rows: Int, h_
         return -1
 
 
+def _tc_fa_layout_probe() -> Int:
+    """Run (once, cached inside the shim) the on-device check of the WMMA accumulator element
+    -> (row, col) mapping that `_tc_fa_causal_async` indexes by when it applies the causal
+    mask, rescales O by the online-softmax alpha and divides by the row sum. The WMMA API
+    documents that layout as opaque, so the kernel does not get to assume it: this returns
+    -310 and the shim prints the disagreeing lane/element if it ever changes, and every FA
+    call then declines so the session keeps the five-pass chain. Called at TC staging time so
+    the ARMED/DECLINED verdict is a per-binary line in the run log, never a silent perf cliff.
+    0 = verified."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_fa_layout_probe", Int64]())
+    else:
+        return -1
+
+
+def _tc_fa_causal_async(q32: Int, k16: Int, v16: Int, o32: Int, scale32: Int, m: Int,
+                        n_keys: Int, h_q: Int, h_kv: Int, d: Int, pos_base: Int,
+                        bn: Int) -> Int:
+    """FUSED CAUSAL FLASH ATTENTION (FRONT 3 lever 1, `-D ALGENTA_7B_PF_FA`): one WMMA
+    FlashAttention-2 kernel replacing the whole five-pass TC attention chain — the head-major
+    Q pack, the QK^T strided-batched GemmEx, the masked softmax, the PV GemmEx and the
+    head-major O unpack. The `[h_q*m, n_keys]` f32 score matrix (117 MB/layer at
+    m=n_keys=1024) is never materialized: online softmax, the score tile lives in the WMMA
+    accumulator registers, and only the f16 P tile round-trips through shared memory.
+
+    `q32` is the session's `pf_q_rot` `[m, h_q*d]` f32 POSITION-major (the RoPE kernel's own
+    output — no pack pass), `o32` is `pf_attn` in the same layout (no unpack pass), and
+    `k16`/`v16` are the `[n_keys, h_kv*d]` f16 staging the chain already builds. `scale32` is
+    a DEVICE POINTER to one f32 holding the attention scale, NOT a float argument: Mojo's
+    `external_call` has no repo-proven float-argument marshalling, and an ABI mismatch would
+    be a silent numeric bug rather than a crash, so the scale travels as a pointer the shim
+    dereferences on device (exact, one L2-resident 4-byte read per CTA).
+
+    `bn` selects the key-block width (32/64/128; anything else -> 64). GQA is internal
+    (query head h reads KV head h/(h_q/h_kv)); the causal predicate is the chain's own with
+    window 0, so a windowed layer must NOT dispatch here. 0 = success; -301 wrong head_dim;
+    -304 h_q not a multiple of h_kv; -310 the shim's on-device WMMA accumulator-layout probe
+    disagreed with the mapping the kernel indexes by — the caller MUST fall back to the
+    five-pass chain on ANY non-zero return, which is what the dispatch site does."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_fa_causal_async", Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64,
+            ](Int64(q32), Int64(k16), Int64(v16), Int64(o32), Int64(scale32), Int64(m),
+              Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d), Int64(pos_base), Int64(bn))
+        )
+    else:
+        return -1
+
+
+def _tc_swiglu_f16_fastexp(gu16: Int, act16: Int, m_rows: Int, n_ff: Int) -> Int:
+    """Fast-exp SwiGLU epilogue (FRONT 3 lever 2, `-D ALGENTA_7B_PF_FASTEXP`): the shim twin
+    of `_pf_swiglu_rows_f16_kernel` — the same `(g / (1 + exp(-g))) * u` over the same f16
+    operands with the same f32 intermediate arithmetic and the same single f32->f16 rounding
+    at the store, but with `__expf` (the single-instruction ex2.approx.ftz path) instead of a
+    libm exp, and a division-free 2-D grid with 16-byte vector loads/stores instead of one
+    scalar output per thread indexed by a runtime `i / n_ff`. Requires `n_ff % 8 == 0` and
+    16-byte-aligned operands; anything else returns -302 and the caller keeps the Mojo
+    epilogue. Enqueues on the shim stream, no sync. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_swiglu_f16_fastexp_async", Int64, Int64, Int64, Int64, Int64,
+            ](Int64(gu16), Int64(act16), Int64(m_rows), Int64(n_ff))
+        )
+    else:
+        return -1
+
+
 def _tc_gemm_f16_assign(a: Int, w16: Int, m: Int, k: Int, n: Int, a16: Int, c16: Int,
                       c32: Int) -> Int:
     """The probe's original ASSIGN seam (f16-C GemmEx + f32 out-convert), rung-2 ASSIGN

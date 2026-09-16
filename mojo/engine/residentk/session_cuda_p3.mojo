@@ -236,6 +236,9 @@ from residentk.tc_shim_bridge import (
     _tc_gemm_f16_16c_pre,
     _tc_bgemm_f16_async,
     _tc_attn_softmax_mask_async,
+    _tc_fa_causal_async,
+    _tc_fa_layout_probe,
+    _tc_swiglu_f16_fastexp,
     _tc_dequant_packed3_f16_dense,
     _pf_swiglu_rows_kernel,
 )
@@ -246,6 +249,8 @@ from residentk.kernels_prefill_gemma3 import (
     _pf_attn_softmax_mask_1p,
     _pf_rmsnorm_rows_f16_kernel,
     _pf_swiglu_rows_f16_kernel,
+    _pf_biasropewrt_kernel,
+    _pf_fill_scale_kernel,
 )
 from std.time import perf_counter_ns
 
@@ -309,6 +314,72 @@ comptime PF_F16MLP_B1: Bool = (
 compute only (f16 A/B, COMPUTE_32F), so the two f16-input flags additionally require
 `TC_ACC_MODE == 0` — a rebuild onto a fallback rung silently keeps the ladder's own
 dispatch instead of dropping the rung's f32 weight path."""
+
+
+# ── FRONT-3 prefill levers (2026-09-15): the TensorRT-LLM 1.2.1 pp1024 / RAG-4096 gap ──────
+#
+# Round 2 (`feat/7b-pp1024-ctx8192`, PR #983) closed the pp1024 gap from 0.876x to 0.925x and
+# opened RAG-4096 at 0.769x. The layer decomposition of the resulting _c8 arm against
+# TRT-LLM's own kernel mix (~/trtllm/front1/) ranks what is left, per pp1024 request:
+#
+#   attention            +8.38 ms   ours 437 us/layer over SIX GPU passes, theirs ONE
+#                                   `fmha_v2_flash_attention_bf16_..._causal_sm80` at 87 us
+#   SwiGLU epilogue      +2.47 ms   ours 170 us/layer, their `silu_and_mul_kernel` 82 us
+#   bias+RoPE+KV-write   +1.98 ms   ours 92.5 us/layer over TWO passes, their
+#                                   `applyBiasRopeUpdateKVCacheV2` 21.7 us over one
+#   (we already WIN projection GEMMs -2.72 ms and host -6.04 ms)
+#
+# Three flags, one per gap, each independently A/B'd and token-gated, each default OFF so the
+# _c8 binary stays byte-identical without them:
+#
+#    ALGENTA_7B_PF_FA        replace the whole five-pass TC attention chain (head-major Q pack,
+#                            QK^T strided-batched GemmEx, masked softmax, PV GemmEx, head-major
+#                            O unpack) with ONE fused causal FlashAttention-2 kernel in the
+#                            shim (`_tc_fa_causal_async`). The [h_q*m, n_keys] f32 score matrix
+#                            — 117 MB/layer at m=n_keys=1024, 3.3 GB per pp1024 prefill — is
+#                            never materialized; online softmax keeps the score tile in the
+#                            WMMA accumulators and only the f16 P tile round-trips through
+#                            shared memory. Q and O stay in the session's OWN position-major
+#                            f32 layouts, so the pack and unpack passes disappear with it, and
+#                            the causal mask means the diagonal blocks stop computing the 2x
+#                            pairs a dense QK^T GEMM does. NOT bit-identical (online softmax
+#                            reorders the sum and rescales O per block) — the token-identity
+#                            gates decide it. Measured on A100 at 1410 MHz: 121.9 us/layer at
+#                            m=n_keys=1024 vs the chain's 336.9 us for its three passes alone
+#                            (462 us with the pack/unpack/convert), i.e. -340 us/layer, and
+#                            max_abs 7.6e-4 / rms 4.4e-5 against that chain over all 3,670,016
+#                            output elements, plus rms <= 1.0e-4 against a HOST
+#                            double-precision reference at all six raced shapes.
+#    ALGENTA_7B_PF_FASTEXP   the f16 SwiGLU epilogue runs the shim's `__expf` (ex2.approx.ftz)
+#                            twin instead of a Mojo scalar `exp` per output, with a
+#                            division-free 2-D grid and 16-byte vector loads. Requires
+#                            F16MLP (it is that epilogue's twin). Measured 95.2 us/layer vs the
+#                            accurate-expf form's 124.9 us at m=1024/n_ff=18944, with 0.0066%
+#                            of outputs differing by one f16 ulp (max_rel 3.0e-3) — the
+#                            expected ex2.approx delta, gated by token identity like F16MLP.
+#    ALGENTA_7B_PF_BIASROPE  fold the q/k/v bias add into the RoPE+KV-write kernel
+#                            (`_pf_biasropewrt_kernel`), one launch instead of two. BIT-EXACT
+#                            against the pair: one f32 addition of the same two f32 operands at
+#                            the same point in the expression, where the two-pass form stored
+#                            that sum back to the f32 `pf_qkv` the RoPE kernel then read.
+comptime PF_FA_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_FA"]()
+comptime PF_FASTEXP_B1: Bool = (
+    PF_F16MLP_B1 and is_defined["ALGENTA_7B_PF_FASTEXP"]()
+)
+comptime PF_BIASROPE_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_BIASROPE"]()
+"""FASTEXP is the f16 SwiGLU epilogue's twin, so it inherits F16MLP's whole gate
+(`TC_SHIM_BUILD and TC_ACC_MODE == 0 and ALGENTA_7B_PF_F16MLP`) rather than restating it — a
+build that asked for the fast exp without the f16 epilogue gets the epilogue it would have
+dispatched anyway, not a silently different numeric path."""
+
+comptime _PF_FA_BN: Int = 64
+"""Key-block width the fused attention kernel tiles `n_keys` by. A/B'd on A100 at 1410 MHz
+across 32/64/128 at all six raced shapes: 64 and 32 tie at pp1024 (121.9 us/layer each), 64
+wins the chunked RAG shapes (270.3 vs 297.0 us at n_keys=2048), and 128 loses everywhere
+(150.5 us at pp1024) because its 102 KB of dynamic shared memory pins the kernel at one CTA
+per SM. 32 is the better tile only for a short partial tail block (m=660: 151.6 vs 188.4 us),
+where its 39 KB lifts occupancy to three CTAs and the smaller grid fits one wave — not worth a
+runtime switch for a shape that is one chunk of a multi-chunk prefill."""
 
 
 # ── the three packed3 decode twins ─────────────────────────────────────────────
@@ -1853,6 +1924,13 @@ struct _CudaResidentQwen3P3(Movable):
     # scratch); a 1-element placeholder otherwise, so a flag-off build allocates nothing.
     var pf_xn16: DeviceBuffer[DType.float16]
 
+    # the fused flash attention's scale cell (-D ALGENTA_7B_PF_FA): `_tc_fa_causal_async`
+    # takes the attention scale as a DEVICE POINTER to one f32 rather than a float argument
+    # (Mojo's `external_call` has no repo-proven float marshalling, and an ABI mismatch there
+    # would be a silent numeric bug rather than a crash). Written once by
+    # `_pf_fill_scale_kernel` at TC staging time, read by every attention CTA thereafter.
+    var pf_fa_scale: DeviceBuffer[DType.float32]
+
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -1957,6 +2035,7 @@ struct _CudaResidentQwen3P3(Movable):
         self.pf_tc_k16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.pf_xn16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_fa_scale = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
         self.tc_staged = -1
         @parameter
         if TC_SHIM_BUILD:
@@ -2016,6 +2095,12 @@ struct _CudaResidentQwen3P3(Movable):
             # demotes the whole TC plan cleanly rather than half-allocating it.
             self.pf_xn16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
                 rows * d_model)
+        @parameter
+        if PF_FA_B1:
+            # one f32 cell — the attention scale the shim's fused kernel dereferences on
+            # device. Inside the same headroom try as the rest of the TC scratch so a tight
+            # device demotes the whole plan rather than half-allocating it.
+            self.pf_fa_scale = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
 
     def device_name(self) raises -> String:
         return self.f32.device_name()
@@ -2224,6 +2309,27 @@ struct _CudaResidentQwen3P3(Movable):
                       "last_error:", _tc_last_error(), "| prefill stays on the native chain")
                 self.tc_staged = -1
                 return
+        @parameter
+        if PF_FA_B1:
+            # publish the attention scale to the device cell `_tc_fa_causal_async` reads
+            self.f32.ctx.enqueue_function[_pf_fill_scale_kernel](
+                self.pf_fa_scale.unsafe_ptr(), self.f32.scale,
+                grid_dim=1, block_dim=1,
+            )
+            # ARM the lever only if the shim verified its WMMA accumulator mapping ON THIS
+            # DEVICE. The verdict is printed once per session so a declined lever can never
+            # masquerade as a measured FA number in the A/B: every `_tc_fa_causal_async`
+            # call would return -310 and the prefill would quietly keep the five-pass chain.
+            var rfa = _tc_fa_layout_probe()
+            if rfa == 0 and self.f32.d_head == 128
+                and self.f32.h_q % self.f32.h_kv == 0:
+                print("TC: fused causal flash attention ARMED | WMMA accumulator layout",
+                      "verified on device | BN =", _PF_FA_BN, "| d_head =",
+                      self.f32.d_head, "| GQA g =", self.f32.h_q // self.f32.h_kv)
+            else:
+                print("TC: fused causal flash attention DECLINED, status", rfa,
+                      "| d_head =", self.f32.d_head, "| h_q/h_kv =", self.f32.h_q, "/",
+                      self.f32.h_kv, "| prefill attention keeps the five-pass TC chain")
         self.f32.ctx.synchronize()
         self.tc_staged = 1
         var f16_bytes = Float64(self.f32.n_layers) * Float64(
@@ -2231,6 +2337,54 @@ struct _CudaResidentQwen3P3(Movable):
         print("TC: prefill f16 dual residency STAGED |",
               Float64(perf_counter_ns() - t0) / 1.0e6, "ms one-time | dequant tables:",
               f16_bytes / 1.0e9, "GB | compute mode:", TC_ACC_MODE)
+        # ── THE FLAG AUDIT BANNER (2026-09-15) ─────────────────────────────────────────────
+        # One print per numeric-path flag, INSIDE that flag's own `@parameter if`, so the
+        # literal only exists in a binary that actually has the flag. That makes `strings` on
+        # the shipped binary a positive audit of what numerics it will run — the failure mode
+        # this closes is the gemma-3-27b H200 column, which was measured with a rebuild that
+        # had silently dropped `-D ALGENTA_G3_STREAM` and was wrong at oracle index 0 on 5/6
+        # prompts. An absent TCFLAG line means OFF; a build cannot print a line it lacks.
+        # `scripts/audit_tc_flags.sh` greps exactly these and writes the PR's flag table.
+        print("TC FLAGS: ONEPASS_B1 =", CUDA_PREFILL_ONEPASS_B1, "| FLASH_B1 =",
+              CUDA_PREFILL_FLASH_B1, "| FLASH2_B1 =", CUDA_PREFILL_FLASH2_B1,
+              "| NOSEAM =", TC_NOSEAM, "| TCATTN =", PF_TCATTN_B1, "| SM1P =", PF_SM1P_B1,
+              "| F16NORM =", PF_F16NORM_B1, "| F16MLP =", PF_F16MLP_B1, "| FA =", PF_FA_B1,
+              "| FASTEXP =", PF_FASTEXP_B1, "| BIASROPE =", PF_BIASROPE_B1, "| acc_mode =",
+              TC_ACC_MODE, "| max_ctx =", self.f32.max_ctx)
+        @parameter
+        if CUDA_PREFILL_ONEPASS_B1:
+            print("TCFLAG ALGENTA_PF_ONEPASS_B1=1 (prefill walks _B1_PASS_MAX-row windows)")
+        @parameter
+        if CUDA_PREFILL_FLASH_B1:
+            print("TCFLAG ALGENTA_PF_ATTN_FLASH_B1=1 (sub-threshold tiles ride native flash)")
+        @parameter
+        if CUDA_PREFILL_FLASH2_B1:
+            print("TCFLAG ALGENTA_PF_ATTN_FLASH2_B1=1 (d_head==128 native flash2)")
+        @parameter
+        if TC_NOSEAM:
+            print("TCFLAG ALGENTA_TC_NOSEAM=1 (legacy-stream binding, no per-GEMM sync seam)")
+        @parameter
+        if PF_TCATTN_B1:
+            print("TCFLAG ALGENTA_7B_PF_TCATTN=1 (tensor-core prefill attention chain)")
+        @parameter
+        if PF_SM1P_B1:
+            print("TCFLAG ALGENTA_7B_PF_SM1P=1 (single-read shared-cached masked softmax)")
+        @parameter
+        if PF_F16NORM_B1:
+            print("TCFLAG ALGENTA_7B_PF_F16NORM=1 (rmsnorm writes the f16 pre-staged A)")
+        @parameter
+        if PF_F16MLP_B1:
+            print("TCFLAG ALGENTA_7B_PF_F16MLP=1 (f16 gate/up C + f16 SwiGLU -> f16 down A)")
+        @parameter
+        if PF_FA_B1:
+            print("TCFLAG ALGENTA_7B_PF_FA=1 (fused causal FlashAttention-2, BN =", _PF_FA_BN,
+                  ") — replaces the Q pack / QK^T / softmax / PV / O unpack chain")
+        @parameter
+        if PF_FASTEXP_B1:
+            print("TCFLAG ALGENTA_7B_PF_FASTEXP=1 (SwiGLU epilogue on shim __expf/ex2.approx)")
+        @parameter
+        if PF_BIASROPE_B1:
+            print("TCFLAG ALGENTA_7B_PF_BIASROPE=1 (qkv bias folded into RoPE+KV-write)")
 
     def _prefill_tc(mut self, prompt_ids: List[Int]) raises -> _StepOut:
         """The TC escape-hatch prefill — called ONLY with `tc_staged == 1` under
@@ -2336,28 +2490,55 @@ struct _CudaResidentQwen3P3(Movable):
                                 Int(self.f32.pf_qkv.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
-                        # 2b ── 7B-lane attention bias (native, before RoPE)
-                        if self.f32.has_qkv_bias == 1:
-                            self.f32.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                        # 2b + 3 ── 7B-lane attention bias, then q_norm + k_norm + RoPE + the
+                        #      in-place KV-cache write. Under -D ALGENTA_7B_PF_BIASROPE and a
+                        #      bias-carrying checkpoint these are ONE launch
+                        #      (`_pf_biasropewrt_kernel`, bit-exact against the pair — see its
+                        #      docstring); otherwise the bias add stays its own pass so the
+                        #      RoPE kernel reads it back, exactly as before. A bias-LESS
+                        #      checkpoint (Qwen3) keeps the plain RoPE kernel under either
+                        #      flag, so the flag never changes what a bias-less model runs.
+                        var bias_fused = False
+                        @parameter
+                        if PF_BIASROPE_B1:
+                            bias_fused = self.f32.has_qkv_bias == 1
+                        if bias_fused:
+                            self.f32.ctx.enqueue_function[_pf_biasropewrt_kernel](
+                                self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
+                                lw.cv.unsafe_ptr(),
                                 self.f32.pf_qkv.unsafe_ptr(),
                                 self.f32.qkv_biases[layer].unsafe_ptr(),
-                                Int64(m), Int64(n_qkv),
-                                grid_dim=_ceil_div(m * n_qkv, _TG), block_dim=_TG,
+                                lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                                self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                                Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                Int64(self.f32.d_head), self.f32.eps, Int64(m),
+                                Int64(self.f32.qk_norm),
+                                grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
+                                block_dim=self.f32.d_head,
                             )
-                            issued += 1
-                        # 3 ── q_norm + k_norm + RoPE + the in-place KV-cache write
-                        self.f32.ctx.enqueue_function[_pf_ropewrt_kernel](
-                            self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
-                            lw.cv.unsafe_ptr(),
-                            self.f32.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(),
-                            lw.kn.unsafe_ptr(),
-                            self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
-                            Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
-                            Int64(self.f32.d_head), self.f32.eps, Int64(m),
-                            Int64(self.f32.qk_norm),
-                            grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
-                            block_dim=self.f32.d_head,
-                        )
+                        else:
+                            # 2b ── 7B-lane attention bias (native, before RoPE)
+                            if self.f32.has_qkv_bias == 1:
+                                self.f32.ctx.enqueue_function[_qkv_bias_add_rows_kernel](
+                                    self.f32.pf_qkv.unsafe_ptr(),
+                                    self.f32.qkv_biases[layer].unsafe_ptr(),
+                                    Int64(m), Int64(n_qkv),
+                                    grid_dim=_ceil_div(m * n_qkv, _TG), block_dim=_TG,
+                                )
+                                issued += 1
+                            # 3 ── q_norm + k_norm + RoPE + the in-place KV-cache write
+                            self.f32.ctx.enqueue_function[_pf_ropewrt_kernel](
+                                self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
+                                lw.cv.unsafe_ptr(),
+                                self.f32.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(),
+                                lw.kn.unsafe_ptr(),
+                                self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                                Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                Int64(self.f32.d_head), self.f32.eps, Int64(m),
+                                Int64(self.f32.qk_norm),
+                                grid_dim=(self.f32.h_q + self.f32.h_kv) * m,
+                                block_dim=self.f32.d_head,
+                            )
                         # 4 ── causal attention: the tensor-core strided-batched pipeline
                         #      under the shape-fact gate, else the SAME native selection
                         #      f32.prefill runs (flash2 under L-H4, flash under L-H3,
@@ -2372,7 +2553,68 @@ struct _CudaResidentQwen3P3(Movable):
                             # crossover are the shape facts, never the model name.
                             use_tc_attn = (TC_NOSEAM and self.f32.d_head == 128
                                            and m >= _PF_TCATTN_MIN_M)
-                        if use_tc_attn:
+                        # ── FRONT-3 LEVER 1: the fused causal FlashAttention-2 kernel
+                        #    (-D ALGENTA_7B_PF_FA). It replaces the ENTIRE five-pass chain
+                        #    below — (i) the head-major Q pack, (iii) the QK^T strided-batched
+                        #    GemmEx, (iv) the masked softmax, (v) the PV GemmEx and (vi) the
+                        #    head-major O unpack — with one kernel, so the [h_q*m, n_keys] f32
+                        #    score matrix (117 MB/layer at m=n_keys=1024; 3.3 GB per pp1024
+                        #    prefill) is never materialized. Q is read straight out of
+                        #    `pf_q_rot` and O written straight into `pf_attn`, both in the
+                        #    session's own position-major f32 layout, so (i) and (vi) have
+                        #    nothing left to do. Only (ii), the K/V f32->f16 staging, survives:
+                        #    it is the additive route that leaves the resident f32 KV cache
+                        #    untouched, and at ~2 MB/layer it is L2-resident.
+                        #
+                        #    The gate is shape facts only (never a model name): d_head 128 is
+                        #    the one head width the kernel implements, and integral GQA is what
+                        #    its `hk = h / (h_q/h_kv)` head mapping requires. It rides
+                        #    `use_tc_attn`, so it inherits that gate's NOSEAM requirement (the
+                        #    entry is async and ordering rides the legacy-stream contract), its
+                        #    `m >= _PF_TCATTN_MIN_M` tile-row crossover and TC_SHIM_BUILD.
+                        #
+                        #    DECLINE IS A FALLBACK, NOT AN ERROR: -301 (wrong head_dim), -304
+                        #    (non-integral GQA) and -310 (the shim's on-device WMMA accumulator
+                        #    layout probe disagreed with the mapping the kernel indexes by) all
+                        #    leave `use_tc_attn` set, so the five-pass chain below runs and
+                        #    produces the identical result it always did. Any OTHER status is a
+                        #    real CUDA failure and is returned as one — a launch error must
+                        #    never be laundered into a slower-but-green benchmark cell. The
+                        #    ARMED/DECLINED verdict is printed once at staging time so a
+                        #    declined lever cannot masquerade as a measured FA number.
+                        var attn_done = False
+                        @parameter
+                        if PF_FA_B1:
+                            if use_tc_attn and self.f32.h_q % self.f32.h_kv == 0:
+                                var n_keys_fa = pos + m
+                                var kvn = n_keys_fa * self.f32.h_kv * self.f32.d_head
+                                var rk = _tc_stage_f32_to_f16(
+                                    Int(lw.ck.unsafe_ptr()),
+                                    Int(self.pf_tc_k16.unsafe_ptr()), kvn)
+                                if rk == 0:
+                                    rk = _tc_stage_f32_to_f16(
+                                        Int(lw.cv.unsafe_ptr()),
+                                        Int(self.pf_tc_v16.unsafe_ptr()), kvn)
+                                if rk != 0:
+                                    return _StepOut(-1, 0.0, issued,
+                                                    RESIDENT_ERR_LAUNCH_FAILED)
+                                var rfa = _tc_fa_causal_async(
+                                    Int(self.f32.pf_q_rot.unsafe_ptr()),
+                                    Int(self.pf_tc_k16.unsafe_ptr()),
+                                    Int(self.pf_tc_v16.unsafe_ptr()),
+                                    Int(self.f32.pf_attn.unsafe_ptr()),
+                                    Int(self.pf_fa_scale.unsafe_ptr()),
+                                    m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
+                                    self.f32.d_head, pos, _PF_FA_BN)
+                                if rfa == 0:
+                                    attn_done = True
+                                    use_tc_attn = False
+                                elif rfa != -301 and rfa != -304 and rfa != -310:
+                                    return _StepOut(-1, 0.0, issued,
+                                                    RESIDENT_ERR_LAUNCH_FAILED)
+                        if attn_done:
+                            issued += 1
+                        elif use_tc_attn:
                             var n_keys_tc = pos + m
                             var gqa = self.f32.h_q // self.f32.h_kv
                             var gm = gqa * m
@@ -2606,19 +2848,45 @@ struct _CudaResidentQwen3P3(Movable):
                                 Int(self.tc_gu.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+                        # ── FRONT-3 LEVER 2: the SwiGLU epilogue on the shim's `__expf`
+                        #    (ex2.approx.ftz) twin, -D ALGENTA_7B_PF_FASTEXP. Same expression,
+                        #    same f16 operands, same f32 intermediate arithmetic and the same
+                        #    single f32->f16 rounding at the store as
+                        #    `_pf_swiglu_rows_f16_kernel`; the differences are the exp
+                        #    intrinsic (~2 ulp instead of a libm exp at ~171 lane-cycles) and a
+                        #    division-free 2-D grid with 16-byte vector loads instead of one
+                        #    scalar output per thread indexed by a runtime `i / n_ff`.
+                        #    PF_FASTEXP_B1 already implies PF_F16MLP_B1, so a declined shim
+                        #    call (-302 n_ff not a multiple of 8, -303 grid.y too tall) lands
+                        #    on exactly the f16 epilogue this build would have dispatched.
+                        var sw_done = False
                         @parameter
-                        if PF_F16MLP_B1:
-                            self.f32.ctx.enqueue_function[_pf_swiglu_rows_f16_kernel](
-                                self.tc_a16.unsafe_ptr(), self.tc_c16.unsafe_ptr(),
-                                Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
-                                grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
-                            )
-                        else:
-                            self.f32.ctx.enqueue_function[_pf_swiglu_rows_kernel](
-                                self.f32.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
-                                Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
-                                grid_dim=_ceil_div(m * self.f32.d_ff, _TG), block_dim=_TG,
-                            )
+                        if PF_FASTEXP_B1:
+                            if self.f32.d_ff % 8 == 0:
+                                var rsw = _tc_swiglu_f16_fastexp(
+                                    Int(self.tc_c16.unsafe_ptr()),
+                                    Int(self.tc_a16.unsafe_ptr()), m, self.f32.d_ff)
+                                if rsw == 0:
+                                    sw_done = True
+                                elif rsw != -302 and rsw != -303:
+                                    return _StepOut(-1, 0.0, issued,
+                                                    RESIDENT_ERR_LAUNCH_FAILED)
+                        if not sw_done:
+                            @parameter
+                            if PF_F16MLP_B1:
+                                self.f32.ctx.enqueue_function[_pf_swiglu_rows_f16_kernel](
+                                    self.tc_a16.unsafe_ptr(), self.tc_c16.unsafe_ptr(),
+                                    Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
+                                    grid_dim=_ceil_div(m * self.f32.d_ff, _TG),
+                                    block_dim=_TG,
+                                )
+                            else:
+                                self.f32.ctx.enqueue_function[_pf_swiglu_rows_kernel](
+                                    self.f32.pf_act.unsafe_ptr(), self.tc_gu.unsafe_ptr(),
+                                    Int64(m * self.f32.d_ff), Int64(self.f32.d_ff),
+                                    grid_dim=_ceil_div(m * self.f32.d_ff, _TG),
+                                    block_dim=_TG,
+                                )
                         # 8 ── down_proj ACCUMULATE into the residual through the TC seam
                         @parameter
                         if not TC_NOSEAM:

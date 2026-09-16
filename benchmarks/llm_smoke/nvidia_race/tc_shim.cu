@@ -793,6 +793,526 @@ extern "C" int64_t tc_shim_attn_softmax_mask_async(const void* s32, void* p16,
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// FUSED CAUSAL FLASH ATTENTION (FRONT 3, 2026-09-15) — `-D ALGENTA_7B_PF_FA`
+//
+// WHY: the A100 pp1024 layer decomposition (~/trtllm/front1/nsys_decomposition.json, arm
+// `adopted_f4` == the shipped _c8) puts the TC prefill attention at 437 us/layer across SIX
+// GPU passes — QK^T strided-batched GemmEx 97.6, masked softmax 142.5, PV GemmEx 71.6, the
+// head-major Q pack 48.4, the head-major O unpack 47.3, and the f32->f16 A/KV converts 29.4
+// — against TensorRT-LLM 1.2.1's ONE `fmha_v2_flash_attention_bf16_64_128_S_qkv_128_causal_
+// sm80_kernel_nl_` at 87.0 us/layer (~/trtllm/front1/trtllm_kernel_mix.txt). The gap is not
+// arithmetic, it is MATERIALIZATION: the [h_q*m, n_keys] f32 score matrix is 117 MB per layer
+// at m=n_keys=1024 — written by the QK^T GEMM, read back three times by the softmax, written
+// again as 59 MB of f16 P, read again by the PV GEMM = ~351 MB/layer = 9.8 GB per pp1024
+// prefill, and the non-causal GEMM additionally computes 2x the pairs the causal mask keeps.
+//
+// This kernel removes the matrix entirely: FlashAttention-2 online softmax, one CTA per
+// (query block, query head), the [BM,BN] score tile NEVER leaves registers, and Q/K/V/O are
+// read/written in the session's OWN layouts (Q f32 position-major straight out of
+// `_pf_ropewrt_kernel`, O f32 position-major straight into the o_proj seam) so the pack and
+// unpack passes disappear with it. Only the K/V f16 staging stays (it is the additive route
+// that keeps the resident f32 KV cache untouched, and at 2 MB/layer it is L2-resident).
+//
+// TRAFFIC ACCOUNTING (per CTA per key block, BM=64 BN=64 D=128, 4 warps): K 64 KB + V 64 KB
+// (each warp needs its own copy of the B operand in registers) + P 8 KB write / 8 KB read =
+// 144 KB of shared reads against 4*BM*BN*D = 2.1 MFLOP of HMMA = 0.069 B/FLOP, versus the
+// sm_80 ratio of 128 B/clk shared to 2048 FLOP/clk tensor = 0.0625 B/FLOP. Shared bandwidth
+// is therefore the binding constraint at ~1.1x the tensor-core time, i.e. an ~89% MFU ceiling
+// for this tile shape — which is why BN is a template parameter the A/B sweeps.
+//
+// LAYOUT CONTRACT (all row-major):
+//   q  f32 [m, h_q*d]          post-RoPE query rows (the session's `pf_q_rot`)
+//   k  f16 [n_keys, h_kv*d]    staged K cache (the session's `pf_tc_k16`)
+//   v  f16 [n_keys, h_kv*d]    staged V cache (the session's `pf_tc_v16`)
+//   o  f32 [m, h_q*d]          attention output, position-major (the session's `pf_attn`)
+// GQA: query head h reads KV head h/(h_q/h_kv). Query row r is global position pos_base+r and
+// attends keys j <= pos_base+r AND j < n_keys — the same predicate `_attn_softmax_mask_kernel`
+// applies with window=0, so the two are drop-in equivalents at window 0 (the 7B family is
+// full-context causal; a windowed layer keeps the 5-pass chain, gated at the dispatch site).
+// The attention scale rides the Q f32->f16 conversion, exactly as `_pf_q_pack_hm_f16` folds
+// it, so the scores are pre-scaled at the identical rounding point.
+//
+// NUMERICS: online softmax with an f32 running max/sum and f32 O accumulation, f16 P into the
+// PV HMMA — the same dtypes the 5-pass chain uses (f32 scores, f16 P, f32 O), so the only
+// differences are the summation ORDER and the per-block O rescale. `__expf` (ex2.approx.ftz)
+// replaces the softmax's `__expf`-equivalent; the token-identity gates decide, which is why the
+// lever carries its own build flag.
+//
+// THE OPAQUE-FRAGMENT GUARD: this kernel indexes `wmma::fragment<accumulator,...>` elements by
+// ROW to apply the causal mask, to rescale O by the online-softmax alpha, and to divide by the
+// row sum at the end. The WMMA API documents that layout as opaque, so the mapping this file
+// assumes (FA_ACC_ROW / FA_ACC_COL below, the sm_80 m16n16k16 f32 accumulator = two m16n8k16
+// halves) is VERIFIED ON DEVICE by `_fa_layout_probe_kernel` before the first launch, and a
+// mismatch returns -310 so the session falls back to the 5-pass chain instead of silently
+// computing attention with permuted rows. Nothing about the numerics rides an assumption.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+#ifndef TC_SHIM_NO_WMMA
+
+#define FA_BM 64          // query rows per CTA (4 warps x 16 WMMA rows)
+#define FA_NWARP 4
+#define FA_D 128          // head_dim — the only value this kernel implements (host-checked)
+// Row stride (in halves) of the sQ/sK/sV operand tiles. FA_D itself would be 256 bytes = 64
+// 32-bit banks exactly, so EVERY row of a 16-row WMMA tile would start in the same bank group
+// and each ldmatrix would serialize 8-way — measured: 367 us/layer at pp1024 with ldm=FA_D,
+// i.e. SLOWER than the 5-pass chain it replaces, at ~7% MFU. +8 halves = 272 bytes = 68 words
+// shifts each row by 4 banks, which makes an 8-row ldmatrix group conflict-free while keeping
+// the stride a multiple of 16 bytes so the uint4 global->shared stores stay aligned.
+#define FA_LD (FA_D + 8)
+#define FA_PLD 8          // sP row padding (halves) for the same reason on the P round trip
+#define FA_OLDF 132       // sO row padding (floats): 528 B = 132 words -> a 4-bank row shift
+
+// accumulator element i of a 16x16 f32 WMMA fragment sits at
+//   row = (lane >> 2) + 8 * fa_acc_row(i),  col = 2 * (lane & 3) + fa_acc_col(i)
+// i.e. elements {0,1,4,5} belong to row group g and {2,3,6,7} to row g+8, at columns
+// {2t, 2t+1, 8+2t, 8+2t+1} — the sm_80 m16n16k16 accumulator's two m16n8k16 halves.
+// Functions rather than arrays because a file-scope `static const int[]` is not visible to
+// device code; the literal tables below are the readable statement of the same mapping and
+// tc_shim_fa_layout_probe() checks the functions against them AND against the device.
+__device__ __host__ __forceinline__ int fa_acc_row(int i) { return (i >> 1) & 1; }
+__device__ __host__ __forceinline__ int fa_acc_col(int i) {
+    return (((i >> 2) & 1) << 3) | (i & 1);
+}
+static const int FA_ACC_ROW_TBL[8] = {0, 0, 1, 1, 0, 0, 1, 1};
+static const int FA_ACC_COL_TBL[8] = {0, 1, 0, 1, 8, 9, 8, 9};
+
+__device__ __forceinline__ float fa_wmax(float v) {   // reduce over the 4 lanes of a row group
+    v = fmaxf(v, __shfl_xor_sync(0xffffffffu, v, 1));
+    return fmaxf(v, __shfl_xor_sync(0xffffffffu, v, 2));
+}
+__device__ __forceinline__ float fa_wsum(float v) {
+    v += __shfl_xor_sync(0xffffffffu, v, 1);
+    return v + __shfl_xor_sync(0xffffffffu, v, 2);
+}
+
+// One-time on-device check of the accumulator element -> (row, col) mapping. A = I_16, B is
+// staged so that acc[r][c] == B[r][c] == r*16+c, therefore every fragment element READS BACK
+// its own coordinates: lane L, element i holds row*16+col. 256 exact small integers, no
+// tolerance, no floating-point judgement call.
+__global__ void _fa_layout_probe_kernel(float* out) {
+    __shared__ __half sA[16 * 16];
+    __shared__ __half sB[16 * 16];
+    __shared__ __half sOut[16 * 16];
+    int t = threadIdx.x;
+    for (int i = t; i < 256; i += blockDim.x) {
+        int r = i / 16, c = i - r * 16;
+        sA[i] = __float2half(r == c ? 1.0f : 0.0f);
+        sB[c * 16 + r] = __float2half((float)(r * 16 + c));   // col-major: (k,n) at sB[n*16+k]
+    }
+    __syncthreads();
+    wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> fa;
+    wmma::fragment<wmma::matrix_b, 16, 16, 16, __half, wmma::col_major> fb;
+    wmma::fragment<wmma::accumulator, 16, 16, 16, float> fc;
+    wmma::fragment<wmma::accumulator, 16, 16, 16, __half> fh;
+    static_assert(sizeof(fc.x) / sizeof(fc.x[0]) == sizeof(fh.x) / sizeof(fh.x[0]),
+                  "f32 and f16 accumulator fragments must carry the same element count");
+    wmma::load_matrix_sync(fa, sA, 16);
+    wmma::load_matrix_sync(fb, sB, 16);
+    wmma::fill_fragment(fc, 0.0f);
+    wmma::mma_sync(fc, fa, fb, fc);
+    // (1) the f32 accumulator element -> (row, col) mapping the kernel indexes by. Packed at
+    // out[lane*8 + i] (0..255); part (2) owns out[256..511].
+    for (int i = 0; i < fc.num_elements; i++) out[t * 8 + i] = fc.x[i];
+    // (2) the f32 -> f16 accumulator element correspondence + store_matrix_sync's row-major
+    //     semantics, which is how the kernel hands P to the PV mma. out[256 + r*16 + c] must
+    //     read back r*16+c, i.e. the SAME matrix the f32 accumulator held.
+    for (int i = 0; i < fh.num_elements; i++) fh.x[i] = __float2half(fc.x[i]);
+    wmma::store_matrix_sync(sOut, fh, 16, wmma::mem_row_major);
+    __syncwarp();
+    for (int i = 0; i < 256; i++) out[256 + i] = __half2float(sOut[i]);
+}
+
+static int g_fa_layout_ok = -1;   // -1 unchecked, 0 ok, 1 mismatch
+
+extern "C" int64_t tc_shim_fa_layout_probe(void) {
+    if (g_fa_layout_ok == 0) return 0;
+    if (g_fa_layout_ok == 1) return -310;
+    // self-consistency first: the bit formulas the DEVICE kernel indexes by must reproduce the
+    // documented literal table, before either is compared against what the GPU actually did.
+    for (int i = 0; i < 8; i++) {
+        if (fa_acc_row(i) != FA_ACC_ROW_TBL[i] || fa_acc_col(i) != FA_ACC_COL_TBL[i]) {
+            g_fa_layout_ok = 1;
+            fprintf(stderr,
+                    "[tc_shim] FA mapping formula disagrees with its own table at elem %d "
+                    "(row %d/%d col %d/%d) — lever DISABLED.\n",
+                    i, fa_acc_row(i), FA_ACC_ROW_TBL[i], fa_acc_col(i), FA_ACC_COL_TBL[i]);
+            return -310;
+        }
+    }
+    float* d = nullptr;
+    cudaError_t e = cudaMalloc(&d, 512 * sizeof(float));
+    if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    // zeroed first: a fragment that carries FEWER elements than the mapping assumes leaves
+    // slots untouched, and an untouched slot must FAIL the check, not read back as a match.
+    cudaMemsetAsync(d, 0, 512 * sizeof(float), g_stream);
+    _fa_layout_probe_kernel<<<1, 32, 0, g_stream>>>(d);
+    e = cudaGetLastError();
+    if (e == cudaSuccess) e = cudaStreamSynchronize(g_stream);
+    if (e != cudaSuccess) { cudaFree(d); record_error((int64_t)e); return (int64_t)e; }
+    float h[512];
+    e = cudaMemcpy(h, d, 512 * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(d);
+    if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    for (int lane = 0; lane < 32; lane++) {
+        int grp = lane >> 2, tig = lane & 3;
+        for (int i = 0; i < 8; i++) {
+            int want = (grp + 8 * fa_acc_row(i)) * 16 + (2 * tig + fa_acc_col(i));
+            if ((int)h[lane * 8 + i] != want) {
+                g_fa_layout_ok = 1;
+                fprintf(stderr,
+                        "[tc_shim] FA accumulator layout MISMATCH: lane %d elem %d = %d, "
+                        "expected %d — the fused flash-attention lever is DISABLED for this "
+                        "toolkit (the session keeps the 5-pass TC chain).\n",
+                        lane, i, (int)h[lane * 8 + i], want);
+                return -310;
+            }
+        }
+    }
+    for (int i = 0; i < 256; i++) {
+        if ((int)h[256 + i] != i) {
+            g_fa_layout_ok = 1;
+            fprintf(stderr,
+                    "[tc_shim] FA f16-accumulator store_matrix_sync MISMATCH: [%d] = %d, "
+                    "expected %d — the fused flash-attention lever is DISABLED for this "
+                    "toolkit (the session keeps the 5-pass TC chain).\n",
+                    i, (int)h[256 + i], i);
+            return -310;
+        }
+    }
+    g_fa_layout_ok = 0;
+    return 0;
+}
+
+template <int BN>
+__global__ void __launch_bounds__(FA_NWARP * 32)
+_fa_causal_kernel(const float* __restrict__ qg, const __half* __restrict__ kg,
+                  const __half* __restrict__ vg, float* __restrict__ og,
+                  const float* __restrict__ scalep,
+                  int m, int n_keys, int h_q, int h_kv, int d, int pos_base) {
+    // The attention scale arrives as a DEVICE POINTER, not a float argument: Mojo's
+    // `external_call` FFI has no repo-proven Float32/Float64 argument marshalling, and an
+    // ABI mismatch here would be a SILENT numeric bug rather than a crash. One 4-byte
+    // L2-resident read per CTA, uniform across the block, is exact and free next to the
+    // 32 KB of Q this CTA is about to pull in.
+    const float scale = *scalep;
+    extern __shared__ __half smem[];
+    __half* sQ = smem;                          // [FA_BM][FA_LD]
+    __half* sK = sQ + FA_BM * FA_LD;            // [BN][FA_LD]
+    __half* sV = sK + BN * FA_LD;               // [BN][FA_LD]
+    __half* sP = sV + BN * FA_LD;               // [FA_BM][BN + FA_PLD]
+    const int sPld = BN + FA_PLD;
+
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    const int grp = lane >> 2;                  // WMMA row group inside the warp's 16 rows
+    const int tig = lane & 3;                   // WMMA column pair
+    const int qi = blockIdx.x;
+    const int h = blockIdx.y;
+    const int hk = h / (h_q / h_kv);
+    const int row0 = qi * FA_BM;
+    const int kvld = h_kv * d;
+    const int qld = h_q * d;
+
+    // ── Q tile: f32 -> f16, attention scale folded in (the `_pf_q_pack_hm_f16` rounding) ──
+    {
+        const int nvec = FA_BM * (FA_D / 4);
+        for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+            int r = t / (FA_D / 4);
+            int c4 = t - r * (FA_D / 4);
+            int gr = row0 + r;
+            float4 val = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+            if (gr < m)
+                val = *reinterpret_cast<const float4*>(qg + (size_t)gr * qld + h * d + c4 * 4);
+            __half2* dst = reinterpret_cast<__half2*>(sQ + r * FA_LD + c4 * 4);
+            dst[0] = __floats2half2_rn(val.x * scale, val.y * scale);
+            dst[1] = __floats2half2_rn(val.z * scale, val.w * scale);
+        }
+    }
+    __syncthreads();
+
+    // Q A-fragments: loaded ONCE per CTA and reused across every key block — the register-
+    // resident A operand is what keeps the per-key-block shared traffic at the K/V terms.
+    wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> fa[FA_D / 16];
+    for (int kk = 0; kk < FA_D / 16; kk++)
+        wmma::load_matrix_sync(fa[kk], sQ + (warp * 16) * FA_LD + kk * 16, FA_LD);
+
+    wmma::fragment<wmma::accumulator, 16, 16, 16, float> oacc[FA_D / 16];
+    for (int i = 0; i < FA_D / 16; i++) wmma::fill_fragment(oacc[i], 0.0f);
+
+    const float NEG = -1.0e30f;
+    float m0 = NEG, m1 = NEG, l0 = 0.0f, l1 = 0.0f;
+
+    // key blocks this CTA needs: causal ceiling from its LAST VALID query row, and the cache
+    // ceiling. Rows past `m` are never stored, so a partial tail block cannot over-read.
+    int rows_here = m - row0;
+    if (rows_here > FA_BM) rows_here = FA_BM;
+    int kb_causal = (pos_base + row0 + rows_here - 1) / BN;
+    int kb_keys = (n_keys - 1) / BN;
+    int kb_max = kb_causal < kb_keys ? kb_causal : kb_keys;
+    // this warp's two query rows, as GLOBAL positions (the causal predicate's right side)
+    const int qg0 = pos_base + row0 + warp * 16 + grp;
+    const int qg1 = qg0 + 8;
+
+    for (int kb = 0; kb <= kb_max; kb++) {
+        // ── K,V tiles: [BN][d] f16, 16-byte vector loads straight out of the staged cache ──
+        {
+            const int nvec = BN * (FA_D / 8);
+            const int kbase = kb * BN;
+            for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+                int r = t / (FA_D / 8);
+                int c8 = t - r * (FA_D / 8);
+                int gj = kbase + r;
+                uint4 kv = make_uint4(0u, 0u, 0u, 0u);
+                uint4 vv = make_uint4(0u, 0u, 0u, 0u);
+                if (gj < n_keys) {
+                    const size_t off = (size_t)gj * kvld + hk * d + c8 * 8;
+                    kv = *reinterpret_cast<const uint4*>(kg + off);
+                    vv = *reinterpret_cast<const uint4*>(vg + off);
+                }
+                *reinterpret_cast<uint4*>(sK + r * FA_LD + c8 * 8) = kv;
+                *reinterpret_cast<uint4*>(sV + r * FA_LD + c8 * 8) = vv;
+            }
+        }
+        __syncthreads();
+
+        // ── S[16,BN] = Q[16,d] @ K^T[d,BN] on the tensor cores, f32 accumulate. The BN/16
+        //    B-fragments of one k-step are loaded BEFORE any of its mmas issue: the loads are
+        //    mutually independent, so the scheduler can have them all in flight instead of
+        //    serializing load->mma->load->mma down the 32-deep chain. ──
+        wmma::fragment<wmma::accumulator, 16, 16, 16, float> sacc[BN / 16];
+        for (int n = 0; n < BN / 16; n++) wmma::fill_fragment(sacc[n], 0.0f);
+        for (int kk = 0; kk < FA_D / 16; kk++) {
+            wmma::fragment<wmma::matrix_b, 16, 16, 16, __half, wmma::col_major> fb[BN / 16];
+            for (int n = 0; n < BN / 16; n++)
+                wmma::load_matrix_sync(fb[n], sK + (n * 16) * FA_LD + kk * 16, FA_LD);
+            for (int n = 0; n < BN / 16; n++)
+                wmma::mma_sync(sacc[n], fa[kk], fb[n], sacc[n]);
+        }
+
+        // ── causal + cache-tail mask. The whole block is unmasked when its LAST key is at or
+        //    below this warp's FIRST query row and inside the cache: the common case for every
+        //    off-diagonal block, so the per-element predicate only runs on the diagonal. ──
+        const bool need_mask = (kb * BN + BN - 1 > qg0) || (kb * BN + BN - 1 >= n_keys);
+        if (need_mask) {
+            for (int n = 0; n < BN / 16; n++) {
+                for (int i = 0; i < 8; i++) {
+                    int j = kb * BN + n * 16 + 2 * tig + fa_acc_col(i);
+                    int qpos = fa_acc_row(i) ? qg1 : qg0;
+                    if (j > qpos || j >= n_keys) sacc[n].x[i] = NEG;
+                }
+            }
+        }
+
+        // ── online softmax: row max over this block, alpha rescale of O, exp into f16 P ──
+        float t0 = NEG, t1 = NEG;
+        for (int n = 0; n < BN / 16; n++) {
+            for (int i = 0; i < 8; i++) {
+                if (fa_acc_row(i)) { if (sacc[n].x[i] > t1) t1 = sacc[n].x[i]; }
+                else               { if (sacc[n].x[i] > t0) t0 = sacc[n].x[i]; }
+            }
+        }
+        t0 = fa_wmax(t0);
+        t1 = fa_wmax(t1);
+        const float n0 = fmaxf(m0, t0), n1 = fmaxf(m1, t1);
+        const float a0 = __expf(m0 - n0), a1 = __expf(m1 - n1);
+        for (int n = 0; n < FA_D / 16; n++) {
+            for (int i = 0; i < 8; i++) oacc[n].x[i] *= fa_acc_row(i) ? a1 : a0;
+        }
+        float s0 = 0.0f, s1 = 0.0f;
+        wmma::fragment<wmma::accumulator, 16, 16, 16, __half> ph;
+        for (int n = 0; n < BN / 16; n++) {
+            for (int i = 0; i < 8; i++) {
+                float p = __expf(sacc[n].x[i] - (fa_acc_row(i) ? n1 : n0));
+                sacc[n].x[i] = p;
+                if (fa_acc_row(i)) s1 += p; else s0 += p;
+                ph.x[i] = __float2half(p);
+            }
+            wmma::store_matrix_sync(sP + (warp * 16) * sPld + n * 16, ph, sPld,
+                                    wmma::mem_row_major);
+        }
+        s0 = fa_wsum(s0);
+        s1 = fa_wsum(s1);
+        l0 = l0 * a0 + s0;
+        l1 = l1 * a1 + s1;
+        m0 = n0;
+        m1 = n1;
+        __syncthreads();
+
+        // ── O[16,d] += P[16,BN] @ V[BN,d] ──
+        for (int kk = 0; kk < BN / 16; kk++) {
+            wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> fp;
+            wmma::load_matrix_sync(fp, sP + (warp * 16) * sPld + kk * 16, sPld);
+            for (int n = 0; n < FA_D / 16; n++) {
+                wmma::fragment<wmma::matrix_b, 16, 16, 16, __half, wmma::row_major> fv;
+                wmma::load_matrix_sync(fv, sV + (kk * 16) * FA_LD + n * 16, FA_LD);
+                wmma::mma_sync(oacc[n], fp, fv, oacc[n]);
+            }
+        }
+        __syncthreads();
+    }
+
+    // ── epilogue: divide by the row sums, stage through shared, write position-major f32 ──
+    const float inv0 = (l0 > 0.0f) ? (1.0f / l0) : 0.0f;
+    const float inv1 = (l1 > 0.0f) ? (1.0f / l1) : 0.0f;
+    for (int n = 0; n < FA_D / 16; n++) {
+        for (int i = 0; i < 8; i++) oacc[n].x[i] *= fa_acc_row(i) ? inv1 : inv0;
+    }
+    float* sO = reinterpret_cast<float*>(smem);   // reuses sQ/sK/sV: FA_BM*FA_OLDF*4 = 33.8 KB
+    for (int n = 0; n < FA_D / 16; n++)
+        wmma::store_matrix_sync(sO + (warp * 16) * FA_OLDF + n * 16, oacc[n], FA_OLDF,
+                                wmma::mem_row_major);
+    __syncthreads();
+    {
+        const int nvec = FA_BM * (FA_D / 4);
+        for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+            int r = t / (FA_D / 4);
+            int c4 = t - r * (FA_D / 4);
+            int gr = row0 + r;
+            if (gr >= m) continue;
+            const float* src = sO + r * FA_OLDF + c4 * 4;
+            *reinterpret_cast<float4*>(og + (size_t)gr * qld + h * d + c4 * 4) =
+                make_float4(src[0], src[1], src[2], src[3]);
+        }
+    }
+}
+
+// dynamic shared bytes for a given BN, and the largest the kernel ever needs (the epilogue's
+// sO staging reuses the same window: FA_BM * FA_OLDF * 4 = 33792 < both).
+template <int BN>
+static inline int fa_smem_bytes(void) {
+    int tiles = (FA_BM * FA_LD + 2 * BN * FA_LD + FA_BM * (BN + FA_PLD)) * (int)sizeof(__half);
+    int epi = FA_BM * FA_OLDF * (int)sizeof(float);   // sO reuses the same window
+    return tiles > epi ? tiles : epi;
+}
+
+static int g_fa_attr_done = 0;
+
+static int64_t fa_set_attrs(void) {
+    if (g_fa_attr_done) return 0;
+    cudaError_t e = cudaFuncSetAttribute(_fa_causal_kernel<32>,
+                                         cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                         fa_smem_bytes<32>());
+    if (e == cudaSuccess)
+        e = cudaFuncSetAttribute(_fa_causal_kernel<64>,
+                                 cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                 fa_smem_bytes<64>());
+    if (e == cudaSuccess)
+        e = cudaFuncSetAttribute(_fa_causal_kernel<128>,
+                                 cudaFuncAttributeMaxDynamicSharedMemorySize,
+                                 fa_smem_bytes<128>());
+    if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    g_fa_attr_done = 1;
+    return 0;
+}
+
+// bn: 32 / 64 / 128 key columns per online-softmax block (anything else -> 64). scale_f32 is
+// a DEVICE pointer to one float (see the kernel's comment for why it is not an argument).
+// Returns -301 for an unsupported head_dim, -310 if the on-device accumulator-layout probe
+// disagreed with the mapping this file indexes by (caller MUST fall back), else the
+// cudaError_t. Enqueues on the shim stream and returns WITHOUT syncing (the G3_STREAM /
+// NOSEAM contract).
+extern "C" int64_t tc_shim_fa_causal_async(const void* q_f32, const void* k16, const void* v16,
+                                           void* o_f32, const void* scale_f32,
+                                           int64_t m, int64_t n_keys,
+                                           int64_t h_q, int64_t h_kv, int64_t d,
+                                           int64_t pos_base, int64_t bn) {
+    if (d != FA_D) return -301;
+    if (m <= 0 || n_keys <= 0 || h_kv <= 0 || h_q <= 0) return 0;
+    if ((h_q % h_kv) != 0) return -304;
+    int64_t r = tc_shim_fa_layout_probe();
+    if (r != 0) return r;
+    r = fa_set_attrs();
+    if (r != 0) return r;
+    dim3 grid((unsigned)((m + FA_BM - 1) / FA_BM), (unsigned)h_q);
+    dim3 block(FA_NWARP * 32);
+    int im = (int)m, ink = (int)n_keys, ihq = (int)h_q, ihkv = (int)h_kv, id = (int)d;
+    int ipos = (int)pos_base;
+    const float* q = (const float*)q_f32;
+    const __half* k = (const __half*)k16;
+    const __half* v = (const __half*)v16;
+    const float* sp = (const float*)scale_f32;
+    float* o = (float*)o_f32;
+    cudaError_t e;
+    if (bn == 32) {
+        _fa_causal_kernel<32><<<grid, block, fa_smem_bytes<32>(), g_stream>>>(
+            q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos);
+    } else if (bn == 128) {
+        _fa_causal_kernel<128><<<grid, block, fa_smem_bytes<128>(), g_stream>>>(
+            q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos);
+    } else {
+        _fa_causal_kernel<64><<<grid, block, fa_smem_bytes<64>(), g_stream>>>(
+            q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos);
+    }
+    e = cudaGetLastError();
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// FAST-EXP SwiGLU EPILOGUE (FRONT 3 lever 2) — `-D ALGENTA_7B_PF_FASTEXP`
+//
+// The A100 decomposition puts the f16 SwiGLU epilogue at 170.3 us/layer (pp1024) against
+// TensorRT-LLM's `silu_and_mul_kernel` at 82.1 us/call. Its floor is pure traffic — 77.6 MB of
+// f16 gate/up read + 38.8 MB of f16 A written per layer at m=1024 = 75 us at 1555 GB/s — so
+// ~95 us/layer of the 170 is the activation itself: the Mojo epilogue evaluates one scalar
+// `exp` per output at ~171 lane-cycles each, and indexes with a runtime `i / n_ff` division.
+// This is the same combine with (a) `__expf` = the single-instruction ex2.approx.ftz path and
+// (b) a division-free 2-D grid plus 16-byte vector loads/stores. Expression and operand
+// dtypes are the epilogue's verbatim (`(g / (1 + exp(-g))) * u` over f16 operands widened to
+// f32, one f32->f16 rounding at the store), so the only numeric change is exp's ~2 ulp.
+// Requires n_ff % 8 == 0 and 16-byte-aligned operands (the session's f16 scratch satisfies
+// both); anything else returns -302 and the caller keeps the Mojo epilogue.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+__global__ void _swiglu_f16_fastexp_kernel(const __half* __restrict__ gu,
+                                           __half* __restrict__ act, int n_ff, int n_ff8) {
+    int j8 = blockIdx.x * blockDim.x + threadIdx.x;
+    if (j8 >= n_ff8) return;
+    int row = blockIdx.y;
+    const size_t gbase = (size_t)row * (2 * n_ff);
+    uint4 gv = *reinterpret_cast<const uint4*>(gu + gbase + j8 * 8);
+    uint4 uv = *reinterpret_cast<const uint4*>(gu + gbase + n_ff + j8 * 8);
+    const __half2* g2 = reinterpret_cast<const __half2*>(&gv);
+    const __half2* u2 = reinterpret_cast<const __half2*>(&uv);
+    uint4 ov;
+    __half2* o2 = reinterpret_cast<__half2*>(&ov);
+#pragma unroll
+    for (int i = 0; i < 4; i++) {
+        float2 gf = __half22float2(g2[i]);
+        float2 uf = __half22float2(u2[i]);
+        float a0 = (gf.x / (1.0f + __expf(-gf.x))) * uf.x;
+        float a1 = (gf.y / (1.0f + __expf(-gf.y))) * uf.y;
+        o2[i] = __floats2half2_rn(a0, a1);
+    }
+    *reinterpret_cast<uint4*>(act + (size_t)row * n_ff + j8 * 8) = ov;
+}
+
+extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void* gu16, void* act16,
+                                                    int64_t m_rows, int64_t n_ff) {
+    if (m_rows <= 0 || n_ff <= 0) return 0;
+    if ((n_ff & 7) != 0) return -302;
+    int n_ff8 = (int)(n_ff / 8);
+    int threads = 256;
+    dim3 grid((unsigned)((n_ff8 + threads - 1) / threads), (unsigned)m_rows);
+    if (grid.y > 65535u) return -303;
+    _swiglu_f16_fastexp_kernel<<<grid, threads, 0, g_stream>>>(
+        (const __half*)gu16, (__half*)act16, (int)n_ff, n_ff8);
+    cudaError_t e = cudaGetLastError();
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+#else   // TC_SHIM_NO_WMMA
+extern "C" int64_t tc_shim_fa_layout_probe(void) { return -310; }
+extern "C" int64_t tc_shim_fa_causal_async(const void*, const void*, const void*, void*,
+                                           const void*, int64_t, int64_t, int64_t, int64_t,
+                                           int64_t, int64_t, int64_t) { return -301; }
+extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t, int64_t) {
+    return -302;
+}
+#endif  // TC_SHIM_NO_WMMA
+
 extern "C" int64_t tc_shim_shutdown(void) {
     if (g_handle != nullptr) { cublasDestroy(g_handle); g_handle = nullptr; }
     if (g_stream_created && g_stream != nullptr) { cudaStreamDestroy(g_stream); }

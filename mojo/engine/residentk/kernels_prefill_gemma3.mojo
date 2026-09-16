@@ -2173,3 +2173,133 @@ def _pf_swiglu_rows_f16_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64
         var g = Float32(gu16[row * 2 * n_ff + j])
         var u = Float32(gu16[row * 2 * n_ff + n_ff + j])
         act16[i] = Float16((g / (1.0 + exp(-g))) * u)
+
+
+# ── FRONT-3 prefill levers (2026-09-15, the pp1024 / RAG-4096 TensorRT-LLM gap round) ─────
+#
+# The A100 layer decomposition of the adopted _c8 arm (~/trtllm/front1/nsys_decomposition.json)
+# against TensorRT-LLM 1.2.1's kernel mix (~/trtllm/front1/trtllm_kernel_mix.txt) leaves three
+# per-layer gaps once the projections are accounted for, and this file carries the two Mojo
+# halves (the third, fused causal flash attention, is a tc_shim.cu kernel because it needs the
+# HMMA surface Mojo 1.0.0 does not expose):
+#
+#   * bias + RoPE + KV-write, ours 92.5 us/layer (`_qkv_bias_add_rows_kernel` 31.6 +
+#     `_pf_ropewrt_kernel` 61.0) vs TRT-LLM's ONE `applyBiasRopeUpdateKVCacheV2` at 21.7
+#     us/call. The bias pass is a pure extra round trip over the widest tensor in the layer —
+#     it reads and writes `[m, n_qkv]` f32 (21 MB + 21 MB at m=1024) only so the RoPE kernel
+#     can read the same bytes back one launch later. `_pf_biasropewrt_kernel` below folds the
+#     add into the read, which is BIT-EXACT: both forms evaluate one f32 addition of the same
+#     two f32 operands, and the two-pass form rounded that sum to f32 in `pf_qkv` before the
+#     RoPE kernel read it, so there is no second rounding point to diverge at.
+#   * the SwiGLU epilogue's `exp`: carried by the shim's `__expf` twin
+#     (`residentk.tc_shim_bridge._tc_swiglu_f16_fastexp`, `-D ALGENTA_7B_PF_FASTEXP`), not by a
+#     Mojo kernel here, because ex2.approx.ftz is a single PTX instruction and the pinned
+#     toolchain exposes no inline-asm hatch to reach it from Mojo.
+#
+# `_pf_fill_scale_kernel` is the third piece of lever 1's plumbing: the fused attention kernel
+# takes the attention scale as a DEVICE POINTER rather than a float argument (no repo-proven
+# float marshalling through `external_call`, and an ABI mismatch there would be a silent numeric
+# bug), so the session writes its scale into a 1-element f32 buffer once at staging time.
+
+
+def _pf_biasropewrt_kernel(
+    q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, bias: _FP, qn_w: _FP, kn_w: _FP,
+    cos_t: _FP, sin_t: _FP, pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64,
+    d_head_i64: Int64, eps: Float32, m_rows_i64: Int64, qk_norm_i64: Int64,
+):
+    """`residentk.kernels._pf_ropewrt_kernel` with the 7B q/k/v attention-bias add FOLDED IN —
+    `-D ALGENTA_7B_PF_BIASROPE`, the one-pass replacement for the `_qkv_bias_add_rows_kernel`
+    + `_pf_ropewrt_kernel` pair (TensorRT-LLM's `applyBiasRopeUpdateKVCacheV2` does the same
+    three jobs in one launch).
+
+    Bit-exact against the pair it replaces, by construction: the bias pass computes
+    `pf_qkv[i] = pf_qkv[i] + bias[i % n_qkv]` in f32 and stores it back to the f32 `pf_qkv`,
+    and this kernel computes the identical single f32 addition at the identical point in the
+    expression — `v = qkv[src_off] + bias[src_off - row_qkv]` — so the value the q/k norm,
+    the RoPE rotation and the V cache write each see is the same f32 bit pattern either way.
+    `src_off - row_qkv` IS the pair's `i % n_qkv`: `src_off = row_qkv + col` with
+    `0 <= col < n_qkv` by construction, for the Q, K and V sections alike.
+
+    Same grid/block contract and the same shared-memory reduction as the twin it replaces:
+    `grid_dim = (h_q + h_kv) * m_rows`, `block_dim = d_head`, `block_idx.x` flattening
+    `(b, m)` as `b = block_idx.x % (h_q + h_kv)`. Dispatched INSTEAD OF the bias kernel, never
+    in addition to it — the session skips step 2b under this flag."""
+    # Mojo 1.0.0: GPU kernel parameters must be fixed-width DevicePassable; widened
+    # back to Int once at entry, where all the arithmetic lives.
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var m_rows = Int(m_rows_i64)
+    var qk_norm = Int(qk_norm_i64)
+    var n_units = h_q + h_kv
+    var b = Int(block_idx.x) % n_units
+    var m = Int(block_idx.x) // n_units
+    if m >= m_rows:
+        return
+    var pos = pos_base + m
+    var n_qkv = h_q * d_head + 2 * h_kv * d_head
+    var row_qkv = m * n_qkv
+    var n_q = h_q * d_head
+    var row_q_rot = m * n_q
+
+    var xs = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var red = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var e = Int(thread_idx.x)
+    var is_q = b < h_q
+    var head = b if is_q else b - h_q
+
+    var src_off = row_qkv + (head * d_head + e if is_q else (h_q + head) * d_head + e)
+    # ── the folded bias add: the ONLY difference from `_pf_ropewrt_kernel` ──
+    var v = qkv[src_off] + bias[src_off - row_qkv]
+    if qk_norm == 1:
+        var g = qn_w[e] if is_q else kn_w[e]
+
+        red[e] = v * v
+        barrier()
+        var stride = d_head // 2
+        while stride > 0:
+            if e < stride:
+                red[e] = red[e] + red[e + stride]
+            barrier()
+            stride //= 2
+        var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+        xs[e] = v * inv * g
+        barrier()
+    else:
+        xs[e] = v
+        barrier()
+
+    var n_pairs = d_head // 2
+    if e < n_pairs:
+        var c = cos_t[pos * n_pairs + e]
+        var s = sin_t[pos * n_pairs + e]
+        var a0 = xs[e]
+        var a1 = xs[e + n_pairs]
+        var o0 = a0 * c - a1 * s
+        var o1 = a0 * s + a1 * c
+        if is_q:
+            var qb = row_q_rot + head * d_head
+            q_rot[qb + e] = o0
+            q_rot[qb + e + n_pairs] = o1
+        else:
+            var kb = (pos * h_kv + head) * d_head
+            ck[kb + e] = o0
+            ck[kb + e + n_pairs] = o1
+
+    if not is_q:
+        var voff = (h_q + h_kv + head) * d_head + e
+        cv[(pos * h_kv + head) * d_head + e] = qkv[row_qkv + voff] + bias[voff]
+
+
+def _pf_fill_scale_kernel(dst: _FP, s: Float32):
+    """Write the session's attention scale into a 1-element device f32 buffer, once, at TC
+    staging time. `residentk.tc_shim_bridge._tc_fa_causal_async` takes the scale as a device
+    pointer rather than a float argument; this is the producer half of that contract.
+    `grid_dim = 1`, `block_dim = 1`."""
+    if Int(block_idx.x) == 0 and Int(thread_idx.x) == 0:
+        dst[0] = s

@@ -1,5 +1,5 @@
 {
- "kernel_count": 170,
+ "kernel_count": 175,
  "kernels": [
   {
    "backend": "metal",
@@ -999,6 +999,14 @@
     "gemma3"
    ],
    "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_biasropewrt_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_embed_rows_g3_kernel"
   },
   {
@@ -1008,6 +1016,14 @@
    ],
    "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_embed_rows_g3_kernel_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_fill_scale_kernel"
   },
   {
    "backend": "cuda",
@@ -1247,6 +1263,22 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa_causal_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa_layout_probe"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_gemm_dispatch"
   },
   {
@@ -1352,6 +1384,14 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_stage_f32_to_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_swiglu_f16_fastexp"
   },
   {
    "backend": "cuda",
