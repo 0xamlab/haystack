@@ -202,7 +202,7 @@ jobs:
             --label "algenta-ci-created=$(date +%s)" \
             --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
 
           # docker port emits one line per binding (0.0.0.0:NNNN, then [::]:NNNN) — take the
           # port number of the first.

@@ -566,6 +566,11 @@ write_files:
       log "nodejs rc=$? version=$(node --version 2>/dev/null) npm=$(npm --version 2>/dev/null)"
       up
       systemctl enable --now docker
+      # Pre-pull CI service images: cold workers otherwise race the ci.yml service-step
+      # wait timeout on first pull (observed flake: 'Start Postgres + Dragonfly + MinIO').
+      docker pull postgres:16-alpine >/dev/null 2>&1 || true
+      docker pull docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0 >/dev/null 2>&1 || true
+      docker pull quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z >/dev/null 2>&1 || true
       curl -m 120 -o /tmp/runner.tar.gz -LsS https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
       log "runner-dl rc=$?"
       mkdir -p /opt/runner && tar -xzf /tmp/runner.tar.gz -C /opt/runner
