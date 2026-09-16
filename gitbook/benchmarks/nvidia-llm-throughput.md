@@ -144,13 +144,13 @@ sides (no HTTP layer); clocks pinned at 1410 MHz; greedy decoding; token counts 
 server-side; median of 20 runs (Algenta) / 7 runs (TensorRT-LLM); rel-IQR <= 4.7% on all
 cells; greedy continuations match the fp32 oracle on both engines.
 
-| Engine | Prefill 256 tok/s | Decode tok/s (gen=256) |
-| --- | --- | --- |
-| Algenta (packed3, cuBLAS tensor-core prefill + tensor-core attention, f16 MLP/norm epilogues) | 11,377 | 82.9 |
-| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 7,846 | 79.0 |
+| Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Decode tok/s (gen=256) |
+| --- | --- | --- | --- |
+| Algenta (packed3, cuBLAS tensor-core prefill + fused causal flash attention, f16 MLP/norm epilogues) | 12,746 | 15,265 | 82.7 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,860 | 14,180 | 79.0 |
 
-Prefill speedup at 256 tokens: 1.59x vs TensorRT-LLM. Decode speedup (gen=256): 1.05x vs
-TensorRT-LLM.
+Prefill speedup at 256 tokens: 1.86x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
+1.08x vs TensorRT-LLM. Decode speedup (gen=256): 1.05x vs TensorRT-LLM.
 
 ## Scope
 
