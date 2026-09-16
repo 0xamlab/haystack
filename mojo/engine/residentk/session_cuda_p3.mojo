@@ -217,6 +217,7 @@ from residentk.session_cuda import (
     CUDA_PREFILL_ONEPASS_B1,
     CUDA_PREFILL_FLASH_B1,
     CUDA_PREFILL_FLASH2_B1,
+    CUDA_PREFILL_PASS4096,
     _B1_PASS_MAX,
     _B1_PF_ROWS,
     _CudaResidentQwen3,
@@ -235,6 +236,11 @@ from residentk.tc_shim_bridge import (
     _tc_gemm_dispatch,
     _tc_gemm_f16_32c_pre,
     _tc_gemm_f16_16c_pre,
+    _tc_lt_init,
+    _tc_lt_tune,
+    _tc_lt_count,
+    _tc_gemm_f16_32c_pre_lt,
+    _tc_gemm_f16_16c_pre_lt,
     _tc_bgemm_f16_async,
     _tc_attn_softmax_mask_async,
     _tc_fa_causal_async,
@@ -455,6 +461,56 @@ only needs the shim (it is the staging entry plus two persistent buffers)."""
 comptime PF_ROPEVEC_B1: Bool = (
     PF_BIASROPE_B1 and is_defined["ALGENTA_7B_PF_ROPEVEC"]()
 )
+
+# ── FRONT-6 prefill levers (2026-09-16): the RAG-4096 0.9556x gap ─────────────────────────
+# Round 5 left RAG-4096 at 0.9556x (14,381.8 tok/s / 284.805 ms wall against a same-session
+# TRT-LLM 1.2.1 re-serve at 272.166 ms) and ranked the remaining 12.639 ms as (1) a ~6-10 ms
+# HOST/LAUNCH GAP, (2) ~2.9 ms of converts + ~1.0 ms of rmsnorm, (3) do not touch FA.
+#
+# Target (1) is REFUTED BY MEASUREMENT, not by argument. `front6_decomp.py` over a fresh `_g0`
+# capture puts the steady-state RAG-4096 prefill window at wall 284.097 ms / GPU busy 280.953 ms
+# — a 3.144 ms (1.11%) gap, and it is 3.026-3.246 ms across all six warm prefills in that
+# capture. The "~276 ms busy" round 5 ranked against was round 4's number for `_e3`, stale by
+# ROPEVEC's own -3.705 ms. 82.6% of what gap there is = 1515 uniform 1-5 us per-launch gaps over
+# 1580 launches; the only structure in it is the three chunk seams (~200 us each: the per-chunk
+# token upload's D2H+H2D pair and the ctx.synchronize() that brackets it). So the whole host-side
+# prize is ~3.1 ms, which RE-CONFIRMS round 3's refutation of prefill CUDA graphs — measured
+# here, not inherited. (The capture's FIRST prefill shows a 383.804 ms gap, 58% of its 661.117 ms
+# wall: per-shape cuBLAS first-call cost, which the 20-run median never sees and which is why the
+# median window is the one reported.)
+#
+# What the same dissection shows instead is that 80.46% of the busy (226.048 ms of 448 cuBLAS
+# kernels) is the four projections, and that they run at 236.0 TF/s aggregate = 75.6% of the
+# A100's 312 TF/s dense f16 peak — with the loss concentrated in two roles, not spread evenly.
+# Both levers below attack that, and they COMPOUND.
+#
+#    ALGENTA_7B_PF_LTALGO   dispatch the prefill projections through cublasLt on an algorithm
+#                           chosen by a TIMED SEARCH over the top-N heuristics, once, at stage
+#                           time — instead of cublasGemmEx's CUBLAS_GEMM_DEFAULT, which
+#                           re-runs its heuristic on every one of the 448 calls and which
+#                           tc_shim_init never gave a workspace (so split-K was out of reach).
+#                           gemm_probe prices it at the 7B shapes on this device: -36.35 us per
+#                           layer at m=1024 (-4.07 ms per RAG-4096 prefill) and -550.9 us per
+#                           layer at m=4096 (-15.43 ms). Only shapes that were TUNED take it;
+#                           an untuned shape returns -320 and declines to the shipped GemmEx
+#                           entry, so a prompt whose first pass is not the tuned one runs
+#                           byte-for-byte the code it ran before. NOT bit-identical (a different
+#                           tile/split-K moves the reduction order) so the token gates decide it.
+#                           Needs the shim object built with -D ALGENTA_TC_SHIM_LT and linked
+#                           against -lcublasLt; without them the entries are stubs that return
+#                           -322/-320 and the session declines everywhere with a printed record.
+comptime PF_LTALGO_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_LTALGO"]()
+
+comptime _PF_LT_WS_BYTES: Int = 64 * 1024 * 1024
+"""cublasLt algorithm workspace. 64 MB: gemm_probe found the m=4096 winners identical at 32 MB
+and 256 MB (the split-K it needs is shallow — splitK=2 on down, 1 elsewhere), so the extra
+bytes buy nothing and 64 MB stays inside the stage-time headroom try alongside the dual
+residency."""
+
+comptime _PF_LT_TOP: Int = 16
+"""Heuristics to time per shape. gemm_probe's winners were never beyond index 7 at these shapes,
+and each candidate costs (3 warmup + 7 measured) launches, so 16 is ~2x the observed need at
+~0.2 s per shape of one-time stage cost."""
 
 comptime _PF_FA2_BN: Int = 32
 """FA2's key-block width and attribution variant.
@@ -2494,6 +2550,60 @@ struct _CudaResidentQwen3P3(Movable):
                           "| d_head =", self.f32.d_head, "| h_q/h_kv =", self.f32.h_q, "/",
                           self.f32.h_kv, "| prefill attention keeps FRONT 3's FA kernel")
         self.f32.ctx.synchronize()
+        # ── FRONT 6 lever: tune the cublasLt algorithm for the projection shapes the prefill
+        #    will actually dispatch, ONCE, here — before any prefill runs, so the tuning's own
+        #    GEMMs (which write their C) can only ever land in buffers the first prefill
+        #    overwrites before reading it: pf_qkv (the qkv GEMM's own destination), tc_c16
+        #    (gate/up's), pf_hidden (o_proj's and down's, and the embed kernel rewrites it at
+        #    the top of every pass). The weights are read-only operands and are already staged
+        #    f16 by the loop above. M is the pass cap: a prompt longer than the cap runs its
+        #    first pass at exactly the cap, and any other M declines (-320) to the shipped
+        #    GemmEx entry rather than borrowing an algorithm tuned for a different shape. ──
+        @parameter
+        if PF_LTALGO_B1:
+            var rlt = _tc_lt_init(_PF_LT_WS_BYTES)
+            if rlt != 0:
+                print("TC LT: cublasLt init FAILED, status", rlt,
+                      "| the shim object was probably built without -D ALGENTA_TC_SHIM_LT or"
+                      " not linked against -lcublasLt | projections keep cublasGemmEx DEFAULT")
+            else:
+                var tm = _B1_PASS_MAX
+                var lt_t0 = perf_counter_ns()
+                var n_tuned = 0
+                # qkv: A is the F16NORM twin, C is f32 (COMPUTE_32F, beta 0)
+                if PF_F16NORM_B1:
+                    if _tc_lt_tune(Int(self.pf_xn16.unsafe_ptr()),
+                                   Int(self.w16_qkv[0].unsafe_ptr()),
+                                   Int(self.f32.pf_qkv.unsafe_ptr()),
+                                   tm, d_model, n_qkv, 0, 0, _PF_LT_TOP, 7) >= 0:
+                        n_tuned += 1
+                    # gate/up: same f16 A, but the F16MLP arm writes an f16 C
+                    if PF_F16MLP_B1:
+                        if _tc_lt_tune(Int(self.pf_xn16.unsafe_ptr()),
+                                       Int(self.w16_gu[0].unsafe_ptr()),
+                                       Int(self.tc_c16.unsafe_ptr()),
+                                       tm, d_model, 2 * d_ff, 1, 0, _PF_LT_TOP, 7) >= 0:
+                            n_tuned += 1
+                # o_proj: the shipped path converts pf_attn f32 -> tc_a16 inside the shim entry,
+                # so tune with tc_a16 as the A operand (that is what the dispatch will pass).
+                if _tc_lt_tune(Int(self.tc_a16.unsafe_ptr()),
+                               Int(self.w16_o[0].unsafe_ptr()),
+                               Int(self.f32.pf_hidden.unsafe_ptr()),
+                               tm, n_q, d_model, 0, 1, _PF_LT_TOP, 7) >= 0:
+                    n_tuned += 1
+                # down: A is the SwiGLU epilogue's f16 output in tc_a16, C accumulates (beta 1)
+                if _tc_lt_tune(Int(self.tc_a16.unsafe_ptr()),
+                               Int(self.w16_down[0].unsafe_ptr()),
+                               Int(self.f32.pf_hidden.unsafe_ptr()),
+                               tm, d_ff, d_model, 0, 1, _PF_LT_TOP, 7) >= 0:
+                    n_tuned += 1
+                self.f32.ctx.synchronize()
+                print("TC LT: tuned", n_tuned, "of 4 projection shapes at m =", tm, "in",
+                      Float64(perf_counter_ns() - lt_t0) / 1.0e6,
+                      "ms one-time | shim cache holds", _tc_lt_count(), "shapes")
+                if n_tuned < 4:
+                    print("TC LT: PARTIAL — the untuned shapes decline (-320) to cublasGemmEx"
+                          " DEFAULT, so this arm is a mix; the flag audit reports the count")
         self.tc_staged = 1
         var f16_bytes = Float64(self.f32.n_layers) * Float64(
             n_qkv * d_model + d_model * n_q + 2 * d_ff * d_model + d_model * d_ff) * 2.0
@@ -2515,10 +2625,31 @@ struct _CudaResidentQwen3P3(Movable):
               "| FASTEXP =", PF_FASTEXP_B1, "| BIASROPE =", PF_BIASROPE_B1,
               "| FA2_variant =", _PF_FA2_SHIP_VARIANT, "| KVTWIN =", PF_KVTWIN_B1,
               "| ROPEVEC =", PF_ROPEVEC_B1,
-              "| acc_mode =", TC_ACC_MODE, "| max_ctx =", self.f32.max_ctx)
+              "| acc_mode =", TC_ACC_MODE, "| max_ctx =", self.f32.max_ctx,
+              "| pass_max =", _B1_PASS_MAX)
         @parameter
         if CUDA_PREFILL_ONEPASS_B1:
             print("TCFLAG ALGENTA_PF_ONEPASS_B1=1 (prefill walks _B1_PASS_MAX-row windows)")
+        @parameter
+        if CUDA_PREFILL_PASS4096:
+            # FRONT 6: audited by BOTH this literal and the `pass_max =` field above, because
+            # like ALGENTA_7B_CTX8192 it changes a SHAPE rather than a kernel — and a shape
+            # change silently re-selects cuBLAS's algorithm, so a binary that carries it is
+            # not numerically interchangeable with one that does not.
+            print("TCFLAG ALGENTA_PF_PASS4096=1 (one prefill pass covers 4096 rows: a RAG-4096 "
+                  "prompt runs its projections in ONE pass, not four 1024-row passes)")
+        @parameter
+        if PF_LTALGO_B1:
+            # Audited by BOTH this literal and the tuned-shape count printed with it. The
+            # literal proves the flag was passed; the count proves the lever took effect,
+            # because 0 tuned shapes means every dispatch declined (-320) and the cell was
+            # measured on the shipped GemmEx path while still claiming the flag — exactly the
+            # silent-drop failure mode this banner exists to make unrepresentable. (There are
+            # no stub entries: a shim object built without -D ALGENTA_TC_SHIM_LT fails the
+            # link, so "flag passed but code absent" cannot even produce a binary.)
+            print("TCFLAG ALGENTA_7B_PF_LTALGO=1 (projections dispatch cublasLt on a stage-time "
+                  "timed-search algorithm; untuned shapes decline -320 to GemmEx DEFAULT) "
+                  "| lt_shapes_tuned =", _tc_lt_count(), "of 4")
         @parameter
         if CUDA_PREFILL_FLASH_B1:
             print("TCFLAG ALGENTA_PF_ATTN_FLASH_B1=1 (sub-threshold tiles ride native flash)")
@@ -2661,11 +2792,29 @@ struct _CudaResidentQwen3P3(Movable):
                         var r = 0
                         @parameter
                         if PF_F16NORM_B1:
-                            r = _tc_gemm_f16_32c_pre(
-                                Int(self.pf_xn16.unsafe_ptr()),
-                                Int(self.w16_qkv[layer].unsafe_ptr()),
-                                m, self.f32.d_model, n_qkv,
-                                Int(self.f32.pf_qkv.unsafe_ptr()), 0)
+                            # FRONT 6 LTALGO: try the stage-time tuned cublasLt algorithm first.
+                            # -320 is the shim's "this (M,K,N,C,beta) was never tuned" decline,
+                            # and the ONLY acceptable non-zero return here — it lands on exactly
+                            # the GemmEx call this arm would have made, so an untuned M runs the
+                            # shipped path byte-for-byte. Any other status is a real failure.
+                            if PF_LTALGO_B1:
+                                r = _tc_gemm_f16_32c_pre_lt(
+                                    Int(self.pf_xn16.unsafe_ptr()),
+                                    Int(self.w16_qkv[layer].unsafe_ptr()),
+                                    m, self.f32.d_model, n_qkv,
+                                    Int(self.f32.pf_qkv.unsafe_ptr()), 0)
+                                if r == -320:
+                                    r = _tc_gemm_f16_32c_pre(
+                                        Int(self.pf_xn16.unsafe_ptr()),
+                                        Int(self.w16_qkv[layer].unsafe_ptr()),
+                                        m, self.f32.d_model, n_qkv,
+                                        Int(self.f32.pf_qkv.unsafe_ptr()), 0)
+                            else:
+                                r = _tc_gemm_f16_32c_pre(
+                                    Int(self.pf_xn16.unsafe_ptr()),
+                                    Int(self.w16_qkv[layer].unsafe_ptr()),
+                                    m, self.f32.d_model, n_qkv,
+                                    Int(self.f32.pf_qkv.unsafe_ptr()), 0)
                         else:
                             r = _tc_gemm_dispatch(
                                 Int(self.f32.pf_xn.unsafe_ptr()),
@@ -3056,14 +3205,41 @@ struct _CudaResidentQwen3P3(Movable):
                         @parameter
                         if not TC_NOSEAM:
                             self.f32.ctx.synchronize()
-                        r = _tc_gemm_dispatch(
-                            Int(self.f32.pf_attn.unsafe_ptr()),
-                            Int(self.w16_o[layer].unsafe_ptr()),
-                            Int(lw.w_o.unsafe_ptr())
-                            if self.f32.skip_f32_projections != 1 else 0,
-                            m, n_q, self.f32.d_model,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                        @parameter
+                        if PF_LTALGO_B1 and TC_ACC_MODE == 0:
+                            # o_proj is the ONE projection whose A is still f32 (FA2's O
+                            # epilogue writes `pf_attn` f32), so the LT path stages A itself
+                            # with the SAME scalar converter the shipped shim entry calls
+                            # internally: `tc_shim_gemm_f16_32c` IS convert + `_32c_pre`, so
+                            # splitting it here hands the GEMM an identical A operand at an
+                            # identical rounding and only the algorithm selection differs.
+                            # Gated on TC_ACC_MODE == 0 because `_tc_gemm_dispatch` routes the
+                            # other rungs (TF32 / f16-accumulate) through entries that are NOT
+                            # convert + `_pre`, and this substitution is only valid for rung 0.
+                            r = _tc_stage_f32_to_f16(
+                                Int(self.f32.pf_attn.unsafe_ptr()),
+                                Int(self.tc_a16.unsafe_ptr()), m * n_q)
+                            if r == 0:
+                                r = _tc_gemm_f16_32c_pre_lt(
+                                    Int(self.tc_a16.unsafe_ptr()),
+                                    Int(self.w16_o[layer].unsafe_ptr()),
+                                    m, n_q, self.f32.d_model,
+                                    Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                                if r == -320:
+                                    r = _tc_gemm_f16_32c_pre(
+                                        Int(self.tc_a16.unsafe_ptr()),
+                                        Int(self.w16_o[layer].unsafe_ptr()),
+                                        m, n_q, self.f32.d_model,
+                                        Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                        else:
+                            r = _tc_gemm_dispatch(
+                                Int(self.f32.pf_attn.unsafe_ptr()),
+                                Int(self.w16_o[layer].unsafe_ptr()),
+                                Int(lw.w_o.unsafe_ptr())
+                                if self.f32.skip_f32_projections != 1 else 0,
+                                m, n_q, self.f32.d_model,
+                                Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.f32.pf_hidden.unsafe_ptr()), 1)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                         # 6 ── rmsnorm(post_attention_layernorm) (native; f16 twin under
@@ -3095,11 +3271,30 @@ struct _CudaResidentQwen3P3(Movable):
                             self.f32.ctx.synchronize()
                         @parameter
                         if PF_F16NORM_B1 and PF_F16MLP_B1:
-                            r = _tc_gemm_f16_16c_pre(
-                                Int(self.pf_xn16.unsafe_ptr()),
-                                Int(self.w16_gu[layer].unsafe_ptr()),
-                                m, self.f32.d_model, 2 * self.f32.d_ff,
-                                Int(self.tc_c16.unsafe_ptr()), 0)
+                            # FRONT 6 LTALGO: the widest GEMM in the layer (N = 2*d_ff = 37888)
+                            # and the one role already at 89% of the f16 tensor-core roof, so
+                            # the tuned algorithm buys the least here (-1.2% at m=4096 against
+                            # -15.1% qkv / -19.1% o_proj / -13.8% down). It is wired anyway
+                            # because leaving one role on GemmEx would make the arm a mix that
+                            # no probe number describes.
+                            if PF_LTALGO_B1:
+                                r = _tc_gemm_f16_16c_pre_lt(
+                                    Int(self.pf_xn16.unsafe_ptr()),
+                                    Int(self.w16_gu[layer].unsafe_ptr()),
+                                    m, self.f32.d_model, 2 * self.f32.d_ff,
+                                    Int(self.tc_c16.unsafe_ptr()), 0)
+                                if r == -320:
+                                    r = _tc_gemm_f16_16c_pre(
+                                        Int(self.pf_xn16.unsafe_ptr()),
+                                        Int(self.w16_gu[layer].unsafe_ptr()),
+                                        m, self.f32.d_model, 2 * self.f32.d_ff,
+                                        Int(self.tc_c16.unsafe_ptr()), 0)
+                            else:
+                                r = _tc_gemm_f16_16c_pre(
+                                    Int(self.pf_xn16.unsafe_ptr()),
+                                    Int(self.w16_gu[layer].unsafe_ptr()),
+                                    m, self.f32.d_model, 2 * self.f32.d_ff,
+                                    Int(self.tc_c16.unsafe_ptr()), 0)
                         elif PF_F16NORM_B1:
                             r = _tc_gemm_f16_32c_pre(
                                 Int(self.pf_xn16.unsafe_ptr()),
@@ -3175,11 +3370,29 @@ struct _CudaResidentQwen3P3(Movable):
                         @parameter
                         if PF_F16MLP_B1:
                             # A is already the f16 the epilogue wrote — no convert pass
-                            r = _tc_gemm_f16_32c_pre(
-                                Int(self.tc_a16.unsafe_ptr()),
-                                Int(self.w16_down[layer].unsafe_ptr()),
-                                m, self.f32.d_ff, self.f32.d_model,
-                                Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                            # FRONT 6 LTALGO: down is the role the default heuristic serves
+                            # worst at a wide pass (K = 18944 with only 224 output tiles at
+                            # m=1024, so the split-K reduction it needs was out of reach
+                            # without a workspace). gemm_probe: 2277.38 -> 1963.01 us at
+                            # m=4096, -13.8%, the largest single win of the four roles.
+                            if PF_LTALGO_B1:
+                                r = _tc_gemm_f16_32c_pre_lt(
+                                    Int(self.tc_a16.unsafe_ptr()),
+                                    Int(self.w16_down[layer].unsafe_ptr()),
+                                    m, self.f32.d_ff, self.f32.d_model,
+                                    Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                                if r == -320:
+                                    r = _tc_gemm_f16_32c_pre(
+                                        Int(self.tc_a16.unsafe_ptr()),
+                                        Int(self.w16_down[layer].unsafe_ptr()),
+                                        m, self.f32.d_ff, self.f32.d_model,
+                                        Int(self.f32.pf_hidden.unsafe_ptr()), 1)
+                            else:
+                                r = _tc_gemm_f16_32c_pre(
+                                    Int(self.tc_a16.unsafe_ptr()),
+                                    Int(self.w16_down[layer].unsafe_ptr()),
+                                    m, self.f32.d_ff, self.f32.d_model,
+                                    Int(self.f32.pf_hidden.unsafe_ptr()), 1)
                         else:
                             r = _tc_gemm_dispatch(
                                 Int(self.f32.pf_act.unsafe_ptr()),

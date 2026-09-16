@@ -1,5 +1,5 @@
 {
- "kernel_count": 179,
+ "kernel_count": 184,
  "kernels": [
   {
    "backend": "metal",
@@ -1335,6 +1335,14 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_f16_16c_pre_lt"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_gemm_f16_32c"
   },
   {
@@ -1352,6 +1360,14 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_gemm_f16_32c_pre"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_f16_32c_pre_lt"
   },
   {
    "backend": "cuda",
@@ -1392,6 +1408,30 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_last_error"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_lt_count"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_lt_init"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_lt_tune"
   },
   {
    "backend": "cuda",

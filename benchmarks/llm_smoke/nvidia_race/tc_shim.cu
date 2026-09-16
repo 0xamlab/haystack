@@ -2452,6 +2452,238 @@ extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t,
 }
 #endif  // TC_SHIM_NO_WMMA
 
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// FRONT 6 LEVER 2 (2026-09-16) — cublasLt with a per-shape algorithm chosen ONCE, at stage
+// time, instead of cublasGemmEx's CUBLAS_GEMM_DEFAULT heuristic re-queried on every call.
+//
+// WHY. `tc_shim_init` calls cublasCreate + cublasSetStream + cublasSetMathMode and NEVER
+// cublasSetWorkspace, and every integration entry below dispatches through cublasGemmEx with
+// CUBLAS_GEMM_DEFAULT. gemm_probe (this directory) prices what that leaves on the table at the
+// Qwen2.5-7B projection shapes, on this exact device with clocks pinned at 1410 MHz, median of
+// 15, best of the top-16 cublasLt heuristics against the shipped GemmEx call:
+//
+//   m=1024 (FRONT 5's four-chunk RAG walk)      shipped us   lt best us    delta
+//     qkv      N=4608  K=3584                      147.46       145.41     -1.4%
+//     o_proj   N=3584  K=3584                      139.26       131.07     -5.9%
+//     gate_up  N=37888 K=3584                      997.38       967.68     -3.0%
+//     down     N=3584  K=18944                     653.31       647.17     -0.9%
+//   m=4096 (one pass, ALGENTA_PF_PASS4096)        shipped us   lt best us    delta
+//     qkv                                          602.11       510.98    -15.1%
+//     o_proj                                       526.34       425.98    -19.1%
+//     gate_up                                     3920.90      3875.84     -1.2%
+//     down                                        2277.38      1963.01    -13.8%
+//
+// Per layer that is -36.35 us at m=1024 (-4.07 ms over a RAG-4096 prefill's 112 layer-chunks)
+// and -550.9 us at m=4096 (-15.43 ms over 28 layers) — the two levers COMPOUND, because the
+// wider pass is what exposes the tail-wave headroom that a better algorithm can then take.
+// At m=4096 all four roles pick the same descriptor (id=6, tile=20, stages=11; down adds
+// splitK=2), which is the split-K reduction the default heuristic does not reach for without
+// an explicit workspace.
+//
+// HONESTY REQUIREMENTS this design discharges:
+//  * The whole block is behind ALGENTA_TC_SHIM_LT, so the shim object a baseline arm links is
+//    BYTE-IDENTICAL to the one it linked before this lever existed. A shared object with the
+//    code merely unreached would not be provable from `strings`, and this campaign has already
+//    been burned once by a rebuild that silently dropped a flag (the gemma-3-27b H200 column).
+//  * Tuning is a TIMED SEARCH, not heuristic result[0]. The heuristic's ranking is an estimate;
+//    the probe's winners were not always index 0.
+//  * A shape that was never tuned returns -320 and the caller DECLINES to the shipped GemmEx
+//    entry, so an untuned m (any prompt whose first pass is not the tuned one) runs exactly the
+//    code it ran before. There is no silent reinterpretation.
+//  * NOT bit-identical: a different tile/split-K changes the reduction order, so the f32
+//    accumulator rounds differently. Gate-decidable, like ALGENTA_7B_PF_F16MLP.
+#ifdef ALGENTA_TC_SHIM_LT
+#include <cublasLt.h>
+
+namespace tc_lt {
+
+struct Entry {
+    int64_t M, N, K;
+    int c16, accum;
+    cublasLtMatmulDesc_t op;
+    cublasLtMatrixLayout_t La, Lb, Lc;
+    cublasLtMatmulAlgo_t algo;
+    int tuned;
+    int algo_id, tile, stages, splitk, nres;
+    double best_ms;
+};
+
+static cublasLtHandle_t handle = nullptr;
+static void* ws = nullptr;
+static size_t ws_bytes = 0;
+static Entry cache[12];
+static int n_cache = 0;
+
+// The layouts mirror the shipped GemmEx call exactly: row-major C[M,N] = A_rm[M,K] @
+// W_rm[N,K]^T is expressed column-major as C[N,M] = op(W)^T x op(A) with W stored K x N
+// (ld=K), A stored K x M (ld=K) and C stored N x M (ld=N).
+static int make_desc(Entry& e) {
+    if (cublasLtMatmulDescCreate(&e.op, CUBLAS_COMPUTE_32F, CUDA_R_32F) != CUBLAS_STATUS_SUCCESS)
+        return -321;
+    cublasOperation_t ta = CUBLAS_OP_T, tb = CUBLAS_OP_N;
+    cublasLtMatmulDescSetAttribute(e.op, CUBLASLT_MATMUL_DESC_TRANSA, &ta, sizeof(ta));
+    cublasLtMatmulDescSetAttribute(e.op, CUBLASLT_MATMUL_DESC_TRANSB, &tb, sizeof(tb));
+    if (cublasLtMatrixLayoutCreate(&e.La, CUDA_R_16F, e.K, e.N, e.K) != CUBLAS_STATUS_SUCCESS)
+        return -321;
+    if (cublasLtMatrixLayoutCreate(&e.Lb, CUDA_R_16F, e.K, e.M, e.K) != CUBLAS_STATUS_SUCCESS)
+        return -321;
+    if (cublasLtMatrixLayoutCreate(&e.Lc, e.c16 ? CUDA_R_16F : CUDA_R_32F, e.N, e.M, e.N)
+        != CUBLAS_STATUS_SUCCESS) return -321;
+    return 0;
+}
+
+static Entry* find(int64_t M, int64_t N, int64_t K, int c16, int accum) {
+    for (int i = 0; i < n_cache; i++) {
+        Entry& e = cache[i];
+        if (e.M == M && e.N == N && e.K == K && e.c16 == c16 && e.accum == accum && e.tuned)
+            return &e;
+    }
+    return nullptr;
+}
+
+static int64_t matmul(Entry& e, const void* a16, const void* w16, void* c) {
+    float alpha = 1.0f, beta = e.accum ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasLtMatmul(handle, e.op, &alpha, w16, e.La, a16, e.Lb, &beta,
+                                      c, e.Lc, c, e.Lc, &e.algo, ws, ws_bytes, g_stream);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    if (g_noseam) return 0;   // the same NOSEAM seam the GemmEx entries honour
+    cudaError_t ce = cudaStreamSynchronize(g_stream);
+    record_error((int64_t)ce);
+    return (int64_t)ce;
+}
+
+}  // namespace tc_lt
+
+// Create the Lt handle and its workspace. Called once from the session's stage-time headroom
+// try, so an allocation failure there demotes the whole TC plan rather than half-enabling this.
+extern "C" int64_t tc_shim_lt_init(int64_t workspace_bytes) {
+    if (tc_lt::handle != nullptr) return 0;
+    if (cublasLtCreate(&tc_lt::handle) != CUBLAS_STATUS_SUCCESS) {
+        tc_lt::handle = nullptr; record_error(-322); return -322;
+    }
+    tc_lt::ws_bytes = (size_t)(workspace_bytes > 0 ? workspace_bytes : (64ll << 20));
+    cudaError_t e = cudaMalloc(&tc_lt::ws, tc_lt::ws_bytes);
+    if (e != cudaSuccess) {
+        record_error((int64_t)e);
+        cublasLtDestroy(tc_lt::handle); tc_lt::handle = nullptr; tc_lt::ws = nullptr;
+        return (int64_t)e;
+    }
+    cudaMemset(tc_lt::ws, 0, tc_lt::ws_bytes);
+    return 0;
+}
+
+// Time the top-`top` heuristics for ONE shape and cache the winner. `c` is SCRATCH: tuning
+// writes it (beta is honoured, so an accumulate role's scratch must be a buffer the caller is
+// about to overwrite anyway). Returns the winning heuristic index, or negative.
+extern "C" int64_t tc_shim_lt_tune(const void* a16, const void* w16, void* c,
+                                   int64_t M, int64_t K, int64_t N,
+                                   int64_t c16, int64_t accum, int64_t top, int64_t iters) {
+    using namespace tc_lt;
+    if (handle == nullptr) return -322;
+    if (find(M, N, K, (int)c16, (int)accum) != nullptr) return 0;   // already tuned
+    if (n_cache >= (int)(sizeof(cache) / sizeof(cache[0]))) return -323;
+    Entry& e = cache[n_cache];
+    e.M = M; e.N = N; e.K = K; e.c16 = (int)c16; e.accum = (int)accum;
+    e.tuned = 0; e.best_ms = -1.0; e.algo_id = -1; e.tile = -1; e.stages = -1;
+    e.splitk = -1; e.nres = 0;
+    int64_t r = make_desc(e);
+    if (r != 0) return r;
+
+    cublasLtMatmulPreference_t pref = nullptr;
+    if (cublasLtMatmulPreferenceCreate(&pref) != CUBLAS_STATUS_SUCCESS) return -321;
+    cublasLtMatmulPreferenceSetAttribute(pref, CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+                                         &ws_bytes, sizeof(ws_bytes));
+    const int MAXRES = 32;
+    int want = (int)(top > 0 && top < MAXRES ? top : MAXRES);
+    cublasLtMatmulHeuristicResult_t res[MAXRES];
+    int nres = 0;
+    cublasStatus_t hs = cublasLtMatmulAlgoGetHeuristic(handle, e.op, e.La, e.Lb, e.Lc, e.Lc,
+                                                       pref, want, res, &nres);
+    cublasLtMatmulPreferenceDestroy(pref);
+    e.nres = (hs == CUBLAS_STATUS_SUCCESS) ? nres : 0;
+    if (e.nres <= 0) return -324;
+
+    float alpha = 1.0f, beta = e.accum ? 1.0f : 0.0f;
+    cudaEvent_t ev0, ev1;
+    if (cudaEventCreate(&ev0) != cudaSuccess) return -325;
+    cudaEventCreate(&ev1);
+    int best = -1;
+    const int warm = 3;
+    const int meas = (int)(iters > 0 ? iters : 7);
+    for (int i = 0; i < e.nres; i++) {
+        // one untimed launch first: an algo that cannot execute must not be timed or chosen
+        if (cublasLtMatmul(handle, e.op, &alpha, w16, e.La, a16, e.Lb, &beta, c, e.Lc, c, e.Lc,
+                           &res[i].algo, ws, ws_bytes, g_stream) != CUBLAS_STATUS_SUCCESS) continue;
+        if (cudaStreamSynchronize(g_stream) != cudaSuccess) continue;
+        double acc = 0.0; int ok = 1;
+        for (int it = 0; it < warm + meas; it++) {
+            cudaEventRecord(ev0, g_stream);
+            cublasStatus_t s = cublasLtMatmul(handle, e.op, &alpha, w16, e.La, a16, e.Lb, &beta,
+                                              c, e.Lc, c, e.Lc, &res[i].algo, ws, ws_bytes,
+                                              g_stream);
+            cudaEventRecord(ev1, g_stream);
+            if (cudaEventSynchronize(ev1) != cudaSuccess || s != CUBLAS_STATUS_SUCCESS) {
+                ok = 0; break;
+            }
+            float ms = 0.0f;
+            cudaEventElapsedTime(&ms, ev0, ev1);
+            if (it >= warm) acc += ms;
+        }
+        if (!ok) continue;
+        double mean = acc / meas;
+        if (best < 0 || mean < e.best_ms) { e.best_ms = mean; best = i; e.algo = res[i].algo; }
+    }
+    cudaEventDestroy(ev0); cudaEventDestroy(ev1);
+    if (best < 0) return -326;
+    size_t sz = 0; int v = -1;
+    cublasLtMatmulAlgoConfigGetAttribute(&e.algo, CUBLASLT_ALGO_CONFIG_ID, &v, sizeof(v), &sz);
+    e.algo_id = v; v = -1;
+    cublasLtMatmulAlgoConfigGetAttribute(&e.algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &v, sizeof(v), &sz);
+    e.tile = v; v = -1;
+    cublasLtMatmulAlgoConfigGetAttribute(&e.algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &v, sizeof(v), &sz);
+    e.stages = v; v = -1;
+    cublasLtMatmulAlgoConfigGetAttribute(&e.algo, CUBLASLT_ALGO_CONFIG_SPLITK_NUM, &v, sizeof(v), &sz);
+    e.splitk = v;
+    e.tuned = 1;
+    n_cache++;
+    printf("TC LT: tuned M=%lld N=%lld K=%lld C=%s beta=%d -> algo id=%d tile=%d stages=%d "
+           "splitK=%d (%.1f us, best of %d heuristics, ws %zu MB)\n",
+           (long long)M, (long long)N, (long long)K, e.c16 ? "f16" : "f32", e.accum,
+           e.algo_id, e.tile, e.stages, e.splitk, e.best_ms * 1000.0, e.nres, ws_bytes >> 20);
+    return best;
+}
+
+// The f32-C dispatch on a tuned algorithm. -320 = this shape was never tuned, so the caller
+// DECLINES to `tc_shim_gemm_f16_32c_pre` and runs the shipped GemmEx path unchanged.
+extern "C" int64_t tc_shim_gemm_f16_32c_pre_lt(const void* a16, const void* w16,
+                                               int64_t M, int64_t K, int64_t N,
+                                               void* c_f32, int64_t accum) {
+    tc_lt::Entry* e = tc_lt::find(M, N, K, 0, (int)accum);
+    if (e == nullptr) return -320;
+    return tc_lt::matmul(*e, a16, w16, c_f32);
+}
+
+// The f16-C twin (the gate/up role under ALGENTA_7B_PF_F16MLP).
+extern "C" int64_t tc_shim_gemm_f16_16c_pre_lt(const void* a16, const void* w16,
+                                               int64_t M, int64_t K, int64_t N,
+                                               void* c_f16, int64_t accum) {
+    tc_lt::Entry* e = tc_lt::find(M, N, K, 1, (int)accum);
+    if (e == nullptr) return -320;
+    return tc_lt::matmul(*e, a16, w16, c_f16);
+}
+
+extern "C" int64_t tc_shim_lt_count(void) { return (int64_t)tc_lt::n_cache; }
+
+#endif  // ALGENTA_TC_SHIM_LT
+// NOTE: there are deliberately NO stubs in the `#else`. The whole block above is inside
+// `#ifdef ALGENTA_TC_SHIM_LT`, so a shim object built WITHOUT the macro is byte-identical to
+// the one FRONT 5 shipped — which is what lets a baseline arm claim it carries no part of this
+// lever provably, rather than merely unreachable. The Mojo side references these symbols only
+// under `@parameter if PF_LTALGO_B1`, so a flag-off binary never asks for them; an arm that
+// passes `-D ALGENTA_7B_PF_LTALGO` but links the stock object fails AT LINK TIME with an
+// undefined symbol, which is the loud failure this campaign prefers over a silent runtime
+// decline that would leave a cell measured on the wrong code path.
+
 extern "C" int64_t tc_shim_shutdown(void) {
     if (g_handle != nullptr) { cublasDestroy(g_handle); g_handle = nullptr; }
     if (g_stream_created && g_stream != nullptr) { cudaStreamDestroy(g_stream); }

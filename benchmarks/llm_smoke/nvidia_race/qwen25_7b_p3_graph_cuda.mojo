@@ -424,7 +424,16 @@ def main() raises:
             var pf0 = sg.prefill(_copy_ids(race_ids))
             _check_resident(pf0.status, "G0 prefill")
             g0_stream.append(pf0.token_id)
-            if len(oracle) >= G0_TOKENS:
+            if len(oracle) >= 1:
+                # FRONT 6: compare min(len(oracle), G0_TOKENS) tokens, not a fixed 16. The old
+                # `len(oracle) >= G0_TOKENS` guard made a SHORT oracle silently skip G0, and
+                # every long-prompt oracle is short: the three RAG-4096 prompts answer in four
+                # tokens and then emit the EOS token, so a 16-token reference can only be had by
+                # forcing the fp32 decoder past its own natural stop -- and post-EOS continuation
+                # is undefined behaviour for a chat model, so it is not a gate on anything.
+                var ncmp = len(oracle)
+                if ncmp > G0_TOKENS:
+                    ncmp = G0_TOKENS
                 _check_resident(
                     sg.seed_and_run_graph_p3(pf0.token_id, n_prompt, G0_TOKENS - 1),
                     "G0 seed_and_run_graph_p3",
@@ -432,16 +441,17 @@ def main() raises:
                 for k in range(1, G0_TOKENS):
                     g0_stream.append(sg.graph_token(n_prompt + k - 1))
                 var g0_mismatch = 0
-                for k in range(G0_TOKENS):
+                for k in range(ncmp):
                     if g0_stream[k] != oracle[k]:
                         g0_mismatch += 1
                         print("  ORACLE MISMATCH at token", k, ": got", g0_stream[k],
                               "want", oracle[k])
                 if g0_mismatch > 0:
-                    print("G0 RESULT: FAIL —", g0_mismatch, "mismatched tokens")
+                    print("G0 RESULT: FAIL —", g0_mismatch, "mismatched of", ncmp, "compared")
                     exit(1)
-                print("G0 RESULT: PASS —", G0_TOKENS, "greedy tokens match the oracle")
-                report = report + "G0 PASS 16/16\n"
+                print("G0 RESULT: PASS —", ncmp, "/", ncmp,
+                      "greedy tokens match the oracle (oracle length", len(oracle), ")")
+                report = report + "G0 PASS " + String(ncmp) + "/" + String(ncmp) + "\n"
             else:
                 print("G0 SKIPPED: no --oracle ids supplied (bootstrap from the llama.cpp gate)")
                 report = report + "G0 SKIPPED (no oracle)\n"

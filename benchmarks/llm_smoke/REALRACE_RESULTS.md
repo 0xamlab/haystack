@@ -18205,3 +18205,421 @@ one), `ptxas_v.log`, `build_f1.log`, `build_e3.log`, `build2.log`, `build3.log`,
 `clocks_stage1_1hz.csv` (1377 samples), `clocks_probe{1,2}_1hz.csv`,
 `bench_{_e3,_f1}_ra1.log`, `bench_{_e3,_f1}_rag0.log`. Binaries in `~/front5/bin/`; source
 `~/front5/repo`. VM left **TERMINATED**, 0 MiB, no processes, no containers, no watchers.
+
+## FRONT 6 — Qwen2.5-7B CUDA vs TensorRT-LLM 1.2.1, RAG-4096 **FLIPPED** 0.9556x → 1.0221x (2026-09-16, algenta-ent-a100)
+
+Third attempt at the RAG-4096 loss, and the first one that wins it. Branch
+`feat/7b-rag-next2` (stacked on `feat/7b-rag-next` / PR #996, which was still OPEN when this
+round started, so `_g0` is round 5's ship arm and not `origin/main`). VM `algenta-ent-a100`,
+A100-SXM4-40GB, clocks pinned 1410 MHz and read before and after every timed cell with a 1 Hz
+sampler over each stage.
+
+**The round's premise was wrong, and measuring it is what won the cell.** Round 5 ranked the
+remaining 12.639 ms as (1) a ~6-10 ms HOST/LAUNCH GAP — "zero numeric risk, best expected
+value" — (2) ~2.9 ms of converts plus ~1.0 ms of rmsnorm, (3) do not touch FA. Target (1) does
+not exist at that size, and the real 12.6 ms was sitting in a place no previous round had
+priced: **the prefill pass shape**.
+
+### 1. Target 1 REFUTED BY MEASUREMENT — the host gap is 3.144 ms, not 6-10 ms
+
+`front6_decomp.py` over a fresh `_g0` capture (nsys `--trace=cuda`, one RAG-4096 prefill, wall
+and busy taken from the SAME trace so the gap is a measurement and not a cross-basis
+subtraction). Windows are cut on evidence, not guessed: the four per-chunk embedding gathers
+(`residentk_kernels_prefill_f32..._6fbdda6b`, 4/prefill) open a window and the prefill's own
+lm_head (`..._lmh..._9f8e6b01`, exactly 1/prefill) plus the following argmax close it.
+
+| prefill # | wall ms | busy ms | gap ms | gap % | dev ops | host launch APIs |
+|---|---|---|---|---|---|---|
+| 0 (cold) | 661.117 | 277.312 | 383.804 | 58.05 | 1580 | 1580 |
+| 1 | 284.097 | 280.953 | **3.144** | **1.11** | 1580 | 1581 |
+| 2 | 282.771 | 279.610 | 3.161 | 1.12 | 1580 | 1581 |
+| 3 | 282.996 | 279.949 | 3.048 | 1.08 | 1580 | 1581 |
+| 4 | 286.373 | 283.347 | 3.026 | 1.06 | 1580 | 1581 |
+| 5 | 286.448 | 283.403 | 3.045 | 1.06 | 1580 | 1581 |
+| 6 | 283.568 | 280.322 | 3.246 | 1.14 | 1580 | 1581 |
+
+The six warm prefills agree to ±0.11 ms: **the gap is 3.026-3.246 ms, 1.06-1.14% of wall**.
+Round 5's "~276 ms of GPU busy" was round 4's number for `_e3`, stale by ROPEVEC's own
+−3.705 ms; against the correct 280.953 ms the gap is 3.1 ms and not 8.8 ms.
+
+Where the 3.144 ms is: 1515 uniform 1-5 µs gaps totalling 2.597 ms (82.6%) — pure per-launch
+cost over 1580 launches — plus 8 gaps of 20-100 µs totalling 0.467 ms (14.9%), which are the
+three chunk seams (74.14 / 73.73 / 56.86 µs of H2D→first-kernel, behind a 91.87 / 55.46 /
+54.66 µs D2H→H2D pair: the per-chunk token upload and the `ctx.synchronize()` that brackets it)
+and three rmsnorm→cutlass gaps. Per chunk the gap is 0.787 / 0.761 / 0.731 / 0.660 ms.
+
+**So the entire host-side prize is ~3.1 ms, of which a CUDA graph could recover at most the
+2.597 ms of per-launch gaps** — and it would have to do that against 1580 launches whose mean
+GPU-idle cost is 1.65 µs. Round 3 refuted prefill graphs at pp1024 on a 98.8%-busy profile; this
+round RE-MEASURED at RAG-4096 as instructed rather than inheriting, and the refutation stands at
+98.9% busy. Target 1 is not the best expected-value attack in the round; it is the third.
+
+The cold first prefill is recorded because it is the number that would have misled a shorter
+capture: 383.804 ms of gap, 58% of a 661.117 ms wall, from per-shape cuBLAS first-call cost
+(the same lazy per-shape module selection that PR #993 root-caused on the gemma lane). The
+driver's 3 warmup + 20 measured runs never see it, which is why the median window is the one
+reported and why a `--runs 1` capture must be read per-window, not in aggregate.
+
+### 2. Where the 12.639 ms actually was: 80.46% of a 280.953 ms busy is cuBLAS, and the pass shape was wasting it
+
+Per-family GPU busy inside the median RAG-4096 prefill window (`_g0`, same capture):
+
+| family | ms | % | n | note |
+|---|---|---|---|---|
+| cublas_gemm | 226.048 | 80.46 | 448 | the four projections × 28 layers × 4 chunks |
+| fa2_flash | 34.710 | 12.35 | 112 | `_fa2_causal_kernel<32,1,1>`, 309.92 µs mean |
+| swiglu | 8.984 | 3.20 | 112 | `_swiglu_f16_fastexp_kernel` |
+| rmsnorm | 4.527 | 1.61 | 224 | 20.21 µs mean |
+| biasrope | 2.541 | 0.90 | 112 | round 5's `_pf_biasropewrt_vec_kernel` |
+| A_convert_scalar | 2.014 | 0.72 | 112 | `_f32_to_f16_kernel`, 17.98 µs mean |
+| kv_stage_v8 | 0.822 | 0.29 | 224 | `_f32_to_f16_v8_kernel`, 3.67 µs mean |
+| lm_head | 0.713 | 0.25 | 1 | |
+| memset | 0.431 | 0.15 | 224 | |
+| embed | 0.143 | 0.05 | 4 | |
+| **total** | **280.953** | | 1580 | union busy == naive sum: no stream overlap at all |
+
+Two facts fall out. First, **112 `_f32_to_f16_kernel` dispatches** — round 4's "111 per-GEMM A
+converts" — are exactly one per layer-chunk, and source inspection says which: under
+F16NORM+F16MLP the rmsnorm f16 twin feeds qkv and gate/up, the SwiGLU epilogue feeds down, and
+**o_proj is the one role whose A is still f32** (FA2's O epilogue writes `pf_attn` f32). Second,
+at 476.33 GFLOP per layer-chunk the 2018.28 µs of cuBLAS is 236.0 TF/s = 75.6% of the A100's
+312 TF/s dense f16 peak, and attributed by launch geometry the loss is not spread evenly:
+
+| role | shape (M=1024) | µs | TF/s | % of 312 peak |
+|---|---|---|---|---|
+| gate_up | N=37888 K=3584, C f16 | 1053.00 | 263.5 | 84.5 |
+| qkv | N=4608 K=3584, C f32 | 142.59 | 237.2 | 76.0 |
+| down | N=3584 K=18944, C f32 β=1 | 680.10 | 204.0 | 65.4 |
+| o_proj | N=3584 K=3584, C f32 β=1 | 142.59 | 184.5 | 59.1 |
+
+Against TensorRT-LLM's own pp1024 kernel mix (`~/trtllm/front1/trtllm_kernel_mix.txt`, 12
+requests, the same m=1024 shapes RAG chunks use), the whole non-attention gap decomposes as:
+cuBLAS **+6.09 ms**, A converts **+2.01**, rmsnorm **+1.05** (4.527 vs their FusedAddRMSNorm
+3.480), KV converts **+0.82**, memset +0.21, biasrope +0.11, SwiGLU −0.21, lm_head −0.05, their
+`computeSeqAndPaddingOffsets` −0.64 and torch eltwise −0.32 — net **+8.94 ms of non-attention
+device work and +2.98 ms of attention-plus-host-gap**, which sums to the 11.92 ms in-trace wall
+gap. **Nothing in that list is worth 12.6 ms on its own.** The win came from a term the
+decomposition could not show, because it was invisible in a per-chunk comparison: our per-chunk
+GEMM shape is the wrong shape.
+
+### 3. LEVER 1 (adopted, `-D ALGENTA_PF_PASS4096`): one 4096-row pass instead of four 1024-row passes
+
+`_B1_PASS_MAX` has been 1024 since the H100-autopsy lever that introduced it, and a RAG-4096
+prompt has therefore always run its projections as four m=1024 passes. Nobody had priced that,
+because every round compared kernels against TRT-LLM's per-request totals instead of asking
+whether our pass shape was the efficient one. `gemm_probe --msweep` prices the same 1905.3 GFLOP
+of per-layer projection work three ways (median of 15, clocks 1410, the exact dtypes and beta of
+each role):
+
+| m | passes | per-layer µs | 4096-row µs | 28-layer ms | vs 4×1024 |
+|---|---|---|---|---|---|
+| 1024 | 4 | 1937.41 | 7749.63 | 216.990 | — (shipped) |
+| 2048 | 2 | 3649.54 | 7299.07 | 204.374 | **−12.616 ms** |
+| 4096 | 1 | 7326.72 | 7326.72 | 205.148 | **−11.842 ms** |
+
+The mechanism is tail-wave quantization, the same effect the H100 autopsy named for 128-row
+chunks: at m=1024 the narrow-N roles tile into 8×28 = 224 output tiles of 128×128 = **2.07 waves
+on 108 SMs**, so a third of the machine idles through the second wave. Per role, m=1024 → 4096
+raises o_proj 188.9 → 199.9 TF/s and down 212.8 → 244.2, while gate/up (already 278.8, 89% of
+roof) barely moves. Total attention work is unchanged — Σ over rows of visible keys is
+1024×(512+1536+2560+3584) = 1024×8192 either way — so this is free on the FA side, and it also
+deletes three chunk seams, ¾ of the launches (1580 → ~400) and ¾ of the memsets.
+
+The flag raises `_B1_PASS_MAX` to 4096; every `pf_*`/`tc_*` scratch buffer is sized by
+`_B1_PF_ROWS`, which derives from it, so the sizing follows by construction rather than by a
+second edit. Costs, stated: **+5.6 GB of VRAM** at the 7B shapes (2.8 GB of it `pf_tc_scores` +
+`pf_tc_p16`, the five-pass chain's windows, which FA2 leaves dead but which must still be sized
+because that chain is FA2's runtime decline path) — measured peak 31.9 GB of 40 GB — and it is
+**NOT bit-identical**, because a different M re-selects the cuBLAS algorithm and so the reduction
+order. `m = min(n_prompt, cap)`, so **pp256 and pp1024 cannot change**: both are ≤ 1024 and take
+the identical single pass at the identical M.
+
+### 4. LEVER 2 (adopted, `-D ALGENTA_7B_PF_LTALGO`): cublasLt on a stage-time timed-search algorithm
+
+`tc_shim_init` calls `cublasCreate` + `cublasSetStream` + `cublasSetMathMode` and **never
+`cublasSetWorkspace`**, and every integration entry dispatches `cublasGemmEx` with
+`CUBLAS_GEMM_DEFAULT` — which re-runs its heuristic on all 448 calls and, without a workspace,
+cannot reach split-K. The lever adds a cublasLt path whose algorithm is chosen once, at stage
+time, by TIMING the top-16 heuristics per shape (not taking result[0]: the probe's winners were
+not always index 0) and caching it. Only shapes that were tuned take it; an untuned shape returns
+**−320 and the caller declines to the shipped GemmEx entry**, so a prompt whose first pass is not
+the tuned one runs byte-for-byte the code it ran before. In situ it tuned 4/4 in 892 ms one-time
+and picked exactly the probe's winners:
+
+| role | probe µs | in-situ tuned µs | algo |
+|---|---|---|---|
+| qkv | 510.98 | 511.9 | id=6 tile=20 stages=11 splitK=1 |
+| gate_up | 3875.84 | 3924.4 | id=6 tile=20 stages=11 splitK=1 |
+| o_proj | 425.98 | 425.4 | id=6 tile=20 stages=11 splitK=1 |
+| down | 1963.01 | 1965.1 | id=6 tile=20 stages=11 **splitK=2** |
+
+The two levers **compound**: at m=1024 the same search is worth only −36.35 µs/layer (−4.07 ms
+per prefill), at m=4096 it is worth −550.9 µs/layer (−15.43 ms), because the wide pass is what
+exposes the tail-wave headroom a better algorithm can then take.
+
+### 5. Results — RAG-4096 FLIPPED, and the two WIN axes held
+
+Baseline `_g0` is round 5's ship arm `_f1` rebuilt from this branch (never a remembered number),
+and it reproduces round 5's published ratio exactly: **0.9556x**. TRT-LLM 1.2.1 was re-served
+FRESH in the same session (`run_rerace_7b_front6.sh`, byte-identical recipe to round 5's, 3
+warmup + 7 measured, server-side executor iter-log device step time):
+
+| cell | TRT-LLM re-serve | vs round 5's stored | basis |
+|---|---|---|---|
+| pp256 | 35.950 ms → 7121.09 tok/s | +1.291% | **CROSS-SESSION** (labelled, not blended) |
+| pp1024 | 72.149 ms → 14192.81 tok/s | +0.298% | SAME-SESSION |
+| RAG-4096 | 273.186 ms → 14993.43 tok/s | +0.375% | SAME-SESSION |
+
+RAG-4096, the flip criterion. 20-run medians, one process per arm per cell, interleaved with the
+baseline bracketing prompt 0, clocks read before and after every cell, **G0 5/5 against the new
+RAG oracle and G1 64/64 on every single cell**:
+
+| arm | prompt 0 | prompt 1 | prompt 2 | mean tok/s | mean wall | vs TRT-LLM |
+|---|---|---|---|---|---|---|
+| `_g0` (round 5's ship arm) | 14326.400 | 14325.080 | 14331.438 | 14327.639 | 285.881 ms | **0.9556x LOSS** |
+| `_g1` (+PASS4096) | 15115.298 | — | — | 15115.298 | 270.984 ms | **1.0081x WIN** |
+| `_g2` (+PASS4096 +LTALGO) | 15319.015 | 15320.219 | 15334.269 | 15324.501 | **267.284 ms** | **1.0221x WIN** |
+
+`_g0` → `_g2` is **+6.958% prefill throughput and −18.597 ms of wall**. Attribution: PASS4096
+alone is +5.507% (−14.922 ms), LTALGO on top adds +1.348% (−3.604 ms). Every cell rel-IQR
+≤ 0.65% with 0 outliers at the driver's 10% deviation threshold (the 1% target is met by all of
+them). `_g2` wins all three prompts, so the flip is not a prompt-0 artifact.
+
+The two axes this round must not regress, against the fresh re-serve:
+
+| arm | pp256 | pp1024 | gen64 | gen256 |
+|---|---|---|---|---|
+| `_g0` (ROUND 1 a / b, ROUND 2) | 12875.61 / 12806.86 / 12862.92 | 15466.36 / 15460.70 / 15476.98 | 83.391 / 83.255 / 83.385 | 82.688 / 82.560 / 82.700 |
+| `_g1` (ROUND 1) | 12797.50 → **1.7971x** | 15433.67 → **1.0874x** | 83.372 | 82.684 |
+| `_g2` (ROUND 2) | 12880.81 → **1.8089x** | 15464.19 → **1.0896x** | 83.315 | 82.635 |
+
+FRONT 5 published pp256 1.788x, pp1024 1.085x, decode 1.043x. **Both WIN axes held**
+(pp256's TRT-LLM basis is CROSS-SESSION this round, so its ratio is indicative and labelled).
+`_g1`'s pp256 delta against the `_g0` bracket mean is −0.341% while **the bracket's own drift is
+−0.534%** — the effect is smaller than the noise floor of the baseline it is measured against,
+i.e. not measurable. `_g2`'s pp256 is +0.139% and pp1024 −0.083% against its own bracket. Decode
+moves by ≤0.084% on every arm, and cannot move by construction: the levers touch `_prefill_tc`
+only.
+
+### 6. Where the −18.597 ms came from, measured and not forecast
+
+`front6_decomp.py` on a fresh `_g2` capture, same recipe and same windowing as `_g0`'s, both
+recomputed with one analyzer version. `_g0`'s re-decomposition reproduces its original numbers
+exactly (284.097 / 280.953 / 3.144), which is the check that the windowing change did not move
+the baseline it is being compared against.
+
+| | `_g0` (4 passes) | `_g2` (1 pass) | Δ |
+|---|---|---|---|
+| device ops per prefill | 1580 | **367** | −1213 (−76.8%) |
+| host launch APIs | 1581 | 368 | −1213 |
+| chunk seams | 3 × ~200 µs | **0** | −0.60 ms |
+| GPU busy (median window) | 280.953 ms | **260.967 ms** | **−19.986 ms** |
+| host/launch gap | 3.144 ms (1.11%) | **1.367 ms (0.52%)**; 0.580-0.593 ms steady | −1.777 ms |
+| trace wall | 284.097 ms | 262.334 ms | −21.763 ms |
+
+Per family, the busy delta:
+
+| family | `_g0` ms (n) | `_g2` ms (n) | Δ ms |
+|---|---|---|---|
+| cublas_gemm | 226.048 (448) | **209.947 (112)** | **−16.101** |
+| fa2_flash | 34.710 (112) | **30.133 (28)** | **−4.577** |
+| memset | 0.431 (224) | 0.060 (28) | −0.371 |
+| kv_stage_v8 | 0.822 (224) | 0.636 (56) | −0.186 |
+| rmsnorm | 4.527 (224) | 4.497 (56) | −0.030 |
+| embed | 0.143 (4) | 0.127 (1) | −0.016 |
+| lm_head | 0.713 (1) | 0.720 (1) | +0.007 |
+| A_convert_scalar | 2.014 (112) | 2.344 (28) | +0.330 |
+| swiglu | 8.984 (112) | 9.439 (28) | +0.455 |
+| biasrope | 2.541 (112) | 3.056 (28) | +0.515 |
+
+**The unforecast win is attention: FA2 −4.577 ms (−13.2%).** Per launch it goes 309.92 µs at
+m=1024 → 1076.17 µs at m=4096 for exactly 4× the work. Nothing in the kernel changed; the grid
+does. At m=1024 FA2 launches 16 row-blocks × 28 heads = 448 CTAs whose causal work is wildly
+unequal (round 4 measured row-block 0 running 1 key block and row-block 15 running 128), so
+448 CTAs over 108 SMs at 3 CTAs/SM = 324 slots is 1.38 waves and the tail is the heaviest CTA.
+At m=4096 the same imbalance is spread over 64 row-blocks = 1792 CTAs = 5.5 waves, and the tail
+amortizes. Round 5's instruction "do not touch FA parameters" was right — this win needed no FA
+change at all, only a wider pass, and it is a reason to re-read round 4's FA load-balance
+analysis as wave-quantization-limited rather than kernel-limited.
+
+The three families that got *slower* per element (swiglu +0.455, biasrope +0.515, A convert
++0.330) are all round-5-shaped kernels whose grids were tuned at m=1024 — `_pf_biasropewrt_vec_kernel`
+goes 22.69 → 109.13 µs for 4× the rows (−4.0% efficiency), swiglu 80.22 → 337.10 µs (−5.3%),
+the scalar A converter 17.98 → 83.72 µs (−16.7%, and it is now only 28 calls so its total is
+2.344 ms). Together they give back 1.30 ms of the 21.29 ms the other families saved.
+
+### 5b. Flag audit — the two levers are shape/algorithm changes, so the literal alone is not enough
+
+`scripts/audit_tc_flags.sh --bin-dir ~/front6/bin --logs ~/trtllm/front6` (`flag_audit.json`).
+Neither FRONT 6 lever adds a kernel, so the inventory does not move and `strings` on a kernel name
+would prove nothing: PASS4096 changes a comptime SHAPE and LTALGO changes which cuBLAS algorithm a
+shape dispatches. For both, **the flag literal can be present while the effect is absent** — a pass
+cap no prompt exceeds, or an Lt arm whose four shapes all declined (−320) and ran `cublasGemmEx`
+DEFAULT anyway while still printing the flag line. The audit therefore records the runtime effect
+alongside the literal, read from the log rather than the binary:
+
+| arm | sha256[0:16] | bytes | flags in binary (beyond the round-5 set) | `pass_max` | `pass_max_4096` | `lt_tuned_4_of_4` |
+|---|---|---|---|---|---|---|
+| `_g0` | c4f3024205778b0b | 2169976 | — | 1024 | **False** | **False** |
+| `_g1` | e250396024fa9588 | 2174128 | `PF_PASS4096` | 4096 | **True** | False |
+| `_g2` | f470fd370c2bedbf | 2189984 | `PF_PASS4096` `7B_PF_LTALGO` | 4096 | **True** | **True** |
+
+All three carry the identical round-5 flag set (`ONEPASS_B1 FLASH_B1 FLASH2_B1 NOSEAM TCATTN SM1P
+F16NORM F16MLP FA FASTEXP BIASROPE FA2 KVTWIN ROPEVEC`), `FA2_variant = 0`, `max_ctx = 8192`, and
+the FA/FA2 ARMED verdicts, so the only differences between the arms are the two levers under test.
+`lt_tuned_4_of_4` reads the LTALGO TCFLAG line rather than the `TC FLAGS:` banner on purpose: the
+banner is printed unconditionally, and calling `_tc_lt_count()` from it would make every flag-off
+build reference a cublasLt symbol and fail to link against the stock shim object. The audit's first
+run got this wrong and reported `lt_tuned_4_of_4=False` for `_g2` — an arm that had verifiably
+tuned 4/4 — because it searched the banner; a field that reads False for a working lever is worse
+than no field, so it is fixed rather than dropped.
+
+The shim-object separation behind those binaries is verified, not asserted. The stock object
+(`-D ALGENTA_TC_SHIM_LT` absent) against the object FRONT 5 actually shipped
+(`~/front5/bin/tc_shim_sm_80.o`): **`.text`, `.rodata`, `.data` and `.bss` all byte-identical**
+(`.text` md5 `eefd876c0bfc9642e28d3769a983acce`, 26922 bytes both) and the **defined symbol tables
+identical at 157 entries**, with 0 undefined `cublasLt*` and 0 defined `tc_shim_lt*`. The LT
+object has 5 defined `tc_shim_lt*`/`*_pre_lt` and 11 undefined `cublasLt*`. A whole-file md5 of
+the two stock objects does NOT match, and the reason is worth keeping: an ELF object embeds its own
+source path in an `STT_FILE` symbol, and the two builds used different paths of identical length
+(`front5`/`front6`), so a whole-file compare reports a difference that is not a code difference.
+Section-wise comparison is the correct test.
+
+### 7. Integrity notes — the uncomfortable findings, carried not buried
+
+1. **ZERO-DRIFT IS BREACHED, and the affected cells were NOT re-taken.** The 1 Hz samplers show
+   203/4814 off-pin samples in stage 1 (4.22%) and 11/1147 in stage 2 (0.96%), against round 5's
+   10/1377. Off-pin samples land inside **14 cell windows** (11 in stage 1, 3 in stage 2). Clocks
+   reach **1230 MHz** (−12.8% from the 1410 pin) at 19:36:12, 67 °C, 391.2 W, 37192 MiB. This is
+   **power-cap throttling, not thermal and not another actor**: the cap is 400.00 W and the
+   sampler records draws up to **532.9 W**, while the maximum temperature all stage is 75 °C
+   (A100 throttles well above that), and `nvidia-smi --query-compute-apps` was empty before every
+   cell. Off-pin values are 1230-1395 MHz, i.e. a contiguous band below the pin rather than a
+   single spike, exactly round 3's "1.6% samples <1410 (min 1320, 424 W vs 400 W limit) confined
+   to sustained phases".
+   **Why the cells were not re-taken:** 14 cells × ~7.5 min is ~105 min against a hard report
+   budget that had ~85 min left, and re-taking under the same sustained-load conditions would
+   reproduce the same throttle — it is a property of a 400 W-capped A100 running a 4096-row
+   prefill, not of a contaminated window. **What bounds the effect instead, and this is the
+   load-bearing argument:** the cells are interleaved with the baseline bracketing them, and the
+   baseline reproduces to **0.044%** across the three RAG prompts (14326.400 / 14325.080 /
+   14331.438, taken 19:26 / 19:50 / 20:04, each window containing off-pin samples), to 0.534% on
+   pp256 across three independent cells in two rounds, and to 0.105% on pp1024. The claimed
+   effect is **+6.958%** — 13× the largest baseline spread and 158× the RAG baseline spread. Every
+   cell also carries rel-IQR ≤ 0.65% with **0 outliers** at the driver's 10% deviation threshold,
+   which a throttle excursion inside the 20 timed runs would have inflated. `_g2`'s IQRs
+   (0.579 / 0.648 / 0.466%) are marginally above `_g0`'s (0.347 / 0.290 / 0.411%) and that is
+   disclosed rather than averaged away. A re-take under a lower power cap, or with the runs
+   interleaved at finer granularity, is the clean way to close this and is the first thing the
+   next round should do if the margin is ever load-bearing on <1%.
+2. **The probes OVER-forecast, again, and by a factor worth remembering.** `gemm_probe --msweep`
+   put PASS4096 at −11.842 ms of GEMM and LTALGO at a further −15.43 ms, i.e. −27.27 ms together;
+   the measured cublas family delta is **−16.101 ms**. Two separate errors, both in the same
+   direction. (a) The probe under-models in-situ memory pressure: its isolated `ex_ws0` 4×1024
+   total is 216.990 ms against nsys's 226.048 ms for the same 448 calls (+4.2%), and its
+   `lt` 1×4096 total 189.723 ms against nsys's 209.947 ms (**+10.7%**) — the wider pass reads
+   4× the activations per kernel and runs beside FA2's K/V traffic, which an isolated GEMM loop
+   does not see. (b) LTALGO's in-situ algos are the probe's winners to within 1.3% in isolation
+   (511.9 vs 510.98 µs, 3924.4 vs 3875.84, 425.4 vs 425.98, 1965.1 vs 1963.01) yet deliver only
+   −3.604 ms of wall rather than −15.43, because at m=4096 `cublasGemmEx DEFAULT` in situ already
+   lands near the tuned choice — the probe's `ex_ws0` baseline was measured on a **fresh handle
+   per shape**, which is not the state the engine runs in. **Lesson, and it is round 4's KVTWIN
+   lesson a third time: a standalone probe ranks levers, it does not price them.** Both times the
+   ranking was right and the magnitude was 1.7-4.3× too large.
+3. **VRAM is now the binding constraint on this lever, and it is close to the edge.** Peak device
+   memory in the `_g2` cells is **37192 MiB of 40960 MiB (90.8%)**, against 31940 MiB for
+   `_g0`/`_g1`. PASS4096 adds ~5.6 GB of scratch (2.8 GB of it `pf_tc_scores` + `pf_tc_p16`,
+   which FA2 leaves dead but which must be sized because that chain is FA2's decline path) and
+   cublasLt's internal per-algorithm buffers add more on top of the 64 MB workspace. On a 24 GB
+   card this arm demotes the whole TC plan (the existing headroom try prints a record and
+   `tc_staged = -1`) rather than failing, but it would then run the JIT-dequant chain and be far
+   slower — so **PASS4096 is a 40 GB-class lever as shipped**. Sizing the five-pass chain's
+   windows against the pass cap rather than `max_ctx` would recover ~2.8 GB and is the obvious
+   next cleanup if this ever has to run on a smaller device.
+4. **The RAG-4096 cell had never been oracle-gated, in any round.** Rounds 2-5 raced it on G1
+   self-consistency alone, which cannot detect a lever that is deterministically WRONG, and this
+   round's lever 1 only activates above 1024 rows so the fixture oracle says nothing about it.
+   Fixed by `--cases rag` + the driver comparing `min(len(oracle), G0_TOKENS)`. All arms now pass
+   **G0 5/5 on all three raced prompts** and are token-identical to each other.
+5. **The first version of that gate produced a false FAIL on a correct engine**, and it is worth
+   keeping because it is a trap with no visible symptom. Forcing the reference to 16 tokens with
+   `min_new_tokens` does not merely decode past EOS — it sets the EOS logit to −inf, so at the
+   step where EOS *is* the argmax the reference picks a different token. All three arms, including
+   the untouched round-5 baseline, then read "G0 FAIL — 16 mismatched" against a reference that
+   was wrong and they were right. `--no-eos-stop` (`eos_token_id=None`) reproduces the engine
+   exactly. **A gate that fails every arm including the baseline is a gate defect until proven
+   otherwise.**
+6. **The dissection that drove this round nearly did not happen correctly.** The first analyzer
+   run clustered the timeline on 2 ms idle gaps and picked "the largest contiguous burst", which
+   returned an 8663 ms window spanning the whole decode tail and reported a 23.645 ms gap — a
+   number that would have *confirmed* round 5's ranking and sent the round after CUDA graphs. It
+   was wrong because Mojo kernel names are mangled (`residentk_kernels_prefill_f32..._6fbdda6b`,
+   not `embed`), so the marker search silently matched nothing and fell back to the burst
+   heuristic. Markers are now named from the captured kernel table and the window count is
+   asserted against the expected 7 prefills. A second defect: windowing on "the last 4 embeds"
+   is correct only while the pass cap is 1024 — under PASS4096 it built 3100 ms windows spanning
+   four prefills and their decode tails, which is how the first `_g2` decomposition reported a
+   12.111 ms gap and a 1410 ms "other" family. The chunk count is now derived from the trace.
+7. **`front6_summarize.py` shipped with a PEP-701 multi-line f-string** that the local python 3.13
+   accepts and the VM's python 3.10 rejects with "unterminated string literal", so the post stage
+   produced no summary table on its first pass. Analyzers that only ever run on the measurement
+   host must be parsed there, not locally.
+8. **Not re-measured this round:** TRT-LLM's own RAG-4096 nsys trace, so their family split is
+   still inferred by scaling round 2's pp1024 kernel mix (`~/trtllm/front1/trtllm_kernel_mix.txt`)
+   ×4 for the non-attention families — legitimate because those shapes are per-chunk identical,
+   but their FMHA is not, and the residual "+2.98 ms of attention-plus-host-gap" is the one term
+   in the decomposition that rests on that extrapolation. TRT-LLM decode was not re-served either;
+   our gen256 82.635-82.700 is quoted against round 3's stored 79.04 and is **CROSS-SESSION**.
+   `_g1`'s RAG prompts 1 and 2 were not run (budget) — `_g2` covers all three.
+
+### 8. Next round's targets, ranked with measured ms
+
+The remaining gap to a *comfortable* RAG-4096 win, and what is left on the other axes, all from
+this round's `_g2` decomposition (260.967 ms busy, 1.367 ms gap):
+
+1. **The three m=1024-shaped elementwise kernels, +1.30 ms and free.** swiglu (9.439 ms, 337.10 µs
+   at grid.x=10), biasrope (3.056 ms, 109.13 µs at grid.x=4096) and the scalar A converter
+   (2.344 ms, 83.72 µs at grid.x=57344) all lost 4-17% of their efficiency when the pass widened,
+   because their grids and vector widths were chosen at m=1024. Re-tuning them for m=4096 is
+   arithmetic-free and bit-exact.
+2. **Kill the o_proj A convert outright, −2.344 ms.** It is the last f32 A operand in the layer
+   (FA2's O epilogue writes `pf_attn` f32) and the only reason 28 `_f32_to_f16_kernel` calls
+   remain. Making FA2's epilogue write an f16 O twin and feeding o_proj `_tc_gemm_f16_32c_pre`
+   is **bit-exact by the same argument round 4 used for KVTWIN** — `__float2half` of the same f32
+   accumulator is the identical RN-even value whether the kernel or a converter computes it — and
+   it also removes 28 launches and halves the epilogue's write traffic (58.7 → 29.4 MB per layer).
+   This was priced in round 4's decomposition as the 111-convert term and has never been taken.
+3. **The cublas family is still 80.45% of busy at 258.4 TF/s (gate/up) and ~236 TF/s aggregate** —
+   75.6% of roof. The gap between the probe's 287 TF/s and the in-situ 258 is memory pressure,
+   not algorithm choice, so the next increment is a wider workspace plus a per-shape search run
+   *in situ* rather than in isolation (this round's error #2), or fusing the SwiGLU into the
+   gate/up epilogue via a cublasLt `CUBLASLT_EPILOGUE_*`/custom epilogue so the 9.439 ms swiglu
+   pass and its 155 MB round trip disappear.
+4. **rmsnorm, +1.017 ms vs TRT-LLM's FusedAddRMSNorm** (4.497 ms over 56 calls = 80.31 µs each
+   against their 15.4 µs at m=1024 scaled). They fuse the residual add into the norm; we do the
+   add in the GEMM's beta=1 and the norm separately. A fused add+norm writing the f16 twin would
+   also remove traffic from the busiest buffer in the layer.
+5. **The host gap is now 1.367 ms (0.52%) and 0.580-0.593 ms steady.** CUDA graphs remain
+   refuted — twice measured now, at pp1024 and at RAG-4096 — and after PASS4096 there is less
+   than 0.6 ms of steady-state gap left to recover. **Do not spend a round here.**
+6. **FA2 at 31.1% MFU (30.133 ms) is still the second-largest family** and round 5's structural
+   argument stands (arithmetic intensity exactly 64 FLOP/byte against an A100 L2↔SM balance of
+   ~78, 98× read amplification, no wgmma/TMA on sm_80). But this round's −13.2% came from wave
+   quantization, not from the kernel, so the load-balance question is not closed: at 5.5 waves
+   the tail is smaller but not gone, and a heaviest-CTA-first grid ordering is now cheaper to test
+   than it was at 1.38 waves.
+
+### Artifacts
+`~/trtllm/front6/`: `decomp__g0.txt` + `decomp__g0_fixed.txt` (the windowing reproduction check)
++ `decomp__g2.txt`, `gemm_probe.log`, `gemm_msweep.log`, `sweep1.log`, `sweep2.log`,
+`rag{0,1,2}.log`, `rerace6.log`, `trtllm_rerace6.json`, `flag_audit.json`, `summary6.txt`,
+`oracle.log`, `rag_oracle.log`, `chain.log`, `chain_oracle.log`, `after.log`, `smoke5_*`,
+`smoke6_*`, `build_{g0,g1,g2,all}.log`, `clocks_stage1_1hz.csv` (4814 samples),
+`clocks_stage2_1hz.csv` (1147), `nsys/{rep,gputrace,apitrace,kernsum}__{g0,g2}_rag0.*`,
+`nsys/clocks_nsys__g0_1hz.csv`. Shim proof in `/tmp/front6_shimproof{,2}/`. Binaries in
+`~/front6/bin/` (`_g0`, `_g1`, `_g2`, `gemm_probe`); source `~/front6/repo`, seeded from
+`~/front5/repo` and md5-verified against the local worktree
+(`tc_shim.cu` `07dff755bacab10f5c491ce996fe2c22`, `tc_rt_kernels.cu`
+`4d8cf86cec7e3bec847e9437b9afdf0f`, driver `c3afba5686f5bf95e59705bbb7e51d4f` before this
+round's edits). VM left at 1410 MHz / 0 MiB, no containers, no processes, no watchers, then
+**STOPPED** per the owner's lifecycle mandate.

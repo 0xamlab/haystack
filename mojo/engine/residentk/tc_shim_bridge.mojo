@@ -259,6 +259,94 @@ def _tc_gemm_f16_16c_pre(a16: Int, w16: Int, m: Int, k: Int, n: Int, c16: Int,
         return -1
 
 
+def _tc_lt_init(workspace_bytes: Int) -> Int:
+    """FRONT 6 lever 2 (`-D ALGENTA_7B_PF_LTALGO`): create the shim's cublasLt handle and its
+    algorithm workspace. Called ONCE from `_tc_stage_weights`'s headroom try, so a device that
+    cannot hold the workspace demotes the whole TC plan with a printed record instead of
+    half-enabling the lever. 0 = success; -322 = cublasLtCreate failed or the shim object was
+    built WITHOUT `ALGENTA_TC_SHIM_LT` (the stock object carries a stub), in which case every
+    `_tc_gemm_*_pre_lt` below declines and the session runs the shipped GemmEx path."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_lt_init", Int64, Int64](Int64(workspace_bytes)))
+    else:
+        return -1
+
+
+def _tc_lt_tune(a16: Int, w16: Int, c: Int, m: Int, k: Int, n: Int, c16: Int, accum: Int,
+                top: Int, iters: Int) -> Int:
+    """Time the top-`top` cublasLt heuristics for ONE (M, K, N, C-dtype, beta) shape and cache
+    the winner, so every later dispatch of that shape skips cublasGemmEx's per-call
+    CUBLAS_GEMM_DEFAULT heuristic. A TIMED SEARCH, not heuristic result[0]: the heuristic's
+    ranking is an estimate and gemm_probe measured winners that were not index 0.
+
+    `c` is SCRATCH and IS WRITTEN (beta is honoured, so an accumulate role accumulates into it
+    `iters` times). Pass a buffer the caller is about to overwrite anyway — the session passes
+    each role's own prefill destination, all of which the next prefill rewrites before reading.
+    Returns the winning heuristic index (>= 0), or negative: -320 not built with the LT macro,
+    -322 no handle, -323 cache full, -324 no heuristic returned, -326 no algo could execute."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_lt_tune", Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(c), Int64(m), Int64(k), Int64(n), Int64(c16),
+              Int64(accum), Int64(top), Int64(iters))
+        )
+    else:
+        return -1
+
+
+def _tc_gemm_f16_32c_pre_lt(a16: Int, w16: Int, m: Int, k: Int, n: Int, c32: Int,
+                            accum: Int) -> Int:
+    """`_tc_gemm_f16_32c_pre` on the shape's TUNED cublasLt algorithm. **-320 means this shape
+    was never tuned and the caller MUST decline to `_tc_gemm_f16_32c_pre`** — that is what keeps
+    an untuned M (any prompt whose first pass is not the tuned one) on byte-for-byte the shipped
+    code path, so the lever can only ever change the shape it was measured on. NOT bit-identical
+    to the GemmEx path when the tuned algo splits K or tiles differently: the reduction order
+    moves, so the f32 accumulator rounds differently, and the token gates decide it."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_32c_pre_lt", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c32),
+              Int64(accum))
+        )
+    else:
+        return -1
+
+
+def _tc_gemm_f16_16c_pre_lt(a16: Int, w16: Int, m: Int, k: Int, n: Int, c16: Int,
+                            accum: Int) -> Int:
+    """The f16-C twin of `_tc_gemm_f16_32c_pre_lt` (the gate/up role under `-D
+    ALGENTA_7B_PF_F16MLP`). Same -320 decline contract."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_16c_pre_lt", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c16),
+              Int64(accum))
+        )
+    else:
+        return -1
+
+
+def _tc_lt_count() -> Int:
+    """How many shapes the shim has tuned. Printed in the flag-audit banner so a binary that
+    claims the lever can be checked against the number of shapes it actually tuned (0 = the
+    lever silently declined everywhere, which a flag literal alone would not reveal)."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_lt_count", Int64]())
+    else:
+        return 0
+
+
 def _tc_last_error() -> Int:
     """The shim's last recorded error (raw cudaError_t/cublasStatus_t, or a negative
     shim-defined class) — diagnostics when a wrapper returns non-zero."""

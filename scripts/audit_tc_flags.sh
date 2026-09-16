@@ -60,10 +60,25 @@ FLAGS=(
     # carries the BIASROPE literal, and the two are distinct strings with their own `=1`
     # suffixes, so neither substring test can light up the other.
     "ALGENTA_7B_PF_ROPEVEC=1|ALGENTA_7B_PF_ROPEVEC"
+    # FRONT 6 (2026-09-16, the third RAG-4096 flip round). Neither of these adds a kernel, so
+    # the kernel inventory does not move and `strings` on a *kernel* name would prove nothing:
+    # PASS4096 changes a comptime SHAPE (the prefill pass cap) and LTALGO changes which cuBLAS
+    # algorithm a shape dispatches. Both are audited by their own banner literal AND by a
+    # runtime field, because for both the literal alone can be true while the effect is absent
+    # — a pass cap no prompt exceeds, or an Lt arm whose shapes all declined (-320) and ran the
+    # shipped GemmEx path anyway.
+    "ALGENTA_PF_PASS4096=1|ALGENTA_PF_PASS4096"
+    "ALGENTA_7B_PF_LTALGO=1|ALGENTA_7B_PF_LTALGO"
 )
 # ALGENTA_7B_CTX8192 has no banner of its own (it only widens MAX_CTX); it is audited through
 # the runtime `TC FLAGS:` banner's `max_ctx =` field, which the session prints at open.
 CTX_PAT="ALGENTA_7B_CTX8192"
+# The two FRONT 6 runtime fields: `pass_max =` in the `TC FLAGS:` banner must read 4096 for a
+# PASS4096 arm and 1024 for every other arm, and `lt_shapes_tuned = N of 4` (printed with the
+# LTALGO literal) must read 4 — 0 means the lever compiled in and then declined everywhere, so
+# the cell was measured on cublasGemmEx DEFAULT while still claiming the flag.
+PASS_MAX_PAT="pass_max = 4096"
+LT_TUNED_PAT="lt_shapes_tuned = 4 of 4"
 
 # POSITIVE CONTROL. A literal every one of these drivers carries regardless of flags. If this
 # is not found, the audit is broken (not the binary) and must abort rather than report an
@@ -112,6 +127,7 @@ for bin in "$BIN_DIR"/qwen25_7b_p3_graph_cuda*; do
     rt=""
     armed=""
     armed2=""
+    ltline=""
     if [[ -n "$LOG_DIR" ]]; then
         lg=$(ls -1t "$LOG_DIR"/*"${name##qwen25_7b_p3_graph_cuda}"*.log 2>/dev/null | head -1)
         if [[ -n "${lg:-}" && -f "$lg" ]]; then
@@ -122,6 +138,11 @@ for bin in "$BIN_DIR"/qwen25_7b_p3_graph_cuda*; do
             # exactly that.
             armed=$(grep -m1 -E "TC: fused causal flash attention (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
             armed2=$(grep -m1 -E "TC: fused causal flash attention v2 (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
+            # the tuned-shape count rides the LTALGO TCFLAG line, NOT the `TC FLAGS:` banner:
+            # the banner is printed unconditionally and calling _tc_lt_count() from it would make
+            # every flag-off build reference a cublasLt symbol and fail to link against the stock
+            # shim object. So the effect field has to be read from its own line.
+            ltline=$(grep -m1 "lt_shapes_tuned" "$lg" 2>/dev/null | head -1)
         fi
     fi
     {
@@ -147,7 +168,15 @@ for bin in "$BIN_DIR"/qwen25_7b_p3_graph_cuda*; do
         echo "],"
         echo "   \"runtime_banner\": $( [[ -n "$rt" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$rt" || echo null ),"
         echo "   \"fa_verdict\": $( [[ -n "$armed" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$armed" || echo null ),"
-        echo "   \"fa2_verdict\": $( [[ -n "$armed2" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$armed2" || echo null )"
+        echo "   \"fa2_verdict\": $( [[ -n "$armed2" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$armed2" || echo null ),"
+        # FRONT 6: the two levers whose flag literal can be present while the EFFECT is absent.
+        # A pass cap no prompt exceeds, or an Lt arm whose four shapes all declined (-320) and
+        # ran cublasGemmEx DEFAULT anyway, would both audit as "flag in binary" and measure the
+        # shipped path. These read the runtime banner, so the JSON records whether the effect
+        # actually happened, not merely whether the flag was passed.
+        echo "   \"pass_max_4096\": $( [[ "$rt" == *"$PASS_MAX_PAT"* ]] && echo true || echo false ),"
+        echo "   \"lt_tuned_4_of_4\": $( [[ "$ltline" == *"$LT_TUNED_PAT"* ]] && echo true || echo false ),"
+        echo "   \"lt_line\": $( [[ -n "$ltline" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$ltline" || echo null )"
         echo "  },"
     } >> "$TMP"
 done
@@ -183,4 +212,5 @@ for a in d['arms']:
     if a.get('runtime_banner'): print('%-38s   %s' % ('', a['runtime_banner']))
     if a.get('fa_verdict'): print('%-38s   %s' % ('', a['fa_verdict']))
     if a.get('fa2_verdict'): print('%-38s   %s' % ('', a['fa2_verdict']))
+    print('%-38s   pass_max_4096=%s lt_tuned_4_of_4=%s' % ('', a.get('pass_max_4096'), a.get('lt_tuned_4_of_4')))
 " || { echo "AUDIT JSON INVALID" >&2; exit 1; }

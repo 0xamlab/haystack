@@ -196,11 +196,53 @@ the v2 GEMM grids scaling with M (the H100 ncu evidence: M=128 chunks pin occupa
 A100->H100 scaling vs the 3.4x f32-peak ratio is this wave quantization, not a clock or
 bandwidth effect). Flag-off builds keep the 128-row walk byte-for-byte."""
 
-comptime _B1_PASS_MAX: Int = 1024
+comptime CUDA_PREFILL_PASS4096: Bool = is_defined["ALGENTA_PF_PASS4096"]()
+"""FRONT 6 lever (2026-09-16): widen one batch-1 prefill pass from 1024 rows to 4096, so a
+RAG-4096 prompt runs its projections in ONE pass instead of four.
+
+The chunking was costing real money and nobody had priced it, because every previous round
+compared kernels against TensorRT-LLM's per-request totals rather than asking whether OUR pass
+shape was the efficient one. FRONT 6's `gemm_probe --msweep` (A100-SXM4-40GB, clocks pinned
+1410, median of 15, the four Qwen2.5-7B projection roles at their exact dtypes/beta) prices the
+same 1905.3 GFLOP of per-layer projection work three ways:
+
+    m     passes   per-layer us    4096-row us    28-layer ms    vs 4x1024
+    1024       4        1937.41        7749.63        216.990        +0.00   (SHIPPED)
+    2048       2        3649.54        7299.07        204.374      -450.56
+    4096       1        7326.72        7326.72        205.148      -422.91
+
+The cause is tail-wave quantization, the same effect the H100 autopsy named for 128-row chunks:
+at m=1024 the narrow-N roles tile into 8x28 = 224 output tiles of 128x128 = 2.07 waves on 108
+SMs, so a third of the machine sits idle through the second wave. Per role at m=1024 -> 4096
+(cublasGemmEx DEFAULT): o_proj 188.9 -> 199.9 TF/s, down 212.8 -> 244.2, qkv 229.4 -> 224.7,
+gate/up 278.8 -> 283.7 (gate/up is already at 89% of the 312 TF/s dense f16 peak and was never
+the problem; down and o_proj are). nsys independently puts the shipped cublas family at 226.048
+ms per RAG-4096 prefill against this probe's 216.990 ms for the same 448 calls, so the probe
+reads ~4% optimistic in isolation -- the RANKING is what transfers, and it says one pass.
+
+Costs, stated rather than buried: this is NOT bit-identical. cuBLAS picks a different algorithm
+per M, and a different tile/split-K changes the reduction order, so the f32 accumulator rounds
+differently. It is gate-decidable exactly like ALGENTA_7B_PF_F16MLP: G0 16/16 against the fp32
+transformers oracle and G1 64/64 self-consistency decide it, and the flag stays default OFF so
+`_g0` remains byte-identical to FRONT 5's shipped arm. It also costs VRAM: every pf_* / tc_*
+scratch buffer is sized by `_B1_PF_ROWS`, so 1024 -> 4096 rows adds ~5.6 GB at the 7B shapes
+(2.8 GB of which is `pf_tc_scores` + `pf_tc_p16`, the five-pass attention chain's windows, which
+ALGENTA_7B_PF_FA2 leaves dead but which must still be sized because the chain is FA2's runtime
+decline path). The existing headroom try in `_tc_stage_weights` still demotes the whole TC plan
+with a printed record on a device that cannot hold it, so a tight card degrades instead of
+half-allocating.
+
+Prompts of 1024 rows or fewer are UNAFFECTED: `m` is `min(n_prompt, _B1_PASS_MAX)`, so the pp256
+and pp1024 cells take the identical single pass with the identical M and the identical cuBLAS
+algorithm choice. This flag can only change a prompt LONGER than 1024 -- i.e. exactly the
+RAG-4096 cell it targets, and not the two cells this round must not regress."""
+
+comptime _B1_PASS_MAX: Int = 4096 if CUDA_PREFILL_PASS4096 else 1024
 """Rows one batch-1 prefill pass covers under CUDA_PREFILL_ONEPASS_B1: >= the raced fixture
 prompt (256) and every chat shape, so those prefill in ONE pass; longer prompts run
 ceil(len/1024) passes. Scratch VRAM at this cap: ~55 MB at Qwen3-0.6B's shapes — sized for the
-fixture/chat cells this lever targets."""
+fixture/chat cells this lever targets. CUDA_PREFILL_PASS4096 raises the cap to 4096 (see its
+docstring for the measured projection cost of the 1024-row walk and the ~5.6 GB it adds)."""
 
 comptime _B1_PF_ROWS: Int = _B1_PASS_MAX if CUDA_PREFILL_ONEPASS_B1 else CUDA_PREFILL_TILE
 """Prefill scratch rows: the pass cap under the onepass arm, the legacy 128 otherwise."""
