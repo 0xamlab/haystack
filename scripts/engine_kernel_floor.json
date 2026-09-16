@@ -1,5 +1,5 @@
 {
- "kernel_count": 175,
+ "kernel_count": 178,
  "kernels": [
   {
    "backend": "metal",
@@ -1263,6 +1263,22 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa2_causal_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa2_layout_probe"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_fa_causal_async"
   },
   {
@@ -1384,6 +1400,14 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_stage_f32_to_f16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_stage_f32_to_f16_v8"
   },
   {
    "backend": "cuda",

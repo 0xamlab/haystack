@@ -231,6 +231,7 @@ from residentk.tc_shim_bridge import (
     _tc_noseam,
     _tc_last_error,
     _tc_stage_f32_to_f16,
+    _tc_stage_f32_to_f16_v8,
     _tc_gemm_dispatch,
     _tc_gemm_f16_32c_pre,
     _tc_gemm_f16_16c_pre,
@@ -238,6 +239,8 @@ from residentk.tc_shim_bridge import (
     _tc_attn_softmax_mask_async,
     _tc_fa_causal_async,
     _tc_fa_layout_probe,
+    _tc_fa2_causal_async,
+    _tc_fa2_layout_probe,
     _tc_swiglu_f16_fastexp,
     _tc_dequant_packed3_f16_dense,
     _pf_swiglu_rows_kernel,
@@ -371,6 +374,80 @@ comptime PF_BIASROPE_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_BIAS
 (`TC_SHIM_BUILD and TC_ACC_MODE == 0 and ALGENTA_7B_PF_F16MLP`) rather than restating it — a
 build that asked for the fast exp without the f16 epilogue gets the epilogue it would have
 dispatched anyway, not a silently different numeric path."""
+
+# ── FRONT-4 prefill levers (2026-09-16, the RAG-4096 flip round) ────────────────
+#
+# Round 3 shipped `_d8` = FA + FASTEXP + BIASROPE and took pp256 to 1.858x and pp1024 to
+# 1.077x against TensorRT-LLM 1.2.1, but RAG-4096 stayed a LOSS at 0.925x (13,970 vs 15,100.8
+# tok/s, 293.1 vs 271.24 ms). Round 3's own nsys decomposition accounted the remaining
+# +21.9 ms to +17.1 ms of attention at long `n_keys` (ours 41.5 ms at ~26% MFU, theirs 24.4 ms
+# at ~44%) and +7.4 ms of K/V f32->f16 staging that is ALSO redundant, and named the causes.
+# These two flags are those two causes, each default OFF so `_d8` stays byte-identical:
+#
+#    ALGENTA_7B_PF_FA2       the fused attention kernel, v2 (`_tc_fa2_causal_async`): cp.async
+#                            K/V double buffering (the tile for kb+1 is in flight while kb
+#                            computes, two block fences per key block instead of three) and
+#                            raw `mma.sync.aligned.m16n8k16` so the f16 P tile is built IN
+#                            REGISTERS from the S accumulator instead of round-tripping through
+#                            shared memory — which also lets the f32 O accumulator write
+#                            position-major output straight to global, dropping the `sO`
+#                            staging window and its fence, and lets the Q tile be staged inside
+#                            the second rotating buffer so shared memory per CTA falls from
+#                            61.4 KB to 8*BN*FA_LD bytes. NOT bit-identical to FRONT 3's FA
+#                            (m16n8k16 accumulates 16 keys per instruction where WMMA's
+#                            m16n16k16 accumulated them as two 8-wide halves, so the summation
+#                            order moves) — the token-identity gates decide it, exactly as they
+#                            decided FRONT 3's. Requires PF_FA: it replaces that kernel's
+#                            dispatch, it does not replace the five-pass chain's.
+#    ALGENTA_7B_PF_KVTWIN    the K/V f16 staging stops re-staging the whole prefix on every
+#                            chunk. The 7B KV cache is f32 and the attention kernels read f16,
+#                            so FRONT 3 staged keys `0..n_keys` for every layer of every chunk:
+#                            a 4096-token prefill in four 1024 chunks staged 1024+2048+3072+
+#                            4096 = 10240 keys to cover 4096 DISTINCT ones, 2.5x the traffic,
+#                            through a scalar grid-stride converter measured at ~170 GB/s = 11%
+#                            of the A100's peak. This keeps ONE persistent f16 twin PER LAYER
+#                            (+470 MB at max_ctx 8192) and stages only the range the twin does
+#                            not already hold, through an 8-element-per-thread converter (two
+#                            float4 loads, one uint4 store). BIT-EXACT: the f32 KV cache is
+#                            write-once per position within a prefill, `__floats2half2_rn` is
+#                            the same round-to-nearest-even conversion `__float2half` performs,
+#                            and the range's low-water mark is clamped to `pos` before every
+#                            chunk so any position this prefill is about to REWRITE is always
+#                            re-staged. The clamp is what makes it self-healing: a decode step
+#                            that advanced the f32 cache past the twin's high-water mark just
+#                            widens the next stage, it can never leave a stale half behind.
+comptime PF_FA2_B1: Bool = PF_FA_B1 and is_defined["ALGENTA_7B_PF_FA2"]()
+comptime PF_KVTWIN_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_KVTWIN"]()
+"""FA2 inherits PF_FA's whole gate rather than restating it: it is a different implementation
+of the same dispatch slot, so a build that asked for FA2 without FA gets FRONT 3's kernel —
+the one it would have dispatched anyway — rather than a silently unguarded new path. KVTWIN
+only needs the shim (it is the staging entry plus two persistent buffers)."""
+
+comptime _PF_FA2_BN: Int = 32
+"""FA2's key-block width and attribution variant.
+
+BN=32, NOT FRONT 3's 64. The standalone probe (A100, 1410 MHz, median of 30, all six raced
+shapes) has FA2 bn=32 winning EVERY shape: pp256 24.6 vs 25.6 us/layer, pp1024 104.4 vs
+114.7, rag4096 chunks 247.8/375.8/475.1 vs 249.9/393.2/539.6, and the odd tail (m=660,
+n_keys=1716) 131.1 vs 183.3. Over the four RAG chunks x 28 layers that is 33.69 ms against
+FRONT 3's kernel at 41.57 ms (-7.89 ms, 1.23x). The reason FRONT 3 preferred 64 and FA2 does
+not is occupancy, not tile efficiency: FA2 removed the sP round-trip window and the sO
+epilogue window, so bn=32 fits in 34.8 KB of dynamic shared memory and runs THREE CTAs/SM
+(155 registers) where FRONT 3's 61.4 KB kernel ran two. FRONT 3's own note that "32 is the
+better tile only for a short partial tail block" was a statement about ITS kernel's shared
+memory footprint, and the probe re-measured it rather than inheriting it.
+
+`variant` 0 = both sub-levers (the shipped form), 1 = cp.async double buffering with P still
+round-tripping through shared memory, 2 = in-register P with synchronous K/V loads; 1 and 2
+exist so the standalone probe can attribute the win between the two named causes instead of
+reporting them as one number. At bn=64 the attribution is raw-mma -4.73 ms, cp.async -3.61 ms,
+both -5.25 ms (sub-additive: they relieve the same shared-bandwidth/latency bottleneck); at
+bn=32, cp.async alone -5.65 ms and both -7.89 ms. `-D ALGENTA_7B_PF_FA2DB` builds variant 1
+as its own binary for the model-level A/B."""
+comptime PF_FA2DB_B1: Bool = PF_FA_B1 and is_defined["ALGENTA_7B_PF_FA2DB"]()
+comptime _PF_FA2_SHIP_VARIANT: Int = 1 if PF_FA2DB_B1 else (0 if PF_FA2_B1 else -1)
+"""Which FA2 variant this binary actually carries: -1 when it carries none, so the banner and
+the flag audit can state it positively rather than by inference from the flag list."""
 
 comptime _PF_FA_BN: Int = 64
 """Key-block width the fused attention kernel tiles `n_keys` by. A/B'd on A100 at 1410 MHz
@@ -1931,6 +2008,23 @@ struct _CudaResidentQwen3P3(Movable):
     # `_pf_fill_scale_kernel` at TC staging time, read by every attention CTA thereafter.
     var pf_fa_scale: DeviceBuffer[DType.float32]
 
+    # ── FRONT-4 lever 2 (-D ALGENTA_7B_PF_KVTWIN): the PERSISTENT PER-LAYER f16 K/V twin ──
+    # `pf_tc_k16`/`pf_tc_v16` above are ONE shared pair, so every layer of every chunk has to
+    # re-stage the whole prefix into them: a 4096-token prefill in four 1024 chunks staged
+    # 10240 keys to cover 4096 distinct ones. These hold one `[max_ctx, h_kv, d_head]` f16
+    # twin PER LAYER (+470 MB at the 7B shapes with max_ctx 8192), so a chunk stages only the
+    # keys the twin does not already hold. `kv16_valid` is that twin's high-water mark in keys
+    # — one scalar, not one per layer, because every layer advances it in lockstep inside the
+    # same chunk loop. It is clamped to `pos` before each chunk's stage, which is what makes
+    # the scheme self-healing: any position the current prefill is about to REWRITE in the f32
+    # cache is below the clamp and therefore always re-staged, and a decode step that advanced
+    # the f32 cache past the mark merely widens the next range. Real size only under the flag
+    # (in `_tc_alloc`'s headroom try, so a tight device demotes the whole TC plan rather than
+    # half-allocating it); empty lists and a -1 mark otherwise.
+    var kv16_k: List[DeviceBuffer[DType.float16]]
+    var kv16_v: List[DeviceBuffer[DType.float16]]
+    var kv16_valid: Int
+
     def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -2036,6 +2130,9 @@ struct _CudaResidentQwen3P3(Movable):
         self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.pf_xn16 = self.f32.ctx.enqueue_create_buffer[DType.float16](1)
         self.pf_fa_scale = self.f32.ctx.enqueue_create_buffer[DType.float32](1)
+        self.kv16_k = List[DeviceBuffer[DType.float16]]()
+        self.kv16_v = List[DeviceBuffer[DType.float16]]()
+        self.kv16_valid = -1
         self.tc_staged = -1
         @parameter
         if TC_SHIM_BUILD:
@@ -2088,6 +2185,19 @@ struct _CudaResidentQwen3P3(Movable):
             self.f32.max_ctx * self.f32.h_kv * self.f32.d_head)
         self.pf_tc_v16 = self.f32.ctx.enqueue_create_buffer[DType.float16](
             self.f32.max_ctx * self.f32.h_kv * self.f32.d_head)
+        @parameter
+        if PF_KVTWIN_B1:
+            # the persistent per-layer f16 twin: 2 * n_layers * max_ctx * h_kv * d_head halves
+            # = 469.8 MB at the 7B shapes with max_ctx 8192. Inside the same headroom try as
+            # the rest of the TC residency, so a device that cannot hold it demotes the whole
+            # TC plan (printed record, `tc_staged = -1`) instead of half-allocating it.
+            var twin = self.f32.max_ctx * self.f32.h_kv * self.f32.d_head
+            for _ in range(n_layers):
+                self.kv16_k.append(
+                    self.f32.ctx.enqueue_create_buffer[DType.float16](twin))
+                self.kv16_v.append(
+                    self.f32.ctx.enqueue_create_buffer[DType.float16](twin))
+            self.kv16_valid = 0
         @parameter
         if PF_F16NORM_B1:
             # the f16 pre-norm twin: rows * d_model halves (7.3 MB at the 7B shapes) —
@@ -2330,6 +2440,26 @@ struct _CudaResidentQwen3P3(Movable):
                 print("TC: fused causal flash attention DECLINED, status", rfa,
                       "| d_head =", self.f32.d_head, "| h_q/h_kv =", self.f32.h_q, "/",
                       self.f32.h_kv, "| prefill attention keeps the five-pass TC chain")
+            # FRONT 4: the v2 kernel has its OWN on-device layout probe (it indexes raw
+            # mma.sync m16n8k16 A/B/D fragments and both ldmatrix roles, not the WMMA
+            # accumulator), and the same rule applies — a declined v2 must be a printed
+            # DECLINED that keeps FRONT 3's kernel, never a silent perf cliff or, worse, a
+            # permuted-row attention matrix presented as a measured FA2 number.
+            @parameter
+            if _PF_FA2_SHIP_VARIANT >= 0:
+                var rfa2 = _tc_fa2_layout_probe()
+                if rfa2 == 0 and self.f32.d_head == 128
+                    and self.f32.h_q % self.f32.h_kv == 0:
+                    print("TC: fused causal flash attention v2 ARMED | raw mma.sync m16n8k16",
+                          "A/B/D + both ldmatrix roles verified on device | BN =", _PF_FA2_BN,
+                          "| variant =", _PF_FA2_SHIP_VARIANT, "| cp.async double buffer =",
+                          _PF_FA2_SHIP_VARIANT != 2, "| P in registers =",
+                          _PF_FA2_SHIP_VARIANT != 1, "| d_head =", self.f32.d_head,
+                          "| GQA g =", self.f32.h_q // self.f32.h_kv)
+                else:
+                    print("TC: fused causal flash attention v2 DECLINED, status", rfa2,
+                          "| d_head =", self.f32.d_head, "| h_q/h_kv =", self.f32.h_q, "/",
+                          self.f32.h_kv, "| prefill attention keeps FRONT 3's FA kernel")
         self.f32.ctx.synchronize()
         self.tc_staged = 1
         var f16_bytes = Float64(self.f32.n_layers) * Float64(
@@ -2349,8 +2479,9 @@ struct _CudaResidentQwen3P3(Movable):
               CUDA_PREFILL_FLASH_B1, "| FLASH2_B1 =", CUDA_PREFILL_FLASH2_B1,
               "| NOSEAM =", TC_NOSEAM, "| TCATTN =", PF_TCATTN_B1, "| SM1P =", PF_SM1P_B1,
               "| F16NORM =", PF_F16NORM_B1, "| F16MLP =", PF_F16MLP_B1, "| FA =", PF_FA_B1,
-              "| FASTEXP =", PF_FASTEXP_B1, "| BIASROPE =", PF_BIASROPE_B1, "| acc_mode =",
-              TC_ACC_MODE, "| max_ctx =", self.f32.max_ctx)
+              "| FASTEXP =", PF_FASTEXP_B1, "| BIASROPE =", PF_BIASROPE_B1,
+              "| FA2_variant =", _PF_FA2_SHIP_VARIANT, "| KVTWIN =", PF_KVTWIN_B1,
+              "| acc_mode =", TC_ACC_MODE, "| max_ctx =", self.f32.max_ctx)
         @parameter
         if CUDA_PREFILL_ONEPASS_B1:
             print("TCFLAG ALGENTA_PF_ONEPASS_B1=1 (prefill walks _B1_PASS_MAX-row windows)")
@@ -2385,6 +2516,23 @@ struct _CudaResidentQwen3P3(Movable):
         @parameter
         if PF_BIASROPE_B1:
             print("TCFLAG ALGENTA_7B_PF_BIASROPE=1 (qkv bias folded into RoPE+KV-write)")
+        @parameter
+        if PF_FA2_B1:
+            print("TCFLAG ALGENTA_7B_PF_FA2=1 (FA v2: cp.async K/V double buffer + raw",
+                  "mma.sync m16n8k16 with P built in registers, BN =", _PF_FA2_BN,
+                  ") — replaces FRONT 3's FA kernel dispatch")
+        @parameter
+        if PF_FA2DB_B1:
+            print("TCFLAG ALGENTA_7B_PF_FA2DB=1 (FA v2 ATTRIBUTION arm: cp.async double",
+                  "buffer only, P still round-trips through shared memory, BN =",
+                  _PF_FA2_BN, ")")
+        @parameter
+        if PF_KVTWIN_B1:
+            print("TCFLAG ALGENTA_7B_PF_KVTWIN=1 (persistent per-layer f16 K/V twin +",
+                  "incremental range staging through the 8-per-thread converter;",
+                  "twin VRAM =",
+                  Float64(2 * self.f32.n_layers * self.f32.max_ctx * self.f32.h_kv
+                          * self.f32.d_head * 2) / 1.0e6, "MB )")
 
     def _prefill_tc(mut self, prompt_ids: List[Int]) raises -> _StepOut:
         """The TC escape-hatch prefill — called ONLY with `tc_staged == 1` under
@@ -2587,25 +2735,89 @@ struct _CudaResidentQwen3P3(Movable):
                         if PF_FA_B1:
                             if use_tc_attn and self.f32.h_q % self.f32.h_kv == 0:
                                 var n_keys_fa = pos + m
-                                var kvn = n_keys_fa * self.f32.h_kv * self.f32.d_head
-                                var rk = _tc_stage_f32_to_f16(
-                                    Int(lw.ck.unsafe_ptr()),
-                                    Int(self.pf_tc_k16.unsafe_ptr()), kvn)
-                                if rk == 0:
+                                var kvd = self.f32.h_kv * self.f32.d_head
+                                # ── FRONT-4 lever 2 (-D ALGENTA_7B_PF_KVTWIN): read the
+                                #    PER-LAYER persistent twin and stage only the keys it does
+                                #    not already hold. `lo` is clamped to `pos` so every
+                                #    position this chunk is about to REWRITE in the f32 cache
+                                #    is re-staged; a decode step that advanced the f32 cache
+                                #    past the mark only widens the range, it can never leave a
+                                #    stale half behind. Flag off: `lo` stays 0 and the whole
+                                #    prefix goes into the shared buffer, exactly as FRONT 3. ──
+                                var kp = Int(self.pf_tc_k16.unsafe_ptr())
+                                var vp = Int(self.pf_tc_v16.unsafe_ptr())
+                                var lo = 0
+                                @parameter
+                                if PF_KVTWIN_B1:
+                                    kp = Int(self.kv16_k[layer].unsafe_ptr())
+                                    vp = Int(self.kv16_v[layer].unsafe_ptr())
+                                    lo = self.kv16_valid
+                                    if lo > pos:
+                                        lo = pos
+                                    if lo < 0:
+                                        lo = 0
+                                # the two operands have DIFFERENT element sizes, so the byte
+                                # offsets are not the same number: f32 source at 4 bytes,
+                                # f16 twin at 2. Both are multiples of 1024 here (kvd is
+                                # h_kv*d_head = 512), which is what keeps the vectorized
+                                # converter's 16-byte loads and stores legal. Flag OFF keeps
+                                # FRONT 3's scalar converter and its whole-prefix range
+                                # VERBATIM — the baseline binary must not absorb any part of
+                                # the lever it is the baseline for.
+                                var rk = 0
+                                @parameter
+                                if PF_KVTWIN_B1:
+                                    if n_keys_fa > lo:
+                                        rk = _tc_stage_f32_to_f16_v8(
+                                            Int(lw.ck.unsafe_ptr()) + lo * kvd * 4,
+                                            kp + lo * kvd * 2, (n_keys_fa - lo) * kvd)
+                                        if rk == 0:
+                                            rk = _tc_stage_f32_to_f16_v8(
+                                                Int(lw.cv.unsafe_ptr()) + lo * kvd * 4,
+                                                vp + lo * kvd * 2, (n_keys_fa - lo) * kvd)
+                                    self.kv16_valid = n_keys_fa
+                                else:
                                     rk = _tc_stage_f32_to_f16(
-                                        Int(lw.cv.unsafe_ptr()),
-                                        Int(self.pf_tc_v16.unsafe_ptr()), kvn)
+                                        Int(lw.ck.unsafe_ptr()), kp, n_keys_fa * kvd)
+                                    if rk == 0:
+                                        rk = _tc_stage_f32_to_f16(
+                                            Int(lw.cv.unsafe_ptr()), vp, n_keys_fa * kvd)
                                 if rk != 0:
                                     return _StepOut(-1, 0.0, issued,
                                                     RESIDENT_ERR_LAUNCH_FAILED)
-                                var rfa = _tc_fa_causal_async(
-                                    Int(self.f32.pf_q_rot.unsafe_ptr()),
-                                    Int(self.pf_tc_k16.unsafe_ptr()),
-                                    Int(self.pf_tc_v16.unsafe_ptr()),
-                                    Int(self.f32.pf_attn.unsafe_ptr()),
-                                    Int(self.pf_fa_scale.unsafe_ptr()),
-                                    m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
-                                    self.f32.d_head, pos, _PF_FA_BN)
+                                # ── FRONT-4 lever 1 (-D ALGENTA_7B_PF_FA2 / _FA2DB): the v2
+                                #    kernel takes the same operands in the same layouts, so it
+                                #    is a drop-in for FRONT 3's. A DECLINED v2 (-301 wrong
+                                #    head_dim, -304 non-integral GQA, -305 the Q-in-buffer-1
+                                #    overlay does not fit, -311 the on-device layout probe
+                                #    disagreed) falls through to FRONT 3's kernel, which keeps
+                                #    its own decline-to-five-pass-chain fallback. Any OTHER
+                                #    status is a real CUDA failure and is returned as one. ──
+                                var rfa = 0
+                                @parameter
+                                if _PF_FA2_SHIP_VARIANT >= 0:
+                                    rfa = _tc_fa2_causal_async(
+                                        Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
+                                        Int(self.f32.pf_attn.unsafe_ptr()),
+                                        Int(self.pf_fa_scale.unsafe_ptr()),
+                                        m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
+                                        self.f32.d_head, pos, _PF_FA2_BN,
+                                        _PF_FA2_SHIP_VARIANT)
+                                    if rfa == -301 or rfa == -304 or rfa == -305
+                                       or rfa == -311:
+                                        rfa = _tc_fa_causal_async(
+                                            Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
+                                            Int(self.f32.pf_attn.unsafe_ptr()),
+                                            Int(self.pf_fa_scale.unsafe_ptr()),
+                                            m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
+                                            self.f32.d_head, pos, _PF_FA_BN)
+                                else:
+                                    rfa = _tc_fa_causal_async(
+                                        Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
+                                        Int(self.f32.pf_attn.unsafe_ptr()),
+                                        Int(self.pf_fa_scale.unsafe_ptr()),
+                                        m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
+                                        self.f32.d_head, pos, _PF_FA_BN)
                                 if rfa == 0:
                                     attn_done = True
                                     use_tc_attn = False

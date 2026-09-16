@@ -48,6 +48,13 @@ FLAGS=(
     "ALGENTA_7B_PF_FA=1|ALGENTA_7B_PF_FA"
     "ALGENTA_7B_PF_FASTEXP=1|ALGENTA_7B_PF_FASTEXP"
     "ALGENTA_7B_PF_BIASROPE=1|ALGENTA_7B_PF_BIASROPE"
+    # FRONT 4 (2026-09-16, the RAG-4096 flip round). FA2 and FA2DB are separate literals with
+    # their own `=1` suffixes, so the substring test above cannot confuse `ALGENTA_7B_PF_FA=1`
+    # with `ALGENTA_7B_PF_FA2=1`; FA2/FA2DB both REQUIRE PF_FA, so a binary carrying either
+    # necessarily also carries the FA literal.
+    "ALGENTA_7B_PF_FA2=1|ALGENTA_7B_PF_FA2"
+    "ALGENTA_7B_PF_FA2DB=1|ALGENTA_7B_PF_FA2DB"
+    "ALGENTA_7B_PF_KVTWIN=1|ALGENTA_7B_PF_KVTWIN"
 )
 # ALGENTA_7B_CTX8192 has no banner of its own (it only widens MAX_CTX); it is audited through
 # the runtime `TC FLAGS:` banner's `max_ctx =` field, which the session prints at open.
@@ -99,11 +106,17 @@ for bin in "$BIN_DIR"/qwen25_7b_p3_graph_cuda*; do
     # the runtime banner, when a session-open log for this arm is available
     rt=""
     armed=""
+    armed2=""
     if [[ -n "$LOG_DIR" ]]; then
         lg=$(ls -1t "$LOG_DIR"/*"${name##qwen25_7b_p3_graph_cuda}"*.log 2>/dev/null | head -1)
         if [[ -n "${lg:-}" && -f "$lg" ]]; then
             rt=$(grep -m1 "^TC FLAGS:" "$lg" 2>/dev/null | head -1)
-            armed=$(grep -m1 -E "flash attention (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
+            # FRONT 3's FA verdict and FRONT 4's v2 verdict are DIFFERENT lines; an arm that
+            # carries FA2 must show the v2 line too, or the v2 kernel declined at runtime and
+            # the cell measured FRONT 3's kernel. Capturing only the first match would hide
+            # exactly that.
+            armed=$(grep -m1 -E "TC: fused causal flash attention (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
+            armed2=$(grep -m1 -E "TC: fused causal flash attention v2 (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
         fi
     fi
     {
@@ -128,7 +141,8 @@ for bin in "$BIN_DIR"/qwen25_7b_p3_graph_cuda*; do
         done
         echo "],"
         echo "   \"runtime_banner\": $( [[ -n "$rt" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$rt" || echo null ),"
-        echo "   \"fa_verdict\": $( [[ -n "$armed" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$armed" || echo null )"
+        echo "   \"fa_verdict\": $( [[ -n "$armed" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$armed" || echo null ),"
+        echo "   \"fa2_verdict\": $( [[ -n "$armed2" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$armed2" || echo null )"
         echo "  },"
     } >> "$TMP"
 done
@@ -163,4 +177,5 @@ for a in d['arms']:
     print('%-38s %s' % (a['arm'], ' '.join(f.replace('ALGENTA_','') for f in a['flags_in_binary']) or '(none)'))
     if a.get('runtime_banner'): print('%-38s   %s' % ('', a['runtime_banner']))
     if a.get('fa_verdict'): print('%-38s   %s' % ('', a['fa_verdict']))
+    if a.get('fa2_verdict'): print('%-38s   %s' % ('', a['fa2_verdict']))
 " || { echo "AUDIT JSON INVALID" >&2; exit 1; }

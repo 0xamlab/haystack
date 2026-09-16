@@ -17668,3 +17668,267 @@ measured ms, and what each needs:
 3. `_pf_biasropewrt_kernel` bandwidth, +4.6 ms: 43% -> 85% of peak. Target -3 ms.
 4. rmsnorm rows, +0.9 ms.
 Levers 1+2+3 = -27 ms against a +21.9 ms gap: RAG-4096 flips if 1 and 2 land.
+
+## FRONT 4 — Qwen2.5-7B CUDA vs TensorRT-LLM 1.2.1, the RAG-4096 flip attempt
+### algenta-ent-a100 (A100-SXM4-40GB, solo GPU), 2026-09-16 02:52-05:50 UTC, clocks pinned 1410 MHz
+### branch feat/7b-rag-flip (stacked on feat/7b-fused-flash-attn / PR #989). LEDGER ONLY — not published.
+
+**VERDICT: RAG-4096 DID NOT FLIP.** It improved 0.925x -> **0.9436x** against a TRT-LLM 1.2.1
+re-served fresh in this session (13,968.6 -> 14,300.7 tok/s mean of the three token-exact prompts;
+293.25 -> 286.42 ms against their same-session 270.276 ms). pp256 / pp1024 / decode were
+**held**: pp256 is inside the baseline drift band, pp1024 +0.29%, decode invariant. Both levers
+landed, both are gated, and the round-3 autopsy's own model of them (-24 ms) over-promised by
+3.5x against the -6.83 ms of wall measured. What follows is the per-layer dissection of the
++16.14 ms that remains, not a restatement of the model.
+
+### Levers (each its own build flag, default OFF; the `_d8` binary is byte-identical without them)
+* `-D ALGENTA_7B_PF_FA2` — fused causal flash attention **v2**: cp.async 16-byte K/V double
+  buffering (kb+1 in flight while kb computes, two block fences per key block instead of three)
+  + raw `mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32` so the f16 P tile is built **in
+  registers** from the S accumulator (the m16n8k16 A layout and the m16n8 D layout put a lane's
+  f16 k-pair at exactly the registers where its f32 k-pair already sits) — `sP` disappears, and
+  because the O accumulator mapping is then ISA-specified rather than opaque the epilogue writes
+  position-major f32 **straight to global**, so `sO` and its fence go too. Shared memory per CTA
+  61.4 KB -> 8*BN*FA_LD, which is why **BN moves 64 -> 32** (three CTAs/SM, 155 registers):
+  round 3's "32 is only better for a short tail block" was a fact about ITS footprint, and was
+  re-measured here rather than inherited. 166 registers, 0 spills.
+* `-D ALGENTA_7B_PF_KVTWIN` — persistent **per-layer** f16 K/V twin (+469.76 MB) staged only over
+  the range it does not already hold, through `tc_shim_f32_to_f16_v8` (two float4 loads, one
+  uint4 store per thread) instead of the scalar grid-stride converter at ~170 GB/s. The range's
+  low-water mark is clamped to `pos` per chunk, so any position the prefill is about to rewrite is
+  always re-staged and a decode step past the mark only widens the next range.
+
+### Gates (BEFORE any speed claim; run inside every bench process and in the standalone probe)
+| gate | result |
+|---|---|
+| FA2 on-device layout probe (`_fa2_layout_probe_kernel`: A/B/D fragment mappings + BOTH ldmatrix roles, exact integers, no tolerance) | **PASS** — "raw mma.sync m16n8k16 A/B/D + both ldmatrix roles verified on device" |
+| G0 16/16 greedy vs the fp32 cache-free transformers oracle, every arm | **PASS** on _d8/_e1/_e2/_e3 |
+| G1 64/64 self-consistency, every arm | **PASS** on _d8/_e1/_e2/_e3 |
+| FA2 vs a HOST double-precision reference at all six raced shapes incl. the odd tail (m=660, n_keys=1716, pos=1056) | **PASS**, 0 elements over 2% rel at every bn |
+| FA2 vs the shipped 5-pass chain, ALL 3,670,016 output elements | **max_abs 7.629e-04, rms 4.350e-05, 0 over 2% rel** — identical to round 3's FA |
+| KVTWIN bit-exactness | `__floats2half2_rn` is the same round-to-nearest-even conversion `__float2half` performs; the f32 KV cache is write-once per position within a prefill |
+| clocks | 1410 MHz read before AND after every cell (`clocks=1410 MHz->1410 MHz` on every arm line), 1 Hz sampler into `clocks_1hz.csv` |
+
+Two bugs the probe caught before any speed claim, both recorded in the code that fixed them:
+(1) the layout probe originally filled ONE matrix pattern for both B roles, so the transposed V
+role reported MISMATCH against a **correct** kernel — with `V[k][n] = delta(n,0)*(k+1)` the true
+`D[r][n>0]` is 0, not `(r+1)*(n+1)`; (2) `fa2_smem_bytes` counted `sizeof(__half)` twice, asked
+for 278 KB at bn=128, and because one failed `cudaFuncSetAttribute` aborted the whole table that
+single overflow declined EVERY bn with a bare `cudaErrorInvalidValue`. The attribute table now
+records per-instantiation success so one shape that cannot fit declines only itself (-305). A
+runtime-indexed `__half* bufK[2]` that ptxas pushed into a 32-byte local stack frame is now
+pointer arithmetic (0 bytes stack frame, still 0 spills).
+
+### Kernel-level A/B, standalone probe (median of 100 calls, 1410 MHz, GPU solo)
+RAG-4096 FA block = the four chunk shapes summed x 28 layers, i.e. one 4096-token prefill:
+| engine | pp256 | pp1024 | rag c1 | rag c2 | rag c3 | odd tail | **RAG block** |
+|---|---|---|---|---|---|---|---|
+| `fa-r3` bn=64 (round 3's kernel) | 25.6 | 120.8 | 272.4 | 450.6 | 641.0 | 187.4 | **41.72 ms** |
+| `fa2` bn=32 (**shipped**) | **24.6** | **104.4** | **247.8** | **375.8** | **475.1** | **131.1** | **33.63 ms (-8.09, 1.24x)** |
+| `fa2` bn=64 | 25.6 | 114.7 | 249.9 | 393.2 | 539.6 | 183.3 | 36.36 ms (-5.36) |
+| `fa2` bn=128 | 25.6 | 122.9 | 263.2 | 412.7 | 560.1 | 169.0 | 37.99 ms (-3.73) |
+| `fa2-pshm` bn=32 (cp.async only, P still in shared) | 25.6 | 111.6 | 263.2 | 403.5 | 504.8 | 139.3 | 35.96 ms (-5.76) |
+| `fa2-nodb` bn=64 (raw-mma only, synchronous K/V) | 23.6 | 109.6 | 241.7 | 398.3 | 566.3 | 166.9 | 36.56 ms (-5.16) |
+
+(us/layer for the shape columns.) **Sub-lever attribution:** at bn=64 raw-mma alone -5.16 ms and
+cp.async alone -3.90 ms, but both together only -5.36 ms — strongly sub-additive, because they
+relieve the same bottleneck. At bn=32 cp.async alone -5.76 ms and both -8.09 ms. The lesson is
+that these two are NOT independent levers and must never be summed when forecasting.
+
+### A/B sweep (driver median of 20 runs/cell; one process per arm; baseline bracketing; G0 16/16 + G1 64/64 PASS in EVERY process; outliers 0 everywhere)
+| arm | flags over `_d8` | pp256 | pp1024 | gen64 | gen256 | worst rel-IQR |
+|---|---|---|---|---|---|---|
+| `_d8` run1 (02:53Z) | — (round 3's ship arm, rebuilt) | 12,765.8 | 15,288.6 | 83.381 | 82.673 | 0.33% |
+| `_d8` run2 (03:50Z) | — (drift armor, first bracket) | 12,809.5 | 15,273.2 | 83.381 | 82.669 | 0.45% |
+| `_e1` | +KVTWIN | 12,736.4 | 15,286.1 | 83.370 | 82.665 | 0.32% |
+| `_e2` | +FA2 | 12,766.4 | 15,325.9 | 83.510 | 82.812 | 0.19% |
+| **`_e3`** | **+FA2 +KVTWIN** | **12,778.7** | **15,330.8** | **83.599** | **82.897** | 0.82% |
+| `_d8` run3 (04:18Z) | — (drift armor, closing bracket) | 12,757.8 | 15,287.1 | 83.581 | 82.875 | 0.89% |
+
+Baseline drift between the two bracketing `_d8` runs: pp256 **-0.40%**, pp1024 +0.09%, gen64
++0.24%, gen256 +0.25%. Across all THREE `_d8` observations the spread is pp256 0.40%, pp1024
+0.10%, decode 0.25%. Deltas vs the run-2 baseline, read against that band:
+* **pp1024**: `_e2` +0.34% and `_e3` +0.38% both exceed the 0.09% band — real, small wins.
+  `_e1` +0.08% is inside it (neutral), as expected: at one chunk there is no staging redundancy
+  to remove.
+* **pp256**: every arm is inside or at the edge of the 0.40% band. `_e3` -0.24% is **neutral**;
+  `_e1` -0.57% is the one value that exceeds the band, i.e. a small real cost of the twin at a
+  single-chunk shape where it can save nothing (it stages the same 256 keys, and pays 470 MB of
+  extra residency for it).
+* **decode**: `_e3` +0.26%/+0.28% against a 0.24-0.25% band — at the edge. The honest read is
+  **invariant**: neither lever touches `step_p3`, and all four arms sit in 82.66-82.90 tok/s
+  (0.29% spread). No regression, which is what the mission required.
+
+### RAG-4096 (three token-exact 4096-token prompts, driver median of 20, G0 16/16 + G1 64/64 PASS)
+| arm | prompt0 | prompt1 | prompt2 | mean tok/s | mean ms | vs `_d8` |
+|---|---|---|---|---|---|---|
+| `_d8` (round 3's ship arm, rebuilt) | 13,970.6 | 13,968.3 | 13,967.0 | 13,968.6 | 293.25 | — |
+| **`_e3` (+FA2 +KVTWIN)** | **14,305.9** | **14,301.3** | **14,295.0** | **14,300.7** | **286.42** | **+2.38%, -6.83 ms** |
+
+rel-IQR 0.20-0.45%, 0 outliers, prompt-to-prompt spread 0.08%. The `_d8` re-measurement
+reproduces round 3's stored 13,974.5 / 13,966.2 / 13,966.7 within **0.03%** in a clean window,
+which is the evidence these cells were not throttled or contended.
+
+**The model over-promised, and by how much.** Round 3's autopsy ranked the gap as FA +17.1 ms and
+K/V staging +7.4 ms and concluded "levers 1+2 alone (-24 ms) exceed the +21.9 ms gap". Measured:
+the FA lever delivered **-7.79 ms of GPU busy** (-8.09 ms in the standalone probe) of its modelled
+-17.1, closing 44% of the FA gap — TRT-LLM's fmha_v2 stays ahead at 24.4 ms against our new
+34.15 ms. The staging lever delivered **-1.33 ms of GPU busy** (the nsys dispatch counts below put
+its whole ceiling at 2.270 ms, not 7.4 ms), and only **-0.6 ms of wall** on its own arm (`_e1`,
++0.21%). GPU busy fell 285.75 -> 276.04 ms (-9.71) while wall fell only 293.25 -> 286.42
+(-6.83): **2.9 ms of the kernel saving did not reach the wall**, and that difference is the same
+order as the host/launch gap this seam carries. The nsys rows below settle both numbers rather
+than arguing them.
+
+### Per-layer decomposition, ONE RAG-4096 prefill (nsys, 4 chunks x 28 layers, `PROMPT_IDS` = rag prompt 0)
+Same capture recipe as round 3 (`--trace=cuda --cuda-graph-trace=node --sample=none
+--cpuctxsw=none`), window marker matched on the RoPE+KV-write **launch grid** (32768 =
+(h_q+h_kv)*m at m=1024) with ambiguous attribution refused, family roll-up NOT using the bare
+substring "gemm" ("gemm" is a substring of "gemma", and Mojo mangles the
+`kernels_prefill_gemma3.mojo` symbols to module-name-plus-hash). 112 rope+kvwrite rows = 28 per
+execution x 4 chunks, so both captures are the same window by construction.
+
+| kernel / family | `_d8` ms | `_e3` ms | Δ | n (`_d8` -> `_e3`) |
+|---|---|---|---|---|
+| cuBLAS/cutlass projections (3 kernels) | 218.675 | 218.120 | -0.56 | 444 -> 444 |
+| **fused flash attention** | **41.943** | **34.151** | **-7.79** | 112 -> 112 (`_fa_causal_kernel` -> `_fa2_causal_kernel`) |
+| bias+RoPE+KV-write (fused, front 3) | 7.024 | 7.010 | -0.01 | 112 -> 112 |
+| rmsnorm rows | 4.422 | 4.399 | -0.02 | 222 -> 222 |
+| **f32->f16 convert, scalar** | **4.224** | **1.954** | **-2.27** | **335 -> 111** |
+| **f32->f16 convert, v8 (8/thread)** | — | **0.936** | +0.94 | 0 -> **224** |
+| SwiGLU (`__expf`, front 3) | 8.926 | 8.923 | -0.00 | 111 -> 111 |
+| memset | 0.422 | 0.432 | +0.01 | 222 -> 222 |
+| **GPU busy per RAG-4096 prefill** | **285.75** | **276.04** | **-9.71** | |
+
+The FA delta measured in situ (**-7.79 ms**) cross-validates the standalone probe's **-8.09 ms**
+to 3.7% — two independent harnesses, one number. **The dispatch counts are what settle lever 2:**
+the scalar converter's 335 dispatches split 224 (K/V staging, 2 per layer per chunk) + 111 (the
+per-GEMM A staging). Under KVTWIN exactly the 224 move to the v8 kernel and cost 0.936 ms, while
+the 111 A-converts stay on the scalar path and cost 1.954 ms — unchanged, because KVTWIN does not
+touch them. So the K/V staging was **4.224 - 1.954 = 2.270 ms**, not the 7.4 ms round 3
+extrapolated from a pp1024 us/layer figure x 10 x 28: **that extrapolation was 3.3x too high**,
+because the "f32->f16 convert" family was never all K/V. KVTWIN captured 1.334 ms of the 2.270 ms
+that was actually there (59%), and 2.270 ms was the whole ceiling. This is the per-layer proof
+that lever 2 could not have delivered its forecast on this hardware, independent of how well it
+was implemented.
+
+### Where the remaining +16.14 ms of RAG-4096 wall actually sits
+`_e3` GPU busy 276.04 ms against TRT-LLM's same-session 270.28 ms wall. Round 3's modelled
+TRT-LLM family totals, reused (they were not re-captured this round — no TRT-LLM nsys
+counterpart, same limitation round 3 recorded):
+
+| family | `_e3` | TRT-LLM | Δ |
+|---|---|---|---|
+| projections | 218.12 | 232.8 | **-14.68 (we win)** |
+| fused flash attention | 34.15 | 24.4 | **+9.75** |
+| bias+RoPE+KV-write | 7.01 | 2.4 (fused `applyBiasRopeUpdateKVCacheV2`) | **+4.61** |
+| f32->f16 converts (K/V 0.94 + per-GEMM A 1.95) | 2.89 | 0 (native bf16 KV and weights) | **+2.89** |
+| rmsnorm | 4.40 | 3.4 | **+1.00** |
+| SwiGLU | 8.92 | 9.2 | -0.28 |
+| memset | 0.43 | — | +0.43 |
+| **GPU busy** | **276.04** | ~272 | **+3.7** |
+| **measured wall** | **286.42** | **270.28** | **+16.14** |
+
+So after this round the kernel-level gap is only ~+3.7 ms and the projections win (-14.68 ms) very
+nearly pays for the attention loss (+9.75 ms). The wall gap is larger than the busy gap by
+286.42 - 276.04 = **10.38 ms of host/launch gap**. That figure is a cross-basis subtraction (busy
+from a profiled `--runs 1` capture, wall from the 20-run bench median), so it is an order-of-
+magnitude statement, not a measurement: round 3 measured the same quantity at 5.8 ms for `_c8`
+(98.3% busy) and 7.5 ms for `_d8` here. Either way, **the host gap is now the same size as the
+entire remaining kernel gap**, which was not true before this round.
+
+### RE-RACE vs a freshly re-served TensorRT-LLM 1.2.1 (same image/config/protocol as rounds 2-3:
+### pytorch backend, attn_backend TRTLLM, bf16, chunked_prefill off, block/partial reuse AND
+### copy_on_partial_reuse explicitly OFF, max_batch 64, max_input_len 4352, max_seq_len 8192,
+### CudaGraph defaults; executor iter-log device step time, 3 warmup + 7 measured, interleaved)
+| cell | algenta `_e3` | TRT-LLM (re-served 05:29Z) | ratio | round 3 (`_d8`) | verdict |
+|---|---|---|---|---|---|
+| pp256 | 12,778.7 (320.5 us/tok) | 7,326.0 (34.944 ms) | **1.7443x** | 1.858x | **WIN**, held |
+| pp1024 | 15,330.8 | 14,341.7 (71.400 ms) | **1.0690x** | 1.077x | **WIN**, held |
+| RAG-4096 #0/#1/#2 | 14,305.9 / 14,301.3 / 14,295.0 (286.32 / 286.41 / 286.53 ms) | 15,154.4 (270.276 ms) | **0.9436x** | 0.925x | improved, **NOT flipped** |
+| decode c1 gen256 | 82.90 | not re-served this session | (1.049x vs round 3's stored 79.04, CROSS-SESSION) | 1.047x | WIN, invariant held |
+
+Re-serve reproduction against round 3's stored TRT-LLM cells: **RAG-4096 270.276 vs 271.24 ms =
+-0.36%, SAME-SESSION** (the cell the flip criterion is computed from, and the one that
+reproduced). pp1024 71.400 vs 72.21 = **-1.12%**, just outside the 1% band, so it is labelled
+**CROSS-SESSION**; pp256 34.944 vs 37.32 = **-6.4%**, also CROSS-SESSION and consistent with
+round 3's note that TRT-LLM's ~30 ms engine-side context-phase floor makes pp256 unstable between
+sessions. In both cases TRT-LLM came out **faster** this session than the stored value, so
+1.7443x and 1.0690x are the *conservative* readings — using round 3's stored cells would give
+1.858x and 1.077x. No ratio here is flattered by the choice of re-serve.
+
+TRT-LLM's three rag prompts all report the identical 270.276 ms server median (n=27 pooled rows):
+their engine-side step time does not distinguish prompts of equal token count. Ours varies by
+0.08% across the same three. Recorded rather than averaged away.
+
+### Ranked next levers for RAG-4096, by measured ms (nothing here is forecast as a win)
+1. **FA at long n_keys, +9.75 ms remaining.** Ours 34.15 ms = ~34% MFU against a ~11.5 ms
+   arithmetic floor; TRT-LLM's fmha_v2 24.4 ms = ~47%. This round took us from ~26% to ~34%.
+   Candidates, all **modelled and NOT measured**: heaviest-CTA-first grid ordering (448 CTAs
+   against 324 slots at 3 CTAs/SM is 1.38 waves, and the CTAs are not equal — `qi=0` runs 1 key
+   block, `qi=15` runs 128 — so the tail is not free); a per-warp `kb_max` so the upper warps skip
+   key blocks that are fully above their own diagonal (must guard the mma work, not the loop, or
+   the block barrier deadlocks); and the O-rescale, which is 64 f32 multiplies per warp per key
+   block and is amortized over only 32 key columns at BN=32.
+2. **bias+RoPE+KV-write, +4.61 ms.** Untouched this round (lever 3, not attempted — budget).
+   62.6 us/layer for ~40 MB = 43% of peak against TRT-LLM's fused 21.7 us. The grid is
+   (h_q+h_kv)*m blocks of `d_head`=128 threads, each reading one strided 512-byte slice.
+3. **f32->f16 converts, +2.89 ms.** The structural price of an f32 KV cache and f32 activations
+   against a native-bf16 engine. KVTWIN took the K/V half to 0.936 ms; the other 1.954 ms is
+   per-GEMM A staging, which F16NORM already removed for 2 of the 4 projection roles.
+4. **rmsnorm, +1.00 ms.**
+5. **Host/launch gap, ~7-10 ms** — now the same order as the entire remaining kernel gap.
+
+Levers 1-4 sum to +18.25 ms of gap against a -14.68 ms projection win. **Closing RAG-4096 needs
+the FA gap roughly halved again AND bias+RoPE+KV-write fused to TRT-LLM's width**; neither is a
+parameter tweak, and this round is the evidence that the round-3 forecast method (extrapolating a
+pp1024 us/layer figure by the key-count ratio, and rolling families up) overstates what is
+available by 2-3x. Measure the family at the raced shape before ranking it.
+
+### Integrity notes (anomalies diagnosed before reporting)
+1. **Cells DISCARDED for contention.** The phase-0 baseline ran 02:53-03:07Z while another
+   workstream's verification script (`~/front3/f3_verify_v2.sh`) began building on the same box at
+   03:05:54Z and ran GPU cells to 03:28:24Z. That script's own pp1024 cell came out at **1.057%
+   rel-IQR, over the 1.0% target**, from the same CPU contention — which is the evidence the
+   overlap was real and not theoretical. The phase-0 sweep cells (02:53-03:00Z) finished before
+   the other job started and are quoted as `_d8` run1; the phase-0 RAG cell straddled the build
+   phase and was **re-taken in a clean window** (04:22-04:44Z), and the re-take — 13,970.6 /
+   13,968.3 / 13,967.0, reproducing round 3's stored 13,974.5 / 13,966.2 / 13,966.7 within
+   **0.03%** — is what every table above uses. No CPU build was run during any timed cell after
+   that.
+2. **Preconditions logged, not assumed.** Every stage prints compute-apps / clocks / VRAM / load
+   average before it starts; the device is drained to 0 MiB between stages; the box is left at
+   `1410 MHz, 0 MiB`, no containers and no watchers.
+3. **Clocks** 1410 MHz read before AND after every cell — every arm line reads
+   `clocks=1410 MHz->1410 MHz` — plus a 1 Hz sampler (`clocks_1hz.csv`) running through every
+   timed region.
+4. **Variance.** Every cell is a driver median of 20. **0 cells over the 1.0% rel-IQR target**
+   (worst 0.89%, on the closing `_d8` bracket), **0 outliers anywhere**, 0 gate failures. The 8
+   RAG cells carry G1 64/64 and no G0: `--prompt-ids` cells are not passed `--oracle`, so G0 is
+   **not run** there, which is not the same as failing and is reported separately rather than
+   being counted either way.
+5. **Three summarizer defects found and fixed, all of which would have mis-reported rather than
+   crashed loudly.** (a) The pp256/pp1024 **ratio was inverted** (TRT-LLM / algenta), which
+   printed the two WINS as 0.5733x and 0.9355x LOSSES — caught only because a 0.94x pp1024
+   contradicted round 3's 1.077x on an unchanged axis. (b) `TRTLLM_STORED_MS["pp256"]` was
+   `None`, so every pp256 re-serve read CROSS-SESSION **by construction** instead of by
+   measurement. (c) `exceeds_baseline_drift` referenced `d[c]` inside the literal that builds
+   `d[c]`, a `KeyError` that took the whole summary down **after** the GPU work had been spent.
+   Round 3's summarizer also keys its ordered-drift parse by stripping a trailing `_ra<N>` **or**
+   `_rag<N>`, so a baseline's RAG runs can land in the same ordered list as its sweep runs and
+   `br[-1]` can be a RAG run with no pp256 cell at all — a silent drift comparison against
+   `None`. FRONT 4 accepts only `_ra<N>`.
+6. **Not re-measured this round:** the TRT-LLM nsys counterpart (so their family totals are
+   round 3's model, labelled as such above) and TRT-LLM decode (round 3 used a separate
+   `--decode 256` re-serve; our 82.90 is quoted against their stored 79.04 and labelled
+   CROSS-SESSION rather than presented as a same-session ratio).
+
+### Artifacts
+`~/trtllm/front4/`: `front4_results.json`, `flag_audit.json`, `fa_probe.log`,
+`fa_probe_100.log`, `phase0.log`, `phase1.log`, `phase2.log`, `clocks_1hz.csv`,
+`bench_<arm>_ra{1,2}.log`, `bench_<arm>_rag{0,1,2}.log`, `trtllm_rerace4.json`,
+`nsys/decomp__{d8,e3}.txt` + the `.nsys-rep`/`.sqlite`/`_cuda_gpu_trace.csv` behind them.
+Binaries and their sha256 in `~/front4/bin/`; source `~/front4/repo` (tar+scp, md5-verified
+`6bf1f2db690695be5141f8272d513252` for `tc_shim.cu`).
+
+

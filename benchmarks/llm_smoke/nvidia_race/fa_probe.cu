@@ -43,6 +43,11 @@ extern "C" int64_t tc_shim_fa_layout_probe(void);
 extern "C" int64_t tc_shim_fa_causal_async(const void*, const void*, const void*, void*,
                                            const void*, int64_t, int64_t, int64_t, int64_t,
                                            int64_t, int64_t, int64_t);
+// FRONT 4: the cp.async-double-buffered, raw-mma flash attention (and its attribution arms)
+extern "C" int64_t tc_shim_fa2_layout_probe(void);
+extern "C" int64_t tc_shim_fa2_causal_async(const void*, const void*, const void*, void*,
+                                            const void*, int64_t, int64_t, int64_t, int64_t,
+                                            int64_t, int64_t, int64_t, int64_t);
 extern "C" int64_t tc_shim_bgemm_f16_async(const void*, const void*, void*, int64_t, int64_t,
                                            int64_t, int64_t, int64_t, int64_t, int64_t,
                                            int64_t, int64_t, int64_t, int64_t);
@@ -182,12 +187,28 @@ static double bench(void (*fn)(void*), void* arg, int iters) {
 
 struct FaArgs { const float* q; const __half* k; const __half* v; float* o;
                 const float* scale;
-                int m, n_keys, h_q, h_kv, d, pos; int bn; };
+                int m, n_keys, h_q, h_kv, d, pos; int bn; int variant; int64_t rc; };
 static void run_fa(void* p) {
     FaArgs* a = (FaArgs*)p;
-    tc_shim_fa_causal_async(a->q, a->k, a->v, a->o, a->scale, a->m, a->n_keys, a->h_q,
-                            a->h_kv, a->d, a->pos, a->bn);
+    a->rc = (a->variant < 0)
+        ? tc_shim_fa_causal_async(a->q, a->k, a->v, a->o, a->scale, a->m, a->n_keys, a->h_q,
+                                  a->h_kv, a->d, a->pos, a->bn)
+        : tc_shim_fa2_causal_async(a->q, a->k, a->v, a->o, a->scale, a->m, a->n_keys, a->h_q,
+                                   a->h_kv, a->d, a->pos, a->bn, a->variant);
 }
+
+// The engines this probe races. variant < 0 = FRONT 3's WMMA `_fa_causal_kernel` (the
+// baseline the lever has to beat); 0 = FRONT 4's FA2 (cp.async double buffer + in-register
+// P); 1 = FA2 with P still round-tripping through shared (isolates the raw-mma sub-lever at
+// identical occupancy); 2 = FA2 with synchronous K/V loads (isolates the cp.async sub-lever).
+struct Eng { const char* name; int variant; int bn; };
+static const Eng ENGS[] = {
+    {"fa-r3   ", -1, 64},
+    {"fa2     ",  0, 32}, {"fa2     ",  0, 64}, {"fa2     ",  0, 128},
+    {"fa2-pshm",  1, 32}, {"fa2-pshm",  1, 64}, {"fa2-pshm",  1, 128},
+    {"fa2-nodb",  2, 64},
+};
+static const int NENG = (int)(sizeof(ENGS) / sizeof(ENGS[0]));
 
 struct ChainArgs { const __half* q16; const __half* k16; const __half* v16; float* s32;
                    __half* p16; float* o32; int m, n_keys, h_q, h_kv, d, pos; };
@@ -217,14 +238,19 @@ static void run_sw_ref(void* p) {
 
 int main(int argc, char** argv) {
     int iters = 30, h_q = 28, h_kv = 4, d = 128, bn_arg = 0, quick = 0, no_time = 0;
+    char only[32] = "";
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--iters")) iters = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--h-q")) h_q = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--h-kv")) h_kv = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--bn")) bn_arg = atoi(argv[++i]);
-        else if (!strcmp(argv[i], "--quick")) quick = 1;
+        else if (!strcmp(argv[i], "--only")) {
+            strncpy(only, argv[++i], sizeof(only) - 1);
+            only[sizeof(only) - 1] = 0;
+        } else if (!strcmp(argv[i], "--quick")) quick = 1;
         else if (!strcmp(argv[i], "--no-time")) no_time = 1;
     }
+    (void)bn_arg;   // superseded by --only: the engine table carries the BN
     const float scale = 1.0f / sqrtf((float)d);
     cudaDeviceProp prop;
     CK(cudaGetDeviceProperties(&prop, 0));
@@ -241,6 +267,12 @@ int main(int argc, char** argv) {
            r == 0 ? "OK — the WMMA accumulator mapping the kernel indexes by is verified"
                   : "MISMATCH — lever must stay OFF");
     if (r != 0) return 2;
+    int64_t r2 = tc_shim_fa2_layout_probe();
+    printf("fa2 layout probe: %lld (%s)\n", (long long)r2,
+           r2 == 0 ? "OK — the raw mma.sync m16n8k16 A/B/D mappings and BOTH ldmatrix roles "
+                     "are verified on device"
+                   : "MISMATCH — the FA2 lever must stay OFF (every fa2 engine below will "
+                     "report rc=-311 and the FRONT-3 kernel stays the baseline)");
 
     const int MAXN = 4096, MAXM = 1024;
     long nq = (long)MAXM * h_q * d, nk = (long)MAXN * h_kv * d;
@@ -280,8 +312,8 @@ int main(int argc, char** argv) {
 
     int fail = 0;
     printf("\n== FA correctness vs the f32 reference (same f16 operands, f16-rounded P) ==\n");
-    printf("%-26s %4s %10s %10s %10s %9s\n", "case", "bn", "max_abs", "max_rel", "rms",
-           "n>2%rel");
+    printf("%-26s %-9s %-8s %10s %10s %10s %9s\n", "case", "engine", "bn", "max_abs",
+           "max_rel", "rms", "n>2%rel");
     for (size_t ci = 0; ci < cases.size(); ci++) {
         Case c = cases[ci];
         int n_check = 0;
@@ -317,19 +349,20 @@ int main(int argc, char** argv) {
         long ncmp = 0;
         for (int ci2 = 0; ci2 < n_check; ci2++) ncmp += (long)h_q * DIMS;
 
-        int bns[3] = {32, 64, 128};
-        for (int bi = 0; bi < 3; bi++) {
-            int bn = bns[bi];
-            if (bn_arg && bn != bn_arg) continue;
+        for (int ei = 0; ei < NENG; ei++) {
+            Eng e = ENGS[ei];
+            if (only[0] && !strstr(e.name, only)) continue;
             CK(cudaMemset(do_, 0, no * 4));
-            int64_t rc = tc_shim_fa_causal_async(dq, dk16, dv16, do_, dscale, c.m, c.n_keys,
-                                                 h_q, h_kv, d, c.pos, bn);
-            if (rc != 0) {
-                printf("%-26s %4d  LAUNCH rc=%lld (last_error=%lld)\n", c.name, bn,
-                       (long long)rc, (long long)tc_shim_last_error());
+            FaArgs fa = {dq, dk16, dv16, do_, dscale, c.m, c.n_keys, h_q, h_kv, d, c.pos,
+                         e.bn, e.variant, 0};
+            run_fa(&fa);
+            cudaError_t se = cudaDeviceSynchronize();
+            if (fa.rc != 0 || se != cudaSuccess) {
+                printf("%-26s %-9s bn=%-4d LAUNCH rc=%lld sync=%s (last_error=%lld)\n",
+                       c.name, e.name, e.bn, (long long)fa.rc, cudaGetErrorString(se),
+                       (long long)tc_shim_last_error());
                 fail = 1; continue;
             }
-            CK(cudaDeviceSynchronize());
             CK(cudaMemcpy(ho, do_, no * 4, cudaMemcpyDeviceToHost));
             double mabs = 0, mrel = 0, sq = 0; long nbad = 0;
             for (int ci2 = 0; ci2 < n_check; ci2++) {
@@ -346,8 +379,8 @@ int main(int argc, char** argv) {
                         if (rl > 2e-2 && a > 1e-3) nbad++;
                     }
             }
-            printf("%-26s %4d %10.3e %10.3e %10.3e %9ld %s\n", c.name, bn, mabs, mrel,
-                   sqrt(sq / (double)ncmp), nbad, nbad ? "<-- CHECK" : "");
+            printf("%-26s %-9s bn=%-4d %10.3e %10.3e %10.3e %9ld %s\n", c.name, e.name,
+                   e.bn, mabs, mrel, sqrt(sq / (double)ncmp), nbad, nbad ? "<-- CHECK" : "");
             if (nbad) fail = 1;
         }
     }
@@ -378,16 +411,19 @@ int main(int argc, char** argv) {
         run_chain(&ca);
         CK(cudaDeviceSynchronize());
         CK(cudaMemcpy(ho32, do32, no * 4, cudaMemcpyDeviceToHost));
-        int bns[3] = {32, 64, 128};
-        for (int bi = 0; bi < 3; bi++) {
-            int bn = bns[bi];
-            if (bn_arg && bn != bn_arg) continue;
+        for (int ei = 0; ei < NENG; ei++) {
+            Eng e = ENGS[ei];
+            if (only[0] && !strstr(e.name, only)) continue;
             CK(cudaMemset(do_, 0, no * 4));
-            int64_t rc = tc_shim_fa_causal_async(dq, dk16, dv16, do_, dscale, m, n, h_q,
-                                                 h_kv, d, pos, bn);
-            if (rc != 0) { printf("  bn=%3d LAUNCH rc=%lld\n", bn, (long long)rc); fail = 1;
-                           continue; }
-            CK(cudaDeviceSynchronize());
+            FaArgs fa = {dq, dk16, dv16, do_, dscale, m, n, h_q, h_kv, d, pos, e.bn,
+                         e.variant, 0};
+            run_fa(&fa);
+            cudaError_t se = cudaDeviceSynchronize();
+            if (fa.rc != 0 || se != cudaSuccess) {
+                printf("  %-9s bn=%-4d LAUNCH rc=%lld sync=%s\n", e.name, e.bn,
+                       (long long)fa.rc, cudaGetErrorString(se));
+                fail = 1; continue;
+            }
             CK(cudaMemcpy(ho, do_, no * 4, cudaMemcpyDeviceToHost));
             // ho32 is head-major [h_q, m, d]; ho is position-major [m, h_q*d]. EVERY row and
             // every dim — the chain is what ships today, so this is the drop-in proof.
@@ -405,36 +441,56 @@ int main(int argc, char** argv) {
                         if (rl > 2e-2 && a > 1e-3) nbad++;
                     }
             }
-            printf("  bn=%3d  max_abs=%.3e max_rel=%.3e rms=%.3e n>2%%rel=%ld (of %ld) %s\n",
-                   bn, mabs, mrel, sqrt(sq / (double)nn), nbad, nn, nbad ? "<-- CHECK" : "");
+            printf("  %-9s bn=%-4d max_abs=%.3e max_rel=%.3e rms=%.3e n>2%%rel=%ld "
+                   "(of %ld) %s\n",
+                   e.name, e.bn, mabs, mrel, sqrt(sq / (double)nn), nbad, nn,
+                   nbad ? "<-- CHECK" : "");
             if (nbad) fail = 1;
         }
     }
 
-    // ── timings ──
+    // ── timings: engine-major so every engine sees the same case order, and so the RAG-4096
+    //    total (the four chunk cases summed x 28 layers = the FA block of one 4096 prefill)
+    //    can be accumulated per engine. THAT is the number the flip criterion is about. ──
     if (!no_time) {
         printf("\n== timings: median of %d calls, ms per call ==\n", iters);
-        for (size_t ci = 0; ci < cases.size(); ci++) {
-            Case c = cases[ci];
-            printf("  -- %s (m=%d n_keys=%d pos=%d)\n", c.name, c.m, c.n_keys, c.pos);
-            FaArgs fa = {dq, dk16, dv16, do_, dscale, c.m, c.n_keys, h_q, h_kv, d, c.pos,
-                         64};
-            ChainArgs ca = {dq16, dk16, dv16, ds32, dp16, do32, c.m, c.n_keys, h_q, h_kv, d,
-                            c.pos};
-            int bns[3] = {32, 64, 128};
-            for (int bi = 0; bi < 3; bi++) {
-                int bn = bns[bi];
-                if (bn_arg && bn != bn_arg) continue;
-                fa.bn = bn;
-                printf("    FA bn=%-4d", bn);
+        const int RAG0 = 1, RAGN = 4;      // cases[1..5): pp1024 IS rag chunk 0, then 1/2/3
+        if (quick) printf("  (--quick: only %zu cases, so this RAG total is PARTIAL)\n",
+                          cases.size());
+        std::vector<double> rag_total(NENG, 0.0);
+        for (int ei = 0; ei < NENG; ei++) {
+            Eng e = ENGS[ei];
+            if (only[0] && !strstr(e.name, only)) continue;
+            printf("  -- engine %s bn=%d variant=%d\n", e.name, e.bn, e.variant);
+            for (size_t ci = 0; ci < cases.size(); ci++) {
+                Case c = cases[ci];
+                printf("    %-26s m=%-5d n_keys=%-5d pos=%-5d", c.name, c.m, c.n_keys, c.pos);
+                FaArgs fa = {dq, dk16, dv16, do_, dscale, c.m, c.n_keys, h_q, h_kv, d, c.pos,
+                             e.bn, e.variant, 0};
                 double t = bench(run_fa, &fa, iters);
                 printf("        -> %.1f us/layer, %.3f ms over 28 layers\n", t * 1000.0,
                        t * 28.0);
+                if (ci >= (size_t)RAG0 && ci < (size_t)(RAG0 + RAGN)) rag_total[ei] += t * 28.0;
             }
-            printf("    5-pass chain");
+        }
+        printf("\n== RAG-4096 FA block total (4 chunks x 28 layers), the flip criterion ==\n");
+        double base = -1.0;
+        for (int ei = 0; ei < NENG; ei++) {
+            Eng e = ENGS[ei];
+            if (only[0] && !strstr(e.name, only)) continue;
+            if (base < 0) base = rag_total[ei];
+            printf("  %-9s bn=%-4d %8.3f ms   %s%.3f ms vs the first engine (%.2fx)\n",
+                   e.name, e.bn, rag_total[ei], rag_total[ei] < base ? "" : "+",
+                   rag_total[ei] - base, base / rag_total[ei]);
+        }
+        printf("  -- the 5-pass chain FRONT 3 replaced, for scale (GEMMs+softmax only) --\n");
+        for (size_t ci = 0; ci < cases.size(); ci++) {
+            Case c = cases[ci];
+            printf("    %-26s", c.name);
+            ChainArgs ca = {dq16, dk16, dv16, ds32, dp16, do32, c.m, c.n_keys, h_q, h_kv, d,
+                            c.pos};
             double tc5 = bench(run_chain, &ca, iters);
-            printf("        -> %.1f us (GEMMs+softmax only; pack/unpack/convert extra)\n",
-                   tc5 * 1000.0);
+            printf(" %8.1f us -> %.3f ms over 28 layers\n", tc5 * 1000.0, tc5 * 28.0);
         }
     }
 

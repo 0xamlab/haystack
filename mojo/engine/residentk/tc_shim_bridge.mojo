@@ -501,6 +501,90 @@ def _tc_fa_causal_async(q32: Int, k16: Int, v16: Int, o32: Int, scale32: Int, m:
         return -1
 
 
+def _tc_fa2_layout_probe() -> Int:
+    """Run (once, cached inside the shim) the on-device check of the FA2 kernel's operand
+    mappings: the `mma.sync.aligned.m16n8k16` A / B / D fragment layouts AND both `ldmatrix`
+    roles (the K tile loaded non-transposed, the V tile loaded transposed). Unlike the WMMA
+    accumulator those layouts are specified by the ISA rather than documented as opaque, but
+    this repo does not get to trust a specification it has not watched this toolkit honour:
+    the probe fills A[r][c] = (c==0 ? r+1 : 0) and B[k][n] = (k==0 ? n+1 : 0), runs the exact
+    instruction sequences the kernel uses, and requires every lane's four D registers to read
+    back (row+1)*(col+1) — exact small integers, no tolerance, no floating-point judgement.
+    Returns -311 and prints the disagreeing lane/register if anything moved, and every FA2
+    call then declines so the session keeps FRONT 3's fused flash attention. Called at TC
+    staging time so the ARMED/DECLINED verdict is a per-binary line in the run log.
+    0 = verified."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_fa2_layout_probe", Int64]())
+    else:
+        return -1
+
+
+def _tc_fa2_causal_async(
+    q32: Int, k16: Int, v16: Int, o32: Int, scale32: Int, m: Int, n_keys: Int, h_q: Int,
+    h_kv: Int, d: Int, pos_base: Int, bn: Int, variant: Int,
+) -> Int:
+    """FUSED CAUSAL FLASH ATTENTION, v2 (FRONT 4 lever 1, `-D ALGENTA_7B_PF_FA2`): FRONT 3's
+    `_tc_fa_causal_async` with the two causes its own nsys autopsy ranked first at long
+    `n_keys` removed —
+
+      * the K/V tile for key block kb+1 is in flight (cp.async, 16-byte, zero-filling the
+        cache tail) while kb computes, on two rotating buffers, with two block fences per key
+        block instead of three, so the HBM round trip is no longer exposed latency at
+        2 CTAs/SM;
+      * the f16 P tile no longer round-trips through shared memory. `wmma::fragment` cannot be
+        reinterpreted as an f16 `matrix_a`, but raw `mma.sync.m16n8k16` puts a lane's two f16
+        of a k-pair at exactly the registers where its two f32 of the same k-pair already sit,
+        so P's A operand is a convert-and-pack on values already in registers.
+
+    Two more things fall out for free: the O accumulator's element -> (row, col) mapping is
+    ISA-specified rather than opaque, so the epilogue writes position-major f32 straight to
+    global (no `sO` staging window, no fence), and shared memory per CTA drops to
+    `8*bn*FA_LD` bytes because the Q tile is staged inside the second rotating buffer and dies
+    the moment its A fragments are in registers.
+
+    Arguments, layouts, the device-pointer scale and the causal predicate are IDENTICAL to
+    `_tc_fa_causal_async` — this is a drop-in for it. `variant` selects the attribution arms:
+    0 = both sub-levers (the lever), 1 = cp.async double buffering with P still round-tripping
+    through shared, 2 = in-register P with synchronous K/V loads. 0 = success; -301 wrong
+    head_dim; -304 h_q not a multiple of h_kv; -305 the Q-tile-in-buffer-1 overlay does not
+    fit this bn (FA_BM > 2*bn) or the variant does not implement it; -311 the shim's on-device
+    FA2 layout probe disagreed. The caller MUST fall back on ANY non-zero return."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_fa2_causal_async", Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+            ](
+                Int64(q32), Int64(k16), Int64(v16), Int64(o32), Int64(scale32), Int64(m),
+                Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d), Int64(pos_base), Int64(bn),
+                Int64(variant),
+            )
+        )
+    else:
+        return -1
+
+
+def _tc_stage_f32_to_f16_v8(src: Int, dst: Int, n: Int) -> Int:
+    """`_tc_stage_f32_to_f16` with 8 elements per thread (two float4 loads, one uint4 store)
+    instead of one scalar load and one 2-byte store — FRONT 4 lever 2 part (a), the K/V
+    staging half. BIT-EXACT: `__floats2half2_rn` is the round-to-nearest-even conversion of
+    each half independently, the same operation `__float2half` performs, so every output half
+    is the same bit pattern. An operand the 16-byte form cannot legally vectorize falls back
+    to the scalar kernel INSIDE the shim entry rather than failing, so the two entries can
+    never disagree about an answer. Enqueues on the shim stream, no sync. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call["tc_shim_f32_to_f16_v8", Int64, Int64, Int64, Int64](
+                Int64(src), Int64(dst), Int64(n))
+        )
+    else:
+        return -1
+
+
 def _tc_swiglu_f16_fastexp(gu16: Int, act16: Int, m_rows: Int, n_ff: Int) -> Int:
     """Fast-exp SwiGLU epilogue (FRONT 3 lever 2, `-D ALGENTA_7B_PF_FASTEXP`): the shim twin
     of `_pf_swiglu_rows_f16_kernel` — the same `(g / (1 + exp(-g))) * u` over the same f16

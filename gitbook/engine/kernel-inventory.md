@@ -11,7 +11,7 @@ The engine's racing kernels — the fused CUDA and Metal kernels a resident deco
 
 | Backend | Kernels | Model families | Staging tiers (elements) |
 | --- | --- | --- | --- |
-| CUDA (NVIDIA) | 118 | gemma3, qwen3/llama | 3072, 6144, 8192, 18944 |
+| CUDA (NVIDIA) | 121 | gemma3, qwen3/llama | 3072, 6144, 8192, 18944 |
 | Metal (Apple Silicon) | 57 | qwen3/llama | 3072, 6144 |
 
 Staging is the decode kernels' shared-memory ceiling per build tier — one binary per tier; a checkpoint whose staged vectors exceed every tier of a backend is refused naming the value and the tiers. See the [Model support matrix](model-support-matrix.md) for the fact ranges that decide support.
@@ -120,6 +120,8 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `tc_bgemm_f16_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_create_stream` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_dequant_packed3_f16_dense` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_fa2_causal_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_fa2_layout_probe` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_fa_causal_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_fa_layout_probe` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_gemm_dispatch` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
@@ -136,6 +138,7 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `tc_last_error` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_noseam` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_stage_f32_to_f16` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
+| `tc_stage_f32_to_f16_v8` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_swiglu_f16_fastexp` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_use_legacy_stream` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 
@@ -227,7 +230,7 @@ Each kernel module declares its own evidence in its `@capability-module` block: 
 | `residentk.kernels_prefill_v2f16` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo --selftest` | `benchmarks/llm_smoke/nvidia_race/ttft_probe.py` |
 | `residentk.session_cuda_batched_p3_graph` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/enterprise_bench.py` |
 | `residentk.session_cuda_p3` | cuda | 10 | `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` |
-| `residentk.tc_shim_bridge` | cuda | 23 | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` |
+| `residentk.tc_shim_bridge` | cuda | 26 | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/tc_escape_probe.mojo` |
 
 ## Querying the inventory from the SDK
 
