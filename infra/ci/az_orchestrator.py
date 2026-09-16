@@ -236,6 +236,21 @@ _stopped_seen = {}
 # NIC names the sweep could not parse. Log-once set, so an unhandled naming form is reported the
 # first time rather than every 90s poll -- but IS reported, which is what 31 leaked NICs cost.
 _unswept_nics = set()
+# Boot-log gist index: VM name -> html_url, plus when it was listed. The worker bootstrap creates
+# its gist with THIS orchestrator's own token, so the gists are listable from here -- see
+# _gist_index() for why the pointer has to be resolved on this side of the delete.
+_gist_cache = {"at": 0.0, "map": {}}
+GIST_CACHE_S = 60      # one listing per reconcile cycle at most, however many VMs it reaps
+# TWO pages, not three, and the reason is a rate limit rather than a guess. Measured live
+# 2026-09-16 on a worker: the boot-log gist PATCH returned
+# `403 API rate limit exceeded for user ID 79715912` -- GITHUB_CI_TOKEN had exhausted its
+# 5000/hr core budget, because ONE token is shared by the orchestrator's whole poll surface
+# (org repo list, then runs+jobs for each of 25 repos, plus paginated runner listings, every
+# cycle) AND by every worker (gist create, a handful of gist flushes, registration-token
+# fetches). Every call this file adds comes out of that same exhausted budget, so the index is
+# capped at the smallest window that still covers a reapable corpse: 200 gists spans ~2.5h at
+# the observed burst rate of ~80 workers/hr, well past MAX_AGE_S (90min).
+GIST_MAX_PAGES = 2
 # Deletion ledger: VM name -> {at, reason, was_busy}. Consulted when a workflow_job `completed`
 # webhook reports a non-success, so an infra kill is attributed the moment GitHub notices it
 # instead of being reconstructed afterwards from three separate logs.
@@ -486,6 +501,64 @@ def delete_runner_registration(name):
     return ok
 
 
+# The `vm=<name>` stamp the bootstrap writes into its gist description. Anchored on the fleet's
+# own name prefixes so a gist whose description merely mentions some other VM cannot be matched.
+_GIST_VM_RE = re.compile(r"\bvm=(?P<vm>ci-(?:az|warm)-[0-9A-Za-z-]+)")
+
+
+def _gist_index():
+    """VM name -> boot-log gist URL, listed at most once per GIST_CACHE_S.
+
+    WHY THIS EXISTS. /root/boot.log on a worker is the only record of why it failed to register,
+    and the VM is deleted within minutes of that failure. #997 made the bootstrap PATCH boot.log
+    to a private per-worker gist, so the evidence survives the delete -- but nothing ever said
+    WHERE it went: the gist id lived in /root/gist.id on a machine that no longer exists. So
+    "this worker never registered" was diagnosable only by guessing, and the 2026-09-16 runner
+    -version outage cost nine hours partly for that reason.
+
+    Resolved from THIS side of the delete instead. The bootstrap creates its gist with the same
+    token the orchestrator holds, so those gists are this token owner's own and `GET /gists`
+    lists them, description included. Matching is on the description the bootstrap stamps
+    (`az-ci-worker vm=<name>`), which is why that stamp is part of this change: without it the
+    only match key is inside the gist CONTENT, and the listing endpoint truncates content, so
+    every match would cost an extra fetch per gist per reap.
+
+    Bounded: GIST_MAX_PAGES pages of 100, most-recent-first (the API's own default ordering),
+    cached so a cycle reaping a dozen workers pays ONE listing rather than twelve. A worker
+    older than that window, or one booted before the description stamp shipped, simply reports
+    no pointer -- a missing pointer is logged as missing, never guessed at.
+
+    NEVER raises. This annotates a reap; annotating must not be able to prevent one."""
+    now = time.time()
+    if now - _gist_cache["at"] < GIST_CACHE_S:
+        return _gist_cache["map"]
+    _gist_cache["at"] = now  # set BEFORE the call: a failure must not cause a refetch per reap
+    found = {}
+    try:
+        for page in range(1, GIST_MAX_PAGES + 1):
+            batch = gh(f"gists?per_page=100&page={page}")
+            if not isinstance(batch, list):
+                break  # not a gist listing (an error body, or a stub in tests): stop, do not guess
+            for g in batch:
+                if not isinstance(g, dict):
+                    continue
+                m = _GIST_VM_RE.search(g.get("description") or "")
+                if m and g.get("html_url"):
+                    found.setdefault(m.group("vm"), g["html_url"])  # most recent wins
+            if len(batch) < 100:
+                break
+    except Exception as e:  # noqa: BLE001 -- annotation is best-effort by construction
+        log(f"gist index: listing failed ({e}); reaps this cycle will report no boot-log pointer")
+        return _gist_cache["map"]
+    _gist_cache["map"] = found
+    return found
+
+
+def gist_url_for(name):
+    """The boot-log gist URL for this worker, or None if it cannot be resolved."""
+    return _gist_index().get(name)
+
+
 def live_vms():
     d = arm("GET", f"/subscriptions/{SUB}/resourceGroups/{RG}/providers/Microsoft.Compute/virtualMachines")
     out = []
@@ -626,7 +699,8 @@ write_files:
       TOK="__GH_TOKEN__"
       log(){ echo "T=$(date +%s) $*" | tee -a /root/boot.log; }
       up(){ python3 - <<PY
-      import json,urllib.request
+      import json,urllib.error,urllib.request
+      gid="unknown"
       try:
           gid=open("/root/gist.id").read().strip()
           content=open("/root/boot.log").read()[-3000:]
@@ -634,8 +708,10 @@ write_files:
            data=json.dumps({"files":{"boot.log":{"content":content}}}).encode(),
            headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
           urllib.request.urlopen(req,timeout=30)
-      except Exception:
-          pass
+      except urllib.error.HTTPError as e:
+          print("telemetry-flush-FAILED http=%s gist=%s" % (e.code,gid), file=open("/root/boot.log","a"))
+      except Exception as e:
+          print("telemetry-flush-FAILED %s gist=%s" % (type(e).__name__,gid), file=open("/root/boot.log","a"))
       PY
       }
       log start
@@ -643,7 +719,7 @@ write_files:
       import json,urllib.request
       try:
           req=urllib.request.Request("https://api.github.com/gists",method="POST",
-           data=json.dumps({"public":False,"files":{"boot.log":{"content":"init"}}}).encode(),
+           data=json.dumps({"public":False,"description":"az-ci-worker vm=__VMNAME__","files":{"boot.log":{"content":"init"}}}).encode(),
            headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
           print(json.load(urllib.request.urlopen(req,timeout=30))["id"])
       except Exception as e:
@@ -725,8 +801,12 @@ write_files:
       useradd -m -s /bin/bash runner 2>/dev/null || true
       usermod -aG docker runner 2>/dev/null || true
       chown -R runner:runner /opt/runner
-      su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended" >> /root/boot.log 2>&1
-      log "config rc=$?"
+      # Bounded like the fast path's, for the same reason: this was an unbounded step, and a
+      # hung registration leaves a VM running-but-unregistered with nothing on it to explain
+      # why. 124 is timeout(1)'s "never returned"; `-k 30` escalates because timeout signals
+      # `su` and a dotnet child can ignore SIGTERM.
+      timeout -k 30 240 su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended" >> /root/boot.log 2>&1
+      log "config rc=$? (124 means config.sh timed out at 240s and was killed)"
       up
       su - runner -c "/opt/runner/run.sh" || true
       log "run-exited"
@@ -847,7 +927,8 @@ write_files:
       BOOT_T0=$(date +%s)
       log(){ echo "T=$(date +%s) +$(( $(date +%s) - BOOT_T0 ))s $*" | tee -a /root/boot.log; }
       up(){ python3 - <<PY
-      import json,urllib.request
+      import json,urllib.error,urllib.request
+      gid="unknown"
       try:
           gid=open("/root/gist.id").read().strip()
           content=open("/root/boot.log").read()[-4000:]
@@ -855,8 +936,10 @@ write_files:
            data=json.dumps({"files":{"boot.log":{"content":content}}}).encode(),
            headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
           urllib.request.urlopen(req,timeout=30)
-      except Exception:
-          pass
+      except urllib.error.HTTPError as e:
+          print("telemetry-flush-FAILED http=%s gist=%s" % (e.code,gid), file=open("/root/boot.log","a"))
+      except Exception as e:
+          print("telemetry-flush-FAILED %s gist=%s" % (type(e).__name__,gid), file=open("/root/boot.log","a"))
       PY
       }
       # The fast path had NO telemetry at all until 2026-09-16 -- that is the whole reason the
@@ -869,7 +952,7 @@ write_files:
       import json,urllib.request
       try:
           req=urllib.request.Request("https://api.github.com/gists",method="POST",
-           data=json.dumps({"public":False,"files":{"boot.log":{"content":"init"}}}).encode(),
+           data=json.dumps({"public":False,"description":"az-ci-worker vm=__VMNAME__","files":{"boot.log":{"content":"init"}}}).encode(),
            headers={"Authorization":"Bearer $TOK","Accept":"application/vnd.github+json"})
           print(json.load(urllib.request.urlopen(req,timeout=30))["id"])
       except Exception as e:
@@ -1055,12 +1138,42 @@ write_files:
       # behaviour instead of becoming a new failure mode.
       runner_version(){ ( cd /opt/runner && ./bin/Runner.Listener --version 2>/dev/null | tail -1 ); }
       HAVE=$(runner_version)
-      WANT=$(curl -s -m 20 https://api.github.com/repos/actions/runner/releases/latest | python3 -c "import json,sys;print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null)
       # dpkg calls amd64 what the release asset calls x64; arm64 is spelled the same in both.
       case "$(dpkg --print-architecture 2>/dev/null)" in
         arm64) RARCH=arm64 ;;
         *) RARCH=x64 ;;
       esac
+      # ---- resolve WHAT to install, and how to PROVE the download ----
+      # The org downloads endpoint is tried first because it is the only source that gives both
+      # halves in one call: the asset URL GitHub itself serves for this org, and its
+      # `sha256_checksum`. releases/latest below stays as the fallback, and stays a real fallback
+      # rather than being deleted, because losing version resolution ENTIRELY is the 2026-09-16
+      # outage -- a boot that cannot verify its tarball but can still upgrade beats a fleet that
+      # cannot register at all.
+      #
+      # The one-liner form is deliberate, not golf. This is a plain (non-raw) Python
+      # triple-quoted string inside a YAML block scalar, so a multi-line python3 -c body would
+      # have to survive two independent indentation regimes and one backslash-interpretation
+      # pass; render_userdata() gates the result, but a gate that fires is an outage, not a
+      # save. One physical line has no indentation to get wrong.
+      #
+      # The version is read from TWO places, url path first and filename second. Only the url
+      # form (`.../download/v2.337.0/...`) was parsed at first, and a test fixture using a
+      # plainer url exposed the consequence: the version came back empty, `WANT` was empty, and
+      # the block silently took the releases/latest fallback -- losing the checksum, which is
+      # the entire reason this endpoint is consulted. One url-shape change at GitHub's end would
+      # have downgraded every boot to unverifiable without anything failing loudly.
+      DL=$(curl -s -m 20 -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" "https://api.github.com/orgs/__ORG__/actions/runners/downloads" 2>/dev/null)
+      DLINFO=$(DL_JSON="$DL" RARCH="$RARCH" python3 -c 'import json,os,re; d=json.loads(os.environ.get("DL_JSON") or "[]"); a=[x for x in d if isinstance(x,dict) and x.get("os")=="linux" and x.get("architecture")==os.environ.get("RARCH")]; e=a[0] if a else {}; u=e.get("download_url") or ""; m=re.search(r"/v([0-9][0-9.]*)/",u) or re.search(r"([0-9]+[.][0-9]+[.][0-9]+)",e.get("filename") or ""); print(u,(e.get("sha256_checksum") or ""),(m.group(1) if m else ""))' 2>/dev/null)
+      URL=$(printf '%s' "$DLINFO" | awk '{print $1}')
+      SUM=$(printf '%s' "$DLINFO" | awk '{print $2}')
+      WANT=$(printf '%s' "$DLINFO" | awk '{print $3}')
+      if [ -z "$WANT" ]; then
+        WANT=$(curl -s -m 20 https://api.github.com/repos/actions/runner/releases/latest | python3 -c "import json,sys;print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null)
+        URL="https://github.com/actions/runner/releases/download/v${WANT}/actions-runner-linux-${RARCH}-${WANT}.tar.gz"
+        SUM=""
+        log "runner-upgrade downloads-endpoint gave no linux/$RARCH asset; fell back to releases/latest, so this boot CANNOT checksum-verify the tarball and will fall back to a gzip integrity test"
+      fi
       UPGRADE_NEEDED=0
       if [ -n "$WANT" ]; then
         if [ -z "$HAVE" ]; then
@@ -1077,15 +1190,64 @@ write_files:
         fi
       fi
       if [ "$UPGRADE_NEEDED" = "1" ]; then
-        log "runner-upgrade-start have=${HAVE:-unknown} want=$WANT arch=$RARCH"
-        timeout 300 curl -sL -o /tmp/runner-new.tar.gz "https://github.com/actions/runner/releases/download/v${WANT}/actions-runner-linux-${RARCH}-${WANT}.tar.gz" || log "runner-upgrade download-failed rc=$?"
-        if [ -s /tmp/runner-new.tar.gz ]; then
-          # Extract over the baked tree, then clear any half-written config state so config.sh
-          # starts clean. Safe because this stage always runs BEFORE config.sh.
-          tar -xzf /tmp/runner-new.tar.gz -C /opt/runner || log "runner-upgrade extract-failed rc=$?"
+        if [ -n "$SUM" ]; then SUMSTATE=present; else SUMSTATE=UNAVAILABLE; fi
+        log "runner-upgrade-start have=${HAVE:-unknown} want=$WANT arch=$RARCH checksum=$SUMSTATE"
+        # WHY VERIFY BEFORE EXTRACTING. The old guard was `[ -s /tmp/runner-new.tar.gz ]` --
+        # non-empty. A CDN or redirect failure that returns an HTML error page satisfies
+        # "non-empty" perfectly, and the next line then ran `tar -xzf` over the LIVE /opt/runner
+        # tree: the extraction fails partway, leaving a runner that is neither the baked version
+        # nor the new one. That is strictly worse than not upgrading, and it is invisible -- the
+        # only symptom is config.sh behaving oddly on a half-overwritten tree. So: verify, and
+        # only then touch /opt/runner.
+        #
+        # TWO attempts, and the retry covers download+verify+extract as a unit rather than the
+        # curl alone, because a corrupt tarball is as much a failure as a missing one and
+        # re-extracting bytes we already know are bad cannot help.
+        UPGRADE_OK=0
+        for uattempt in 1 2; do
+          HTTP=$(timeout 300 curl -sL -o /tmp/runner-new.tar.gz -w "%{http_code}" "$URL" 2>/dev/null)
+          BYTES=$(wc -c < /tmp/runner-new.tar.gz 2>/dev/null || echo 0)
+          VERIFIED=0
+          if [ -n "$SUM" ]; then
+            GOT=$(sha256sum /tmp/runner-new.tar.gz 2>/dev/null | awk '{print $1}')
+            if [ "$GOT" = "$SUM" ]; then
+              VERIFIED=1
+              log "runner-upgrade-download attempt=$uattempt http=$HTTP bytes=$BYTES sha256=MATCH"
+            else
+              log "runner-upgrade-download attempt=$uattempt http=$HTTP bytes=$BYTES sha256=MISMATCH got=${GOT:-none} want=$SUM -- refusing to extract over /opt/runner"
+            fi
+          elif gzip -t /tmp/runner-new.tar.gz >/dev/null 2>&1; then
+            # No checksum to compare against, so the next best proof that this is a tarball and
+            # not an error page. Weaker -- it cannot detect a valid gzip of the WRONG version --
+            # and said so in the log line above rather than passing silently.
+            VERIFIED=1
+            log "runner-upgrade-download attempt=$uattempt http=$HTTP bytes=$BYTES sha256=UNAVAILABLE gzip=VALID"
+          else
+            log "runner-upgrade-download attempt=$uattempt http=$HTTP bytes=$BYTES sha256=UNAVAILABLE gzip=INVALID -- refusing to extract over /opt/runner"
+          fi
+          if [ "$VERIFIED" = "1" ]; then
+            if tar -xzf /tmp/runner-new.tar.gz -C /opt/runner 2>>/root/boot.log; then
+              UPGRADE_OK=1
+              log "runner-upgrade-extract attempt=$uattempt ok"
+            else
+              log "runner-upgrade-extract attempt=$uattempt FAILED rc=$?"
+            fi
+          fi
+          rm -f /tmp/runner-new.tar.gz
+          [ "$UPGRADE_OK" = "1" ] && break
+        done
+        if [ "$UPGRADE_OK" = "1" ]; then
+          # Clear any half-written config state so config.sh starts clean. Safe because this
+          # stage always runs BEFORE config.sh.
           rm -f /opt/runner/.runner /opt/runner/.credentials /opt/runner/.credentials_rsaparams /opt/runner/.service 2>/dev/null || true
+        else
+          # Degrade, do not gate: the baked runner stays and config.sh is still attempted, so a
+          # GitHub or CDN outage costs the previous behaviour instead of becoming a new failure
+          # mode. But say so LOUDLY and name the version being kept, because "the fleet will not
+          # register" and "the fleet will not register because the upgrade was abandoned and the
+          # baked runner is below the floor" are the same symptom with very different causes.
+          log "runner-upgrade ABANDONED after 2 attempts; keeping baked runner ${HAVE:-unknown}. If that is below the registration floor, config.sh will report it below and this VM will power off."
         fi
-        rm -f /tmp/runner-new.tar.gz
       else
         log "runner-upgrade-skip have=${HAVE:-unknown} want=${WANT:-unresolved}"
       fi
@@ -1104,11 +1266,22 @@ write_files:
       # registration token is short-lived and may already be spent. Not a loop -- if GitHub is
       # refusing registration a third attempt will not change the answer, and burning boot
       # time here only delays the report that says so.
+      #
+      # BOUNDED, at 240s, and this was the last unbounded step in the bootstrap. Every other
+      # network call here carries a -m/--timeout except this one, so a config.sh that stalled
+      # (registration endpoint accepting the connection and never answering) blocked the script
+      # forever: the VM stayed RUNNING and unregistered, which reads to cleanup() as neither
+      # stopped nor registered, so it survived to BOOT_GRACE_S and was then reaped as
+      # orphan-no-runner with nothing on the machine explaining why. `-k 30` escalates to
+      # SIGKILL, because timeout(1) signals `su` and a dotnet child can ignore SIGTERM.
       CFG_RC=1
       for attempt in 1 2; do
         [ -n "$TOKEN" ] || TOKEN=$(get_token)
-        su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended" >>/root/boot.log 2>&1
+        timeout -k 30 240 su - runner -c "/opt/runner/config.sh --url https://github.com/__ORG__ --token '$TOKEN' --name __VMNAME__ --runnergroup '__RUNNERGROUP__' --labels az-ephemeral,self-hosted --ephemeral --unattended" >>/root/boot.log 2>&1
         CFG_RC=$?
+        if [ "$CFG_RC" = "124" ]; then
+          log "config-TIMEOUT attempt=$attempt: config.sh did not return within 240s and was killed. A hung registration, not a refused one -- the distinction matters, because a refusal names a cause and a hang does not."
+        fi
         log "config-rc=$CFG_RC attempt=$attempt runner-version=$(runner_version)"
         up
         [ "$CFG_RC" = "0" ] && break
@@ -1117,8 +1290,12 @@ write_files:
       if [ "$CFG_RC" != "0" ]; then
         # Say what is about to happen and why, THEN let the machine go. A worker that cannot
         # register will never become useful, and holding it only spends quota -- but powering
-        # off silently is exactly the failure that made this outage undiagnosable.
-        log "config-failed: runner did not register, powering off. Reason is in the config.sh output above."
+        # off silently is exactly the failure that made this outage undiagnosable. The state
+        # that led here is named on the same line, so a reader of the journal or the gist does
+        # not have to reconstruct it from four earlier stages: which rc, which runner version
+        # ended up installed, and whether the upgrade that was supposed to produce it succeeded.
+        if [ "$CFG_RC" = "124" ]; then HOW="config.sh TIMED OUT after 240s and was killed"; else HOW="config.sh returned rc=$CFG_RC"; fi
+        log "config-failed: runner did not register -- $HOW; runner-version=$(runner_version), wanted=${WANT:-unresolved}, upgrade-ok=${UPGRADE_OK:-not-attempted}. Powering off so the reaper can free this VM's quota. The config.sh output above is the reason and is in this VM's boot-log gist."
         up
         shutdown -h now || true
         exit 0
@@ -1498,7 +1675,12 @@ def cleanup():
             # for a busy runner -- the busy check above is absolute and stays that way, because
             # GitHub cancels a job whose runner registration disappears.
             delete_runner_registration(name)
-        log(f"deleting {name} (age={int(age)}s, reason={why})")
+        # The boot-log pointer goes ON the reap line, not on a separate one: an operator reading
+        # the journal needs the evidence link in the same breath as the verdict, and one line per
+        # VM per cycle is the noise ceiling this sweep is held to. "none" is printed rather than
+        # omitted, so "this worker has no boot log" is distinguishable from "the annotator broke".
+        log(f"deleting {name} (age={int(age)}s, reason={why}, "
+            f"boot-log={gist_url_for(name) or 'none'})")
         delete_vm(name, location, reason=f"{why} age={int(age)}s", was_busy=name in busy)
     # leaked nic/pip from failed provisions occupy the per-region PIP quota (limit 20)
     vm_names = {n for n, _, _ in vms}

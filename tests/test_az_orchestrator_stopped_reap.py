@@ -56,6 +56,12 @@ def _wire(mod, monkeypatch, *, vms, runners=(), busy=(), power=None):
     monkeypatch.setattr(mod, "queued_jobs", lambda: [])
     monkeypatch.setattr(mod, "_sweep_stale_registrations", lambda live: None)
     monkeypatch.setattr(mod, "vm_power_state", lambda n: (power or {}).get(n))
+    # The reap line now resolves the worker's boot-log gist (gist_url_for -> gh "gists?..."), so a
+    # harness that drives cleanup() to an actual deletion has to stub the GitHub API as well. An
+    # empty LIST is the meaningful stub: _gist_index() treats a non-list body as "not a gist
+    # listing" and stops, so this also pins that the annotator degrades quietly instead of
+    # letting a surprise response shape reach a reap.
+    monkeypatch.setattr(mod, "gh", lambda *a, **kw: [])
     monkeypatch.setattr(
         mod, "delete_vm",
         lambda name, loc, reason="", was_busy=False: deleted.append((name, reason)))
