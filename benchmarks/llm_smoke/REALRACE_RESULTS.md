@@ -17375,3 +17375,67 @@ Caveats: SM1P isolated effect at RAG-4096 not measured (RAG arm carries all thre
 the c8 6-prompt battery log was truncated by a duplicate watcher process (fixture/chat_0/
 chat_4 + final GATE PASS preserved; chat_1-3 PASS observed live before overwrite); in-container
 nsys needed one manual re-injection of pp1024 requests (profiled restart beat the --delay).
+
+---
+
+## GEMMA-3-27B H200 RE-RACE — CORRECTED ARM v1_ctx8192_stream (2026-09-16, trtllm-gemma-us-west1-c a3-ultragpu-8g)
+
+Re-race of the VOIDED cells (see INCIDENT 2026-09-15) with the corrected arm
+~/adj/build/v1_ctx8192_stream (ctx 8192 + G3_STREAM ON). Opponent: TensorRT-LLM 1.2.1, same
+configuration as the 7B column (pytorch backend, HF checkpoint direct, all block-reuse flags
+explicitly off, clocks 1410 pinned+verified, greedy, server-device basis). ORACLE GATE
+all_pass=True: G0 16/16 + G1 64/64 on pp256/pp1024/val550/rag4096, val550 determinism 2/2
+bit-identical repeats; rag4096 22/22 + EOS-stop.
+
+### Cells (3 warmup + 7 measured per cell)
+| cell | algenta ttft ms | TRT-LLM ttft ms | ratio (algenta÷TRT-LLM) | raw tok/s ratio | verdict |
+|---|---|---|---|---|---|
+| pp256 | 122.397 | 40.932 | 2.990x | 0.334x | LOSS |
+| pp1024 | 193.478 | 110.616 | 1.749x | 0.572x | LOSS |
+| rag4096 | 612.954 | 428.726 | 1.430x | 0.699x | LOSS |
+
+Basis: pp1024 + rag4096 TRT-LLM RE-SERVED this session (reproduces stored column within
++0.118% / +0.768% -> trusted). pp256 reuses the STORED column: re-serve drifted +1.312%
+(>1%) -> labelled CROSS-SESSION. Variance (algenta, n=7): rel-IQR 0.245% / 0.718% / 0.242%
+(gate <=5% PASS); spread gate FAILS pp256 (21.388%, single outlier 146.761 ms) and pp1024
+(7.327%, outlier 206.099 ms); rag4096 fully gated (spread 1.224%). Clocks: 100-122 samples
+per cell, all pinned 1410, offpin=0, 36-40C, util to 100% at rag4096.
+
+### RAG-4096 decode cell: NOT-COMPARABLE, recorded only
+algenta stops at natural EOS after 22 tokens (3.094 tok/s); TRT-LLM measured with ignore_eos
+at 256 tokens (53.777 tok/s). ignore_eos on BOTH engines: not possible on this driver pair;
+the TRT-LLM natural-EOS probe did not run (gaps.log). algenta's EOS at index 21 matches the
+cache-free fp32 oracle's first-EOS index -> model behaviour, not an arm artifact. No ratio
+taken; cell excluded from every verdict.
+
+### Corrected arm vs the VOIDED arm (same cells)
+pp256 138.154 -> 122.397 ms (-11.41%); pp1024 208.264 -> 193.478 (-7.10%); rag4096 637.719
+-> 612.954 (-3.88%). The corrected arm is strictly faster AND token-clean; verdicts
+unchanged (all LOSS) — the voided arm understated algenta but not enough to flip any cell.
+
+### Per-layer nsys autopsy (algenta side; GPU busy per request, ms)
+No TRT-LLM counterpart capture this round (their column reads 0.000) — round 2 captures it.
+| bucket | pp256 | pp1024 | rag4096 |
+|---|---|---|---|
+| gemm_projection (nvjet hss family) | 28.920 | 94.766 | 397.521 |
+| attention (_attn_softmax_mask_kernel) | 1.281 | 9.429 | 70.364 |
+| weight_staging (_f32_to_f16_kernel) | 2.527 | 8.682 | 40.515 |
+| rope_bias_kv | 1.792 | 6.337 | 25.355 |
+| norms | 1.398 | 2.105 | 8.339 |
+| GPU busy total | 35.918 | 121.318 | 542.093 |
+Weight staging converts f32->f16 EVERY forward (n=373/373/1489 dispatches) — a pure-waste
+layer the 7B seam does not carry. Attention is the unfused softmax-mask path vs TRT-LLM's
+fused fmha. GEMMs are 73-80% of GPU busy at every cell.
+
+### Publication decision
+No gitbook page; the retracted gemma RAG-4096 subsection STAYS retracted. Every cell LOSS ->
+ledger-only per the wins-only rule.
+
+### Round-2 front (opened 2026-09-16, same VM, same protocol)
+Levers in order: (1) kill per-iter weight staging (pre-convert checkpoint to f16 at load;
+oracle gates must stay PASS, numerics invariant); (2) fused flash attention for the gemma TC
+seam (port of the A100 7B-front kernel design or gemma-specific); (3) TRT-LLM nsys
+counterpart capture for a true per-layer A/B; (4) same-session TRT-LLM re-serve to clear the
+pp256 CROSS-SESSION label; (5) GEMM-layer dissection against TRT-LLM's nvjet buckets if cells
+remain LOSS. Every lever re-measures all three cells A/B against this round's stored numbers
+(~/trtllm/gemma_rerace/gemma_h200_rerace_final.json).
