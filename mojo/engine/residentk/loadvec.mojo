@@ -80,3 +80,24 @@ def _ld4(p: _FP, off: Int) -> SIMD[DType.float32, 4]:
         return p.load[width=4, alignment=16](off)
     else:
         return p.load[width=4](off)
+
+
+@always_inline
+def _st4(p: _FP, off: Int, v: SIMD[DType.float32, 4]):
+    """The STORE twin of `_ld4`: a 16-byte global Float32 store at element offset `off`, which
+    MUST be a multiple of 4 elements at every call site (the same proof, resting on the same
+    256-byte-aligned `DeviceBuffer` bases).
+
+    FRONT 5 needed this because `_ld4` alone only fixes half of a streaming kernel's issue-slot
+    pressure: a kernel that vectorizes its loads and then writes the result back with four
+    scalar `st.global.b32` still pays four store instructions and four address computations per
+    16 bytes. With `L0_ALIGN` this carries the `alignment=16` annotation so the backend can emit
+    one `st.global.v4.b32`; without it, it is the plain `store[width=4]` control.
+
+    MATH IS BIT-IDENTICAL: this changes only the store INSTRUCTION WIDTH, not the bytes written,
+    their order, or any arithmetic. The control (flag off) is byte-preserved."""
+    @parameter
+    if L0_ALIGN:
+        p.store[width=4, alignment=16](off, v)
+    else:
+        p.store[width=4](off, v)

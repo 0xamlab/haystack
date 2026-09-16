@@ -17932,3 +17932,276 @@ Binaries and their sha256 in `~/front4/bin/`; source `~/front4/repo` (tar+scp, m
 `6bf1f2db690695be5141f8272d513252` for `tc_shim.cu`).
 
 
+
+
+---
+
+## FRONT 5 — Qwen2.5-7B CUDA vs TensorRT-LLM 1.2.1, the second RAG-4096 flip attempt (2026-09-16, algenta-ent-a100)
+
+Same VM, same protocol as FRONT 4. **RAG-4096 improved 0.9434x -> 0.9556x and is STILL A LOSS.**
+Ledger-only per the wins-only rule: no gitbook page, nothing published, no ratio promoted.
+
+Mission was to flip RAG-4096 to >=1.0x (needed -16.14 ms of wall) without regressing the three
+wins. One of round 4's four ranked levers landed (lever 2, bias+RoPE+KV-write, worth -3.705 ms);
+lever 1 (attention) was attacked twice and **both attacks are refuted with numbers**; levers 3-5
+were not reached. The gap is 12.639 ms, so the flip did not happen and is not claimed.
+
+### Arms
+| arm | definition |
+|---|---|
+| `_e3` | FRONT 4's SHIP ARM, **rebuilt fresh from this branch**: `_d8` + `7B_PF_KVTWIN` + `7B_PF_FA2`. The baseline; never a remembered number. |
+| `_f1` | `_e3` + `ALGENTA_7B_PF_ROPEVEC` — lever 2, the vectorized barrier-free bias+RoPE+KV-write |
+
+`ALGENTA_7B_PF_ROPEVEC` defaults OFF, so `_e3` is byte-for-byte round 4's adopted binary. The
+flag audit confirms it at both levels: `_e3`'s literal set stops at `7B_PF_KVTWIN` and its banner
+reads `ROPEVEC = False`; `_f1` carries `7B_PF_ROPEVEC` and reads `ROPEVEC = True`.
+
+### Baseline reproduction (the check that makes the rest quotable)
+`_e3` rebuilt here against FRONT 4's published `_e3`:
+
+| cell | FRONT 4 `_e3` | FRONT 5 `_e3` (this round) | Δ |
+|---|---|---|---|
+| RAG-4096 | 14,305.9 tok/s = 286.32 ms; **0.9436x** | 14,197.1 = 288.510 ms; **0.9434x** | -0.76% tok/s, **+0.02% on the ratio** |
+| pp1024 | 15,330.8; 1.0690x | 15,219.6 / 15,316.7; 1.0692x / 1.0760x | -0.73% / -0.09% |
+| pp256 | 12,778.7; 1.7443x | 12,748.2 / 12,696.3; 1.7674x / 1.7602x | -0.24% / -0.64% |
+
+The RAG ratio reproduces to 0.02% against a TRT-LLM cell that itself moved +0.70% this session.
+Every gate ran inside every process: **G0 PASS 16/16** (greedy vs the fp32 cache-free transformers
+oracle) and **G1 PASS 64/64** on all five driver runs, `_e3` and `_f1` alike.
+
+### The G0 oracle had to be REGENERATED, and reproduced the historical record
+`/tmp` was wiped twice this round (a spot **preemption** at ~14:0xZ terminated the instance
+mid-build, and the lifecycle stop that followed). `~/trtllm/front3/f3_setup_v3.sh` — the setup
+entry the round carries — **does not exist on this VM** (only `~/f4_setup.sh`, which assumes a
+`~/front4_src.tgz` tarball). Setup was reconstructed by hand: the `/tmp/w7b/ckpt` symlink to
+`~/trtllm/w7b_ckpt` (57 GB), and the oracle via `~/a2a/run_oracle.sh` ->
+`ref_transformers_cpu.py` (HF **fp32 CPU**, `--n-tokens 16`). It is deterministic and it
+reproduced the 2026-08-26 `oracle.log` **byte-for-byte on all six prompts** (fixture + chat_0..4),
+e.g. chat_2 -> `"Whispering waves kiss,\nMoonlit surface sighs soft,\nNight's e"`. The gate is
+therefore the same gate, not a re-baselined one.
+
+### Lever 2 — ADOPTED: vectorized, barrier-free bias+RoPE+KV-write (-3.705 ms on RAG-4096)
+`_pf_biasropewrt_vec_kernel` (`-D ALGENTA_7B_PF_ROPEVEC`). Round 4 measured this family at
+62.6 us/layer for ~40 MB = ~43% of the 1555 GB/s roof against TRT-LLM's fused
+`applyBiasRopeUpdateKVCacheV2` at 21.7 us, and left it "not attempted — budget". Its traffic
+floor is 25.7 us, so ~37 us/layer was the kernel's *shape*, not bandwidth. Three changes:
+
+1. **32,768 one-head-per-block launches -> 1,024 one-row-per-block launches** (`grid_dim = m`,
+   `block_dim = 256`).
+2. **Every global access to float4** via `loadvec._ld4` and a new `_st4` (the store twin lever 0
+   never needed). This is the micro-autopsy's finding applied to the store side: without
+   `alignment=16`, `width=4` lowers to four scalar `st.global.b32`.
+3. **The shared-memory staging and the barrier are gone.** The scalar kernel gives thread `e`
+   element `e`, but RoPE pairs `e` with `e+64`, so it staged all 128 elements into `xs` and
+   barriered to let thread `e<64` read both halves. That staging is load-bearing only when a q/k
+   norm runs (its sum-of-squares reduction needs every element in shared anyway). Qwen2.5-7B has
+   **no** q/k norm, so `xs` existed purely to move a value 64 lanes sideways — and the thread
+   that needs both halves can load both halves.
+
+**PTX-level proof the lever did what it claims** (`strings <binary> | grep -oE '…global…'`, the
+lever-0 audit method):
+
+| binary | `ld.global.v4.b32` | `st.global.v4.b32` |
+|---|---|---|
+| `_e3` | 38 | **0** |
+| `_f1` | **46** | **3** |
+
+The baseline had *zero* vector stores in the entire binary; `_f1` has them, and they are the
+RoPE/KV writes.
+
+**Declines, never fakes.** The session keeps `_pf_biasropewrt_kernel` when `qk_norm != 0` (a norm
+genuinely needs the staging), `d_head != 128`, or any row stride is not a multiple of 4 elements —
+so the 16-byte alignment promise `_ld4`/`_st4` make is discharged by the caller, not assumed.
+Qwen3 (no qkv bias) and gemma are untouched: the flag inherits `PF_BIASROPE`'s gate and replaces
+that kernel's dispatch slot only.
+
+### Cells (3 warmup + 7 measured TRT-LLM side; driver's own median of `--runs 20` ours)
+Sweep, interleaved `_e3 _f1 _e3` with the baseline bracketing as drift armor:
+
+| cell | `_e3` run1 | `_e3` run3 | drift | `_f1` | Δ vs run3 | Δ vs mean | exceeds drift | rel-IQR `_f1` | outliers |
+|---|---|---|---|---|---|---|---|---|---|
+| pp256 | 12,748.20 | 12,696.29 | -0.4072% | **12,895.21** | **+1.5667%** | +1.3596% | yes | 0.572% | 0 |
+| pp1024 | 15,219.56 | 15,316.73 | +0.6384% | **15,448.16** | **+0.8581%** | +1.1790% | yes (thin) | 0.093% | 0 |
+| gen64 | 83.1230 | 83.2340 | +0.1335% | 83.1354 | -0.1184% | -0.0517% | **no — invariant** | 0.033% | 0 |
+| gen256 | 82.4613 | 82.5313 | +0.0848% | 82.4615 | -0.0845% | -0.0422% | **no — invariant** | 0.042% | 0 |
+
+Decode is invariant, which is the expected result and not a null: `_pf_biasropewrt_vec_kernel` is
+a **prefill** kernel, so a decode delta would have meant the flag was touching something it
+should not. RAG-4096, prompt 0, interleaved baseline-first:
+
+| arm | tok/s | ms | rel-IQR | G1 |
+|---|---|---|---|---|
+| `_e3` | 14,197.07 | 288.510 | 0.298% | PASS 64/64 |
+| `_f1` | **14,381.78** | **284.805** | 0.290% | PASS 64/64 |
+
+**-3.705 ms (+1.301% tok/s).** Round 4's three RAG prompts varied by 0.08% while TRT-LLM reported
+one identical 270.276 ms for all three, so prompt 0 was raced this round under budget; the
+per-prompt spread round 4 measured is far smaller than the -3.705 ms effect.
+
+### RE-RACE vs a freshly re-served TensorRT-LLM 1.2.1 (byte-for-byte round 4's recipe: pytorch
+### backend, attn_backend TRTLLM, bf16, HF checkpoint direct, chunked_prefill off, block/partial
+### reuse AND copy_on_partial_reuse explicitly OFF, max_batch 64, max_input_len 4352,
+### max_seq_len 8192, CudaGraph defaults; executor iter-log device step time, 3 warmup + 7
+### measured, interleaved round-robin; container removed after, GPU drained before)
+Re-serve reproduction against round 4's re-served cells:
+
+| cell | this session | round 4 stored | Δ | basis |
+|---|---|---|---|---|
+| RAG-4096 | 272.166 ms | 270.276 ms | **+0.699%** | **SAME-SESSION** — the cell the flip criterion is computed from |
+| pp1024 | 71.934 ms | 71.400 ms | +0.749% | SAME-SESSION |
+| pp256 | 35.491 ms | 34.944 ms | **+1.566%** | **CROSS-SESSION**, labelled not averaged away |
+
+pp256 missing the 1% band is consistent with round 3's and round 4's note that TRT-LLM's ~30 ms
+engine-side context-phase floor makes that cell unstable between sessions. TRT-LLM came out
+*slower* this session on all three, so every ratio below is the **conservative** reading.
+
+| cell | algenta `_f1` | TRT-LLM (re-served 16:00-16:05Z) | ratio | round 4 (`_e3`) | verdict |
+|---|---|---|---|---|---|
+| pp256 | 12,895.2 tok/s | 7,213.0 (35.491 ms) | **1.7878x** | 1.7443x | **WIN**, improved (CROSS-SESSION basis) |
+| pp1024 | 15,448.2 | 14,235.2 (71.934 ms) | **1.0852x** | 1.0690x | **WIN**, improved (SAME-SESSION) |
+| RAG-4096 | 14,381.8 (284.805 ms) | 15,049.6 (272.166 ms) | **0.9556x** | 0.9436x | improved, **NOT flipped** (SAME-SESSION) |
+| decode c1 gen256 | 82.46 | not re-served this session | (1.0433x vs round 3's stored 79.04) | 1.049x | WIN, invariant held, CROSS-SESSION |
+
+All three wins held and two improved. **RAG-4096 is still a LOSS: 12.639 ms short.** Lever 2
+closed 3.705 ms of the 16.344 ms gap this session = **22.7%**.
+
+### Lever 1 — REFUTED TWICE, with numbers. The FA gap is not a parameter.
+Round 4 ranked attention first (+9.75 ms: ours 34.15 ms at ~34% MFU, TRT-LLM's single
+`fmha_v2_flash_attention_bf16_64_128_S_qkv_128_causal_sm80` at 24.4 ms / ~44%) and noted its own
+BN sweep was flat to inverted (32 -> 33.7, 64 -> 36.4, 128 -> 38.0 ms). A sweep that gets *worse*
+as the tile gets bigger is the signature of a limit BN cannot touch, so the limit was derived
+rather than guessed. The per-chunk ladder from `fa_probe` (A100, 1410 MHz, median of 30):
+
+| chunk | us/layer | GFLOP | TFLOPS | MFU | KV traffic/launch | arithmetic intensity |
+|---|---|---|---|---|---|---|
+| pp1024 | 106.5 | 7.52 | 70.6 | 22.6% | 117.6 MB | **64.0 F/B** |
+| rag chunk1 | 246.8 | 22.56 | 91.4 | 29.3% | 352.4 MB | **64.0 F/B** |
+| rag chunk2 | 376.8 | 37.59 | 99.8 | 32.0% | 587.3 MB | **64.0 F/B** |
+| rag chunk3 | 475.1 | 52.62 | 110.8 | 35.5% | 822.2 MB | **64.0 F/B** |
+
+**Arithmetic intensity is exactly 64.0 FLOP/byte at every shape and is independent of BN** — an
+FA2 CTA covers `FA_BM`=64 query rows of ONE query head, so per key it moves 128 dims x 2 (K and V)
+x 2 bytes = 512 B to do 64 rows x 512 FLOP. BN scales traffic and FLOPs together, which is
+*precisely* why round 4's BN sweep was flat. Against the A100's L2<->SM balance point of
+~312/4 = 78 F/B, 64 < 78 says memory bound, and chunk3 streams **822 MB per layer-launch for an
+8.39 MB unique K/V working set — a 98x amplification**, 7/8 of it the same bytes re-read by the
+seven query heads sharing one kv head (h_q=28, h_kv=4, g=7).
+
+**Attack A — GQA packing (`_fa3_causal_kernel`), REFUTED.** One CTA covers `BMQ` query rows for
+ALL g=7 heads of one kv head, so K/V is fetched once per (row-block, kv-head). Intensity 64 -> 112
+F/B at BMQ=16, 224 at BMQ=32 — over the balance point. It is **CORRECT**: the new on-device
+`_fa3_layout_probe_kernel` passes (it pins the *hand-built* m16n8k16 A fragment, which FA2's probe
+cannot cover because FA2 gets A from `ldmatrix`), and it matches the host **double-precision**
+reference at all six raced shapes including the odd tail (m=660, n_keys=1716, pos=1056) with
+**0 of 3,670,016 elements over 2% rel** — the same rms (4.350e-05) FA2 bn=32 reports. And it is
+**SLOWER at all six configurations** (`fa_probe --iters 30`, RAG-4096 FA block = 4 chunks x 28
+layers, one binary, `RESULT: PASS`):
+
+| engine | config | RAG-4096 FA block |
+|---|---|---|
+| `fa2` bn=32 | **the shipped kernel** | **33.604 ms** |
+| `fa3-16n1` | BN=64 BMQ=16 minB=1 | 35.381 ms (**+5.3%**) |
+| `fa3-16b2` | BN=32 BMQ=16 minB=2 | 40.399 ms |
+| `fa3-16b1` | BN=32 BMQ=16 minB=1 | 40.542 ms |
+| `fa3-16n2` | BN=64 BMQ=16 minB=2 | 42.951 ms |
+| `fa3-32n1` | BN=64 BMQ=32 minB=1 | 46.764 ms |
+| `fa3-32b1` | BN=32 BMQ=32 minB=1 | 52.584 ms |
+
+**Why the model was wrong, and what that proves.** Cutting L2 traffic 7x bought nothing, so L2
+bandwidth was *not* the binding constraint. Packing does not reduce **per-warp** shared-memory
+traffic at all: every warp still `ldmatrix`es its own copy of the same K/V tile, and the
+ldmatrix:mma ratio is 0.5:1 at *any* BN (S phase 8 k-steps x BN/16 loads against BN mma; PV phase
+BN/16 x 8 against BN/16 x 16) — so packing left the real limit untouched while cutting occupancy
+from 12 warps/SM to 7 (224 threads x 155 regs = 1 CTA/SM). `fa3` also correctly **DECLINES**
+(`-313`, too few CTAs to fill 108 SMs) at pp256 and at the odd tail for BMQ=32, which is why it
+would have needed per-shape dispatch anyway. It stays in the tree behind
+`tc_shim_fa3_causal_async` with `fa_probe`'s `fa3-*` engines so the refutation is reproducible,
+and is **not wired into the session** — no arm carries it.
+
+**Attack B — occupancy, REFUTED.** If 12 warps/SM is the limit, more warps should help. BN=32
+uses 34.8 KB of shared memory, so 4 CTAs/SM (139 KB of 164 KB) is affordable *if* registers fit:
+`__launch_bounds__(128, 4)` got ptxas to 128 registers (24 B of spills) = 4 CTAs/SM = 16 warps.
+
+| arm | regs | CTAs/SM | warps/SM | RAG-4096 FA block |
+|---|---|---|---|---|
+| `fa2-mb3` (minBlocks=3) | 158 | 3 | 12 | **34.234 ms** |
+| `fa2-mb4` (minBlocks=4) | 128 | 4 | 16 | 36.930 ms (**+7.9%**) |
+
+**More occupancy is slower.** This arm was **REVERTED, not merely disabled**, because of a defect
+it exposed: `__launch_bounds__(128)` and `__launch_bounds__(128, 1)` are *not* the same hint to
+ptxas. Adding the parameter with a `MINB = 1` default moved the shipped `_fa2_causal_kernel<32,1,1>`
+from **155 to 171 registers** — 3 CTAs/SM down to 2 — and cost **+9.8%** (33.89 -> 37.22 ms) in a
+kernel whose source had not otherwise changed. A "neutral default" template parameter silently
+regressed the adopted arm; the parameter is gone and FA2 is **verified back at 155 registers,
+0 spills**. Recorded because it is a trap: any future arm that parameterizes FA2's launch bounds
+must re-check the default's register count, not assume it.
+
+**Where that leaves the +9.75 ms.** Three independent levers are now measured negative on A100:
+BN (round 4), L2 traffic via GQA packing, and occupancy. What is left is the structure: at
+ldmatrix:mma = 0.5:1 the shared-memory stream and the tensor cores are co-limiting (12 warps x 32
+`ldmatrix.x4` x 512 B / 128 B-per-clk = 1536 clocks, against 12 x 64 mma x 4096 FLOP / 2048
+FLOP-per-clk = 1536 clocks — equal), and between the two mma phases of *every* key block sits a
+serial mask -> max -> exp -> sum -> warp-shuffle -> P-pack segment with no tensor work in it.
+sm_80 has no `wgmma` and no TMA, so the cross-warpgroup ping-pong that hides that segment on
+Hopper is not available; hiding it on A100 needs deep multi-stage software pipelining across key
+blocks, which costs shared memory this kernel does not have at 3 CTAs/SM — and trading occupancy
+for larger tiles is exactly what BN=64/128 and Attack B both measured as worse. **That is the
+per-layer argument that the FA gap is not closable by parameter change on this GPU with this
+kernel structure**; closing it means a from-scratch deep-pipelined fmha, which is a kernel project
+rather than a lever, and it was not started this round.
+
+### Not reached this round
+Lever 3 (host/launch gap, ~7-10 ms — now the largest single un-attacked number, and zero numeric
+risk), lever 4 (f32->f16 converts, +2.89 ms) and lever 5 (rmsnorm, +1.00 ms). Budget. Note the
+gap ledger has moved: after lever 2 the remaining 12.639 ms is ~+9.75 ms attention (argued above
+as structural), ~+6 ms host gap, and ~+3.9 ms converts+rmsnorm+memset, against the -14.68 ms
+projection win that is already in the numbers. **The host gap is now the best remaining
+expected-value target**, not attention.
+
+### Integrity notes (anomalies diagnosed before reporting)
+1. **Clock excursions during the sweep — reported, not discarded.** Clocks were pinned
+   `-lgc 1410,1410` and read `1410 MHz -> 1410 MHz` before and after *every* cell, but the 1 Hz
+   sampler caught **10 of 1377 samples off-pin** (0.73%): 1305-1395 MHz at 15:26:59-15:27:19,
+   15:33:30-15:33:38 and 15:40:05-15:40:20, all at 100% util, 51-57 C, 31940 MiB. They fall
+   inside the sweep window and touch `_e3` run1 (3), `_f1` (4) and `_e3` run3 (3) — distributed
+   across arms, not one-sided. **The RAG-4096 runs (15:41:57-15:56) had zero off-pin samples**,
+   so the headline cell is drift-clean. The sweep cells are medians of 20 device-side iterations
+   with **outliers 0** and rel-IQR 0.09-0.57%, which is why a <=4 s dip does not move a median —
+   but pp1024's margin over drift (+0.86% against +0.64%) is **thin** and is labelled that way
+   rather than presented as clean. pp256's +1.57% is not thin. This round does **not** meet the
+   zero-drift requirement on the sweep, and says so.
+2. **A harness bug that looked like a kernel failure.** `fa_probe`'s third comparison section
+   (FA vs the 5-pass shipped chain, all 1024 rows) builds its own `FaArgs`, which predated the new
+   `bmq`/`minb` fields — so `fa3` read `bmq=0` and returned `-312`, and the probe printed
+   `LAUNCH rc=-312` and `RESULT: FAIL` for a kernel that was numerically perfect (0 `CHECK`). The
+   probe now treats a negative rc as a **DECLINE** in all three sections: it prints the code,
+   skips the comparison, and does not fail. A decline outside the RAG range no longer voids the
+   RAG total either, since that only means the driver must dispatch per shape.
+3. **A refuted-arm measurement that was contaminated by my own edit.** The first `fa3` run reported
+   `fa2 bn=32` at 37.216 ms against 33.632/33.747/33.890 ms in three earlier runs of an otherwise
+   identical kernel. That was not noise and not thermal: it was the `MINB` default moving 155 ->
+   171 registers (note 2 of Attack B). Every FA2-vs-FA3 number quoted above is from the **final
+   single binary** after the revert (`probe_fa3_final.txt`, `RESULT: PASS`, `fa2 bn=32` =
+   33.604 ms), not from mixed builds.
+4. **Spot preemption mid-round.** The instance was **TERMINATED** by GCP at ~14:0xZ during a
+   build. No measurement was in flight, so no cell is contaminated; `/tmp` was wiped and setup
+   reconstructed (above). Source was safe because the local worktree is authoritative and the VM
+   holds only a build tree.
+5. **Reused round-4 build tree, md5-verified.** `~/front4/repo`'s `tc_shim.cu`
+   (`6bf1f2db690695be5141f8272d513252`) and `fa_probe.cu` (`67a8457d9d876a03575c7a1de166a380`)
+   match `origin/main` `be1e6c7aa` exactly, so `~/front5/repo` was seeded from it rather than
+   re-uploaded. The VM has **no git checkout and no GitHub credentials**, so the branch and PR are
+   local-side and sources move by scp.
+6. **Not re-measured this round:** the TRT-LLM nsys counterpart (their family totals remain round
+   3's model, labelled as such), TRT-LLM decode (our 82.46 is quoted against round 3's stored
+   79.04 and labelled CROSS-SESSION), and an `nsys` decomposition of `_f1` — so the -3.705 ms is
+   attributed to the bias+RoPE+KV-write family by the lever's construction and its PTX evidence,
+   not by a fresh per-family capture.
+
+### Artifacts
+`~/trtllm/front5/`: `probe_fa3_r1.txt`, `probe_fa3_r2.txt`, `probe_fa3_final.txt` (the quotable
+one), `ptxas_v.log`, `build_f1.log`, `build_e3.log`, `build2.log`, `build3.log`, `sweep1.log`,
+`rag1.log`, `stage1.log`, `stage2.log`, `rerace5.log`, `trtllm_rerace5.json`, `flag_audit.json`,
+`clocks_stage1_1hz.csv` (1377 samples), `clocks_probe{1,2}_1hz.csv`,
+`bench_{_e3,_f1}_ra1.log`, `bench_{_e3,_f1}_rag0.log`. Binaries in `~/front5/bin/`; source
+`~/front5/repo`. VM left **TERMINATED**, 0 MiB, no processes, no containers, no watchers.

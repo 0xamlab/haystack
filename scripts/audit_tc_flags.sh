@@ -55,6 +55,11 @@ FLAGS=(
     "ALGENTA_7B_PF_FA2=1|ALGENTA_7B_PF_FA2"
     "ALGENTA_7B_PF_FA2DB=1|ALGENTA_7B_PF_FA2DB"
     "ALGENTA_7B_PF_KVTWIN=1|ALGENTA_7B_PF_KVTWIN"
+    # FRONT 5 (2026-09-16, the second RAG-4096 flip round). ROPEVEC requires BIASROPE — it
+    # replaces that kernel's dispatch slot — so a binary carrying ROPEVEC necessarily also
+    # carries the BIASROPE literal, and the two are distinct strings with their own `=1`
+    # suffixes, so neither substring test can light up the other.
+    "ALGENTA_7B_PF_ROPEVEC=1|ALGENTA_7B_PF_ROPEVEC"
 )
 # ALGENTA_7B_CTX8192 has no banner of its own (it only widens MAX_CTX); it is audited through
 # the runtime `TC FLAGS:` banner's `max_ctx =` field, which the session prints at open.

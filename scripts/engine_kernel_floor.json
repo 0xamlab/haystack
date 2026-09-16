@@ -1,5 +1,5 @@
 {
- "kernel_count": 178,
+ "kernel_count": 179,
  "kernels": [
   {
    "backend": "metal",
@@ -1000,6 +1000,14 @@
    ],
    "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_biasropewrt_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_biasropewrt_vec_kernel"
   },
   {
    "backend": "cuda",

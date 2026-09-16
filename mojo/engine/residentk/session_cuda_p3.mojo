@@ -253,6 +253,9 @@ from residentk.kernels_prefill_gemma3 import (
     _pf_rmsnorm_rows_f16_kernel,
     _pf_swiglu_rows_f16_kernel,
     _pf_biasropewrt_kernel,
+    _pf_biasropewrt_vec_kernel,
+    _RV_D,
+    _RV_TG,
     _pf_fill_scale_kernel,
 )
 from std.time import perf_counter_ns
@@ -422,6 +425,36 @@ comptime PF_KVTWIN_B1: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_KVTWIN
 of the same dispatch slot, so a build that asked for FA2 without FA gets FRONT 3's kernel —
 the one it would have dispatched anyway — rather than a silently unguarded new path. KVTWIN
 only needs the shim (it is the staging entry plus two persistent buffers)."""
+
+# ── FRONT-5 prefill levers (2026-09-16, the second RAG-4096 flip round) ────────────────────
+#
+# Round 4 shipped `_e3` and left RAG-4096 at 0.9436x. Its own decomposition put the remaining
+# +16.14 ms of wall at +9.75 ms of attention, +4.61 ms of bias+RoPE+KV-write, +2.89 ms of
+# f32->f16 converts, +1.00 ms of rmsnorm and ~7-10 ms of host/launch gap, against a -14.68 ms
+# projection WIN, and it named bias+RoPE+KV-write as lever 2 "not attempted — budget". This is
+# that lever, default OFF so `_e3` stays byte-identical:
+#
+#    ALGENTA_7B_PF_ROPEVEC   the vectorized, barrier-free bias+RoPE+KV-write
+#                            (`_pf_biasropewrt_vec_kernel`). ONE ROW per block instead of one
+#                            head per block — 32,768 launches become 1,024 at m=1024 — with
+#                            float4 loads and stores through `loadvec._ld4`/`_st4` instead of
+#                            scalar 4-byte accesses, and with NO shared-memory staging and NO
+#                            barrier at all. The staging was never load-bearing on this model:
+#                            Qwen2.5-7B has no q/k norm, so `xs` existed purely to move a value
+#                            64 lanes sideways to the thread that pairs it, and that thread can
+#                            load both halves itself. The family measured 62.6 us/layer for
+#                            ~40 MB = ~43% of the 1555 GB/s roof against a 25.7 us traffic floor,
+#                            so ~37 us/layer of the 62.6 is the kernel's shape, not bandwidth.
+#                            Inherits PF_BIASROPE's gate: it replaces that kernel's dispatch
+#                            slot, it does not replace the two-pass bias add. DECLINED at runtime
+#                            — the session keeps `_pf_biasropewrt_kernel` — when `qk_norm != 0`
+#                            (a norm's sum-of-squares reduction genuinely needs the shared
+#                            staging), when `d_head != 128`, or when a row stride is not a
+#                            multiple of 4 elements, because `_ld4`/`_st4` promise 16-byte
+#                            alignment and that promise is the caller's to discharge.
+comptime PF_ROPEVEC_B1: Bool = (
+    PF_BIASROPE_B1 and is_defined["ALGENTA_7B_PF_ROPEVEC"]()
+)
 
 comptime _PF_FA2_BN: Int = 32
 """FA2's key-block width and attribution variant.
@@ -2481,6 +2514,7 @@ struct _CudaResidentQwen3P3(Movable):
               "| F16NORM =", PF_F16NORM_B1, "| F16MLP =", PF_F16MLP_B1, "| FA =", PF_FA_B1,
               "| FASTEXP =", PF_FASTEXP_B1, "| BIASROPE =", PF_BIASROPE_B1,
               "| FA2_variant =", _PF_FA2_SHIP_VARIANT, "| KVTWIN =", PF_KVTWIN_B1,
+              "| ROPEVEC =", PF_ROPEVEC_B1,
               "| acc_mode =", TC_ACC_MODE, "| max_ctx =", self.f32.max_ctx)
         @parameter
         if CUDA_PREFILL_ONEPASS_B1:
@@ -2516,6 +2550,11 @@ struct _CudaResidentQwen3P3(Movable):
         @parameter
         if PF_BIASROPE_B1:
             print("TCFLAG ALGENTA_7B_PF_BIASROPE=1 (qkv bias folded into RoPE+KV-write)")
+        @parameter
+        if PF_ROPEVEC_B1:
+            print("TCFLAG ALGENTA_7B_PF_ROPEVEC=1 (bias+RoPE+KV-write vectorized to float4,",
+                  "one row per block, no shared staging and no barrier; declines to the scalar",
+                  "kernel unless qk_norm==0 and d_head==", _RV_D, ")")
         @parameter
         if PF_FA2_B1:
             print("TCFLAG ALGENTA_7B_PF_FA2=1 (FA v2: cp.async K/V double buffer + raw",
@@ -2650,7 +2689,37 @@ struct _CudaResidentQwen3P3(Movable):
                         @parameter
                         if PF_BIASROPE_B1:
                             bias_fused = self.f32.has_qkv_bias == 1
-                        if bias_fused:
+                        # FRONT 5 lever 2: the vectorized kernel takes the fused slot only when
+                        # every precondition holds. Each failing one is a DECLINE back to
+                        # `_pf_biasropewrt_kernel`, never a silent reinterpretation — a q/k norm
+                        # genuinely needs the shared staging this kernel removes, and `_ld4`/
+                        # `_st4` promise 16-byte alignment, so d_head and all three row strides
+                        # have to be multiples of 4 elements for that promise to be true.
+                        var rope_vec = False
+                        @parameter
+                        if PF_ROPEVEC_B1:
+                            rope_vec = (
+                                bias_fused
+                                and self.f32.qk_norm == 0
+                                and self.f32.d_head == _RV_D
+                                and self.f32.d_head % 4 == 0
+                                and (self.f32.h_q * self.f32.d_head) % 4 == 0
+                                and ((self.f32.h_q + 2 * self.f32.h_kv) * self.f32.d_head) % 4
+                                == 0
+                            )
+                        if rope_vec:
+                            self.f32.ctx.enqueue_function[_pf_biasropewrt_vec_kernel](
+                                self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
+                                lw.cv.unsafe_ptr(),
+                                self.f32.pf_qkv.unsafe_ptr(),
+                                self.f32.qkv_biases[layer].unsafe_ptr(),
+                                self.f32.cos_t.unsafe_ptr(), self.f32.sin_t.unsafe_ptr(),
+                                Int64(pos), Int64(self.f32.h_q), Int64(self.f32.h_kv),
+                                Int64(m),
+                                grid_dim=m,
+                                block_dim=_RV_TG,
+                            )
+                        elif bias_fused:
                             self.f32.ctx.enqueue_function[_pf_biasropewrt_kernel](
                                 self.f32.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(),
                                 lw.cv.unsafe_ptr(),

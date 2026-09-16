@@ -48,6 +48,11 @@ extern "C" int64_t tc_shim_fa2_layout_probe(void);
 extern "C" int64_t tc_shim_fa2_causal_async(const void*, const void*, const void*, void*,
                                             const void*, int64_t, int64_t, int64_t, int64_t,
                                             int64_t, int64_t, int64_t, int64_t);
+// FRONT 5: the GQA-packed flash attention (one CTA = BMQ rows x all g heads of ONE kv head)
+extern "C" int64_t tc_shim_fa3_layout_probe(void);
+extern "C" int64_t tc_shim_fa3_causal_async(const void*, const void*, const void*, void*,
+                                            const void*, int64_t, int64_t, int64_t, int64_t,
+                                            int64_t, int64_t, int64_t, int64_t, int64_t);
 extern "C" int64_t tc_shim_bgemm_f16_async(const void*, const void*, void*, int64_t, int64_t,
                                            int64_t, int64_t, int64_t, int64_t, int64_t,
                                            int64_t, int64_t, int64_t, int64_t);
@@ -187,12 +192,16 @@ static double bench(void (*fn)(void*), void* arg, int iters) {
 
 struct FaArgs { const float* q; const __half* k; const __half* v; float* o;
                 const float* scale;
-                int m, n_keys, h_q, h_kv, d, pos; int bn; int variant; int64_t rc; };
+                int m, n_keys, h_q, h_kv, d, pos; int bn; int variant; int bmq; int minb;
+                int64_t rc; };
 static void run_fa(void* p) {
     FaArgs* a = (FaArgs*)p;
     a->rc = (a->variant < 0)
         ? tc_shim_fa_causal_async(a->q, a->k, a->v, a->o, a->scale, a->m, a->n_keys, a->h_q,
                                   a->h_kv, a->d, a->pos, a->bn)
+        : (a->variant == 3)
+        ? tc_shim_fa3_causal_async(a->q, a->k, a->v, a->o, a->scale, a->m, a->n_keys, a->h_q,
+                                   a->h_kv, a->d, a->pos, a->bn, a->bmq, a->minb)
         : tc_shim_fa2_causal_async(a->q, a->k, a->v, a->o, a->scale, a->m, a->n_keys, a->h_q,
                                    a->h_kv, a->d, a->pos, a->bn, a->variant);
 }
@@ -200,13 +209,20 @@ static void run_fa(void* p) {
 // The engines this probe races. variant < 0 = FRONT 3's WMMA `_fa_causal_kernel` (the
 // baseline the lever has to beat); 0 = FRONT 4's FA2 (cp.async double buffer + in-register
 // P); 1 = FA2 with P still round-tripping through shared (isolates the raw-mma sub-lever at
-// identical occupancy); 2 = FA2 with synchronous K/V loads (isolates the cp.async sub-lever).
-struct Eng { const char* name; int variant; int bn; };
+// identical occupancy); 2 = FA2 with synchronous K/V loads (isolates the cp.async sub-lever);
+// 3 = FRONT 5's FA3, the GQA-packed kernel, parameterised by bmq (query rows per CTA per head)
+// and minb (CTAs per SM ptxas is asked to keep register-legal).
+// bmq/minb trail the aggregate so the FA1/FA2 rows may omit them and read as 0.
+struct Eng { const char* name; int variant; int bn; int bmq; int minb; };
 static const Eng ENGS[] = {
     {"fa-r3   ", -1, 64},
     {"fa2     ",  0, 32}, {"fa2     ",  0, 64}, {"fa2     ",  0, 128},
     {"fa2-pshm",  1, 32}, {"fa2-pshm",  1, 64}, {"fa2-pshm",  1, 128},
     {"fa2-nodb",  2, 64},
+    {"fa3-16b1",  3, 32, 16, 1}, {"fa3-16b2",  3, 32, 16, 2},
+    {"fa3-32b1",  3, 32, 32, 1},
+    {"fa3-16n1",  3, 64, 16, 1}, {"fa3-16n2",  3, 64, 16, 2},
+    {"fa3-32n1",  3, 64, 32, 1},
 };
 static const int NENG = (int)(sizeof(ENGS) / sizeof(ENGS[0]));
 
@@ -273,6 +289,12 @@ int main(int argc, char** argv) {
                      "are verified on device"
                    : "MISMATCH — the FA2 lever must stay OFF (every fa2 engine below will "
                      "report rc=-311 and the FRONT-3 kernel stays the baseline)");
+    int64_t r3 = tc_shim_fa3_layout_probe();
+    printf("fa3 layout probe: %lld (%s)\n", (long long)r3,
+           r3 == 0 ? "OK — FA3's HAND-BUILT m16n8k16 A fragment (strided global f32 -> four "
+                     "registers, no ldmatrix) is verified on device"
+                   : "MISMATCH — the FA3 lever must stay OFF (every fa3 engine below will "
+                     "report rc=-314 and FA2 stays the baseline)");
 
     const int MAXN = 4096, MAXM = 1024;
     long nq = (long)MAXM * h_q * d, nk = (long)MAXN * h_kv * d;
@@ -354,8 +376,18 @@ int main(int argc, char** argv) {
             if (only[0] && !strstr(e.name, only)) continue;
             CK(cudaMemset(do_, 0, no * 4));
             FaArgs fa = {dq, dk16, dv16, do_, dscale, c.m, c.n_keys, h_q, h_kv, d, c.pos,
-                         e.bn, e.variant, 0};
+                         e.bn, e.variant, e.bmq, e.minb, 0};
             run_fa(&fa);
+            // A negative rc is the engine DECLINING this shape (unsupported head_dim, a GQA
+            // group it was not instantiated for, too few CTAs to fill the device, ...). It ran
+            // nothing, so there is nothing to compare and nothing has failed — the caller keeps
+            // the kernel it already had. Only a positive rc (a real cudaError_t) is a failure.
+            if (fa.rc < 0) {
+                printf("%-26s %-9s bn=%-4d bmq=%-3d DECLINED rc=%lld — keeps the previous "
+                       "kernel, not compared\n", c.name, e.name, e.bn, e.bmq,
+                       (long long)fa.rc);
+                continue;
+            }
             cudaError_t se = cudaDeviceSynchronize();
             if (fa.rc != 0 || se != cudaSuccess) {
                 printf("%-26s %-9s bn=%-4d LAUNCH rc=%lld sync=%s (last_error=%lld)\n",
@@ -416,8 +448,13 @@ int main(int argc, char** argv) {
             if (only[0] && !strstr(e.name, only)) continue;
             CK(cudaMemset(do_, 0, no * 4));
             FaArgs fa = {dq, dk16, dv16, do_, dscale, m, n, h_q, h_kv, d, pos, e.bn,
-                         e.variant, 0};
+                         e.variant, e.bmq, e.minb, 0};
             run_fa(&fa);
+            if (fa.rc < 0) {                 // declined this shape: ran nothing, so nothing to
+                printf("  %-9s bn=%-4d bmq=%-3d DECLINED rc=%lld — not compared\n",
+                       e.name, e.bn, e.bmq, (long long)fa.rc);
+                continue;                    // compare, and nothing has failed
+            }
             cudaError_t se = cudaDeviceSynchronize();
             if (fa.rc != 0 || se != cudaSuccess) {
                 printf("  %-9s bn=%-4d LAUNCH rc=%lld sync=%s\n", e.name, e.bn,
@@ -458,15 +495,30 @@ int main(int argc, char** argv) {
         if (quick) printf("  (--quick: only %zu cases, so this RAG total is PARTIAL)\n",
                           cases.size());
         std::vector<double> rag_total(NENG, 0.0);
+        std::vector<int> rag_bad(NENG, 0);       // a RAG-range case DECLINED -> no total to report
         for (int ei = 0; ei < NENG; ei++) {
             Eng e = ENGS[ei];
             if (only[0] && !strstr(e.name, only)) continue;
-            printf("  -- engine %s bn=%d variant=%d\n", e.name, e.bn, e.variant);
+            printf("  -- engine %s bn=%d variant=%d bmq=%d minb=%d\n", e.name, e.bn, e.variant,
+                   e.bmq, e.minb);
             for (size_t ci = 0; ci < cases.size(); ci++) {
                 Case c = cases[ci];
                 printf("    %-26s m=%-5d n_keys=%-5d pos=%-5d", c.name, c.m, c.n_keys, c.pos);
                 FaArgs fa = {dq, dk16, dv16, do_, dscale, c.m, c.n_keys, h_q, h_kv, d, c.pos,
-                             e.bn, e.variant, 0};
+                             e.bn, e.variant, e.bmq, e.minb, 0};
+                // A DECLINE is a legitimate outcome, not a timing: the engine keeps the kernel
+                // the caller already had, so there is nothing to measure. Reporting a number
+                // here would publish a no-op launch as if it were a kernel. A decline OUTSIDE
+                // the RAG range (pp256 has too few CTAs to fill the device) only means the
+                // driver must dispatch per shape, so it does not void the RAG total.
+                run_fa(&fa);
+                if (fa.rc < 0) {
+                    printf("        -> DECLINED rc=%lld (keeps the previous kernel)\n",
+                           (long long)fa.rc);
+                    fflush(stdout);
+                    if (ci >= (size_t)RAG0 && ci < (size_t)(RAG0 + RAGN)) rag_bad[ei] = 1;
+                    continue;
+                }
                 double t = bench(run_fa, &fa, iters);
                 printf("        -> %.1f us/layer, %.3f ms over 28 layers\n", t * 1000.0,
                        t * 28.0);
@@ -478,6 +530,11 @@ int main(int argc, char** argv) {
         for (int ei = 0; ei < NENG; ei++) {
             Eng e = ENGS[ei];
             if (only[0] && !strstr(e.name, only)) continue;
+            if (rag_bad[ei]) {
+                printf("  %-9s bn=%-4d bmq=%-3d DECLINED on a RAG shape — no total (this "
+                       "engine cannot serve the flip)\n", e.name, e.bn, e.bmq);
+                continue;
+            }
             if (base < 0) base = rag_total[ei];
             printf("  %-9s bn=%-4d %8.3f ms   %s%.3f ms vs the first engine (%.2fx)\n",
                    e.name, e.bn, rag_total[ei], rag_total[ei] < base ? "" : "+",

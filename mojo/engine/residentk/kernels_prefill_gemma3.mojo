@@ -88,7 +88,7 @@ from residentk.kernels_prefill_f32_v2 import (
     _G2_APAD,
     _G2_BPAD,
 )
-from residentk.loadvec import _ld4
+from residentk.loadvec import _ld4, _st4
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 alias _HP = UnsafePointer[Float16, origin=MutAnyOrigin]
@@ -2294,6 +2294,131 @@ def _pf_biasropewrt_kernel(
     if not is_q:
         var voff = (h_q + h_kv + head) * d_head + e
         cv[(pos * h_kv + head) * d_head + e] = qkv[row_qkv + voff] + bias[voff]
+
+
+# ── FRONT 5 lever 2: the vectorized, barrier-free bias+RoPE+KV-write ──────────────────────
+comptime _RV_D: Int = 128
+"""The ONLY head_dim `_pf_biasropewrt_vec_kernel` implements; the session host-checks it and
+keeps `_pf_biasropewrt_kernel` for anything else. Fixed rather than derived so the shift
+constants below are compile-time and the kernel contains no integer division at all."""
+comptime _RV_PAIRS: Int = _RV_D // 2
+"""RoPE pairs per head (64): dimension `e` rotates with dimension `e + _RV_PAIRS`."""
+comptime _RV_V4: Int = _RV_PAIRS // 4
+"""float4 groups per head's RoPE half (16) — one task per group, so 16 threads cover a head."""
+comptime _RV_V4SH: Int = 4
+"""log2(_RV_V4). _RV_V4 is 16 by construction, so the task decode is a shift and a mask."""
+comptime _RV_DV4: Int = _RV_D // 4
+"""float4 groups per head for the V copy (32), which has no pairing to halve."""
+comptime _RV_DV4SH: Int = 5
+"""log2(_RV_DV4)."""
+comptime _RV_TG: Int = 256
+"""Threads per block: 8 warps, one row per block. At the 7B shape that is 512 RoPE tasks and
+128 V tasks, i.e. two and one strided iterations — enough memory in flight per SM to stream,
+without the 32,768 one-head-per-block launches the scalar kernel needs."""
+
+
+def _pf_biasropewrt_vec_kernel(
+    q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, bias: _FP, cos_t: _FP, sin_t: _FP,
+    pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64, m_rows_i64: Int64,
+):
+    """`_pf_biasropewrt_kernel` with the shared-memory staging, the barrier and the scalar
+    4-byte accesses removed — `-D ALGENTA_7B_PF_ROPEVEC`, FRONT 5 lever 2.
+
+    WHY. The A100 decomposition puts this family at 62.6 us/layer for ~40 MB of traffic =
+    ~43% of the 1555 GB/s roof, against TensorRT-LLM's fused `applyBiasRopeUpdateKVCacheV2` at
+    21.7 us. Its floor is pure traffic (40 MB = 25.7 us), so ~37 us/layer — 3.3 ms over a
+    RAG-4096 prefill — is not bandwidth, it is the kernel's own shape. Two things cost that:
+
+      1. A SHARED-MEMORY ROUND TRIP AND A BARRIER THAT BUY NOTHING ON THIS MODEL. The scalar
+         kernel gives thread `e` element `e`, but RoPE pairs element `e` with element `e + 64`,
+         so it stages all 128 elements into `xs` and barriers to let thread `e < 64` read both
+         halves. That is necessary only when a q/k norm runs, because the norm's sum-of-squares
+         reduction needs every element in shared anyway. Qwen2.5-7B has NO q/k norm
+         (`qk_norm == 0`), so the staging exists purely to move a value 64 lanes sideways — and
+         this kernel instead lets the thread that needs both halves LOAD both halves, which it
+         was going to touch anyway. `xs`, `red`, their two barriers and the 128-thread
+         half-idle tail all disappear.
+      2. SCALAR 4-BYTE GLOBAL ACCESSES. `_pf_biasropewrt_kernel` reads `qkv[src_off]` and
+         writes `q_rot[qb + e]` one Float32 at a time. This kernel uses `loadvec._ld4` /
+         `_st4`, i.e. `load/store[width=4, alignment=16]`, which is the micro-autopsy's
+         lever-0 fix: without the alignment annotation `width=4` lowers to FOUR scalar
+         `ld.global.b32`, with it, to one `ld.global.v4.b32`. A quarter of the load and store
+         instructions and of the address arithmetic for the same bytes.
+
+    GRID. `grid_dim = m_rows`, `block_dim = _RV_TG` — one row per block, replacing
+    `(h_q + h_kv) * m_rows` one-head blocks (32,768 of them at m=1024) with 1,024.
+
+    BIT-EXACTNESS. The expression is the scalar kernel's verbatim, evaluated lane-wise:
+    `a0 = qkv[e] + bias[e]`, `a1 = qkv[e+64] + bias[e+64]`, `o0 = a0*cos - a1*sin`,
+    `o1 = a0*sin + a1*cos`, and the V write is `qkv[voff] + bias[voff]`. One f32 addition and
+    the same two f32 multiply-adds per output, in the same order, on the same operands; SIMD
+    lanes do not interact, so no reassociation is possible. The one thing that COULD move a bit
+    is the backend contracting `a0*c - a1*s` into an FMA differently for vector than for scalar
+    operands, which is why this arm goes through the token-identity gates rather than being
+    asserted exact on the strength of the source text.
+
+    DECLINED, never faked: the session keeps `_pf_biasropewrt_kernel` when `qk_norm != 0` (the
+    norm's reduction genuinely needs the shared staging), when `d_head != _RV_D`, or when the
+    row strides are not multiples of 4 elements — so the 16-byte alignment promise `_ld4`/`_st4`
+    make is discharged by the caller, not assumed here."""
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var m_rows = Int(m_rows_i64)
+    var m = Int(block_idx.x)
+    if m >= m_rows:
+        return
+    var pos = pos_base + m
+    var n_qkv = (h_q + 2 * h_kv) * _RV_D
+    var row_qkv = m * n_qkv
+    var n_q = h_q * _RV_D
+    var row_q_rot = m * n_q
+    var n_rope = (h_q + h_kv) * _RV_V4
+    var n_v = h_kv * _RV_DV4
+    var tid = Int(thread_idx.x)
+
+    # ── Q and K: bias add, RoPE rotation, and the write, one float4 pair-group per task.
+    #    Task `t` decodes to head-unit `t >> _RV_V4SH` and float4 group `t & (_RV_V4-1)`; the
+    #    first `h_q` units are Q and the rest are K, exactly the scalar kernel's `b < h_q`. ──
+    var t = tid
+    while t < n_rope:
+        var unit = t >> _RV_V4SH
+        var e0 = (t & (_RV_V4 - 1)) * 4
+        var is_q = unit < h_q
+        var head = unit if is_q else unit - h_q
+        var src = row_qkv + (
+            head * _RV_D + e0 if is_q else (h_q + head) * _RV_D + e0
+        )
+        var bsrc = src - row_qkv
+        var a0 = _ld4(qkv, src) + _ld4(bias, bsrc)
+        var a1 = _ld4(qkv, src + _RV_PAIRS) + _ld4(bias, bsrc + _RV_PAIRS)
+        var cb = pos * _RV_PAIRS + e0
+        var c = _ld4(cos_t, cb)
+        var s = _ld4(sin_t, cb)
+        var o0 = a0 * c - a1 * s
+        var o1 = a0 * s + a1 * c
+        if is_q:
+            var qb = row_q_rot + head * _RV_D + e0
+            _st4(q_rot, qb, o0)
+            _st4(q_rot, qb + _RV_PAIRS, o1)
+        else:
+            var kb = (pos * h_kv + head) * _RV_D + e0
+            _st4(ck, kb, o0)
+            _st4(ck, kb + _RV_PAIRS, o1)
+        t += _RV_TG
+
+    # ── V: no rotation, just the folded bias add and the cache write. The scalar kernel does
+    #    this from the K blocks; here it is its own task range so no thread waits on another. ──
+    var u = tid
+    while u < n_v:
+        var head = u >> _RV_DV4SH
+        var e0 = (u & (_RV_DV4 - 1)) * 4
+        var voff = (h_q + h_kv + head) * _RV_D + e0
+        _st4(
+            cv, (pos * h_kv + head) * _RV_D + e0,
+            _ld4(qkv, row_qkv + voff) + _ld4(bias, voff),
+        )
+        u += _RV_TG
 
 
 def _pf_fill_scale_kernel(dst: _FP, s: Float32):

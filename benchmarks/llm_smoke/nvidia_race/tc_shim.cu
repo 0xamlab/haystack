@@ -1423,6 +1423,15 @@ __device__ __forceinline__ void fa2_load_kv(__half* dK, __half* dV, const __half
 // occupancy. DBUF=1 double-buffers the K/V tiles with cp.async; DBUF=0 loads synchronously
 // into buffer 0 exactly as FRONT 3 did (buffer 1 is allocated but unused, so shared memory —
 // and therefore occupancy — is identical either way).
+// NOTE (FRONT 5, refuted arm removed). This declaration briefly carried a fourth template
+// parameter `MINB` defaulting to 1 so an occupancy arm could ask ptxas for 4 CTAs/SM. It was
+// REVERTED because the default is not neutral: `__launch_bounds__(128)` and
+// `__launch_bounds__(128, 1)` are NOT the same hint to ptxas, and adding it moved this exact
+// instantiation from 155 to 171 registers — which drops it from 3 CTAs/SM to 2 and cost +9.8%
+// on the RAG-4096 FA block (33.89 -> 37.22 ms) in a kernel whose source had not otherwise
+// changed. The occupancy question it was meant to answer is answered below in the ledger, and
+// the answer is no; the shipped kernel keeps its original launch bounds so that nothing about
+// FRONT 4's adopted codegen can drift.
 template <int BN, int PMMA, int DBUF>
 __global__ void __launch_bounds__(FA_NWARP * 32)
 _fa2_causal_kernel(const float* __restrict__ qg, const __half* __restrict__ kg,
@@ -1887,6 +1896,490 @@ extern "C" int64_t tc_shim_fa2_causal_async(const void* q_f32, const void* k16, 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
+// FA3 — GQA-PACKED CAUSAL FLASH ATTENTION (FRONT 5 lever 1)  `-D ALGENTA_7B_PF_FA3`
+//
+// WHY FRONT 4's FA2 STOPS AT 35% MFU, AND WHY NO BN CAN FIX IT. FA2 measures 33.7 ms over the
+// RAG-4096 FA block against TensorRT-LLM's 24.4 ms, and round 4's own BN sweep is flat to
+// INVERTED (32 -> 33.7, 64 -> 36.4, 128 -> 38.0 ms). A sweep that gets worse as the tile gets
+// bigger is the signature of a limit BN cannot touch. The per-chunk ladder names it:
+//
+//      pp1024  106.5 us/layer   7.52 GFLOP   70.6 TFLOPS  22.6% MFU
+//      chunk1  246.8 us/layer  22.56 GFLOP   91.4 TFLOPS  29.3% MFU
+//      chunk2  376.8 us/layer  37.59 GFLOP   99.8 TFLOPS  32.0% MFU
+//      chunk3  475.1 us/layer  52.62 GFLOP  110.8 TFLOPS  35.5% MFU
+//
+// MFU climbs monotonically with the work each CTA is handed and then stalls near 35%, because
+// the kernel is MEMORY bound. An FA2 CTA covers FA_BM=64 query rows of ONE query head and pulls
+// the K/V tile of its own kv head out of L2, so per key it moves 128 dims x 2 (K and V) x 2
+// bytes = 512 B to do 64 rows x 512 FLOP = 32768 FLOP: an arithmetic intensity of EXACTLY
+// 64 FLOP/byte. That number is a property of the CTA's shape, not of BN — BN scales the traffic
+// and the FLOPs together, which is precisely why the sweep was flat. The A100's L2<->SM balance
+// point is ~312/4 = 78 FLOP/byte, and 64 < 78, so 44% MFU is unreachable from inside one
+// (row-block, query-head) CTA no matter how it is tiled. Measured, chunk3 alone streams 822 MB
+// of K/V per layer-launch against a UNIQUE working set of 8.39 MB — a 98x amplification, and
+// 7/8 of those bytes are the same bytes re-read by the seven query heads that share one kv head
+// (Qwen2.5-7B: h_q=28, h_kv=4, g=7).
+//
+// WHAT THIS DOES. One CTA now covers BMQ query rows for ALL g query heads of ONE kv head, so the
+// K/V tile is fetched once per (row-block, kv-head) instead of once per query head. Intensity
+// becomes BMQ*g FLOP/byte — 112 at BMQ=16, 224 at BMQ=32 — which is over the balance point, so
+// the kernel turns compute bound and its MFU is set by the mma/softmax mix rather than by L2.
+//
+// BIT-EXACTNESS (the reason this is a scheduling change and not a numeric one). Warp w owns ONE
+// 16-row mma tile of ONE query head and runs FRONT 4's per-warp body verbatim: same key-block
+// order, same m16n8k16 accumulation order, same f32 online max/sum, same __expf, same
+// round-to-nearest-even f16 P at the same point, same causal and cache-tail predicate, same
+// scale folded into the same f32->f16 Q conversion. Nothing about a given output element's
+// arithmetic changes — only which SM it lands on, and how many neighbours share its K/V fetch.
+// Two consequences fall out and both are wins:
+//   * kb_max is taken at 16-row granularity instead of FA_BM's 64, so a warp no longer walks up
+//     to three extra key blocks that FA2 walked and then masked away. Those blocks were
+//     arithmetically inert (an all-masked block gives n=max(m,NEG)=m, a=exp(0)=1, s=0, so
+//     oacc*1 and l*1+0), which is exactly why dropping them cannot move a bit.
+//   * the Q A-fragment is built DIRECTLY in registers from global f32 using the same
+//     __floats2half2_rn(v*scale) rounding FA2's shared staging applied, so FA2's sQ window, its
+//     two fences and its FA_BM<=2*BN overlay constraint all disappear; only the K/V double
+//     buffer is left in shared memory (34.8 KB at BN=32).
+// The A mapping is now hand-built rather than produced by ldmatrix, so `_fa3_layout_probe_kernel`
+// pins it ON DEVICE the same way `_fa2_layout_probe_kernel` pins FA2's: A[r][k]=delta(k,0)*(r+1)
+// against K_tile[n][k]=delta(k,0)*(n+1) must give D[r][n]=(r+1)*(n+1) for every lane and
+// register, in exact small integers, with no tolerance and no floating-point judgement call. A
+// mismatch returns -314 and the caller keeps FA2. fa_probe additionally compares every element
+// against a host DOUBLE-PRECISION reference at all six raced shapes including the odd tail
+// (m=660, n_keys=1716, pos=1056).
+//
+// DECLINED, NEVER FAKED: head_dim != 128 (-301), non-integral GQA (-304), g not instantiated
+// (-312), too few CTAs to fill the device so a short prefill would starve (-313), on-device
+// layout probe disagreed (-314), or shared memory not grantable (-305). Every decline leaves the
+// caller on the kernel it already had.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+#define FA3_D 128
+#define FA3_LD (FA3_D + 8)          // the same 4-bank row shift FA_LD documents
+#define FA3_G 7                     // the only GQA group size instantiated (Qwen2.5-7B 28/4)
+
+// Cooperative 16-byte async fetch of one K and one V tile for key block `kb`, spread over NTH
+// threads. FA2's loader hard-codes FA_NWARP*32==128 and unrolls by that exact quotient; a packed
+// CTA has G*BMQ/16 warps, so this one strides instead and needs no divisibility assumption.
+template <int BN, int NTH>
+__device__ __forceinline__ void fa3_load_kv(__half* dK, __half* dV, const __half* kg,
+                                            const __half* vg, int kb, int kb_max, int n_keys,
+                                            int hk, int d, int kvld, int tid) {
+    if (kb > kb_max) return;
+    const int kbase = kb * BN;
+    const int nvec = BN * (FA3_D / 8);            // 16-byte vector columns in one tile
+    for (int t = tid; t < nvec; t += NTH) {
+        const int r = t >> 4;                     // FA3_D / 8 == 16 vector columns per row
+        const int c8 = t & 15;
+        const int gj = kbase + r;
+        const int gc = gj < n_keys ? gj : n_keys - 1;   // stay in bounds even when zero-filling
+        const size_t off = (size_t)gc * kvld + hk * d + c8 * 8;
+        const int sz = gj < n_keys ? 16 : 0;
+        fa2_cp16(dK + r * FA3_LD + c8 * 8, kg + off, sz);
+        fa2_cp16(dV + r * FA3_LD + c8 * 8, vg + off, sz);
+    }
+}
+
+template <int BN, int BMQ, int G, int MINB>
+__global__ void __launch_bounds__((G * (BMQ / 16)) * 32, MINB)
+_fa3_causal_kernel(const float* __restrict__ qg, const __half* __restrict__ kg,
+                   const __half* __restrict__ vg, float* __restrict__ og,
+                   const float* __restrict__ scalep, int m, int n_keys, int h_q, int h_kv, int d,
+                   int pos_base) {
+    constexpr int RPB = BMQ / 16;                 // 16-row mma tiles per query head
+    constexpr int NW = G * RPB;                   // warps per CTA, one mma tile each
+    constexpr int NTH = NW * 32;
+    constexpr int NT = BN / 8;                    // m16n8 score tiles per key block
+    const float scale = *scalep;
+    extern __shared__ __half smem[];
+    const int KVH = BN * FA3_LD;                  // halves in one K (or V) tile
+
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    const int qi = blockIdx.x;
+    const int hk = blockIdx.y;                    // ONE kv head per CTA — the whole point
+    const int jw = warp / RPB;                    // this warp's head inside the GQA group
+    const int rw = warp - jw * RPB;               // this warp's 16-row group inside BMQ
+    const int h = hk * G + jw;
+    const int row0 = qi * BMQ + rw * 16;
+    const int kvld = h_kv * d;
+    const int qld = h_q * d;
+    // Identical address generators to FA2, hoisted out of the key-block loop.
+    const int lr8 = ((lane >> 3) & 1) << 3;       // 0 or 8
+    const int lc8 = ((lane >> 3) & 2) << 2;       // 0 or 8
+    const int l7 = lane & 7;
+    const int rlo = lane >> 2;                    // this lane's row inside the tile's 16
+    const int chi = (lane & 3) << 1;              // this lane's column base in an 8-wide tile
+
+    int rows_here = m - row0;
+    if (rows_here > 16) rows_here = 16;
+    int kb_max = -1;                              // an out-of-range row group does no work
+    if (rows_here > 0) {
+        const int kb_causal = (pos_base + row0 + rows_here - 1) / BN;
+        const int kb_keys = (n_keys - 1) / BN;
+        kb_max = kb_causal < kb_keys ? kb_causal : kb_keys;
+    }
+
+    // ── kb=0 in flight FIRST (async, buffer 0 only), then build the Q A-fragments while it
+    //    travels, then put kb=1 in flight. Buffers 0 and 1 are disjoint, so no fence separates
+    //    the two commits; wait_group 1 retires them in order inside the loop. ──
+    fa3_load_kv<BN, NTH>(smem, smem + KVH, kg, vg, 0, kb_max, n_keys, hk, d, kvld, tid);
+    fa2_cp_commit();
+
+    // ── Q A-fragments: loaded ONCE per CTA, reused across every key block, built straight from
+    //    global f32 in the m16n8k16 A layout — lane l holds rows row0+rlo and row0+rlo+8 at
+    //    columns ks*16+chi+{0,1} and +{8,9}. Same __floats2half2_rn(v*scale) rounding, at the
+    //    same point in the expression, as FA2's shared-memory staging applied. ──
+    unsigned qa[FA3_D / 16][4];
+    {
+        const int rA = row0 + rlo, rB = rA + 8;
+        const bool vA = rA < m, vB = rB < m;
+        const float* pA = qg + (size_t)rA * qld + h * d;
+        const float* pB = qg + (size_t)rB * qld + h * d;
+#pragma unroll
+        for (int ks = 0; ks < FA3_D / 16; ks++) {
+            const int c0 = ks * 16 + chi;
+            const float2 x00 = vA ? *reinterpret_cast<const float2*>(pA + c0)
+                                  : make_float2(0.0f, 0.0f);
+            const float2 x01 = vB ? *reinterpret_cast<const float2*>(pB + c0)
+                                  : make_float2(0.0f, 0.0f);
+            const float2 x10 = vA ? *reinterpret_cast<const float2*>(pA + c0 + 8)
+                                  : make_float2(0.0f, 0.0f);
+            const float2 x11 = vB ? *reinterpret_cast<const float2*>(pB + c0 + 8)
+                                  : make_float2(0.0f, 0.0f);
+            qa[ks][0] = fa2_pk(x00.x * scale, x00.y * scale);
+            qa[ks][1] = fa2_pk(x01.x * scale, x01.y * scale);
+            qa[ks][2] = fa2_pk(x10.x * scale, x10.y * scale);
+            qa[ks][3] = fa2_pk(x11.x * scale, x11.y * scale);
+        }
+    }
+    fa3_load_kv<BN, NTH>(smem + 2 * KVH, smem + 3 * KVH, kg, vg, 1, kb_max, n_keys, hk, d,
+                         kvld, tid);
+    fa2_cp_commit();
+
+    float oacc[FA3_D / 8][4];
+#pragma unroll
+    for (int i = 0; i < FA3_D / 8; i++) {
+        oacc[i][0] = 0.0f; oacc[i][1] = 0.0f; oacc[i][2] = 0.0f; oacc[i][3] = 0.0f;
+    }
+    const float NEG = -1.0e30f;
+    float m0 = NEG, m1 = NEG, l0 = 0.0f, l1 = 0.0f;
+    const int qg0 = pos_base + row0 + rlo;        // global position of row `rlo`
+    const int qg1 = qg0 + 8;
+
+    for (int kb = 0; kb <= kb_max; kb++) {
+        const int cur = kb & 1;
+        __half* bk = smem + cur * 2 * KVH;        // this iteration's rotating buffer
+        __half* bv = bk + KVH;
+        fa2_cp_wait1();
+        __syncthreads();
+        const __half* sK = bk;
+        const __half* sV = bv;
+
+        // ── S[16,BN] = Q[16,d] @ K^T[d,BN], f32 accumulate. FRONT 4's body verbatim. ──
+        float s[NT][4];
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            s[nt][0] = 0.0f; s[nt][1] = 0.0f; s[nt][2] = 0.0f; s[nt][3] = 0.0f;
+        }
+#pragma unroll
+        for (int ks = 0; ks < FA3_D / 16; ks++) {
+#pragma unroll
+            for (int np = 0; np < BN / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4(b0, b1, b2, b3,
+                          sK + (np * 16 + lr8 + l7) * FA3_LD + ks * 16 + lc8);
+                fa2_mma(s[2 * np], qa[ks], b0, b2);         // n-tile np*16
+                fa2_mma(s[2 * np + 1], qa[ks], b1, b3);     // n-tile np*16 + 8
+            }
+        }
+
+        // ── causal + cache-tail mask, verbatim. ──
+        const bool need_mask = (kb * BN + BN - 1 > qg0) || (kb * BN + BN - 1 >= n_keys);
+        if (need_mask) {
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                const int j = kb * BN + nt * 8 + chi;
+                const int jc = j < n_keys ? j : -1;                 // cache tail
+                if (jc < 0 || j > qg0) s[nt][0] = NEG;
+                if (jc < 0 || j + 1 > qg0) s[nt][1] = NEG;
+                if (jc < 0 || j > qg1) s[nt][2] = NEG;
+                if (jc < 0 || j + 1 > qg1) s[nt][3] = NEG;
+            }
+        }
+
+        // ── online softmax: row max over this block, alpha rescale of O, exp into P. ──
+        float t0 = NEG, t1 = NEG;
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            t0 = fmaxf(t0, fmaxf(s[nt][0], s[nt][1]));
+            t1 = fmaxf(t1, fmaxf(s[nt][2], s[nt][3]));
+        }
+        t0 = fa_wmax(t0);
+        t1 = fa_wmax(t1);
+        const float n0 = fmaxf(m0, t0), n1 = fmaxf(m1, t1);
+        const float a0 = __expf(m0 - n0), a1 = __expf(m1 - n1);
+#pragma unroll
+        for (int i = 0; i < FA3_D / 8; i++) {
+            oacc[i][0] *= a0; oacc[i][1] *= a0;
+            oacc[i][2] *= a1; oacc[i][3] *= a1;
+        }
+        float s0 = 0.0f, s1 = 0.0f;
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            const float p0 = __expf(s[nt][0] - n0), p1 = __expf(s[nt][1] - n0);
+            const float p2 = __expf(s[nt][2] - n1), p3 = __expf(s[nt][3] - n1);
+            s0 += p0 + p1; s1 += p2 + p3;
+            s[nt][0] = p0; s[nt][1] = p1; s[nt][2] = p2; s[nt][3] = p3;
+        }
+        s0 = fa_wsum(s0);
+        s1 = fa_wsum(s1);
+        l0 = l0 * a0 + s0;
+        l1 = l1 * a1 + s1;
+        m0 = n0; m1 = n1;
+
+        // ── O[16,d] += P[16,BN] @ V[BN,d], P's A-fragment packed in registers. ──
+#pragma unroll
+        for (int ks = 0; ks < BN / 16; ks++) {
+            unsigned pa[4];
+            pa[0] = fa2_pk(s[2 * ks][0], s[2 * ks][1]);
+            pa[1] = fa2_pk(s[2 * ks][2], s[2 * ks][3]);
+            pa[2] = fa2_pk(s[2 * ks + 1][0], s[2 * ks + 1][1]);
+            pa[3] = fa2_pk(s[2 * ks + 1][2], s[2 * ks + 1][3]);
+#pragma unroll
+            for (int np = 0; np < FA3_D / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4t(b0, b1, b2, b3,
+                           sV + (ks * 16 + lr8 + l7) * FA3_LD + np * 16 + lc8);
+                fa2_mma(oacc[2 * np], pa, b0, b1);          // dims np*16 .. +7
+                fa2_mma(oacc[2 * np + 1], pa, b2, b3);      // dims np*16+8 .. +15
+            }
+        }
+        __syncthreads();                            // buffer `cur` is dead
+        fa3_load_kv<BN, NTH>(bk, bv, kg, vg, kb + 2, kb_max, n_keys, hk, d, kvld, tid);
+        fa2_cp_commit();
+    }
+
+    // ── epilogue: divide by the row sums and write position-major f32 STRAIGHT TO GLOBAL, as
+    //    one aligned float2 per (row, dim-pair). No shared staging, no fence. ──
+    const float inv0 = (l0 > 0.0f) ? (1.0f / l0) : 0.0f;
+    const float inv1 = (l1 > 0.0f) ? (1.0f / l1) : 0.0f;
+    const int r0g = row0 + rlo;
+    const int r1g = r0g + 8;
+    const bool w0 = r0g < m, w1 = r1g < m;
+#pragma unroll
+    for (int nt = 0; nt < FA3_D / 8; nt++) {
+        const int c = nt * 8 + chi;
+        if (w0) *reinterpret_cast<float2*>(og + (size_t)r0g * qld + h * d + c) =
+                    make_float2(oacc[nt][0] * inv0, oacc[nt][1] * inv0);
+        if (w1) *reinterpret_cast<float2*>(og + (size_t)r1g * qld + h * d + c) =
+                    make_float2(oacc[nt][2] * inv1, oacc[nt][3] * inv1);
+    }
+}
+
+// ON-DEVICE probe for FA3's HAND-BUILT A fragment. FA2's probe cannot cover this: FA2 gets its
+// A tile from ldmatrix, FA3 assembles the four registers itself from strided global f32, so the
+// lane -> (row, column) assignment is a new assumption and gets its own integer check. A[r][k] =
+// delta(k,0)*(r+1) against K_tile[n][k] = delta(k,0)*(n+1) makes the true product
+// D[r][n] = (r+1)*(n+1); max 16*8 = 128 is exact in both f16 and f32, so this is an integer
+// equality with no tolerance. Lane L's register i must read back (row+1)*(col+1) for
+// row = L/4 + 8*(i>>1), col = 2*(L%4) + (i&1) — the same reading FA2's probe uses.
+extern "C" __global__ void _fa3_layout_probe_kernel(float* out) {
+    __shared__ float sQ[16 * FA3_D];
+    __shared__ __half sK[16 * FA3_LD];
+    const int lane = threadIdx.x;
+    for (int i = lane; i < 16 * FA3_D; i += 32) {
+        const int r = i / FA3_D, c = i - r * FA3_D;
+        sQ[i] = (c == 0) ? (float)(r + 1) : 0.0f;
+    }
+    for (int i = lane; i < 16 * FA3_LD; i += 32) {
+        const int r = i / FA3_LD, c = i - r * FA3_LD;
+        sK[i] = __float2half((c == 0) ? (float)(r + 1) : 0.0f);   // delta on the stored COLUMN
+    }
+    __syncwarp();
+    const int lr8 = ((lane >> 3) & 1) << 3;
+    const int lc8 = ((lane >> 3) & 2) << 2;
+    const int l7 = lane & 7;
+    const int rlo = lane >> 2;
+    const int chi = (lane & 3) << 1;
+    // the kernel's A generator verbatim, at scale 1.0 and a 128-float row stride
+    unsigned qa[FA3_D / 16][4];
+#pragma unroll
+    for (int ks = 0; ks < FA3_D / 16; ks++) {
+        const int c0 = ks * 16 + chi;
+        const float* pA = sQ + rlo * FA3_D;
+        const float* pB = sQ + (rlo + 8) * FA3_D;
+        const float2 x00 = *reinterpret_cast<const float2*>(pA + c0);
+        const float2 x01 = *reinterpret_cast<const float2*>(pB + c0);
+        const float2 x10 = *reinterpret_cast<const float2*>(pA + c0 + 8);
+        const float2 x11 = *reinterpret_cast<const float2*>(pB + c0 + 8);
+        qa[ks][0] = fa2_pk(x00.x, x00.y);
+        qa[ks][1] = fa2_pk(x01.x, x01.y);
+        qa[ks][2] = fa2_pk(x10.x, x10.y);
+        qa[ks][3] = fa2_pk(x11.x, x11.y);
+    }
+    unsigned b0, b1, b2, b3;
+    fa2_ldsm4(b0, b1, b2, b3, sK + (lr8 + l7) * FA3_LD + lc8);
+    float dk[4] = {0.f, 0.f, 0.f, 0.f};
+    fa2_mma(dk, qa[0], b0, b2);
+    for (int i = 0; i < 4; i++) out[lane * 4 + i] = dk[i];
+}
+
+static int g_fa3_layout_ok = -1;   // -1 unchecked, 0 ok, 1 mismatch
+
+extern "C" int64_t tc_shim_fa3_layout_probe(void) {
+    if (g_fa3_layout_ok == 0) return 0;
+    if (g_fa3_layout_ok == 1) return -314;
+    float* d = nullptr;
+    cudaError_t e = cudaMalloc(&d, 128 * sizeof(float));
+    if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    cudaMemsetAsync(d, 0, 128 * sizeof(float), g_stream);
+    _fa3_layout_probe_kernel<<<1, 32, 0, g_stream>>>(d);
+    e = cudaGetLastError();
+    if (e == cudaSuccess) e = cudaStreamSynchronize(g_stream);
+    if (e != cudaSuccess) { cudaFree(d); record_error((int64_t)e); return (int64_t)e; }
+    float h[128];
+    e = cudaMemcpy(h, d, 128 * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(d);
+    if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    for (int lane = 0; lane < 32; lane++) {
+        for (int i = 0; i < 4; i++) {
+            const int row = (lane >> 2) + 8 * (i >> 1);
+            const int col = 2 * (lane & 3) + (i & 1);
+            const float want = (float)((row + 1) * (col + 1));
+            if (h[lane * 4 + i] != want) {
+                g_fa3_layout_ok = 1;
+                fprintf(stderr,
+                        "[tc_shim] FA3 hand-built A-fragment layout MISMATCH: lane %d reg %d = "
+                        "%g, expected %g (row %d col %d) — the FA3 lever is DISABLED for this "
+                        "toolkit (the session keeps FRONT 4's FA2).\n",
+                        lane, i, (double)h[lane * 4 + i], (double)want, row, col);
+                return -314;
+            }
+        }
+    }
+    g_fa3_layout_ok = 0;
+    return 0;
+}
+
+// The instantiated (BN, BMQ, MINB) table, spelled out. fa3_cfg_idx's rows and fa3_set_attrs's
+// calls and the launch switch below must list the SAME six shapes; anything absent is DECLINED
+// with -312 rather than silently rounded onto a neighbour.
+#define FA3_NCFG 6
+
+static int fa3_cfg_idx(int64_t bn, int64_t bmq, int64_t minb) {
+    static const int T[FA3_NCFG][3] = {{32, 16, 1}, {32, 16, 2}, {64, 16, 1},
+                                       {64, 16, 2}, {32, 32, 1}, {64, 32, 1}};
+    for (int i = 0; i < FA3_NCFG; i++)
+        if (T[i][0] == bn && T[i][1] == bmq && T[i][2] == minb) return i;
+    return -1;
+}
+// 4 rotating K/V tiles, in BYTES. FA2's first version of this formula counted the element size
+// twice and thereby declined every shape at once; the bytes/halves distinction is stated here.
+static inline int fa3_smem_bytes(int64_t bn) { return (int)(4 * bn * FA3_LD * sizeof(__half)); }
+
+static int g_fa3_attr_done = 0;
+static int g_fa3_ok[FA3_NCFG] = {0, 0, 0, 0, 0, 0};
+
+static int64_t fa3_set_attrs(void) {
+    if (g_fa3_attr_done) return 0;
+    // The kernel symbol is passed as a macro argument WRAPPED IN PARENS, exactly as FA2_ATTR
+    // does: the template argument list contains commas, which the preprocessor would otherwise
+    // read as argument separators.
+#define FA3_ATTR(BN_, BMQ_, MINB_, K)                                                           \
+    do {                                                                                        \
+        int sm_ = fa3_smem_bytes(BN_);                                                          \
+        cudaError_t e_ = cudaFuncSetAttribute(                                                  \
+            K, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_);                               \
+        g_fa3_ok[fa3_cfg_idx(BN_, BMQ_, MINB_)] = (e_ == cudaSuccess) ? 1 : 0;                  \
+        if (e_ != cudaSuccess)                                                                  \
+            fprintf(stderr,                                                                     \
+                    "[tc_shim] FA3 BN=%d BMQ=%d MINB=%d DECLINED: %d B of dynamic shared "      \
+                    "memory is not grantable here (%s) — that shape keeps FA2.\n",              \
+                    (BN_), (BMQ_), (MINB_), sm_, cudaGetErrorString(e_));                       \
+    } while (0)
+    FA3_ATTR(32, 16, 1, (_fa3_causal_kernel<32, 16, FA3_G, 1>));
+    FA3_ATTR(32, 16, 2, (_fa3_causal_kernel<32, 16, FA3_G, 2>));
+    FA3_ATTR(64, 16, 1, (_fa3_causal_kernel<64, 16, FA3_G, 1>));
+    FA3_ATTR(64, 16, 2, (_fa3_causal_kernel<64, 16, FA3_G, 2>));
+    FA3_ATTR(32, 32, 1, (_fa3_causal_kernel<32, 32, FA3_G, 1>));
+    FA3_ATTR(64, 32, 1, (_fa3_causal_kernel<64, 32, FA3_G, 1>));
+#undef FA3_ATTR
+    g_fa3_attr_done = 1;
+    return 0;
+}
+
+// bn: 32/64 key columns per online-softmax block. bmq: query rows per CTA per head (16/32).
+// minb: CTAs per SM to ask ptxas to keep register-legal for (1 or 2).
+// Returns -301 unsupported head_dim, -304 non-integral GQA, -305 shared memory not grantable,
+// -312 this (g, bn, bmq, minb) is not instantiated, -313 too few CTAs to fill the device,
+// -314 the on-device A-fragment probe disagreed, else the cudaError_t. Enqueues on the shim
+// stream, does NOT sync.
+extern "C" int64_t tc_shim_fa3_causal_async(const void* q_f32, const void* k16, const void* v16,
+                                            void* o_f32, const void* scale_f32, int64_t m,
+                                            int64_t n_keys, int64_t h_q, int64_t h_kv, int64_t d,
+                                            int64_t pos_base, int64_t bn, int64_t bmq,
+                                            int64_t minb) {
+    if (d != FA3_D) return -301;
+    if (m <= 0 || n_keys <= 0 || h_kv <= 0 || h_q <= 0) return 0;
+    if ((h_q % h_kv) != 0) return -304;
+    if ((h_q / h_kv) != FA3_G) return -312;       // only g==7 is instantiated
+    if (bmq != 16 && bmq != 32) return -312;
+    const int idx = fa3_cfg_idx(bn, bmq, minb);
+    if (idx < 0) return -312;
+    int64_t r = tc_shim_fa3_layout_probe();
+    if (r != 0) return r;
+    r = fa3_set_attrs();
+    if (r != 0) return r;
+    if (!g_fa3_ok[idx]) return -305;
+    // A packed CTA is g times bigger than an FA2 CTA, so a short prefill can end up with fewer
+    // CTAs than there are SMs and leave the machine idle. Decline and let the caller keep FA2
+    // rather than quietly regressing pp256.
+    {
+        int nsm = 0;
+        cudaDeviceGetAttribute(&nsm, cudaDevAttrMultiProcessorCount, 0);
+        if (nsm > 0) {
+            const int64_t ctas = ((m + bmq - 1) / bmq) * h_kv;
+            if (ctas < (int64_t)nsm) return -313;
+        }
+    }
+    dim3 grid((unsigned)((m + bmq - 1) / bmq), (unsigned)h_kv);
+    dim3 block((unsigned)((bmq == 32 ? 2 : 1) * FA3_G * 32));
+    int im = (int)m, ink = (int)n_keys, ihq = (int)h_q, ihkv = (int)h_kv, id = (int)d;
+    int ipos = (int)pos_base;
+    const float* q = (const float*)q_f32;
+    const __half* k = (const __half*)k16;
+    const __half* v = (const __half*)v16;
+    const float* sp = (const float*)scale_f32;
+    float* o = (float*)o_f32;
+    const size_t smb = (size_t)fa3_smem_bytes(bn);
+#define FA3_LAUNCH(BN_, BMQ_, MINB_)                                                            \
+    _fa3_causal_kernel<BN_, BMQ_, FA3_G, MINB_>                                                 \
+        <<<grid, block, smb, g_stream>>>(q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos)
+    switch (idx) {
+        case 0: FA3_LAUNCH(32, 16, 1); break;
+        case 1: FA3_LAUNCH(32, 16, 2); break;
+        case 2: FA3_LAUNCH(64, 16, 1); break;
+        case 3: FA3_LAUNCH(64, 16, 2); break;
+        case 4: FA3_LAUNCH(32, 32, 1); break;
+        case 5: FA3_LAUNCH(64, 32, 1); break;
+        default: return -312;
+    }
+#undef FA3_LAUNCH
+    cudaError_t e = cudaGetLastError();
+    if (e != cudaSuccess)
+        fprintf(stderr,
+                "[tc_shim] FA3 LAUNCH FAILED: %s | bn=%lld bmq=%lld minb=%lld smem=%zu B "
+                "grid=%ux%u block=%u m=%lld n_keys=%lld h_q=%lld h_kv=%lld d=%lld pos=%lld\n",
+                cudaGetErrorString(e), (long long)bn, (long long)bmq, (long long)minb, smb,
+                grid.x, grid.y, block.x, (long long)m, (long long)n_keys, (long long)h_q,
+                (long long)h_kv, (long long)d, (long long)pos_base);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 // FAST-EXP SwiGLU EPILOGUE (FRONT 3 lever 2) — `-D ALGENTA_7B_PF_FASTEXP`
 //
 // The A100 decomposition puts the f16 SwiGLU epilogue at 170.3 us/layer (pp1024) against
@@ -1949,6 +2442,11 @@ extern "C" int64_t tc_shim_fa2_layout_probe(void) { return -311; }
 extern "C" int64_t tc_shim_fa2_causal_async(const void*, const void*, const void*, void*,
                                             const void*, int64_t, int64_t, int64_t, int64_t,
                                             int64_t, int64_t, int64_t, int64_t) { return -301; }
+extern "C" int64_t tc_shim_fa3_layout_probe(void) { return -314; }
+extern "C" int64_t tc_shim_fa3_causal_async(const void*, const void*, const void*, void*,
+                                            const void*, int64_t, int64_t, int64_t, int64_t,
+                                            int64_t, int64_t, int64_t, int64_t,
+                                            int64_t) { return -301; }
 extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t, int64_t) {
     return -302;
 }
