@@ -347,6 +347,134 @@ def _tc_lt_count() -> Int:
         return 0
 
 
+# ── FRONT 7 (2026-09-16): the f16 O twin and the in-situ algorithm search ───────────────────
+#
+# Both blocks below are compiled into the shim ONLY under their own macros
+# (`ALGENTA_TC_SHIM_O16`, `ALGENTA_TC_SHIM_LTINSITU`) and have deliberately NO stubs, so an arm
+# that passes the Mojo flag but links an object built without the macro fails AT LINK TIME. That
+# is the property FRONT 6 paid for: a silent runtime decline would leave a cell measured on the
+# shipped path while still printing the flag — the gemma-3-27b H200 column's failure mode.
+
+
+def _tc_fa2_causal_o16_async(
+    q_f32: Int, k16: Int, v16: Int, o_f32: Int, o16: Int, scale_f32: Int, m: Int, n_keys: Int,
+    h_q: Int, h_kv: Int, d_head: Int, pos: Int, bn: Int, variant: Int, rev_rows: Int,
+) -> Int:
+    """FRONT 7 lever 1 (`-D ALGENTA_7B_PF_O16TWIN`): `_tc_fa2_causal_async` with the O epilogue
+    writing the position-major f16 twin that `_tc_gemm_f16_32c_pre` consumes directly, so o_proj
+    — the one projection whose A was still f32 — needs no convert pass at all.
+
+    `o16` is the twin (`tc_a16`, row stride `h_q * d_head` HALVES, i.e. the identical layout the
+    convert produced). `o_f32` MAY BE 0, which is the ship arm: the f32 O is then never written,
+    because nothing else in the FA2 path reads it, and halving that write is part of the lever.
+    The verify arm (`-D ALGENTA_7B_PF_O16VERIFY`) passes a real `pf_attn` so `_tc_verify_o16`
+    has something to compare the twin against, element by element, as bits.
+
+    `rev_rows` reverses the row-block dispatch order (heaviest-CTA-first). Bit-exact either way:
+    each CTA computes its own rows and reads no other CTA's output.
+
+    BIT-EXACT against the pass it replaces, by FRONT 4's KVTWIN argument: `__floats2half2_rn`
+    rounds each component to nearest-even independently — the identical operation `__float2half`
+    performs — on the SAME f32 accumulator register the f32 store would have written for the
+    convert kernel to read back. Proven full-element rather than argued; see `_tc_verify_o16`.
+
+    Returns 0, or the same decline codes `_tc_fa2_causal_async` returns (-301 wrong head_dim,
+    -304 non-integral GQA, -305 the shared-memory overlay does not fit, -311 the on-device layout
+    probe disagreed) plus -306 (no twin buffer). A decline MUST fall back to the f32 entry and
+    hence to the shipped convert; any other status is a real CUDA failure."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_fa2_causal_o16_async", Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+            ](
+                Int64(q_f32), Int64(k16), Int64(v16), Int64(o_f32), Int64(o16), Int64(scale_f32),
+                Int64(m), Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d_head), Int64(pos),
+                Int64(bn), Int64(variant), Int64(rev_rows),
+            )
+        )
+    else:
+        return -1
+
+
+def _tc_verify_o16(o_f32: Int, o16: Int, n: Int) -> Int:
+    """Accumulate a FULL-ELEMENT bit comparison of the f16 O twin against `__float2half` of the
+    f32 O, over `n` elements, into device counters. Compared as BITS (`__half_as_ushort`), not as
+    values, so +0.0/-0.0 and any NaN payload count as mismatches instead of comparing equal —
+    "bit-identical" is a claim about bit patterns, so the proof has to test that claim.
+
+    Called once per layer by the verify arm; nothing is printed until `_tc_verify_o16_report`.
+    0 = enqueued; -307 = a null operand (a FAILED proof, never a passed one); -308 = the device
+    counters could not be allocated."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call["tc_shim_verify_o16", Int64, Int64, Int64, Int64](
+                Int64(o_f32), Int64(o16), Int64(n)
+            )
+        )
+    else:
+        return -1
+
+
+def _tc_verify_o16_report() -> Int:
+    """Sync, print `TC O16 VERIFY: mismatches = X of Y elements compared | verdict = ...`,
+    return X and reset the counters, so the next call reports the next prefill rather than a
+    running total nobody can attribute to a layer range. A NEGATIVE return (-309, the counters
+    could not be read back) is a FAILED PROOF and must never be reported as zero mismatches."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_verify_o16_report", Int64]())
+    else:
+        return -1
+
+
+def _tc_lt_explore_begin(samples_per_cand: Int) -> Int:
+    """FRONT 7 lever 3 (`-D ALGENTA_7B_PF_LTINSITU`): arm the IN-SITU algorithm search. Every
+    later projection dispatch rotates through the candidate list `_tc_lt_tune` retained, timing
+    each candidate with a stream event pair in its REAL position in the layer chain, until each
+    candidate has `samples_per_cand` medians; the shape then freezes itself on the best median.
+
+    Called by the driver AFTER its token gates and BEFORE its warmup loop, so G0/G1 gate exactly
+    the algorithm FRONT 6's arm ran and every exploring call is in situ. Returns the number of
+    shapes armed (0 = nothing to explore, and the arm then runs FRONT 6's stage-time winners)."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call["tc_shim_lt_explore_begin", Int64, Int64](Int64(samples_per_cand))
+        )
+    else:
+        return -1
+
+
+def _tc_lt_freeze() -> Int:
+    """Hard barrier: sync, drain every in-flight event pair, freeze each shape that has not
+    frozen itself, print the per-shape candidate tables (isolated mean next to in-situ median,
+    per candidate, with the selected one marked), and return the number of shapes that ended with
+    a chosen algorithm. Called between the driver's warmup loop and its timed loop, so a measured
+    run can never rotate algorithms between samples. A shape that collected NO samples keeps
+    FRONT 6's stage-time winner and is NOT counted — which is why the count, not the flag
+    literal, is the audit's runtime-effect field."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_lt_freeze", Int64]())
+    else:
+        return -1
+
+
+def _tc_lt_insitu_state() -> Int:
+    """0 = the search was never armed, 1 = STILL EXPLORING, 2 = frozen. A cell measured in state
+    1 would rotate algorithms between its own runs, so the flag audit reports state 1 as a FAILED
+    lever rather than as a slow one."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(external_call["tc_shim_lt_insitu_state", Int64]())
+    else:
+        return 0
+
+
+
 def _tc_gemm_f16_32c_pre_async(a16: Int, w16: Int, m: Int, k: Int, n: Int, c32: Int,
                               accum: Int) -> Int:
     """`_tc_gemm_f16_32c_pre` with NO sync path at all — the seam discipline the gemma-3 lane

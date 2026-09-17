@@ -239,6 +239,7 @@ from residentk.tc_shim_bridge import (
     _tc_lt_init,
     _tc_lt_tune,
     _tc_lt_count,
+    _tc_lt_insitu_state,
     _tc_gemm_f16_32c_pre_lt,
     _tc_gemm_f16_16c_pre_lt,
     _tc_bgemm_f16_async,
@@ -247,6 +248,9 @@ from residentk.tc_shim_bridge import (
     _tc_fa_layout_probe,
     _tc_fa2_causal_async,
     _tc_fa2_layout_probe,
+    _tc_fa2_causal_o16_async,
+    _tc_verify_o16,
+    _tc_verify_o16_report,
     _tc_swiglu_f16_fastexp,
     _tc_dequant_packed3_f16_dense,
     _pf_swiglu_rows_kernel,
@@ -511,6 +515,84 @@ comptime _PF_LT_TOP: Int = 16
 """Heuristics to time per shape. gemm_probe's winners were never beyond index 7 at these shapes,
 and each candidate costs (3 warmup + 7 measured) launches, so 16 is ~2x the observed need at
 ~0.2 s per shape of one-time stage cost."""
+
+# ── FRONT-7 prefill levers (2026-09-16): widening the RAG-4096 1.0221x margin ──────────────
+# Round 6 flipped RAG-4096 to 1.0221x (15324.50 tok/s / 267.284 ms against a fresh same-session
+# TensorRT-LLM 1.2.1 re-serve at 273.186 ms) and left a 2.2% margin it called fragile. Its own
+# decomposition of the adopted `_g2` arm — 260.967 ms of GPU busy inside a 262.334 ms trace wall,
+# a 1.367 ms (0.52%) host gap that is CLOSED as a target — ranked what remains:
+#
+#   cublas_gemm 209.947 ms (112 launches)  fa2_flash 30.133 (28)  swiglu 9.439 (28)
+#   rmsnorm 4.497 (56)  biasrope 3.056 (28)  A_convert_scalar 2.344 (28)  kv_stage_v8 0.636 (56)
+#
+#    ALGENTA_7B_PF_O16TWIN   kill the o_proj A convert outright. `A_convert_scalar` is 28
+#                            launches of `_f32_to_f16_kernel`, exactly one per layer, and source
+#                            inspection says which role: under F16NORM+F16MLP the rmsnorm f16 twin
+#                            feeds qkv and gate/up and the SwiGLU epilogue feeds down, so o_proj is
+#                            the ONE projection whose A is still f32 — because FA2's O epilogue
+#                            writes `pf_attn` f32 and a second pass converts it. That pass moves
+#                            88.1 MB/layer (58.7 read + 29.4 written) in 83.72 us = 1052 GB/s, only
+#                            68% of the 1555 GB/s roof, so the fix is not a faster convert but NO
+#                            convert: the epilogue writes the f16 twin from the accumulator
+#                            register into `tc_a16` — the identical layout, the identical
+#                            position-major stride, the buffer o_proj's GEMM already takes its A
+#                            from — and the ship arm passes no f32 O pointer at all, so the 58.7 MB
+#                            write that existed only to feed the convert disappears too.
+#                            BIT-EXACT by FRONT 4's KVTWIN argument (`__floats2half2_rn` rounds each
+#                            component to nearest-even independently, the identical operation
+#                            `__float2half` performs, on the SAME f32 register the f32 store would
+#                            have written) and PROVEN FULL-ELEMENT rather than argued: the
+#                            `-D ALGENTA_7B_PF_O16VERIFY` arm passes both O pointers and compares
+#                            every element of every layer as BITS.
+#                            Requires PF_LTALGO (see `PF_O16LIVE_B1` below for why that is a
+#                            correctness gate and not a convenience) and FA2's shipped variant.
+#                            Needs the shim object built with -D ALGENTA_TC_SHIM_O16; without it
+#                            the arm fails AT LINK TIME (no stubs, FRONT 6's discipline).
+comptime PF_O16TWIN_B1: Bool = (
+    PF_FA_B1 and TC_SHIM_BUILD and is_defined["ALGENTA_7B_PF_O16TWIN"]()
+)
+comptime PF_O16VERIFY_B1: Bool = PF_O16TWIN_B1 and is_defined["ALGENTA_7B_PF_O16VERIFY"]()
+"""The proof arm: FA2's epilogue writes BOTH the f32 O and the f16 twin, o_proj consumes the twin
+exactly as the ship arm does, and every layer's twin is compared against `__float2half` of the f32
+O, element by element, as bits. Costs the 58.7 MB/layer f32 write the ship arm removes, so this
+arm is NOT raced — it exists to discharge the bit-identity claim before any speed claim is made."""
+
+comptime PF_FAREV_B1: Bool = PF_O16TWIN_B1 and is_defined["ALGENTA_7B_PF_FAREV"]()
+"""Reverse FA2's row-block dispatch order (heaviest-CTA-first). Under causal masking row-block
+`qi` attends to `qi+1` key blocks, so CTA work grows with `qi` and the classic LPT fix is to
+launch the heaviest first. BIT-EXACT by construction: each CTA computes its own rows and reads no
+other CTA's output, so the order cannot change a value. It is a runtime argument to the twin
+kernel rather than a second instantiation, so the two orders are the SAME binary and their A/B
+cannot be confounded by codegen. Ranked cheap-to-test by FRONT 6's target 5; note the counter-
+argument this arm exists to settle by measurement — the grid is x-major over 64 row-blocks and 28
+heads, so each of the ~324-CTA waves already contains every row-block of ~5 heads, i.e. the causal
+imbalance may already be wave-balanced and reversing may buy nothing."""
+
+comptime PF_O16LIVE_B1: Bool = PF_O16TWIN_B1 and PF_LTALGO_B1 and TC_ACC_MODE == 0
+"""The gate that makes the twin SAFE, not merely fast. FA2's f32 O is skipped only where the twin
+is guaranteed to be consumed: o_proj's A comes from `tc_a16` through `_tc_gemm_f16_32c_pre{,_lt}`,
+which is the rung-0 (`TC_ACC_MODE == 0`) f16-A/f32-C entry. Under any other rung the o_proj
+dispatch is `_tc_gemm_dispatch(pf_attn, ...)`, which reads the f32 O — so with the twin armed and
+that dispatch live, `pf_attn` would be stale and the projection would multiply garbage. Both
+call sites test THIS flag, so the epilogue can never skip a write that something still reads.
+A runtime decline of the twin entry (-301/-304/-305/-306/-311) additionally leaves `o16_live`
+false, which routes o_proj back through the shipped convert on the f32 O that the fallback entry
+then wrote."""
+
+comptime PF_LTINSITU_B1: Bool = PF_LTALGO_B1 and is_defined["ALGENTA_7B_PF_LTINSITU"]()
+"""FRONT 7 lever 3: choose the cublasLt algorithm IN SITU instead of in a stage-time isolated
+loop. FRONT 6's stage-time search timed each candidate back-to-back on its own and kept the MEAN
+of 7; in the arm it shipped, 209.947 ms of nsys-measured cublas sits against 191.15 ms of tuned
+isolated per-role sums (+9.8%), and its own probe note measured the isolated form over-forecasting
+by +10.7% at this exact shape — the third time in this campaign a standalone probe RANKED a lever
+it could not PRICE. With this flag the shim retains the whole executable candidate list per shape
+and, when the driver arms it, rotates one candidate per call timing each with a stream event pair
+in its REAL slot in the layer chain (28 samples per shape per prefill), then freezes each shape on
+the best in-situ MEDIAN and prints the full table — isolated mean next to in-situ median, per
+candidate, with the selected one marked. NOT bit-identical (a different tile/split-K moves the
+reduction order), so the token gates decide it, and the gates run BEFORE the search is armed so
+what they cover is FRONT 6's selection; an arm that races a searched selection pins it with
+`ALGENTA_LT_PICK` at tune time, which the gates then cover normally."""
 
 comptime _PF_FA2_BN: Int = 32
 """FA2's key-block width and attribution variant.
@@ -2651,6 +2733,56 @@ struct _CudaResidentQwen3P3(Movable):
                   "timed-search algorithm; untuned shapes decline -320 to GemmEx DEFAULT) "
                   "| lt_shapes_tuned =", _tc_lt_count(), "of 4")
         @parameter
+        if PF_O16LIVE_B1:
+            # Audited by BOTH this literal and the `o16_twin` field, because the flag can be
+            # present while the effect is absent: the twin entry can decline at runtime (-301/
+            # -304/-305/-306/-311) and the arm then runs the shipped convert on every layer
+            # while still printing the flag. A decline is therefore printed at layer 0 of every
+            # prefill ("f16 O twin DECLINED ... this cell is NOT the twin path"), so a declined
+            # lever cannot masquerade as a measured one — FRONT 3's rule, restated for this one.
+            print("TCFLAG ALGENTA_7B_PF_O16TWIN=1 (FA2's O epilogue writes the f16 twin into "
+                  "tc_a16 and o_proj consumes it directly: the per-layer f32->f16 A convert and "
+                  "the 58.7 MB/layer f32 O write are both gone) | o16_twin = armed, verify =",
+                  PF_O16VERIFY_B1, "| fa_row_order =",
+                  "reversed (heaviest CTA first)" if PF_FAREV_B1 else "shipped (blockIdx.x)")
+        @parameter
+        if PF_O16TWIN_B1 and not PF_O16LIVE_B1:
+            # The flag was passed but the twin CANNOT be live in this build, so the f32 O is
+            # still written and still converted. Printed loudly rather than silently ignored:
+            # a cell claiming this flag in that state would be measured on the shipped path.
+            print("TCFLAG ALGENTA_7B_PF_O16TWIN=1 BUT NOT LIVE — the twin is only consumed by "
+                  "the rung-0 cublasLt o_proj dispatch, so it requires "
+                  "ALGENTA_7B_PF_LTALGO and TC_ACC_MODE == 0 (this build: LTALGO =",
+                  PF_LTALGO_B1, ", acc_mode =", TC_ACC_MODE,
+                  "); o_proj keeps the f32 O and its convert pass")
+        @parameter
+        if PF_O16VERIFY_B1:
+            print("TCFLAG ALGENTA_7B_PF_O16VERIFY=1 (PROOF ARM, not raced: the epilogue writes "
+                  "BOTH the f32 O and the f16 twin, and every element of every layer is "
+                  "compared as bits — see the O16 VERIFY RESULT lines, one per prefill)")
+        @parameter
+        if PF_FAREV_B1:
+            print("TCFLAG ALGENTA_7B_PF_FAREV=1 (FA2 row-block dispatch order REVERSED, "
+                  "heaviest-CTA-first; bit-exact — each CTA computes its own rows and reads no "
+                  "other CTA's output — and the same binary as the shipped order, so the A/B "
+                  "cannot be confounded by codegen)")
+        @parameter
+        if PF_LTINSITU_B1:
+            # `lt_insitu_state` reads 0 HERE BY CONSTRUCTION and that is the correct value: the
+            # banner is printed at staging time, and the driver arms the search only AFTER the
+            # token gates, so what the search chose is recorded by the driver's own
+            # "LT INSITU: FROZEN n shapes | state = 2" line — which is the field
+            # scripts/audit_tc_flags.sh reads. A cell whose log shows state 1 was measured while
+            # algorithms were still rotating, and the audit reports that as a FAILED lever rather
+            # than a slow one.
+            print("TCFLAG ALGENTA_7B_PF_LTINSITU=1 (cublasLt algorithm chosen by an IN-SITU "
+                  "timed search over the retained candidate list — one sample per layer per "
+                  "prefill, median decides, frozen before the timed loop; the shim prints the "
+                  "full per-candidate table with the isolated mean beside the in-situ median) "
+                  "| lt_insitu_state_at_stage =", _tc_lt_insitu_state(),
+                  "(necessarily 0: the driver arms the search after the gates — audit the "
+                  "driver's LT INSITU: FROZEN line, not this one)")
+        @parameter
         if CUDA_PREFILL_FLASH_B1:
             print("TCFLAG ALGENTA_PF_ATTN_FLASH_B1=1 (sub-threshold tiles ride native flash)")
         @parameter
@@ -2949,6 +3081,12 @@ struct _CudaResidentQwen3P3(Movable):
                         #    ARMED/DECLINED verdict is printed once at staging time so a
                         #    declined lever cannot masquerade as a measured FA number.
                         var attn_done = False
+                        # FRONT 7 lever 1 (-D ALGENTA_7B_PF_O16TWIN): set ONLY when FA2's
+                        # epilogue actually wrote the f16 O twin into `tc_a16`, which is the one
+                        # condition under which o_proj may skip its convert pass. A declined twin
+                        # leaves it false, the f32 entry runs and writes `pf_attn`, and o_proj
+                        # converts exactly as it did before this lever existed.
+                        var o16_live = False
                         @parameter
                         if PF_FA_B1:
                             if use_tc_attn and self.f32.h_q % self.f32.h_kv == 0:
@@ -3012,33 +3150,92 @@ struct _CudaResidentQwen3P3(Movable):
                                 #    its own decline-to-five-pass-chain fallback. Any OTHER
                                 #    status is a real CUDA failure and is returned as one. ──
                                 var rfa = 0
+                                # ── FRONT-7 lever 1 (-D ALGENTA_7B_PF_O16TWIN): try the f16-O
+                                #    twin FIRST. Same operands, same layouts, same BN and variant
+                                #    as the f32 entry below; the only differences are the extra
+                                #    `tc_a16` twin pointer, an `o_f32` that is 0 unless this is
+                                #    the verify arm (so the ship epilogue never writes the 58.7
+                                #    MB/layer f32 O that existed solely to feed o_proj's convert),
+                                #    and the row-order argument. `PF_O16LIVE_B1` — not the bare
+                                #    flag — is the gate, because it is also what the o_proj
+                                #    dispatch below tests: the f32 O may be skipped only where the
+                                #    twin is guaranteed to be consumed. Declines (-301/-304/-305/
+                                #    -306/-311) fall through to the f32 entry, which keeps its own
+                                #    decline-to-five-pass-chain fallback; any OTHER status is a
+                                #    real CUDA failure and is returned as one. ──
                                 @parameter
-                                if _PF_FA2_SHIP_VARIANT >= 0:
-                                    rfa = _tc_fa2_causal_async(
+                                if PF_O16LIVE_B1 and _PF_FA2_SHIP_VARIANT >= 0:
+                                    var o32p = 0
+                                    @parameter
+                                    if PF_O16VERIFY_B1:
+                                        o32p = Int(self.f32.pf_attn.unsafe_ptr())
+                                    rfa = _tc_fa2_causal_o16_async(
                                         Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
-                                        Int(self.f32.pf_attn.unsafe_ptr()),
+                                        o32p, Int(self.tc_a16.unsafe_ptr()),
                                         Int(self.pf_fa_scale.unsafe_ptr()),
                                         m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
                                         self.f32.d_head, pos, _PF_FA2_BN,
-                                        _PF_FA2_SHIP_VARIANT)
-                                    if rfa == -301 or rfa == -304 or rfa == -305
-                                       or rfa == -311:
+                                        _PF_FA2_SHIP_VARIANT, 1 if PF_FAREV_B1 else 0)
+                                    if rfa == 0:
+                                        o16_live = True
+                                    elif rfa == -301 or rfa == -304 or rfa == -305
+                                         or rfa == -306 or rfa == -311:
+                                        # DECLINE IS A FALLBACK, NOT AN ERROR — but it must be
+                                        # PRINTED, once per prefill (hence `layer == 0`), because
+                                        # a declined twin means the cell was measured on the
+                                        # shipped convert path while the binary still carries the
+                                        # flag. FRONT 3's rule for the FA lever, restated.
+                                        if layer == 0:
+                                            print("TC: f16 O twin DECLINED at layer 0, status",
+                                                  rfa, "| o_proj keeps the f32 O and its convert"
+                                                  " pass — this cell is NOT the twin path")
+                                        rfa = 0
+                                    else:
+                                        return _StepOut(-1, 0.0, issued,
+                                                        RESIDENT_ERR_LAUNCH_FAILED)
+                                if not o16_live:
+                                    @parameter
+                                    if _PF_FA2_SHIP_VARIANT >= 0:
+                                        rfa = _tc_fa2_causal_async(
+                                            Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
+                                            Int(self.f32.pf_attn.unsafe_ptr()),
+                                            Int(self.pf_fa_scale.unsafe_ptr()),
+                                            m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
+                                            self.f32.d_head, pos, _PF_FA2_BN,
+                                            _PF_FA2_SHIP_VARIANT)
+                                        if rfa == -301 or rfa == -304 or rfa == -305
+                                           or rfa == -311:
+                                            rfa = _tc_fa_causal_async(
+                                                Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
+                                                Int(self.f32.pf_attn.unsafe_ptr()),
+                                                Int(self.pf_fa_scale.unsafe_ptr()),
+                                                m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
+                                                self.f32.d_head, pos, _PF_FA_BN)
+                                    else:
                                         rfa = _tc_fa_causal_async(
                                             Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
                                             Int(self.f32.pf_attn.unsafe_ptr()),
                                             Int(self.pf_fa_scale.unsafe_ptr()),
                                             m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
                                             self.f32.d_head, pos, _PF_FA_BN)
-                                else:
-                                    rfa = _tc_fa_causal_async(
-                                        Int(self.f32.pf_q_rot.unsafe_ptr()), kp, vp,
-                                        Int(self.f32.pf_attn.unsafe_ptr()),
-                                        Int(self.pf_fa_scale.unsafe_ptr()),
-                                        m, n_keys_fa, self.f32.h_q, self.f32.h_kv,
-                                        self.f32.d_head, pos, _PF_FA_BN)
                                 if rfa == 0:
                                     attn_done = True
                                     use_tc_attn = False
+                                    # The verify arm compares the twin against `__float2half` of
+                                    # the f32 O for EVERY element of THIS layer, accumulating into
+                                    # device counters; the report is printed once per prefill at
+                                    # the end of `_prefill_tc` so the element count in it is
+                                    # attributable to one prefill's 28 layers.
+                                    @parameter
+                                    if PF_O16VERIFY_B1:
+                                        if o16_live:
+                                            var rv = _tc_verify_o16(
+                                                Int(self.f32.pf_attn.unsafe_ptr()),
+                                                Int(self.tc_a16.unsafe_ptr()), m * n_q)
+                                            if rv != 0:
+                                                return _StepOut(
+                                                    -1, 0.0, issued,
+                                                    RESIDENT_ERR_LAUNCH_FAILED)
                                 elif rfa != -301 and rfa != -304 and rfa != -310:
                                     return _StepOut(-1, 0.0, issued,
                                                     RESIDENT_ERR_LAUNCH_FAILED)
@@ -3216,9 +3413,20 @@ struct _CudaResidentQwen3P3(Movable):
                             # Gated on TC_ACC_MODE == 0 because `_tc_gemm_dispatch` routes the
                             # other rungs (TF32 / f16-accumulate) through entries that are NOT
                             # convert + `_pre`, and this substitution is only valid for rung 0.
-                            r = _tc_stage_f32_to_f16(
-                                Int(self.f32.pf_attn.unsafe_ptr()),
-                                Int(self.tc_a16.unsafe_ptr()), m * n_q)
+                            #
+                            # FRONT 7 lever 1 (-D ALGENTA_7B_PF_O16TWIN): when `o16_live` is set,
+                            # FA2's epilogue ALREADY wrote this exact operand — the f16 twin of
+                            # the same accumulator, at the same position-major stride, into this
+                            # same buffer — so the convert below is precisely the pass the lever
+                            # removes, and only the GEMM runs. `o16_live` can only ever be true
+                            # under `PF_O16LIVE_B1`, which is the same comptime gate the FA2
+                            # dispatch tests, so a build without the flag has a provably constant
+                            # false here and runs the convert verbatim.
+                            r = 0
+                            if not o16_live:
+                                r = _tc_stage_f32_to_f16(
+                                    Int(self.f32.pf_attn.unsafe_ptr()),
+                                    Int(self.tc_a16.unsafe_ptr()), m * n_q)
                             if r == 0:
                                 r = _tc_gemm_f16_32c_pre_lt(
                                     Int(self.tc_a16.unsafe_ptr()),
@@ -3544,6 +3752,22 @@ struct _CudaResidentQwen3P3(Movable):
             var lg = Float64(self.f32.host_val.unsafe_ptr()[0])
             if tok < 0 or tok >= self.f32.vocab:
                 return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            @parameter
+            if PF_O16VERIFY_B1:
+                # The bit-identity claim, discharged BEFORE any speed claim: one report per
+                # prefill, over every element of every layer this prefill ran (28 x m x n_q =
+                # 411,041,792 at m=4096), compared as bits. A negative return means the counters
+                # could not be read back, which is a FAILED proof and is printed as one — never
+                # as zero mismatches.
+                var bad = _tc_verify_o16_report()
+                if bad < 0:
+                    print("O16 VERIFY RESULT: NOT PROVEN — the shim could not read its counters"
+                          " back, status", bad)
+                elif bad == 0:
+                    print("O16 VERIFY RESULT: PASS — the f16 O twin is BIT-IDENTICAL to"
+                          " __float2half of the f32 O over every element of every layer")
+                else:
+                    print("O16 VERIFY RESULT: FAIL —", bad, "elements differ in bit pattern")
             return _StepOut(tok, lg, issued, RESIDENT_OK)
 
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:

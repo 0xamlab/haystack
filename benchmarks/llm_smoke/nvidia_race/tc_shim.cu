@@ -1731,6 +1731,304 @@ _fa2_causal_kernel(const float* __restrict__ qg, const __half* __restrict__ kg,
     }
 }
 
+#ifdef ALGENTA_TC_SHIM_O16
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// FRONT 7 LEVER 1's kernel — a COPY of `_fa2_causal_kernel` above, not a shared body.
+//
+// The first version of this lever extracted the body into a `static __device__ __forceinline__`
+// template so the twin could be a second wrapper over it, and the neutrality proof REJECTED that:
+// all seven `_fa2_causal_kernel` instantiations' SASS moved (same 1272 instructions, same
+// register count, four of them rescheduled around an out-of-lined CALL.REL), because an inlining
+// boundary gives ptxas's scheduler different freedom even when the source is semantically
+// identical. `.text`/`.rodata`/`.data`/`.bss` and all 174 defined symbols stayed identical, so a
+// host-section-only proof — FRONT 6's — would have passed it. FRONT 5 measured what a "harmless"
+// codegen move costs here: a defaulted `__launch_bounds__` parameter moved one instantiation from
+// 155 to 171 registers, dropped it from 3 CTAs/SM to 2, and cost +9.8% on the RAG-4096 FA block.
+// So the baseline's kernel goes back to FRONT 6's EXACT text and the twin is a copy, which makes
+// `_h0`'s device code identical by construction instead of by argument.
+//
+// The copy's cost is drift risk, and that is discharged mechanically rather than by a comment:
+// `run_ab_7b_front7.sh` re-derives this kernel from the shipped one and fails if anything beyond
+// the four documented differences (name, `og16`/`rev_rows` parameters, the `qi` expression, the
+// epilogue) has moved.
+//
+// The differences, exhaustively:
+//   1. name                        `_fa2_causal_kernel` -> `_fa2_causal_o16_kernel`
+//   2. parameters                  + `__half* __restrict__ og16`, + `int rev_rows`
+//   3. row-block index             `blockIdx.x` -> optionally reversed by `rev_rows`
+//   4. epilogue                    f32 store becomes conditional (`og` may be NULL) and an f16
+//                                  twin store is added at the identical rounding point
+// Everything else — the K/V double buffer, the ldmatrix address generators, the mma sequence, the
+// softmax/mask/rescale, the shared-memory window — is character-for-character the shipped kernel.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+template <int BN, int PMMA, int DBUF>
+__global__ void __launch_bounds__(FA_NWARP * 32)
+_fa2_causal_o16_kernel(const float* __restrict__ qg, const __half* __restrict__ kg,
+                       const __half* __restrict__ vg, float* __restrict__ og,
+                       __half* __restrict__ og16, const float* __restrict__ scalep, int m,
+                       int n_keys, int h_q, int h_kv, int d, int pos_base, int rev_rows) {
+    // The scale rides a DEVICE POINTER, not a float argument — see `_fa_causal_kernel`.
+    const float scale = *scalep;
+    extern __shared__ __half smem[];
+    const int KVH = BN * FA_LD;                     // halves in one K (or V) tile
+    // The two rotating buffers are addressed by ARITHMETIC on `smem`, never through a
+    // `__half* bufK[2]` array: a runtime index (`kb & 1`) into a local array forces the array
+    // itself into local memory, which ptxas reports as a 32-byte stack frame and costs a
+    // per-thread private load on every use inside the key-block loop.
+    __half* sQ = smem + 2 * KVH;                    // == buffer 1's K; dead after the A loads
+    __half* sP = smem + 4 * KVH;                    // PMMA=0 only (host sizes the window)
+    const int sPld = BN + FA_PLD;
+
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    // FRONT 7: `rev_rows` reverses the row-block dispatch order (heaviest-CTA-first).
+    // Bit-exact either way — each CTA computes its own rows and reads no other CTA's
+    // output — and it is a runtime argument, so the two orders are the SAME binary
+    // and their A/B cannot be confounded by codegen.
+    const int qi = rev_rows ? ((int)gridDim.x - 1 - (int)blockIdx.x)
+                              : (int)blockIdx.x;
+    const int h = blockIdx.y;
+    const int hk = h / (h_q / h_kv);
+    const int row0 = qi * FA_BM;
+    const int kvld = h_kv * d;
+    const int qld = h_q * d;
+    // ldmatrix address generators: lane>>3 selects which of the four 8x8 sub-matrices this
+    // lane names a row of. Bit 0 -> the second group of 8 ROWS, bit 1 -> the second group of
+    // 8 COLUMNS. Identical for every tile in the kernel, so they are hoisted out of the loop.
+    const int lr8 = ((lane >> 3) & 1) << 3;         // 0 or 8
+    const int lc8 = ((lane >> 3) & 2) << 2;         // 0 or 8
+    const int l7 = lane & 7;
+    const int rlo = lane >> 2;                      // this lane's row inside the warp's 16
+    const int chi = (lane & 3) << 1;                // this lane's column base in an 8-wide tile
+
+    int rows_here = m - row0;
+    if (rows_here > FA_BM) rows_here = FA_BM;
+    int kb_causal = (pos_base + row0 + rows_here - 1) / BN;
+    int kb_keys = (n_keys - 1) / BN;
+    int kb_max = kb_causal < kb_keys ? kb_causal : kb_keys;
+
+    // ── kb=0 in flight FIRST (it is async and touches buffer 0 only), then stage Q ──
+    if (DBUF) {
+        fa2_load_kv<BN, 1>(smem, smem + KVH, kg, vg, 0, kb_max, n_keys, hk, d, kvld, tid);
+        fa2_cp_commit();
+    }
+    {   // Q tile: f32 -> f16 with the attention scale folded in, at `_pf_q_pack_hm_f16`'s
+        // rounding point — verbatim FRONT 3, into the buffer-1 window instead of its own.
+        const int nvec = FA_BM * (FA_D / 4);
+        for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+            int r = t / (FA_D / 4);
+            int c4 = t - r * (FA_D / 4);
+            int gr = row0 + r;
+            float4 val = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+            if (gr < m)
+                val = *reinterpret_cast<const float4*>(qg + (size_t)gr * qld + h * d + c4 * 4);
+            __half2* dst = reinterpret_cast<__half2*>(sQ + r * FA_LD + c4 * 4);
+            dst[0] = __floats2half2_rn(val.x * scale, val.y * scale);
+            dst[1] = __floats2half2_rn(val.z * scale, val.w * scale);
+        }
+    }
+    __syncthreads();
+    // ── Q A-fragments: loaded ONCE per CTA, reused across every key block. One ldmatrix.x4
+    //    per 16-column k-step yields that step's a0..a3 directly. ──
+    unsigned qa[FA_D / 16][4];
+#pragma unroll
+    for (int ks = 0; ks < FA_D / 16; ks++)
+        fa2_ldsm4(qa[ks][0], qa[ks][1], qa[ks][2], qa[ks][3],
+                  sQ + (warp * 16 + lr8 + l7) * FA_LD + ks * 16 + lc8);
+    __syncthreads();                                // sQ is dead: buffer 1 may be overwritten
+    if (DBUF) {
+        fa2_load_kv<BN, 1>(smem + 2 * KVH, smem + 3 * KVH, kg, vg, 1, kb_max, n_keys, hk, d,
+                           kvld, tid);
+        fa2_cp_commit();
+    }
+
+    float oacc[FA_D / 8][4];
+#pragma unroll
+    for (int i = 0; i < FA_D / 8; i++) {
+        oacc[i][0] = 0.0f; oacc[i][1] = 0.0f; oacc[i][2] = 0.0f; oacc[i][3] = 0.0f;
+    }
+    constexpr int NT = BN / 8;                      // m16n8 score tiles per key block
+    const float NEG = -1.0e30f;
+    float m0 = NEG, m1 = NEG, l0 = 0.0f, l1 = 0.0f;
+    const int qg0 = pos_base + row0 + warp * 16 + rlo;      // global position of row `rlo`
+    const int qg1 = qg0 + 8;
+
+    for (int kb = 0; kb <= kb_max; kb++) {
+        const int cur = DBUF ? (kb & 1) : 0;
+        __half* bk = smem + cur * 2 * KVH;          // this iteration's rotating buffer
+        __half* bv = bk + KVH;
+        if (DBUF) { fa2_cp_wait1(); __syncthreads(); }
+        else {
+            fa2_load_kv<BN, 0>(smem, smem + KVH, kg, vg, kb, kb_max, n_keys, hk, d, kvld,
+                               tid);
+            __syncthreads();
+        }
+        const __half* sK = bk;
+        const __half* sV = bv;
+
+        // ── S[16,BN] = Q[16,d] @ K^T[d,BN], f32 accumulate. All of one k-step's B fragments
+        //    are loaded before any of its mmas issue, so the loads overlap. ──
+        float s[NT][4];
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            s[nt][0] = 0.0f; s[nt][1] = 0.0f; s[nt][2] = 0.0f; s[nt][3] = 0.0f;
+        }
+#pragma unroll
+        for (int ks = 0; ks < FA_D / 16; ks++) {
+#pragma unroll
+            for (int np = 0; np < BN / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4(b0, b1, b2, b3,
+                          sK + (np * 16 + lr8 + l7) * FA_LD + ks * 16 + lc8);
+                fa2_mma(s[2 * np], qa[ks], b0, b2);         // n-tile np*16
+                fa2_mma(s[2 * np + 1], qa[ks], b1, b3);     // n-tile np*16 + 8
+            }
+        }
+
+        // ── causal + cache-tail mask. s[nt][0,1] are row `rlo`, s[nt][2,3] row `rlo+8`, at
+        //    columns nt*8 + chi + {0,1}. The whole block is unmasked when its LAST key is at
+        //    or below this warp's FIRST query row and inside the cache, so the per-element
+        //    predicate only runs on the diagonal block. ──
+        const bool need_mask = (kb * BN + BN - 1 > qg0) || (kb * BN + BN - 1 >= n_keys);
+        if (need_mask) {
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                const int j = kb * BN + nt * 8 + chi;
+                const int jc = j < n_keys ? j : -1;                 // cache tail
+                if (jc < 0 || j > qg0) s[nt][0] = NEG;
+                if (jc < 0 || j + 1 > qg0) s[nt][1] = NEG;
+                if (jc < 0 || j > qg1) s[nt][2] = NEG;
+                if (jc < 0 || j + 1 > qg1) s[nt][3] = NEG;
+            }
+        }
+
+        // ── online softmax: row max over this block, alpha rescale of O, exp into P ──
+        float t0 = NEG, t1 = NEG;
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            t0 = fmaxf(t0, fmaxf(s[nt][0], s[nt][1]));
+            t1 = fmaxf(t1, fmaxf(s[nt][2], s[nt][3]));
+        }
+        t0 = fa_wmax(t0);
+        t1 = fa_wmax(t1);
+        const float n0 = fmaxf(m0, t0), n1 = fmaxf(m1, t1);
+        const float a0 = __expf(m0 - n0), a1 = __expf(m1 - n1);
+#pragma unroll
+        for (int i = 0; i < FA_D / 8; i++) {
+            oacc[i][0] *= a0; oacc[i][1] *= a0;
+            oacc[i][2] *= a1; oacc[i][3] *= a1;
+        }
+        float s0 = 0.0f, s1 = 0.0f;
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            const float p0 = __expf(s[nt][0] - n0), p1 = __expf(s[nt][1] - n0);
+            const float p2 = __expf(s[nt][2] - n1), p3 = __expf(s[nt][3] - n1);
+            s0 += p0 + p1; s1 += p2 + p3;
+            s[nt][0] = p0; s[nt][1] = p1; s[nt][2] = p2; s[nt][3] = p3;
+        }
+        s0 = fa_wsum(s0);
+        s1 = fa_wsum(s1);
+        l0 = l0 * a0 + s0;
+        l1 = l1 * a1 + s1;
+        m0 = n0; m1 = n1;
+
+        // ── O[16,d] += P[16,BN] @ V[BN,d]. PMMA=1: P's A-fragment for k-step `ks` is the
+        //    four f32 of score tiles 2ks / 2ks+1 converted and packed in place — the m16n8k16
+        //    A layout and the m16n8 D layout put a lane's k-pair at the same two registers,
+        //    so no shared memory and no fence is involved. ──
+        if (PMMA) {
+#pragma unroll
+            for (int ks = 0; ks < BN / 16; ks++) {
+                unsigned pa[4];
+                pa[0] = fa2_pk(s[2 * ks][0], s[2 * ks][1]);
+                pa[1] = fa2_pk(s[2 * ks][2], s[2 * ks][3]);
+                pa[2] = fa2_pk(s[2 * ks + 1][0], s[2 * ks + 1][1]);
+                pa[3] = fa2_pk(s[2 * ks + 1][2], s[2 * ks + 1][3]);
+#pragma unroll
+                for (int np = 0; np < FA_D / 16; np++) {
+                    unsigned b0, b1, b2, b3;
+                    fa2_ldsm4t(b0, b1, b2, b3,
+                               sV + (ks * 16 + lr8 + l7) * FA_LD + np * 16 + lc8);
+                    fa2_mma(oacc[2 * np], pa, b0, b1);          // dims np*16 .. +7
+                    fa2_mma(oacc[2 * np + 1], pa, b2, b3);      // dims np*16+8 .. +15
+                }
+            }
+        } else {
+            // P through shared memory (attribution arm). Each warp writes and reads back only
+            // its OWN 16 rows, so the round trip needs no cross-warp fence — but the two row
+            // groups of an m16n8 accumulator are `rlo` and `rlo + 8`, NOT 0 and 8: anchoring
+            // at the tile base instead of at this lane's row scatters every lane's scores into
+            // the wrong rows, which is exactly what this arm did on first write (max_abs 28.7
+            // against the reference, 3.2 M of 3.67 M elements wrong) while the PMMA=1 arm —
+            // which never leaves registers and so has no row to mis-anchor — was correct.
+            __half* pw = sP + (warp * 16 + rlo) * sPld;
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                *reinterpret_cast<__half2*>(pw + nt * 8 + chi) =
+                    __floats2half2_rn(s[nt][0], s[nt][1]);
+                *reinterpret_cast<__half2*>(pw + 8 * sPld + nt * 8 + chi) =
+                    __floats2half2_rn(s[nt][2], s[nt][3]);
+            }
+            __syncthreads();
+#pragma unroll
+            for (int ks = 0; ks < BN / 16; ks++) {
+                unsigned pa[4];
+                fa2_ldsm4(pa[0], pa[1], pa[2], pa[3],
+                          sP + (warp * 16 + lr8 + l7) * sPld + ks * 16 + lc8);
+#pragma unroll
+                for (int np = 0; np < FA_D / 16; np++) {
+                    unsigned b0, b1, b2, b3;
+                    fa2_ldsm4t(b0, b1, b2, b3,
+                               sV + (ks * 16 + lr8 + l7) * FA_LD + np * 16 + lc8);
+                    fa2_mma(oacc[2 * np], pa, b0, b1);
+                    fa2_mma(oacc[2 * np + 1], pa, b2, b3);
+                }
+            }
+        }
+        __syncthreads();                            // buffer `cur` is dead
+        if (DBUF) {
+            fa2_load_kv<BN, 1>(bk, bv, kg, vg, kb + 2, kb_max, n_keys, hk, d, kvld, tid);
+            fa2_cp_commit();
+        }
+    }
+
+    // ── epilogue: divide by the row sums and write position-major f32 STRAIGHT TO GLOBAL.
+    //    d0/d1 are (row rlo, cols nt*8+chi and +1) = one aligned float2; d2/d3 are row
+    //    rlo+8 at the same columns. No shared staging, no fence. ──
+    const float inv0 = (l0 > 0.0f) ? (1.0f / l0) : 0.0f;
+    const float inv1 = (l1 > 0.0f) ? (1.0f / l1) : 0.0f;
+    const int r0g = row0 + warp * 16 + rlo;
+    const int r1g = r0g + 8;
+    const bool w0 = r0g < m, w1 = r1g < m;
+#pragma unroll
+    for (int nt = 0; nt < FA_D / 8; nt++) {
+        const int c = nt * 8 + chi;
+        // ── THE ONLY NUMERIC DIFFERENCE FROM `_fa2_causal_kernel`, and it is not a numeric
+        //    difference at all: the same two f32 accumulator products, rounded to nearest-even
+        //    halves by `__floats2half2_rn` — the identical operation `__float2half` performs, so
+        //    the twin holds bit-for-bit what `_f32_to_f16_kernel` would have produced from the
+        //    f32 this kernel would otherwise have stored. `og` is NULL in the ship arm (the 58.7
+        //    MB/layer f32 write existed only to feed that convert) and non-NULL in the verify
+        //    arm, which is what gives `tc_shim_verify_o16` something to compare against.
+        //    The twin's row stride in HALVES is `qld` (= h_q*d = n_q): the identical
+        //    position-major layout the convert wrote into `tc_a16`, so `_tc_gemm_f16_32c_pre`
+        //    consumes it unchanged. The half2 store is 4-byte aligned because `c = nt*8 + chi`
+        //    is even and `h*d` is a multiple of 128. ──
+        if (og != nullptr) {
+            if (w0) *reinterpret_cast<float2*>(og + (size_t)r0g * qld + h * d + c) =
+                        make_float2(oacc[nt][0] * inv0, oacc[nt][1] * inv0);
+            if (w1) *reinterpret_cast<float2*>(og + (size_t)r1g * qld + h * d + c) =
+                        make_float2(oacc[nt][2] * inv1, oacc[nt][3] * inv1);
+        }
+        if (w0) *reinterpret_cast<__half2*>(og16 + (size_t)r0g * qld + h * d + c) =
+                    __floats2half2_rn(oacc[nt][0] * inv0, oacc[nt][1] * inv0);
+        if (w1) *reinterpret_cast<__half2*>(og16 + (size_t)r1g * qld + h * d + c) =
+                    __floats2half2_rn(oacc[nt][2] * inv1, oacc[nt][3] * inv1);
+    }
+}
+#endif  // ALGENTA_TC_SHIM_O16
+
 // Dynamic shared bytes. The window is FOUR K/V tiles = 4 * BN * FA_LD HALVES (two rotating
 // buffers, each a K tile and a V tile), i.e. 8 * BN * FA_LD BYTES: 34.8 KB at BN=32, 69.6 KB
 // at BN=64, 139.3 KB at BN=128 against the A100's 163 KB per-block opt-in. PMMA=1 needs no
@@ -1948,6 +2246,194 @@ extern "C" int64_t tc_shim_fa2_causal_async(const void* q_f32, const void* k16, 
     record_error((int64_t)e);
     return (int64_t)e;
 }
+
+#ifdef ALGENTA_TC_SHIM_O16
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// FRONT 7 LEVER 1 (2026-09-16) — the f16 O TWIN: `-D ALGENTA_TC_SHIM_O16` in the shim,
+// `-D ALGENTA_7B_PF_O16TWIN` in the engine.
+//
+// WHY. FRONT 6's decomposition of the adopted `_g2` arm puts `A_convert_scalar` at 2.344 ms of a
+// 260.967 ms busy — 28 launches of `_f32_to_f16_kernel`, exactly one per layer, and source
+// inspection says which role: under F16NORM+F16MLP the rmsnorm f16 twin feeds qkv and gate/up and
+// the SwiGLU epilogue feeds down, so **o_proj is the only projection whose A is still f32**,
+// because FA2's O epilogue writes `pf_attn` f32 and a second pass then converts it. That pass
+// moves 88.1 MB per layer (58.7 MB of f32 read + 29.4 MB of f16 written) in 83.72 us = 1052 GB/s
+// = 68% of the 1555 GB/s roof — it is not even at the bandwidth floor of the work it does — but
+// the fix is not a faster convert, it is NO convert. Writing the twin from the accumulator
+// register removes the launch, removes the 58.7 MB f32 write that only existed to feed it (the
+// ship arm passes `o_f32 = NULL`), and hands the GEMM an A operand of identical bits.
+//
+// HONESTY REQUIREMENTS this block discharges:
+//  * The whole block is behind ALGENTA_TC_SHIM_O16, and the f32 instantiation
+//    `_fa2_causal_kernel` keeps its signature, its launch bounds and its `blockIdx.x` row order,
+//    so an object built WITHOUT the macro is compared section-for-section against a build of
+//    FRONT 6's source by `run_ab_7b_front7.sh`. There are no `#else` stubs: an arm that passes
+//    the Mojo flag but links an object without this block fails AT LINK TIME.
+//  * Bit-identity is PROVEN FULL-ELEMENT before any speed claim, by the `_hv` arm (this file's
+//    verify entries plus `-D ALGENTA_7B_PF_O16VERIFY`, which passes BOTH O pointers): every
+//    element of every layer is compared as BITS (`__half_as_ushort`), not as values, so
+//    +0.0/-0.0 and any NaN payload count as mismatches instead of comparing equal.
+//  * A DECLINED twin (-301/-304/-305/-311, the same codes `tc_shim_fa2_causal_async` returns)
+//    falls back to the f32 entry and hence to the shipped convert, so the lever can only ever
+//    replace the path it was measured on. Any other status is a real CUDA failure.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+static int g_fa2o16_attr_done = 0;
+static int g_fa2o16_smem_ok[3][2] = {{0, 0}, {0, 0}, {0, 0}};
+
+static int64_t fa2o16_set_attrs(void) {
+    if (g_fa2o16_attr_done) return 0;
+#define FA2O16_ATTR(BN_, PM_, IDX_, K)                                                 \
+    do {                                                                               \
+        int sm_ = fa2_smem_bytes<BN_, PM_>();                                          \
+        cudaError_t e_ = cudaFuncSetAttribute(                                         \
+            K, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_);                      \
+        g_fa2o16_smem_ok[IDX_][PM_] = (e_ == cudaSuccess) ? 1 : 0;                     \
+        if (e_ != cudaSuccess)                                                         \
+            fprintf(stderr,                                                            \
+                    "[tc_shim] FA2-O16 BN=%d PMMA=%d DECLINED: %d B of dynamic shared "  \
+                    "memory is not grantable here (%s) -- o_proj keeps the f32 O and "   \
+                    "its convert pass.\n",                                             \
+                    (BN_), (PM_), sm_, cudaGetErrorString(e_));                        \
+    } while (0)
+    FA2O16_ATTR(32, 1, 0, (_fa2_causal_o16_kernel<32, 1, 1>));
+    FA2O16_ATTR(64, 1, 1, (_fa2_causal_o16_kernel<64, 1, 1>));
+    FA2O16_ATTR(128, 1, 2, (_fa2_causal_o16_kernel<128, 1, 1>));
+    FA2O16_ATTR(32, 0, 0, (_fa2_causal_o16_kernel<32, 0, 1>));
+    FA2O16_ATTR(64, 0, 1, (_fa2_causal_o16_kernel<64, 0, 1>));
+    FA2O16_ATTR(128, 0, 2, (_fa2_causal_o16_kernel<128, 0, 1>));
+    FA2O16_ATTR(64, 1, 1, (_fa2_causal_o16_kernel<64, 1, 0>));
+#undef FA2O16_ATTR
+    g_fa2o16_attr_done = 1;
+    return 0;
+}
+
+// Same contract as `tc_shim_fa2_causal_async` (same decline codes, same variant table) plus the
+// f16 O twin pointer, an `o_f32` that MAY BE NULL, and `rev_rows`. Enqueues on the shim stream,
+// does NOT sync.
+extern "C" int64_t tc_shim_fa2_causal_o16_async(const void* q_f32, const void* k16,
+                                                const void* v16, void* o_f32, void* o16,
+                                                const void* scale_f32, int64_t m, int64_t n_keys,
+                                                int64_t h_q, int64_t h_kv, int64_t d,
+                                                int64_t pos_base, int64_t bn, int64_t variant,
+                                                int64_t rev_rows) {
+    if (d != FA_D) return -301;
+    if (o16 == nullptr) return -306;      // no twin buffer: the caller must decline, not guess
+    if (m <= 0 || n_keys <= 0 || h_kv <= 0 || h_q <= 0) return 0;
+    if ((h_q % h_kv) != 0) return -304;
+    {
+        int bnv = (bn == 32 || bn == 128) ? (int)bn : 64;
+        if (FA_BM > 2 * bnv) return -305;
+    }
+    int64_t r = tc_shim_fa2_layout_probe();
+    if (r != 0) return r;
+    r = fa2o16_set_attrs();
+    if (r != 0) return r;
+    {
+        int pmm = (variant == 1) ? 0 : 1;
+        if (!g_fa2o16_smem_ok[fa2_bn_idx(bn)][pmm]) return -305;
+        if (variant == 2 && bn != 64) return -305;
+    }
+    dim3 grid((unsigned)((m + FA_BM - 1) / FA_BM), (unsigned)h_q);
+    dim3 block(FA_NWARP * 32);
+    int im = (int)m, ink = (int)n_keys, ihq = (int)h_q, ihkv = (int)h_kv, id = (int)d;
+    int ipos = (int)pos_base, irev = (int)(rev_rows ? 1 : 0);
+    const float* q = (const float*)q_f32;
+    const __half* k = (const __half*)k16;
+    const __half* v = (const __half*)v16;
+    const float* sp = (const float*)scale_f32;
+    float* o = (float*)o_f32;
+    __half* o16p = (__half*)o16;
+    cudaError_t e = cudaSuccess;
+#define FA2O16_LAUNCH(K, SMB)                                                          \
+    K<<<grid, block, (size_t)(SMB), g_stream>>>(q, k, v, o, o16p, sp, im, ink, ihq,    \
+                                                ihkv, id, ipos, irev)
+    if (variant == 1) {                       // double buffer, P through shared
+        if (bn == 32) { FA2O16_LAUNCH((_fa2_causal_o16_kernel<32, 0, 1>), (fa2_smem_bytes<32, 0>())); }
+        else if (bn == 128) { FA2O16_LAUNCH((_fa2_causal_o16_kernel<128, 0, 1>), (fa2_smem_bytes<128, 0>())); }
+        else { FA2O16_LAUNCH((_fa2_causal_o16_kernel<64, 0, 1>), (fa2_smem_bytes<64, 0>())); }
+    } else if (variant == 2) {                // synchronous loads, P in registers
+        if (bn != 64) return -305;
+        FA2O16_LAUNCH((_fa2_causal_o16_kernel<64, 1, 0>), (fa2_smem_bytes<64, 1>()));
+    } else {                                  // the shipped form: both sub-levers
+        if (bn == 32) { FA2O16_LAUNCH((_fa2_causal_o16_kernel<32, 1, 1>), (fa2_smem_bytes<32, 1>())); }
+        else if (bn == 128) { FA2O16_LAUNCH((_fa2_causal_o16_kernel<128, 1, 1>), (fa2_smem_bytes<128, 1>())); }
+        else { FA2O16_LAUNCH((_fa2_causal_o16_kernel<64, 1, 1>), (fa2_smem_bytes<64, 1>())); }
+    }
+#undef FA2O16_LAUNCH
+    e = cudaGetLastError();
+    if (e != cudaSuccess)
+        fprintf(stderr,
+                "[tc_shim] FA2-O16 LAUNCH FAILED: %s | variant=%lld bn=%lld rev=%d o_f32=%s "
+                "grid=%ux%u block=%u m=%lld n_keys=%lld\n",
+                cudaGetErrorString(e), (long long)variant, (long long)bn, irev,
+                o == nullptr ? "NULL" : "set", grid.x, grid.y, block.x, (long long)m,
+                (long long)n_keys);
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
+// ── the full-element bit-identity proof. Compares BITS, not values: `__half_as_ushort`, so
+//    +0.0/-0.0 and any NaN payload are mismatches rather than `==`-equal. The counters live on
+//    the device and accumulate across every layer of every prefill the verify arm runs;
+//    `_report` syncs, prints, returns the mismatch count and resets, so a second call reports
+//    the next window rather than a running total nobody can attribute. ──
+__global__ void _verify_o16_kernel(const float* __restrict__ o32, const __half* __restrict__ o16,
+                                   long n, unsigned long long* __restrict__ bad,
+                                   unsigned long long* __restrict__ first) {
+    long i = (long)blockIdx.x * blockDim.x + threadIdx.x;
+    long stride = (long)gridDim.x * blockDim.x;
+    for (; i < n; i += stride) {
+        if (__half_as_ushort(__float2half(o32[i])) != __half_as_ushort(o16[i])) {
+            atomicAdd(bad, 1ULL);
+            atomicMin(first, (unsigned long long)i);
+        }
+    }
+}
+
+static unsigned long long* g_v_counters = nullptr;   // [0] = mismatches, [1] = first index
+static long long g_v_elems = 0;
+
+extern "C" int64_t tc_shim_verify_o16(const void* o_f32, const void* o16, int64_t n) {
+    if (n <= 0) return 0;
+    if (o_f32 == nullptr || o16 == nullptr) return -307;
+    if (g_v_counters == nullptr) {
+        if (cudaMalloc((void**)&g_v_counters, 2 * sizeof(unsigned long long)) != cudaSuccess)
+            return -308;
+        cudaMemset(g_v_counters, 0, sizeof(unsigned long long));
+        cudaMemset(g_v_counters + 1, 0xff, sizeof(unsigned long long));   // atomicMin identity
+    }
+    int threads = 256;
+    long blocks = (long)((n + threads - 1) / threads);
+    if (blocks > 65535) blocks = 65535;
+    _verify_o16_kernel<<<(unsigned)blocks, threads, 0, g_stream>>>(
+        (const float*)o_f32, (const __half*)o16, (long)n, g_v_counters, g_v_counters + 1);
+    cudaError_t e = cudaGetLastError();
+    if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }
+    g_v_elems += (long long)n;
+    return 0;
+}
+
+// Sync, print, return the mismatch count, reset. -309 = the device counters could not be read
+// back, which is a FAILED PROOF, not a passed one: a negative return must be reported as "not
+// proven", never as zero mismatches.
+extern "C" int64_t tc_shim_verify_o16_report(void) {
+    if (g_v_counters == nullptr) return -309;
+    if (cudaStreamSynchronize(g_stream) != cudaSuccess) return -309;
+    unsigned long long host[2] = {0ULL, 0ULL};
+    if (cudaMemcpy(host, g_v_counters, 2 * sizeof(unsigned long long), cudaMemcpyDeviceToHost)
+        != cudaSuccess) return -309;
+    printf("TC O16 VERIFY: mismatches = %llu of %lld elements compared", host[0], g_v_elems);
+    if (host[0] != 0ULL && host[1] != ~(unsigned long long)0ULL)
+        printf(" (first at element %llu)", host[1]);
+    printf(" | verdict = %s\n", host[0] == 0ULL ? "BIT-IDENTICAL (full element)" : "DIVERGED");
+    cudaMemset(g_v_counters, 0, sizeof(unsigned long long));
+    cudaMemset(g_v_counters + 1, 0xff, sizeof(unsigned long long));
+    g_v_elems = 0;
+    return (int64_t)host[0];
+}
+#endif  // ALGENTA_TC_SHIM_O16 — deliberately NO stubs in an `#else`, exactly as the LT block
+        // below: "flag passed but code absent" must fail the LINK, not decline at runtime.
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // FA3 — GQA-PACKED CAUSAL FLASH ATTENTION (FRONT 5 lever 1)  `-D ALGENTA_7B_PF_FA3`
@@ -3380,6 +3866,50 @@ extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t,
 #ifdef ALGENTA_TC_SHIM_LT
 #include <cublasLt.h>
 
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+#include <stdlib.h>     // getenv  (ALGENTA_LT_PICK)
+#include <string.h>     // strtok_r
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// FRONT 7 LEVER 3 (2026-09-16) — cublasLt algorithm selection IN SITU: `-D
+// ALGENTA_TC_SHIM_LTINSITU` in the shim (which requires `-D ALGENTA_TC_SHIM_LT`), `-D
+// ALGENTA_7B_PF_LTINSITU` in the engine.
+//
+// WHY. FRONT 6's stage-time search times each candidate in an isolated back-to-back loop and
+// takes the MEAN of 7. In the arm it shipped, that selection left 209.947 ms of nsys-measured
+// cublas against 191.15 ms of tuned isolated per-role sums — +9.8% — and its own probe note
+// measured the isolated form over-forecasting by +10.7% at this exact shape. Two things in that
+// loop are not the conditions the engine runs in: the L2/DRAM state a real layer chain leaves
+// behind, and a mean over 7 samples on a box whose 400 W cap FRONT 6 caught throttling to
+// 1230 MHz under sustained load. This block does not guess which of the two matters. It times
+// every candidate in its REAL slot in the chain — one sample per layer per prefill, so 28
+// samples per shape per prefill — and lets the MEDIAN decide, then freezes before the driver's
+// timed loop so the measured runs carry zero exploration overhead and a single fixed algorithm
+// per shape.
+//
+// HONESTY REQUIREMENTS:
+//  * It prints the whole table: per shape, per candidate, the in-situ median and the sample
+//    count, next to the isolated mean the stage-time search picked and the index of each. A
+//    search whose table is not published cannot be audited, and this campaign has been burned
+//    three times by a standalone probe that RANKED a lever without PRICING it.
+//  * It reports the winner it chose AND whether that differs from the stage-time pick. If the
+//    in-situ medians reproduce the isolated ranking, that is the finding — the +9.8% is then not
+//    algorithm choice and the round says so instead of shipping a lever that does nothing.
+//  * `freeze` is a hard barrier: it syncs, drains every in-flight event pair, and any candidate
+//    with zero samples is excluded rather than treated as infinitely fast. A shape that is still
+//    exploring when the timed loop starts would rotate algorithms between runs, which is why the
+//    driver calls `tc_shim_lt_freeze()` explicitly and the flag audit reads
+//    `tc_shim_lt_insitu_state()` (2 = frozen) rather than the flag literal.
+//  * `ALGENTA_LT_PICK="NxK:idx;NxK:idx"` overrides the selection with a recorded literal, so a
+//    RACED arm can run a fixed algorithm set that the token gates actually cover — the in-situ
+//    search itself runs during warmup, after G0/G1, so its own choice is not gate-covered. The
+//    override is printed per shape; an idx that is out of range for that shape is IGNORED with a
+//    printed warning and the timed winner stands.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+#define LTINS_MAXCAND 32      // heuristic slots retained per shape (tc_shim_lt_tune's MAXRES)
+#define LTINS_MAXS 24         // in-situ samples kept per candidate (median of these decides)
+#define LTINS_RING 16         // event pairs in flight per shape; the host runs ahead of the GPU
+#endif  // ALGENTA_TC_SHIM_LTINSITU
+
 namespace tc_lt {
 
 struct Entry {
@@ -3391,6 +3921,32 @@ struct Entry {
     int tuned;
     int algo_id, tile, stages, splitk, nres;
     double best_ms;
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+    // ── FRONT 7 lever 3: everything the IN-SITU search needs that the stage-time search throws
+    //    away. `tc_shim_lt_tune` times the top-N heuristics in a tight isolated loop and keeps
+    //    ONLY the winner; FRONT 6 measured the consequence — the tuned isolated per-role sum is
+    //    6826.8 us/layer (191.15 ms over 28 layers) against 209.947 ms of nsys-measured cublas
+    //    in the same arm, +9.8%, and its own probe note puts the isolated-vs-in-situ error at
+    //    +10.7% for this shape. So the whole candidate list is retained, and each candidate can
+    //    be timed in its REAL position in the layer chain, once per layer, with the medians
+    //    deciding instead of an isolated mean. ──
+    cublasLtMatmulHeuristicResult_t cand[LTINS_MAXCAND];
+    int ncand;                           // COMPACTED: only heuristics that actually executed, so
+                                         // the in-situ rotation never offers one that failed here
+    double isolated_us[LTINS_MAXCAND];   // the stage-time loop's mean per candidate, kept so the
+                                         // report can put forecast next to measurement
+    int pick_isolated;                   // compact index the stage-time search picked
+    double smp[LTINS_MAXCAND][LTINS_MAXS];
+    int nsmp[LTINS_MAXCAND];
+    double med[LTINS_MAXCAND];
+    int pick_insitu;         // winner index chosen in situ; -1 until frozen
+    double med_best, med_isolated;
+    int forced_pick;         // ALGENTA_LT_PICK override, -1 = none
+    cudaEvent_t ev0[LTINS_RING], ev1[LTINS_RING];
+    int ev_cand[LTINS_RING], ev_pending[LTINS_RING];
+    long ev_slot;            // monotonic call counter while exploring
+    long n_dropped;          // calls whose ring slot was still in flight (host running ahead)
+#endif
 };
 
 static cublasLtHandle_t handle = nullptr;
@@ -3426,8 +3982,132 @@ static Entry* find(int64_t M, int64_t N, int64_t K, int c16, int accum) {
     return nullptr;
 }
 
+static int64_t matmul(Entry& e, const void* a16, const void* w16, void* c);
+
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+static int g_exploring = 0;       // 0 = off, 1 = exploring, 2 = frozen
+static int g_want_samples = 8;    // in-situ samples per candidate the search aims for
+
+static double median_of(double* v, int n) {
+    if (n <= 0) return -1.0;
+    for (int i = 1; i < n; i++) {           // insertion sort: n <= LTINS_MAXS = 24
+        double x = v[i];
+        int j = i - 1;
+        while (j >= 0 && v[j] > x) { v[j + 1] = v[j]; j--; }
+        v[j + 1] = x;
+    }
+    return (n & 1) ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
+}
+
+// Compute the per-candidate in-situ medians, adopt the winner, and print the whole table. The
+// table is the deliverable: a search that only prints its winner cannot be checked against the
+// isolated ranking it was built to correct.
+static void finish(Entry& e) {
+    int best = -1;
+    double bestmed = -1.0;
+    for (int c = 0; c < e.ncand && c < LTINS_MAXCAND; c++) {
+        e.med[c] = (e.nsmp[c] > 0) ? median_of(e.smp[c], e.nsmp[c]) : -1.0;
+        if (e.med[c] >= 0.0 && (best < 0 || e.med[c] < bestmed)) { bestmed = e.med[c]; best = c; }
+    }
+    e.pick_insitu = best;
+    e.med_best = bestmed;
+    if (best >= 0) e.algo = e.cand[best].algo;
+    int forced = e.forced_pick;
+    if (forced >= 0 && forced < e.ncand) {
+        e.algo = e.cand[forced].algo;
+        e.pick_insitu = forced;
+    } else if (forced >= 0) {
+        printf("TC LT INSITU: WARNING ALGENTA_LT_PICK asked for index %d on M=%lld N=%lld "
+               "K=%lld, which has only %d candidates -- IGNORED, the in-situ winner stands\n",
+               forced, (long long)e.M, (long long)e.N, (long long)e.K, e.ncand);
+    }
+    printf("TC LT INSITU: shape M=%lld N=%lld K=%lld C=%s beta=%d | isolated stage-time pick "
+           "idx=%d (%.1f us) | in-situ pick idx=%d (%.2f us median, %d samples) | %s\n",
+           (long long)e.M, (long long)e.N, (long long)e.K, e.c16 ? "f16" : "f32", e.accum,
+           e.pick_isolated, e.best_ms * 1000.0, e.pick_insitu,
+           e.pick_insitu >= 0 ? e.med[e.pick_insitu] * 1000.0 : -1.0,
+           e.pick_insitu >= 0 ? e.nsmp[e.pick_insitu] : 0,
+           (forced >= 0 && forced < e.ncand) ? "ALGENTA_LT_PICK OVERRIDE APPLIED"
+           : (e.pick_insitu == e.pick_isolated ? "same as isolated" : "DIFFERS from isolated"));
+    for (int c = 0; c < e.ncand && c < LTINS_MAXCAND; c++) {
+        int aid = -1, atile = -1, astages = -1, asplitk = -1;
+        size_t sz = 0;
+        cublasLtMatmulAlgoConfigGetAttribute(&e.cand[c].algo, CUBLASLT_ALGO_CONFIG_ID, &aid,
+                                             sizeof(aid), &sz);
+        cublasLtMatmulAlgoConfigGetAttribute(&e.cand[c].algo, CUBLASLT_ALGO_CONFIG_TILE_ID,
+                                             &atile, sizeof(atile), &sz);
+        cublasLtMatmulAlgoConfigGetAttribute(&e.cand[c].algo, CUBLASLT_ALGO_CONFIG_STAGES_ID,
+                                             &astages, sizeof(astages), &sz);
+        cublasLtMatmulAlgoConfigGetAttribute(&e.cand[c].algo, CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
+                                             &asplitk, sizeof(asplitk), &sz);
+        printf("TC LT INSITU:   cand[%2d] id=%-3d tile=%-3d stages=%-3d splitK=%-2d "
+               "isolated=%8.1f us  in-situ median=%8.2f us (n=%2d)%s\n",
+               c, aid, atile, astages, asplitk,
+               (c < e.ncand) ? e.isolated_us[c] : -1.0,
+               e.med[c] * 1000.0, e.nsmp[c],
+               (c == e.pick_insitu) ? "  <== SELECTED" : "");
+    }
+    if (e.n_dropped > 0)
+        printf("TC LT INSITU:   note %ld exploring calls were NOT timed (their ring slot was "
+               "still in flight: the host enqueues a whole prefill ahead of the device)\n",
+               e.n_dropped);
+}
+
+// Drain every ring slot whose closing event has completed, filing its elapsed time under the
+// candidate that ran in it. Opportunistic and called at the head of each exploring dispatch, so
+// a pair is read ~LTINS_RING calls after it was recorded — by which time the GPU has certainly
+// passed it, even though the host is a whole prefill ahead of the device.
+static void drain(Entry& e) {
+    for (int s = 0; s < LTINS_RING; s++) {
+        if (!e.ev_pending[s]) continue;
+        if (cudaEventQuery(e.ev1[s]) != cudaSuccess) continue;
+        float ms = 0.0f;
+        if (cudaEventElapsedTime(&ms, e.ev0[s], e.ev1[s]) == cudaSuccess) {
+            int c = e.ev_cand[s];
+            if (c >= 0 && c < e.ncand && c < LTINS_MAXCAND && e.nsmp[c] < LTINS_MAXS)
+                e.smp[c][e.nsmp[c]++] = (double)ms;
+        }
+        e.ev_pending[s] = 0;
+    }
+}
+
+static int samples_complete(const Entry& e) {
+    for (int c = 0; c < e.ncand && c < LTINS_MAXCAND; c++)
+        if (e.nsmp[c] < g_want_samples) return 0;
+    return 1;
+}
+#endif  // ALGENTA_TC_SHIM_LTINSITU
+
 static int64_t matmul(Entry& e, const void* a16, const void* w16, void* c) {
     float alpha = 1.0f, beta = e.accum ? 1.0f : 0.0f;
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+    if (g_exploring == 1 && e.pick_insitu < 0 && e.ncand > 0) {
+        drain(e);
+        if (samples_complete(e)) { finish(e); }
+        else {
+            int ci = (int)(e.ev_slot % (long)e.ncand);
+            long sloti = e.ev_slot;
+            e.ev_slot++;
+            int slot = (int)(sloti % LTINS_RING);
+            int want_ev = (e.ev_pending[slot] == 0);
+            if (want_ev) cudaEventRecord(e.ev0[slot], g_stream);
+            else e.n_dropped++;
+            cublasStatus_t s0 = cublasLtMatmul(handle, e.op, &alpha, w16, e.La, a16, e.Lb,
+                                               &beta, c, e.Lc, c, e.Lc, &e.cand[ci].algo, ws,
+                                               ws_bytes, g_stream);
+            if (want_ev) {
+                cudaEventRecord(e.ev1[slot], g_stream);
+                e.ev_cand[slot] = ci;
+                e.ev_pending[slot] = 1;
+            }
+            if (s0 != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s0); return -(int64_t)s0; }
+            if (g_noseam) return 0;
+            cudaError_t ce0 = cudaStreamSynchronize(g_stream);
+            record_error((int64_t)ce0);
+            return (int64_t)ce0;
+        }
+    }
+#endif
     cublasStatus_t s = cublasLtMatmul(handle, e.op, &alpha, w16, e.La, a16, e.Lb, &beta,
                                       c, e.Lc, c, e.Lc, &e.algo, ws, ws_bytes, g_stream);
     if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
@@ -3457,6 +4137,36 @@ extern "C" int64_t tc_shim_lt_init(int64_t workspace_bytes) {
     return 0;
 }
 
+// FRONT 7 lever 3: `ALGENTA_LT_PICK="NxK:idx;NxK:idx"` — a recorded literal that pins the
+// algorithm index for a shape, so the RACED arm runs a fixed set the token gates actually cover
+// (the in-situ search itself runs during warmup, after G0/G1). Returns -1 when the env is unset
+// or names no entry for this shape. Deliberately permissive about separators and whitespace:
+// a malformed entry must not silently pin the wrong algorithm, so anything that does not parse
+// as "<N>x<K>:<idx>" is skipped with a warning.
+static int lt_pick_env(int64_t N, int64_t K) {
+    const char* env = getenv("ALGENTA_LT_PICK");
+    if (env == nullptr || env[0] == '\0') return -1;
+    char buf[512];
+    size_t i = 0;
+    for (; env[i] != '\0' && i < sizeof(buf) - 1; i++) buf[i] = env[i];
+    buf[i] = '\0';
+    char* save = nullptr;
+    for (char* tok = strtok_r(buf, ";,", &save); tok != nullptr;
+         tok = strtok_r(nullptr, ";,", &save)) {
+        while (*tok == ' ') tok++;
+        long long n = 0, k = 0, idx = 0;
+        char xs = '\0', colon = '\0';
+        int got = sscanf(tok, "%lld%c%lld%c%lld", &n, &xs, &k, &colon, &idx);
+        if (got != 5 || xs != 'x' || colon != ':') {
+            printf("TC LT INSITU: WARNING ignoring malformed ALGENTA_LT_PICK entry '%s' "
+                   "(want NxK:idx)\n", tok);
+            continue;
+        }
+        if (n == (long long)N && k == (long long)K) return (int)idx;
+    }
+    return -1;
+}
+
 // Time the top-`top` heuristics for ONE shape and cache the winner. `c` is SCRATCH: tuning
 // writes it (beta is honoured, so an accumulate role's scratch must be a buffer the caller is
 // about to overwrite anyway). Returns the winning heuristic index, or negative.
@@ -3471,6 +4181,19 @@ extern "C" int64_t tc_shim_lt_tune(const void* a16, const void* w16, void* c,
     e.M = M; e.N = N; e.K = K; e.c16 = (int)c16; e.accum = (int)accum;
     e.tuned = 0; e.best_ms = -1.0; e.algo_id = -1; e.tile = -1; e.stages = -1;
     e.splitk = -1; e.nres = 0;
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+    e.pick_insitu = -1; e.pick_isolated = -1; e.forced_pick = lt_pick_env(N, K);
+    e.ncand = 0;
+    e.med_best = -1.0; e.med_isolated = -1.0; e.ev_slot = 0; e.n_dropped = 0;
+    for (int z = 0; z < LTINS_MAXCAND; z++) {
+        e.nsmp[z] = 0; e.med[z] = -1.0; e.isolated_us[z] = -1.0;
+        for (int y = 0; y < LTINS_MAXS; y++) e.smp[z][y] = 0.0;
+    }
+    for (int z = 0; z < LTINS_RING; z++) {
+        e.ev_cand[z] = -1; e.ev_pending[z] = 0;
+        e.ev0[z] = nullptr; e.ev1[z] = nullptr;
+    }
+#endif
     int64_t r = make_desc(e);
     if (r != 0) return r;
 
@@ -3516,10 +4239,46 @@ extern "C" int64_t tc_shim_lt_tune(const void* a16, const void* w16, void* c,
         }
         if (!ok) continue;
         double mean = acc / meas;
-        if (best < 0 || mean < e.best_ms) { e.best_ms = mean; best = i; e.algo = res[i].algo; }
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+        // Keep the WHOLE executable candidate list, compacted, plus what the isolated loop
+        // measured for it. FRONT 6 kept only the winner, which is why its report could not say
+        // whether the in-situ ranking agreed with the isolated one — the question lever 3 exists
+        // to answer. Candidates that failed to execute are excluded here rather than offered to
+        // the in-situ rotation later.
+        if (e.ncand < LTINS_MAXCAND) {
+            int j = e.ncand++;
+            e.cand[j] = res[i];
+            e.isolated_us[j] = mean * 1000.0;
+        }
+#endif
+        if (best < 0 || mean < e.best_ms) {
+            e.best_ms = mean; best = i; e.algo = res[i].algo;
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+            e.pick_isolated = e.ncand - 1;
+#endif
+        }
     }
     cudaEventDestroy(ev0); cudaEventDestroy(ev1);
     if (best < 0) return -326;
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+    // A recorded ALGENTA_LT_PICK literal overrides the timed winner at tune time, so the arm
+    // that RACES a given algorithm set is the same arm the token gates cover. Printed either
+    // way: an override that silently did not parse would otherwise look like a timed choice.
+    if (e.forced_pick >= 0) {
+        if (e.forced_pick < e.ncand) {
+            e.algo = e.cand[e.forced_pick].algo;
+            printf("TC LT: ALGENTA_LT_PICK override N=%lld K=%lld -> cand[%d] (isolated %.1f us)"
+                   " instead of the timed winner cand[%d] (%.1f us)\n",
+                   (long long)N, (long long)K, e.forced_pick, e.isolated_us[e.forced_pick],
+                   e.pick_isolated, e.best_ms * 1000.0);
+            best = e.forced_pick;
+        } else {
+            printf("TC LT: WARNING ALGENTA_LT_PICK asked for cand[%d] on N=%lld K=%lld, which "
+                   "has only %d executable candidates -- IGNORED, the timed winner stands\n",
+                   e.forced_pick, (long long)N, (long long)K, e.ncand);
+        }
+    }
+#endif
     size_t sz = 0; int v = -1;
     cublasLtMatmulAlgoConfigGetAttribute(&e.algo, CUBLASLT_ALGO_CONFIG_ID, &v, sizeof(v), &sz);
     e.algo_id = v; v = -1;
@@ -3558,6 +4317,72 @@ extern "C" int64_t tc_shim_gemm_f16_16c_pre_lt(const void* a16, const void* w16,
 }
 
 extern "C" int64_t tc_shim_lt_count(void) { return (int64_t)tc_lt::n_cache; }
+
+#ifdef ALGENTA_TC_SHIM_LTINSITU
+// ── FRONT 7 lever 3's three control entries. The driver calls `explore_begin` AFTER its token
+//    gates and BEFORE its warmup loop, and `freeze` between the warmup loop and the timed loop,
+//    so (a) G0/G1 gate exactly the algorithm FRONT 6's arm ran, (b) every exploring call sits in
+//    the real layer chain, and (c) the measured runs carry zero exploration overhead and one
+//    fixed algorithm per shape. `insitu_state` is what the flag audit reads: 0 = off, 1 = still
+//    exploring (a cell measured in this state would rotate algorithms between runs — the audit
+//    reports it as a FAILED lever, not as a slow one), 2 = frozen. ──
+extern "C" int64_t tc_shim_lt_explore_begin(int64_t samples_per_cand) {
+    using namespace tc_lt;
+    if (handle == nullptr) return -322;
+    if (samples_per_cand > 0 && samples_per_cand <= LTINS_MAXS)
+        g_want_samples = (int)samples_per_cand;
+    int armed = 0;
+    for (int i = 0; i < n_cache; i++) {
+        Entry& e = cache[i];
+        if (!e.tuned || e.ncand <= 0) continue;
+        e.pick_insitu = -1;
+        e.ev_slot = 0; e.n_dropped = 0;
+        for (int c = 0; c < LTINS_MAXCAND; c++) { e.nsmp[c] = 0; e.med[c] = -1.0; }
+        for (int s = 0; s < LTINS_RING; s++) {
+            // created once and never destroyed: the process is short-lived and an event pair
+            // that is still in flight must not be destroyed under the GPU.
+            if (e.ev0[s] == nullptr) cudaEventCreate(&e.ev0[s]);
+            if (e.ev1[s] == nullptr) cudaEventCreate(&e.ev1[s]);
+            e.ev_pending[s] = 0; e.ev_cand[s] = -1;
+        }
+        armed++;
+    }
+    g_exploring = (armed > 0) ? 1 : 0;
+    printf("TC LT INSITU: EXPLORING %s | %d shapes armed | %d in-situ samples wanted per "
+           "candidate | timed in the real layer chain, median decides\n",
+           armed > 0 ? "ARMED" : "NOT ARMED (no tuned shape retained candidates)", armed,
+           g_want_samples);
+    return (int64_t)armed;
+}
+
+// Hard barrier. Syncs, drains every in-flight event pair, freezes each shape that has not
+// frozen itself, prints the per-shape tables, and returns the number of shapes that ended with a
+// chosen algorithm. A shape that collected NO samples keeps FRONT 6's stage-time winner and is
+// NOT counted, so the returned number is the audit's runtime-effect field.
+extern "C" int64_t tc_shim_lt_freeze(void) {
+    using namespace tc_lt;
+    if (handle == nullptr) return -322;
+    if (g_exploring == 2) return (int64_t)n_cache;      // idempotent: the driver may call twice
+    cudaStreamSynchronize(g_stream);
+    cudaDeviceSynchronize();
+    int nfr = 0;
+    for (int i = 0; i < n_cache; i++) {
+        Entry& e = cache[i];
+        if (!e.tuned || e.ncand <= 0) continue;
+        if (e.pick_insitu < 0) { drain(e); finish(e); }
+        if (e.pick_insitu >= 0) nfr++;
+        else printf("TC LT INSITU: shape M=%lld N=%lld K=%lld collected NO in-situ samples -- "
+                    "keeping the stage-time winner (isolated %.1f us)\n",
+                    (long long)e.M, (long long)e.N, (long long)e.K, e.best_ms * 1000.0);
+    }
+    g_exploring = 2;
+    printf("TC LT INSITU: FROZEN %d of %d shapes | every later dispatch uses the frozen "
+           "algorithm, no events are recorded\n", nfr, n_cache);
+    return (int64_t)nfr;
+}
+
+extern "C" int64_t tc_shim_lt_insitu_state(void) { return (int64_t)tc_lt::g_exploring; }
+#endif  // ALGENTA_TC_SHIM_LTINSITU
 
 #endif  // ALGENTA_TC_SHIM_LT
 // NOTE: there are deliberately NO stubs in the `#else`. The whole block above is inside

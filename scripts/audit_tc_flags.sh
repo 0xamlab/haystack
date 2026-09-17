@@ -79,6 +79,20 @@ FLAGS_7B=(
     # shipped GemmEx path anyway.
     "ALGENTA_PF_PASS4096=1|ALGENTA_PF_PASS4096"
     "ALGENTA_7B_PF_LTALGO=1|ALGENTA_7B_PF_LTALGO"
+    # FRONT 7 (2026-09-16, the margin-widening round). O16TWIN DOES add a kernel (a copy of FA2
+    # whose epilogue writes the f16 O twin), so unlike FRONT 6's two levers a `strings` hit on
+    # `_fa2_causal_o16_kernel` is real evidence — and it is still not sufficient: the twin entry
+    # can DECLINE at runtime (-301/-304/-305/-306/-311), in which case the arm measures the
+    # shipped convert path while carrying both the flag and the kernel name. So this lever is
+    # audited three ways: the banner literal, the runtime `o16_twin = armed` field, and the
+    # absence of a `f16 O twin DECLINED` line in the cell's own log.
+    # O16VERIFY is the PROOF arm (writes both O pointers, compares every element as bits) and is
+    # deliberately never a raced arm — the audit records which binaries carried it so a proof
+    # binary cannot be mistaken for a ship one.
+    "ALGENTA_7B_PF_O16TWIN=1|ALGENTA_7B_PF_O16TWIN"
+    "ALGENTA_7B_PF_O16VERIFY=1|ALGENTA_7B_PF_O16VERIFY"
+    "ALGENTA_7B_PF_FAREV=1|ALGENTA_7B_PF_FAREV"
+    "ALGENTA_7B_PF_LTINSITU=1|ALGENTA_7B_PF_LTINSITU"
 )
 # The gemma-3 family (residentk.session_cuda_gemma3_f16). ALGENTA_G3_PF_FA is the round-5
 # fused windowed tensor-core flash attention; FA2 is its round-6 raw-mma v2 kernel (a separate
@@ -112,6 +126,25 @@ CTX_PAT="ALGENTA_7B_CTX8192"
 # the cell was measured on cublasGemmEx DEFAULT while still claiming the flag.
 PASS_MAX_PAT="pass_max = 4096"
 LT_TUNED_PAT="lt_shapes_tuned = 4 of 4"
+# The FRONT 7 runtime fields. Each of these four flags can be present in a binary while the
+# effect is absent, and three of them can be absent while the binary still LOOKS like the lever
+# (the twin kernel's name is in the string table either way):
+#   o16_twin = armed        the session will attempt the twin (and PF_O16LIVE's correctness gate
+#                           held: LTALGO on, rung 0). Without it the flag compiled in but the
+#                           f32 O is still written and still converted.
+#   NO "f16 O twin DECLINED" the attempt did not fall back at runtime. A declined twin means the
+#                           cell measured the shipped convert path.
+#   O16 VERIFY RESULT: PASS  the full-element bit-identity proof (411,041,792 elements per RAG
+#                           prefill, compared as bits) actually ran and passed. Only the _hv
+#                           proof arm carries it; a ship arm has no verify line and that is
+#                           correct — the JSON says which is which.
+#   LT INSITU: FROZEN 4      the in-situ search completed and froze all four shapes before the
+#                           timed loop. State 1 (still exploring) during a measured cell would
+#                           rotate algorithms between that cell's own samples.
+O16_ARMED_PAT="o16_twin = armed"
+O16_DECLINED_PAT="f16 O twin DECLINED"
+O16_VERIFY_PAT="O16 VERIFY RESULT: PASS"
+LT_INSITU_FROZEN_PAT="LT INSITU: FROZEN 4"
 
 # POSITIVE CONTROLS. A literal every driver of the family carries regardless of flags. If
 # neither is found, the audit is broken (not the binary) and must abort rather than report an
@@ -172,6 +205,11 @@ for bin in "$BIN_DIR"/$pat; do
     armed=""
     armed2=""
     ltline=""
+    o16line=""
+    o16dec=""
+    o16ver=""
+    o16shimver=""
+    ltins=""
     if [[ -n "$LOG_DIR" ]]; then
         lg=$(grep -rl -m1 -F "$name" "$LOG_DIR" 2>/dev/null | head -1)
         if [[ -n "${lg:-}" && -f "$lg" ]]; then
@@ -192,6 +230,15 @@ for bin in "$BIN_DIR"/$pat; do
             # every flag-off build reference a cublasLt symbol and fail to link against the stock
             # shim object. So the effect field has to be read from its own line.
             ltline=$(grep -m1 "lt_shapes_tuned" "$lg" 2>/dev/null | head -1)
+            # FRONT 7's runtime-effect lines. The O16 twin's own banner line carries the `armed`
+            # field and the row-order it will run; the DECLINED line is per-prefill and only
+            # appears if the twin entry fell back, so its PRESENCE is the bad case; the verify
+            # verdict and the in-situ freeze count come from the proof arm and the driver.
+            o16line=$(grep -m1 "ALGENTA_7B_PF_O16TWIN=1" "$lg" 2>/dev/null | head -1)
+            o16dec=$(grep -m1 "$O16_DECLINED_PAT" "$lg" 2>/dev/null | head -1)
+            o16ver=$(grep -m1 "O16 VERIFY RESULT" "$lg" 2>/dev/null | head -1)
+            o16shimver=$(grep -m1 "TC O16 VERIFY" "$lg" 2>/dev/null | head -1)
+            ltins=$(grep -m1 "LT INSITU: FROZEN" "$lg" 2>/dev/null | head -1)
         fi
     fi
     {
@@ -227,7 +274,20 @@ for bin in "$BIN_DIR"/$pat; do
         # actually happened, not merely whether the flag was passed.
         echo "   \"pass_max_4096\": $( [[ "$rt" == *"$PASS_MAX_PAT"* ]] && echo true || echo false ),"
         echo "   \"lt_tuned_4_of_4\": $( [[ "$ltline" == *"$LT_TUNED_PAT"* ]] && echo true || echo false ),"
-        echo "   \"lt_line\": $( [[ -n "$ltline" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$ltline" || echo null )"
+        echo "   \"lt_line\": $( [[ -n "$ltline" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$ltline" || echo null ),"
+        # FRONT 7: the twin's runtime effect, its decline, the bit-identity verdict and the
+        # in-situ freeze. `o16_declined_at_runtime` is the one whose TRUE value is bad: it means
+        # the binary carries the lever, the session armed it, and the shim still fell back — so
+        # the cell measured the shipped convert path.
+        echo "   \"o16_twin_armed\": $( [[ "$o16line" == *"$O16_ARMED_PAT"* ]] && echo true || echo false ),"
+        echo "   \"o16_declined_at_runtime\": $( [[ -n "$o16dec" ]] && echo true || echo false ),"
+        echo "   \"o16_verify_pass\": $( [[ "$o16ver" == *"$O16_VERIFY_PAT"* ]] && echo true || echo false ),"
+        echo "   \"lt_insitu_frozen_4\": $( [[ "$ltins" == *"$LT_INSITU_FROZEN_PAT"* ]] && echo true || echo false ),"
+        echo "   \"o16_line\": $( [[ -n "$o16line" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16line" || echo null ),"
+        echo "   \"o16_decline_line\": $( [[ -n "$o16dec" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16dec" || echo null ),"
+        echo "   \"o16_verify_line\": $( [[ -n "$o16ver" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16ver" || echo null ),"
+        echo "   \"o16_shim_verify_line\": $( [[ -n "$o16shimver" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16shimver" || echo null ),"
+        echo "   \"lt_insitu_line\": $( [[ -n "$ltins" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$ltins" || echo null )"
         echo "  },"
     } >> "$TMP"
 done
@@ -266,4 +326,15 @@ for a in d['arms']:
     if a.get('fa_verdict'): print('%-38s   %s' % ('', a['fa_verdict']))
     if a.get('fa2_verdict'): print('%-38s   %s' % ('', a['fa2_verdict']))
     print('%-38s   pass_max_4096=%s lt_tuned_4_of_4=%s' % ('', a.get('pass_max_4096'), a.get('lt_tuned_4_of_4')))
+    if a.get('o16_line') or a.get('o16_twin_armed'):
+        print('%-38s   o16_twin_armed=%s declined_at_runtime=%s verify_pass=%s'
+              % ('', a.get('o16_twin_armed'), a.get('o16_declined_at_runtime'),
+                 a.get('o16_verify_pass')))
+        if a.get('o16_shim_verify_line'):
+            print('%-38s   %s' % ('', a['o16_shim_verify_line']))
+        if a.get('o16_decline_line'):
+            print('%-38s   DECLINED: %s' % ('', a['o16_decline_line']))
+    if a.get('lt_insitu_line'):
+        print('%-38s   lt_insitu_frozen_4=%s | %s'
+              % ('', a.get('lt_insitu_frozen_4'), a['lt_insitu_line']))
 " || { echo "AUDIT JSON INVALID" >&2; exit 1; }

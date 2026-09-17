@@ -29,6 +29,21 @@ MEASURE (20-run medians, rel-IQR <= 5%, outliers >10% flagged — the frozen dis
   gen64        prefill + 64-token captured-graph decode window
   gen256       prefill + 256-token captured-graph decode window
 
+FRONT 7 ARGUMENTS (2026-09-16, both default to the rounds-2-to-6 behaviour):
+  --warmup N     warmup prefills before the timed loop (default WARMUP = 1). Raising it cannot
+                 move a median; it exists because the in-situ algorithm search below collects one
+                 sample per shape per layer per prefill and needs more than one prefill to do it.
+  --lt-insitu N  arm the in-situ cublasLt search for N samples per candidate, in a build with
+                 -D ALGENTA_7B_PF_LTINSITU. PLACEMENT IS THE WHOLE DESIGN: the search is armed
+                 after G0/G1/G2 and the dump, so the token gates cover FRONT 6's stage-time
+                 selection rather than a rotating mixture, and it is frozen before the timed loop,
+                 so no measured sample can be taken while algorithms are still rotating and the
+                 measured runs carry zero event overhead. The shim prints the full per-candidate
+                 table (isolated stage-time mean beside in-situ median, selected one marked),
+                 which is the deliverable whether or not the two rankings agree. A RACED arm pins
+                 the searched set with ALGENTA_LT_PICK at tune time instead, so the selection it
+                 runs is one the gates cover normally.
+
 Usage (A100, sm_80, GPU-idle):
   qwen25_7b_p3_graph_cuda --checkpoint /tmp/w7b/ckpt --arm f32 --dump /tmp/w7b/f32_tokens.txt \
       --oracle <ids> --out /tmp/w7b/f32_bench.txt
@@ -57,6 +72,11 @@ from residentk.contract import (
 from residentk.session import _resident_preflight
 from residentk.session_cuda import CUDA_SESSION_BUILD, _CudaResidentQwen3
 from residentk.session_cuda_p3_graph import _CudaResidentQwen3P3Graph
+from residentk.tc_shim_bridge import (
+    _tc_lt_explore_begin,
+    _tc_lt_freeze,
+    _tc_lt_insitu_state,
+)
 
 comptime MAX_CTX: Int = 8192 if is_defined["ALGENTA_7B_CTX8192"]() else 1600
 """The 256-token fixture + the gen256 tail (256 + 256 = 512) with headroom, PLUS the pp1024
@@ -233,6 +253,8 @@ def main() raises:
     var dump_path = String()
     var compare_path = String()
     var out_path = String()
+    var warmup = WARMUP
+    var lt_insitu = 0
     var i = 1
     while i < len(args):
         var a = String(args[i])
@@ -262,6 +284,23 @@ def main() raises:
             i += 2
         elif a == "--out" and i + 1 < len(args):
             out_path = String(args[i + 1])
+            i += 2
+        elif a == "--warmup" and i + 1 < len(args):
+            # FRONT 7: warmup prefills before the timed loop. Defaults to WARMUP (1), so every
+            # arm that does not pass it runs the rounds-2-to-6 protocol unchanged. The in-situ
+            # cublasLt search needs MORE than one, because it collects one sample per shape per
+            # layer per prefill: 28 samples per prefill against ~16 executable heuristics, so
+            # `--lt-insitu 8` needs ~5 prefills. Raising warmup can only make a measured median
+            # steadier; it is not a knob on the result, and the harness records it per cell.
+            warmup = parse_int(args[i + 1])
+            i += 2
+        elif a == "--lt-insitu" and i + 1 < len(args):
+            # FRONT 7 lever 3: samples per candidate the in-situ cublasLt search collects before
+            # each shape freezes on its best in-situ median. 0 (the default) leaves the search
+            # disarmed and the arm runs FRONT 6's stage-time selection. Only meaningful in a
+            # build with -D ALGENTA_7B_PF_LTINSITU; without that flag the shim has no search to
+            # arm and the driver says so instead of silently doing nothing.
+            lt_insitu = parse_int(args[i + 1])
             i += 2
         else:
             raise Error("qwen25_7b: unknown argument: " + a)
@@ -521,9 +560,45 @@ def main() raises:
                 print("  dumped", len(ds), "tokens to", dump_path)
 
             # ── MEASURE: prefill256 / gen64 / gen256 ──
-            for _ in range(WARMUP):
+            # FRONT 7 lever 3 (-D ALGENTA_7B_PF_LTINSITU + --lt-insitu N): the in-situ cublasLt
+            # search is armed HERE and frozen BELOW. Both placements are load-bearing:
+            #   * armed AFTER G0/G1/G2 and the dump, so what the token gates cover is FRONT 6's
+            #     stage-time selection — the search rotates algorithms while it explores, and a
+            #     gate that ran during exploration would be gating a mixture;
+            #   * frozen BEFORE the timed loop, so no measured sample can be taken while
+            #     algorithms are still rotating and every one of the `runs` samples runs one
+            #     fixed algorithm per shape with zero event overhead.
+            # The shim prints the full per-candidate table at freeze time (isolated mean beside
+            # in-situ median, selected one marked), which is the deliverable whether or not the
+            # in-situ winner differs from the isolated one.
+            # A runtime `if` wraps the comptime one: `@parameter if` cannot carry a dynamic
+            # `elif`, and whether the search is armed is a runtime argument.
+            if lt_insitu > 0:
+                @parameter
+                if is_defined["ALGENTA_7B_PF_LTINSITU"]():
+                    print("LT INSITU: arming the in-situ search |", lt_insitu,
+                          "samples per candidate |", warmup,
+                          "warmup prefills to collect them | shapes armed =",
+                          _tc_lt_explore_begin(lt_insitu))
+                else:
+                    print("LT INSITU: --lt-insitu", lt_insitu, "IGNORED — this binary was built"
+                          " without -D ALGENTA_7B_PF_LTINSITU, so there is no search to arm")
+
+            for _ in range(warmup):
                 var warm = sg.prefill(_copy_ids(race_ids))
                 _check_resident(warm.status, "warmup prefill")
+
+            if lt_insitu > 0:
+                @parameter
+                if is_defined["ALGENTA_7B_PF_LTINSITU"]():
+                    var nfrozen = _tc_lt_freeze()
+                    print("LT INSITU: FROZEN", nfrozen, "shapes | state =",
+                          _tc_lt_insitu_state(), "(2 = frozen; anything else means a measured"
+                          " sample below could rotate algorithms and the cell is VOID)")
+                    if nfrozen < 4:
+                        print("LT INSITU: PARTIAL — only", nfrozen,
+                              "of 4 shapes froze on an in-situ winner; the rest keep FRONT 6's"
+                              " stage-time selection, so this arm is a mix and says so")
 
             var pf_samples = List[Float64]()
             for r in range(runs):

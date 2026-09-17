@@ -1,5 +1,5 @@
 {
- "kernel_count": 190,
+ "kernel_count": 196,
  "kernels": [
   {
    "backend": "metal",
@@ -1295,6 +1295,14 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa2_causal_o16_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_fa2_layout_probe"
   },
   {
@@ -1471,7 +1479,31 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_lt_explore_begin"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_lt_freeze"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_lt_init"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_lt_insitu_state"
   },
   {
    "backend": "cuda",
@@ -1520,6 +1552,22 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_use_legacy_stream"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_verify_o16"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_verify_o16_report"
   }
  ],
  "schema": 1

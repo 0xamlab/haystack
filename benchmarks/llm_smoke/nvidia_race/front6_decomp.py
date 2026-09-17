@@ -35,12 +35,18 @@ from collections import defaultdict
 NS = 1e6  # ns -> ms
 
 EMBED_RX = re.compile(r"prefill_f32.*6fbdda6b|embed", re.I)
-FA2_RX = re.compile(r"_fa2_causal_kernel")
+# FRONT 7: the f16-O twin is a SEPARATE kernel symbol (`_fa2_causal_o16_kernel`), which does NOT
+# contain `_fa2_causal_kernel` as a substring. Without this the twin falls through to a raw-symbol
+# family and the fa2_flash row silently reads 0 launches / 0 ms for the arm that carries the
+# lever -- the same silent-mismatch failure mode this analyzer already had once, when its window
+# marker searched for an unmangled Mojo kernel name and matched nothing. Both arms are
+# re-decomposed with THIS version so the family delta is one basis, not two.
+FA2_RX = re.compile(r"_fa2_causal(?:_o16)?_kernel")
 LMH_RX = re.compile(r"_lmh.*9f8e6b01")
 ARGMAX_RX = re.compile(r"argmax")
 
 FAMILIES = [
-    ("fa2_flash", re.compile(r"_fa2_causal_kernel")),
+    ("fa2_flash", re.compile(r"_fa2_causal(?:_o16)?_kernel")),
     ("fa_flash", re.compile(r"_fa_causal_kernel")),
     ("cublas_gemm", re.compile(r"nvjet|ampere_.*gemm|cutlass|s16816gemm|xmma", re.I)),
     ("kv_stage_v8", re.compile(r"_f32_to_f16_v8")),

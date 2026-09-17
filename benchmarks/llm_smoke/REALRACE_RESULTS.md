@@ -19279,3 +19279,531 @@ measured tree and the rebased head, and `tc_shim.cu` / `tc_shim_bridge.mojo` dif
 #1000's 7B-lane entries merged in purely additively (818 insertions, 0 deletions across the
 four files), so the measured `_fa_g3_window2_kernel`, its entry and the gemma-3 dispatch are
 unchanged in the rebased head.
+## FRONT 7 — Qwen2.5-7B CUDA vs TensorRT-LLM 1.2.1, widening the RAG-4096 margin (2026-09-17, algenta-ent-a100)
+
+Round 6 flipped RAG-4096 to 1.0221x and called the 2.2% margin fragile. This round widens it to
+**1.0309x (median across the three raced prompts)** with one lever that is **bit-exact and proven
+full-element**, holds pp1024 (1.0896x → **1.0938x**) and leaves decode invariant — and it **refutes
+three of round 6's six ranked targets by measurement**, including the two it ranked first and third.
+The round did not reach the ≥2% widening it was asked for, so the second half of this entry is the
+per-layer proof of where the remainder actually sits, against **TensorRT-LLM's own measured RAG-4096
+kernel mix** — captured this round for the first time, replacing an extrapolation every round since
+the first had been comparing against.
+
+### Arms
+
+| arm | on top of FRONT 6's `_g2` | shim object | role |
+|---|---|---|---|
+| `_h0` | — (rebuilt) | LT only, **proven identical** to FRONT 6's | baseline |
+| `_hv` | `+O16TWIN +O16VERIFY` | LT+O16 | full-element bit-identity proof, **not raced** |
+| `_h1` | `+O16TWIN` | LT+O16 | **ship arm** |
+| `_h2` | `+O16TWIN +FAREV` | LT+O16 | lever 1 + reversed FA2 row order |
+| `_hd` | `+O16TWIN +LTINSITU` | LT+O16+LTINSITU | in-situ algorithm search, **diagnostic** |
+
+Binaries (md5, recorded before any cell was measured): `_h0` `c622986040b29277b6306507d30fa88f`,
+`_h1` `e53930f2b2677fbe5e20492f0d625aad`, `_h2` `34e56259341b6cec64324022ed49c644`,
+`_hd` `cc40b32dbbe4690ec0c3dac79d85edcb`, `_hv` `acebd89602e75e7ee68989c8cb7718e6`.
+VM: spot `a2-highgpu-1g`, driver 595.91.07, persistence on, `-lgc 1410,1410`, **400.00 W cap**,
+started 22:37Z and stopped 02:0xZ for the CPU phases, restarted only to pull artifacts, then
+stopped (TERMINATED) per the owner's lifecycle mandate.
+
+### 1. The baseline is provably FRONT 6's code — and the obvious implementation of lever 1 FAILED that proof
+
+Lever 1 needs FA2's O epilogue to write an f16 twin. The obvious implementation extracts the kernel
+body into a `static __device__ __forceinline__` template so the twin is a second `__global__`
+wrapper over it, rather than a 244-line copy that can drift. That was built first, and the
+neutrality proof **rejected it**:
+
+```
+.text  r6=(33898, 691e803e…) f7=(33898, 691e803e…) SAME      .rodata SAME  .data SAME  .bss SAME
+.nv_fatbin r6=(848696, d27b9814…) f7=(848696, 73f64537…) DIFFERS
+PROOF defined symbols: r6=174 f7=174 IDENTICAL
+SASS kernels: r6=27 f7=27 differing=5   →  all 7 _fa2_causal_kernel instantiations moved
+SASS_FA2_NEUTRAL FAIL
+```
+
+Same **1272 instructions**, same register count, four of them rescheduled around an out-of-lined
+`CALL.REL.NOINC`: an inlining boundary gives ptxas's scheduler different freedom even when the
+source is semantically identical. **Every host section and all 174 defined symbols stayed
+identical, so FRONT 6's proof recipe — `.text`/`.rodata`/`.data`/`.bss` plus the defined symbol
+table — would have PASSED it**, and `_h0` would have been raced as FRONT 6's arm without being it.
+FRONT 5 is the measured cost of assuming a codegen move is free here: a defaulted `MINB` parameter
+on `__launch_bounds__` moved that same `<32,1,1>` instantiation **155 → 171 registers**, dropped it
+**3 → 2 CTAs/SM**, and cost **+9.8%** on the RAG-4096 FA block in a kernel whose source had not
+otherwise changed.
+
+Two fixes, both checked rather than argued:
+
+* `.nv_fatbin` joined the compared sections, and **both sources are compiled from one neutral path**
+  (`/tmp/front7_proof/tc_shim.cu`) — because the fatbin's PTX carries a `.file` directive naming the
+  source, which is the trap one level below the `STT_FILE` path symbol that made FRONT 6's
+  whole-file md5 useless. Without the neutral path the section differs for a reason that has nothing
+  to do with codegen, and the check is worthless in both directions.
+* `_fa2_causal_kernel` restored to FRONT 6's **exact text** (verified character-for-character
+  against the merged commit: `SHIPPED_FA2_KERNEL_VERBATIM PASS (244 lines)`), the twin a copy under
+  `#ifdef ALGENTA_TC_SHIM_O16`. Post-fix, same recipe:
+
+```
+.nv_fatbin r6=(848696, d27b981436d80750413a76e2433a758a) f7=(848696, d27b981436d80750413a76e2433a758a) SAME
+SASS kernels: r6=27 f7=27 differing=0     SASS_FA2_NEUTRAL PASS (7 instantiations compared)
+```
+
+A copy can drift, so drift is a checked invariant: `check_o16_copy.py` re-derives the twin from the
+shipped kernel by applying exactly the four documented differences (name; `og16`/`rev_rows`
+parameters; the `qi` expression; the epilogue) and fails on any other divergence, before the harness
+builds anything. `O16_COPY_DRIFT PASS — the 266-line twin is exactly the 244-line shipped kernel
+plus the four documented differences.`
+
+**Occupancy checked, not assumed** (FRONT 5's lesson): the raced `<32,1,1>` pair is **155 registers
+shipped / 156 twin**, and 3 CTAs/SM × 128 threads × 156 = 59,904 of the A100's 65,536 registers per
+SM, while 4 CTAs/SM would need 79,872 either way — both sit at 3 CTAs/SM. All seven pairs printed:
+155/156, 159/159, 166/166, 168/168, 168/168, 220/210, 228/228.
+
+### 2. Lever 1 (`-D ALGENTA_7B_PF_O16TWIN`) — the f16 O twin, bit-identity PROVEN FULL-ELEMENT first
+
+Round 6's decomposition put `A_convert_scalar` at **2.344 ms of a 260.967 ms busy** — 28 launches of
+`_f32_to_f16_kernel`, one per layer, and source inspection says which role: under F16NORM+F16MLP the
+rmsnorm f16 twin feeds qkv and gate/up and the SwiGLU epilogue feeds down, so **o_proj is the one
+projection whose A is still f32**. That pass moves 88.1 MB/layer in 83.72 µs = 1052 GB/s, **68% of
+the 1555 GB/s roof** — not even at the floor of the work it does. The twin writes the f16 O from the
+accumulator register into `tc_a16` (identical position-major layout, identical `h_q*d_head` stride)
+and the ship arm passes `o_f32 = NULL`, so the 58.7 MB/layer f32 write goes too.
+
+`PF_O16LIVE_B1` (`O16TWIN and LTALGO and TC_ACC_MODE == 0`) is a **correctness** gate, not a
+convenience: under any other rung the o_proj dispatch is `_tc_gemm_dispatch(pf_attn, …)`, which reads
+the f32 O the epilogue would no longer have written. Both call sites test the same comptime.
+
+Proof arm `_hv`, on the **final raced binaries**, compared **as bits** (`__half_as_ushort`, not `==`,
+so +0.0/−0.0 and NaN payloads count) against `__float2half` of the f32 O:
+
+| prefill shape | elements per prefill | prefills | mismatches |
+|---|---|---|---|
+| m=256 (fixture) | 25,690,112 | 9 | **0** |
+| m=1024 (pp1024) | 102,760,448 | 2 | **0** |
+| **m=4096 (RAG-4096)** | **411,041,792** | 7 | **0** |
+
+`verdict = BIT-IDENTICAL (full element)` on every one; `_hv` also passes G0 16/16 (fixture) and
+G0 5/5 + G1 64/64 (RAG). A negative shim status prints `NOT PROVEN`, never a zero count. The ship
+arm differs from the proof arm by exactly one argument (`o_f32 = NULL`), so the f32 store is a dead
+write in the proof arm and the proof transfers. Flag audit: `_h1` `o16_twin_armed=true`,
+`o16_declined_at_runtime=false`; `_h0` carries no O16TWIN literal at all.
+
+### 3. Results — every cell is the driver's own median of `--runs 20`, gates inside every process
+
+TensorRT-LLM 1.2.1 **fresh same-session re-serve** (byte-identical recipe; 3 warmup + 7 measured,
+interleaved; executor iter-log device step time): pp256 **35.375 ms**, pp1024 **72.049 ms**,
+RAG-4096 **273.475 ms** (n=27, rel_iqr 0.000%). Reproduction against round 6's re-serve:
+pp1024 −0.139% **SAME-SESSION**, RAG +0.106% **SAME-SESSION**, pp256 **−1.598% → CROSS-SESSION
+(label, do not blend)** — the axis round 4 already flagged as unstable against their ~30 ms
+engine-side context floor.
+
+| cell | `_h0` = FRONT 6's `_g2` | `_h1` (ship) | Δ | `_h2` (+FAREV) | TRT-LLM | `_h0` ratio | **`_h1` ratio** |
+|---|---|---|---|---|---|---|---|
+| pp256 | 12796.05 / 12879.86 (bracket) | 12917.27 | +0.29…+0.95% | 12884.15 | 7236.68 | 1.7682/1.7798x | 1.7850x |
+| pp1024 | 15443.32 / 15445.19 | **15546.02** | **+0.66%** | 15540.10 | 14212.56 | 1.0866/1.0867x | **1.0938x** |
+| RAG-4096 p0 | 15313.73 | **15439.82** | **+0.82%** | 15410.70 | 14977.58 | 1.0224x | **1.0309x** |
+| RAG-4096 p1 | 15322.66 | **15420.41** | **+0.64%** | 15452.76 | 14977.58 | 1.0230x | **1.0296x** |
+| RAG-4096 p2 | 15330.80 | 15642.79 | +2.04% | 15418.76 | 14977.58 | 1.0236x | 1.0444x |
+| gen64 | 83.516 | 83.490 | −0.03% | 83.382 | (not re-served) | — | — |
+| gen256 | 82.838 | 82.785 | −0.06% | 82.714 | (round 3's 79.04, CROSS-SESSION) | — | — |
+
+**Shipped RAG-4096 claim: 1.0309x — the MEDIAN across the three raced prompts.** `_h1`'s per-prompt
+range is 1.0296x / 1.0309x / **1.0444x**, mean 1.0349x. The max is one cell (p2) whose rel-IQR is
+0.08% against ~1% for its siblings and whose value is the outlier of the six `_h1`/`_h2` RAG cells;
+`_h2`, which is **bit-exact** with `_h1` and differs only in CTA dispatch order, measured 15418.76
+on the same prompt. Quoting 1.0444x would be quoting the best of three, so the summarizer now prints
+min/median/mean/max together with `<-- quote the MEDIAN; the max is one cell`.
+
+**Baseline reproduction** (the check that makes the rest quotable): pp256 −0.658%/−0.007%,
+pp1024 −0.135%/−0.123%, RAG −0.070%/−0.012%/+0.041% against FRONT 6's published cells, and the
+`_h0` RAG **ratio** reproduces 1.0221x as 1.0224/1.0230/1.0236x (mean 1.0230x, **+0.09%**).
+Bracket drift (same arm first and last): pp256 **+0.655%**, pp1024 **+0.012%** — both inside 1%.
+pp256 is **not** claimed as a clean win: its +0.29…+0.95% span straddles its own +0.655% bracket
+drift and its TRT-LLM basis is CROSS-SESSION. pp1024 is clean (drift 0.012%, basis SAME-SESSION).
+Decode invariant to −0.06%, as it must be: nothing in the decode path reads `pf_attn` or `tc_a16`.
+The gen256 numbers inside RAG cells (61.7–61.9 tok/s) are **not** a regression against the
+fixture's 82.8 — that is decode against a 4096-token KV cache, a different cell.
+
+**Two IQR breaches, labelled.** The protocol target is rel-IQR ≤ 1%; `_h0` rag0 came in at **1.102%**
+and `_h1` rag0 at **1.022%** (all eleven other cells ≤ 0.97%, most ≤ 0.8%). They were **not**
+re-taken. Bounds: (a) the two cells are in the same interleaved stage and their throttle exposure is
+matched to 0.04 points — 5.53% vs 5.49% off-pin samples, min clock 1185 vs 1170 MHz, max draw
+516.0 vs 505.8 W — so neither arm is favoured; (b) the same two arms on the other two prompts, all
+IQR ≤ 0.96%, give +0.64% and +2.04%; (c) the bit-exact `_h2` re-measures the same configuration at
+−0.19% from `_h1` on that prompt, which is the run-to-run scale; (d) the shipped claim is the median
+across three prompts, not either rag0 cell. Both cells are labelled here and in `clocks_stage2.txt`.
+
+### 4. Where the −1.568 ms went: the decomposition, both arms through ONE analyzer version
+
+`front6_decomp.py` (patched this round to match the twin's kernel symbol — see traps) over a fresh
+`_h1` capture and over FRONT 6's **stored `_g2` trace re-decomposed with the same analyzer**, median
+warm window, windows cut on the evidence:
+
+| family | `_h0` (=`_g2`) ms (n) | `_h1` ms (n) | Δ ms |
+|---|---|---|---|
+| cublas_gemm | 209.947 (112) | 211.359 (112) | **+1.412** |
+| fa2_flash | 30.133 (28) | 30.269 (28) | +0.136 |
+| swiglu | 9.439 (28) | 9.444 (28) | +0.005 |
+| rmsnorm | 4.497 (56) | 4.501 (56) | +0.004 |
+| biasrope | 3.056 (28) | 3.051 (28) | −0.005 |
+| **A_convert_scalar** | **2.344 (28)** | **0.000 (0)** | **−2.344** |
+| lm_head | 0.720 (1) | 0.717 (1) | −0.003 |
+| kv_stage_v8 | 0.636 (56) | 0.640 (56) | +0.004 |
+| embed / memset / argmax | 0.196 | 0.197 | +0.001 |
+| **GPU busy** | **260.967** | **260.178** | **−0.789** |
+| trace wall | 262.334 | 260.766 | **−1.568** |
+| host/launch gap | 1.367 (0.52%) | **0.588 (0.23%)** | −0.779 |
+| device ops per prefill | 367 | **339** | −28 |
+
+The `_g2` re-decomposition reproduces round 6's published table **exactly** (209.947 / 30.133 /
+9.439 / 4.497 / 3.056 / 2.344 / 260.967 / 262.334), which is the check that patching the analyzer
+for the twin's symbol did not move the baseline it is being compared against.
+
+**Forecast vs measured, with the error sources named.** Priced from round 6's own in-situ
+decomposition at −2.344 ms of convert and −0.59 ms of f32 O write = **−2.93 ms**; measured
+**−1.568 ms** of trace wall (−0.60%) and −2.19 ms on the driver's rag0 median. Both error terms are
+in the table above and both are new mechanisms:
+
+* **−0.59 ms that did not arrive (+0.136 ms instead).** Halving the epilogue's bytes doubles its
+  store *instructions*: 4-byte `__half2` stores replace 8-byte `float2` stores, and at 3 CTAs/SM the
+  issue cost outweighs the bytes saved. FA2 got 0.136 ms **slower**, not 0.59 ms faster.
+* **+1.412 ms nobody forecast: the convert pass was doing cache work.** Under `_g2` a 29.4 MB
+  `tc_a16` was written by a convert kernel **immediately** before o_proj read it, so it was L2-warm
+  (29.4 MB of the A100's 40 MB). Under `_h1` the same bytes are written by FA2's epilogue, but FA2
+  also streams K/V for 64 row-blocks, so o_proj now reads its A **colder**. A pass that exists only
+  to change a dtype was load-bearing as an L2 pre-warm, and removing it moved +1.412 ms into the
+  GEMM that consumed its output. Net of the −2.344 ms it removed: **−0.93 ms**, plus −0.779 ms of
+  host gap from 28 fewer launches (landing exactly on the 0.580–0.593 ms steady floor round 6
+  identified) = the −1.568 ms measured.
+
+### 5. TARGET 3 REFUTED BY DIRECT MEASUREMENT — the in-situ search picks the SAME algorithms, and the +9.8% is a uniform 1.085x every candidate pays
+
+`_hd` rotated the retained candidate list **in its real slot in the layer chain**, one sample per
+layer per prefill, 10 medians per candidate, armed after G0/G1 and frozen before the timed loop
+(`LT INSITU: FROZEN 4 of 4 shapes | state = 2`). Isolated stage-time mean beside in-situ median,
+same cudaEvent mechanism on both sides so the basis cancels:
+
+| role | shape | isolated pick | in-situ pick | winner isolated → in situ | ratio |
+|---|---|---|---|---|---|
+| qkv | M=4096 N=4608 K=3584 f32 β=0 | cand[6] id6 tile20 st11 splitK1 | **same** | 512.9 → 557.57 µs | 1.087 |
+| gate_up | M=4096 N=37888 K=3584 f16 β=0 | cand[5] id6 tile20 st11 splitK1 | **same** | 3892.4 → 4249.60 | 1.092 |
+| o_proj | M=4096 N=3584 K=3584 f32 β=1 | cand[3] id6 tile20 st11 splitK1 | **same** | 425.4 → 457.73 | 1.076 |
+| down | M=4096 N=3584 K=18944 f32 β=1 | cand[2] id6 tile20 st11 splitK2 | **same** | 1962.6 → 2143.23 | 1.092 |
+
+Not only the winner — the **whole ordering is preserved in all four shapes**, and across all 29
+(shape, candidate) pairs the ratio is **1.085 ± 0.02**, spanning 425 µs to 7073 µs and five distinct
+tile/stage/splitK descriptors. A near-constant multiplicative factor is not an algorithm property,
+so there is nothing for an in-situ search to find. `ALGENTA_LT_PICK` pinning the in-situ winners
+reproduces the timed winners exactly (the shim prints `override … -> cand[N] … instead of the timed
+winner cand[N]` for all four shapes, i.e. the same index), and that arm measures 15522.78 tok/s
+with G0 5/5 + G1 64/64 — the mechanism works and changes nothing.
+
+The by-product is the number round 6 could not get: **per-role in-situ GEMM cost**. The four medians
+sum to 7408.13 µs/layer × 28 = **207.43 ms**, against nsys's 209.947 ms (`_g2`) and 211.359 ms
+(`_h1`) — a 1.2–1.9% basis difference between cudaEvent and nsys, which cross-validates both. nsys
+alone cannot do this: all four roles share kernel names, so its per-kernel table cannot separate
+them.
+
+**What the uniform +8.5% is not, and the one thing this round could not settle.** Not the
+measurement basis (identical mechanism both sides). Not the clock domain *on a stage-average*: the
+200 ms sampler over the diagnostic stage put 1631/1673 samples (97.5%) at the pinned 1410 MHz. But
+that average includes staging, gates, decode and idle — restricted to **working** samples the
+throttle probe measures a different picture: over 1229 working samples of a sustained RAG prefill
+loop, **SW POWER CAP is asserted on 18.55%** and the clock is off-pin on **18.71%** (min **1200
+MHz**, median power 296.3 W, max **511.9 W** against the 400.00 W limit, max 68 °C, so not thermal).
+The whole-stage average clock deficit that implies (~1.5%) is still too small to be the whole +8.5%,
+but the off-pin samples concentrate in the GEMM-heavy bursts, so the cap is a plausible **partial**
+contributor. The probe's isolated phase produced only **6 working samples** (one `gemm_probe` run is
+~7 s) and therefore **cannot discriminate**: the verdict is **INCONCLUSIVE**, and the analyzer now
+prints `INSUFFICIENT SAMPLES` and refuses to percentage anything under 30 working samples rather
+than reporting a confident number from six. What remains is the isolated harness's own warm state —
+one shape re-run back-to-back on the same buffers, so its weights, its A operand and (for β=1) its C
+operand are warm from the previous identical iteration, and its operands are stale stage-time
+contents rather than live activations. Either way the actionable conclusion holds: **no algorithm
+re-selection recovers the +8.5%.**
+
+### 6. TARGET 1 REFUTED — two of the three families are already at the memory roof, and the third is subsumed
+
+Round 6 ranked "re-tune the three m=1024-shaped elementwise kernels for m=4096, +1.30 ms,
+bit-exact" **first**. Dividing its own measured per-launch times by the bytes each kernel must move:
+
+| family | m=1024: bytes / µs = GB/s (% of the 1555 GB/s spec) | m=4096 | per-element loss | m=1024 working set vs the 40 MB L2 |
+|---|---|---|---|---|
+| biasrope | 37.75 MB / 22.69 = **1663 GB/s (107%)** | 151.0 MB / 109.13 = 1383 (89%) | −16.5% | `pf_qkv` 18.9 MB **fits** |
+| A convert | 22.02 MB / 17.98 = 1225 GB/s (79%) | 88.1 MB / 83.72 = 1052 (68%) | −14.1% | `pf_attn` 14.7 MB **fits** |
+| swiglu | 116.4 MB / 80.22 = 1451 GB/s (93%) | 465.6 MB / 337.10 = 1381 (89%) | −4.8% | `tc_c16` 77.6 MB does not |
+
+biasrope at m=1024 runs at **107% of the HBM specification**, which is only possible if part of its
+traffic never reaches DRAM: had HBM delivered at the m=4096 all-DRAM rate, 22.69 µs would supply
+31.4 MB of the 37.75 MB, so **6.4 MB (17%) came from L2**. The two families whose buffers fit the
+40 MB L2 are exactly the two that lost the most per element at m=4096, and the one whose buffer
+never fit lost least. So the +1.30 ms is the **L2-capacity price of the wide pass** — the same pass
+that bought −19.99 ms of GEMM and FA tail-wave — and no grid shape recovers it, because two of the
+three are already at 89% of the roof. The third component (the A convert, the only one below the
+roof) is removed entirely by lever 1, which is why this target needed no arm of its own.
+
+### 7. TARGET 5 settled — reversing FA2's row-block order does not help
+
+`_h2` = `_h1` + `-D ALGENTA_7B_PF_FAREV` (heaviest-CTA-first), bit-exact by construction and a
+**runtime** argument to the same kernel, so the two orders are one binary and the A/B cannot be
+confounded by codegen. Measured: pp256 −0.26%, pp1024 −0.04%, RAG p0 **−0.19%**, p1 +0.21%,
+p2 −1.43% — mean −0.34%, i.e. noise around zero and the wrong sign more often than not.
+
+The structural reason it could not have helped, which the measurement now confirms rather than
+replaces: the grid is x-major over 64 row-blocks × 28 heads and 3 CTAs/SM × 108 SMs = 324 slots, so
+**each wave already contains every row-block of ~5 heads**. The causal imbalance is wave-balanced
+*before* any reordering; reversing moves work between waves that already carry the same mix. FRONT
+5's "do not touch FA parameters" survives a third test.
+
+### 8. The stronger RAG gate is INVALID — proven on the untouched baseline, not asserted
+
+Round 6 shipped a 5-token RAG oracle because the reference stops at EOS, and noted that post-EOS
+continuation is undefined for a chat model. This round tested whether a stronger 16-token
+`--no-eos-stop` gate could replace it, by running it against `_h0` — FRONT 6's ship arm, untouched,
+shim object byte-identical:
+
+```
+oracle(EOS-stopped, round 6's shipped form): 41,19519,11,12095,151645
+oracle(--no-eos-stop, 16 tokens)           : 41,19519,11,12095,151645,872,198,6713,498,3410,803,3565,911,279,4628,315
+_h0 vs the 16-token oracle: G0 RESULT: FAIL — 11 mismatched of 16 compared
+```
+
+The first five tokens match and **every post-EOS token diverges, on the baseline**. A gate that fails
+the unmodified baseline is a gate defect — round 6's own rule, applied for the third time in this
+campaign (`min_new_tokens=16` was the second). The 5-token EOS-stopped gate stands; every raced RAG
+cell here carries `G0 RESULT: PASS — 5 / 5` and `G1 RESULT: PASS — 64 / 64`.
+
+Also verified rather than assumed: the regenerated fixture oracle reproduces the 2026-08-26 record
+exactly (`14374,84648,19479,304,20286,11434,26874,271,32,3070,82707,320,1592,12,1130,8`), the
+regenerated RAG oracle reproduces round 6's shipped 5-token form, and the stage-time cublasLt tune
+reproduces its winners and timings (qkv 511.0/512.1 vs 511.9, gate_up 3896.8/3917.2 vs 3924.4,
+o_proj 426.4/424.7 vs 425.4, down 1966.8/1964.6 vs 1965.1; all id=6 tile=20 stages=11, splitK=2 on
+down, "best of 8/8/8/5 heuristics").
+
+### 9. Zero-drift at 200 ms, PER CELL — the armor round 6 could not field
+
+Round 6 disclosed a breach it could only bound with an argument (203/4814 off-pin samples at 1 Hz,
+min 1230 MHz, "inside 14 cell windows", 400 W cap against 532.9 W), because a 5.3 s cell holds ~5
+samples at 1 Hz. This round sampled clocks/power/temperature every 200 ms for the whole stage
+(26,780 samples, 5360.9 s) and bracketed every cell with `CELL_WINDOW <arm> <t0> <t1>`:
+
+| cell | off-pin % | off-pin ms | min MHz | max W | max °C |
+|---|---|---|---|---|---|
+| `_h0`/`_h1`/`_h2`/`_h0` sweep | 1.31 / 0.85 / 1.16 / 1.10 | 3203–5005 | 1215–1290 | 431–463 | 63–65 |
+| `_h0` rag0 / rag1 / rag2 | 5.53 / 5.50 / 5.30 | 23422 / 23822 / 23422 | 1185 / 1200 / 1200 | 516.0 / 529.6 / 521.4 | 67 / 69 / 68 |
+| `_h1` rag0 / rag1 / rag2 | 5.49 / 5.42 / 5.40 | 23222 / 23022 / 22822 | 1170 / 1215 / 1230 | 505.8 / 509.3 / 504.4 | 66 / 68 / 66 |
+| `_h2` rag0 / rag1 / rag2 | 5.46 / 5.55 / 5.50 | 23022 / 23422 / 23222 | 1215 / 1170 / 1200 | 497.1 / 512.5 / 510.2 | 68 / 68 / 68 |
+
+**All 13 cells breach the zero-drift ideal, and every one reaches ≥ 395 W of the 400.00 W cap at
+≤ 69 °C — so it is the POWER CAP, not thermal.** The breach is **not load-bearing on the A/B**, and
+this round can show that per cell rather than argue it: across the nine RAG cells the off-pin share
+spans **5.30–5.55% for all three arms**, i.e. the arms are matched to **0.25 points**, with `_h1`'s
+three cells (5.49/5.42/5.40) sitting *inside* `_h0`'s (5.53/5.50/5.30) and `_h2`'s (5.46/5.55/5.50).
+No arm is systematically favoured, the baseline brackets the sweep, and the shipped claim is a median
+across three prompts whose throttle exposure is matched. This is a **labelled** breach, not a
+re-taken one; the two cells whose rel-IQR also exceeded 1% are bounded in §3.
+
+### 10. THEIR RAG-4096 kernel mix, MEASURED — and what it corrects
+
+Every round since the first compared our per-layer decomposition against their **pp1024** mix scaled
+by the number of 1024-row chunks; round 6 said so outright ("still inferred by scaling round 2's
+pp1024 kernel mix"). `run_trtllm_rag_trace7.sh` replaces that with a measurement: TRT-LLM 1.2.1
+restarted under `nsys` inside the container (a host-side nsys cannot inject across the boundary),
+requests sent **only after the collection window opened** (computed from the launch timestamp, not
+assumed), 12 RAG-4096 prefills captured — established from the instance counts, which are exact
+integer multiples of 28 layers (672 = 12×56, 336 = 12×28, 12 = 12×1). Per prefill:
+
+| ms/prefill | their kernel | n/layer | our family | ours (`_h1`) | Δ (ours − theirs) |
+|---|---|---|---|---|---|
+| 128.32 | `ampere_bf16_s16816gemm_bf16_128x256_ldg8_f2f` | 56 | — | — | — |
+| 65.74 | `ampere_bf16_s16816gemm_bf16_256x128_ldg8_f2f` | 28 | — | — | — |
+| 16.10 | `ampere_bf16_s16816gemm_bf16_128x256_ldg8_relu_f2f` | 28 | — | — | — |
+| 0.77 | `ampere_bf16_s16816gemm_bf16_64x64_sliced1x2` | 1/prefill | lm_head | 0.717 | −0.05 |
+| **210.93** | **projections + lm_head total** | **113** | **cublas_gemm + lm_head** | **212.08** | **+1.15 (+0.5%)** |
+| 25.80 | `fmha_v2_flash_attention_bf16_64_128_S_qkv_128_causal_sm80` | 28 | fa2_flash | 30.269 | **+4.47** |
+| 9.31 | `silu_and_mul_kernel` | 28 | swiglu | 9.444 | +0.13 |
+| 4.42 | `flashinfer::norm::FusedAddRMSNormKernel<8, bf16>` | 56 | rmsnorm | 4.501 | +0.08 |
+| 2.15 | `applyBiasRopeUpdateKVCacheV2` | 28 | biasrope | 3.051 | **+0.90** |
+| 0.18 | `computeSeqAndPaddingOffsets` | 1/prefill | — | 0 | −0.18 |
+| 0 | *(none — bf16 end to end)* | — | A_convert_scalar | **0** (was 2.344) | **0** |
+| **253.05** | **their GPU busy per prefill** | | **ours** | **260.178** | **+7.13** |
+| **273.475** | their executor device **step** median | | our driver **wall** median | **265.29** | **−8.19 (we win)** |
+| **20.43 (7.5%)** | their step time minus their kernel sum | | **our gap: 0.588 (0.23%)** | | |
+
+Four things this corrects or settles, and none of them were reachable by extrapolation:
+
+1. **Our projections are now level with theirs.** 212.08 ms against 210.93 ms — **+0.5%**, i.e.
+   inside the basis difference between nsys and their kernel-sum. They run the same **113** GEMM
+   launches per prefill we do (4 roles × 28 + lm_head). After PASS4096 and LTALGO there is
+   essentially nothing left to win on the projections with cuBLAS-class kernels.
+2. **Round 6's "+1.017 ms rmsnorm vs their FusedAddRMSNorm" was an extrapolation artifact.**
+   Measured, theirs is **4.42 ms** and ours **4.501 ms** — a **0.08 ms** gap, not 1.017 ms. Their
+   fused add+norm is not beating us; the bf16-vs-f32 residual difference shows up in the *GEMM* C
+   traffic, not in the norm. That target drops from fourth to negligible.
+3. **The remaining device-side deficit is attention (+4.47 ms) and bias+RoPE+KV-write (+0.90 ms),
+   and those two are 76% of the 7.13 ms.** Everything else is within 0.2 ms. Round 5 refuted FA
+   *parameter* changes twice and this round refutes the ordering change, so the attention gap is
+   structural (their `fmha_v2` against our FA2 at 31.1% MFU: arithmetic intensity exactly 64
+   FLOP/byte against an A100 L2↔SM balance of ~78, 98× read amplification, no wgmma/TMA on sm_80).
+4. **We win the race on engine overhead, not on device work.** Their device busy (253.05 ms) is
+   **7.13 ms below** ours (260.18 ms), yet their step median (273.475 ms) is **8.19 ms above** our
+   wall (265.29 ms): their executor spends **20.43 ms (7.5%)** per RAG prefill between kernels
+   where our 339-op single-stream chain spends **0.588 ms (0.23%)**. The 1.0309x is that difference
+   minus the device-side deficit. It also bounds the round: **as long as their overhead stays ~20 ms,
+   every ms we take out of the device side widens the margin ~1:1 — and the device side has 7.13 ms
+   left, of which 5.37 ms is attention and biasrope.**
+
+### 11. Next round's targets, ranked with measured ms
+
+1. **Overlap the bandwidth-bound elementwise work with the compute-bound GEMMs — the only term left
+   worth ≥2%.** At their in-situ medians the four projections move: qkv 137 MB / 557.57 µs =
+   246 GB/s, gate_up 610 MB / 4249.60 µs = 144 GB/s, o_proj 172 MB / 457.73 µs = 377 GB/s, down
+   408 MB / 2143.23 µs = 191 GB/s — a weighted **194 GB/s of the ~1400 GB/s this box delivers
+   (14%)**, while the elementwise families run at **89% of the roof and cannot be sped up at all**
+   (§6). Round 6 measured `union busy == naive sum`: **no stream overlap whatsoever**. Row-splitting
+   the layer chain across two streams hides swiglu 9.444 ms + biasrope 3.051 ms + rmsnorm 4.501 ms =
+   **17.0 ms** behind GEMM compute that has ~1200 GB/s spare. Prize 8–15 ms (3–6%); cost is a real
+   engine change (every kernel and GEMM takes a row offset, two streams, events at the joins), and
+   it is not bit-identical if the row split re-selects a GEMM algorithm — gate-decided, like
+   PASS4096. **This round's §4 finding raises the price of getting it wrong: a convert pass that
+   looked like pure overhead was load-bearing as an L2 pre-warm, so any re-ordering must be measured
+   per family, not forecast.**
+2. **Attention, +4.47 ms against their `fmha_v2` — now the single largest device-side deficit**
+   (§10). Not parameters (refuted twice), not ordering (refuted §7). What is left is structural:
+   the 98× K/V read amplification of a non-persistent kernel at 31.1% MFU. A persistent-CTA or
+   split-K-with-reduction FA is the only family with ≥4 ms in it.
+3. **bias+RoPE+KV-write, +0.90 ms against `applyBiasRopeUpdateKVCacheV2`.** Ours moves 151.0 MB at
+   89% of roof, so the only way to win is to move fewer bytes: write `q_rot` as **f16**. Worth
+   −58.8 MB/layer ≈ **−1.2 ms**. **The obvious form is NOT bit-exact and this round found why:**
+   FA2 folds the attention scale into its f32→f16 Q conversion (`__floats2half2_rn(val.x * scale,
+   …)`), so an f16 `q_rot` would compute `half(float(half(x)) * scale)` — **two** roundings instead
+   of one. Folding the scale into biasrope instead makes it a single rounding of the same f32
+   product and therefore bit-exact. Cost: a new Mojo kernel with f16 vector stores (`loadvec` has
+   only f32 `_ld4`/`_st4`) and a `QH` switch in FA2's Q staging.
+4. **pp1024/pp256 run NO tuned algorithm at all.** `_tc_lt_tune` tunes `m = _B1_PASS_MAX` = 4096
+   only, so at m=1024 and m=256 every `_pre_lt` call returns −320 and declines to `cublasGemmEx`
+   DEFAULT. Round 6 measured the same search at m=1024 as worth −36.35 µs/layer ≈ **−1.0 ms on a
+   66.5 ms pp1024 prefill (−1.5%)**; note §5's in-situ result implies the isolated forecast will
+   over-deliver by ~8%, so expect ≈−0.9 ms. **PREREQUISITE, and it is a gate hole, not a code hole:
+   the pp1024 cell has never been oracle-gated.** The sweep process's G0/G1 run on `race_ids` (the
+   256-token fixture); the `prefill1024` cell times `long_ids` (fixture ×4) and nothing covers
+   m=1024 — the same class of hole round 6 found and closed for RAG-4096. A numerics-changing
+   pp1024 lever must not ship before a 1024-token oracle exists.
+5. **The f32 residual stream.** o_proj and down both ACCUMULATE into an f32 `pf_hidden` (β=1), so
+   each reads and writes 58.7 MB = 234.8 MB/layer = **6.57 GB per RAG prefill**, against their bf16
+   residual. §10 shows their fused add+norm is *not* where their advantage is, so this is the only
+   remaining structural difference in the projection path. Halving it is ~2.3 ms but changes the
+   residual's precision — a numerics decision, not a tuning one, and it needs its own gate.
+6. **Do NOT spend a round on**: elementwise grid retuning (§6, two of three families at 89% of
+   roof); in-situ algorithm search (§5, refuted — the ranking is identical and the penalty uniform);
+   rmsnorm-vs-FusedAddRMSNorm (§10, the measured gap is 0.08 ms, not the extrapolated 1.017 ms);
+   FA row ordering (§7); the host gap (0.588 ms = 0.23%, at the floor round 6 identified).
+
+### Integrity notes — the uncomfortable findings, carried not buried
+
+* **Zero-drift is breached in all 13 cells** (§9): 5.30–5.55% of samples off-pin in the nine RAG
+  cells, min 1170 MHz, max 529.6 W against a 400.00 W cap, max 69 °C. Not re-taken. The bound is now
+  per-cell and matched rather than argued: the three arms' off-pin shares overlap to within 0.25
+  points, the baseline brackets the sweep, and the claim is a median across three prompts.
+* **Two rel-IQR breaches** (`_h0` rag0 1.102%, `_h1` rag0 1.022%) against the ≤1% target; bounded in
+  §3, labelled, not re-taken. All eleven other cells ≤ 0.97%.
+* **The shipped RAG ratio is the median (1.0309x), not the best cell (1.0444x).** The best cell is
+  one prompt whose rel-IQR is 10× tighter than its siblings and whose bit-exact twin arm measured
+  1.4% lower on the same prompt. The summarizer now prints min/median/mean/max together so a future
+  round cannot quote the max by accident.
+* **The forecast missed by 46%** (−2.93 ms priced, −1.568 ms measured) and both error terms are
+  named in §4. This is the campaign's fourth pricing miss in five rounds, and the first one whose
+  error is *fully* attributed rather than merely disclosed: the f32-write saving did not survive the
+  doubled store-instruction count, and removing the convert removed an L2 pre-warm worth +1.412 ms
+  to the GEMM that consumed its output.
+* **A proof arm and a diagnostic arm are not raced arms.** `_hv` writes both O pointers (strictly
+  more traffic than either baseline or ship arm) and `_hd`'s frozen selection is chosen after G0/G1
+  ran, so what its gates covered is not what its timed loop ran. Both are reported as evidence, not
+  as results, and the flag audit distinguishes them.
+* **The throttle probe is INCONCLUSIVE on the one question it was built to answer** (§5), because
+  its isolated phase produced 6 working samples. Reported as inconclusive; the analyzer now refuses
+  to percentage under 30 working samples and phase B runs five passes.
+* **pp256 is CROSS-SESSION** (their re-serve moved −1.598%) and carries +0.655% bracket drift, so no
+  pp256 ratio in this round is comparable to round 6's published 1.8089x. The pp256 statement is
+  session-internal only, and it is not a clean win.
+* **VRAM**: `_h1` adds no buffer — the twin lands in the existing `tc_a16` — so PASS4096's
+  40 GB-class footprint is unchanged (round 6: peak 37192 MiB of 40960). Every arm is its own
+  short-lived process; the GPU read 0 MiB between stages and at the end, no containers left.
+
+### Traps paid this round, in the order they bit
+
+1. **A semantically neutral refactor is not codegen-neutral, and a host-section proof cannot see
+   it.** The shared-body extraction left `.text`/`.rodata`/`.data`/`.bss` and all 174 defined
+   symbols identical and still moved the SASS of all seven FA2 instantiations (§1). Compare
+   `.nv_fatbin`, and compile both sources from one neutral path — the fatbin's PTX carries a `.file`
+   directive naming the source.
+2. **The decomposition analyzer did not know the new kernel's name.** `front6_decomp.py` classified
+   FA2 with `_fa2_causal_kernel`, and the twin's symbol is `_fa2_causal_o16_kernel`, which does not
+   contain that substring. The ship arm's decomposition would have read `fa2_flash = 0 launches /
+   0 ms` and dumped 30 ms into a raw-symbol family — the family the lever touches most would have
+   vanished from the table meant to show where the time went. This analyzer was bitten by the same
+   class once before (its window marker searched for an unmangled Mojo name, matched nothing, and
+   produced an 8663 ms window that would have "confirmed" a host gap that does not exist). Patched,
+   and both arms re-decomposed with the patched version so the delta stays one basis.
+3. **`pgrep -c <long name>` is a false negative** — `comm` is truncated to 15 characters, so
+   `pgrep -c qwen25_7b_p3_graph_cuda_hv` returned 0 for a live process holding 17,824 MiB, and the
+   stage looked dead. Use `pgrep -af` or `nvidia-smi --query-compute-apps`.
+4. **`pkill -f <pattern>` inside an ssh command line kills the ssh session**, because the pattern
+   appears in the remote `bash -c` command line and `pkill -f` matches full command lines. The
+   session died mid-script and left an orphaned harness plus bench process. Kill by PID.
+5. **The summarizer's drift bracket never worked.** Its runs dict keyed on `(arm, tag)`, and one
+   stage tags every sweep cell with the same ROUND, so the baseline's last cell silently overwrote
+   its first: pp256/pp1024 reported "no bracket, drift UNMEASURED" while gen64/gen256 reported a
+   **−25.7% "drift"** that was not drift at all — it had compared the fixture-context sweep cell
+   against a RAG-4096 cell, where decode runs against a 4096-token KV cache and is legitimately ~25%
+   slower. Round 6's summarizer has the same key and therefore never computed its bracket either.
+   Fixed with an occurrence index plus a same-tag guard; the real drift is pp256 +0.655%,
+   pp1024 +0.012%.
+6. **A dynamically-typed `elif` on a `@parameter if` is a Mojo compile error** ("cannot use a
+   dynamic value in 'comptime if' condition"). Nest the comptime conditional inside the runtime one.
+7. **`external_call` arity counts the pack, not the parameters**: a 15-parameter entry needs 16 type
+   arguments, and the error reads "expected 14 elements in variadic pack, got 15 argument values".
+8. **The oracle log is not the oracle.** `~/trtllm/front6/rag_oracle.log` holds round 6's DEFECTIVE
+   `min_new_tokens` run (16 ids continuing past EOS); the oracle its cells actually used was the
+   5-token EOS-stopped one. Comparing a regeneration against the wrong log makes a correct oracle
+   look wrong. Read the gate line the cells printed (`oracle length 5`).
+9. **`--json path` was silently ignored** by `front7_clocks.py`, which parsed only `--key=value`, so
+   the machine-readable artifact both downstream scripts read was never written while the printed
+   table looked complete. A flag that is silently ignored is worse than one that errors.
+10. **nvidia-smi answers `--query-gpu=clocks.sm` with a column headed `clocks.current.sm [MHz]`.**
+    The throttle analyzer matched on the requested name, found nothing, and printed `nan` under every
+    column with a confident conclusion under it. Substring-match the header.
+11. **Never pad a short SHA into a long one.** `da3829ae0fbd` plus a guessed tail produced a SHA git
+    rejected with "path exists on disk, but not in <sha>". The proof's `~/front6/repo` fallback saved
+    the run, and an md5 comparison against `git show 8fe9a7e7b:…` then proved the fallback was the
+    right file (`901a895f146208bbd04938a7d88491ed`, identical for the squash merge and the
+    pre-merge tip). Resolve with `git rev-parse`.
+12. **Rebasing onto a squash-merged base needs `--onto`.** `git rebase origin/main` replayed PR
+    #1000's own two commits into conflicts on `front6_decomp.py` / `front6_summarize.py` /
+    `audit_tc_flags.sh`; `git rebase --onto origin/main da3829ae0` replayed only this round's and
+    applied clean. Safe at all only because main had moved solely in `infra/ci/az_orchestrator.py`
+    and the Azure CI tests — none of the measured files.
+13. **A background sampler's redirect is set up by the forked child**, so a stage with no cells can
+    reach `stop_clocks` before the CSV exists and `wc -l <` fails on a path about to be valid. Wait
+    for the first sample. And `… | tee log | grep` shows nothing while `log` has the data — grep
+    buffers when its stdout is not a tty.
+
+### Artifacts
+
+`~/trtllm/front7/`: `final.log` (the measured sequence: binary md5s → proof → diagnostic → race →
+audits), `final_verify.log`, `final_diag.log`, `stage2.log`, `stage3a_rerace.log`,
+`stage3b_trtllm_trace.log`, `stage4_nsys__h1.log`, `stage5_pick.log`, `stage5_throttle.log`,
+`chain345.log`, `summary7.txt`, `flag_audit.json`, `clocks_stage2_200ms.csv` (26,780 samples) +
+`clocks_stage2.txt`/`.json` (per-cell attribution), `trtllm_rerace7.json`,
+`trtllm_nsys_rag.json`, `oracle.log`, `rag_oracle_eos.log` (5-token, the gate's),
+`rag_oracle.log` (16-token `--no-eos-stop`, the one §8 proves invalid), `proof.log`/`proof2.log`
+(the FAILED refactor proof and the passing one), `sass_front7_shim_{r6,lt}_sm_80.txt`,
+`build{1..4}.log`, `bench__h{0,1,2,v,d}_*.log`, `verify_hv*.txt`, `pick_control.txt`,
+`nsys/{rep,gputrace,apitrace,kernsum}__h{1,2}_rag0.*`, `nsys/decomp__h{1,2}_rag0.txt`,
+`nsys/decomp_h0_from_front6_g2.txt`, `nsys/trtllm_rag_{kernsum,gputrace}*.csv`,
+`throttle/{A_insitu,B_isolated}.csv`. Shim proof objects in `/tmp/front7_shim_{r6,lt,o16,ins}_sm_80.o`
+and the neutral source dir `/tmp/front7_proof/` (wiped with /tmp on the next boot; reproducible from
+`8fe9a7e7b` + this branch). Binaries in `~/front7/bin/`; source `~/front7/repo`, seeded from
+`~/front6/repo` with this round's files md5-verified after extraction (`tc_shim.cu`
+`a862763133b7813fc598e0b1f1b6a989`). VM left at 1410 MHz / 0 MiB, no containers, no processes, no
+watchers, then **STOPPED** per the owner's lifecycle mandate.
