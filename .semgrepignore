@@ -1,0 +1,14 @@
+# Mirrors [tool.ruff] extend-exclude in pyproject.toml -- these paths hold no first-party
+# Python worth scanning (vendored/generated trees, build tooling, placeholder packages).
+.codex/
+apps/api-server/
+apps/runtime/proto/
+benchmarks/python_libs/
+hello-world/
+mojo_env/
+vendor/
+
+# The frozen ~495-module Mojo kernel tree (see feedback_frozen_mojo_baseline) is a language
+# Opengrep does not parse. mojo/bindings/*.py is real Python and stays in scope, so this
+# excludes the extension, not the directory.
+*.mojo

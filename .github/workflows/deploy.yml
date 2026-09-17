@@ -30,8 +30,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Fly
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       SRC: ghcr.io/${{ github.repository }}
@@ -41,9 +40,8 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install flyctl
-        # $HOME/.fly is one path shared by every self-hosted runner process on this user
-        # account -- concurrent deploys racing the installer is the same shared-path race the
-        # fleet convention isolates elsewhere (ci.yml's pnpm dest, flyctl FLYCTL_INSTALL).
+        # FLYCTL_INSTALL (respected by fly.io/install.sh) keeps the install inside this job's
+        # own scratch dir (same shape as ci.yml's deploy jobs).
         run: |
           export FLYCTL_INSTALL="$RUNNER_TEMP/fly"
           curl -fsSL https://fly.io/install.sh | sh

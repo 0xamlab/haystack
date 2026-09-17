@@ -1,8 +1,6 @@
 name: docs-audit
 
-# Shares the one-machine self-hosted runner fleet with thyn-ai/codna, so cap it: a superseded
-# run on the same ref is moot, and two heavy runs starve each other (a codna parity sidecar
-# missed its 30s port-bind deadline purely from contention on 2026-08-19).
+# A superseded run on the same ref is moot; cancelling it saves hosted-runner minutes.
 concurrency:
   group: docs-audit-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -45,21 +43,19 @@ permissions:
 jobs:
   audit:
     name: docs interaction-contract audit
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      # macOS fleet has Homebrew 3.14; Azure workers bake it; Blacksmith/GH images don't.
-      - name: Ensure python3.14 present
-        run: |
-          command -v python3.14 >/dev/null 2>&1 && exit 0
-          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then SUDO=sudo; else SUDO=; fi
-          $SUDO add-apt-repository -y ppa:deadsnakes/ppa
-          $SUDO apt-get update -qq
-          $SUDO apt-get install -y -qq python3.14 python3.14-venv libpython3.14
-          python3.14 -m ensurepip --upgrade >/dev/null 2>&1 || true
+      # Both audit scripts are stdlib-only, but they run on the same 3.14 the repo pins
+      # (mojo_env/pixi.toml). setup-python puts the tool-cache 3.14 (and its `python3.14`
+      # binary) on PATH -- no PPA, no apt, no pip.
+      - name: Set up Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
 
       - name: Run docs interaction-contract audit
         run: python3.14 scripts/gitbook/audit.py gitbook/

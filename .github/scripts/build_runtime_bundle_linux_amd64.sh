@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The linux-x64 leg of build-runtime-bundle.yml, executed inside an amd64 ubuntu:22.04
-# container on the self-hosted macOS fleet (the job mounts $GITHUB_WORKSPACE at /work).
+# The linux-x64 leg of build-runtime-bundle.yml, executed inside an ubuntu:22.04 container
+# (the job mounts $GITHUB_WORKSPACE at /work).
 # Mirrors .github/scripts/build_runtime_linux_amd64.sh (the wheel pipeline's linux leg)
 # through the shard compile + staging, then diverges: instead of building a wheel it
 # freezes the runtime daemon with PyInstaller and packs the signed managed-runtime
@@ -24,9 +24,6 @@ export PIXI_HOME=/work/.pixi
 export RATTLER_CACHE_DIR=/work/.cache/rattler/cache
 curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$PIXI_HOME" PIXI_BIN_DIR="$PIXI_HOME/bin" PIXI_NO_PATH_UPDATE=1 bash
 export PATH="$PIXI_HOME/bin:$PATH"
-# A leftover .pixi SYMLINK (fleet env-sharing hack) mounted from the runner workspace
-# makes pixi fail with EEXIST; real cached env dirs are kept.
-find mojo_env -maxdepth 1 -name .pixi -type l -delete
 pixi install --manifest-path mojo_env/pixi.toml
 
 # ── Compile bounded runtime worker shards (full catalog, portable x86-64-v3, no Metal) ─────
@@ -73,8 +70,8 @@ python3 scripts/verify_runtime_bundle.py \
   --public-key /work/dist/runtime-bundle/bundle-signing-public.pem
 
 # The container ran as root on the mounted runner workspace; hand the produced trees back to
-# the workspace owner so later runner-side steps (artifact upload, the next job's
-# checkout/cleanup) are not locked out by root-owned files.
+# the workspace owner so the runner-side steps (the metadata `cp` INTO dist/runtime-bundle and
+# the artifact upload, both as a non-root user) are not locked out by root-owned files.
 OWNER="$(stat -c '%u:%g' /work/.git)"
 chown -R "$OWNER" /work/mojo_build /work/dist /work/.pixi /work/.cache 2>/dev/null || true
 echo "linux-x64 runtime bundle built + verified"

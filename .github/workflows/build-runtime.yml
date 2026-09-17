@@ -33,8 +33,8 @@ on:
       - "scripts/stage_runtime_worker_package.py"
       - "mojo_env/pixi.toml"
       - ".github/workflows/build-runtime.yml"
-      # The linux leg + clean-machine contract run from these container scripts on the
-      # self-hosted fleet -- a change to them IS a change to the runtime pipeline.
+      # The linux leg + clean-machine contract run from these container scripts -- a change
+      # to them IS a change to the runtime pipeline.
       - ".github/scripts/_linux_container_bootstrap.sh"
       - ".github/scripts/build_runtime_linux_amd64.sh"
       - ".github/scripts/clean_machine_contract_linux_amd64.sh"
@@ -43,24 +43,21 @@ permissions:
   contents: read
 
 concurrency:
-  # PRs share ONE fleet-wide group: the amd64 emulation builds queue FIFO and each
-  # PR's wheel FINISHES instead of every open PR's container build interleaving on
-  # the single Colima VM and wedging it. Non-PR events (main tags/releases) keep a
-  # per-ref group; a superseded release cut is covered by its successor.
-  # Shared serial slot (see ci.yml): whole fleet finishes one PR run at a time.
+  # Per-ref group: a superseded release cut is covered by its successor. This workflow has no
+  # pull_request trigger, so nothing is ever cancelled mid-flight.
   group: runtime-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   build-linux:
     name: build bundled runtime wheel (linux-x86_64)
-    # The linux leg runs on the self-hosted macOS fleet inside an amd64 ubuntu:22.04 container:
-    # GitHub-hosted runners are billing-blocked for this org, and job-level `container:` requires
-    # a Linux runner, so the container is driven explicitly (the same pattern ci.yml already uses
-    # for its service containers). Everything inside the container mirrors the hosted pipeline
-    # 1:1 -- see .github/scripts/build_runtime_linux_amd64.sh.
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    # `thyn-8c` (org larger runner, 8 cores / 32 GB / 300 GB, BILLED): this job compiles the
+    # full 27-shard Mojo runtime (measured 31 min on 8 vCPU). The build runs inside an explicit
+    # ubuntu:22.04 container (`docker run`, not job-level `container:`): the scripts hardcode
+    # root + the /work mount, and the container's toolchain is the glibc-2.35 link host the
+    # manylinux_2_35_x86_64 wheel contract is audited against -- it is load-bearing, not a
+    # runner workaround. See .github/scripts/build_runtime_linux_amd64.sh.
+    runs-on: thyn-8c
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -69,16 +66,12 @@ jobs:
           ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
-          # docker_retry: transient Colima/dockerd flakes (exit 125 / unexpected EOF) wait
-          # for the fleet watchdog + guest systemd to heal the daemon, then retry; real
-          # build errors still fail immediately.
-          bash .github/scripts/docker_retry.sh \
-            docker pull --platform linux/amd64 ubuntu:22.04
-          # Emulation is slower than the hosted native x86_64 runner, so the per-shard timeout
-          # is enlarged (hosted: 900s). The RSS ceiling is generous: fleet machines carry far more
-          # RAM than the hosted VM's 7.8 GiB, so no swap-provisioning step is needed.
-          bash .github/scripts/docker_retry.sh \
-            docker run --rm --platform linux/amd64 \
+          docker pull --platform linux/amd64 ubuntu:22.04
+          # Direct `docker run` so per-shard progress streams live into the log (a capturing
+          # wrapper hid the whole build until exit). SHARD_TIMEOUT keeps headroom over the
+          # 900 s hosted-era default; the RSS ceiling is generous next to the measured
+          # 1.2-1.8 GiB per-shard peaks on Mojo 1.0.0.
+          docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
@@ -97,16 +90,15 @@ jobs:
     # GPU: the NVPTX backend ships inside the pinned mojo toolchain and the MAX CUDA runtime
     # (libMGPRT) ships inside linux-64 max-core, both already in the lock. This job proves on
     # every run that the CUDA lane still compiles and links. Launching the result needs an
-    # NVIDIA driver >= 580 plus real hardware, which the fleet does not have — so this job is
-    # deliberately NOT in clean-machine-contract's or publish-pypi's `needs`, and its wheel is a
-    # compile-gate artifact, not a shippable one (publish-pypi downloads release artifacts by
-    # explicit name below, so this wheel can never reach PyPI by accident).
-    # Serialized AFTER build-linux (2026-08-21): all five runners share ONE Colima VM, and two
-    # concurrent amd64 emulation builds doubled the peak load until the VM wedged (docker socket
-    # AND sshd silent -> watchdog VM restart -> every in-flight container job died with
-    # unexpected EOF / exit 125). The gate is not on the publish critical path; stability wins.
+    # NVIDIA driver >= 580 plus real hardware, which GitHub-hosted runners do not have — so this
+    # job is deliberately NOT in clean-machine-contract's or publish-pypi's `needs`, and its
+    # wheel is a compile-gate artifact, not a shippable one (publish-pypi downloads release
+    # artifacts by explicit name below, so this wheel can never reach PyPI by accident).
+    # Serialized AFTER build-linux: `thyn-8c` allows at most 2 concurrent jobs org-wide, and
+    # the gate is not on the publish critical path, so it must not hold a second billed slot
+    # while the shippable wheel is still building.
     needs: [build-linux]
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: thyn-8c
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -115,13 +107,10 @@ jobs:
           ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
-          bash .github/scripts/docker_retry.sh \
-            docker pull --platform linux/amd64 ubuntu:22.04
-          # Same emulation budget as build-linux: the CUDA variant compiles the SAME shard set,
-          # with PTX codegen added for the gated kernels (measured shard-time growth during the
-          # spike stays inside this timeout).
-          bash .github/scripts/docker_retry.sh \
-            docker run --rm --platform linux/amd64 \
+          docker pull --platform linux/amd64 ubuntu:22.04
+          # Same budget as build-linux: the CUDA variant compiles the SAME shard set, with PTX
+          # codegen added for the gated kernels (measured 30 min on 8 vCPU).
+          docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_SIGNING_KEY -e RUNTIME_RELEASE_PUBLISH \
@@ -136,11 +125,12 @@ jobs:
   clean-machine-contract:
     name: clean-machine contract (no external toolchain)
     needs: [build-linux]
-    # Was `ubuntu-latest` (GitHub-hosted, billing-blocked). The contract must execute the LINUX
-    # wheel's binaries, so it runs inside the same amd64 container on the self-hosted fleet; the
-    # workspace (with the downloaded runtime wheel) is mounted, and the algenta wheel the job
-    # builds inside the container stays in the workspace for the artifact upload.
-    runs-on: [self-hosted, az-ephemeral]
+    # No compile here (1 min measured), so plain ubuntu-latest. The contract must execute the
+    # LINUX wheel's binaries on the glibc floor the wheel is tagged for, so it runs inside the
+    # same ubuntu:22.04 container; the workspace (with the downloaded runtime wheel) is mounted,
+    # and the algenta wheel the job builds inside the container stays in the workspace for the
+    # artifact upload.
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -150,13 +140,12 @@ jobs:
           path: dist-runtime
       - name: Clean-machine install + runtime doctor (amd64 container)
         env:
-          # Native-linux budget is 15 ms; this job now executes under amd64 emulation on the
-          # self-hosted macOS fleet, so the tripwire gets an explicit enlarged budget rather
-          # than silently weakening the contract script's default.
+          # The contract script's default is 15 ms (native linux x86_64). The budget stays at
+          # the explicit 60 ms carried over from the emulated era for the first hosted runs;
+          # tighten it back toward 15 once a few native runs have recorded their latencies.
           ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET: "60"
         run: |
-          bash .github/scripts/docker_retry.sh \
-            docker run --rm --platform linux/amd64 \
+          docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             -e ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET \
@@ -170,8 +159,8 @@ jobs:
     name: publish Algenta Python packages to PyPI
     needs: clean-machine-contract
     if: github.event_name == 'push' || inputs.publish == 'true'
-    # Was `ubuntu-latest` (GitHub-hosted, billing-blocked); publishing is platform-independent.
-    runs-on: [self-hosted, az-ephemeral]
+    # Publishing is platform-independent: two artifact downloads + one twine upload.
+    runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
@@ -191,19 +180,19 @@ jobs:
         with:
           name: algenta-package
           path: dist-pypi
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
       - name: Publish Python packages
-        # The pypa action is a Docker container action -- GitHub runs container actions only on
-        # Linux hosts, and this fleet is macOS-only ("This action is only able to run under
-        # GNU/Linux environments"). A twine upload is plain HTTPS and platform-independent, so
-        # call twine directly. Twine 7 (what the old action's v1.14.2 bundled) accepts core
-        # packaging metadata 2.5, which hatchling >=1.32 emits for algenta-runtime-native; older
-        # Twine rejected it ("Invalid distribution metadata: '2.5' is not a valid metadata
-        # version"), failing every release since 2026-08-12.
+        # Native twine rather than the pypa publish action: Twine 7 accepts core packaging
+        # metadata 2.5, which hatchling >=1.32 emits for algenta-runtime-native; older Twine
+        # rejected it ("Invalid distribution metadata: '2.5' is not a valid metadata version"),
+        # failing every release since 2026-08-12. tests/test_sdk_package_metadata.py counts the
+        # twine skip-existing idempotence flag below, so do not swap the action back in silently.
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           set -euo pipefail
-          python3.14 -m venv "$RUNNER_TEMP/publish-venv"
-          "$RUNNER_TEMP/publish-venv/bin/pip" install --quiet --disable-pip-version-check "twine>=7"
-          "$RUNNER_TEMP/publish-venv/bin/twine" upload --non-interactive --skip-existing dist-pypi/*
+          python -m pip install --quiet --disable-pip-version-check "twine>=7"
+          twine upload --non-interactive --skip-existing dist-pypi/*

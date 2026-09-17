@@ -27,11 +27,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . /build/context/
 RUN mkdir -p /build/context/mojo_build
 
-# Context-integrity guard: the self-hosted fleet builds amd64-on-arm64 through
-# buildx+Colima, and a corrupted cache/context layer (2026-08-22) silently shipped
-# zero-byte packages/mcp sources, poisoning the pushed image and failing the Fly
-# deploy smoke four runs in a row. Fail the BUILD loudly instead of publishing a
-# hollow image: every file the runtime smoke depends on must be non-empty here.
+# Context-integrity guard: a corrupted buildx cache/context layer (2026-08-22, on the
+# then cross-arch build host) silently shipped zero-byte packages/mcp sources,
+# poisoning the pushed image and failing the Fly deploy smoke four runs in a row.
+# Fail the BUILD loudly instead of publishing a hollow image: every file the runtime
+# smoke depends on must be non-empty here.
 RUN test -s /build/context/packages/mcp/algenta_mcp/products.py \
  && test -s /build/context/packages/mcp/algenta_mcp/server.py \
  && test -s /build/context/apps/mcp_server/products.py \

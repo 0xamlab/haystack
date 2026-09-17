@@ -108,23 +108,43 @@ If your organization requires a CLA on file, contact: cla@algenta.ai
 
 ## Code style
 
-**Python:**
-```bash
-# Format
-black apps/ tests/ scripts/
-isort apps/ tests/ scripts/
+**Python:** [ruff](https://docs.astral.sh/ruff/) is the only linter *and* formatter (no
+black, no isort). It is pinned to `ruff==0.12.0` in `mojo_env/pixi.toml`; configuration lives
+in `pyproject.toml` (`[tool.ruff]`, `[tool.mypy]`).
 
-# Lint
-ruff check apps/ tests/
-mypy apps/api_server/ --ignore-missing-imports
+```bash
+make format      # ruff check --fix . && ruff format .
+make lint        # ruff check . && ruff format --check . && mypy <the four packages>
+make typecheck   # mypy apps/api_server apps/mcp_server apps/runtime apps/worker
 ```
+
+`make typecheck` is currently red over that scope; new code should not add to the count.
 
 **TypeScript:**
 ```bash
-cd apps/portal && npm run lint
+pnpm lint        # == make js-lint: packages/ts-sdk + apps/gateway
 ```
 
-All CI checks must pass. Pre-commit hooks are configured in `.pre-commit-config.yaml`.
+**Pre-commit hooks** (`.pre-commit-config.yaml`; needs pre-commit >= 3.2.0 and a `python3.14`
+on PATH, the same interpreter series `mojo_env/pixi.toml` pins):
+
+```bash
+pip install pre-commit      # or: uv tool install pre-commit
+pre-commit install          # installs BOTH stages (default_install_hook_types)
+```
+
+- On **commit**: whitespace/EOF fixers, YAML/JSON/TOML syntax (`check-yaml` skips the
+  Go-templated `infra/helm/`), merge-conflict markers, files > 500 KB, no direct commits to
+  `main`, then `ruff --fix` and `ruff-format` on the staged Python files.
+- On **push**: nothing yet. The `mypy` hook covers exactly the four `make typecheck` packages
+  but is `stages: [manual]` until `make typecheck` is green; run it with
+  `pre-commit run mypy --all-files --hook-stage manual`.
+
+`tests/test_precommit_pins.py` (in `pnpm test:hardening`) keeps the ruff hook `rev` equal to
+the pixi pin, the mypy hook scope equal to the Makefile, and the mypy hook's
+`pydantic`/`types-redis` versions equal to pixi -- bump them together.
+
+All CI checks must pass.
 
 ---
 
