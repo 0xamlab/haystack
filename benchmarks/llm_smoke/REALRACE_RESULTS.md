@@ -20054,3 +20054,215 @@ but small win, and it is UNMEASURED.
    decide whether a flag and a gate are worth it.
 5. `_G3_PF_FA_MIN_M` (256) still untuned since round 6; at m=128 priming the fused kernel
    declines, which is also what keeps the 62 o_proj A-stagings in every trace.
+
+---
+
+## ROUND 8 — CPU-ONLY, ZERO VM BURN: the register census no longer needs the GPU, and wgmma is censused GREEN at 106-126 registers with zero spill (branch `feat/gemma-wgmma8`, 2026-09-17)
+
+Front: round 8 of the gemma-3-27b-it CUDA prefill seam, branch `feat/gemma-wgmma8` off main @
+`21950612` (#1014, round 7). **The H200 was never started this round**: us-west1-c is still
+STOCKOUT, so round 8 was authorised CPU-side only. No cell was timed, no gate was run, no ratio is
+claimed, and round 6's published standings are untouched (pp256 1.2931x, pp1024 1.1779x,
+rag4096 1.0959x). Everything here is either a locally reproduced compile artifact or arithmetic on
+previously published numbers, and each is labelled.
+
+### CORRECTION TO ROUND 7's LEDGER — the v2 register figure was over-generalised from a truncated log
+
+Round 7's ledger stated v2 peaks at "172 registers" and tabulated it as v2's figure. That was read
+off the VM log's last six lines, which were **all BN=64 instantiations**. The full census across
+v2's 18 instantiations, reproduced locally and calibrated against the VM (below), is:
+
+| v2 (round 6, SHIPPED) | instantiations | registers | spilling |
+|---|---|---|---|
+| BN=32 (the production config: FA2 + KV16 + BN32) | 6 | **158-162** | 0/6 |
+| BN=64 | 6 | **165-172** | 0/6 |
+| BN=128 | 6 | **206-210** | 0/6 |
+
+**The v3 refutation is unaffected and is now BN-matched, which is the comparison that was owed.**
+At the production BN=32, v2 is 158-162 registers with zero spill while v3 spans to 255 with 12 of
+18 instantiations spilling; at BN=64, v2 is 165-172 / zero spill against v3 to 255 with 12 of 18
+spilling. Round 7 quoted the right conclusion against a sloppily-scoped baseline number; the
+baseline is corrected here rather than silently, per the append-only rule.
+
+### NEW CAPABILITY — the census gate no longer depends on having the GPU back
+
+`ptxas` is a **HOST cross-compiler**: `-arch=sm_90a` needs a CUDA 12.x toolkit, not an sm_90
+device. So the census that killed round 7's lever in 30 s can now run with **no VM and no cloud
+spend**, in an arm64 Linux container using `nvidia/cuda:12.6.0-devel-ubuntu22.04` — the same
+toolkit release as the race box (V12.6.85, Built Wed_Oct_30_00:04:50_PDT_2024).
+`ptxas_census_local.sh` wraps it and `wgmma_census.cu` is the round-8 subject.
+
+**CALIBRATION WAS RUN AND PASSED 6/6 EXACT** — a local census is only evidence if it reproduces
+numbers the box already produced, so the script asserts it rather than assuming it. Against the six
+v2 BN=64 instantiations the VM's round-7 log printed: 165/165, 172/172, 165/165, 172/172, 166/166,
+166/166 registers, zero spill both sides. v3's 36 instantiations reproduce too (peak 255, 24
+spilling). Verdict emitted by the script: `LOCAL TOOLCHAIN REPRODUCES THE VM — census is EVIDENCE`.
+
+Two gotchas are encoded in the script so they are not rediscovered: the pip arm64
+`nvidia-cuda-nvcc-cu12` wheel ships **only ptxas** (no nvcc/cicc, so it cannot take a `.cu` to
+PTX), and the devel image has **no python3**, so `tc_rt_ptx.h` must be generated with coreutils
+(`od`/`tr`/`paste`) — the same embedded-PTX header whose absence killed chain5c, chain5d and round
+6's re-stage.
+
+### THE WGMMA CENSUS — round 8's go signal, and the exact inverse of round 7's refutation
+
+Three arms, all compiling for `sm_90a`, **all with zero spill bytes and zero spill loads**:
+
+| arm | registers | spill | vs v2 at the same BN |
+|---|---|---|---|
+| `_wg_desc_bn32` — desc A + desc B, BN=32 | **106** | 0 | 158-162 -> 106 = **-33%** |
+| `_wg_desc_bn64` — desc A + desc B, BN=64 | **122** | 0 | 165-172 -> 122 = **-27%** |
+| `_wg_regA_bn64` — register-A for P@V, BN=64 | **126** | 0 | -24%, and **+4 over desc** |
+
+Three things follow, and they are the reason round 8 is worth a GPU window:
+
+1. **wgmma buys the shared-load reduction for FEWER registers than the kernel it replaces.** Round
+   7's v3 tried to halve ldmatrix-per-row by putting two m16 row-tiles in one warp and died at
+   255/255 with spill. wgmma removes the B-operand `ldmatrix` stream *entirely* — B is read
+   straight from shared through a 64-bit matrix descriptor, so there are no B-fragment registers
+   at all — and lands 27-33% BELOW the incumbent. Same 64 rows per CTA (one warpgroup = 128
+   threads = m64), so this is an apples-to-apples comparison and not a smaller problem.
+2. **FA2's in-register-P trick costs almost nothing under wgmma**: +4 registers (126 vs 122) to
+   take P as a register A-operand instead of round-tripping it through a shared `sP` window. So
+   the sP window, its fences and its shared traffic can all be deleted, exactly as FA2 deleted
+   them from round 5's WMMA kernel. ptxas additionally auto-injects `warpgroup.arrive` /
+   `warpgroup.wait` around register-A GMMA (info C7519 / C7517), which is correct behaviour and
+   not a defect.
+3. **No C7511** ("wgmma.mma_async instructions are serialized due to insufficient register
+   resources for the wgmma pipeline") at these counts. That warning DID appear on an early
+   mis-sized arm, so its absence here is informative: the pipeline has room to overlap.
+
+HONEST BOUND ON WHAT THIS PROVES. These three arms are the accumulator *structure* — the S
+product, the O product and the P packing — not the full windowed kernel. The real kernel adds
+online-softmax state, the causal/window mask predicates and the epilogue. v2's own
+non-accumulator overhead was roughly 60 registers (172 measured against 64 oacc + 32 qa + 16 s),
+so a realistic full-kernel figure is ~150-170: still at or below v2 and ~90 below the 255 that
+killed v3. **The census proves the design FITS with headroom; it does not prove the kernel
+WORKS.** Re-census when the full kernel is written, and the correctness gates below still all
+apply.
+
+Two PTX facts were learned from ptxas directly rather than from documentation guesswork, for free
+and at no VM cost — both would otherwise have burned window minutes: an `m64nNk16` f32 accumulator
+takes exactly **N/2** registers (declaring 18 outputs for n32 is rejected with "Argument vector
+size mismatch"), and the **register-A form takes only ONE transpose immediate**, because trans-a is
+not a free operand when A comes from registers ("Arguments mismatch for instruction
+'wgmma.mma_async'").
+
+### NORM-ACCUM PRICED ON PAPER — and the verdict is DO NOT AUTHOR IT YET
+
+The double read is real: `_pf_norm_accum_rows_kernel` reads `y[row+i]` in the sum-of-squares loop
+and `y[row+t]` again in the output loop, so it moves 16n bytes per row where 12n suffices, at
+n = d_model = 5376. Staging `y` (registers or shared) would be **bit-identical by construction** —
+same f32 bits, no re-rounding, unchanged reduction order — which is why it looked attractive.
+
+It is not attractive yet, for two reasons. First, the traffic model does not support a DRAM win:
+per launch the working set is 1024 rows x 5376 x 4 B ~ 22 MB against the H200's 60 MB L2, so
+pass 2's re-read is very likely an **L2 hit** and DRAM traffic is already ~12n. The lever would
+then buy L2 traffic and instruction count, not bandwidth — real, but a different and smaller
+thing than the ~-4 ms round 7 first estimated and then retracted. Second, the only bucket figure
+available is round 6's **geometry-attributed ~16.2 ms**, which is precisely the number the fixed
+`--from-first-attn` extractor exists to replace. Roof arithmetic for reference: 12n x 1024 rows x
+496 launches = 32.8 GB -> **6.83 ms at 4.8 TB/s**, so ~16.2 ms would be 42% of roof — but if the
+measured bucket lands near 6.8 ms there is nothing to win at all, and if it lands near 16 ms the
+gap is efficiency (occupancy, the barrier, scalar 4-byte accesses) rather than the double read, in
+which case the fix is float4-vectorising the two loops, not staging `y`. Either way **the
+measurement precedes the authoring**. That ordering is the lesson of a campaign whose forecasts
+have now been wrong 4/4 times.
+
+### REGION FEASIBILITY — answered, and region is NOT the binding constraint
+
+`a3-ultragpu-8g` (8x `nvidia-h200-141gb`, 224 vCPU) is *defined* in all three candidate zones:
+us-west1-c, asia-south1-b, asia-south2-c. That is as far as a non-committing check can go — GCP
+exposes no capacity query for spot, so the only real signal is an attempted create/start, which
+commits and risks leaving a box running. Quota introspection does not help either:
+`gcloud compute regions describe` lists only legacy `NVIDIA_K80_GPUS` / `NVIDIA_P100_GPUS` metrics
+with no a3 or H200 line, because a3 draws on dynamic shared quota.
+
+**A fallback region is NOT a fallback for this lane**, for the reason in the next section.
+
+### THE BLOCKER THAT OUTRANKS CAPACITY — six harness files exist only on that instance's SSD
+
+Round 8 audited what the gemma-3 race actually depends on. Six files are referenced **19 times**
+across the repo's race scripts and are present in **none** of them; `find` over the whole worktree
+returns nothing for any of them. They live only at `$HOME/{trtllm,lever3,adj}` on
+trtllm-gemma-us-west1-c:
+
+| file | what dies without it |
+|---|---|
+| `trtllm_prep.sh` | the prompt-fixture generator — so **fixture identity against the pre-stop gate echoes cannot be established at all**, and nothing is measurable |
+| `trtllm_convert.sh` | the gemma-3-27b checkpoint conversion to `/mnt/ramblob/g3conv27b` — no checkpoint to load |
+| `cell_watchdog.sh` | the 600 s stall->SIGKILL wrapper every cell runs under |
+| `gate_any.py` | the oracle gate runner (G0 16/16, G1 64/64, val550, rag 22/22 EOS-stop) — so **no arm can be certified** |
+| `lv3_trtllm.sh` | the TensorRT-LLM re-serve — so **no ratio is claimable**, the protocol requiring a same-session TRT column |
+| `driver_ctx8192.mojo` | the STOCK driver source every arm is built from — so **no arm can be built** |
+
+And `setup_vm.sh` provisions a Qwen3-0.6B smoke model, not gemma-3-27b, so it does not fill the
+gap. A fresh instance in asia-south1-b or asia-south2-c therefore arrives with no staging recipe,
+no watchdog, no gate runner, no TRT re-serve and no driver. **Recovering these six files outranks
+finding capacity**, and it needs a successful start of the us-west1-c box to do it — which is the
+unhappy shape of the problem.
+
+`vm_backup_harness.sh` (new) retrieves all six plus `lever6/runs` (round 6's certified gate echoes,
+i.e. the fixture-identity reference) and `lever7/logs` (round 7's still-unretrieved RT=2 probe
+logs) into a git-trackable `vm_harness/` directory. It inventories read-only first, prints md5s,
+and supports `--dry-run`. NOTE a correction to the standing recovery plan: copying these to
+`/tmp/gemma_artifacts/` **on the same box is not a backup** — /tmp is tmpfs and is wiped by every
+stop/start, which is exactly why the fixtures and the checkpoint have to be regenerated in every
+window. Durable means the local machine and git.
+
+### MEASUREMENT PLAN FOR THE FIRST SUCCESSFUL CAPACITY RETURN
+
+Ordered so the irreplaceable and the free happen before the expensive:
+
+0. **`vm_backup_harness.sh`, then commit it.** Before any measurement. Everything else in this
+   campaign is reproducible from the repo; these six files are not.
+1. **Read `lever7/logs/fa_g3_probe_bn{32,64}.log`.** Free, and it settles round 7's open question:
+   whether RT=2 beat v2 *despite* spilling. The census proved spill SIZE; spill FREQUENCY in the
+   hot loop decides it. This either closes the v3 lever or reopens it.
+2. Re-stage (`chain7stage.sh`): regenerate fixtures + checkpoint, **prove fixture identity against
+   round 6's certified gate echoes** via `FIXREF_RUNS`, regenerate `tc_rt_ptx.h` before nvcc, pin
+   and verify 1410 MHz. Nothing runs until it prints STAGE_OK.
+3. **Gates FIRST on ROPEVEC** — fp32 oracle, G0 16/16 + G1 64/64 with the 64-token determinism
+   repeat + val550 2/2 + rag 22/22 EOS-stop. It is NOT bit-identical (contiguous quads
+   re-associate the qk_norm sum-of-squares), so the gate is against the oracle and no speed claim
+   precedes it.
+4. **nsys with the fixed `--from-first-attn` extractor** -> exact rope / norm-accum / geglu /
+   attention buckets. This simultaneously prices norm-accum (above) and delivers the per-layer
+   proof the bar-fallback requires. The script greps the subtraction for a negative bucket and
+   labels it invalid rather than quoting it.
+5. Cells: pp256 + pp1024 + rag4096, interleaved A..B..A, 3 warmup + 7 measured, two brackets for
+   rag4096; then the same-session TRT re-serve reproducing 40.728 / 110.744 / 426.339 within 1% or
+   labelled CROSS-SESSION. **pp256 finally gets a same-session column** — it has been
+   CROSS-SESSION since round 6.
+6. **wgmma last, and gated in this order**: on-device layout probe pinning the descriptor
+   semantics and the A/B/D mappings in exact small integers (the pattern `_fa2_layout_probe_kernel`
+   and `_fa3_layout_probe_kernel` already establish, because a wrong layout yields plausible-looking
+   WRONG numbers rather than a crash) -> host-f64 windowed-reference numeric gate at every shape x
+   (kv32, dbuf, bn) -> re-census the full kernel -> only then A/B timing. DECLINED fallback to
+   window2 on any probe disagreement, so a declined lever never masquerades.
+7. Stop the box, confirm TERMINATED, heartbeat stops.
+
+### WHAT ROUND 8 DID *NOT* DO, stated plainly
+
+The full windowed wgmma kernel is **NOT written**. What is written and verified is the layer that
+can be validated without a device: the descriptor encoder, the fence/commit/wait primitives, the
+m64n32k16 / m64n64k16 / m64n128k16 descriptor-A forms and the m64n128k16 register-A form — all
+accepted by ptxas 12.6.85 for `sm_90a`, all zero-spill, all censused. The remaining work is the
+window/mask/online-softmax/epilogue integration, whose two genuinely uncertain pieces (the shared
+descriptor's core-matrix layout and whether the m64nNk16 accumulator's per-thread layout IS the
+register-A layout, which is what would let P skip shared entirely) can only be pinned by the
+on-device probe. Writing those 600 lines blind, where nothing can be checked, has worse expected
+value than writing them where the probe can be iterated — and this campaign's discipline is
+exactly that a plausible-looking unverified kernel is a liability, not progress.
+
+### EVIDENCE
+
+* `wgmma_census.cu` — the three censused arms, with the PTX operand syntax ptxas accepted and the
+  two syntax facts it corrected, recorded inline.
+* `ptxas_census_local.sh` — the containerised census with mandatory `--calibrate`; calibration
+  output on 2026-09-17 was 6/6 MATCH and `CENSUS_RC=0`.
+* `vm_backup_harness.sh` — retrieves the six VM-only harness files plus the two artifact
+  directories; inventory + md5 first, `--dry-run` supported.
+* Local artifacts: `tc_shim.o` 5,282,400 bytes (VM produced 5,306,840 — the difference is the
+  locally regenerated PTX blob, 39,980 bytes from 12,372 PTX bytes), NVCC_RC=0, 0 error lines.
+* No gitbook page touched. Ledger append-only, including the correction to round 7 above.
