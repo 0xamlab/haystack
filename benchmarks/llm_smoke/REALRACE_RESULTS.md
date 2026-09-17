@@ -20266,3 +20266,156 @@ exactly that a plausible-looking unverified kernel is a liability, not progress.
 * Local artifacts: `tc_shim.o` 5,282,400 bytes (VM produced 5,306,840 — the difference is the
   locally regenerated PTX blob, 39,980 bytes from 12,372 PTX bytes), NVCC_RC=0, 0 error lines.
 * No gitbook page touched. Ledger append-only, including the correction to round 7 above.
+
+---
+
+## ROUND 9/10 — gemma-3-27b-it H200: the GQA-packed lever MEASURED at -2.943 ms on rag4096, which MISSES its own modelled -4.25 ms by 31%; NOT RESOLVED, nothing published (branch `feat/gemma-harness-recovery`, PR #1019, 2026-09-17)
+
+Two VM windows. The first (20:15-22:35Z, ~2h20) re-staged, gated both arms and started the rag4096
+bracket; the second (~22:52-23:02Z, **~15 min**) retrieved and summarised the banked cells only.
+Box **TERMINATED** at the end of each with `--discard-local-ssd=false` (a plain `stop` is REJECTED
+on this instance: "VM has a Local SSD attached but an undefined value for `discard-local-ssd`"),
+and `status=RUNNING` was verified empty project-wide after both. **No ratio is claimed and nothing
+is published**: the delta misses its pre-registered band and the bracket never closed.
+
+### THE MEASUREMENT — 16 banked cells, 3 warmup + 5 measured per arm, interleaved and symmetric
+
+`summarize_gemma3_round6.py` over `~/lever7/runs`, both arms built from `aba6b549`/`b663f63c`
+against the STOCK unmodified driver:
+
+| cell | arm | n | median ms | rel-IQR% | tok/s |
+|---|---|---|---|---|---|
+| rag4096 | `R9_base` (#1006 ship flag set) | 5 | **390.044** | 0.214 | 10501.4 |
+| rag4096 | `R9_gqa2` (+ `ALGENTA_G3_PF_GQA2`) | 4 | **387.101** | 0.018 | 10581.2 |
+
+**delta = -2.943 ms (-0.755%)**. Clocks: *every measured cell 1410 MHz on every 1 Hz sample, zero
+drift* — the zero-off-pin-tolerance rule is satisfied with nothing to re-take. Both rel-IQRs are
+<= 1% as required, and the gqa2 arm's 0.018% is the tightest spread this lane has recorded.
+
+**THE BASELINE ARM IS THE PUBLISHED ARM.** `R9_base` at 390.044 ms reproduces round 6's published
+ship figure of 389.033 ms to **+0.26%**, so the bracket measures the lever against the exact
+configuration that produced 1.0959x and not against a rebuild of something else. That reproduction
+is also the only thing making a cross-session ratio arithmetically defensible here.
+
+### THE VERDICT IS *NOT RESOLVED*, AND BOTH REASONS ARE PROCEDURAL RATHER THAN ARGUMENTATIVE
+
+1. **NO-DRIFT-MEASURED.** The summariser's own `resolved` column says so. The bracket's closing
+   ARM_A re-runs never executed — the window closed at 15 of 24 cells — so there is no measured
+   A..B..A drift armor for this delta to be compared against. The protocol is explicit that a lever
+   delta which does not exceed its armor is reported NOT RESOLVED rather than as a win; with no
+   armor measured at all, the claim cannot be made in either direction. Round 6's comparable deltas
+   exceeded their armor by 139x and 21x; this one has no denominator.
+2. **n=5 / n=4 against the protocol's n>=7 per cell and 20-run-median A/B target.** Declared as a
+   deviation, not hidden: the window ran out before the bracket completed.
+
+`pp256` and `pp1024` have **no measured runs at all** this round (the summariser lists every label
+`NO-JSON`). Their no-regression claim therefore rests on *bit identity plus the shape gate* — both
+cells sit below `n_keys = 2048`, so they dispatch v2 unchanged and cannot differ — and NOT on a
+measurement. That is a weaker class of evidence than a timed no-regression and is labelled as such.
+
+### THE MODEL MISSED BY 31%, AND THE MISS IS THE MOST USEFUL NUMBER IN THIS ENTRY
+
+The pre-registered forecast was **-4.25 ms**, derived by summing the probe's four per-tile rag4096
+rows (484.6 -> 423.2 us = -12.7%) and applying that to round 6's measured 33.53 ms attention
+bucket. Measured: **-2.943 ms**. The model over-forecast by **44.6%** (4.25/2.943); equivalently
+the measurement is **69.2% of the model**. Against the pre-registered acceptance band of +/-20%
+(-3.40 to -5.10 ms) this is a **MISS**, which is why the window stopped at the summary instead of
+continuing to ROPEVEC and nsys.
+
+Expressed against the bucket: -2.943 ms on 33.53 ms is **-8.8% in situ**, where the isolated kernel
+probe said **-12.7%**. So the calibration datum this round actually produced is:
+
+> **An isolated per-kernel probe delta translates to roughly 70% of itself in wall-clock at the
+> model level on this lane.** The plausible mechanism is overlap: the build carries
+> `ALGENTA_G3_PF_STREAM`, so the attention kernel is not the whole critical path and part of a
+> kernel-level saving is absorbed by work running alongside it. A probe measures a kernel; a cell
+> measures a schedule.
+
+That is the campaign's **5th consecutive over-forecast**, and the first one quantified as a
+transfer ratio rather than merely wrong. It should be applied to every future probe-derived
+forecast on this lane until a second data point contradicts it — including round 8's wgmma
+projection, which is currently a probe-free arithmetic argument and would inherit the same
+discount.
+
+### GATES — both arms ALL_PASS, full detail, on the fresh checkpoint
+
+Re-earned, not inherited, at 1410 MHz with `offpin=0` on every cell:
+
+    R9_base   ALL_PASS=True  pp256/maxnew16 16/16 | pp256/maxnew64 64/64 | pp1024/maxnew16 16/16
+              pp1024/maxnew64 64/64 | val550/maxnew16 16/16 | val550/maxnew64 64/64
+              rag4096/maxnew64 22/22 + EOS-stop
+    R9_gqa2   ALL_PASS=True  (identical matrix)
+
+`R9_gqa2` gated 20:50:21 -> 21:15:02Z, `R9_base` 21:15:02 -> ~21:43:58Z. Fixture identity was
+proved BEFORE either gate: all four regenerated fixtures token-IDENTICAL to round 6's certified
+echoes (256/1024/550/4096 ids) against `lever6/gate_R6_kv16_bn32/` — round 6 wrote gate cells to a
+PER-ARM dir, and pointing the checker at `lever6/runs/` instead fails with NO PRE-STOP REFERENCE.
+
+Flag audit sha256_16: `R9_base` cd4047affbb40b76, `R9_gqa2` 3db7f0dfaf04a7c1, `R9_both`
+ca66b41a2ee34cde — three distinct binaries. **GAP, recorded rather than glossed:** the audit
+printed the SAME flag family list for all three and does NOT include GQA2, because
+`audit_tc_flags.sh` has no positive control for that family yet. The evidence that GQA2 was live is
+the runtime banner (`TCFLAG ALGENTA_G3_PF_GQA2=1`, present in `R9_gqa2` and `R9_both`, absent from
+`R9_base`) plus the distinct sha256. The audit script needs the family added before a future round
+leans on it.
+
+### ROPEVEC remains UNGATED AND UNMEASURED
+
+`R9_both` (GQA2 + ROPEVEC) was built and flag-audited but its oracle gate was deliberately not run:
+with the budget left it was either ROPEVEC's ~50 min gate or the certified lever's measurement, and
+the measurement of a bit-identical, probe-supported lever was the better spend. Quoting an ungated
+arm would be worse than not quoting it. ROPEVEC's modelled -2.2 to -2.7 ms is now doubly discounted
+— it was never measured, and by this round's own transfer ratio a rope-bucket saving would also be
+expected to land near 70% of its isolated figure.
+
+No same-session TRT-LLM re-serve was run, so **pp256 is still CROSS-SESSION** (it has been since
+round 6) and no ratio against TensorRT-LLM is claimed. For completeness only, and explicitly NOT as
+a published number: 426.339 (round 6's same-session re-serve) / 387.101 would be 1.1014x against
+the published 1.0959x. It is cross-session, NOT RESOLVED, and n-short, so it does not qualify.
+
+No nsys decomposition ran, so norm-accum is still unpriced and the `--from-first-attn` extractor is
+still unrun on a real trace. The full windowed wgmma kernel is still unwritten; round 8's census
+(106-126 registers, zero spill, calibrated 6/6 against this box) stands as its go signal.
+
+### THREE PROCESS FAILURES, RECORDED BECAUSE THEY COST THE ROUND
+
+1. **THE WATCHDOG WAS NOT BROKEN, AND THE MISREAD IS MINE.** Top level stopped the first window on
+   the evidence of `gate_pp256_maxnew64_rep2` STARTed 21:44:23Z with no END for 43 min, GPU at
+   0%/0 MiB and no STALL line, and reasonably concluded `cell_watchdog.sh` was dead — "a watchdog
+   that cannot kill is worse than none". It was not dead and nothing had hung. That cell belonged
+   to `chain9.sh`'s SECOND gate invocation (`ARM=R9_both`, which `run_ab_gemma3_round9.sh` starts
+   automatically because its gate stage gates both `$ARM` and `$ARM_A`), and its driver was killed
+   BY ME at 21:44:19Z while clearing 62 GB of orphaned GPU memory during a deliberate pivot. **A
+   killed cell has no END line by construction**, and a watchdog correctly never fires for a process
+   that no longer exists. The live work was in `chain9c.log` — 15 of 24 rag4096 cells ENDed,
+   `rc=0`, `offpin=0`, at exactly 2 min/cell, last END 22:26:18Z. The GPU 0%/0 MiB reading is the
+   normal inter-cell trough: every cell is a fresh driver process loading a 101 GB checkpoint.
+   **THE DEFECT IS OBSERVABILITY, NOT THE WATCHDOG.** I ran three chains writing three different
+   logs inside one window, so an observer reading the first saw a corpse and called it a hang. The
+   fix, applied in the second window: ONE log per VM window regardless of how many chains run
+   inside it, a liveness line every 120 s, and any deliberate mid-cell kill must write
+   `KILLED_BY_OPERATOR <cell> <reason>` so a missing END is self-explaining rather than
+   indistinguishable from a wedge.
+2. **`pkill -f` MATCHED MY OWN SSH COMMAND LINE — twice.** `pkill -f "bash chain9.sh"` killed the
+   session running it, because that session's own `bash -c` payload contained the pattern. The first
+   occurrence aborted the relaunch, so the trimmed chain never started and an orphaned driver held
+   62 GB of GPU memory until it was found and killed by PID. Rule, now earned: **kill by PID, never
+   by a pattern that appears in your own command line.** If a pattern is unavoidable, build it so it
+   does not match itself (`P="chain9""b.sh"`).
+3. **DECLARATION DISCIPLINE.** I reprioritised the prompt order mid-window (pp256/pp1024/rag4096 ->
+   rag4096 only) on a budget judgement, without declaring it. The judgement was right — the lever
+   only engages at `n_keys >= 2048`, so rag4096 is the only raced cell it can move, and pp256 was
+   the lowest-value cell to spend the remaining budget on — but an undeclared state change is
+   precisely what makes an outside observer's read of the window unreliable, and it compounded
+   failure 1. Scope changes inside a declared window get declared.
+
+### HARNESS SINGLE-POINT-OF-FAILURE — CLOSED
+
+The six files the lane depends on are now git-tracked in `vm_harness/` (PR #1019), along with three
+more from the same staging recipe found by `find` on the box (`convert_27b.sh`,
+`trtllm_fixcuda.sh`, `trtllm_verify.sh`), plus `lever6/runs` and `lever7/logs`. Before this they
+existed only on one spot instance's local SSD, which is why a fallback region was not a fallback
+for this lane. The backup script that was supposed to protect them had itself looked in the wrong
+place (`$HOME/trtllm/` rather than `$HOME/`), reported the two most load-bearing files MISSING and
+skipped them — a backup that silently omits its own target is worse than no backup, because it
+reads as done. Fixed, and the recovery of those two files is what made this window possible at all.
