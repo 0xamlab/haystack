@@ -146,11 +146,11 @@ cells; greedy continuations match the fp32 oracle on both engines.
 
 | Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Prefill RAG-4096 tok/s | Decode tok/s (gen=256) |
 | --- | --- | --- | --- | --- |
-| Algenta (packed3, cuBLAS tensor-core prefill + fused causal flash attention, single-pass 4096-row prefill, stage-tuned cublasLt, f16 MLP/norm epilogues) | 12,881 | 15,465 | 15,325 | 82.6 |
-| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 7,121 | 14,193 | 14,993 | 79.0 |
+| Algenta (packed3, cuBLAS tensor-core prefill + fused causal flash attention, single-pass 4096-row prefill, stage-tuned cublasLt, f16 MLP/norm epilogues) | 12,881 | 15,465 | 15,440 | 82.6 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 7,121 | 14,193 | 14,978 | 79.0 |
 
 Prefill speedup at 256 tokens: 1.81x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
-1.09x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.02x vs
+1.09x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.03x vs
 TensorRT-LLM. Decode speedup (gen=256): 1.05x vs TensorRT-LLM.
 
 ### Gemma 3 27B — prefill vs TensorRT-LLM (H200)
